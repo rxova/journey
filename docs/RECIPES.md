@@ -67,8 +67,7 @@ api.send({ type: "retry" });
 const { snapshot, api } = useFlow<MyCtx, MyStepId>();
 const asyncState = snapshot.async.byStep[snapshot.current];
 
-const isBusy =
-  asyncState.phase === "evaluating-when" || asyncState.phase === "running-effect";
+const isBusy = asyncState.phase === "evaluating-when" || asyncState.phase === "running-effect";
 
 if (isBusy) {
   return <p>Loading...</p>;

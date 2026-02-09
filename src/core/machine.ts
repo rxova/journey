@@ -135,7 +135,13 @@ export const createFlowMachine = <
       };
     },
     reset: () => {
-      snapshot = buildSnapshot(flow.initial, flow.context, [], null, buildInitialAsyncState(flow.steps));
+      snapshot = buildSnapshot(
+        flow.initial,
+        flow.context,
+        [],
+        null,
+        buildInitialAsyncState(flow.steps)
+      );
       if (clearOnReset) {
         removePersistedSnapshot();
       } else {
@@ -183,7 +189,12 @@ export const createFlowMachine = <
         try {
           transition = await selectTransition(flow.transitions, snapshot, event, {
             onAsyncGuardStart: (currentTransition) => {
-              setStepLoading(fromStep, FLOW_ASYNC_PHASE.EVALUATING_WHEN, event.type, currentTransition.id);
+              setStepLoading(
+                fromStep,
+                FLOW_ASYNC_PHASE.EVALUATING_WHEN,
+                event.type,
+                currentTransition.id
+              );
             },
             onAsyncGuardSuccess: () => {
               setStepIdle(fromStep);
@@ -210,7 +221,12 @@ export const createFlowMachine = <
             event
           });
           if (isPromiseLike(effectResultPromise)) {
-            setStepLoading(fromStep, FLOW_ASYNC_PHASE.RUNNING_EFFECT, event.type as string, transition.id);
+            setStepLoading(
+              fromStep,
+              FLOW_ASYNC_PHASE.RUNNING_EFFECT,
+              event.type as string,
+              transition.id
+            );
           }
 
           let effectResult: TContext | void;

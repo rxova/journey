@@ -16,7 +16,9 @@ const useSnapshot = <
   TCustomEvent extends string = never,
   TEventPayloadMap extends FlowReactEventPayloadMap<TCustomEvent> = Record<never, never>
 >(): FlowSnapshot<TContext, TStepId> => {
-  const { machine } = useFlowStore<TContext, TStepId, TCustomEvent, TEventPayloadMap>();
+  const { machine } = useFlowStore<TContext, TStepId, TCustomEvent, TEventPayloadMap>(
+    "useFlowSnapshot"
+  );
 
   return React.useSyncExternalStore(machine.subscribe, machine.getSnapshot, machine.getSnapshot);
 };
@@ -29,7 +31,7 @@ export const useFlowApi = <
   TCustomEvent extends string = never,
   TEventPayloadMap extends FlowReactEventPayloadMap<TCustomEvent> = Record<never, never>
 >() => {
-  const { machine } = useFlowStore<TContext, TStepId, TCustomEvent, TEventPayloadMap>();
+  const { machine } = useFlowStore<TContext, TStepId, TCustomEvent, TEventPayloadMap>("useFlowApi");
 
   const send = React.useCallback(
     async (event: FlowEvent<TStepId, FlowEventType<TCustomEvent>, TEventPayloadMap>) => {
@@ -150,6 +152,7 @@ export const useFlow = <
   TCustomEvent extends string = never,
   TEventPayloadMap extends FlowReactEventPayloadMap<TCustomEvent> = Record<never, never>
 >(): FlowHookResult<TContext, TStepId, TCustomEvent, TEventPayloadMap> => {
+  useFlowStore<TContext, TStepId, TCustomEvent, TEventPayloadMap>("useFlow");
   const snapshot = useFlowSnapshot<TContext, TStepId, TCustomEvent, TEventPayloadMap>();
   const api = useFlowApi<TContext, TStepId, TCustomEvent, TEventPayloadMap>();
 

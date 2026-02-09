@@ -199,7 +199,7 @@ describe("react hooks/provider edge cases", () => {
       useFlowApi<Ctx, StepId, CustomEvent>();
       return null;
     };
-    expect(() => render(<Broken />)).toThrow("useFlow*");
+    expect(() => render(<Broken />)).toThrow("useFlowApi must be used within <FlowProvider>.");
   });
 
   it("useFlowSnapshot throws outside provider", () => {
@@ -207,7 +207,15 @@ describe("react hooks/provider edge cases", () => {
       useFlowSnapshot<Ctx, StepId, CustomEvent>();
       return null;
     };
-    expect(() => render(<Broken />)).toThrow("useFlow*");
+    expect(() => render(<Broken />)).toThrow("useFlowSnapshot must be used within <FlowProvider>.");
+  });
+
+  it("useFlow throws outside provider", () => {
+    const Broken = () => {
+      useFlow<Ctx, StepId, CustomEvent>();
+      return null;
+    };
+    expect(() => render(<Broken />)).toThrow("useFlow must be used within <FlowProvider>.");
   });
 
   it("renders fallback when machine current step is unknown", () => {
