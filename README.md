@@ -1,5 +1,7 @@
 # react-toolkit-flow
 
+[![Bundlephobia](https://img.shields.io/bundlephobia/minzip/react-toolkit-flow)](https://bundlephobia.com/package/react-toolkit-flow)
+
 Tiny, zero-runtime-dependency React flow/stepper built around one declarative flow model.
 
 ## Why
@@ -121,6 +123,14 @@ You can persist and resume flows via `createFlowMachine(flow, { persistence })` 
 `<FlowProvider persistence={...} />`. See [docs/RECIPES.md](./docs/RECIPES.md) for a
 versioned migration example.
 
+## Async UX States
+
+The engine exposes per-step async loading/error state at `snapshot.async.byStep[stepId]`
+and a global `snapshot.async.isLoading`.
+
+Important: async state is runtime-only and not persisted. After hydrate/reset it starts clean (`idle`).
+See [docs/API.md](./docs/API.md) and [docs/RECIPES.md](./docs/RECIPES.md) for full examples.
+
 ## Examples
 
 Minimal:
@@ -157,6 +167,20 @@ npm run typecheck
 npm run build
 npm run test
 npm run size
+```
+
+## Bundle Size
+
+- Package metadata includes `"sideEffects": false` to maximize dead-code elimination.
+- Public entrypoints are split: root (`react-toolkit-flow`), core (`react-toolkit-flow/core`), and react (`react-toolkit-flow/react`).
+- `npm run size` runs `size-limit` import budgets for release checks.
+- `npm run size:check` runs `size-limit` import budgets in CI for battle-tested bundle regression checks.
+
+Recommended import style for smallest bundles:
+
+```ts
+import { createFlowMachine } from "react-toolkit-flow/core";
+import { FlowProvider, useFlow } from "react-toolkit-flow/react";
 ```
 
 ## License

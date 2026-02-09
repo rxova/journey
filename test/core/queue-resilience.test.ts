@@ -106,7 +106,7 @@ describe("queue resilience", () => {
     expect(machine.getSnapshot().history).toEqual(["start", "mid"]);
   });
 
-  it("notifies subscribers per successful state change from queue", async () => {
+  it("notifies subscribers for async loading and state changes from queue", async () => {
     const machine = createFlowMachine(createQueueFlow());
     let notifications = 0;
     machine.subscribe(() => {
@@ -115,7 +115,7 @@ describe("queue resilience", () => {
 
     await Promise.all([machine.send({ type: "next" }), machine.send({ type: "next" })]);
 
-    expect(notifications).toBe(2);
+    expect(notifications).toBe(4);
   });
 
   it("returns same snapshot reference values after no-op queued sends", async () => {

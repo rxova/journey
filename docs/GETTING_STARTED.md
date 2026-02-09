@@ -196,6 +196,63 @@ const { snapshot } = useFlow<Ctx, StepId>();
 console.log(snapshot.current, snapshot.context, snapshot.history);
 ```
 
+## 8. Understand Async (`when`, `effect`, and errors)
+
+This is the part that usually confuses people first.
+
+- `when`: gatekeeper for transitions.
+  - "Should we move?"
+  - Returns `boolean` or `Promise<boolean>`.
+- `effect`: side-effects + context update.
+  - "Do work while moving."
+  - Returns new context or `void`.
+
+```ts
+{
+  from: "details",
+  event: "next",
+  to: "review",
+  when: async ({ context }) => {
+    // block transition if invalid
+    return await isFormValid(context);
+  },
+  effect: async ({ context }) => {
+    // save before moving
+    const draft = await saveDraft(context);
+    return { ...context, draftId: draft.id };
+  }
+}
+```
+
+### What happens on errors?
+
+If `when` or `effect` throws:
+
+- `api.next()` / `machine.send(...)` rejects
+- current step async phase becomes `error`
+- error is available at `snapshot.async.byStep[snapshot.current].error`
+
+```tsx
+const { snapshot, api } = useFlow<Ctx, StepId>();
+const asyncState = snapshot.async.byStep[snapshot.current];
+
+if (asyncState.phase === "error") {
+  return (
+    <div>
+      <p>Request failed. Try again.</p>
+      <button onClick={() => api.clearStepError()}>Dismiss Error</button>
+    </div>
+  );
+}
+```
+
+### Persistence compatibility
+
+- persisted: `current`, `context`, `history`, `terminal`
+- not persisted: `snapshot.async` (loading/error runtime state)
+
+So after refresh/hydrate/reset, async state starts clean (`idle`).
+
 ## Common Beginner Mistakes
 
 - Missing step IDs in `steps`.

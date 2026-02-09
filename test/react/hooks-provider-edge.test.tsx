@@ -10,6 +10,20 @@ import type { FlowReactFlow } from "@/src";
 type StepId = "one" | "two" | "three";
 type CustomEvent = "custom";
 type Ctx = { counter: number; canAdvance: boolean; closed: boolean };
+const idleStepAsync = () => ({
+  phase: "idle" as const,
+  eventType: null,
+  transitionId: null,
+  error: null
+});
+const asyncState = () => ({
+  isLoading: false,
+  byStep: {
+    one: idleStepAsync(),
+    two: idleStepAsync(),
+    three: idleStepAsync()
+  }
+});
 
 const One = () => <div data-testid="step">one</div>;
 const Two = () => <div data-testid="step">two</div>;
@@ -203,7 +217,8 @@ describe("react hooks/provider edge cases", () => {
       history: [],
       visited: ["missing" as StepId],
       terminal: null,
-      isDone: false
+      isDone: false,
+      async: asyncState()
     };
 
     const mockedMachine: FlowMachine<Ctx, StepId, "next" | "back" | "close" | "submit" | "custom"> =
@@ -211,6 +226,7 @@ describe("react hooks/provider edge cases", () => {
         getSnapshot: () => snapshot,
         send: async () => ({ transitioned: false, snapshot }),
         updateContext: () => snapshot,
+        clearStepError: () => snapshot,
         reset: () => snapshot,
         subscribe: () => () => {}
       };
@@ -261,7 +277,8 @@ describe("react hooks/provider edge cases", () => {
       history: [],
       visited: ["one" as StepId],
       terminal: null,
-      isDone: false
+      isDone: false,
+      async: asyncState()
     };
     const send = vi.fn(async () => ({ transitioned: false, snapshot }));
     const mockedMachine: FlowMachine<Ctx, StepId, "next" | "back" | "close" | "submit" | "custom"> =
@@ -269,6 +286,7 @@ describe("react hooks/provider edge cases", () => {
         getSnapshot: () => snapshot,
         send,
         updateContext: () => snapshot,
+        clearStepError: () => snapshot,
         reset: () => snapshot,
         subscribe: () => () => {}
       };
@@ -303,7 +321,8 @@ describe("react hooks/provider edge cases", () => {
       history: [],
       visited: ["one" as StepId],
       terminal: null,
-      isDone: false
+      isDone: false,
+      async: asyncState()
     };
     const send = vi.fn(async () => ({ transitioned: false, snapshot }));
     const mockedMachine: FlowMachine<Ctx, StepId, "next" | "back" | "close" | "submit" | "custom"> =
@@ -311,6 +330,7 @@ describe("react hooks/provider edge cases", () => {
         getSnapshot: () => snapshot,
         send,
         updateContext: () => snapshot,
+        clearStepError: () => snapshot,
         reset: () => snapshot,
         subscribe: () => () => {}
       };
@@ -336,5 +356,49 @@ describe("react hooks/provider edge cases", () => {
 
     expect(send).toHaveBeenCalledTimes(1);
     expect(send).toHaveBeenCalledWith({ type: "goTo", to: "three", payload: { from: "test" } });
+  });
+
+  it("forwards clearStepError calls through hook api", async () => {
+    const snapshot = {
+      current: "one" as StepId,
+      context: baseFlow.context,
+      history: [],
+      visited: ["one" as StepId],
+      terminal: null,
+      isDone: false,
+      async: asyncState()
+    };
+    const clearStepError = vi.fn(() => snapshot);
+    const mockedMachine: FlowMachine<Ctx, StepId, "next" | "back" | "close" | "submit" | "custom"> =
+      {
+        getSnapshot: () => snapshot,
+        send: async () => ({ transitioned: false, snapshot }),
+        updateContext: () => snapshot,
+        clearStepError,
+        reset: () => snapshot,
+        subscribe: () => () => {}
+      };
+
+    const WithClearError = () => {
+      const api = useFlowApi<Ctx, StepId, CustomEvent>();
+      return (
+        <button onClick={() => api.clearStepError("two")} data-testid="clear-error">
+          clear error
+        </button>
+      );
+    };
+
+    render(
+      <FlowProvider flow={baseFlow} machine={mockedMachine}>
+        <WithClearError />
+      </FlowProvider>
+    );
+
+    await act(async () => {
+      screen.getByTestId("clear-error").click();
+    });
+
+    expect(clearStepError).toHaveBeenCalledTimes(1);
+    expect(clearStepError).toHaveBeenCalledWith("two");
   });
 });

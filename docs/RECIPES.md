@@ -61,6 +61,55 @@ api.send({ type: "retry" });
 }
 ```
 
+## Show Loading And Error Per Step
+
+```tsx
+const { snapshot, api } = useFlow<MyCtx, MyStepId>();
+const asyncState = snapshot.async.byStep[snapshot.current];
+
+const isBusy =
+  asyncState.phase === "evaluating-when" || asyncState.phase === "running-effect";
+
+if (isBusy) {
+  return <p>Loading...</p>;
+}
+
+if (asyncState.phase === "error") {
+  return (
+    <div>
+      <p>Something failed.</p>
+      <button onClick={() => api.clearStepError()}>Dismiss</button>
+      <button onClick={() => api.next()}>Retry</button>
+    </div>
+  );
+}
+```
+
+## Guard That Throws (and how to handle it)
+
+```ts
+{
+  from: "payment",
+  event: "next",
+  to: "review",
+  when: async ({ context }) => {
+    const ok = await verifyPayment(context.paymentId);
+    if (!ok) {
+      throw new Error("Payment verification failed");
+    }
+    return true;
+  }
+}
+```
+
+```tsx
+try {
+  await api.next();
+} catch {
+  // optional extra handling (toast/logging), snapshot.async already captures error
+}
+```
+
 ## Async Effect
 
 ```ts
@@ -71,6 +120,23 @@ api.send({ type: "retry" });
   effect: async ({ context }) => {
     const draftId = await saveDraft(context);
     return { ...context, draftId };
+  }
+}
+```
+
+## Effect That Throws (server save failed)
+
+```ts
+{
+  from: "details",
+  event: "next",
+  to: "review",
+  effect: async ({ context }) => {
+    const res = await saveDraft(context);
+    if (!res.ok) {
+      throw new Error("Could not save draft");
+    }
+    return { ...context, draftId: res.id };
   }
 }
 ```
@@ -194,3 +260,8 @@ const flow = { ... };
   <FlowStepRenderer />
 </FlowProvider>;
 ```
+
+Async compatibility note:
+
+- `snapshot.async` is not persisted.
+- after hydrate/reset, async phases start as `idle` and previous runtime errors are cleared.

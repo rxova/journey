@@ -1,5 +1,51 @@
 # API
 
+## Concepts
+
+### `when` vs `effect` (most important distinction)
+
+- `when`: decides whether a transition is allowed.
+  - Return `true` to allow.
+  - Return `false` to block.
+  - Use this for validation/authorization checks.
+- `effect`: runs side effects and can update context.
+  - Return new context (or `void`) after work is done.
+  - Use this for API calls, saving drafts, enrichment, etc.
+
+Example:
+
+```ts
+{
+  from: "payment",
+  event: "next",
+  to: "review",
+  when: async ({ context }) => {
+    // "when" answers: can we move to the step whose id is 'review'?
+    return await validateCard(context.cardToken);
+  },
+  effect: async ({ context }) => {
+    // "effect" does work and optionally updates context
+    const draft = await saveDraft(context);
+    return { ...context, draftId: draft.id };
+  }
+}
+```
+
+### Why `when` / `effect` can throw errors
+
+Errors usually come from real app dependencies:
+
+- Network/API failure
+- Timeout / aborted request
+- Unexpected server response format
+- Thrown validation exceptions
+
+When errors throw, flow does not silently ignore them:
+
+- `send(...)` rejects
+- step async state becomes `error`
+- `snapshot.async.byStep[currentStep].error` stores the error
+
 ## Core
 
 ### `createFlowMachine(flow)`
@@ -43,6 +89,12 @@ Persistence options (`options.persistence`):
 - `clearOnReset`: when `true` (default), `reset()` removes persisted state.
 - `serialize` / `deserialize`: custom serialization functions.
 - `onError`: receives persistence read/write/parse errors.
+
+Important compatibility note:
+
+- Persisted state includes `current`, `context`, `history`, `terminal`.
+- Async UX state (`snapshot.async`) is runtime-only and is **not persisted**.
+- On hydrate/reset, async state starts clean (`idle` / no error).
 
 Persistence example:
 
@@ -125,11 +177,33 @@ Snapshot:
 - `visited`
 - `terminal`
 - `isDone`
-- `runtime`
-  - `phase`: `idle` | `evaluating-when` | `running-effect`
-  - `eventType`: currently processed event type while async work is pending
-  - `transitionId`: transition id currently being evaluated/executed (if present)
-  - `transitionIndex`: matched transition index in `transitions` array
+- `async`
+  - `isLoading`: `true` while any step is evaluating async guards/effects
+  - `byStep[stepId]`
+    - `phase`: `idle` | `evaluating-when` | `running-effect` | `error`
+    - `eventType`: event currently being processed for that step (if any)
+    - `transitionId`: transition id being evaluated/executed (if present)
+    - `error`: last async/sync thrown error captured for that step
+
+Common UI pattern:
+
+```tsx
+const { snapshot, api } = useFlow<MyCtx, MySteps>();
+const stepAsync = snapshot.async.byStep[snapshot.current];
+
+if (stepAsync.phase === "evaluating-when" || stepAsync.phase === "running-effect") {
+  return <Spinner />;
+}
+
+if (stepAsync.phase === "error") {
+  return (
+    <div>
+      <p>Something went wrong.</p>
+      <button onClick={() => api.clearStepError()}>Dismiss</button>
+    </div>
+  );
+}
+```
 
 API:
 
@@ -139,6 +213,7 @@ API:
 - `back(payload?)`
 - `close(payload?)`
 - `submit(payload?)`
+- `clearStepError(stepId?)`
 - `updateContext(updater)`
 - `reset()`
 
@@ -149,6 +224,7 @@ const { snapshot, api } = useFlow<MyCtx, MySteps, "retry">();
 await api.send({ type: "retry" });
 await api.goTo("review");
 api.updateContext((ctx) => ({ ...ctx, dirty: true }));
+api.clearStepError(); // clear current step error
 ```
 
 Type model:

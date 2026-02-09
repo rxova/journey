@@ -7,7 +7,7 @@ import type {
   FlowStorage,
   FlowTerminal
 } from "./types";
-import { buildSnapshot } from "./machine-helpers";
+import { buildInitialAsyncState, buildSnapshot } from "./machine-helpers";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
@@ -144,7 +144,7 @@ export const createPersistenceController = <TContext, TStepId extends string>(ar
   };
 
   const hydrateSnapshot = (): FlowSnapshot<TContext, TStepId> => {
-    const initialSnapshot = buildSnapshot(initial, context, [], null);
+    const initialSnapshot = buildSnapshot(initial, context, [], null, buildInitialAsyncState(steps));
     if (!persistence) {
       return initialSnapshot;
     }
@@ -184,7 +184,8 @@ export const createPersistenceController = <TContext, TStepId extends string>(ar
         persistedSnapshot.current,
         persistedSnapshot.context,
         persistedSnapshot.history,
-        persistedSnapshot.terminal
+        persistedSnapshot.terminal,
+        buildInitialAsyncState(steps)
       );
 
       if (shouldRewritePersisted) {
