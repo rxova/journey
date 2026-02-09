@@ -69,7 +69,11 @@ const Start = () => {
 
 const Done = () => <div>Done</div>;
 
-export const WizardClient = ({ flow }: { flow: Omit<FlowReactFlow<Ctx, StepId, Event>, "steps"> }) => {
+export const WizardClient = ({
+  flow
+}: {
+  flow: Omit<FlowReactFlow<Ctx, StepId, Event>, "steps">;
+}) => {
   const clientFlow: FlowReactFlow<Ctx, StepId, Event> = {
     ...flow,
     steps: {

@@ -144,7 +144,13 @@ export const createPersistenceController = <TContext, TStepId extends string>(ar
   };
 
   const hydrateSnapshot = (): FlowSnapshot<TContext, TStepId> => {
-    const initialSnapshot = buildSnapshot(initial, context, [], null, buildInitialAsyncState(steps));
+    const initialSnapshot = buildSnapshot(
+      initial,
+      context,
+      [],
+      null,
+      buildInitialAsyncState(steps)
+    );
     if (!persistence) {
       return initialSnapshot;
     }

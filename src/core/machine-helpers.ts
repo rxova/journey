@@ -123,7 +123,9 @@ export const selectTransition = async <
   snapshot: FlowSnapshot<TContext, TStepId>,
   event: FlowEvent<TStepId, TEventType, TPayloadMap>,
   hooks?: {
-    onAsyncGuardStart?: (transition: FlowTransition<TContext, TStepId, TEventType, TPayloadMap>) => void;
+    onAsyncGuardStart?: (
+      transition: FlowTransition<TContext, TStepId, TEventType, TPayloadMap>
+    ) => void;
     onAsyncGuardSuccess?: (
       transition: FlowTransition<TContext, TStepId, TEventType, TPayloadMap>
     ) => void;

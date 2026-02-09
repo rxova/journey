@@ -49,10 +49,12 @@ export const useFlowStore = <
   TStepId extends string,
   TCustomEvent extends string = never,
   TEventPayloadMap extends FlowReactEventPayloadMap<TCustomEvent> = Record<never, never>
->(): FlowStoreValue<TContext, TStepId, TCustomEvent, TEventPayloadMap> => {
+>(
+  hookName = "useFlow"
+): FlowStoreValue<TContext, TStepId, TCustomEvent, TEventPayloadMap> => {
   const value = React.useContext(FlowContext);
   if (!value) {
-    throw new Error("useFlow* hooks must be used within <FlowProvider>.");
+    throw new Error(`${hookName} must be used within <FlowProvider>.`);
   }
 
   return value as unknown as FlowStoreValue<TContext, TStepId, TCustomEvent, TEventPayloadMap>;
