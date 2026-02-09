@@ -139,6 +139,18 @@ describe("createFlowMachine", () => {
     expect(machine.getSnapshot().current).toBe("start");
   });
 
+  it("handles sparse history entries when resolving history target", async () => {
+    const machine = createFlowMachine(baseFlow());
+
+    await machine.send({ type: "next" });
+    const history = machine.getSnapshot().history as unknown as Array<StepId | undefined>;
+    delete history[0];
+
+    await machine.send({ type: "back" });
+
+    expect(machine.getSnapshot().current).toBe("details");
+  });
+
   it("handles close event with global transitions", async () => {
     const machine = createFlowMachine(baseFlow());
 
