@@ -7,7 +7,7 @@ import {
   useFlow,
   FlowProvider,
   FlowStepRenderer
-} from "../src";
+} from "@/src";
 
 type StepId =
   | "destination"

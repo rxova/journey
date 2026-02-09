@@ -15,7 +15,11 @@
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": false,
     "isolatedModules": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["*"]
+    }
   },
   "include": ["src", "examples", "vitest.config.ts", "scripts"]
 }

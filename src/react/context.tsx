@@ -1,7 +1,7 @@
 import React from "react";
 
-import { createFlowMachine, type FlowMachine } from "../core";
-import type { FlowEventType, FlowReactFlow, FlowStoreValue } from "./types";
+import { createFlowMachine, type FlowMachine } from "@/src/core";
+import type { FlowEventType, FlowReactFlow, FlowStoreValue } from "@/src/react/types";
 
 type ProviderProps<TContext, TStepId extends string, TCustomEvent extends string = never> = {
   flow: FlowReactFlow<TContext, TStepId, TCustomEvent>;

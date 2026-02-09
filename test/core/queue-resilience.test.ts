@@ -1,4 +1,6 @@
-import { createFlowMachine, type FlowFlow } from "../../src/core";
+import { describe, expect, it } from "vitest";
+
+import { createFlowMachine, type FlowFlow } from "@/src/core";
 
 type StepId = "start" | "mid" | "end";
 type Event = "next";

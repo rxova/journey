@@ -1,15 +1,11 @@
+import { describe, expect, it } from "vitest";
+
 import React from "react";
 import { act, render, screen } from "@testing-library/react";
 
-import { HISTORY_TARGET, FLOW_TERMINAL, type FlowMachine } from "../../src";
-import {
-  FlowProvider,
-  FlowStepRenderer,
-  useFlow,
-  useFlowApi,
-  useFlowSnapshot
-} from "../../src";
-import type { FlowReactFlow } from "../../src";
+import { HISTORY_TARGET, FLOW_TERMINAL, type FlowMachine } from "@/src";
+import { FlowProvider, FlowStepRenderer, useFlow, useFlowApi, useFlowSnapshot } from "@/src";
+import type { FlowReactFlow } from "@/src";
 
 type StepId = "one" | "two" | "three";
 type CustomEvent = "custom";
@@ -210,17 +206,14 @@ describe("react hooks/provider edge cases", () => {
       isDone: false
     };
 
-    const mockedMachine: FlowMachine<
-      Ctx,
-      StepId,
-      "next" | "back" | "close" | "submit" | "custom"
-    > = {
-      getSnapshot: () => snapshot,
-      send: async () => ({ transitioned: false, snapshot }),
-      updateContext: () => snapshot,
-      reset: () => snapshot,
-      subscribe: () => () => {}
-    };
+    const mockedMachine: FlowMachine<Ctx, StepId, "next" | "back" | "close" | "submit" | "custom"> =
+      {
+        getSnapshot: () => snapshot,
+        send: async () => ({ transitioned: false, snapshot }),
+        updateContext: () => snapshot,
+        reset: () => snapshot,
+        subscribe: () => () => {}
+      };
 
     render(
       <FlowProvider flow={baseFlow} machine={mockedMachine}>

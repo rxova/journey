@@ -1,10 +1,12 @@
+import { describe, expect, it } from "vitest";
+
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { act } from "react";
 
-import { HISTORY_TARGET, FLOW_TERMINAL } from "../../src/core";
-import { FlowProvider, FlowStepRenderer, useFlow } from "../../src/react";
-import type { FlowReactFlow } from "../../src/react";
+import { HISTORY_TARGET, FLOW_TERMINAL } from "@/src/core";
+import { FlowProvider, FlowStepRenderer, useFlow } from "@/src/react";
+import type { FlowReactFlow } from "@/src/react";
 
 type StepId = "start" | "details" | "review" | "confirmExit";
 type Event = "next" | "back" | "close" | "submit";

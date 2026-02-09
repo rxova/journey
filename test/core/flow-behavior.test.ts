@@ -1,9 +1,6 @@
-import {
-  createFlowMachine,
-  HISTORY_TARGET,
-  FLOW_TERMINAL,
-  type FlowFlow
-} from "../../src/core";
+import { describe, expect, it } from "vitest";
+
+import { createFlowMachine, HISTORY_TARGET, FLOW_TERMINAL, type FlowFlow } from "@/src/core";
 
 type StepId = "a" | "b" | "c" | "d" | "confirm";
 type Event = "next" | "back" | "close" | "submit" | "skip";
