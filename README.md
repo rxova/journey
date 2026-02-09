@@ -113,6 +113,12 @@ export const App = () => (
 - Migration help: [docs/MIGRATION.md](./docs/MIGRATION.md)
 - Example catalog: [examples/README.md](./examples/README.md)
 
+## Persistence
+
+You can persist and resume flows via `createFlowMachine(flow, { persistence })` or
+`<FlowProvider persistence={...} />`. See [docs/RECIPES.md](./docs/RECIPES.md) for a
+versioned migration example.
+
 ## Examples
 
 Minimal:

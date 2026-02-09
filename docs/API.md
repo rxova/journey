@@ -7,6 +7,7 @@
 Creates a framework-agnostic machine.
 
 - Input: `FlowFlow<TContext, TStepId, TEventType>`
+- Optional second argument: `FlowMachineOptions<TContext, TStepId>`
 - Output: `FlowMachine<TContext, TStepId, TEventType>`
 
 Machine methods:
@@ -22,6 +23,16 @@ Machine methods:
 - Calls are serialized. Rapid multi-click scenarios are processed in order.
 - The first matching transition in `transitions` array order is selected.
 - If no transition matches, `transitioned` is `false`.
+
+Persistence options (`options.persistence`):
+
+- `key`: storage key.
+- `storage`: custom storage adapter (`getItem`, `setItem`, `removeItem`). Defaults to `localStorage` when available.
+- `version`: persisted schema version (default `1`).
+- `migrate`: migrate older persisted snapshots to current shape.
+- `clearOnReset`: when `true` (default), `reset()` removes persisted state.
+- `serialize` / `deserialize`: custom serialization functions.
+- `onError`: receives persistence read/write/parse errors.
 
 ### `HISTORY_TARGET`
 
@@ -44,6 +55,7 @@ Notes:
 
 - If `flow` object changes, a fresh internal machine is created.
 - You can pass `machine` prop to use your own machine instance.
+- You can pass `persistence` prop to configure machine persistence when using the internal machine.
 
 ### `<FlowStepRenderer />`
 

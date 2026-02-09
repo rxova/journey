@@ -1,6 +1,12 @@
 import type React from "react";
 
-import type { FlowEvent, FlowFlow, FlowMachine, FlowSnapshot } from "@/src/core";
+import type {
+  FlowEvent,
+  FlowFlow,
+  FlowMachine,
+  FlowPersistenceOptions,
+  FlowSnapshot
+} from "@/src/core";
 
 export type FlowDefaultEvent = "next" | "back" | "close" | "submit";
 
@@ -45,4 +51,15 @@ export type FlowStoreValue<
 > = {
   machine: FlowMachine<TContext, TStepId, FlowEventType<TCustomEvent>>;
   flow: FlowReactFlow<TContext, TStepId, TCustomEvent>;
+};
+
+export type FlowProviderProps<
+  TContext,
+  TStepId extends string,
+  TCustomEvent extends string = never
+> = {
+  flow: FlowReactFlow<TContext, TStepId, TCustomEvent>;
+  machine?: FlowMachine<TContext, TStepId, FlowEventType<TCustomEvent>>;
+  persistence?: FlowPersistenceOptions<TContext, TStepId>;
+  children: React.ReactNode;
 };

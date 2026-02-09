@@ -57,11 +57,44 @@ export type FlowSnapshot<TContext, TStepId extends string> = {
   isDone: boolean;
 };
 
+export type FlowPersistedSnapshot<TContext, TStepId extends string> = {
+  current: TStepId;
+  context: TContext;
+  history: readonly TStepId[];
+  terminal: FlowTerminal | null;
+};
+
+export type FlowPersistedState<TContext, TStepId extends string> = {
+  version: number;
+  snapshot: FlowPersistedSnapshot<TContext, TStepId>;
+};
+
+export type FlowStorage = {
+  getItem: (key: string) => string | null;
+  setItem: (key: string, value: string) => void;
+  removeItem: (key: string) => void;
+};
+
+export type FlowPersistenceOptions<TContext, TStepId extends string> = {
+  key: string;
+  storage?: FlowStorage;
+  version?: number;
+  clearOnReset?: boolean;
+  serialize?: (value: FlowPersistedState<TContext, TStepId>) => string;
+  deserialize?: (value: string) => unknown;
+  migrate?: (value: unknown, persistedVersion: number) => FlowPersistedSnapshot<TContext, TStepId>;
+  onError?: (error: unknown) => void;
+};
+
 export type FlowFlow<TContext, TStepId extends string, TEventType extends string> = {
   initial: TStepId;
   context: TContext;
   steps: Record<TStepId, unknown>;
   transitions: readonly FlowTransition<TContext, TStepId, TEventType>[];
+};
+
+export type FlowMachineOptions<TContext, TStepId extends string> = {
+  persistence?: FlowPersistenceOptions<TContext, TStepId>;
 };
 
 export type FlowSendResult<TContext, TStepId extends string> = {

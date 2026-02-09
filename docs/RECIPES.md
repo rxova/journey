@@ -86,3 +86,36 @@ api.goTo("review");
 ```ts
 { from: "*", event: "back", to: HISTORY_TARGET }
 ```
+
+## Persist and Resume
+
+```tsx
+const flow = { ... };
+
+<FlowProvider
+  flow={flow}
+  persistence={{
+    key: "checkout-flow",
+    version: 2,
+    migrate: (snapshot, persistedVersion) => {
+      if (persistedVersion === 1) {
+        const old = snapshot as { context?: { draftId?: string } };
+        return {
+          current: "details",
+          context: { draftId: old.context?.draftId ?? null, acceptedTerms: false },
+          history: ["start"],
+          terminal: null
+        };
+      }
+      return snapshot as {
+        current: "start" | "details" | "review";
+        context: { draftId: string | null; acceptedTerms: boolean };
+        history: Array<"start" | "details" | "review">;
+        terminal: "COMPLETE" | "CLOSE" | null;
+      };
+    }
+  }}
+>
+  <FlowStepRenderer />
+</FlowProvider>;
+```
