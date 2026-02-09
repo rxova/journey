@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import { act } from "react";
 
-import { FLOW_TERMINAL } from "../../src/core";
+import { HISTORY_TARGET, FLOW_TERMINAL } from "../../src/core";
 import { FlowProvider, FlowStepRenderer, useFlow } from "../../src/react";
 import type { FlowReactFlow } from "../../src/react";
 
@@ -27,7 +27,7 @@ const flow: FlowReactFlow<Ctx, StepId, Event> = {
   transitions: [
     { from: "start", event: "next", to: "details" },
     { from: "details", event: "next", to: "review" },
-    { from: "*", event: "back", to: "__HISTORY__" as const },
+    { from: "*", event: "back", to: HISTORY_TARGET },
     {
       from: "*",
       event: "close",
@@ -53,7 +53,7 @@ const Controls = () => {
       <button onClick={() => api.back()}>back</button>
       <button onClick={() => api.close()}>close</button>
       <button onClick={() => api.submit()}>submit</button>
-      <button onClick={() => api.updateContext(ctx => ({ ...ctx, dirty: true }))}>dirty</button>
+      <button onClick={() => api.updateContext((ctx) => ({ ...ctx, dirty: true }))}>dirty</button>
       <div data-testid="current">{snapshot.current}</div>
       <div data-testid="terminal">{snapshot.terminal ?? "none"}</div>
     </div>
@@ -122,5 +122,33 @@ describe("react integration", () => {
     });
 
     expect(screen.getByTestId("terminal").textContent).toBe(FLOW_TERMINAL.COMPLETE);
+  });
+
+  it("recreates internal machine when flow prop changes", async () => {
+    const { rerender } = render(
+      <FlowProvider flow={flow}>
+        <FlowStepRenderer<Ctx, StepId, Event> />
+        <Controls />
+      </FlowProvider>
+    );
+
+    await act(async () => {
+      screen.getByText("next").click();
+    });
+    expect(screen.getByTestId("current").textContent).toBe("details");
+
+    const nextFlow: FlowReactFlow<Ctx, StepId, Event> = {
+      ...flow,
+      initial: "review"
+    };
+
+    rerender(
+      <FlowProvider flow={nextFlow}>
+        <FlowStepRenderer<Ctx, StepId, Event> />
+        <Controls />
+      </FlowProvider>
+    );
+
+    expect(screen.getByTestId("current").textContent).toBe("review");
   });
 });

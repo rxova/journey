@@ -25,11 +25,7 @@ export type FlowEvent<TStepId extends string, TEventType extends string> =
       payload?: unknown;
     };
 
-export type FlowTransitionArgs<
-  TContext,
-  TStepId extends string,
-  TEventType extends string
-> = {
+export type FlowTransitionArgs<TContext, TStepId extends string, TEventType extends string> = {
   context: TContext;
   from: TStepId;
   history: readonly TStepId[];
@@ -41,18 +37,12 @@ export type FlowTransitionTarget<TStepId extends string> =
   | FlowTerminal
   | typeof HISTORY_TARGET;
 
-export type FlowTransition<
-  TContext,
-  TStepId extends string,
-  TEventType extends string
-> = {
+export type FlowTransition<TContext, TStepId extends string, TEventType extends string> = {
   id?: string;
   from: TStepId | "*";
   event: TEventType | "goTo";
   to: FlowTransitionTarget<TStepId>;
-  when?: (
-    args: FlowTransitionArgs<TContext, TStepId, TEventType>
-  ) => boolean | Promise<boolean>;
+  when?: (args: FlowTransitionArgs<TContext, TStepId, TEventType>) => boolean | Promise<boolean>;
   effect?: (
     args: FlowTransitionArgs<TContext, TStepId, TEventType>
   ) => TContext | void | Promise<TContext | void>;
@@ -67,11 +57,7 @@ export type FlowSnapshot<TContext, TStepId extends string> = {
   isDone: boolean;
 };
 
-export type FlowFlow<
-  TContext,
-  TStepId extends string,
-  TEventType extends string
-> = {
+export type FlowFlow<TContext, TStepId extends string, TEventType extends string> = {
   initial: TStepId;
   context: TContext;
   steps: Record<TStepId, unknown>;
