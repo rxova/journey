@@ -155,9 +155,26 @@ Type model:
 
 - Default events are always available: `next`, `back`, `close`, `submit`.
 - Add custom events through the third generic parameter.
+- Optionally type payloads through a payload map generic (4th generic in React types).
 
 ```ts
 type CustomEvent = "retry";
 const { api } = useFlow<MyCtx, MySteps, CustomEvent>();
 api.send({ type: "retry" });
+```
+
+Typed payload map example:
+
+```ts
+type CustomEvent = "retry";
+type Payloads = {
+  next: { source: "button" | "enter" };
+  retry: { attempt: number };
+  goTo: { source: "deep-link" | "shortcut" };
+};
+
+const { api } = useFlow<MyCtx, MySteps, CustomEvent, Payloads>();
+await api.next({ source: "button" });
+await api.send({ type: "retry", payload: { attempt: 2 } });
+await api.goTo("review", { source: "shortcut" });
 ```
