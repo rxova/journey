@@ -2,6 +2,11 @@
 
 This guide is written for junior developers. You can copy-paste every step.
 
+If you want the smallest possible example first, open:
+
+- `examples/simple-flow.tsx`
+- `examples/simple-sequence.flow.tsx`
+
 ## 1. Install
 
 ```bash

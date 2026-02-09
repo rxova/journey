@@ -111,10 +111,28 @@ export const App = () => (
 - Practical patterns: [docs/RECIPES.md](./docs/RECIPES.md)
 - Common questions: [docs/FAQ.md](./docs/FAQ.md)
 - Migration help: [docs/MIGRATION.md](./docs/MIGRATION.md)
+- Example catalog: [examples/README.md](./examples/README.md)
 
 ## Examples
 
-See:
+Minimal:
+
+- [examples/simple-flow.tsx](./examples/simple-flow.tsx)
+- [examples/simple-sequence.flow.tsx](./examples/simple-sequence.flow.tsx)
+- [examples/simple-back.flow.tsx](./examples/simple-back.flow.tsx)
+
+Specific patterns:
+
+- [examples/conditional-skip.flow.tsx](./examples/conditional-skip.flow.tsx)
+- [examples/first-match-wins.flow.tsx](./examples/first-match-wins.flow.tsx)
+- [examples/custom-event.flow.tsx](./examples/custom-event.flow.tsx)
+- [examples/async-guard.flow.tsx](./examples/async-guard.flow.tsx)
+- [examples/async-effect.flow.tsx](./examples/async-effect.flow.tsx)
+- [examples/confirm-close.flow.tsx](./examples/confirm-close.flow.tsx)
+- [examples/go-to-jump.flow.tsx](./examples/go-to-jump.flow.tsx)
+- [examples/history-back.flow.tsx](./examples/history-back.flow.tsx)
+
+Real journeys:
 
 - [examples/group-trip.flow.tsx](./examples/group-trip.flow.tsx)
 - [examples/itinerary-builder.flow.tsx](./examples/itinerary-builder.flow.tsx)
