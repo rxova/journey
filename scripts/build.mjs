@@ -42,6 +42,12 @@ writeFileSync(
 );
 
 writeFileSync(
+  "dist/index.react-server.js",
+  ['export * from "./core/index.js";', ""].join("\n"),
+  "utf8"
+);
+
+writeFileSync(
   "dist/index.cjs",
   [
     '"use strict";',
