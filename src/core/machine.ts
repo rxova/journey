@@ -1,5 +1,6 @@
-import { HISTORY_TARGET } from "./types";
+import { FLOW_EVENT, HISTORY_TARGET } from "./types";
 import type {
+  FlowEventPayloadMap,
   FlowFlow,
   FlowMachine,
   FlowMachineOptions,
@@ -20,11 +21,12 @@ import { createPersistenceController } from "./persistence";
 export const createFlowMachine = <
   TContext,
   TStepId extends string,
-  TEventType extends string = "next" | "back" | "close" | "submit"
+  TEventType extends string = "next" | "back" | "close" | "submit",
+  TPayloadMap extends FlowEventPayloadMap<TEventType> = Record<never, never>
 >(
-  flow: FlowFlow<TContext, TStepId, TEventType>,
+  flow: FlowFlow<TContext, TStepId, TEventType, TPayloadMap>,
   options?: FlowMachineOptions<TContext, TStepId>
-): FlowMachine<TContext, TStepId, TEventType> => {
+): FlowMachine<TContext, TStepId, TEventType, TPayloadMap> => {
   assertStepExists(
     flow.steps,
     flow.initial,
@@ -87,7 +89,7 @@ export const createFlowMachine = <
           snapshot = transitionSnapshot(snapshot, event.to, snapshot.context);
           persistSnapshot(snapshot);
           notify();
-          return buildSendResult(snapshot, true, "goTo");
+          return buildSendResult(snapshot, true, FLOW_EVENT.GO_TO);
         }
 
         const transition = await selectTransition(flow.transitions, snapshot, event);

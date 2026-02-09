@@ -1,15 +1,22 @@
 import React from "react";
 
-import type { FlowEvent, FlowSnapshot } from "@/src/core";
+import { FLOW_EVENT } from "@/src/core";
+import type { FlowEvent, FlowPayloadFor, FlowSnapshot } from "@/src/core";
 import { useFlowStore } from "@/src/react/context";
-import type { FlowEventType, FlowHookResult } from "@/src/react/types";
+import type {
+  FlowDefaultEvent,
+  FlowEventType,
+  FlowHookResult,
+  FlowReactEventPayloadMap
+} from "@/src/react/types";
 
 const useSnapshot = <
   TContext,
   TStepId extends string,
-  TCustomEvent extends string = never
+  TCustomEvent extends string = never,
+  TEventPayloadMap extends FlowReactEventPayloadMap<TCustomEvent> = Record<never, never>
 >(): FlowSnapshot<TContext, TStepId> => {
-  const { machine } = useFlowStore<TContext, TStepId, TCustomEvent>();
+  const { machine } = useFlowStore<TContext, TStepId, TCustomEvent, TEventPayloadMap>();
 
   return React.useSyncExternalStore(machine.subscribe, machine.getSnapshot, machine.getSnapshot);
 };
@@ -19,54 +26,88 @@ export const useFlowSnapshot = useSnapshot;
 export const useFlowApi = <
   TContext,
   TStepId extends string,
-  TCustomEvent extends string = never
+  TCustomEvent extends string = never,
+  TEventPayloadMap extends FlowReactEventPayloadMap<TCustomEvent> = Record<never, never>
 >() => {
-  const { machine } = useFlowStore<TContext, TStepId, TCustomEvent>();
+  const { machine } = useFlowStore<TContext, TStepId, TCustomEvent, TEventPayloadMap>();
 
   const send = React.useCallback(
-    async (event: FlowEvent<TStepId, FlowEventType<TCustomEvent>>) => {
+    async (event: FlowEvent<TStepId, FlowEventType<TCustomEvent>, TEventPayloadMap>) => {
       await machine.send(event);
     },
     [machine]
   );
 
   const goTo = React.useCallback(
-    async (stepId: TStepId, payload?: unknown) => {
-      await machine.send({ type: "goTo", to: stepId, payload });
+    async (
+      stepId: TStepId,
+      payload?: FlowPayloadFor<
+        FlowEventType<TCustomEvent>,
+        TEventPayloadMap,
+        (typeof FLOW_EVENT)["GO_TO"]
+      >
+    ) => {
+      if (payload === undefined) {
+        await machine.send({
+          type: FLOW_EVENT.GO_TO,
+          to: stepId
+        } as FlowEvent<TStepId, FlowEventType<TCustomEvent>, TEventPayloadMap>);
+        return;
+      }
+
+      await machine.send({
+        type: FLOW_EVENT.GO_TO,
+        to: stepId,
+        payload
+      } as FlowEvent<TStepId, FlowEventType<TCustomEvent>, TEventPayloadMap>);
     },
     [machine]
   );
 
   const sendDefault = React.useCallback(
-    async (type: "next" | "back" | "close" | "submit", payload?: unknown) => {
-      await machine.send({ type, payload });
+    async <TType extends FlowDefaultEvent>(
+      type: TType,
+      payload?: FlowPayloadFor<FlowEventType<TCustomEvent>, TEventPayloadMap, TType>
+    ) => {
+      const event =
+        payload === undefined
+          ? ({ type } as unknown as FlowEvent<
+              TStepId,
+              FlowEventType<TCustomEvent>,
+              TEventPayloadMap
+            >)
+          : ({
+              type,
+              payload
+            } as unknown as FlowEvent<TStepId, FlowEventType<TCustomEvent>, TEventPayloadMap>);
+      await machine.send(event);
     },
     [machine]
   );
 
   const next = React.useCallback(
-    async (payload?: unknown) => {
+    async (payload?: FlowPayloadFor<FlowEventType<TCustomEvent>, TEventPayloadMap, "next">) => {
       await sendDefault("next", payload);
     },
     [sendDefault]
   );
 
   const back = React.useCallback(
-    async (payload?: unknown) => {
+    async (payload?: FlowPayloadFor<FlowEventType<TCustomEvent>, TEventPayloadMap, "back">) => {
       await sendDefault("back", payload);
     },
     [sendDefault]
   );
 
   const close = React.useCallback(
-    async (payload?: unknown) => {
+    async (payload?: FlowPayloadFor<FlowEventType<TCustomEvent>, TEventPayloadMap, "close">) => {
       await sendDefault("close", payload);
     },
     [sendDefault]
   );
 
   const submit = React.useCallback(
-    async (payload?: unknown) => {
+    async (payload?: FlowPayloadFor<FlowEventType<TCustomEvent>, TEventPayloadMap, "submit">) => {
       await sendDefault("submit", payload);
     },
     [sendDefault]
@@ -98,10 +139,11 @@ export const useFlowApi = <
 export const useFlow = <
   TContext,
   TStepId extends string,
-  TCustomEvent extends string = never
->(): FlowHookResult<TContext, TStepId, TCustomEvent> => {
-  const snapshot = useFlowSnapshot<TContext, TStepId, TCustomEvent>();
-  const api = useFlowApi<TContext, TStepId, TCustomEvent>();
+  TCustomEvent extends string = never,
+  TEventPayloadMap extends FlowReactEventPayloadMap<TCustomEvent> = Record<never, never>
+>(): FlowHookResult<TContext, TStepId, TCustomEvent, TEventPayloadMap> => {
+  const snapshot = useFlowSnapshot<TContext, TStepId, TCustomEvent, TEventPayloadMap>();
+  const api = useFlowApi<TContext, TStepId, TCustomEvent, TEventPayloadMap>();
 
   return {
     snapshot,

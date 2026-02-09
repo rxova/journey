@@ -16,7 +16,8 @@ const isTerminalValue = (value: unknown): value is FlowTerminal =>
   value === FLOW_TERMINAL.COMPLETE || value === FLOW_TERMINAL.CLOSE;
 
 const resolveDefaultStorage = (): FlowStorage | null => {
-  const localStorageCandidate = (globalThis as { localStorage?: Partial<FlowStorage> }).localStorage;
+  const localStorageCandidate = (globalThis as { localStorage?: Partial<FlowStorage> })
+    .localStorage;
 
   if (
     !localStorageCandidate ||

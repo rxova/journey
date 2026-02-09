@@ -1,12 +1,18 @@
 export { createFlowMachine } from "./machine";
 export {
+  FLOW_EVENT,
+  FLOW_WILDCARD,
   HISTORY_TARGET,
   FLOW_TERMINAL,
+  type FlowBuiltInEvent,
+  type FlowBuiltInFrom,
   type FlowEvent,
+  type FlowEventPayloadMap,
   type FlowFlow,
   type FlowMachineOptions,
   type FlowGoToEvent,
   type FlowMachine,
+  type FlowPayloadFor,
   type FlowPersistedSnapshot,
   type FlowPersistedState,
   type FlowPersistenceOptions,

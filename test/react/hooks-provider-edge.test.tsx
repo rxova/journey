@@ -253,4 +253,88 @@ describe("react hooks/provider edge cases", () => {
 
     expect(setItem).toHaveBeenCalledTimes(1);
   });
+
+  it("sends default event payloads through hook api", async () => {
+    const snapshot = {
+      current: "one" as StepId,
+      context: baseFlow.context,
+      history: [],
+      visited: ["one" as StepId],
+      terminal: null,
+      isDone: false
+    };
+    const send = vi.fn(async () => ({ transitioned: false, snapshot }));
+    const mockedMachine: FlowMachine<Ctx, StepId, "next" | "back" | "close" | "submit" | "custom"> =
+      {
+        getSnapshot: () => snapshot,
+        send,
+        updateContext: () => snapshot,
+        reset: () => snapshot,
+        subscribe: () => () => {}
+      };
+
+    const WithPayload = () => {
+      const api = useFlowApi<Ctx, StepId, CustomEvent>();
+      return (
+        <button onClick={() => api.next({ reason: "manual" })} data-testid="next-payload">
+          next with payload
+        </button>
+      );
+    };
+
+    render(
+      <FlowProvider flow={baseFlow} machine={mockedMachine}>
+        <WithPayload />
+      </FlowProvider>
+    );
+
+    await act(async () => {
+      screen.getByTestId("next-payload").click();
+    });
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledWith({ type: "next", payload: { reason: "manual" } });
+  });
+
+  it("sends goTo payloads through hook api", async () => {
+    const snapshot = {
+      current: "one" as StepId,
+      context: baseFlow.context,
+      history: [],
+      visited: ["one" as StepId],
+      terminal: null,
+      isDone: false
+    };
+    const send = vi.fn(async () => ({ transitioned: false, snapshot }));
+    const mockedMachine: FlowMachine<Ctx, StepId, "next" | "back" | "close" | "submit" | "custom"> =
+      {
+        getSnapshot: () => snapshot,
+        send,
+        updateContext: () => snapshot,
+        reset: () => snapshot,
+        subscribe: () => () => {}
+      };
+
+    const WithGoToPayload = () => {
+      const api = useFlowApi<Ctx, StepId, CustomEvent>();
+      return (
+        <button onClick={() => api.goTo("three", { from: "test" })} data-testid="goto-payload">
+          goto with payload
+        </button>
+      );
+    };
+
+    render(
+      <FlowProvider flow={baseFlow} machine={mockedMachine}>
+        <WithGoToPayload />
+      </FlowProvider>
+    );
+
+    await act(async () => {
+      screen.getByTestId("goto-payload").click();
+    });
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledWith({ type: "goTo", to: "three", payload: { from: "test" } });
+  });
 });

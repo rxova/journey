@@ -1,7 +1,9 @@
-import { FLOW_TERMINAL } from "./types";
+import { FLOW_EVENT, FLOW_TERMINAL, FLOW_WILDCARD } from "./types";
 import type {
   FlowEvent,
+  FlowEventPayloadMap,
   FlowGoToEvent,
+  FlowPayloadFor,
   FlowSendResult,
   FlowSnapshot,
   FlowTerminal,
@@ -20,9 +22,16 @@ export const assertStepExists = <TStepId extends string>(
 
 const unique = <T>(items: readonly T[]): T[] => [...new Set(items)];
 
-export const isGoToEvent = <TStepId extends string, TEventType extends string>(
-  event: FlowEvent<TStepId, TEventType>
-): event is FlowGoToEvent<TStepId> => event.type === "goTo" && "to" in event;
+export const isGoToEvent = <
+  TStepId extends string,
+  TEventType extends string,
+  TPayloadMap extends FlowEventPayloadMap<TEventType>
+>(
+  event: FlowEvent<TStepId, TEventType, TPayloadMap>
+): event is FlowGoToEvent<
+  TStepId,
+  FlowPayloadFor<TEventType, TPayloadMap, (typeof FLOW_EVENT)["GO_TO"]>
+> => event.type === FLOW_EVENT.GO_TO && "to" in event;
 
 export const isTerminalTarget = <TStepId extends string>(
   target: TStepId | FlowTerminal | "__HISTORY__"
@@ -74,13 +83,18 @@ export const resolveHistoryTarget = <TContext, TStepId extends string>(
   };
 };
 
-export const selectTransition = async <TContext, TStepId extends string, TEventType extends string>(
-  transitions: readonly FlowTransition<TContext, TStepId, TEventType>[],
+export const selectTransition = async <
+  TContext,
+  TStepId extends string,
+  TEventType extends string,
+  TPayloadMap extends FlowEventPayloadMap<TEventType>
+>(
+  transitions: readonly FlowTransition<TContext, TStepId, TEventType, TPayloadMap>[],
   snapshot: FlowSnapshot<TContext, TStepId>,
-  event: FlowEvent<TStepId, TEventType>
-): Promise<FlowTransition<TContext, TStepId, TEventType> | null> => {
+  event: FlowEvent<TStepId, TEventType, TPayloadMap>
+): Promise<FlowTransition<TContext, TStepId, TEventType, TPayloadMap> | null> => {
   for (const transition of transitions) {
-    const fromMatches = transition.from === "*" || transition.from === snapshot.current;
+    const fromMatches = transition.from === FLOW_WILDCARD || transition.from === snapshot.current;
     const eventMatches = transition.event === event.type;
 
     if (!fromMatches || !eventMatches) {

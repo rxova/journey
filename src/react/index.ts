@@ -3,6 +3,7 @@ export { FlowStepRenderer } from "./FlowStepRenderer";
 export { useFlow, useFlowApi, useFlowSnapshot } from "./hooks";
 export type {
   FlowApi,
+  FlowReactEventPayloadMap,
   FlowHookResult,
   FlowProviderProps,
   FlowReactFlow,
