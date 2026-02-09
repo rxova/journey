@@ -58,28 +58,52 @@
     "commitlint": "node ./scripts/commitlint.mjs",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
-    "size": "pnpm run build && node ./scripts/size-report.mjs",
+    "size": "pnpm run size:check",
+    "size:check": "pnpm run build && size-limit",
     "prepare": "pnpm run build"
   },
+  "size-limit": [
+    {
+      "name": "core/createFlowMachine (subpath)",
+      "path": "dist/core/index.js",
+      "import": "{ createFlowMachine }",
+      "limit": "2.2 kB"
+    },
+    {
+      "name": "react/useFlow (subpath)",
+      "path": "dist/react/index.js",
+      "import": "{ useFlow }",
+      "limit": "3.6 kB"
+    },
+    {
+      "name": "root/createFlowMachine (tree-shaken)",
+      "path": "dist/index.js",
+      "import": "{ createFlowMachine }",
+      "limit": "2.3 kB"
+    }
+  ],
   "devDependencies": {
-    "@testing-library/react": "^16.1.0",
-    "@types/react": "^19.0.8",
-    "@types/react-dom": "^19.0.3",
-    "@vitest/coverage-v8": "^3.0.5",
     "@commitlint/cli": "^19.8.0",
     "@commitlint/config-conventional": "^19.8.0",
     "@eslint/js": "^9.21.0",
+    "@size-limit/esbuild": "^12.0.0",
+    "@size-limit/file": "^12.0.0",
+    "@testing-library/react": "^16.1.0",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
     "@typescript-eslint/eslint-plugin": "^8.24.0",
     "@typescript-eslint/parser": "^8.24.0",
+    "@vitest/coverage-v8": "^3.0.5",
+    "esbuild": "^0.25.0",
     "eslint": "^9.21.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-react-hooks": "^5.2.0",
-    "esbuild": "^0.25.0",
     "globals": "^15.15.0",
     "jsdom": "^26.0.0",
     "prettier": "^3.5.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "size-limit": "^12.0.0",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"
   },
