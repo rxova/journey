@@ -1,132 +1,29 @@
-import { HISTORY_TARGET, FLOW_TERMINAL } from "./types";
+import { HISTORY_TARGET } from "./types";
 import type {
-  FlowEvent,
   FlowFlow,
-  FlowGoToEvent,
   FlowMachine,
-  FlowSendResult,
-  FlowSnapshot,
-  FlowTerminal,
-  FlowTransition
+  FlowMachineOptions,
+  FlowSendResult
 } from "./types";
-
-const assertStepExists = <TStepId extends string>(
-  steps: Record<TStepId, unknown>,
-  stepId: TStepId,
-  message: string
-) => {
-  if (!(stepId in steps)) {
-    throw new Error(message);
-  }
-};
-
-const unique = <T>(items: readonly T[]): T[] => [...new Set(items)];
-
-const isGoToEvent = <TStepId extends string, TEventType extends string>(
-  event: FlowEvent<TStepId, TEventType>
-): event is FlowGoToEvent<TStepId> => event.type === "goTo" && "to" in event;
-
-const isTerminalTarget = <TStepId extends string>(
-  target: TStepId | FlowTerminal | typeof HISTORY_TARGET
-): target is FlowTerminal => target === FLOW_TERMINAL.COMPLETE || target === FLOW_TERMINAL.CLOSE;
-
-const buildSendResult = <TContext, TStepId extends string>(
-  snapshot: FlowSnapshot<TContext, TStepId>,
-  transitioned: boolean,
-  transitionId?: string
-): FlowSendResult<TContext, TStepId> =>
-  transitionId ? { transitioned, transitionId, snapshot } : { transitioned, snapshot };
-
-const buildSnapshot = <TContext, TStepId extends string>(
-  current: TStepId,
-  context: TContext,
-  history: readonly TStepId[],
-  terminal: (typeof FLOW_TERMINAL)[keyof typeof FLOW_TERMINAL] | null
-): FlowSnapshot<TContext, TStepId> => ({
-  current,
-  context,
-  history,
-  terminal,
-  isDone: terminal !== null,
-  visited: unique([...history, current])
-});
-
-const resolveHistoryTarget = <TContext, TStepId extends string>(
-  snapshot: FlowSnapshot<TContext, TStepId>,
-  steps: Record<TStepId, unknown>
-): { target: TStepId; history: TStepId[] } => {
-  const cloned = [...snapshot.history];
-
-  while (cloned.length > 0) {
-    const candidate = cloned.pop();
-    if (!candidate) {
-      break;
-    }
-    if (candidate in steps) {
-      return {
-        target: candidate,
-        history: cloned
-      };
-    }
-  }
-
-  return {
-    target: snapshot.current,
-    history: [...snapshot.history]
-  };
-};
-
-const selectTransition = async <TContext, TStepId extends string, TEventType extends string>(
-  transitions: readonly FlowTransition<TContext, TStepId, TEventType>[],
-  snapshot: FlowSnapshot<TContext, TStepId>,
-  event: FlowEvent<TStepId, TEventType>
-): Promise<FlowTransition<TContext, TStepId, TEventType> | null> => {
-  for (const transition of transitions) {
-    const fromMatches = transition.from === "*" || transition.from === snapshot.current;
-    const eventMatches = transition.event === event.type;
-
-    if (!fromMatches || !eventMatches) {
-      continue;
-    }
-
-    if (!transition.when) {
-      return transition;
-    }
-
-    const allowed = await transition.when({
-      context: snapshot.context,
-      from: snapshot.current,
-      history: snapshot.history,
-      event
-    });
-
-    if (allowed) {
-      return transition;
-    }
-  }
-
-  return null;
-};
-
-const transitionSnapshot = <TContext, TStepId extends string>(
-  snapshot: FlowSnapshot<TContext, TStepId>,
-  nextCurrent: TStepId,
-  nextContext: TContext
-): FlowSnapshot<TContext, TStepId> => {
-  const history =
-    nextCurrent === snapshot.current
-      ? [...snapshot.history]
-      : [...snapshot.history, snapshot.current];
-
-  return buildSnapshot(nextCurrent, nextContext, history, snapshot.terminal);
-};
+import {
+  assertStepExists,
+  buildSendResult,
+  isGoToEvent,
+  isTerminalTarget,
+  resolveHistoryTarget,
+  selectTransition,
+  transitionSnapshot,
+  buildSnapshot
+} from "./machine-helpers";
+import { createPersistenceController } from "./persistence";
 
 export const createFlowMachine = <
   TContext,
   TStepId extends string,
   TEventType extends string = "next" | "back" | "close" | "submit"
 >(
-  flow: FlowFlow<TContext, TStepId, TEventType>
+  flow: FlowFlow<TContext, TStepId, TEventType>,
+  options?: FlowMachineOptions<TContext, TStepId>
 ): FlowMachine<TContext, TStepId, TEventType> => {
   assertStepExists(
     flow.steps,
@@ -134,7 +31,15 @@ export const createFlowMachine = <
     `Flow initial step "${flow.initial}" does not exist in steps registry.`
   );
 
-  let snapshot = buildSnapshot(flow.initial, flow.context, [], null);
+  const { clearOnReset, hydrateSnapshot, persistSnapshot, removePersistedSnapshot } =
+    createPersistenceController({
+      initial: flow.initial,
+      context: flow.context,
+      steps: flow.steps,
+      ...(options ? { options } : {})
+    });
+
+  let snapshot = hydrateSnapshot();
   const listeners = new Set<() => void>();
   let sendQueue: Promise<void> = Promise.resolve();
 
@@ -154,6 +59,11 @@ export const createFlowMachine = <
     },
     reset: () => {
       snapshot = buildSnapshot(flow.initial, flow.context, [], null);
+      if (clearOnReset) {
+        removePersistedSnapshot();
+      } else {
+        persistSnapshot(snapshot);
+      }
       notify();
       return snapshot;
     },
@@ -162,6 +72,7 @@ export const createFlowMachine = <
         ...snapshot,
         context: updater(snapshot.context)
       };
+      persistSnapshot(snapshot);
       notify();
       return snapshot;
     },
@@ -174,6 +85,7 @@ export const createFlowMachine = <
         if (isGoToEvent(event)) {
           assertStepExists(flow.steps, event.to, `Cannot goTo unknown step "${event.to}".`);
           snapshot = transitionSnapshot(snapshot, event.to, snapshot.context);
+          persistSnapshot(snapshot);
           notify();
           return buildSendResult(snapshot, true, "goTo");
         }
@@ -205,6 +117,7 @@ export const createFlowMachine = <
             terminal: transition.to,
             isDone: true
           };
+          persistSnapshot(snapshot);
           notify();
           return buildSendResult(snapshot, true, transition.id);
         }
@@ -213,6 +126,7 @@ export const createFlowMachine = <
           const { target, history } = resolveHistoryTarget(snapshot, flow.steps);
           assertStepExists(flow.steps, target, `Transition points to unknown step "${target}".`);
           snapshot = buildSnapshot(target, nextContext, history, snapshot.terminal);
+          persistSnapshot(snapshot);
           notify();
           return buildSendResult(snapshot, true, transition.id);
         }
@@ -228,6 +142,7 @@ export const createFlowMachine = <
         const nextSnapshot = transitionSnapshot(snapshot, resolvedTarget, nextContext);
 
         snapshot = nextSnapshot;
+        persistSnapshot(snapshot);
         notify();
 
         return buildSendResult(snapshot, true, transition.id);

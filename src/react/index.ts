@@ -4,6 +4,7 @@ export { useFlow, useFlowApi, useFlowSnapshot } from "./hooks";
 export type {
   FlowApi,
   FlowHookResult,
+  FlowProviderProps,
   FlowReactFlow,
   FlowReactStep,
   FlowStoreValue

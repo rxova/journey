@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import React from "react";
 import { act, render, screen } from "@testing-library/react";
@@ -224,5 +224,33 @@ describe("react hooks/provider edge cases", () => {
     );
 
     expect(screen.getByTestId("fallback")).toBeDefined();
+  });
+
+  it("passes persistence options to internal machine", async () => {
+    const setItem = vi.fn();
+    const storage = {
+      getItem: () => null,
+      setItem,
+      removeItem: () => {}
+    };
+
+    render(
+      <FlowProvider
+        flow={baseFlow}
+        persistence={{
+          key: "flow",
+          storage
+        }}
+      >
+        <FlowStepRenderer<Ctx, StepId, CustomEvent> />
+        <Controls />
+      </FlowProvider>
+    );
+
+    await act(async () => {
+      screen.getByText("next").click();
+    });
+
+    expect(setItem).toHaveBeenCalledTimes(1);
   });
 });

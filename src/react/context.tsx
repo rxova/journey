@@ -1,13 +1,7 @@
 import React from "react";
 
-import { createFlowMachine, type FlowMachine } from "@/src/core";
-import type { FlowEventType, FlowReactFlow, FlowStoreValue } from "@/src/react/types";
-
-type ProviderProps<TContext, TStepId extends string, TCustomEvent extends string = never> = {
-  flow: FlowReactFlow<TContext, TStepId, TCustomEvent>;
-  machine?: FlowMachine<TContext, TStepId, FlowEventType<TCustomEvent>>;
-  children: React.ReactNode;
-};
+import { createFlowMachine } from "@/src/core";
+import type { FlowProviderProps, FlowStoreValue } from "@/src/react/types";
 
 const FlowContext = React.createContext<FlowStoreValue<unknown, string, string> | null>(null);
 
@@ -18,9 +12,13 @@ export const FlowProvider = <
 >({
   flow,
   machine,
+  persistence,
   children
-}: ProviderProps<TContext, TStepId, TCustomEvent>) => {
-  const resolvedMachine = React.useMemo(() => machine ?? createFlowMachine(flow), [flow, machine]);
+}: FlowProviderProps<TContext, TStepId, TCustomEvent>) => {
+  const resolvedMachine = React.useMemo(
+    () => machine ?? createFlowMachine(flow, persistence ? { persistence } : undefined),
+    [flow, machine, persistence]
+  );
 
   return (
     <FlowContext.Provider
