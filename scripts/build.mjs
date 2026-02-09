@@ -1,8 +1,7 @@
-import { rmSync } from "node:fs";
+import { rmSync, writeFileSync } from "node:fs";
 import { build } from "esbuild";
 
 const entries = [
-  { name: "index", entry: "src/index.ts" },
   { name: "core/index", entry: "src/core/index.ts" },
   { name: "react/index", entry: "src/react/index.ts" }
 ];
@@ -35,3 +34,22 @@ for (const { name, entry } of entries) {
     platform: "node"
   });
 }
+
+writeFileSync(
+  "dist/index.js",
+  ['export * from "./core/index.js";', 'export * from "./react/index.js";', ""].join("\n"),
+  "utf8"
+);
+
+writeFileSync(
+  "dist/index.cjs",
+  [
+    '"use strict";',
+    "module.exports = {",
+    '  ...require("./core/index.cjs"),',
+    '  ...require("./react/index.cjs")',
+    "};",
+    ""
+  ].join("\n"),
+  "utf8"
+);
