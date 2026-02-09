@@ -13,6 +13,7 @@
 - `custom-event.flow.tsx`: custom event via `api.send({ type })`.
 - `async-guard.flow.tsx`: async validation in `when`.
 - `async-effect.flow.tsx`: async context update in `effect`.
+- `dynamic-steps.flow.tsx`: add/remove optional step by rebuilding flow graph at runtime.
 - `confirm-close.flow.tsx`: dirty-close confirmation flow.
 - `history-back.flow.tsx`: branch-aware back behavior.
 
