@@ -112,6 +112,8 @@ export const App = () => (
 - Common questions: [docs/FAQ.md](./docs/FAQ.md)
 - Migration help: [docs/MIGRATION.md](./docs/MIGRATION.md)
 - Example catalog: [examples/README.md](./examples/README.md)
+- Quickstarts now include: React UI, Core headless, Persistence resume.
+- Recipes now include: analytics hooks, submit confirmation, API-branching, restart.
 
 ## Persistence
 

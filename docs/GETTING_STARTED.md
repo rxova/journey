@@ -7,6 +7,116 @@ If you want the smallest possible example first, open:
 - `examples/simple-flow.tsx`
 - `examples/simple-sequence.flow.tsx`
 
+## Quickstarts
+
+### A) Fastest UI Quickstart (React)
+
+Use this when you want a visible flow in under 5 minutes.
+
+```tsx
+import React from "react";
+import {
+  FlowProvider,
+  FlowStepRenderer,
+  useFlow,
+  FLOW_TERMINAL,
+  type FlowReactFlow
+} from "react-toolkit-flow";
+
+type StepId = "start" | "review";
+type Ctx = { name: string };
+
+const Start = () => {
+  const { api } = useFlow<Ctx, StepId>();
+  return (
+    <button
+      onClick={() => {
+        api.updateContext((ctx) => ({ ...ctx, name: "Ada" }));
+        api.next();
+      }}
+    >
+      Continue
+    </button>
+  );
+};
+
+const Review = () => {
+  const { snapshot, api } = useFlow<Ctx, StepId>();
+  return (
+    <div>
+      <p>Hello {snapshot.context.name}</p>
+      <button onClick={() => api.submit()}>Finish</button>
+    </div>
+  );
+};
+
+const flow: FlowReactFlow<Ctx, StepId> = {
+  initial: "start",
+  context: { name: "" },
+  steps: {
+    start: { component: Start },
+    review: { component: Review }
+  },
+  transitions: [
+    { from: "start", event: "next", to: "review" },
+    { from: "review", event: "submit", to: FLOW_TERMINAL.COMPLETE }
+  ]
+};
+
+export const App = () => (
+  <FlowProvider flow={flow}>
+    <FlowStepRenderer<Ctx, StepId> />
+  </FlowProvider>
+);
+```
+
+### B) Headless Quickstart (Core Only, No React)
+
+Use this in tests, services, or custom renderers.
+
+```ts
+import { createFlowMachine, FLOW_TERMINAL, type FlowFlow } from "react-toolkit-flow/core";
+
+type StepId = "a" | "b";
+type Event = "next" | "submit";
+type Ctx = { count: number };
+
+const flow: FlowFlow<Ctx, StepId, Event> = {
+  initial: "a",
+  context: { count: 0 },
+  steps: { a: {}, b: {} },
+  transitions: [
+    {
+      from: "a",
+      event: "next",
+      to: "b",
+      effect: ({ context }) => ({ ...context, count: context.count + 1 })
+    },
+    { from: "b", event: "submit", to: FLOW_TERMINAL.COMPLETE }
+  ]
+};
+
+const machine = createFlowMachine(flow);
+await machine.send({ type: "next" });
+console.log(machine.getSnapshot()); // current: "b", context.count: 1
+```
+
+### C) Persistence Quickstart
+
+Use this to restore step + context after refresh.
+
+```tsx
+<FlowProvider
+  flow={flow}
+  persistence={{
+    key: "my-flow",
+    version: 1
+  }}
+>
+  <FlowStepRenderer />
+</FlowProvider>
+```
+
 ## 1. Install
 
 ```bash

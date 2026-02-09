@@ -87,6 +87,81 @@ api.goTo("review");
 { from: "*", event: "back", to: HISTORY_TARGET }
 ```
 
+## Branch on API Result
+
+```ts
+{
+  from: "verify",
+  event: "next",
+  to: "manualReview",
+  when: async ({ context }) => {
+    const res = await checkFraud(context.orderId);
+    return res.score > 70;
+  }
+},
+{
+  from: "verify",
+  event: "next",
+  to: "payment",
+  when: async ({ context }) => {
+    const res = await checkFraud(context.orderId);
+    return res.score <= 70;
+  }
+}
+```
+
+## Save Draft Then Continue
+
+```ts
+{
+  from: "shipping",
+  event: "next",
+  to: "review",
+  effect: async ({ context }) => {
+    const saved = await saveDraft(context);
+    return {
+      ...context,
+      draftId: saved.id
+    };
+  }
+}
+```
+
+## Force Final Confirmation Before Submit
+
+```ts
+{
+  from: "review",
+  event: "submit",
+  to: "confirmSubmit"
+},
+{
+  from: "confirmSubmit",
+  event: "submit",
+  to: FLOW_TERMINAL.COMPLETE
+}
+```
+
+## Restart Flow Cleanly
+
+```tsx
+const { api } = useFlow<MyContext, MyStepId>();
+api.reset();
+```
+
+## Observe Flow Changes (Analytics Hook)
+
+```ts
+const machine = createFlowMachine(flow);
+const unsubscribe = machine.subscribe(() => {
+  const snapshot = machine.getSnapshot();
+  track("flow_step_changed", {
+    current: snapshot.current,
+    terminal: snapshot.terminal
+  });
+});
+```
+
 ## Persist and Resume
 
 ```tsx

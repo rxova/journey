@@ -18,6 +18,16 @@ Machine methods:
 - `reset()`
 - `subscribe(listener)`
 
+Example:
+
+```ts
+import { createFlowMachine } from "react-toolkit-flow/core";
+
+const machine = createFlowMachine(flow);
+await machine.send({ type: "next" });
+const snapshot = machine.getSnapshot();
+```
+
 `send` behavior:
 
 - Calls are serialized. Rapid multi-click scenarios are processed in order.
@@ -33,6 +43,34 @@ Persistence options (`options.persistence`):
 - `clearOnReset`: when `true` (default), `reset()` removes persisted state.
 - `serialize` / `deserialize`: custom serialization functions.
 - `onError`: receives persistence read/write/parse errors.
+
+Persistence example:
+
+```ts
+const machine = createFlowMachine(flow, {
+  persistence: {
+    key: "checkout-flow",
+    version: 2,
+    migrate: (oldSnapshot, oldVersion) => {
+      if (oldVersion === 1) {
+        const v1 = oldSnapshot as { context?: { draftId?: string } };
+        return {
+          current: "details",
+          context: { draftId: v1.context?.draftId ?? null, acceptedTerms: false },
+          history: ["start"],
+          terminal: null
+        };
+      }
+      return oldSnapshot as {
+        current: "start" | "details" | "review";
+        context: { draftId: string | null; acceptedTerms: boolean };
+        history: Array<"start" | "details" | "review">;
+        terminal: "COMPLETE" | "CLOSE" | null;
+      };
+    }
+  }
+});
+```
 
 ### `HISTORY_TARGET`
 
@@ -57,6 +95,20 @@ Notes:
 - You can pass `machine` prop to use your own machine instance.
 - You can pass `persistence` prop to configure machine persistence when using the internal machine.
 
+Example:
+
+```tsx
+<FlowProvider
+  flow={flow}
+  persistence={{
+    key: "signup-flow",
+    version: 1
+  }}
+>
+  <FlowStepRenderer />
+</FlowProvider>
+```
+
 ### `<FlowStepRenderer />`
 
 Renders the component at `snapshot.current` using `flow.steps[current].component`.
@@ -73,6 +125,11 @@ Snapshot:
 - `visited`
 - `terminal`
 - `isDone`
+- `runtime`
+  - `phase`: `idle` | `evaluating-when` | `running-effect`
+  - `eventType`: currently processed event type while async work is pending
+  - `transitionId`: transition id currently being evaluated/executed (if present)
+  - `transitionIndex`: matched transition index in `transitions` array
 
 API:
 
@@ -84,6 +141,15 @@ API:
 - `submit(payload?)`
 - `updateContext(updater)`
 - `reset()`
+
+Example:
+
+```tsx
+const { snapshot, api } = useFlow<MyCtx, MySteps, "retry">();
+await api.send({ type: "retry" });
+await api.goTo("review");
+api.updateContext((ctx) => ({ ...ctx, dirty: true }));
+```
 
 Type model:
 
