@@ -16,9 +16,20 @@ The first matching transition in `transitions` order is used.
 
 Yes. `when` can return `Promise<boolean>`.
 
+`when` means "is this transition allowed right now?"
+
 ## Can effects be async?
 
 Yes. `effect` can return `Promise<context | void>`.
+
+`effect` means "run work while taking the transition, and optionally return updated context."
+
+## What is the practical difference between `when` and `effect`?
+
+- Use `when` to gate movement (`true`/`false`).
+- Use `effect` to do side effects (API, save draft, etc).
+
+If you use `when` for side effects, those effects may run even when transition does not complete as expected.
 
 ## Is `back` always linear?
 
@@ -35,6 +46,20 @@ Yes. Route `close` to a `confirmClose` step when `context.dirty === true`.
 ## Do transitions race if a user clicks quickly?
 
 No. `send` calls are serialized in a queue.
+
+## What happens when `when` or `effect` throws?
+
+- `send(...)` rejects with that error.
+- Step async state becomes `error`.
+- Error is available in `snapshot.async.byStep[currentStep].error`.
+- You can clear it with `clearStepError(stepId?)`.
+
+## Does persistence include async loading/error state?
+
+No.
+
+Persistence stores `current`, `context`, `history`, and `terminal`.
+`snapshot.async` is runtime-only and starts clean (`idle`) after hydrate/reset.
 
 ## Does this include runtime dependencies?
 

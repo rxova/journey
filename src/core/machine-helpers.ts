@@ -1,11 +1,13 @@
-import { FLOW_EVENT, FLOW_TERMINAL, FLOW_WILDCARD } from "./types";
+import { FLOW_ASYNC_PHASE, FLOW_EVENT, FLOW_TERMINAL, FLOW_WILDCARD } from "./types";
 import type {
+  FlowAsyncState,
   FlowEvent,
   FlowEventPayloadMap,
   FlowGoToEvent,
   FlowPayloadFor,
   FlowSendResult,
   FlowSnapshot,
+  FlowStepAsyncState,
   FlowTerminal,
   FlowTransition
 } from "./types";
@@ -21,6 +23,32 @@ export const assertStepExists = <TStepId extends string>(
 };
 
 const unique = <T>(items: readonly T[]): T[] => [...new Set(items)];
+
+export const isPromiseLike = <T>(value: T | PromiseLike<T>): value is PromiseLike<T> =>
+  typeof value === "object" &&
+  value !== null &&
+  "then" in value &&
+  typeof (value as { then: unknown }).then === "function";
+
+export const buildIdleStepAsyncState = (): FlowStepAsyncState => ({
+  phase: FLOW_ASYNC_PHASE.IDLE,
+  eventType: null,
+  transitionId: null,
+  error: null
+});
+
+export const buildInitialAsyncState = <TStepId extends string>(
+  steps: Record<TStepId, unknown>
+): FlowAsyncState<TStepId> => {
+  const byStep = Object.fromEntries(
+    Object.keys(steps).map((stepId) => [stepId, buildIdleStepAsyncState()])
+  ) as Record<TStepId, FlowStepAsyncState>;
+
+  return {
+    isLoading: false,
+    byStep
+  };
+};
 
 export const isGoToEvent = <
   TStepId extends string,
@@ -48,14 +76,16 @@ export const buildSnapshot = <TContext, TStepId extends string>(
   current: TStepId,
   context: TContext,
   history: readonly TStepId[],
-  terminal: (typeof FLOW_TERMINAL)[keyof typeof FLOW_TERMINAL] | null
+  terminal: (typeof FLOW_TERMINAL)[keyof typeof FLOW_TERMINAL] | null,
+  asyncState: FlowAsyncState<TStepId>
 ): FlowSnapshot<TContext, TStepId> => ({
   current,
   context,
   history,
   terminal,
   isDone: terminal !== null,
-  visited: unique([...history, current])
+  visited: unique([...history, current]),
+  async: asyncState
 });
 
 export const resolveHistoryTarget = <TContext, TStepId extends string>(
@@ -91,7 +121,17 @@ export const selectTransition = async <
 >(
   transitions: readonly FlowTransition<TContext, TStepId, TEventType, TPayloadMap>[],
   snapshot: FlowSnapshot<TContext, TStepId>,
-  event: FlowEvent<TStepId, TEventType, TPayloadMap>
+  event: FlowEvent<TStepId, TEventType, TPayloadMap>,
+  hooks?: {
+    onAsyncGuardStart?: (transition: FlowTransition<TContext, TStepId, TEventType, TPayloadMap>) => void;
+    onAsyncGuardSuccess?: (
+      transition: FlowTransition<TContext, TStepId, TEventType, TPayloadMap>
+    ) => void;
+    onAsyncGuardError?: (
+      transition: FlowTransition<TContext, TStepId, TEventType, TPayloadMap>,
+      error: unknown
+    ) => void;
+  }
 ): Promise<FlowTransition<TContext, TStepId, TEventType, TPayloadMap> | null> => {
   for (const transition of transitions) {
     const fromMatches = transition.from === FLOW_WILDCARD || transition.from === snapshot.current;
@@ -105,12 +145,30 @@ export const selectTransition = async <
       return transition;
     }
 
-    const allowed = await transition.when({
+    const guardResult = transition.when({
       context: snapshot.context,
       from: snapshot.current,
       history: snapshot.history,
       event
     });
+    const asyncGuard = isPromiseLike(guardResult);
+    if (asyncGuard) {
+      hooks?.onAsyncGuardStart?.(transition);
+    }
+
+    let allowed: boolean;
+    try {
+      allowed = await guardResult;
+    } catch (error) {
+      if (asyncGuard) {
+        hooks?.onAsyncGuardError?.(transition, error);
+      }
+      throw error;
+    }
+
+    if (asyncGuard) {
+      hooks?.onAsyncGuardSuccess?.(transition);
+    }
 
     if (allowed) {
       return transition;
@@ -130,5 +188,5 @@ export const transitionSnapshot = <TContext, TStepId extends string>(
       ? [...snapshot.history]
       : [...snapshot.history, snapshot.current];
 
-  return buildSnapshot(nextCurrent, nextContext, history, snapshot.terminal);
+  return buildSnapshot(nextCurrent, nextContext, history, snapshot.terminal, snapshot.async);
 };

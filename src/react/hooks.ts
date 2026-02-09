@@ -120,6 +120,13 @@ export const useFlowApi = <
     [machine]
   );
 
+  const clearStepError = React.useCallback(
+    (stepId?: TStepId) => {
+      machine.clearStepError(stepId);
+    },
+    [machine]
+  );
+
   const reset = React.useCallback(() => {
     machine.reset();
   }, [machine]);
@@ -131,6 +138,7 @@ export const useFlowApi = <
     back,
     close,
     submit,
+    clearStepError,
     updateContext,
     reset
   };

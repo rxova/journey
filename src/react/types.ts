@@ -58,6 +58,7 @@ export type FlowApi<
   submit: (
     payload?: FlowPayloadFor<FlowEventType<TCustomEvent>, TEventPayloadMap, "submit">
   ) => Promise<void>;
+  clearStepError: (stepId?: TStepId) => void;
   updateContext: (updater: (context: TContext) => TContext) => void;
   reset: () => void;
 };

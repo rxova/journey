@@ -35,6 +35,14 @@ const createMemoryStorage = (seed: Record<string, string> = {}): FlowStorage => 
     }
   };
 };
+const asyncState = () => ({
+  isLoading: false,
+  byStep: {
+    start: { phase: "idle" as const, eventType: null, transitionId: null, error: null },
+    details: { phase: "idle" as const, eventType: null, transitionId: null, error: null },
+    review: { phase: "idle" as const, eventType: null, transitionId: null, error: null }
+  }
+});
 
 const withPatchedLocalStorage = async (
   value: Partial<FlowStorage> | undefined,
@@ -418,7 +426,8 @@ describe("persistence", () => {
       history: [],
       visited: ["start"],
       terminal: null,
-      isDone: false
+      isDone: false,
+      async: asyncState()
     });
     controller.removePersistedSnapshot();
 

@@ -10,6 +10,22 @@ type Context = {
   count: number;
   log: string[];
 };
+const idleStepAsync = () => ({
+  phase: "idle" as const,
+  eventType: null,
+  transitionId: null,
+  error: null
+});
+const asyncState = () => ({
+  isLoading: false,
+  byStep: {
+    a: idleStepAsync(),
+    b: idleStepAsync(),
+    c: idleStepAsync(),
+    d: idleStepAsync(),
+    confirm: idleStepAsync()
+  }
+});
 
 const createFlow = (): FlowFlow<Context, StepId, Event> => ({
   initial: "a",
@@ -254,7 +270,8 @@ describe("flow behavior edge cases", () => {
       history: [],
       visited: ["a"],
       terminal: null,
-      isDone: false
+      isDone: false,
+      async: asyncState()
     });
   });
 

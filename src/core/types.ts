@@ -15,6 +15,27 @@ export const FLOW_EVENT = {
 export type FlowBuiltInEvent = (typeof FLOW_EVENT)[keyof typeof FLOW_EVENT];
 export type FlowBuiltInFrom = typeof FLOW_WILDCARD;
 
+export const FLOW_ASYNC_PHASE = {
+  IDLE: "idle",
+  EVALUATING_WHEN: "evaluating-when",
+  RUNNING_EFFECT: "running-effect",
+  ERROR: "error"
+} as const;
+
+export type FlowAsyncPhase = (typeof FLOW_ASYNC_PHASE)[keyof typeof FLOW_ASYNC_PHASE];
+
+export type FlowStepAsyncState = {
+  phase: FlowAsyncPhase;
+  eventType: string | null;
+  transitionId: string | null;
+  error: unknown | null;
+};
+
+export type FlowAsyncState<TStepId extends string> = {
+  isLoading: boolean;
+  byStep: Record<TStepId, FlowStepAsyncState>;
+};
+
 export type FlowBaseEvent = {
   type: string;
   payload?: unknown;
@@ -91,6 +112,7 @@ export type FlowSnapshot<TContext, TStepId extends string> = {
   visited: readonly TStepId[];
   terminal: FlowTerminal | null;
   isDone: boolean;
+  async: FlowAsyncState<TStepId>;
 };
 
 export type FlowPersistedSnapshot<TContext, TStepId extends string> = {
@@ -155,6 +177,7 @@ export type FlowMachine<
     event: FlowEvent<TStepId, TEventType, TPayloadMap>
   ) => Promise<FlowSendResult<TContext, TStepId>>;
   updateContext: (updater: (context: TContext) => TContext) => FlowSnapshot<TContext, TStepId>;
+  clearStepError: (stepId?: TStepId) => FlowSnapshot<TContext, TStepId>;
   reset: () => FlowSnapshot<TContext, TStepId>;
   subscribe: (listener: () => void) => () => void;
 };

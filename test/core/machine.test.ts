@@ -10,6 +10,22 @@ type Ctx = {
   count: number;
 };
 type Event = "next" | "back" | "close" | "submit";
+const idleStepAsync = () => ({
+  phase: "idle" as const,
+  eventType: null,
+  transitionId: null,
+  error: null
+});
+const asyncState = () => ({
+  isLoading: false,
+  byStep: {
+    start: idleStepAsync(),
+    details: idleStepAsync(),
+    extra: idleStepAsync(),
+    review: idleStepAsync(),
+    confirmClose: idleStepAsync()
+  }
+});
 
 const baseFlow = (): FlowFlow<Ctx, StepId, Event> => ({
   initial: "start",
@@ -87,7 +103,8 @@ describe("createFlowMachine", () => {
       history: [],
       visited: ["start"],
       terminal: null,
-      isDone: false
+      isDone: false,
+      async: asyncState()
     });
   });
 
@@ -188,6 +205,152 @@ describe("createFlowMachine", () => {
 
     expect(machine.getSnapshot().current).toBe("details");
     expect(machine.getSnapshot().context.count).toBe(1);
+    expect(machine.getSnapshot().async.byStep.start.phase).toBe("idle");
+    expect(machine.getSnapshot().async.byStep.start.error).toBeNull();
+  });
+
+  it("exposes evaluating-when async phase while guard promise is pending", async () => {
+    let release = () => {};
+    const wait = new Promise<boolean>((resolve) => {
+      release = () => resolve(true);
+    });
+    const flow = baseFlow();
+    flow.transitions = [
+      {
+        id: "guard-wait",
+        from: "start",
+        event: "next",
+        to: "details",
+        when: () => wait
+      }
+    ];
+    const machine = createFlowMachine(flow);
+    const pending = machine.send({ type: "next" });
+
+    await Promise.resolve();
+    expect(machine.getSnapshot().async.byStep.start.phase).toBe("evaluating-when");
+    expect(machine.getSnapshot().async.isLoading).toBe(true);
+
+    release();
+    await pending;
+    expect(machine.getSnapshot().async.byStep.start.phase).toBe("idle");
+    expect(machine.getSnapshot().async.isLoading).toBe(false);
+  });
+
+  it("exposes running-effect phase and step error on async effect rejection", async () => {
+    let release = () => {};
+    const wait = new Promise<Ctx>((resolve, reject) => {
+      release = () => reject(new Error("effect-boom"));
+      void resolve;
+    });
+    const flow = baseFlow();
+    flow.transitions = [
+      {
+        id: "effect-wait",
+        from: "start",
+        event: "next",
+        to: "details",
+        effect: () => wait
+      }
+    ];
+    const machine = createFlowMachine(flow);
+    const pending = machine.send({ type: "next" });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(machine.getSnapshot().async.byStep.start.phase).toBe("running-effect");
+    expect(machine.getSnapshot().async.isLoading).toBe(true);
+
+    release();
+    await expect(pending).rejects.toThrow("effect-boom");
+    expect(machine.getSnapshot().async.byStep.start.phase).toBe("error");
+    expect(String(machine.getSnapshot().async.byStep.start.error)).toContain("effect-boom");
+    expect(machine.getSnapshot().async.isLoading).toBe(false);
+  });
+
+  it("clears step error via clearStepError", async () => {
+    const flow = baseFlow();
+    flow.transitions = [
+      {
+        id: "guard-fail",
+        from: "start",
+        event: "next",
+        to: "details",
+        when: () => {
+          throw new Error("guard-fail");
+        }
+      }
+    ];
+    const machine = createFlowMachine(flow);
+    await expect(machine.send({ type: "next" })).rejects.toThrow("guard-fail");
+    expect(machine.getSnapshot().async.byStep.start.phase).toBe("error");
+
+    machine.clearStepError();
+    expect(machine.getSnapshot().async.byStep.start.phase).toBe("idle");
+    expect(machine.getSnapshot().async.byStep.start.error).toBeNull();
+  });
+
+  it("captures async guard rejection as step error", async () => {
+    const flow = baseFlow();
+    flow.transitions = [
+      {
+        id: "guard-async-fail",
+        from: "start",
+        event: "next",
+        to: "details",
+        when: async () => {
+          await Promise.resolve();
+          throw new Error("guard-async-fail");
+        }
+      }
+    ];
+    const machine = createFlowMachine(flow);
+    await expect(machine.send({ type: "next" })).rejects.toThrow("guard-async-fail");
+    expect(machine.getSnapshot().async.byStep.start.phase).toBe("error");
+    expect(String(machine.getSnapshot().async.byStep.start.error)).toContain("guard-async-fail");
+  });
+
+  it("ignores clearStepError for unknown step ids", () => {
+    const machine = createFlowMachine(baseFlow());
+    const before = machine.getSnapshot();
+    const after = machine.clearStepError("missing" as StepId);
+    expect(after).toBe(before);
+    expect(machine.getSnapshot()).toBe(before);
+  });
+
+  it("rebuilds missing step async state entries when async work starts", async () => {
+    let release = () => {};
+    const wait = new Promise<Ctx>((resolve) => {
+      release = () => resolve(baseFlow().context);
+    });
+    const flow = baseFlow();
+    flow.transitions = [
+      {
+        id: "rebuild-async",
+        from: "start",
+        event: "next",
+        to: "details",
+        effect: () => wait
+      }
+    ];
+    const machine = createFlowMachine(flow);
+    const byStep = machine.getSnapshot().async.byStep as unknown as Record<
+      StepId,
+      | {
+          phase: "idle" | "evaluating-when" | "running-effect" | "error";
+          eventType: string | null;
+          transitionId: string | null;
+          error: unknown | null;
+        }
+      | undefined
+    >;
+    delete (byStep as Record<string, unknown>).start;
+
+    const pending = machine.send({ type: "next" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(machine.getSnapshot().async.byStep.start.phase).toBe("running-effect");
+    release();
+    await pending;
   });
 
   it("serializes concurrent sends", async () => {
