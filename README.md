@@ -220,6 +220,7 @@ Specific patterns:
 - [examples/custom-event.flow.tsx](./examples/custom-event.flow.tsx)
 - [examples/async-guard.flow.tsx](./examples/async-guard.flow.tsx)
 - [examples/async-effect.flow.tsx](./examples/async-effect.flow.tsx)
+- [examples/dynamic-steps.flow.tsx](./examples/dynamic-steps.flow.tsx)
 - [examples/confirm-close.flow.tsx](./examples/confirm-close.flow.tsx)
 - [examples/go-to-jump.flow.tsx](./examples/go-to-jump.flow.tsx)
 - [examples/history-back.flow.tsx](./examples/history-back.flow.tsx)
