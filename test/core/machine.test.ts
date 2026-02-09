@@ -1,4 +1,9 @@
-import { createFlowMachine, HISTORY_TARGET, FLOW_TERMINAL, type FlowFlow } from "../../src/core";
+import {
+  createFlowMachine,
+  HISTORY_TARGET,
+  FLOW_TERMINAL,
+  type FlowFlow
+} from "../../src/core";
 
 type StepId = "start" | "details" | "extra" | "review" | "confirmClose";
 type Ctx = {
@@ -101,7 +106,7 @@ describe("createFlowMachine", () => {
   it("supports conditional branch to extra step", async () => {
     const machine = createFlowMachine(baseFlow());
 
-    machine.updateContext(ctx => ({ ...ctx, addExtra: true }));
+    machine.updateContext((ctx) => ({ ...ctx, addExtra: true }));
     await machine.send({ type: "next" });
     await machine.send({ type: "next" });
 
@@ -149,7 +154,7 @@ describe("createFlowMachine", () => {
   it("routes close to confirm step when dirty", async () => {
     const machine = createFlowMachine(baseFlow());
 
-    machine.updateContext(ctx => ({ ...ctx, dirty: true }));
+    machine.updateContext((ctx) => ({ ...ctx, dirty: true }));
     await machine.send({ type: "close" });
 
     expect(machine.getSnapshot().current).toBe("confirmClose");
@@ -174,6 +179,35 @@ describe("createFlowMachine", () => {
 
     expect(machine.getSnapshot().current).toBe("details");
     expect(machine.getSnapshot().context.count).toBe(1);
+  });
+
+  it("serializes concurrent sends", async () => {
+    const flow = baseFlow();
+    flow.transitions = [
+      {
+        from: "start",
+        event: "next",
+        to: "details",
+        effect: async ({ context }) => {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          return { ...context, count: context.count + 1 };
+        }
+      },
+      {
+        from: "details",
+        event: "next",
+        to: "review",
+        effect: ({ context }) => ({ ...context, count: context.count + 1 })
+      }
+    ];
+
+    const machine = createFlowMachine(flow);
+
+    await Promise.all([machine.send({ type: "next" }), machine.send({ type: "next" })]);
+
+    expect(machine.getSnapshot().current).toBe("review");
+    expect(machine.getSnapshot().context.count).toBe(2);
+    expect(machine.getSnapshot().history).toEqual(["start", "details"]);
   });
 
   it("goTo jumps to specific step", async () => {
@@ -230,7 +264,7 @@ describe("createFlowMachine", () => {
     });
 
     await machine.send({ type: "next" });
-    machine.updateContext(ctx => ({ ...ctx, count: ctx.count + 1 }));
+    machine.updateContext((ctx) => ({ ...ctx, count: ctx.count + 1 }));
     machine.reset();
     unsubscribe();
 

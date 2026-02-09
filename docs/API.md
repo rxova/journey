@@ -3,6 +3,7 @@
 ## Core
 
 ### `createFlowMachine(flow)`
+
 Creates a framework-agnostic machine.
 
 - Input: `FlowFlow<TContext, TStepId, TEventType>`
@@ -17,9 +18,11 @@ Machine methods:
 - `subscribe(listener)`
 
 ### `HISTORY_TARGET`
+
 Special transition target (`"__HISTORY__"`) that resolves to the latest visited step from history.
 
 ### `FLOW_TERMINAL`
+
 Terminal constants:
 
 - `FLOW_TERMINAL.COMPLETE`
@@ -28,12 +31,15 @@ Terminal constants:
 ## React
 
 ### `<FlowProvider flow={flow}>`
+
 Binds a machine to React via `useSyncExternalStore`.
 
 ### `<FlowStepRenderer />`
+
 Renders the component at `snapshot.current` using `flow.steps[current].component`.
 
 ### `useFlow()`
+
 Returns `{ snapshot, api }`.
 
 Snapshot:

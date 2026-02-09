@@ -10,10 +10,12 @@ type FlowStepRendererProps = {
 export const FlowStepRenderer = <
   TContext,
   TStepId extends string,
-  TEventType extends string
->({ fallback = null }: FlowStepRendererProps) => {
-  const snapshot = useFlowSnapshot<TContext, TStepId, TEventType>();
-  const { flow } = useFlowStore<TContext, TStepId, TEventType>();
+  TCustomEvent extends string = never
+>({
+  fallback = null
+}: FlowStepRendererProps) => {
+  const snapshot = useFlowSnapshot<TContext, TStepId, TCustomEvent>();
+  const { flow } = useFlowStore<TContext, TStepId, TCustomEvent>();
 
   const StepComponent = flow.steps[snapshot.current]?.component;
 

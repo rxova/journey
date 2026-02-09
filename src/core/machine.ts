@@ -1,6 +1,5 @@
-import {
-  HISTORY_TARGET,
-  FLOW_TERMINAL,
+import { HISTORY_TARGET, FLOW_TERMINAL } from "./types";
+import type {
   FlowEvent,
   FlowFlow,
   FlowGoToEvent,
@@ -12,16 +11,16 @@ import {
 } from "./types";
 
 const assertStepExists = <TStepId extends string>(
-  flow: FlowFlow<unknown, TStepId, string>,
+  steps: Record<TStepId, unknown>,
   stepId: TStepId,
   message: string
 ) => {
-  if (!(stepId in flow.steps)) {
+  if (!(stepId in steps)) {
     throw new Error(message);
   }
 };
 
-const unique = <T,>(items: readonly T[]): T[] => [...new Set(items)];
+const unique = <T>(items: readonly T[]): T[] => [...new Set(items)];
 
 const isGoToEvent = <TStepId extends string, TEventType extends string>(
   event: FlowEvent<TStepId, TEventType>
@@ -37,9 +36,7 @@ const buildSendResult = <TContext, TStepId extends string>(
   transitioned: boolean,
   transitionId?: string
 ): FlowSendResult<TContext, TStepId> =>
-  transitionId
-    ? { transitioned, transitionId, snapshot }
-    : { transitioned, snapshot };
+  transitionId ? { transitioned, transitionId, snapshot } : { transitioned, snapshot };
 
 const buildSnapshot = <TContext, TStepId extends string>(
   current: TStepId,
@@ -57,7 +54,7 @@ const buildSnapshot = <TContext, TStepId extends string>(
 
 const resolveHistoryTarget = <TContext, TStepId extends string>(
   snapshot: FlowSnapshot<TContext, TStepId>,
-  flow: FlowFlow<TContext, TStepId, string>
+  steps: Record<TStepId, unknown>
 ): { target: TStepId; history: TStepId[] } => {
   const cloned = [...snapshot.history];
 
@@ -66,7 +63,7 @@ const resolveHistoryTarget = <TContext, TStepId extends string>(
     if (!candidate) {
       break;
     }
-    if (candidate in flow.steps) {
+    if (candidate in steps) {
       return {
         target: candidate,
         history: cloned
@@ -80,11 +77,7 @@ const resolveHistoryTarget = <TContext, TStepId extends string>(
   };
 };
 
-const selectTransition = async <
-  TContext,
-  TStepId extends string,
-  TEventType extends string
->(
+const selectTransition = async <TContext, TStepId extends string, TEventType extends string>(
   transitions: readonly FlowTransition<TContext, TStepId, TEventType>[],
   snapshot: FlowSnapshot<TContext, TStepId>,
   event: FlowEvent<TStepId, TEventType>
@@ -121,9 +114,10 @@ const transitionSnapshot = <TContext, TStepId extends string>(
   nextCurrent: TStepId,
   nextContext: TContext
 ): FlowSnapshot<TContext, TStepId> => {
-  const history = nextCurrent === snapshot.current
-    ? [...snapshot.history]
-    : [...snapshot.history, snapshot.current];
+  const history =
+    nextCurrent === snapshot.current
+      ? [...snapshot.history]
+      : [...snapshot.history, snapshot.current];
 
   return buildSnapshot(nextCurrent, nextContext, history, snapshot.terminal);
 };
@@ -132,15 +126,18 @@ export const createFlowMachine = <
   TContext,
   TStepId extends string,
   TEventType extends string = "next" | "back" | "close" | "submit"
->(flow: FlowFlow<TContext, TStepId, TEventType>): FlowMachine<TContext, TStepId, TEventType> => {
+>(
+  flow: FlowFlow<TContext, TStepId, TEventType>
+): FlowMachine<TContext, TStepId, TEventType> => {
   assertStepExists(
-    flow as unknown as FlowFlow<unknown, TStepId, string>,
+    flow.steps,
     flow.initial,
-    `Flow initial step \"${flow.initial}\" does not exist in steps registry.`
+    `Flow initial step "${flow.initial}" does not exist in steps registry.`
   );
 
   let snapshot = buildSnapshot(flow.initial, flow.context, [], null);
   const listeners = new Set<() => void>();
+  let sendQueue: Promise<void> = Promise.resolve();
 
   const notify = () => {
     for (const listener of listeners) {
@@ -150,7 +147,7 @@ export const createFlowMachine = <
 
   return {
     getSnapshot: () => snapshot,
-    subscribe: listener => {
+    subscribe: (listener) => {
       listeners.add(listener);
       return () => {
         listeners.delete(listener);
@@ -161,7 +158,7 @@ export const createFlowMachine = <
       notify();
       return snapshot;
     },
-    updateContext: updater => {
+    updateContext: (updater) => {
       snapshot = {
         ...snapshot,
         context: updater(snapshot.context)
@@ -169,82 +166,80 @@ export const createFlowMachine = <
       notify();
       return snapshot;
     },
-    send: async event => {
-      if (snapshot.isDone) {
-        return { transitioned: false, snapshot };
-      }
-
-      if (isGoToEvent(event)) {
-        assertStepExists(
-          flow as unknown as FlowFlow<unknown, TStepId, string>,
-          event.to,
-          `Cannot goTo unknown step \"${event.to}\".`
-        );
-        snapshot = transitionSnapshot(snapshot, event.to, snapshot.context);
-        notify();
-        return buildSendResult(snapshot, true, "goTo");
-      }
-
-      const transition = await selectTransition(flow.transitions, snapshot, event);
-
-      if (!transition) {
-        return buildSendResult(snapshot, false);
-      }
-
-      let nextContext = snapshot.context;
-      if (transition.effect) {
-        const effectResult = await transition.effect({
-          context: snapshot.context,
-          from: snapshot.current,
-          history: snapshot.history,
-          event
-        });
-
-        if (effectResult !== undefined) {
-          nextContext = effectResult;
+    send: (event) => {
+      const run = async (): Promise<FlowSendResult<TContext, TStepId>> => {
+        if (snapshot.isDone) {
+          return { transitioned: false, snapshot };
         }
-      }
 
-      if (isTerminalTarget(transition.to)) {
-        snapshot = {
-          ...snapshot,
-          context: nextContext,
-          terminal: transition.to,
-          isDone: true
-        };
-        notify();
-        return buildSendResult(snapshot, true, transition.id);
-      }
+        if (isGoToEvent(event)) {
+          assertStepExists(flow.steps, event.to, `Cannot goTo unknown step "${event.to}".`);
+          snapshot = transitionSnapshot(snapshot, event.to, snapshot.context);
+          notify();
+          return buildSendResult(snapshot, true, "goTo");
+        }
 
-      if (transition.to === HISTORY_TARGET) {
-        const { target, history } = resolveHistoryTarget(
-          snapshot,
-          flow as unknown as FlowFlow<TContext, TStepId, string>
-        );
+        const transition = await selectTransition(flow.transitions, snapshot, event);
+
+        if (!transition) {
+          return buildSendResult(snapshot, false);
+        }
+
+        let nextContext = snapshot.context;
+        if (transition.effect) {
+          const effectResult = await transition.effect({
+            context: snapshot.context,
+            from: snapshot.current,
+            history: snapshot.history,
+            event
+          });
+
+          if (effectResult !== undefined) {
+            nextContext = effectResult;
+          }
+        }
+
+        if (isTerminalTarget(transition.to)) {
+          snapshot = {
+            ...snapshot,
+            context: nextContext,
+            terminal: transition.to,
+            isDone: true
+          };
+          notify();
+          return buildSendResult(snapshot, true, transition.id);
+        }
+
+        if (transition.to === HISTORY_TARGET) {
+          const { target, history } = resolveHistoryTarget(snapshot, flow.steps);
+          assertStepExists(flow.steps, target, `Transition points to unknown step "${target}".`);
+          snapshot = buildSnapshot(target, nextContext, history, snapshot.terminal);
+          notify();
+          return buildSendResult(snapshot, true, transition.id);
+        }
+
+        const resolvedTarget = transition.to;
+
         assertStepExists(
-          flow as unknown as FlowFlow<unknown, TStepId, string>,
-          target,
-          `Transition points to unknown step \"${target}\".`
+          flow.steps,
+          resolvedTarget,
+          `Transition points to unknown step "${resolvedTarget}".`
         );
-        snapshot = buildSnapshot(target, nextContext, history, snapshot.terminal);
+
+        const nextSnapshot = transitionSnapshot(snapshot, resolvedTarget, nextContext);
+
+        snapshot = nextSnapshot;
         notify();
+
         return buildSendResult(snapshot, true, transition.id);
-      }
+      };
 
-      const resolvedTarget = transition.to;
-
-      assertStepExists(
-        flow as unknown as FlowFlow<unknown, TStepId, string>,
-        resolvedTarget,
-        `Transition points to unknown step \"${resolvedTarget}\".`
+      const resultPromise = sendQueue.then(run, run);
+      sendQueue = resultPromise.then(
+        () => undefined,
+        () => undefined
       );
-
-      const nextSnapshot = transitionSnapshot(snapshot, resolvedTarget, nextContext);
-
-      snapshot = nextSnapshot;
-      notify();
-
-      return buildSendResult(snapshot, true, transition.id);
+      return resultPromise;
     }
   };
 };

@@ -119,6 +119,9 @@ See [docs/MIGRATION.md](./docs/MIGRATION.md).
 ## Scripts
 
 ```bash
+npm run lint
+npm run format:check
+npm run typecheck
 npm run build
 npm run test
 npm run size

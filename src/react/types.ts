@@ -1,11 +1,12 @@
 import type React from "react";
 
-import type {
-  FlowEvent,
-  FlowFlow,
-  FlowMachine,
-  FlowSnapshot
-} from "../core";
+import type { FlowEvent, FlowFlow, FlowMachine, FlowSnapshot } from "../core";
+
+export type FlowDefaultEvent = "next" | "back" | "close" | "submit";
+
+export type FlowEventType<TCustomEvent extends string = never> =
+  | FlowDefaultEvent
+  | TCustomEvent;
 
 export type FlowReactStep = {
   component: React.ComponentType;
@@ -14,13 +15,13 @@ export type FlowReactStep = {
 export type FlowReactFlow<
   TContext,
   TStepId extends string,
-  TEventType extends string
-> = Omit<FlowFlow<TContext, TStepId, TEventType>, "steps"> & {
+  TCustomEvent extends string = never
+> = Omit<FlowFlow<TContext, TStepId, FlowEventType<TCustomEvent>>, "steps"> & {
   steps: Record<TStepId, FlowReactStep>;
 };
 
-export type FlowApi<TContext, TStepId extends string, TEventType extends string> = {
-  send: (event: FlowEvent<TStepId, TEventType>) => Promise<void>;
+export type FlowApi<TContext, TStepId extends string, TCustomEvent extends string = never> = {
+  send: (event: FlowEvent<TStepId, FlowEventType<TCustomEvent>>) => Promise<void>;
   goTo: (stepId: TStepId, payload?: unknown) => Promise<void>;
   next: (payload?: unknown) => Promise<void>;
   back: (payload?: unknown) => Promise<void>;
@@ -33,17 +34,17 @@ export type FlowApi<TContext, TStepId extends string, TEventType extends string>
 export type FlowHookResult<
   TContext,
   TStepId extends string,
-  TEventType extends string
+  TCustomEvent extends string = never
 > = {
   snapshot: FlowSnapshot<TContext, TStepId>;
-  api: FlowApi<TContext, TStepId, TEventType>;
+  api: FlowApi<TContext, TStepId, TCustomEvent>;
 };
 
 export type FlowStoreValue<
   TContext,
   TStepId extends string,
-  TEventType extends string
+  TCustomEvent extends string = never
 > = {
-  machine: FlowMachine<TContext, TStepId, TEventType>;
-  flow: FlowReactFlow<TContext, TStepId, TEventType>;
+  machine: FlowMachine<TContext, TStepId, FlowEventType<TCustomEvent>>;
+  flow: FlowReactFlow<TContext, TStepId, TCustomEvent>;
 };
