@@ -5,6 +5,12 @@ import prettierConfig from "eslint-config-prettier";
 import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
 
+const TEST_FILE_GLOBS = [
+  "test/**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+  "**/__tests__/**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+  "**/*.{test,spec}.{ts,tsx,js,jsx,mts,cts,mjs,cjs}"
+];
+
 export default [
   {
     ignores: ["dist/**", "coverage/**", "node_modules/**", "flow/**"]
@@ -43,10 +49,11 @@ export default [
     }
   },
   {
-    files: ["test/**/*.ts", "test/**/*.tsx"],
+    files: TEST_FILE_GLOBS,
     languageOptions: {
       globals: {
         ...globals.vitest,
+        ...globals.jest,
         ...globals.browser,
         ...globals.node
       }

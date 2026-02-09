@@ -1,12 +1,10 @@
 import type React from "react";
 
-import type { FlowEvent, FlowFlow, FlowMachine, FlowSnapshot } from "../core";
+import type { FlowEvent, FlowFlow, FlowMachine, FlowSnapshot } from "@/src/core";
 
 export type FlowDefaultEvent = "next" | "back" | "close" | "submit";
 
-export type FlowEventType<TCustomEvent extends string = never> =
-  | FlowDefaultEvent
-  | TCustomEvent;
+export type FlowEventType<TCustomEvent extends string = never> = FlowDefaultEvent | TCustomEvent;
 
 export type FlowReactStep = {
   component: React.ComponentType;

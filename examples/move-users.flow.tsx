@@ -7,7 +7,7 @@ import {
   useFlow,
   FlowProvider,
   FlowStepRenderer
-} from "../src";
+} from "@/src";
 
 type StepId = "selectTargetGroup" | "warningModal" | "arrangeMove";
 type Event = "next" | "back" | "close" | "submit";

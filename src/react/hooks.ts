@@ -1,8 +1,8 @@
 import React from "react";
 
-import type { FlowEvent, FlowSnapshot } from "../core";
-import { useFlowStore } from "./context";
-import type { FlowEventType, FlowHookResult } from "./types";
+import type { FlowEvent, FlowSnapshot } from "@/src/core";
+import { useFlowStore } from "@/src/react/context";
+import type { FlowEventType, FlowHookResult } from "@/src/react/types";
 
 const useSnapshot = <
   TContext,

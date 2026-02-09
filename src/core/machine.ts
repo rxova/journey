@@ -28,8 +28,7 @@ const isGoToEvent = <TStepId extends string, TEventType extends string>(
 
 const isTerminalTarget = <TStepId extends string>(
   target: TStepId | FlowTerminal | typeof HISTORY_TARGET
-): target is FlowTerminal =>
-  target === FLOW_TERMINAL.COMPLETE || target === FLOW_TERMINAL.CLOSE;
+): target is FlowTerminal => target === FLOW_TERMINAL.COMPLETE || target === FLOW_TERMINAL.CLOSE;
 
 const buildSendResult = <TContext, TStepId extends string>(
   snapshot: FlowSnapshot<TContext, TStepId>,
