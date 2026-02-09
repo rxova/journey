@@ -104,17 +104,23 @@ export const App = () => (
 );
 ```
 
-## API
+## Learn Fast
 
-See [docs/API.md](./docs/API.md).
+- Start here: [docs/GETTING_STARTED.md](./docs/GETTING_STARTED.md)
+- API details: [docs/API.md](./docs/API.md)
+- Practical patterns: [docs/RECIPES.md](./docs/RECIPES.md)
+- Common questions: [docs/FAQ.md](./docs/FAQ.md)
+- Migration help: [docs/MIGRATION.md](./docs/MIGRATION.md)
 
 ## Examples
 
-See [examples/group-trip.flow.tsx](./examples/group-trip.flow.tsx) and [examples/itinerary-builder.flow.tsx](./examples/itinerary-builder.flow.tsx).
+See:
 
-## Migration
-
-See [docs/MIGRATION.md](./docs/MIGRATION.md).
+- [examples/group-trip.flow.tsx](./examples/group-trip.flow.tsx)
+- [examples/itinerary-builder.flow.tsx](./examples/itinerary-builder.flow.tsx)
+- [examples/onboarding.flow.tsx](./examples/onboarding.flow.tsx)
+- [examples/checkout.flow.tsx](./examples/checkout.flow.tsx)
+- [examples/support-ticket.flow.tsx](./examples/support-ticket.flow.tsx)
 
 ## Scripts
 

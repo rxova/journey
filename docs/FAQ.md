@@ -1,0 +1,41 @@
+# FAQ
+
+## Is this a router?
+
+No. It is an in-memory flow engine for step-based UI, commonly inside modals or forms.
+
+## Why not a doubly linked list?
+
+Real flows branch and skip dynamically. A transition graph with history handles those cases better.
+
+## What happens if multiple transitions match?
+
+The first matching transition in `transitions` order is used.
+
+## Can guards be async?
+
+Yes. `when` can return `Promise<boolean>`.
+
+## Can effects be async?
+
+Yes. `effect` can return `Promise<context | void>`.
+
+## Is `back` always linear?
+
+`back` is based on visited history when you use `HISTORY_TARGET`.
+
+## Can I close immediately?
+
+Yes. Route `close` to `FLOW_TERMINAL.CLOSE`.
+
+## Can I enforce close confirmation?
+
+Yes. Route `close` to a `confirmExit` step when `context.dirty === true`.
+
+## Do transitions race if a user clicks quickly?
+
+No. `send` calls are serialized in a queue.
+
+## Does this include runtime dependencies?
+
+No runtime dependencies. `react` is a peer dependency for React bindings.
