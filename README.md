@@ -16,6 +16,76 @@ npm i react-toolkit-flow
 
 `react` is a peer dependency.
 
+## Next.js App Router (SSR / RSC)
+
+Use subpath imports to keep server and client code separated:
+
+- Server code (RSC, route handlers, server actions): `react-toolkit-flow/core`
+- Client components (hooks/provider/renderer): `react-toolkit-flow/react`
+
+`react-toolkit-flow/react` is a client entrypoint and is marked with `"use client"`.
+The root package also exposes a `react-server` condition that resolves to core-only exports in RSC.
+
+```tsx
+// app/page.tsx (Server Component)
+import { type FlowFlow } from "react-toolkit-flow/core";
+import { WizardClient } from "./WizardClient";
+
+type StepId = "start" | "done";
+type Event = "next";
+type Ctx = { ok: boolean };
+
+const flow: FlowFlow<Ctx, StepId, Event> = {
+  initial: "start",
+  context: { ok: true },
+  steps: { start: {}, done: {} },
+  transitions: [{ from: "start", event: "next", to: "done" }]
+};
+
+export default function Page() {
+  return <WizardClient flow={flow} />;
+}
+```
+
+```tsx
+// app/WizardClient.tsx (Client Component)
+"use client";
+
+import {
+  FlowProvider,
+  FlowStepRenderer,
+  useFlow,
+  type FlowReactFlow
+} from "react-toolkit-flow/react";
+
+type StepId = "start" | "done";
+type Event = "next";
+type Ctx = { ok: boolean };
+
+const Start = () => {
+  const { api } = useFlow<Ctx, StepId, Event>();
+  return <button onClick={() => api.next()}>Next</button>;
+};
+
+const Done = () => <div>Done</div>;
+
+export const WizardClient = ({ flow }: { flow: Omit<FlowReactFlow<Ctx, StepId, Event>, "steps"> }) => {
+  const clientFlow: FlowReactFlow<Ctx, StepId, Event> = {
+    ...flow,
+    steps: {
+      start: { component: Start },
+      done: { component: Done }
+    }
+  };
+
+  return (
+    <FlowProvider flow={clientFlow}>
+      <FlowStepRenderer<Ctx, StepId, Event> />
+    </FlowProvider>
+  );
+};
+```
+
 ## Core Model
 
 One model for all flows:

@@ -1,3 +1,5 @@
+"use client";
+
 export { FlowProvider } from "./context";
 export { FlowStepRenderer } from "./FlowStepRenderer";
 export { useFlow, useFlowApi, useFlowSnapshot } from "./hooks";
