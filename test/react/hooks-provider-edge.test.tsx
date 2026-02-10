@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 
-import React from "react";
 import { act, render, screen } from "@testing-library/react";
 
 import { JOURNEY_STATUS, HISTORY_TARGET, JOURNEY_TERMINAL, type JourneyMachine } from "@/src";
@@ -252,6 +251,8 @@ describe("react hooks/provider edge cases", () => {
       updateContext: () => snapshot,
       clearStepError: () => snapshot,
       reset: () => snapshot,
+      trimHistory: () => snapshot,
+      clearHistory: () => snapshot,
       subscribe: () => () => {}
     };
 
@@ -314,6 +315,8 @@ describe("react hooks/provider edge cases", () => {
       updateContext: () => snapshot,
       clearStepError: () => snapshot,
       reset: () => snapshot,
+      trimHistory: () => snapshot,
+      clearHistory: () => snapshot,
       subscribe: () => () => {}
     };
 
@@ -360,6 +363,8 @@ describe("react hooks/provider edge cases", () => {
       updateContext: () => snapshot,
       clearStepError: () => snapshot,
       reset: () => snapshot,
+      trimHistory: () => snapshot,
+      clearHistory: () => snapshot,
       subscribe: () => () => {}
     };
 
@@ -406,6 +411,8 @@ describe("react hooks/provider edge cases", () => {
       updateContext: () => snapshot,
       clearStepError,
       reset: () => snapshot,
+      trimHistory: () => snapshot,
+      clearHistory: () => snapshot,
       subscribe: () => () => {}
     };
 
@@ -452,6 +459,8 @@ describe("react hooks/provider edge cases", () => {
       updateContext: () => snapshot,
       clearStepError: () => snapshot,
       reset: () => snapshot,
+      trimHistory: () => snapshot,
+      clearHistory: () => snapshot,
       subscribe: () => unsubscribe
     };
 

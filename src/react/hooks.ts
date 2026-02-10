@@ -147,6 +147,17 @@ export const useJourneyApi = <
     machine.reset();
   }, [machine]);
 
+  const trimHistory = React.useCallback(
+    (maxHistory?: number) => {
+      machine.trimHistory(maxHistory);
+    },
+    [machine]
+  );
+
+  const clearHistory = React.useCallback(() => {
+    machine.clearHistory();
+  }, [machine]);
+
   return {
     send,
     goTo,
@@ -156,7 +167,9 @@ export const useJourneyApi = <
     submit,
     clearStepError,
     updateContext,
-    reset
+    reset,
+    trimHistory,
+    clearHistory
   };
 };
 

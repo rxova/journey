@@ -89,6 +89,37 @@ export const buildSnapshot = <TContext, TStepId extends string>(
   async: asyncState
 });
 
+export const resolveMaxHistory = (
+  value: number | null | undefined,
+  fallback: number
+): number | null => {
+  if (value === null) {
+    return null;
+  }
+  if (value === undefined) {
+    return fallback;
+  }
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+  return Math.max(0, Math.floor(value));
+};
+
+export const trimHistory = <TStepId extends string>(
+  history: readonly TStepId[],
+  maxHistory: number | null
+): { next: TStepId[]; trimmed: TStepId[] } => {
+  if (maxHistory === null || history.length <= maxHistory) {
+    return { next: [...history], trimmed: [] };
+  }
+
+  const trimCount = history.length - maxHistory;
+  return {
+    next: history.slice(trimCount),
+    trimmed: history.slice(0, trimCount)
+  };
+};
+
 export const resolveHistoryTarget = <TContext, TStepId extends string>(
   snapshot: JourneySnapshot<TContext, TStepId>,
   steps: Record<TStepId, unknown>

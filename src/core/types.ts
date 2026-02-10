@@ -137,6 +137,21 @@ export type JourneyPersistedState<TContext, TStepId extends string> = {
   snapshot: JourneyPersistedSnapshot<TContext, TStepId>;
 };
 
+export type JourneyHistoryOverflowReason = "auto" | "manual" | "hydrate";
+
+export type JourneyHistoryOverflow<TStepId extends string> = {
+  previous: readonly TStepId[];
+  next: readonly TStepId[];
+  trimmed: readonly TStepId[];
+  maxHistory: number;
+  reason: JourneyHistoryOverflowReason;
+};
+
+export type JourneyHistoryOptions<TStepId extends string> = {
+  maxHistory?: number | null;
+  onOverflow?: (info: JourneyHistoryOverflow<TStepId>) => void;
+};
+
 export type JourneyStorage = {
   getItem: (key: string) => string | null;
   setItem: (key: string, value: string) => void;
@@ -171,6 +186,7 @@ export type JourneyDefinition<
 
 export type JourneyMachineOptions<TContext, TStepId extends string> = {
   persistence?: JourneyPersistenceOptions<TContext, TStepId>;
+  history?: JourneyHistoryOptions<TStepId>;
 };
 
 export type JourneySendResult<TContext, TStepId extends string> = {
@@ -192,5 +208,7 @@ export type JourneyMachine<
   updateContext: (updater: (context: TContext) => TContext) => JourneySnapshot<TContext, TStepId>;
   clearStepError: (stepId?: TStepId) => JourneySnapshot<TContext, TStepId>;
   reset: () => JourneySnapshot<TContext, TStepId>;
+  trimHistory: (maxHistory?: number) => JourneySnapshot<TContext, TStepId>;
+  clearHistory: () => JourneySnapshot<TContext, TStepId>;
   subscribe: (listener: () => void) => () => void;
 };

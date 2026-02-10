@@ -13,7 +13,10 @@ import type {
   JourneyDefinition,
   JourneyMachine,
   JourneyMachineOptions,
-  JourneySendResult
+  JourneySendResult,
+  JourneyHistoryOverflowReason,
+  JourneyHistoryOptions,
+  JourneySnapshot
 } from "./types";
 import {
   assertStepExists,
@@ -26,9 +29,13 @@ import {
   resolveHistoryTarget,
   selectTransition,
   transitionSnapshot,
-  buildSnapshot
+  buildSnapshot,
+  resolveMaxHistory,
+  trimHistory
 } from "./machine-helpers";
 import { createPersistenceController } from "./persistence";
+
+const DEFAULT_MAX_HISTORY = 50;
 
 export const createJourneyMachine = <
   TContext,
@@ -84,6 +91,10 @@ export const createJourneyMachine = <
     }
   }
 
+  const historyOptions: JourneyHistoryOptions<TStepId> = options?.history ?? {};
+  const maxHistory = resolveMaxHistory(historyOptions.maxHistory, DEFAULT_MAX_HISTORY);
+  const onOverflow = historyOptions.onOverflow;
+
   const { clearOnReset, hydrateSnapshot, persistSnapshot, removePersistedSnapshot } =
     createPersistenceController({
       initial: journey.initial,
@@ -92,13 +103,47 @@ export const createJourneyMachine = <
       ...(options ? { options } : {})
     });
 
+  const applyHistoryLimit = (
+    nextSnapshot: JourneySnapshot<TContext, TStepId>,
+    reason: JourneyHistoryOverflowReason
+  ): JourneySnapshot<TContext, TStepId> => {
+    const resolvedMax = maxHistory;
+    if (resolvedMax === null) {
+      return nextSnapshot;
+    }
+
+    const { next, trimmed } = trimHistory(nextSnapshot.history, resolvedMax);
+    if (trimmed.length === 0) {
+      return nextSnapshot;
+    }
+
+    onOverflow?.({
+      previous: nextSnapshot.history,
+      next,
+      trimmed,
+      maxHistory: resolvedMax,
+      reason
+    });
+
+    return buildSnapshot(
+      nextSnapshot.current,
+      nextSnapshot.context,
+      next,
+      nextSnapshot.status,
+      nextSnapshot.async
+    );
+  };
+
   let snapshot = hydrateSnapshot();
   const listeners = new Set<() => void>();
   let sendQueue: Promise<void> = Promise.resolve();
-  snapshot = {
-    ...snapshot,
-    async: buildInitialAsyncState(journey.steps)
-  };
+  snapshot = applyHistoryLimit(
+    {
+      ...snapshot,
+      async: buildInitialAsyncState(journey.steps)
+    },
+    "hydrate"
+  );
 
   const notify = () => {
     for (const listener of listeners) {
@@ -188,6 +233,7 @@ export const createJourneyMachine = <
         JOURNEY_STATUS.RUNNING,
         buildInitialAsyncState(journey.steps)
       );
+      snapshot = applyHistoryLimit(snapshot, "auto");
       if (clearOnReset) {
         removePersistedSnapshot();
       } else {
@@ -201,6 +247,7 @@ export const createJourneyMachine = <
         ...snapshot,
         context: updater(snapshot.context)
       };
+      snapshot = applyHistoryLimit(snapshot, "auto");
       persistSnapshot(snapshot);
       notify();
       return snapshot;
@@ -214,6 +261,55 @@ export const createJourneyMachine = <
       setStepIdle(resolvedStep);
       return snapshot;
     },
+    trimHistory: (manualMaxHistory) => {
+      const resolvedMax = resolveMaxHistory(
+        manualMaxHistory ?? historyOptions.maxHistory,
+        DEFAULT_MAX_HISTORY
+      );
+      const { next, trimmed } = trimHistory(snapshot.history, resolvedMax);
+      if (trimmed.length === 0) {
+        return snapshot;
+      }
+      onOverflow?.({
+        previous: snapshot.history,
+        next,
+        trimmed,
+        maxHistory: resolvedMax ?? DEFAULT_MAX_HISTORY,
+        reason: "manual"
+      });
+      snapshot = buildSnapshot(
+        snapshot.current,
+        snapshot.context,
+        next,
+        snapshot.status,
+        snapshot.async
+      );
+      persistSnapshot(snapshot);
+      notify();
+      return snapshot;
+    },
+    clearHistory: () => {
+      if (snapshot.history.length === 0) {
+        return snapshot;
+      }
+      onOverflow?.({
+        previous: snapshot.history,
+        next: [],
+        trimmed: snapshot.history,
+        maxHistory: 0,
+        reason: "manual"
+      });
+      snapshot = buildSnapshot(
+        snapshot.current,
+        snapshot.context,
+        [],
+        snapshot.status,
+        snapshot.async
+      );
+      persistSnapshot(snapshot);
+      notify();
+      return snapshot;
+    },
     send: (event) => {
       const run = async (): Promise<JourneySendResult<TContext, TStepId>> => {
         if (snapshot.status !== JOURNEY_STATUS.RUNNING) {
@@ -225,7 +321,10 @@ export const createJourneyMachine = <
         if (isGoToEvent(event)) {
           assertStepExists(journey.steps, event.to, `Cannot goTo unknown step "${event.to}".`);
           setStepIdle(fromStep);
-          snapshot = transitionSnapshot(snapshot, event.to, snapshot.context);
+          snapshot = applyHistoryLimit(
+            transitionSnapshot(snapshot, event.to, snapshot.context),
+            "auto"
+          );
           persistSnapshot(snapshot);
           notify();
           return buildSendResult(snapshot, true, JOURNEY_EVENT.GO_TO);
@@ -299,6 +398,7 @@ export const createJourneyMachine = <
                 ? JOURNEY_STATUS.COMPLETE
                 : JOURNEY_STATUS.CLOSED
           };
+          snapshot = applyHistoryLimit(snapshot, "auto");
           persistSnapshot(snapshot);
           notify();
           return buildSendResult(snapshot, true, transition.id);
@@ -307,7 +407,10 @@ export const createJourneyMachine = <
         if (transition.to === HISTORY_TARGET) {
           const { target, history } = resolveHistoryTarget(snapshot, journey.steps);
           assertStepExists(journey.steps, target, `Transition points to unknown step "${target}".`);
-          snapshot = buildSnapshot(target, nextContext, history, snapshot.status, snapshot.async);
+          snapshot = applyHistoryLimit(
+            buildSnapshot(target, nextContext, history, snapshot.status, snapshot.async),
+            "auto"
+          );
           persistSnapshot(snapshot);
           notify();
           return buildSendResult(snapshot, true, transition.id);
@@ -322,8 +425,7 @@ export const createJourneyMachine = <
         );
 
         const nextSnapshot = transitionSnapshot(snapshot, resolvedTarget, nextContext);
-
-        snapshot = nextSnapshot;
+        snapshot = applyHistoryLimit(nextSnapshot, "auto");
         persistSnapshot(snapshot);
         notify();
 
