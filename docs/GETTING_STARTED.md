@@ -4,8 +4,8 @@ This guide is written for junior developers. You can copy-paste every step.
 
 If you want the smallest possible example first, open:
 
-- `examples/simple-flow.tsx`
-- `examples/simple-sequence.flow.tsx`
+- `packages/react/examples/simple-flow.tsx`
+- `packages/react/examples/simple-sequence.flow.tsx`
 
 ## Quickstarts
 
@@ -21,7 +21,7 @@ import {
   useJourney,
   JOURNEY_TERMINAL,
   type JourneyReactDefinition
-} from "@rxova/journey";
+} from "@rxova/journey-react";
 
 type StepId = "start" | "review";
 type Ctx = { name: string };
@@ -84,7 +84,7 @@ import {
   createJourneyMachine,
   JOURNEY_TERMINAL,
   type JourneyDefinition
-} from "@rxova/journey/core";
+} from "@rxova/journey-core";
 
 type StepId = "a" | "b";
 type Event = "next" | "submit";
@@ -129,7 +129,7 @@ Use this to restore step + context after refresh.
 ## 1. Install
 
 ```bash
-npm i @rxova/journey
+npm i @rxova/journey-react
 ```
 
 ## 2. Define Your Step IDs and Context

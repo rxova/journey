@@ -1,6 +1,6 @@
-[![npm version](https://img.shields.io/npm/v/@rxova/journey)](https://www.npmjs.com/package/@rxova/journey)
-[![npm downloads](https://img.shields.io/npm/dm/@rxova/journey)](https://www.npmjs.com/package/@rxova/journey)
-[![Bundlephobia](https://img.shields.io/bundlephobia/minzip/@rxova/journey)](https://bundlephobia.com/package/@rxova/journey)
+[![npm version](https://img.shields.io/npm/v/@rxova/journey-react)](https://www.npmjs.com/package/@rxova/journey-react)
+[![npm downloads](https://img.shields.io/npm/dm/@rxova/journey-react)](https://www.npmjs.com/package/@rxova/journey-react)
+[![Bundlephobia](https://img.shields.io/bundlephobia/minzip/@rxova/journey-react)](https://bundlephobia.com/package/@rxova/journey-react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
 ![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)
 ![Build checks](https://img.shields.io/badge/build-lint%20%7C%20typecheck%20%7C%20tests-brightgreen)
@@ -14,12 +14,13 @@
   <a href="./docs/API.md">API</a> |
   <a href="./docs/RECIPES.md">Recipes</a> |
   <a href="./docs/FAQ.md">FAQs</a> |
-  <a href="./examples/README.md">Examples</a>
+  <a href="./packages/react/examples/README.md">Examples</a>
 </p>
 
 # What Is Rxova Journey
 
 Rxova Journey is a zero dependency, <3kb gzipped state-machine designed to control non-linear flows. This is specially usefull for:
+
 - Checkout processes with conditional steps
 - Non‑linear wizards and steppers
 - Multi‑step onboarding with branching logic
@@ -36,17 +37,21 @@ Rxova Journey solves those issues with a single declarative model: a graph of `s
 - Dynamic path length with guarded transitions (`when`) and deterministic back behavior.
 - Async guard/effect lifecycle with explicit runtime phases.
 - Optional persistence with versioned migrations and resets.
-- SSR/RSC-safe `core`, client-only `react` entrypoint, and `react-server` condition.
+- SSR/RSC-safe `core` package and client-only `react` package.
 - Strict TypeScript typing across steps, events, payloads, and API methods.
 - Size budgets enforced for core and react entrypoints.
 
 ## Install
 
 ```bash
-npm i @rxova/journey
+# core (headless)
+npm i @rxova/journey-core
+
+# react bindings (includes core)
+npm i @rxova/journey-react
 ```
 
-`react` is a peer dependency.
+`react` is a peer dependency for `@rxova/journey-react`.
 
 ## Quickstart
 
@@ -56,7 +61,7 @@ npm i @rxova/journey
 ### Vanilla
 
 ```ts
-import { createJourneyMachine, JOURNEY_TERMINAL } from "@rxova/journey/core";
+import { createJourneyMachine, JOURNEY_TERMINAL } from "@rxova/journey-core";
 
 type StepId = "start" | "details" | "review" | "done";
 type Event = "next" | "back";
@@ -110,7 +115,7 @@ import {
   HISTORY_TARGET,
   JOURNEY_TERMINAL,
   type JourneyReactDefinition
-} from "@rxova/journey";
+} from "@rxova/journey-react";
 
 type StepId = "start" | "details" | "review" | "confirmClose";
 type Event = "next" | "back" | "close" | "submit";
@@ -186,35 +191,34 @@ This library is designed for modal multi-step forms where path length changes dy
 
 ## Why This Over Other Wizard Libraries
 
-| Area                               | Ours                                                                                                                            | Typical index-based wizard libs                                                     |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Flow modeling                      | ✅ Declarative graph (`steps` + ordered `transitions`) as the single source of truth.                                           | ⚠️ Usually step index + imperative branching spread across components.              |
-| Conditional branching / skip       | ✅ First-class via `when` guards in transitions.                                                                                | ⚠️ Commonly manual `if` branching in UI handlers.                                   |
-| Runtime dynamic steps              | ✅ Supported by rebuilding `steps` + `transitions` graph at runtime (see `examples/dynamic-steps.flow.tsx`).                    | ⚠️ Often limited to hide/show step UI while navigation logic remains index-coupled. |
-| Deterministic back behavior        | ✅ Built-in with history semantics (`HISTORY_TARGET`).                                                                          | ⚠️ Frequently manual index/history bookkeeping.                                     |
-| Async validation/effects lifecycle | ✅ Built-in async `when`/`effect` with per-step phase/error capture in `snapshot.async`.                                        | ⚠️ Usually hand-rolled loading/error state + race handling.                         |
-| Lifecycle visibility               | ✅ Explicit runtime phases (`idle`, `evaluating-when`, `running-effect`, `error`) for each step.                                | ⚠️ Lifecycle is often implicit and dispersed across local state/effects.            |
-| Persistence                        | ✅ Optional persistence adapter with versioning, migration, and reset behavior controls.                                        | ⚠️ Commonly custom localStorage/session code with no standard migration path.       |
-| SSR / RSC safety                   | ✅ `core` is server-safe, `react` entry is client-bound (`"use client"`), root supports `react-server` condition.               | ⚠️ Frequently undocumented or prone to context/hook usage in server paths.          |
-| Framework compatibility            | ✅ Documented patterns for Next.js App Router, Pages Router, Remix/React Router SSR, and custom SSR.                            | ⚠️ Often focused on CSR-first usage with partial SSR guidance.                      |
-| Type safety                        | ✅ Strong generic typing for steps, events, payloads, context, and API methods.                                                 | ⚠️ Often looser event/payload typing or any-like extension points.                  |
-| Bundle-size discipline             | ✅ Size-limit budgets enforced: core import target `2.2 kB`, react hook target `3.6 kB`, root core tree-shaken target `2.3 kB`. | ⚠️ Often no explicit size budgets or CI guardrails.                                 |
-| Coverage                           | ✅ Test suite runs at 100% (statements, branches, functions, lines).                                                            | ⚠️ Coverage targets are often lower or not enforced.                                |
-| API ergonomics / dev warnings      | ✅ Clear provider-boundary errors (e.g. `useJourney must be used within <JourneyProvider>.`).                                   | ⚠️ Commonly generic runtime null/undefined errors.                                  |
+| Area                               | Ours                                                                                                                        | Typical index-based wizard libs                                                     |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Flow modeling                      | ✅ Declarative graph (`steps` + ordered `transitions`) as the single source of truth.                                       | ⚠️ Usually step index + imperative branching spread across components.              |
+| Conditional branching / skip       | ✅ First-class via `when` guards in transitions.                                                                            | ⚠️ Commonly manual `if` branching in UI handlers.                                   |
+| Runtime dynamic steps              | ✅ Supported by rebuilding `steps` + `transitions` graph at runtime (see `packages/react/examples/dynamic-steps.flow.tsx`). | ⚠️ Often limited to hide/show step UI while navigation logic remains index-coupled. |
+| Deterministic back behavior        | ✅ Built-in with history semantics (`HISTORY_TARGET`).                                                                      | ⚠️ Frequently manual index/history bookkeeping.                                     |
+| Async validation/effects lifecycle | ✅ Built-in async `when`/`effect` with per-step phase/error capture in `snapshot.async`.                                    | ⚠️ Usually hand-rolled loading/error state + race handling.                         |
+| Lifecycle visibility               | ✅ Explicit runtime phases (`idle`, `evaluating-when`, `running-effect`, `error`) for each step.                            | ⚠️ Lifecycle is often implicit and dispersed across local state/effects.            |
+| Persistence                        | ✅ Optional persistence adapter with versioning, migration, and reset behavior controls.                                    | ⚠️ Commonly custom localStorage/session code with no standard migration path.       |
+| SSR / RSC safety                   | ✅ `core` is server-safe and `react` is client-bound (`"use client"`).                                                      | ⚠️ Frequently undocumented or prone to context/hook usage in server paths.          |
+| Framework compatibility            | ✅ Documented patterns for Next.js App Router, Pages Router, Remix/React Router SSR, and custom SSR.                        | ⚠️ Often focused on CSR-first usage with partial SSR guidance.                      |
+| Type safety                        | ✅ Strong generic typing for steps, events, payloads, context, and API methods.                                             | ⚠️ Often looser event/payload typing or any-like extension points.                  |
+| Bundle-size discipline             | ✅ Size-limit budgets enforced: core import target `2.2 kB`, react hook target `3.6 kB`.                                    | ⚠️ Often no explicit size budgets or CI guardrails.                                 |
+| Coverage                           | ✅ Test suite runs at 100% (statements, branches, functions, lines).                                                        | ⚠️ Coverage targets are often lower or not enforced.                                |
+| API ergonomics / dev warnings      | ✅ Clear provider-boundary errors (e.g. `useJourney must be used within <JourneyProvider>.`).                               | ⚠️ Commonly generic runtime null/undefined errors.                                  |
 
 ## Next.js App Router (SSR / RSC)
 
 Use subpath imports to keep server and client code separated:
 
-- Server code (RSC, route handlers, server actions): `@rxova/journey/core`
-- Client components (hooks/provider/renderer): `@rxova/journey/react`
+- Server code (RSC, route handlers, server actions): `@rxova/journey-core`
+- Client components (hooks/provider/renderer): `@rxova/journey-react`
 
-`@rxova/journey/react` is a client entrypoint and is marked with `"use client"`.
-The root package also exposes a `react-server` condition that resolves to core-only exports in RSC.
+`@rxova/journey-react` is a client entrypoint and is marked with `"use client"`.
 
 ```tsx
 // app/page.tsx (Server Component)
-import { type JourneyDefinition } from "@rxova/journey/core";
+import { type JourneyDefinition } from "@rxova/journey-core";
 import { WizardClient } from "./WizardClient";
 
 type StepId = "start" | "done";
@@ -242,7 +246,7 @@ import {
   JourneyStepRenderer,
   useJourney,
   type JourneyReactDefinition
-} from "@rxova/journey/react";
+} from "@rxova/journey-react";
 
 type StepId = "start" | "done";
 type Event = "next";
@@ -278,15 +282,15 @@ export const WizardClient = ({
 
 ## Framework Compatibility
 
-- Next.js App Router: supported. Keep journey engine logic in server-safe imports (`@rxova/journey/core`) and UI hooks/provider in client components (`@rxova/journey/react`).
+- Next.js App Router: supported. Keep journey engine logic in server-safe imports (`@rxova/journey-core`) and UI hooks/provider in client components (`@rxova/journey-react`).
 - Next.js Pages Router: supported. Use React APIs normally in pages/components.
 - Remix / React Router SSR: supported. Keep provider/hooks inside client-rendered React trees; use core machine in shared/server code paths.
 - Vite SSR / custom React SSR: supported. `core` has no React dependency; `react` entry is client-bound.
 
 Import rule of thumb:
 
-- If code can execute on the server, import from `@rxova/journey/core`.
-- If code uses hooks/context/components, import from `@rxova/journey/react` in a client component/module.
+- If code can execute on the server, import from `@rxova/journey-core`.
+- If code uses hooks/context/components, import from `@rxova/journey-react` in a client component/module.
 
 ## Core Model
 
@@ -303,7 +307,7 @@ One model for all flows:
 - API details: [docs/API.md](./docs/API.md)
 - Practical patterns: [docs/RECIPES.md](./docs/RECIPES.md)
 - Common questions: [docs/FAQ.md](./docs/FAQ.md)
-- Example catalog: [examples/README.md](./examples/README.md)
+- Example catalog: [packages/react/examples/README.md](./packages/react/examples/README.md)
 - Quickstarts now include: React UI, Core headless, Persistence resume.
 - Recipes now include: analytics hooks, submit confirmation, API-branching, restart.
 
@@ -325,29 +329,29 @@ See [docs/API.md](./docs/API.md) and [docs/RECIPES.md](./docs/RECIPES.md) for fu
 
 Minimal:
 
-- [examples/simple-flow.tsx](./examples/simple-flow.tsx)
-- [examples/simple-sequence.flow.tsx](./examples/simple-sequence.flow.tsx)
-- [examples/simple-back.flow.tsx](./examples/simple-back.flow.tsx)
+- [packages/react/examples/simple-flow.tsx](./packages/react/examples/simple-flow.tsx)
+- [packages/react/examples/simple-sequence.flow.tsx](./packages/react/examples/simple-sequence.flow.tsx)
+- [packages/react/examples/simple-back.flow.tsx](./packages/react/examples/simple-back.flow.tsx)
 
 Specific patterns:
 
-- [examples/conditional-skip.flow.tsx](./examples/conditional-skip.flow.tsx)
-- [examples/first-match-wins.flow.tsx](./examples/first-match-wins.flow.tsx)
-- [examples/custom-event.flow.tsx](./examples/custom-event.flow.tsx)
-- [examples/async-guard.flow.tsx](./examples/async-guard.flow.tsx)
-- [examples/async-effect.flow.tsx](./examples/async-effect.flow.tsx)
-- [examples/dynamic-steps.flow.tsx](./examples/dynamic-steps.flow.tsx)
-- [examples/confirm-close.flow.tsx](./examples/confirm-close.flow.tsx)
-- [examples/go-to-jump.flow.tsx](./examples/go-to-jump.flow.tsx)
-- [examples/history-back.flow.tsx](./examples/history-back.flow.tsx)
+- [packages/react/examples/conditional-skip.flow.tsx](./packages/react/examples/conditional-skip.flow.tsx)
+- [packages/react/examples/first-match-wins.flow.tsx](./packages/react/examples/first-match-wins.flow.tsx)
+- [packages/react/examples/custom-event.flow.tsx](./packages/react/examples/custom-event.flow.tsx)
+- [packages/react/examples/async-guard.flow.tsx](./packages/react/examples/async-guard.flow.tsx)
+- [packages/react/examples/async-effect.flow.tsx](./packages/react/examples/async-effect.flow.tsx)
+- [packages/react/examples/dynamic-steps.flow.tsx](./packages/react/examples/dynamic-steps.flow.tsx)
+- [packages/react/examples/confirm-close.flow.tsx](./packages/react/examples/confirm-close.flow.tsx)
+- [packages/react/examples/go-to-jump.flow.tsx](./packages/react/examples/go-to-jump.flow.tsx)
+- [packages/react/examples/history-back.flow.tsx](./packages/react/examples/history-back.flow.tsx)
 
 Real journeys:
 
-- [examples/move-users.flow.tsx](./examples/move-users.flow.tsx)
-- [examples/order-cards.flow.tsx](./examples/order-cards.flow.tsx)
-- [examples/onboarding.flow.tsx](./examples/onboarding.flow.tsx)
-- [examples/checkout.flow.tsx](./examples/checkout.flow.tsx)
-- [examples/support-ticket.flow.tsx](./examples/support-ticket.flow.tsx)
+- [packages/react/examples/move-users.flow.tsx](./packages/react/examples/move-users.flow.tsx)
+- [packages/react/examples/order-cards.flow.tsx](./packages/react/examples/order-cards.flow.tsx)
+- [packages/react/examples/onboarding.flow.tsx](./packages/react/examples/onboarding.flow.tsx)
+- [packages/react/examples/checkout.flow.tsx](./packages/react/examples/checkout.flow.tsx)
+- [packages/react/examples/support-ticket.flow.tsx](./packages/react/examples/support-ticket.flow.tsx)
 
 ## Scripts
 
@@ -368,15 +372,15 @@ npm run size
 ## Bundle Size
 
 - Package metadata includes `"sideEffects": false` to maximize dead-code elimination.
-- Public entrypoints are split: root (`@rxova/journey`), core (`@rxova/journey/core`), and react (`@rxova/journey/react`).
+- Public entrypoints are split: core (`@rxova/journey-core`) and react (`@rxova/journey-react`).
 - `npm run size` runs `size-limit` import budgets for release checks.
 - `npm run size:check` runs `size-limit` import budgets in CI for battle-tested bundle regression checks.
 
 Recommended import style for smallest bundles:
 
 ```ts
-import { createJourneyMachine } from "@rxova/journey/core";
-import { JourneyProvider, useJourney } from "@rxova/journey/react";
+import { createJourneyMachine } from "@rxova/journey-core";
+import { JourneyProvider, useJourney } from "@rxova/journey-react";
 ```
 
 ## License

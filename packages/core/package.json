@@ -1,0 +1,36 @@
+{
+  "name": "@rxova/journey-core",
+  "version": "0.1.0",
+  "description": "Journey core state machine.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "pnpm run clean && node ./scripts/build.mjs && tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "size": "pnpm run size:check",
+    "size:check": "pnpm run build && size-limit"
+  },
+  "size-limit": [
+    {
+      "name": "core/createJourneyMachine",
+      "path": "dist/index.js",
+      "import": "{ createJourneyMachine }",
+      "limit": "2.2 kB"
+    }
+  ]
+}
