@@ -98,5 +98,6 @@ export type JourneyProviderProps<
   journey: JourneyReactDefinition<TContext, TStepId, TCustomEvent, TEventPayloadMap>;
   machine?: JourneyMachine<TContext, TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap>;
   persistence?: JourneyPersistenceOptions<TContext, TStepId>;
+  resetOnJourneyChange?: boolean;
   children: React.ReactNode;
 };
