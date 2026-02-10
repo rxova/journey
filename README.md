@@ -69,21 +69,27 @@ const journey = {
 
 const machine = createJourneyMachine<Ctx, StepId, Event>(journey);
 
-machine.on("transition", (snapshot) => {
-  if (snapshot.stepId === "review") {
-    snapshot.context.name = "Ada";
-    snapshot.context.agreed = true;
+const unsubscribe = machine.subscribe(() => {
+  const snapshot = machine.getSnapshot();
+  if (snapshot.current === "review" && !snapshot.context.agreed) {
+    machine.updateContext((ctx) => ({ ...ctx, name: "Ada", agreed: true }));
   }
 
-  if (snapshot.stepId === JOURNEY_TERMINAL.COMPLETE) {
+  if (snapshot.current === JOURNEY_TERMINAL.COMPLETE) {
     // flow completed
   }
 });
 
-machine.start();
-machine.api.next(); // start -> details
-machine.api.next(); // details -> review (context updated)
-machine.api.next(); // review -> done
+const run = async () => {
+  try {
+    await machine.send({ type: "next" }); // start -> details
+    await machine.send({ type: "next" }); // details -> review (context updated)
+    await machine.send({ type: "next" }); // review -> done
+  } finally {
+    unsubscribe();
+  }
+};
+void run();
 ```
 
 ### React
