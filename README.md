@@ -1,5 +1,3 @@
-# @rxova/journey
-
 [![npm version](https://img.shields.io/npm/v/@rxova/journey)](https://www.npmjs.com/package/@rxova/journey)
 [![npm downloads](https://img.shields.io/npm/dm/@rxova/journey)](https://www.npmjs.com/package/@rxova/journey)
 [![Bundlephobia](https://img.shields.io/bundlephobia/minzip/@rxova/journey)](https://bundlephobia.com/package/@rxova/journey)
@@ -7,7 +5,167 @@
 ![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)
 ![Build checks](https://img.shields.io/badge/build-lint%20%7C%20typecheck%20%7C%20tests-brightgreen)
 
-Tiny, zero-runtime-dependency React journey/stepper built around one declarative journey model.
+<div align="center">
+  <img src="./docs/assets/logo-mark.png" alt="Rxova Journey Mark" width="320" />
+</div>
+
+<p align="center">
+  <a href="./docs/GETTING_STARTED.md">Get started</a> |
+  <a href="./docs/API.md">API</a> |
+  <a href="./docs/RECIPES.md">Recipes</a> |
+  <a href="./docs/FAQ.md">FAQs</a> |
+  <a href="./examples/README.md">Examples</a>
+</p>
+
+# What Is Rxova Journey
+
+Most stepper/flow libraries model the journey as a linear array of steps. That works for simple, fixed sequences, but it gets brittle once you need conditional branching, dynamic step counts, async guards/effects, or deterministic back behavior. You end up scattering logic across components, duplicating state, and fighting edge cases.
+
+Rxova Journey solves those issues with a single declarative model: a graph of `steps` and ordered `transitions`, plus runtime `history` and typed `context`. It stays tiny and dependency-free, while supporting branching, async lifecycle phases, persistence, and SSR/RSC-safe separation between `core` and `react`.
+
+## Features
+
+- One declarative model for steps, transitions, context, and history.
+- Dynamic path length with guarded transitions (`when`) and deterministic back behavior.
+- Async guard/effect lifecycle with explicit runtime phases.
+- Optional persistence with versioned migrations and resets.
+- SSR/RSC-safe `core`, client-only `react` entrypoint, and `react-server` condition.
+- Strict TypeScript typing across steps, events, payloads, and API methods.
+- Size budgets enforced for core and react entrypoints.
+
+## Install
+
+```bash
+npm i @rxova/journey
+```
+
+`react` is a peer dependency.
+
+## Quickstart
+
+- Vanilla (headless)
+- React (provider + renderer)
+
+### Vanilla
+
+```ts
+import { createJourneyMachine, JOURNEY_TERMINAL } from "@rxova/journey/core";
+
+type StepId = "start" | "details" | "review" | "done";
+type Event = "next" | "back";
+type Ctx = { name: string; agreed: boolean };
+
+const journey = {
+  initial: "start",
+  context: { name: "", agreed: false },
+  steps: { start: {}, details: {}, review: {}, done: {} },
+  transitions: [
+    { from: "start", event: "next", to: "details" },
+    { from: "details", event: "next", to: "review" },
+    { from: "review", event: "next", to: "done" },
+    { from: "*", event: "back", to: "details" }
+  ]
+};
+
+const machine = createJourneyMachine<Ctx, StepId, Event>(journey);
+
+machine.on("transition", (snapshot) => {
+  if (snapshot.stepId === "review") {
+    snapshot.context.name = "Ada";
+    snapshot.context.agreed = true;
+  }
+
+  if (snapshot.stepId === JOURNEY_TERMINAL.COMPLETE) {
+    // flow completed
+  }
+});
+
+machine.start();
+machine.api.next(); // start -> details
+machine.api.next(); // details -> review (context updated)
+machine.api.next(); // review -> done
+```
+
+### React
+
+```tsx
+import React from "react";
+import {
+  JourneyProvider,
+  JourneyStepRenderer,
+  useJourney,
+  HISTORY_TARGET,
+  JOURNEY_TERMINAL,
+  type JourneyReactDefinition
+} from "@rxova/journey";
+
+type StepId = "start" | "details" | "review" | "confirmExit";
+type Event = "next" | "back" | "close" | "submit";
+type Ctx = { dirty: boolean; includeDetails: boolean };
+
+const Start = () => {
+  const { api } = useJourney<Ctx, StepId, Event>();
+  return <button onClick={() => api.next()}>Next</button>;
+};
+
+const Details = () => {
+  const { api } = useJourney<Ctx, StepId, Event>();
+  return <button onClick={() => api.next()}>Next</button>;
+};
+
+const Review = () => {
+  const { api } = useJourney<Ctx, StepId, Event>();
+  return <button onClick={() => api.submit()}>Submit</button>;
+};
+
+const ConfirmClose = () => <div>Are you sure you want to close?</div>;
+
+const journey: JourneyReactDefinition<Ctx, StepId, Event> = {
+  initial: "start",
+  context: { dirty: false, includeDetails: true },
+  steps: {
+    start: { component: Start },
+    details: { component: Details },
+    review: { component: Review },
+    confirmExit: { component: ConfirmClose }
+  },
+  transitions: [
+    {
+      from: "start",
+      event: "next",
+      to: "details",
+      when: ({ context }) => context.includeDetails
+    },
+    {
+      from: "start",
+      event: "next",
+      to: "review",
+      when: ({ context }) => !context.includeDetails
+    },
+    { from: "details", event: "next", to: "review" },
+    { from: "*", event: "back", to: HISTORY_TARGET },
+    {
+      from: "*",
+      event: "close",
+      to: "confirmExit",
+      when: ({ context }) => context.dirty
+    },
+    {
+      from: "*",
+      event: "close",
+      to: JOURNEY_TERMINAL.CLOSE,
+      when: ({ context }) => !context.dirty
+    },
+    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
+  ]
+};
+
+export const App = () => (
+  <JourneyProvider journey={journey}>
+    <JourneyStepRenderer<Ctx, StepId, Event> />
+  </JourneyProvider>
+);
+```
 
 ## Why
 
@@ -15,8 +173,8 @@ This library is designed for modal multi-step forms where path length changes dy
 
 ## Why This Over Other Wizard Libraries
 
-| Area                               | Ours                                                                                                                            | Typical index-based wizard libs                                                     |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Area                               | Ours                                                                                                                           | Typical index-based wizard libs                                                    |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
 | Flow modeling                      | ✅ Declarative graph (`steps` + ordered `transitions`) as the single source of truth.                                           | ⚠️ Usually step index + imperative branching spread across components.              |
 | Conditional branching / skip       | ✅ First-class via `when` guards in transitions.                                                                                | ⚠️ Commonly manual `if` branching in UI handlers.                                   |
 | Runtime dynamic steps              | ✅ Supported by rebuilding `steps` + `transitions` graph at runtime (see `examples/dynamic-steps.journey.tsx`).                 | ⚠️ Often limited to hide/show step UI while navigation logic remains index-coupled. |
@@ -30,14 +188,6 @@ This library is designed for modal multi-step forms where path length changes dy
 | Bundle-size discipline             | ✅ Size-limit budgets enforced: core import target `2.2 kB`, react hook target `3.6 kB`, root core tree-shaken target `2.3 kB`. | ⚠️ Often no explicit size budgets or CI guardrails.                                 |
 | Coverage                           | ✅ Test suite runs at 100% (statements, branches, functions, lines).                                                            | ⚠️ Coverage targets are often lower or not enforced.                                |
 | API ergonomics / dev warnings      | ✅ Clear provider-boundary errors (e.g. `useJourney must be used within <JourneyProvider>.`).                                   | ⚠️ Commonly generic runtime null/undefined errors.                                  |
-
-## Install
-
-```bash
-npm i @rxova/journey
-```
-
-`react` is a peer dependency.
 
 ## Next.js App Router (SSR / RSC)
 
@@ -133,87 +283,6 @@ One model for all flows:
 - `transitions`: ordered graph edges (what can happen)
 - `context`: form/business state
 - `history`: runtime visited stack (for deterministic back behavior)
-
-## Quick Start
-
-```tsx
-import React from "react";
-import {
-  JourneyProvider,
-  JourneyStepRenderer,
-  useJourney,
-  HISTORY_TARGET,
-  JOURNEY_TERMINAL,
-  type JourneyReactDefinition
-} from "@rxova/journey";
-
-type StepId = "start" | "details" | "review" | "confirmExit";
-type Event = "next" | "back" | "close" | "submit";
-type Ctx = { dirty: boolean; includeDetails: boolean };
-
-const Start = () => {
-  const { api } = useJourney<Ctx, StepId, Event>();
-  return <button onClick={() => api.next()}>Next</button>;
-};
-
-const Details = () => {
-  const { api } = useJourney<Ctx, StepId, Event>();
-  return <button onClick={() => api.next()}>Next</button>;
-};
-
-const Review = () => {
-  const { api } = useJourney<Ctx, StepId, Event>();
-  return <button onClick={() => api.submit()}>Submit</button>;
-};
-
-const ConfirmClose = () => <div>Are you sure you want to close?</div>;
-
-const journey: JourneyReactDefinition<Ctx, StepId, Event> = {
-  initial: "start",
-  context: { dirty: false, includeDetails: true },
-  steps: {
-    start: { component: Start },
-    details: { component: Details },
-    review: { component: Review },
-    confirmExit: { component: ConfirmClose }
-  },
-  transitions: [
-    {
-      from: "start",
-      event: "next",
-      to: "details",
-      when: ({ context }) => context.includeDetails
-    },
-    {
-      from: "start",
-      event: "next",
-      to: "review",
-      when: ({ context }) => !context.includeDetails
-    },
-    { from: "details", event: "next", to: "review" },
-    { from: "*", event: "back", to: HISTORY_TARGET },
-    {
-      from: "*",
-      event: "close",
-      to: "confirmExit",
-      when: ({ context }) => context.dirty
-    },
-    {
-      from: "*",
-      event: "close",
-      to: JOURNEY_TERMINAL.CLOSE,
-      when: ({ context }) => !context.dirty
-    },
-    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
-  ]
-};
-
-export const App = () => (
-  <JourneyProvider journey={journey}>
-    <JourneyStepRenderer<Ctx, StepId, Event> />
-  </JourneyProvider>
-);
-```
 
 ## Learn Fast
 
