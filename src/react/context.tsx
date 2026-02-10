@@ -23,6 +23,7 @@ export const JourneyProvider = <
   journey,
   machine,
   persistence,
+  history,
   resetOnJourneyChange = false,
   children
 }: JourneyProviderProps<TContext, TStepId, TCustomEvent, TEventPayloadMap>) => {
@@ -31,17 +32,31 @@ export const JourneyProvider = <
   >(null);
   const journeyRef = React.useRef(journey);
   const persistenceRef = React.useRef(persistence);
+  const historyRef = React.useRef(history);
 
   const shouldResetInternal = resetOnJourneyChange && journeyRef.current !== journey;
   const shouldResetPersistence = persistenceRef.current !== persistence;
+  const shouldResetHistory = historyRef.current !== history;
 
-  if (!machine && (!internalMachineRef.current || shouldResetInternal || shouldResetPersistence)) {
-    internalMachineRef.current = createJourneyMachine(
-      journey,
-      persistence ? { persistence } : undefined
-    );
+  if (
+    !machine &&
+    (!internalMachineRef.current ||
+      shouldResetInternal ||
+      shouldResetPersistence ||
+      shouldResetHistory)
+  ) {
+    const machineOptions =
+      persistence || history
+        ? {
+            ...(persistence ? { persistence } : {}),
+            ...(history ? { history } : {})
+          }
+        : undefined;
+
+    internalMachineRef.current = createJourneyMachine(journey, machineOptions);
     journeyRef.current = journey;
     persistenceRef.current = persistence;
+    historyRef.current = history;
   }
 
   const resolvedMachine = machine ?? internalMachineRef.current!;

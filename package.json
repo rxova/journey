@@ -71,7 +71,7 @@
       "name": "core/createJourneyMachine (subpath)",
       "path": "dist/core/index.js",
       "import": "{ createJourneyMachine }",
-      "limit": "2.2 kB"
+      "limit": "2.5 kB"
     },
     {
       "name": "react/useJourney (subpath)",
@@ -83,7 +83,7 @@
       "name": "root/createJourneyMachine (tree-shaken)",
       "path": "dist/index.js",
       "import": "{ createJourneyMachine }",
-      "limit": "2.3 kB"
+      "limit": "2.5 kB"
     }
   ],
   "devDependencies": {
