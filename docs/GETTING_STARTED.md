@@ -4,30 +4,30 @@ This guide is written for junior developers. You can copy-paste every step.
 
 If you want the smallest possible example first, open:
 
-- `examples/simple-flow.tsx`
-- `examples/simple-sequence.flow.tsx`
+- `examples/simple-journey.tsx`
+- `examples/simple-sequence.journey.tsx`
 
 ## Quickstarts
 
 ### A) Fastest UI Quickstart (React)
 
-Use this when you want a visible flow in under 5 minutes.
+Use this when you want a visible journey in under 5 minutes.
 
 ```tsx
 import React from "react";
 import {
-  FlowProvider,
-  FlowStepRenderer,
-  useFlow,
-  FLOW_TERMINAL,
-  type FlowReactFlow
-} from "react-toolkit-flow";
+  JourneyProvider,
+  JourneyStepRenderer,
+  useJourney,
+  JOURNEY_TERMINAL,
+  type JourneyReactDefinition
+} from "react-toolkit-journey";
 
 type StepId = "start" | "review";
 type Ctx = { name: string };
 
 const Start = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return (
     <button
       onClick={() => {
@@ -41,7 +41,7 @@ const Start = () => {
 };
 
 const Review = () => {
-  const { snapshot, api } = useFlow<Ctx, StepId>();
+  const { snapshot, api } = useJourney<Ctx, StepId>();
   return (
     <div>
       <p>Hello {snapshot.context.name}</p>
@@ -50,7 +50,7 @@ const Review = () => {
   );
 };
 
-const flow: FlowReactFlow<Ctx, StepId> = {
+const journey: JourneyReactDefinition<Ctx, StepId> = {
   initial: "start",
   context: { name: "" },
   steps: {
@@ -59,14 +59,14 @@ const flow: FlowReactFlow<Ctx, StepId> = {
   },
   transitions: [
     { from: "start", event: "next", to: "review" },
-    { from: "review", event: "submit", to: FLOW_TERMINAL.COMPLETE }
+    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
   ]
 };
 
 export const App = () => (
-  <FlowProvider flow={flow}>
-    <FlowStepRenderer<Ctx, StepId> />
-  </FlowProvider>
+  <JourneyProvider journey={journey}>
+    <JourneyStepRenderer<Ctx, StepId> />
+  </JourneyProvider>
 );
 ```
 
@@ -75,13 +75,17 @@ export const App = () => (
 Use this in tests, services, or custom renderers.
 
 ```ts
-import { createFlowMachine, FLOW_TERMINAL, type FlowFlow } from "react-toolkit-flow/core";
+import {
+  createJourneyMachine,
+  JOURNEY_TERMINAL,
+  type JourneyDefinition
+} from "react-toolkit-journey/core";
 
 type StepId = "a" | "b";
 type Event = "next" | "submit";
 type Ctx = { count: number };
 
-const flow: FlowFlow<Ctx, StepId, Event> = {
+const journey: JourneyDefinition<Ctx, StepId, Event> = {
   initial: "a",
   context: { count: 0 },
   steps: { a: {}, b: {} },
@@ -92,11 +96,11 @@ const flow: FlowFlow<Ctx, StepId, Event> = {
       to: "b",
       effect: ({ context }) => ({ ...context, count: context.count + 1 })
     },
-    { from: "b", event: "submit", to: FLOW_TERMINAL.COMPLETE }
+    { from: "b", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
   ]
 };
 
-const machine = createFlowMachine(flow);
+const machine = createJourneyMachine(journey);
 await machine.send({ type: "next" });
 console.log(machine.getSnapshot()); // current: "b", context.count: 1
 ```
@@ -106,21 +110,21 @@ console.log(machine.getSnapshot()); // current: "b", context.count: 1
 Use this to restore step + context after refresh.
 
 ```tsx
-<FlowProvider
-  flow={flow}
+<JourneyProvider
+  journey={journey}
   persistence={{
-    key: "my-flow",
+    key: "my-journey",
     version: 1
   }}
 >
-  <FlowStepRenderer />
-</FlowProvider>
+  <JourneyStepRenderer />
+</JourneyProvider>
 ```
 
 ## 1. Install
 
 ```bash
-npm i react-toolkit-flow
+npm i react-toolkit-journey
 ```
 
 ## 2. Define Your Step IDs and Context
@@ -139,7 +143,7 @@ Each component should focus on UI.
 
 ```tsx
 const Start = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.next()}>Continue</button>;
 };
 ```
@@ -147,7 +151,7 @@ const Start = () => {
 ## 4. Create the Flow
 
 ```ts
-const flow: FlowReactFlow<Ctx, StepId> = {
+const journey: JourneyReactDefinition<Ctx, StepId> = {
   initial: "start",
   context: { includeDetails: true, dirty: false },
   steps: {
@@ -170,7 +174,7 @@ const flow: FlowReactFlow<Ctx, StepId> = {
     },
     { from: "details", event: "next", to: "review" },
     { from: "*", event: "back", to: HISTORY_TARGET },
-    { from: "review", event: "submit", to: FLOW_TERMINAL.COMPLETE }
+    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
   ]
 };
 ```
@@ -178,9 +182,9 @@ const flow: FlowReactFlow<Ctx, StepId> = {
 ## 5. Render the Flow
 
 ```tsx
-<FlowProvider flow={flow}>
-  <FlowStepRenderer<Ctx, StepId> />
-</FlowProvider>
+<JourneyProvider journey={journey}>
+  <JourneyStepRenderer<Ctx, StepId> />
+</JourneyProvider>
 ```
 
 ## 6. Update Context
@@ -192,7 +196,7 @@ api.updateContext((ctx) => ({ ...ctx, dirty: true }));
 ## 7. Debug Quickly
 
 ```tsx
-const { snapshot } = useFlow<Ctx, StepId>();
+const { snapshot } = useJourney<Ctx, StepId>();
 console.log(snapshot.current, snapshot.context, snapshot.history);
 ```
 
@@ -233,7 +237,7 @@ If `when` or `effect` throws:
 - error is available at `snapshot.async.byStep[snapshot.current].error`
 
 ```tsx
-const { snapshot, api } = useFlow<Ctx, StepId>();
+const { snapshot, api } = useJourney<Ctx, StepId>();
 const asyncState = snapshot.async.byStep[snapshot.current];
 
 if (asyncState.phase === "error") {

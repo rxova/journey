@@ -1,18 +1,23 @@
 import React from "react";
 
-import { type FlowReactFlow, useFlow, FlowProvider, FlowStepRenderer } from "../src";
+import {
+  type JourneyReactDefinition,
+  useJourney,
+  JourneyProvider,
+  JourneyStepRenderer
+} from "../src";
 
 type StepId = "start" | "first" | "second";
 type Ctx = { chooseFirst: boolean };
 
 const Start = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.next()}>Next</button>;
 };
 const First = () => <div>First</div>;
 const Second = () => <div>Second</div>;
 
-export const firstMatchWinsFlow: FlowReactFlow<Ctx, StepId> = {
+export const firstMatchWinsJourney: JourneyReactDefinition<Ctx, StepId> = {
   initial: "start",
   context: { chooseFirst: true },
   steps: {
@@ -39,7 +44,7 @@ export const firstMatchWinsFlow: FlowReactFlow<Ctx, StepId> = {
 };
 
 export const FirstMatchWinsExample = () => (
-  <FlowProvider flow={firstMatchWinsFlow}>
-    <FlowStepRenderer<Ctx, StepId> />
-  </FlowProvider>
+  <JourneyProvider journey={firstMatchWinsJourney}>
+    <JourneyStepRenderer<Ctx, StepId> />
+  </JourneyProvider>
 );

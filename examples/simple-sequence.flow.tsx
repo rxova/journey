@@ -1,21 +1,27 @@
 import React from "react";
 
-import { FLOW_TERMINAL, type FlowReactFlow, useFlow, FlowProvider, FlowStepRenderer } from "../src";
+import {
+  JOURNEY_TERMINAL,
+  type JourneyReactDefinition,
+  useJourney,
+  JourneyProvider,
+  JourneyStepRenderer
+} from "../src";
 
 type StepId = "s1" | "s2";
 type Ctx = Record<string, never>;
 
 const S1 = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.next()}>Continue</button>;
 };
 
 const S2 = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.submit()}>Done</button>;
 };
 
-export const simpleSequenceFlow: FlowReactFlow<Ctx, StepId> = {
+export const simpleSequenceJourney: JourneyReactDefinition<Ctx, StepId> = {
   initial: "s1",
   context: {},
   steps: {
@@ -24,12 +30,12 @@ export const simpleSequenceFlow: FlowReactFlow<Ctx, StepId> = {
   },
   transitions: [
     { from: "s1", event: "next", to: "s2" },
-    { from: "s2", event: "submit", to: FLOW_TERMINAL.COMPLETE }
+    { from: "s2", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
   ]
 };
 
-export const SimpleSequenceFlowExample = () => (
-  <FlowProvider flow={simpleSequenceFlow}>
-    <FlowStepRenderer<Ctx, StepId> />
-  </FlowProvider>
+export const SimpleSequenceJourneyExample = () => (
+  <JourneyProvider journey={simpleSequenceJourney}>
+    <JourneyStepRenderer<Ctx, StepId> />
+  </JourneyProvider>
 );

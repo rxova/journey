@@ -2,11 +2,11 @@ import React from "react";
 
 import {
   HISTORY_TARGET,
-  FLOW_TERMINAL,
-  type FlowReactFlow,
-  useFlow,
-  FlowProvider,
-  FlowStepRenderer
+  JOURNEY_TERMINAL,
+  type JourneyReactDefinition,
+  useJourney,
+  JourneyProvider,
+  JourneyStepRenderer
 } from "@/src";
 
 type StepId = "category" | "details" | "screenshot" | "review" | "confirmExit";
@@ -16,31 +16,31 @@ type Ctx = {
 };
 
 const Category = () => {
-  const { api } = useFlow<Ctx, StepId, never>();
+  const { api } = useJourney<Ctx, StepId, never>();
   return <button onClick={() => api.next()}>Continue</button>;
 };
 
 const Details = () => {
-  const { api } = useFlow<Ctx, StepId, never>();
+  const { api } = useJourney<Ctx, StepId, never>();
   return <button onClick={() => api.next()}>Continue</button>;
 };
 
 const Screenshot = () => {
-  const { api } = useFlow<Ctx, StepId, never>();
+  const { api } = useJourney<Ctx, StepId, never>();
   return <button onClick={() => api.next()}>Continue</button>;
 };
 
 const Review = () => {
-  const { api } = useFlow<Ctx, StepId, never>();
+  const { api } = useJourney<Ctx, StepId, never>();
   return <button onClick={() => api.submit()}>Submit</button>;
 };
 
 const ConfirmClose = () => {
-  const { api } = useFlow<Ctx, StepId, never>();
+  const { api } = useJourney<Ctx, StepId, never>();
   return <button onClick={() => api.close()}>Discard</button>;
 };
 
-export const supportTicketFlow: FlowReactFlow<Ctx, StepId, never> = {
+export const supportTicketJourney: JourneyReactDefinition<Ctx, StepId, never> = {
   initial: "category",
   context: {
     includeScreenshot: false,
@@ -78,15 +78,15 @@ export const supportTicketFlow: FlowReactFlow<Ctx, StepId, never> = {
     {
       from: "*",
       event: "close",
-      to: FLOW_TERMINAL.CLOSE,
+      to: JOURNEY_TERMINAL.CLOSE,
       when: ({ context }) => !context.dirty
     },
-    { from: "review", event: "submit", to: FLOW_TERMINAL.COMPLETE }
+    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
   ]
 };
 
 export const SupportTicketExample = () => (
-  <FlowProvider flow={supportTicketFlow}>
-    <FlowStepRenderer<Ctx, StepId> />
-  </FlowProvider>
+  <JourneyProvider journey={supportTicketJourney}>
+    <JourneyStepRenderer<Ctx, StepId> />
+  </JourneyProvider>
 );

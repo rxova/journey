@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { createFlowMachine, type FlowFlow } from "@/src/core";
+import { createJourneyMachine, type JourneyDefinition } from "@/src/core";
 
 type StepId = "start" | "mid" | "end";
 type Event = "next";
 type Ctx = { count: number; marks: string[] };
 
-const createQueueFlow = (): FlowFlow<Ctx, StepId, Event> => ({
+const createQueueJourney = (): JourneyDefinition<Ctx, StepId, Event> => ({
   initial: "start",
   context: { count: 0, marks: [] },
   steps: {
@@ -45,7 +45,7 @@ const createQueueFlow = (): FlowFlow<Ctx, StepId, Event> => ({
 
 describe("queue resilience", () => {
   it("processes concurrent sends in order", async () => {
-    const machine = createFlowMachine(createQueueFlow());
+    const machine = createJourneyMachine(createQueueJourney());
     await Promise.all([machine.send({ type: "next" }), machine.send({ type: "next" })]);
     expect(machine.getSnapshot().current).toBe("end");
     expect(machine.getSnapshot().context.count).toBe(2);
@@ -53,8 +53,8 @@ describe("queue resilience", () => {
   });
 
   it("keeps queue alive after a rejected send", async () => {
-    const failingFlow: FlowFlow<Ctx, StepId, Event> = {
-      ...createQueueFlow(),
+    const failingJourney: JourneyDefinition<Ctx, StepId, Event> = {
+      ...createQueueJourney(),
       transitions: [
         {
           id: "start-mid",
@@ -75,7 +75,7 @@ describe("queue resilience", () => {
       ]
     };
 
-    const machine = createFlowMachine(failingFlow);
+    const machine = createJourneyMachine(failingJourney);
 
     await expect(machine.send({ type: "next" })).rejects.toThrow("boom");
     expect(machine.getSnapshot().current).toBe("start");
@@ -88,7 +88,7 @@ describe("queue resilience", () => {
   });
 
   it("supports many queued sends where only first two can transition", async () => {
-    const machine = createFlowMachine(createQueueFlow());
+    const machine = createJourneyMachine(createQueueJourney());
     const results = await Promise.all([
       machine.send({ type: "next" }),
       machine.send({ type: "next" }),
@@ -101,13 +101,13 @@ describe("queue resilience", () => {
   });
 
   it("keeps history consistent under queued sends", async () => {
-    const machine = createFlowMachine(createQueueFlow());
+    const machine = createJourneyMachine(createQueueJourney());
     await Promise.all([machine.send({ type: "next" }), machine.send({ type: "next" })]);
     expect(machine.getSnapshot().history).toEqual(["start", "mid"]);
   });
 
   it("notifies subscribers for async loading and state changes from queue", async () => {
-    const machine = createFlowMachine(createQueueFlow());
+    const machine = createJourneyMachine(createQueueJourney());
     let notifications = 0;
     machine.subscribe(() => {
       notifications += 1;
@@ -119,7 +119,7 @@ describe("queue resilience", () => {
   });
 
   it("returns same snapshot reference values after no-op queued sends", async () => {
-    const machine = createFlowMachine(createQueueFlow());
+    const machine = createJourneyMachine(createQueueJourney());
     await machine.send({ type: "next" });
     await machine.send({ type: "next" });
     const snapBefore = machine.getSnapshot();
@@ -130,13 +130,13 @@ describe("queue resilience", () => {
   });
 
   it("allows updateContext while queue is idle", () => {
-    const machine = createFlowMachine(createQueueFlow());
+    const machine = createJourneyMachine(createQueueJourney());
     machine.updateContext((ctx) => ({ ...ctx, count: 42 }));
     expect(machine.getSnapshot().context.count).toBe(42);
   });
 
   it("allows reset after queued transitions", async () => {
-    const machine = createFlowMachine(createQueueFlow());
+    const machine = createJourneyMachine(createQueueJourney());
     await Promise.all([machine.send({ type: "next" }), machine.send({ type: "next" })]);
     machine.reset();
     expect(machine.getSnapshot().current).toBe("start");
@@ -144,7 +144,7 @@ describe("queue resilience", () => {
   });
 
   it("applies goTo after queued transitions", async () => {
-    const machine = createFlowMachine(createQueueFlow());
+    const machine = createJourneyMachine(createQueueJourney());
     await Promise.all([machine.send({ type: "next" })]);
     await machine.send({ type: "goTo", to: "end" });
     expect(machine.getSnapshot().current).toBe("end");
@@ -152,20 +152,20 @@ describe("queue resilience", () => {
   });
 
   it("returns goTo transition id for queued goTo", async () => {
-    const machine = createFlowMachine(createQueueFlow());
+    const machine = createJourneyMachine(createQueueJourney());
     const result = await machine.send({ type: "goTo", to: "mid" });
     expect(result.transitionId).toBe("goTo");
   });
 
   it("rejects queued unknown goTo", async () => {
-    const machine = createFlowMachine(createQueueFlow());
+    const machine = createJourneyMachine(createQueueJourney());
     await expect(machine.send({ type: "goTo", to: "missing" as StepId })).rejects.toThrow(
       "Cannot goTo unknown step"
     );
   });
 
   it("continues processing after rejected unknown goTo", async () => {
-    const machine = createFlowMachine(createQueueFlow());
+    const machine = createJourneyMachine(createQueueJourney());
     await expect(machine.send({ type: "goTo", to: "missing" as StepId })).rejects.toThrow();
     const result = await machine.send({ type: "next" });
     expect(result.transitioned).toBe(true);
@@ -173,21 +173,21 @@ describe("queue resilience", () => {
   });
 
   it("keeps visited deterministic under queue", async () => {
-    const machine = createFlowMachine(createQueueFlow());
+    const machine = createJourneyMachine(createQueueJourney());
     await Promise.all([machine.send({ type: "next" }), machine.send({ type: "next" })]);
     expect(machine.getSnapshot().visited).toEqual(["start", "mid", "end"]);
   });
 
   it("preserves context object shape across queued effects", async () => {
-    const machine = createFlowMachine(createQueueFlow());
+    const machine = createJourneyMachine(createQueueJourney());
     await Promise.all([machine.send({ type: "next" }), machine.send({ type: "next" })]);
     expect(machine.getSnapshot().context).toHaveProperty("count");
     expect(machine.getSnapshot().context).toHaveProperty("marks");
   });
 
   it("queued sends do not bypass terminal lock", async () => {
-    const flow: FlowFlow<Ctx, StepId, "next" | "submit"> = {
-      ...createQueueFlow(),
+    const journey: JourneyDefinition<Ctx, StepId, "next" | "submit"> = {
+      ...createQueueJourney(),
       transitions: [
         {
           from: "start",
@@ -202,7 +202,7 @@ describe("queue resilience", () => {
       ]
     };
 
-    const machine = createFlowMachine(flow);
+    const machine = createJourneyMachine(journey);
     await machine.send({ type: "next" });
     await machine.send({ type: "submit" });
     const result = await machine.send({ type: "next" });

@@ -40,7 +40,7 @@ Errors usually come from real app dependencies:
 - Unexpected server response format
 - Thrown validation exceptions
 
-When errors throw, flow does not silently ignore them:
+When errors throw, journey does not silently ignore them:
 
 - `send(...)` rejects
 - step async state becomes `error`
@@ -48,13 +48,13 @@ When errors throw, flow does not silently ignore them:
 
 ## Core
 
-### `createFlowMachine(flow)`
+### `createJourneyMachine(journey)`
 
 Creates a framework-agnostic machine.
 
-- Input: `FlowFlow<TContext, TStepId, TEventType>`
-- Optional second argument: `FlowMachineOptions<TContext, TStepId>`
-- Output: `FlowMachine<TContext, TStepId, TEventType>`
+- Input: `JourneyDefinition<TContext, TStepId, TEventType>`
+- Optional second argument: `JourneyMachineOptions<TContext, TStepId>`
+- Output: `JourneyMachine<TContext, TStepId, TEventType>`
 
 Machine methods:
 
@@ -67,9 +67,9 @@ Machine methods:
 Example:
 
 ```ts
-import { createFlowMachine } from "react-toolkit-flow/core";
+import { createJourneyMachine } from "react-toolkit-journey/core";
 
-const machine = createFlowMachine(flow);
+const machine = createJourneyMachine(journey);
 await machine.send({ type: "next" });
 const snapshot = machine.getSnapshot();
 ```
@@ -99,9 +99,9 @@ Important compatibility note:
 Persistence example:
 
 ```ts
-const machine = createFlowMachine(flow, {
+const machine = createJourneyMachine(journey, {
   persistence: {
-    key: "checkout-flow",
+    key: "checkout-journey",
     version: 2,
     migrate: (oldSnapshot, oldVersion) => {
       if (oldVersion === 1) {
@@ -128,44 +128,44 @@ const machine = createFlowMachine(flow, {
 
 Special transition target (`"__HISTORY__"`) that resolves to the latest visited step from history.
 
-### `FLOW_TERMINAL`
+### `JOURNEY_TERMINAL`
 
 Terminal constants:
 
-- `FLOW_TERMINAL.COMPLETE`
-- `FLOW_TERMINAL.CLOSE`
+- `JOURNEY_TERMINAL.COMPLETE`
+- `JOURNEY_TERMINAL.CLOSE`
 
 ## React
 
-### `<FlowProvider flow={flow}>`
+### `<JourneyProvider journey={journey}>`
 
 Binds a machine to React via `useSyncExternalStore`.
 
 Notes:
 
-- If `flow` object changes, a fresh internal machine is created.
+- If `journey` object changes, a fresh internal machine is created.
 - You can pass `machine` prop to use your own machine instance.
 - You can pass `persistence` prop to configure machine persistence when using the internal machine.
 
 Example:
 
 ```tsx
-<FlowProvider
-  flow={flow}
+<JourneyProvider
+  journey={journey}
   persistence={{
-    key: "signup-flow",
+    key: "signup-journey",
     version: 1
   }}
 >
-  <FlowStepRenderer />
-</FlowProvider>
+  <JourneyStepRenderer />
+</JourneyProvider>
 ```
 
-### `<FlowStepRenderer />`
+### `<JourneyStepRenderer />`
 
-Renders the component at `snapshot.current` using `flow.steps[current].component`.
+Renders the component at `snapshot.current` using `journey.steps[current].component`.
 
-### `useFlow()`
+### `useJourney()`
 
 Returns `{ snapshot, api }`.
 
@@ -187,7 +187,7 @@ Snapshot:
 Common UI pattern:
 
 ```tsx
-const { snapshot, api } = useFlow<MyCtx, MySteps>();
+const { snapshot, api } = useJourney<MyCtx, MySteps>();
 const stepAsync = snapshot.async.byStep[snapshot.current];
 
 if (stepAsync.phase === "evaluating-when" || stepAsync.phase === "running-effect") {
@@ -219,7 +219,7 @@ API:
 Example:
 
 ```tsx
-const { snapshot, api } = useFlow<MyCtx, MySteps, "retry">();
+const { snapshot, api } = useJourney<MyCtx, MySteps, "retry">();
 await api.send({ type: "retry" });
 await api.goTo("review");
 api.updateContext((ctx) => ({ ...ctx, dirty: true }));
@@ -234,7 +234,7 @@ Type model:
 
 ```ts
 type CustomEvent = "retry";
-const { api } = useFlow<MyCtx, MySteps, CustomEvent>();
+const { api } = useJourney<MyCtx, MySteps, CustomEvent>();
 api.send({ type: "retry" });
 ```
 
@@ -248,7 +248,7 @@ type Payloads = {
   goTo: { source: "deep-link" | "shortcut" };
 };
 
-const { api } = useFlow<MyCtx, MySteps, CustomEvent, Payloads>();
+const { api } = useJourney<MyCtx, MySteps, CustomEvent, Payloads>();
 await api.next({ source: "button" });
 await api.send({ type: "retry", payload: { attempt: 2 } });
 await api.goTo("review", { source: "shortcut" });

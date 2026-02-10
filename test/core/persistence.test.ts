@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createFlowMachine, FLOW_STATUS, type FlowFlow, type FlowStorage } from "@/src/core";
+import {
+  createJourneyMachine,
+  JOURNEY_STATUS,
+  type JourneyDefinition,
+  type JourneyStorage
+} from "@/src/core";
 import { createPersistenceController } from "@/src/core/persistence";
 
 type StepId = "start" | "details" | "review";
@@ -9,7 +14,7 @@ type Ctx = {
   count: number;
 };
 
-const createFlow = (): FlowFlow<Ctx, StepId, Event> => ({
+const createJourney = (): JourneyDefinition<Ctx, StepId, Event> => ({
   initial: "start",
   context: { count: 0 },
   steps: {
@@ -23,7 +28,7 @@ const createFlow = (): FlowFlow<Ctx, StepId, Event> => ({
   ]
 });
 
-const createMemoryStorage = (seed: Record<string, string> = {}): FlowStorage => {
+const createMemoryStorage = (seed: Record<string, string> = {}): JourneyStorage => {
   const store = new Map<string, string>(Object.entries(seed));
   return {
     getItem: (key) => store.get(key) ?? null,
@@ -45,7 +50,7 @@ const asyncState = () => ({
 });
 
 const withPatchedLocalStorage = async (
-  value: Partial<FlowStorage> | undefined,
+  value: Partial<JourneyStorage> | undefined,
   run: () => Promise<void> | void
 ) => {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
@@ -67,20 +72,20 @@ const withPatchedLocalStorage = async (
 describe("persistence", () => {
   it("hydrates snapshot from persisted state", () => {
     const storage = createMemoryStorage({
-      flow: JSON.stringify({
+      journey: JSON.stringify({
         version: 1,
         snapshot: {
           current: "details",
           context: { count: 7 },
           history: ["start"],
-          status: FLOW_STATUS.RUNNING
+          status: JOURNEY_STATUS.RUNNING
         }
       })
     });
 
-    const machine = createFlowMachine(createFlow(), {
+    const machine = createJourneyMachine(createJourney(), {
       persistence: {
-        key: "flow",
+        key: "journey",
         storage
       }
     });
@@ -92,9 +97,9 @@ describe("persistence", () => {
 
   it("persists on send and updateContext", async () => {
     const storage = createMemoryStorage();
-    const machine = createFlowMachine(createFlow(), {
+    const machine = createJourneyMachine(createJourney(), {
       persistence: {
-        key: "flow",
+        key: "journey",
         storage
       }
     });
@@ -102,7 +107,7 @@ describe("persistence", () => {
     await machine.send({ type: "next" });
     machine.updateContext((ctx) => ({ ...ctx, count: ctx.count + 2 }));
 
-    const raw = storage.getItem("flow");
+    const raw = storage.getItem("journey");
     expect(raw).not.toBeNull();
     const parsed = JSON.parse(raw as string) as {
       version: number;
@@ -117,26 +122,26 @@ describe("persistence", () => {
 
   it("clears persisted state on reset by default", async () => {
     const storage = createMemoryStorage();
-    const machine = createFlowMachine(createFlow(), {
+    const machine = createJourneyMachine(createJourney(), {
       persistence: {
-        key: "flow",
+        key: "journey",
         storage
       }
     });
 
     await machine.send({ type: "next" });
-    expect(storage.getItem("flow")).not.toBeNull();
+    expect(storage.getItem("journey")).not.toBeNull();
 
     machine.reset();
 
-    expect(storage.getItem("flow")).toBeNull();
+    expect(storage.getItem("journey")).toBeNull();
   });
 
   it("persists reset state when clearOnReset is false", async () => {
     const storage = createMemoryStorage();
-    const machine = createFlowMachine(createFlow(), {
+    const machine = createJourneyMachine(createJourney(), {
       persistence: {
-        key: "flow",
+        key: "journey",
         storage,
         clearOnReset: false
       }
@@ -145,7 +150,7 @@ describe("persistence", () => {
     await machine.send({ type: "next" });
     machine.reset();
 
-    const raw = storage.getItem("flow");
+    const raw = storage.getItem("journey");
     expect(raw).not.toBeNull();
     const parsed = JSON.parse(raw as string) as {
       snapshot: { current: StepId; history: StepId[]; context: Ctx };
@@ -158,20 +163,20 @@ describe("persistence", () => {
 
   it("falls back to initial snapshot when persisted step is unknown", () => {
     const storage = createMemoryStorage({
-      flow: JSON.stringify({
+      journey: JSON.stringify({
         version: 1,
         snapshot: {
           current: "missing",
           context: { count: 99 },
           history: ["start"],
-          status: FLOW_STATUS.RUNNING
+          status: JOURNEY_STATUS.RUNNING
         }
       })
     });
 
-    const machine = createFlowMachine(createFlow(), {
+    const machine = createJourneyMachine(createJourney(), {
       persistence: {
-        key: "flow",
+        key: "journey",
         storage
       }
     });
@@ -182,20 +187,20 @@ describe("persistence", () => {
 
   it("migrates mismatched persisted versions", () => {
     const storage = createMemoryStorage({
-      flow: JSON.stringify({
+      journey: JSON.stringify({
         version: 1,
         snapshot: {
           current: "start",
           context: { oldCount: 4 },
           history: [],
-          status: FLOW_STATUS.RUNNING
+          status: JOURNEY_STATUS.RUNNING
         }
       })
     });
 
-    const machine = createFlowMachine(createFlow(), {
+    const machine = createJourneyMachine(createJourney(), {
       persistence: {
-        key: "flow",
+        key: "journey",
         storage,
         version: 2,
         migrate: (value) => {
@@ -204,7 +209,7 @@ describe("persistence", () => {
             current: "details",
             context: { count: snapshot.context?.oldCount ?? 0 },
             history: ["start"],
-            status: FLOW_STATUS.RUNNING
+            status: JOURNEY_STATUS.RUNNING
           };
         }
       }
@@ -213,19 +218,19 @@ describe("persistence", () => {
     expect(machine.getSnapshot().current).toBe("details");
     expect(machine.getSnapshot().context.count).toBe(4);
 
-    const rewritten = JSON.parse(storage.getItem("flow") as string) as { version: number };
+    const rewritten = JSON.parse(storage.getItem("journey") as string) as { version: number };
     expect(rewritten.version).toBe(2);
   });
 
   it("reports deserialize errors through onError and continues", () => {
     const storage = createMemoryStorage({
-      flow: "not-json"
+      journey: "not-json"
     });
     const onError = vi.fn();
 
-    const machine = createFlowMachine(createFlow(), {
+    const machine = createJourneyMachine(createJourney(), {
       persistence: {
-        key: "flow",
+        key: "journey",
         storage,
         onError
       }
@@ -236,15 +241,15 @@ describe("persistence", () => {
   });
 
   it("uses global localStorage fallback when storage is omitted", async () => {
-    const flow = createFlow();
+    const journey = createJourney();
     const setItem = vi.fn();
     const getItem = vi.fn(() => null);
     const removeItem = vi.fn();
 
     await withPatchedLocalStorage({ getItem, setItem, removeItem }, async () => {
-      const machine = createFlowMachine(flow, {
+      const machine = createJourneyMachine(journey, {
         persistence: {
-          key: "flow"
+          key: "journey"
         }
       });
 
@@ -254,11 +259,11 @@ describe("persistence", () => {
   });
 
   it("disables persistence when no valid storage is available", async () => {
-    const flow = createFlow();
+    const journey = createJourney();
     await withPatchedLocalStorage(undefined, async () => {
-      const machine = createFlowMachine(flow, {
+      const machine = createJourneyMachine(journey, {
         persistence: {
-          key: "flow"
+          key: "journey"
         }
       });
 
@@ -276,23 +281,23 @@ describe("persistence", () => {
     };
 
     const nonObjectStorage = createMemoryStorage({
-      flow: JSON.stringify("hello")
+      journey: JSON.stringify("hello")
     });
     const c1 = createPersistenceController({
       ...baseArgs,
       options: {
-        persistence: { key: "flow", storage: nonObjectStorage }
+        persistence: { key: "journey", storage: nonObjectStorage }
       }
     });
     expect(c1.hydrateSnapshot().current).toBe("start");
 
     const nonVersionStorage = createMemoryStorage({
-      flow: JSON.stringify({ version: "1", snapshot: {} })
+      journey: JSON.stringify({ version: "1", snapshot: {} })
     });
     const c2 = createPersistenceController({
       ...baseArgs,
       options: {
-        persistence: { key: "flow", storage: nonVersionStorage }
+        persistence: { key: "journey", storage: nonVersionStorage }
       }
     });
     expect(c2.hydrateSnapshot().current).toBe("start");
@@ -300,7 +305,7 @@ describe("persistence", () => {
 
   it("filters invalid history entries and falls back context/status on hydrate", () => {
     const storage = createMemoryStorage({
-      flow: JSON.stringify({
+      journey: JSON.stringify({
         version: 1,
         snapshot: {
           current: "details",
@@ -315,7 +320,7 @@ describe("persistence", () => {
       context: { count: 9 },
       steps: { start: {}, details: {}, review: {} } as Record<StepId, unknown>,
       options: {
-        persistence: { key: "flow", storage }
+        persistence: { key: "journey", storage }
       }
     });
 
@@ -323,18 +328,18 @@ describe("persistence", () => {
     expect(snapshot.current).toBe("details");
     expect(snapshot.history).toEqual(["start"]);
     expect(snapshot.context).toEqual({ count: 9 });
-    expect(snapshot.status).toBe(FLOW_STATUS.RUNNING);
+    expect(snapshot.status).toBe(JOURNEY_STATUS.RUNNING);
   });
 
   it("uses empty history when persisted history is not an array", () => {
     const storage = createMemoryStorage({
-      flow: JSON.stringify({
+      journey: JSON.stringify({
         version: 1,
         snapshot: {
           current: "details",
           history: "invalid",
           context: { count: 2 },
-          status: FLOW_STATUS.RUNNING
+          status: JOURNEY_STATUS.RUNNING
         }
       })
     });
@@ -343,7 +348,7 @@ describe("persistence", () => {
       context: { count: 0 },
       steps: { start: {}, details: {}, review: {} } as Record<StepId, unknown>,
       options: {
-        persistence: { key: "flow", storage }
+        persistence: { key: "journey", storage }
       }
     });
 
@@ -352,13 +357,13 @@ describe("persistence", () => {
 
   it("hydrates status when persisted status is valid", () => {
     const storage = createMemoryStorage({
-      flow: JSON.stringify({
+      journey: JSON.stringify({
         version: 1,
         snapshot: {
           current: "details",
           history: [],
           context: { count: 2 },
-          status: FLOW_STATUS.COMPLETE
+          status: JOURNEY_STATUS.COMPLETE
         }
       })
     });
@@ -367,17 +372,17 @@ describe("persistence", () => {
       context: { count: 0 },
       steps: { start: {}, details: {}, review: {} } as Record<StepId, unknown>,
       options: {
-        persistence: { key: "flow", storage }
+        persistence: { key: "journey", storage }
       }
     });
 
     const snapshot = controller.hydrateSnapshot();
-    expect(snapshot.status).toBe(FLOW_STATUS.COMPLETE);
+    expect(snapshot.status).toBe(JOURNEY_STATUS.COMPLETE);
   });
 
   it("ignores non-object snapshots on hydrate", () => {
     const storage = createMemoryStorage({
-      flow: JSON.stringify({
+      journey: JSON.stringify({
         version: 1,
         snapshot: 5
       })
@@ -387,7 +392,7 @@ describe("persistence", () => {
       context: { count: 0 },
       steps: { start: {}, details: {}, review: {} } as Record<StepId, unknown>,
       options: {
-        persistence: { key: "flow", storage }
+        persistence: { key: "journey", storage }
       }
     });
 
@@ -395,7 +400,7 @@ describe("persistence", () => {
   });
 
   it("reports errors when persist/remove throw", () => {
-    const erroringStorage: FlowStorage = {
+    const erroringStorage: JourneyStorage = {
       getItem: () => null,
       setItem: () => {
         throw new Error("set-failed");
@@ -412,7 +417,7 @@ describe("persistence", () => {
       steps: { start: {}, details: {}, review: {} } as Record<StepId, unknown>,
       options: {
         persistence: {
-          key: "flow",
+          key: "journey",
           storage: erroringStorage,
           onError
         }
@@ -424,7 +429,7 @@ describe("persistence", () => {
       context: { count: 0 },
       history: [],
       visited: ["start"],
-      status: FLOW_STATUS.RUNNING,
+      status: JOURNEY_STATUS.RUNNING,
       async: asyncState()
     });
     controller.removePersistedSnapshot();

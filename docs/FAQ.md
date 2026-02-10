@@ -2,7 +2,7 @@
 
 ## Is this a router?
 
-No. It is an in-memory flow engine for step-based UI, commonly inside modals or forms.
+No. It is an in-memory journey engine for step-based UI, commonly inside modals or forms.
 
 ## Why not a doubly linked list?
 
@@ -37,7 +37,7 @@ If you use `when` for side effects, those effects may run even when transition d
 
 ## Can I close immediately?
 
-Yes. Route `close` to `FLOW_TERMINAL.CLOSE`.
+Yes. Route `close` to `JOURNEY_TERMINAL.CLOSE`.
 
 ## Can I enforce close confirmation?
 

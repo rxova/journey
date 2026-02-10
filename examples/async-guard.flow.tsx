@@ -1,12 +1,17 @@
 import React from "react";
 
-import { type FlowReactFlow, useFlow, FlowProvider, FlowStepRenderer } from "../src";
+import {
+  type JourneyReactDefinition,
+  useJourney,
+  JourneyProvider,
+  JourneyStepRenderer
+} from "../src";
 
 type StepId = "validate" | "blocked" | "allowed";
 type Ctx = { token: string };
 
 const Validate = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.next()}>Check token</button>;
 };
 const Blocked = () => <div>Blocked</div>;
@@ -14,7 +19,7 @@ const Allowed = () => <div>Allowed</div>;
 
 const isTokenValid = async (token: string) => token.length > 3;
 
-export const asyncGuardFlow: FlowReactFlow<Ctx, StepId> = {
+export const asyncGuardJourney: JourneyReactDefinition<Ctx, StepId> = {
   initial: "validate",
   context: { token: "abcd" },
   steps: {
@@ -39,7 +44,7 @@ export const asyncGuardFlow: FlowReactFlow<Ctx, StepId> = {
 };
 
 export const AsyncGuardExample = () => (
-  <FlowProvider flow={asyncGuardFlow}>
-    <FlowStepRenderer<Ctx, StepId> />
-  </FlowProvider>
+  <JourneyProvider journey={asyncGuardJourney}>
+    <JourneyStepRenderer<Ctx, StepId> />
+  </JourneyProvider>
 );

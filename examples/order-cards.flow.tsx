@@ -2,11 +2,11 @@ import React from "react";
 
 import {
   HISTORY_TARGET,
-  FLOW_TERMINAL,
-  type FlowReactFlow,
-  useFlow,
-  FlowProvider,
-  FlowStepRenderer
+  JOURNEY_TERMINAL,
+  type JourneyReactDefinition,
+  useJourney,
+  JourneyProvider,
+  JourneyStepRenderer
 } from "@/src";
 
 type StepId =
@@ -25,31 +25,31 @@ type OrderCardsContext = {
 };
 
 const ChooseType = () => {
-  const { api } = useFlow<OrderCardsContext, StepId, Event>();
+  const { api } = useJourney<OrderCardsContext, StepId, Event>();
   return <button onClick={() => api.next()}>Continue</button>;
 };
 
 const ChooseExceptions = () => {
-  const { api } = useFlow<OrderCardsContext, StepId, Event>();
+  const { api } = useJourney<OrderCardsContext, StepId, Event>();
   return <button onClick={() => api.next()}>Continue</button>;
 };
 
 const AddAddress = () => {
-  const { api } = useFlow<OrderCardsContext, StepId, Event>();
+  const { api } = useJourney<OrderCardsContext, StepId, Event>();
   return <button onClick={() => api.next()}>Save address</button>;
 };
 
 const Summary = () => {
-  const { api } = useFlow<OrderCardsContext, StepId, Event>();
+  const { api } = useJourney<OrderCardsContext, StepId, Event>();
   return <button onClick={() => api.submit()}>Place order</button>;
 };
 
 const ConfirmClose = () => {
-  const { api } = useFlow<OrderCardsContext, StepId, Event>();
+  const { api } = useJourney<OrderCardsContext, StepId, Event>();
   return <button onClick={() => api.close()}>Confirm close</button>;
 };
 
-export const orderCardsFlow: FlowReactFlow<OrderCardsContext, StepId, Event> = {
+export const orderCardsJourney: JourneyReactDefinition<OrderCardsContext, StepId, Event> = {
   initial: "destination",
   context: {
     hasMixedCardTypes: false,
@@ -99,15 +99,15 @@ export const orderCardsFlow: FlowReactFlow<OrderCardsContext, StepId, Event> = {
     {
       from: "*",
       event: "close",
-      to: FLOW_TERMINAL.CLOSE,
+      to: JOURNEY_TERMINAL.CLOSE,
       when: ({ context }) => !context.dirty
     },
-    { from: "recap", event: "submit", to: FLOW_TERMINAL.COMPLETE }
+    { from: "recap", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
   ]
 };
 
 export const OrderCardsExample = () => (
-  <FlowProvider flow={orderCardsFlow}>
-    <FlowStepRenderer<OrderCardsContext, StepId, Event> />
-  </FlowProvider>
+  <JourneyProvider journey={orderCardsJourney}>
+    <JourneyStepRenderer<OrderCardsContext, StepId, Event> />
+  </JourneyProvider>
 );

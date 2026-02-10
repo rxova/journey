@@ -2,33 +2,33 @@ import React from "react";
 
 import {
   HISTORY_TARGET,
-  type FlowReactFlow,
-  useFlow,
-  FlowProvider,
-  FlowStepRenderer
+  type JourneyReactDefinition,
+  useJourney,
+  JourneyProvider,
+  JourneyStepRenderer
 } from "../src";
 
 type StepId = "start" | "branchA" | "branchB" | "review";
 type Ctx = { branch: "A" | "B" };
 
 const Start = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.next()}>Next</button>;
 };
 const BranchA = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.next()}>To review</button>;
 };
 const BranchB = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.next()}>To review</button>;
 };
 const Review = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.back()}>Back by history</button>;
 };
 
-export const historyBackFlow: FlowReactFlow<Ctx, StepId> = {
+export const historyBackJourney: JourneyReactDefinition<Ctx, StepId> = {
   initial: "start",
   context: { branch: "A" },
   steps: {
@@ -57,7 +57,7 @@ export const historyBackFlow: FlowReactFlow<Ctx, StepId> = {
 };
 
 export const HistoryBackExample = () => (
-  <FlowProvider flow={historyBackFlow}>
-    <FlowStepRenderer<Ctx, StepId> />
-  </FlowProvider>
+  <JourneyProvider journey={historyBackJourney}>
+    <JourneyStepRenderer<Ctx, StepId> />
+  </JourneyProvider>
 );

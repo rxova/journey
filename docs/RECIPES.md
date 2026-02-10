@@ -29,7 +29,7 @@
 {
   from: "*",
   event: "close",
-  to: FLOW_TERMINAL.CLOSE,
+  to: JOURNEY_TERMINAL.CLOSE,
   when: ({ context }) => !context.dirty
 }
 ```
@@ -64,7 +64,7 @@ api.send({ type: "retry" });
 ## Show Loading And Error Per Step
 
 ```tsx
-const { snapshot, api } = useFlow<MyCtx, MyStepId>();
+const { snapshot, api } = useJourney<MyCtx, MyStepId>();
 const asyncState = snapshot.async.byStep[snapshot.current];
 
 const isBusy = asyncState.phase === "evaluating-when" || asyncState.phase === "running-effect";
@@ -203,21 +203,21 @@ api.goTo("review");
 {
   from: "confirmSubmit",
   event: "submit",
-  to: FLOW_TERMINAL.COMPLETE
+  to: JOURNEY_TERMINAL.COMPLETE
 }
 ```
 
 ## Restart Flow Cleanly
 
 ```tsx
-const { api } = useFlow<MyContext, MyStepId>();
+const { api } = useJourney<MyContext, MyStepId>();
 api.reset();
 ```
 
 ## Observe Flow Changes (Analytics Hook)
 
 ```ts
-const machine = createFlowMachine(flow);
+const machine = createJourneyMachine(journey);
 const unsubscribe = machine.subscribe(() => {
   const snapshot = machine.getSnapshot();
   track("flow_step_changed", {
@@ -230,12 +230,12 @@ const unsubscribe = machine.subscribe(() => {
 ## Persist and Resume
 
 ```tsx
-const flow = { ... };
+const journey = { ... };
 
-<FlowProvider
-  flow={flow}
+<JourneyProvider
+  journey={journey}
   persistence={{
-    key: "checkout-flow",
+    key: "checkout-journey",
     version: 2,
     migrate: (snapshot, persistedVersion) => {
       if (persistedVersion === 1) {
@@ -256,8 +256,8 @@ const flow = { ... };
     }
   }}
 >
-  <FlowStepRenderer />
-</FlowProvider>;
+  <JourneyStepRenderer />
+</JourneyProvider>;
 ```
 
 Async compatibility note:

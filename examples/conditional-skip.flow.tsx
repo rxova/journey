@@ -1,24 +1,30 @@
 import React from "react";
 
-import { FLOW_TERMINAL, type FlowReactFlow, useFlow, FlowProvider, FlowStepRenderer } from "../src";
+import {
+  JOURNEY_TERMINAL,
+  type JourneyReactDefinition,
+  useJourney,
+  JourneyProvider,
+  JourneyStepRenderer
+} from "../src";
 
 type StepId = "start" | "optional" | "review";
 type Ctx = { includeOptional: boolean };
 
 const Start = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.next()}>Next</button>;
 };
 const Optional = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.next()}>Next</button>;
 };
 const Review = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.submit()}>Submit</button>;
 };
 
-export const conditionalSkipFlow: FlowReactFlow<Ctx, StepId> = {
+export const conditionalSkipJourney: JourneyReactDefinition<Ctx, StepId> = {
   initial: "start",
   context: { includeOptional: false },
   steps: {
@@ -40,12 +46,12 @@ export const conditionalSkipFlow: FlowReactFlow<Ctx, StepId> = {
       when: ({ context }) => !context.includeOptional
     },
     { from: "optional", event: "next", to: "review" },
-    { from: "review", event: "submit", to: FLOW_TERMINAL.COMPLETE }
+    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
   ]
 };
 
 export const ConditionalSkipExample = () => (
-  <FlowProvider flow={conditionalSkipFlow}>
-    <FlowStepRenderer<Ctx, StepId> />
-  </FlowProvider>
+  <JourneyProvider journey={conditionalSkipJourney}>
+    <JourneyStepRenderer<Ctx, StepId> />
+  </JourneyProvider>
 );

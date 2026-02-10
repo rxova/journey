@@ -1,22 +1,27 @@
 import React from "react";
 
-import { type FlowReactFlow, useFlow, FlowProvider, FlowStepRenderer } from "../src";
+import {
+  type JourneyReactDefinition,
+  useJourney,
+  JourneyProvider,
+  JourneyStepRenderer
+} from "../src";
 
 type StepId = "idle" | "failed" | "done";
 type CustomEvent = "retry";
 type Ctx = { tries: number };
 
 const Idle = () => {
-  const { api } = useFlow<Ctx, StepId, CustomEvent>();
+  const { api } = useJourney<Ctx, StepId, CustomEvent>();
   return <button onClick={() => api.send({ type: "retry" })}>Retry</button>;
 };
 const Failed = () => {
-  const { api } = useFlow<Ctx, StepId, CustomEvent>();
+  const { api } = useJourney<Ctx, StepId, CustomEvent>();
   return <button onClick={() => api.send({ type: "retry" })}>Retry</button>;
 };
 const Done = () => <div>Done</div>;
 
-export const customEventFlow: FlowReactFlow<Ctx, StepId, CustomEvent> = {
+export const customEventJourney: JourneyReactDefinition<Ctx, StepId, CustomEvent> = {
   initial: "idle",
   context: { tries: 0 },
   steps: {
@@ -41,7 +46,7 @@ export const customEventFlow: FlowReactFlow<Ctx, StepId, CustomEvent> = {
 };
 
 export const CustomEventExample = () => (
-  <FlowProvider flow={customEventFlow}>
-    <FlowStepRenderer<Ctx, StepId, CustomEvent> />
-  </FlowProvider>
+  <JourneyProvider journey={customEventJourney}>
+    <JourneyStepRenderer<Ctx, StepId, CustomEvent> />
+  </JourneyProvider>
 );

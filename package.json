@@ -1,10 +1,10 @@
 {
-  "name": "react-toolkit-flow",
+  "name": "@rxova/journey",
   "version": "0.1.0",
-  "description": "A tiny zero-runtime-dependency React flow/stepper powered by a declarative flow graph.",
+  "description": "A tiny zero-runtime-dependency React journey/stepper powered by a declarative journey graph.",
   "keywords": [
     "react",
-    "flow",
+    "journey",
     "stepper",
     "state-machine",
     "wizard",
@@ -65,21 +65,21 @@
   },
   "size-limit": [
     {
-      "name": "core/createFlowMachine (subpath)",
+      "name": "core/createJourneyMachine (subpath)",
       "path": "dist/core/index.js",
-      "import": "{ createFlowMachine }",
+      "import": "{ createJourneyMachine }",
       "limit": "2.2 kB"
     },
     {
-      "name": "react/useFlow (subpath)",
+      "name": "react/useJourney (subpath)",
       "path": "dist/react/index.js",
-      "import": "{ useFlow }",
+      "import": "{ useJourney }",
       "limit": "3.6 kB"
     },
     {
-      "name": "root/createFlowMachine (tree-shaken)",
+      "name": "root/createJourneyMachine (tree-shaken)",
       "path": "dist/index.js",
-      "import": "{ createFlowMachine }",
+      "import": "{ createJourneyMachine }",
       "limit": "2.3 kB"
     }
   ],

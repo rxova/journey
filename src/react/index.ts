@@ -1,14 +1,14 @@
 "use client";
 
-export { FlowProvider } from "./context";
-export { FlowStepRenderer } from "./FlowStepRenderer";
-export { useFlow, useFlowApi, useFlowSnapshot } from "./hooks";
+export { JourneyProvider } from "./context";
+export { JourneyStepRenderer } from "./JourneyStepRenderer";
+export { useJourney, useJourneyApi, useJourneySnapshot } from "./hooks";
 export type {
-  FlowApi,
-  FlowReactEventPayloadMap,
-  FlowHookResult,
-  FlowProviderProps,
-  FlowReactFlow,
-  FlowReactStep,
-  FlowStoreValue
+  JourneyApi,
+  JourneyReactEventPayloadMap,
+  JourneyHookResult,
+  JourneyProviderProps,
+  JourneyReactDefinition,
+  JourneyReactStep,
+  JourneyStoreValue
 } from "./types";

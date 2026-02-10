@@ -2,11 +2,11 @@ import React from "react";
 
 import {
   HISTORY_TARGET,
-  FLOW_TERMINAL,
-  type FlowReactFlow,
-  useFlow,
-  FlowProvider,
-  FlowStepRenderer
+  JOURNEY_TERMINAL,
+  type JourneyReactDefinition,
+  useJourney,
+  JourneyProvider,
+  JourneyStepRenderer
 } from "@/src";
 
 type StepId = "cart" | "address" | "giftWrap" | "payment" | "review";
@@ -16,31 +16,31 @@ type Ctx = {
 };
 
 const Cart = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.next()}>Checkout</button>;
 };
 
 const Address = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.next()}>Continue</button>;
 };
 
 const GiftWrap = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.next()}>Continue</button>;
 };
 
 const Payment = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.next()}>Review order</button>;
 };
 
 const Review = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.submit()}>Place order</button>;
 };
 
-export const checkoutFlow: FlowReactFlow<Ctx, StepId> = {
+export const checkoutJourney: JourneyReactDefinition<Ctx, StepId> = {
   initial: "cart",
   context: {
     needsShipping: true,
@@ -81,13 +81,13 @@ export const checkoutFlow: FlowReactFlow<Ctx, StepId> = {
     { from: "giftWrap", event: "next", to: "payment" },
     { from: "payment", event: "next", to: "review" },
     { from: "*", event: "back", to: HISTORY_TARGET },
-    { from: "review", event: "submit", to: FLOW_TERMINAL.COMPLETE },
-    { from: "*", event: "close", to: FLOW_TERMINAL.CLOSE }
+    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE },
+    { from: "*", event: "close", to: JOURNEY_TERMINAL.CLOSE }
   ]
 };
 
 export const CheckoutExample = () => (
-  <FlowProvider flow={checkoutFlow}>
-    <FlowStepRenderer<Ctx, StepId> />
-  </FlowProvider>
+  <JourneyProvider journey={checkoutJourney}>
+    <JourneyStepRenderer<Ctx, StepId> />
+  </JourneyProvider>
 );
