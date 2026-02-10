@@ -183,7 +183,7 @@ This library is designed for modal multi-step forms where path length changes dy
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | Flow modeling                      | ✅ Declarative graph (`steps` + ordered `transitions`) as the single source of truth.                                           | ⚠️ Usually step index + imperative branching spread across components.              |
 | Conditional branching / skip       | ✅ First-class via `when` guards in transitions.                                                                                | ⚠️ Commonly manual `if` branching in UI handlers.                                   |
-| Runtime dynamic steps              | ✅ Supported by rebuilding `steps` + `transitions` graph at runtime (see `examples/dynamic-steps.journey.tsx`).                 | ⚠️ Often limited to hide/show step UI while navigation logic remains index-coupled. |
+| Runtime dynamic steps              | ✅ Supported by rebuilding `steps` + `transitions` graph at runtime (see `examples/dynamic-steps.flow.tsx`).                    | ⚠️ Often limited to hide/show step UI while navigation logic remains index-coupled. |
 | Deterministic back behavior        | ✅ Built-in with history semantics (`HISTORY_TARGET`).                                                                          | ⚠️ Frequently manual index/history bookkeeping.                                     |
 | Async validation/effects lifecycle | ✅ Built-in async `when`/`effect` with per-step phase/error capture in `snapshot.async`.                                        | ⚠️ Usually hand-rolled loading/error state + race handling.                         |
 | Lifecycle visibility               | ✅ Explicit runtime phases (`idle`, `evaluating-when`, `running-effect`, `error`) for each step.                                | ⚠️ Lifecycle is often implicit and dispersed across local state/effects.            |
@@ -318,29 +318,29 @@ See [docs/API.md](./docs/API.md) and [docs/RECIPES.md](./docs/RECIPES.md) for fu
 
 Minimal:
 
-- [examples/simple-journey.tsx](./examples/simple-journey.tsx)
-- [examples/simple-sequence.journey.tsx](./examples/simple-sequence.journey.tsx)
-- [examples/simple-back.journey.tsx](./examples/simple-back.journey.tsx)
+- [examples/simple-flow.tsx](./examples/simple-flow.tsx)
+- [examples/simple-sequence.flow.tsx](./examples/simple-sequence.flow.tsx)
+- [examples/simple-back.flow.tsx](./examples/simple-back.flow.tsx)
 
 Specific patterns:
 
-- [examples/conditional-skip.journey.tsx](./examples/conditional-skip.journey.tsx)
-- [examples/first-match-wins.journey.tsx](./examples/first-match-wins.journey.tsx)
-- [examples/custom-event.journey.tsx](./examples/custom-event.journey.tsx)
-- [examples/async-guard.journey.tsx](./examples/async-guard.journey.tsx)
-- [examples/async-effect.journey.tsx](./examples/async-effect.journey.tsx)
-- [examples/dynamic-steps.journey.tsx](./examples/dynamic-steps.journey.tsx)
-- [examples/confirm-close.journey.tsx](./examples/confirm-close.journey.tsx)
-- [examples/go-to-jump.journey.tsx](./examples/go-to-jump.journey.tsx)
-- [examples/history-back.journey.tsx](./examples/history-back.journey.tsx)
+- [examples/conditional-skip.flow.tsx](./examples/conditional-skip.flow.tsx)
+- [examples/first-match-wins.flow.tsx](./examples/first-match-wins.flow.tsx)
+- [examples/custom-event.flow.tsx](./examples/custom-event.flow.tsx)
+- [examples/async-guard.flow.tsx](./examples/async-guard.flow.tsx)
+- [examples/async-effect.flow.tsx](./examples/async-effect.flow.tsx)
+- [examples/dynamic-steps.flow.tsx](./examples/dynamic-steps.flow.tsx)
+- [examples/confirm-close.flow.tsx](./examples/confirm-close.flow.tsx)
+- [examples/go-to-jump.flow.tsx](./examples/go-to-jump.flow.tsx)
+- [examples/history-back.flow.tsx](./examples/history-back.flow.tsx)
 
 Real journeys:
 
-- [examples/group-trip.journey.tsx](./examples/group-trip.journey.tsx)
-- [examples/itinerary-builder.journey.tsx](./examples/itinerary-builder.journey.tsx)
-- [examples/onboarding.journey.tsx](./examples/onboarding.journey.tsx)
-- [examples/checkout.journey.tsx](./examples/checkout.journey.tsx)
-- [examples/support-ticket.journey.tsx](./examples/support-ticket.journey.tsx)
+- [examples/group-trip.flow.tsx](./examples/group-trip.flow.tsx)
+- [examples/itinerary-builder.flow.tsx](./examples/itinerary-builder.flow.tsx)
+- [examples/onboarding.flow.tsx](./examples/onboarding.flow.tsx)
+- [examples/checkout.flow.tsx](./examples/checkout.flow.tsx)
+- [examples/support-ticket.flow.tsx](./examples/support-ticket.flow.tsx)
 
 ## Scripts
 
