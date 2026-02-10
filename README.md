@@ -1,8 +1,8 @@
-# react-toolkit-journey
+# @rxova/journey
 
-[![npm version](https://img.shields.io/npm/v/react-toolkit-journey)](https://www.npmjs.com/package/react-toolkit-journey)
-[![npm downloads](https://img.shields.io/npm/dm/react-toolkit-journey)](https://www.npmjs.com/package/react-toolkit-journey)
-[![Bundlephobia](https://img.shields.io/bundlephobia/minzip/react-toolkit-journey)](https://bundlephobia.com/package/react-toolkit-journey)
+[![npm version](https://img.shields.io/npm/v/@rxova/journey)](https://www.npmjs.com/package/@rxova/journey)
+[![npm downloads](https://img.shields.io/npm/dm/@rxova/journey)](https://www.npmjs.com/package/@rxova/journey)
+[![Bundlephobia](https://img.shields.io/bundlephobia/minzip/@rxova/journey)](https://bundlephobia.com/package/@rxova/journey)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
 ![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)
 ![Build checks](https://img.shields.io/badge/build-lint%20%7C%20typecheck%20%7C%20tests-brightgreen)
@@ -15,8 +15,8 @@ This library is designed for modal multi-step forms where path length changes dy
 
 ## Why This Over Other Wizard Libraries
 
-| Area                               | Ours                                                                                                                            | Typical index-based wizard libs                                                     |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Area                               | Ours                                                                                                                           | Typical index-based wizard libs                                                    |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
 | Flow modeling                      | ✅ Declarative graph (`steps` + ordered `transitions`) as the single source of truth.                                           | ⚠️ Usually step index + imperative branching spread across components.              |
 | Conditional branching / skip       | ✅ First-class via `when` guards in transitions.                                                                                | ⚠️ Commonly manual `if` branching in UI handlers.                                   |
 | Runtime dynamic steps              | ✅ Supported by rebuilding `steps` + `transitions` graph at runtime (see `examples/dynamic-steps.journey.tsx`).                 | ⚠️ Often limited to hide/show step UI while navigation logic remains index-coupled. |
@@ -34,7 +34,7 @@ This library is designed for modal multi-step forms where path length changes dy
 ## Install
 
 ```bash
-npm i react-toolkit-journey
+npm i @rxova/journey
 ```
 
 `react` is a peer dependency.
@@ -43,15 +43,15 @@ npm i react-toolkit-journey
 
 Use subpath imports to keep server and client code separated:
 
-- Server code (RSC, route handlers, server actions): `react-toolkit-journey/core`
-- Client components (hooks/provider/renderer): `react-toolkit-journey/react`
+- Server code (RSC, route handlers, server actions): `@rxova/journey/core`
+- Client components (hooks/provider/renderer): `@rxova/journey/react`
 
-`react-toolkit-journey/react` is a client entrypoint and is marked with `"use client"`.
+`@rxova/journey/react` is a client entrypoint and is marked with `"use client"`.
 The root package also exposes a `react-server` condition that resolves to core-only exports in RSC.
 
 ```tsx
 // app/page.tsx (Server Component)
-import { type JourneyDefinition } from "react-toolkit-journey/core";
+import { type JourneyDefinition } from "@rxova/journey/core";
 import { WizardClient } from "./WizardClient";
 
 type StepId = "start" | "done";
@@ -79,7 +79,7 @@ import {
   JourneyStepRenderer,
   useJourney,
   type JourneyReactDefinition
-} from "react-toolkit-journey/react";
+} from "@rxova/journey/react";
 
 type StepId = "start" | "done";
 type Event = "next";
@@ -115,15 +115,15 @@ export const WizardClient = ({
 
 ## Framework Compatibility
 
-- Next.js App Router: supported. Keep journey engine logic in server-safe imports (`react-toolkit-journey/core`) and UI hooks/provider in client components (`react-toolkit-journey/react`).
+- Next.js App Router: supported. Keep journey engine logic in server-safe imports (`@rxova/journey/core`) and UI hooks/provider in client components (`@rxova/journey/react`).
 - Next.js Pages Router: supported. Use React APIs normally in pages/components.
 - Remix / React Router SSR: supported. Keep provider/hooks inside client-rendered React trees; use core machine in shared/server code paths.
 - Vite SSR / custom React SSR: supported. `core` has no React dependency; `react` entry is client-bound.
 
 Import rule of thumb:
 
-- If code can execute on the server, import from `react-toolkit-journey/core`.
-- If code uses hooks/context/components, import from `react-toolkit-journey/react` in a client component/module.
+- If code can execute on the server, import from `@rxova/journey/core`.
+- If code uses hooks/context/components, import from `@rxova/journey/react` in a client component/module.
 
 ## Core Model
 
@@ -145,7 +145,7 @@ import {
   HISTORY_TARGET,
   JOURNEY_TERMINAL,
   type JourneyReactDefinition
-} from "react-toolkit-journey";
+} from "@rxova/journey";
 
 type StepId = "start" | "details" | "review" | "confirmExit";
 type Event = "next" | "back" | "close" | "submit";
@@ -221,7 +221,6 @@ export const App = () => (
 - API details: [docs/API.md](./docs/API.md)
 - Practical patterns: [docs/RECIPES.md](./docs/RECIPES.md)
 - Common questions: [docs/FAQ.md](./docs/FAQ.md)
-- Migration help: [docs/MIGRATION.md](./docs/MIGRATION.md)
 - Example catalog: [examples/README.md](./examples/README.md)
 - Quickstarts now include: React UI, Core headless, Persistence resume.
 - Recipes now include: analytics hooks, submit confirmation, API-branching, restart.
@@ -287,15 +286,15 @@ npm run size
 ## Bundle Size
 
 - Package metadata includes `"sideEffects": false` to maximize dead-code elimination.
-- Public entrypoints are split: root (`react-toolkit-journey`), core (`react-toolkit-journey/core`), and react (`react-toolkit-journey/react`).
+- Public entrypoints are split: root (`@rxova/journey`), core (`@rxova/journey/core`), and react (`@rxova/journey/react`).
 - `npm run size` runs `size-limit` import budgets for release checks.
 - `npm run size:check` runs `size-limit` import budgets in CI for battle-tested bundle regression checks.
 
 Recommended import style for smallest bundles:
 
 ```ts
-import { createJourneyMachine } from "react-toolkit-journey/core";
-import { JourneyProvider, useJourney } from "react-toolkit-journey/react";
+import { createJourneyMachine } from "@rxova/journey/core";
+import { JourneyProvider, useJourney } from "@rxova/journey/react";
 ```
 
 ## License
