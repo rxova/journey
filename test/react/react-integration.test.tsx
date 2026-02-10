@@ -4,7 +4,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import { act } from "react";
 
-import { HISTORY_TARGET, FLOW_TERMINAL } from "@/src/core";
+import { FLOW_STATUS, HISTORY_TARGET, FLOW_TERMINAL } from "@/src/core";
 import { FlowProvider, FlowStepRenderer, useFlow } from "@/src/react";
 import type { FlowReactFlow } from "@/src/react";
 
@@ -57,7 +57,7 @@ const Controls = () => {
       <button onClick={() => api.submit()}>submit</button>
       <button onClick={() => api.updateContext((ctx) => ({ ...ctx, dirty: true }))}>dirty</button>
       <div data-testid="current">{snapshot.current}</div>
-      <div data-testid="terminal">{snapshot.terminal ?? "none"}</div>
+      <div data-testid="terminal">{snapshot.status}</div>
     </div>
   );
 };
@@ -123,7 +123,7 @@ describe("react integration", () => {
       screen.getByText("submit").click();
     });
 
-    expect(screen.getByTestId("terminal").textContent).toBe(FLOW_TERMINAL.COMPLETE);
+    expect(screen.getByTestId("terminal").textContent).toBe(FLOW_STATUS.COMPLETE);
   });
 
   it("recreates internal machine when flow prop changes", async () => {

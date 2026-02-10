@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { createFlowMachine, HISTORY_TARGET, FLOW_TERMINAL, type FlowFlow } from "@/src/core";
+import {
+  createFlowMachine,
+  FLOW_STATUS,
+  HISTORY_TARGET,
+  FLOW_TERMINAL,
+  type FlowFlow
+} from "@/src/core";
 
 type StepId = "a" | "b" | "c" | "d" | "confirm";
 type Event = "next" | "back" | "close" | "submit" | "skip";
@@ -202,7 +208,7 @@ describe("flow behavior edge cases", () => {
   it("close on clean state reaches CLOSE terminal", async () => {
     const machine = createFlowMachine(createFlow());
     await machine.send({ type: "close" });
-    expect(machine.getSnapshot().terminal).toBe(FLOW_TERMINAL.CLOSE);
+    expect(machine.getSnapshot().status).toBe(FLOW_STATUS.CLOSED);
   });
 
   it("close on dirty state routes to confirm step", async () => {
@@ -210,7 +216,7 @@ describe("flow behavior edge cases", () => {
     machine.updateContext((ctx) => ({ ...ctx, dirty: true }));
     await machine.send({ type: "close" });
     expect(machine.getSnapshot().current).toBe("confirm");
-    expect(machine.getSnapshot().terminal).toBeNull();
+    expect(machine.getSnapshot().status).toBe(FLOW_STATUS.RUNNING);
   });
 
   it("submit from d reaches COMPLETE terminal", async () => {
@@ -218,7 +224,7 @@ describe("flow behavior edge cases", () => {
     await machine.send({ type: "next" });
     await machine.send({ type: "next" });
     await machine.send({ type: "submit" });
-    expect(machine.getSnapshot().terminal).toBe(FLOW_TERMINAL.COMPLETE);
+    expect(machine.getSnapshot().status).toBe(FLOW_STATUS.COMPLETE);
   });
 
   it("stops transitioning after terminal", async () => {
@@ -269,8 +275,7 @@ describe("flow behavior edge cases", () => {
       context: { flag: false, dirty: false, count: 0, log: [] },
       history: [],
       visited: ["a"],
-      terminal: null,
-      isDone: false,
+      status: FLOW_STATUS.RUNNING,
       async: asyncState()
     });
   });

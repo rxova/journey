@@ -222,7 +222,7 @@ const unsubscribe = machine.subscribe(() => {
   const snapshot = machine.getSnapshot();
   track("flow_step_changed", {
     current: snapshot.current,
-    terminal: snapshot.terminal
+    status: snapshot.status
   });
 });
 ```
@@ -244,14 +244,14 @@ const flow = { ... };
           current: "details",
           context: { draftId: old.context?.draftId ?? null, acceptedTerms: false },
           history: ["start"],
-          terminal: null
+          status: "running"
         };
       }
       return snapshot as {
         current: "start" | "details" | "review";
         context: { draftId: string | null; acceptedTerms: boolean };
         history: Array<"start" | "details" | "review">;
-        terminal: "COMPLETE" | "CLOSE" | null;
+        status: "running" | "complete" | "closed";
       };
     }
   }}

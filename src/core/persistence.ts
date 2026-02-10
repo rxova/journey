@@ -1,19 +1,21 @@
-import { FLOW_TERMINAL } from "./types";
+import { FLOW_STATUS } from "./types";
 import type {
   FlowMachineOptions,
   FlowPersistedSnapshot,
   FlowPersistedState,
+  FlowStatus,
   FlowSnapshot,
-  FlowStorage,
-  FlowTerminal
+  FlowStorage
 } from "./types";
 import { buildInitialAsyncState, buildSnapshot } from "./machine-helpers";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
-const isTerminalValue = (value: unknown): value is FlowTerminal =>
-  value === FLOW_TERMINAL.COMPLETE || value === FLOW_TERMINAL.CLOSE;
+const isStatusValue = (value: unknown): value is FlowStatus =>
+  value === FLOW_STATUS.RUNNING ||
+  value === FLOW_STATUS.COMPLETE ||
+  value === FLOW_STATUS.CLOSED;
 
 const resolveDefaultStorage = (): FlowStorage | null => {
   const localStorageCandidate = (globalThis as { localStorage?: Partial<FlowStorage> })
@@ -87,13 +89,13 @@ const coercePersistedSnapshot = <TContext, TStepId extends string>(
       ) as TStepId[])
     : [];
 
-  const terminal = isTerminalValue(value.terminal) ? value.terminal : null;
+  const status = isStatusValue(value.status) ? value.status : FLOW_STATUS.RUNNING;
 
   return {
     current,
     context: ("context" in value ? value.context : fallbackContext) as TContext,
     history,
-    terminal
+    status
   };
 };
 
@@ -122,7 +124,7 @@ export const createPersistenceController = <TContext, TStepId extends string>(ar
           current: snapshot.current,
           context: snapshot.context,
           history: [...snapshot.history],
-          terminal: snapshot.terminal
+          status: snapshot.status
         }
       };
       persistence.storage.setItem(persistence.key, persistence.serialize(persistedState));
@@ -148,7 +150,7 @@ export const createPersistenceController = <TContext, TStepId extends string>(ar
       initial,
       context,
       [],
-      null,
+      FLOW_STATUS.RUNNING,
       buildInitialAsyncState(steps)
     );
     if (!persistence) {
@@ -190,7 +192,7 @@ export const createPersistenceController = <TContext, TStepId extends string>(ar
         persistedSnapshot.current,
         persistedSnapshot.context,
         persistedSnapshot.history,
-        persistedSnapshot.terminal,
+        persistedSnapshot.status,
         buildInitialAsyncState(steps)
       );
 

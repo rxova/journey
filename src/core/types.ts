@@ -5,6 +5,14 @@ export const FLOW_TERMINAL = {
 
 export type FlowTerminal = (typeof FLOW_TERMINAL)[keyof typeof FLOW_TERMINAL];
 
+export const FLOW_STATUS = {
+  RUNNING: "running",
+  COMPLETE: "complete",
+  CLOSED: "closed"
+} as const;
+
+export type FlowStatus = (typeof FLOW_STATUS)[keyof typeof FLOW_STATUS];
+
 export const HISTORY_TARGET = "__HISTORY__" as const;
 export const FLOW_WILDCARD = "*" as const;
 
@@ -110,8 +118,7 @@ export type FlowSnapshot<TContext, TStepId extends string> = {
   context: TContext;
   history: readonly TStepId[];
   visited: readonly TStepId[];
-  terminal: FlowTerminal | null;
-  isDone: boolean;
+  status: FlowStatus;
   async: FlowAsyncState<TStepId>;
 };
 
@@ -119,7 +126,7 @@ export type FlowPersistedSnapshot<TContext, TStepId extends string> = {
   current: TStepId;
   context: TContext;
   history: readonly TStepId[];
-  terminal: FlowTerminal | null;
+  status: FlowStatus;
 };
 
 export type FlowPersistedState<TContext, TStepId extends string> = {
