@@ -67,7 +67,7 @@ Machine methods:
 Example:
 
 ```ts
-import { createJourneyMachine } from "react-toolkit-journey/core";
+import { createJourneyMachine } from "@rxova/journey/core";
 
 const machine = createJourneyMachine(journey);
 await machine.send({ type: "next" });

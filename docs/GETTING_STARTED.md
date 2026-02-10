@@ -21,7 +21,7 @@ import {
   useJourney,
   JOURNEY_TERMINAL,
   type JourneyReactDefinition
-} from "react-toolkit-journey";
+} from "@rxova/journey";
 
 type StepId = "start" | "review";
 type Ctx = { name: string };
@@ -79,7 +79,7 @@ import {
   createJourneyMachine,
   JOURNEY_TERMINAL,
   type JourneyDefinition
-} from "react-toolkit-journey/core";
+} from "@rxova/journey/core";
 
 type StepId = "a" | "b";
 type Event = "next" | "submit";
@@ -124,7 +124,7 @@ Use this to restore step + context after refresh.
 ## 1. Install
 
 ```bash
-npm i react-toolkit-journey
+npm i @rxova/journey
 ```
 
 ## 2. Define Your Step IDs and Context
