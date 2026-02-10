@@ -107,12 +107,15 @@ describe("core robustness", () => {
       { from: "*", event: "back", to: HISTORY_TARGET }
     ] as const;
 
-    const machine = createJourneyMachine({
-      initial: "s0",
-      context: { value: 0 },
-      steps,
-      transitions
-    });
+    const machine = createJourneyMachine(
+      {
+        initial: "s0",
+        context: { value: 0 },
+        steps,
+        transitions
+      },
+      { history: { maxHistory: null } }
+    );
 
     for (let i = 0; i < stepCount - 1; i += 1) {
       await machine.send({ type: "next" });

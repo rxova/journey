@@ -8,6 +8,7 @@ import type {
   JourneyMachine,
   JourneyPayloadFor,
   JourneyPersistenceOptions,
+  JourneyHistoryOptions,
   JourneySnapshot
 } from "@/src/core";
 
@@ -67,6 +68,8 @@ export type JourneyApi<
   clearStepError: (stepId?: TStepId) => void;
   updateContext: (updater: (context: TContext) => TContext) => void;
   reset: () => void;
+  trimHistory: (maxHistory?: number) => void;
+  clearHistory: () => void;
 };
 
 export type JourneyHookResult<
@@ -98,6 +101,7 @@ export type JourneyProviderProps<
   journey: JourneyReactDefinition<TContext, TStepId, TCustomEvent, TEventPayloadMap>;
   machine?: JourneyMachine<TContext, TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap>;
   persistence?: JourneyPersistenceOptions<TContext, TStepId>;
+  history?: JourneyHistoryOptions<TStepId>;
   resetOnJourneyChange?: boolean;
   children: React.ReactNode;
 };

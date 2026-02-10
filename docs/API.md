@@ -62,6 +62,8 @@ Machine methods:
 - `send(event)` async
 - `updateContext(updater)`
 - `reset()`
+- `trimHistory(maxHistory?)`
+- `clearHistory()`
 - `subscribe(listener)`
 
 Example:
@@ -89,6 +91,13 @@ Persistence options (`options.persistence`):
 - `clearOnReset`: when `true` (default), `reset()` removes persisted state.
 - `serialize` / `deserialize`: custom serialization functions.
 - `onError`: receives persistence read/write/parse errors.
+
+History options (`options.history`):
+
+- `maxHistory`: maximum number of history entries to retain. Defaults to `50`. Set to `null` to disable trimming.
+- `onOverflow`: called when history is trimmed. Receives `{ previous, next, trimmed, maxHistory, reason }` where
+  `reason` is `"auto"` (during transitions), `"hydrate"` (after persistence hydrate), or `"manual"` (via API).
+- Note: trimming history limits how far `HISTORY_TARGET` can travel backward.
 
 Important compatibility note:
 
@@ -146,6 +155,7 @@ Notes:
 - By default, the internal machine is created once and not recreated if the `journey` object reference changes.
 - You can pass `machine` prop to use your own machine instance.
 - You can pass `persistence` prop to configure machine persistence when using the internal machine.
+- You can pass `history` prop to configure max history retention when using the internal machine.
 - Set `resetOnJourneyChange` to `true` if you want the internal machine to be recreated when the `journey` prop changes.
 
 Example:
@@ -156,6 +166,16 @@ Example:
   persistence={{
     key: "signup-journey",
     version: 1
+  }}
+>
+  <JourneyStepRenderer />
+</JourneyProvider>
+
+<JourneyProvider
+  journey={journey}
+  history={{
+    maxHistory: 20,
+    onOverflow: ({ trimmed }) => console.warn("trimmed history", trimmed)
   }}
 >
   <JourneyStepRenderer />
@@ -224,6 +244,8 @@ API:
 - `clearStepError(stepId?)`
 - `updateContext(updater)`
 - `reset()`
+- `trimHistory(maxHistory?)`
+- `clearHistory()`
 
 Example:
 
