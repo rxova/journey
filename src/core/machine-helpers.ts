@@ -1,16 +1,16 @@
-import { FLOW_ASYNC_PHASE, FLOW_EVENT, FLOW_TERMINAL, FLOW_WILDCARD } from "./types";
+import { JOURNEY_ASYNC_PHASE, JOURNEY_EVENT, JOURNEY_TERMINAL, JOURNEY_WILDCARD } from "./types";
 import type {
-  FlowAsyncState,
-  FlowEvent,
-  FlowEventPayloadMap,
-  FlowGoToEvent,
-  FlowPayloadFor,
-  FlowSendResult,
-  FlowSnapshot,
-  FlowStatus,
-  FlowStepAsyncState,
-  FlowTerminal,
-  FlowTransition
+  JourneyAsyncState,
+  JourneyEvent,
+  JourneyEventPayloadMap,
+  JourneyGoToEvent,
+  JourneyPayloadFor,
+  JourneySendResult,
+  JourneySnapshot,
+  JourneyStatus,
+  JourneyStepAsyncState,
+  JourneyTerminal,
+  JourneyTransition
 } from "./types";
 
 export const assertStepExists = <TStepId extends string>(
@@ -31,8 +31,8 @@ export const isPromiseLike = <T>(value: T | PromiseLike<T>): value is PromiseLik
   "then" in value &&
   typeof (value as { then: unknown }).then === "function";
 
-export const buildIdleStepAsyncState = (): FlowStepAsyncState => ({
-  phase: FLOW_ASYNC_PHASE.IDLE,
+export const buildIdleStepAsyncState = (): JourneyStepAsyncState => ({
+  phase: JOURNEY_ASYNC_PHASE.IDLE,
   eventType: null,
   transitionId: null,
   error: null
@@ -40,10 +40,10 @@ export const buildIdleStepAsyncState = (): FlowStepAsyncState => ({
 
 export const buildInitialAsyncState = <TStepId extends string>(
   steps: Record<TStepId, unknown>
-): FlowAsyncState<TStepId> => {
+): JourneyAsyncState<TStepId> => {
   const byStep = Object.fromEntries(
     Object.keys(steps).map((stepId) => [stepId, buildIdleStepAsyncState()])
-  ) as Record<TStepId, FlowStepAsyncState>;
+  ) as Record<TStepId, JourneyStepAsyncState>;
 
   return {
     isLoading: false,
@@ -54,32 +54,33 @@ export const buildInitialAsyncState = <TStepId extends string>(
 export const isGoToEvent = <
   TStepId extends string,
   TEventType extends string,
-  TPayloadMap extends FlowEventPayloadMap<TEventType>
+  TPayloadMap extends JourneyEventPayloadMap<TEventType>
 >(
-  event: FlowEvent<TStepId, TEventType, TPayloadMap>
-): event is FlowGoToEvent<
+  event: JourneyEvent<TStepId, TEventType, TPayloadMap>
+): event is JourneyGoToEvent<
   TStepId,
-  FlowPayloadFor<TEventType, TPayloadMap, (typeof FLOW_EVENT)["GO_TO"]>
-> => event.type === FLOW_EVENT.GO_TO && "to" in event;
+  JourneyPayloadFor<TEventType, TPayloadMap, (typeof JOURNEY_EVENT)["GO_TO"]>
+> => event.type === JOURNEY_EVENT.GO_TO && "to" in event;
 
 export const isTerminalTarget = <TStepId extends string>(
-  target: TStepId | FlowTerminal | "__HISTORY__"
-): target is FlowTerminal => target === FLOW_TERMINAL.COMPLETE || target === FLOW_TERMINAL.CLOSE;
+  target: TStepId | JourneyTerminal | "__HISTORY__"
+): target is JourneyTerminal =>
+  target === JOURNEY_TERMINAL.COMPLETE || target === JOURNEY_TERMINAL.CLOSE;
 
 export const buildSendResult = <TContext, TStepId extends string>(
-  snapshot: FlowSnapshot<TContext, TStepId>,
+  snapshot: JourneySnapshot<TContext, TStepId>,
   transitioned: boolean,
   transitionId?: string
-): FlowSendResult<TContext, TStepId> =>
+): JourneySendResult<TContext, TStepId> =>
   transitionId ? { transitioned, transitionId, snapshot } : { transitioned, snapshot };
 
 export const buildSnapshot = <TContext, TStepId extends string>(
   current: TStepId,
   context: TContext,
   history: readonly TStepId[],
-  status: FlowStatus,
-  asyncState: FlowAsyncState<TStepId>
-): FlowSnapshot<TContext, TStepId> => ({
+  status: JourneyStatus,
+  asyncState: JourneyAsyncState<TStepId>
+): JourneySnapshot<TContext, TStepId> => ({
   status,
   current,
   context,
@@ -89,7 +90,7 @@ export const buildSnapshot = <TContext, TStepId extends string>(
 });
 
 export const resolveHistoryTarget = <TContext, TStepId extends string>(
-  snapshot: FlowSnapshot<TContext, TStepId>,
+  snapshot: JourneySnapshot<TContext, TStepId>,
   steps: Record<TStepId, unknown>
 ): { target: TStepId; history: TStepId[] } => {
   const cloned = [...snapshot.history];
@@ -117,26 +118,27 @@ export const selectTransition = async <
   TContext,
   TStepId extends string,
   TEventType extends string,
-  TPayloadMap extends FlowEventPayloadMap<TEventType>
+  TPayloadMap extends JourneyEventPayloadMap<TEventType>
 >(
-  transitions: readonly FlowTransition<TContext, TStepId, TEventType, TPayloadMap>[],
-  snapshot: FlowSnapshot<TContext, TStepId>,
-  event: FlowEvent<TStepId, TEventType, TPayloadMap>,
+  transitions: readonly JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>[],
+  snapshot: JourneySnapshot<TContext, TStepId>,
+  event: JourneyEvent<TStepId, TEventType, TPayloadMap>,
   hooks?: {
     onAsyncGuardStart?: (
-      transition: FlowTransition<TContext, TStepId, TEventType, TPayloadMap>
+      transition: JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>
     ) => void;
     onAsyncGuardSuccess?: (
-      transition: FlowTransition<TContext, TStepId, TEventType, TPayloadMap>
+      transition: JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>
     ) => void;
     onAsyncGuardError?: (
-      transition: FlowTransition<TContext, TStepId, TEventType, TPayloadMap>,
+      transition: JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>,
       error: unknown
     ) => void;
   }
-): Promise<FlowTransition<TContext, TStepId, TEventType, TPayloadMap> | null> => {
+): Promise<JourneyTransition<TContext, TStepId, TEventType, TPayloadMap> | null> => {
   for (const transition of transitions) {
-    const fromMatches = transition.from === FLOW_WILDCARD || transition.from === snapshot.current;
+    const fromMatches =
+      transition.from === JOURNEY_WILDCARD || transition.from === snapshot.current;
     const eventMatches = transition.event === event.type;
 
     if (!fromMatches || !eventMatches) {
@@ -181,10 +183,10 @@ export const selectTransition = async <
 };
 
 export const transitionSnapshot = <TContext, TStepId extends string>(
-  snapshot: FlowSnapshot<TContext, TStepId>,
+  snapshot: JourneySnapshot<TContext, TStepId>,
   nextCurrent: TStepId,
   nextContext: TContext
-): FlowSnapshot<TContext, TStepId> => {
+): JourneySnapshot<TContext, TStepId> => {
   const history =
     nextCurrent === snapshot.current
       ? [...snapshot.history]

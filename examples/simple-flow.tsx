@@ -1,26 +1,32 @@
 import React from "react";
 
-import { FLOW_TERMINAL, type FlowReactFlow, useFlow, FlowProvider, FlowStepRenderer } from "../src";
+import {
+  JOURNEY_TERMINAL,
+  type JourneyReactDefinition,
+  useJourney,
+  JourneyProvider,
+  JourneyStepRenderer
+} from "../src";
 
 type StepId = "one" | "two" | "three";
 type Ctx = { name: string };
 
 const One = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.next()}>Next</button>;
 };
 
 const Two = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.next()}>Next</button>;
 };
 
 const Three = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.submit()}>Finish</button>;
 };
 
-export const simpleFlow: FlowReactFlow<Ctx, StepId> = {
+export const simpleJourney: JourneyReactDefinition<Ctx, StepId> = {
   initial: "one",
   context: { name: "" },
   steps: {
@@ -31,12 +37,12 @@ export const simpleFlow: FlowReactFlow<Ctx, StepId> = {
   transitions: [
     { from: "one", event: "next", to: "two" },
     { from: "two", event: "next", to: "three" },
-    { from: "three", event: "submit", to: FLOW_TERMINAL.COMPLETE }
+    { from: "three", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
   ]
 };
 
-export const SimpleFlowExample = () => (
-  <FlowProvider flow={simpleFlow}>
-    <FlowStepRenderer<Ctx, StepId> />
-  </FlowProvider>
+export const SimpleJourneyExample = () => (
+  <JourneyProvider journey={simpleJourney}>
+    <JourneyStepRenderer<Ctx, StepId> />
+  </JourneyProvider>
 );

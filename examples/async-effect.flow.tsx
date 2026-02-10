@@ -1,6 +1,11 @@
 import React from "react";
 
-import { type FlowReactFlow, useFlow, FlowProvider, FlowStepRenderer } from "../src";
+import {
+  type JourneyReactDefinition,
+  useJourney,
+  JourneyProvider,
+  JourneyStepRenderer
+} from "../src";
 
 type StepId = "details" | "review";
 type Ctx = { draftId: string | null };
@@ -8,15 +13,15 @@ type Ctx = { draftId: string | null };
 const saveDraft = async () => "draft-123";
 
 const Details = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.next()}>Save draft</button>;
 };
 const Review = () => {
-  const { snapshot } = useFlow<Ctx, StepId>();
+  const { snapshot } = useJourney<Ctx, StepId>();
   return <div>Draft: {snapshot.context.draftId ?? "none"}</div>;
 };
 
-export const asyncEffectFlow: FlowReactFlow<Ctx, StepId> = {
+export const asyncEffectJourney: JourneyReactDefinition<Ctx, StepId> = {
   initial: "details",
   context: { draftId: null },
   steps: {
@@ -34,7 +39,7 @@ export const asyncEffectFlow: FlowReactFlow<Ctx, StepId> = {
 };
 
 export const AsyncEffectExample = () => (
-  <FlowProvider flow={asyncEffectFlow}>
-    <FlowStepRenderer<Ctx, StepId> />
-  </FlowProvider>
+  <JourneyProvider journey={asyncEffectJourney}>
+    <JourneyStepRenderer<Ctx, StepId> />
+  </JourneyProvider>
 );

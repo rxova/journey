@@ -4,9 +4,9 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import { act } from "react";
 
-import { FLOW_STATUS, HISTORY_TARGET, FLOW_TERMINAL } from "@/src/core";
-import { FlowProvider, FlowStepRenderer, useFlow } from "@/src/react";
-import type { FlowReactFlow } from "@/src/react";
+import { JOURNEY_STATUS, HISTORY_TARGET, JOURNEY_TERMINAL } from "@/src/core";
+import { JourneyProvider, JourneyStepRenderer, useJourney } from "@/src/react";
+import type { JourneyReactDefinition } from "@/src/react";
 
 type StepId = "start" | "details" | "review" | "confirmClose";
 type Event = "next" | "back" | "close" | "submit";
@@ -17,7 +17,7 @@ const Details = () => <div data-testid="step">details</div>;
 const Review = () => <div data-testid="step">review</div>;
 const ConfirmClose = () => <div data-testid="step">confirm-close</div>;
 
-const flow: FlowReactFlow<Ctx, StepId, Event> = {
+const journey: JourneyReactDefinition<Ctx, StepId, Event> = {
   initial: "start",
   context: { dirty: false, log: [] },
   steps: {
@@ -39,15 +39,15 @@ const flow: FlowReactFlow<Ctx, StepId, Event> = {
     {
       from: "*",
       event: "close",
-      to: FLOW_TERMINAL.CLOSE,
+      to: JOURNEY_TERMINAL.CLOSE,
       when: ({ context }: { context: Ctx }) => !context.dirty
     },
-    { from: "review", event: "submit", to: FLOW_TERMINAL.COMPLETE }
+    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
   ]
 };
 
 const Controls = () => {
-  const { snapshot, api } = useFlow<Ctx, StepId, Event>();
+  const { snapshot, api } = useJourney<Ctx, StepId, Event>();
 
   return (
     <div>
@@ -63,10 +63,10 @@ const Controls = () => {
 };
 
 const TestApp = () => (
-  <FlowProvider flow={flow}>
-    <FlowStepRenderer<Ctx, StepId, Event> />
+  <JourneyProvider journey={journey}>
+    <JourneyStepRenderer<Ctx, StepId, Event> />
     <Controls />
-  </FlowProvider>
+  </JourneyProvider>
 );
 
 describe("react integration", () => {
@@ -123,15 +123,15 @@ describe("react integration", () => {
       screen.getByText("submit").click();
     });
 
-    expect(screen.getByTestId("terminal").textContent).toBe(FLOW_STATUS.COMPLETE);
+    expect(screen.getByTestId("terminal").textContent).toBe(JOURNEY_STATUS.COMPLETE);
   });
 
-  it("recreates internal machine when flow prop changes", async () => {
+  it("recreates internal machine when journey prop changes", async () => {
     const { rerender } = render(
-      <FlowProvider flow={flow}>
-        <FlowStepRenderer<Ctx, StepId, Event> />
+      <JourneyProvider journey={journey}>
+        <JourneyStepRenderer<Ctx, StepId, Event> />
         <Controls />
-      </FlowProvider>
+      </JourneyProvider>
     );
 
     await act(async () => {
@@ -139,16 +139,16 @@ describe("react integration", () => {
     });
     expect(screen.getByTestId("current").textContent).toBe("details");
 
-    const nextFlow: FlowReactFlow<Ctx, StepId, Event> = {
-      ...flow,
+    const nextJourney: JourneyReactDefinition<Ctx, StepId, Event> = {
+      ...journey,
       initial: "review"
     };
 
     rerender(
-      <FlowProvider flow={nextFlow}>
-        <FlowStepRenderer<Ctx, StepId, Event> />
+      <JourneyProvider journey={nextJourney}>
+        <JourneyStepRenderer<Ctx, StepId, Event> />
         <Controls />
-      </FlowProvider>
+      </JourneyProvider>
     );
 
     expect(screen.getByTestId("current").textContent).toBe("review");

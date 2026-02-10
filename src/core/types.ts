@@ -1,190 +1,196 @@
-export const FLOW_TERMINAL = {
+export const JOURNEY_TERMINAL = {
   COMPLETE: "COMPLETE",
   CLOSE: "CLOSE"
 } as const;
 
-export type FlowTerminal = (typeof FLOW_TERMINAL)[keyof typeof FLOW_TERMINAL];
+export type JourneyTerminal = (typeof JOURNEY_TERMINAL)[keyof typeof JOURNEY_TERMINAL];
 
-export const FLOW_STATUS = {
+export const JOURNEY_STATUS = {
   RUNNING: "running",
   COMPLETE: "complete",
   CLOSED: "closed"
 } as const;
 
-export type FlowStatus = (typeof FLOW_STATUS)[keyof typeof FLOW_STATUS];
+export type JourneyStatus = (typeof JOURNEY_STATUS)[keyof typeof JOURNEY_STATUS];
 
 export const HISTORY_TARGET = "__HISTORY__" as const;
-export const FLOW_WILDCARD = "*" as const;
+export const JOURNEY_WILDCARD = "*" as const;
 
-export const FLOW_EVENT = {
+export const JOURNEY_EVENT = {
   GO_TO: "goTo"
 } as const;
 
-export type FlowBuiltInEvent = (typeof FLOW_EVENT)[keyof typeof FLOW_EVENT];
-export type FlowBuiltInFrom = typeof FLOW_WILDCARD;
+export type JourneyBuiltInEvent = (typeof JOURNEY_EVENT)[keyof typeof JOURNEY_EVENT];
+export type JourneyBuiltInFrom = typeof JOURNEY_WILDCARD;
 
-export const FLOW_ASYNC_PHASE = {
+export const JOURNEY_ASYNC_PHASE = {
   IDLE: "idle",
   EVALUATING_WHEN: "evaluating-when",
   RUNNING_EFFECT: "running-effect",
   ERROR: "error"
 } as const;
 
-export type FlowAsyncPhase = (typeof FLOW_ASYNC_PHASE)[keyof typeof FLOW_ASYNC_PHASE];
+export type JourneyAsyncPhase = (typeof JOURNEY_ASYNC_PHASE)[keyof typeof JOURNEY_ASYNC_PHASE];
 
-export type FlowStepAsyncState = {
-  phase: FlowAsyncPhase;
+export type JourneyStepAsyncState = {
+  phase: JourneyAsyncPhase;
   eventType: string | null;
   transitionId: string | null;
   error: unknown | null;
 };
 
-export type FlowAsyncState<TStepId extends string> = {
+export type JourneyAsyncState<TStepId extends string> = {
   isLoading: boolean;
-  byStep: Record<TStepId, FlowStepAsyncState>;
+  byStep: Record<TStepId, JourneyStepAsyncState>;
 };
 
-export type FlowBaseEvent = {
+export type JourneyBaseEvent = {
   type: string;
   payload?: unknown;
 };
 
-export type FlowEventPayloadMap<TEventType extends string> = Partial<
-  Record<TEventType | FlowBuiltInEvent, unknown>
+export type JourneyEventPayloadMap<TEventType extends string> = Partial<
+  Record<TEventType | JourneyBuiltInEvent, unknown>
 >;
 
-export type FlowPayloadFor<
+export type JourneyPayloadFor<
   TEventType extends string,
-  TPayloadMap extends FlowEventPayloadMap<TEventType>,
-  TEvent extends TEventType | FlowBuiltInEvent
+  TPayloadMap extends JourneyEventPayloadMap<TEventType>,
+  TEvent extends TEventType | JourneyBuiltInEvent
 > = TEvent extends keyof TPayloadMap ? TPayloadMap[TEvent] : unknown;
 
-export type FlowGoToEvent<TStepId extends string, TPayload = unknown> = {
-  type: (typeof FLOW_EVENT)["GO_TO"];
+export type JourneyGoToEvent<TStepId extends string, TPayload = unknown> = {
+  type: (typeof JOURNEY_EVENT)["GO_TO"];
   to: TStepId;
   payload?: TPayload;
 };
 
-export type FlowEvent<
+export type JourneyEvent<
   TStepId extends string,
   TEventType extends string,
-  TPayloadMap extends FlowEventPayloadMap<TEventType> = Record<never, never>
+  TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>
 > =
-  | FlowGoToEvent<TStepId, FlowPayloadFor<TEventType, TPayloadMap, (typeof FLOW_EVENT)["GO_TO"]>>
+  | JourneyGoToEvent<
+      TStepId,
+      JourneyPayloadFor<TEventType, TPayloadMap, (typeof JOURNEY_EVENT)["GO_TO"]>
+    >
   | {
       [TType in TEventType]: {
         type: TType;
-        payload?: FlowPayloadFor<TEventType, TPayloadMap, TType>;
+        payload?: JourneyPayloadFor<TEventType, TPayloadMap, TType>;
       };
     }[TEventType];
 
-export type FlowTransitionArgs<
+export type JourneyTransitionArgs<
   TContext,
   TStepId extends string,
   TEventType extends string,
-  TPayloadMap extends FlowEventPayloadMap<TEventType> = Record<never, never>
+  TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>
 > = {
   context: TContext;
   from: TStepId;
   history: readonly TStepId[];
-  event: FlowEvent<TStepId, TEventType, TPayloadMap>;
+  event: JourneyEvent<TStepId, TEventType, TPayloadMap>;
 };
 
-export type FlowTransitionTarget<TStepId extends string> =
+export type JourneyTransitionTarget<TStepId extends string> =
   | TStepId
-  | FlowTerminal
+  | JourneyTerminal
   | typeof HISTORY_TARGET;
 
-export type FlowTransition<
+export type JourneyTransition<
   TContext,
   TStepId extends string,
   TEventType extends string,
-  TPayloadMap extends FlowEventPayloadMap<TEventType> = Record<never, never>
+  TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>
 > = {
   id?: string;
-  from: TStepId | FlowBuiltInFrom;
-  event: TEventType | (typeof FLOW_EVENT)["GO_TO"];
-  to: FlowTransitionTarget<TStepId>;
+  from: TStepId | JourneyBuiltInFrom;
+  event: TEventType | (typeof JOURNEY_EVENT)["GO_TO"];
+  to: JourneyTransitionTarget<TStepId>;
   when?: (
-    args: FlowTransitionArgs<TContext, TStepId, TEventType, TPayloadMap>
+    args: JourneyTransitionArgs<TContext, TStepId, TEventType, TPayloadMap>
   ) => boolean | Promise<boolean>;
   effect?: (
-    args: FlowTransitionArgs<TContext, TStepId, TEventType, TPayloadMap>
+    args: JourneyTransitionArgs<TContext, TStepId, TEventType, TPayloadMap>
   ) => TContext | void | Promise<TContext | void>;
 };
 
-export type FlowSnapshot<TContext, TStepId extends string> = {
+export type JourneySnapshot<TContext, TStepId extends string> = {
   current: TStepId;
   context: TContext;
   history: readonly TStepId[];
   visited: readonly TStepId[];
-  status: FlowStatus;
-  async: FlowAsyncState<TStepId>;
+  status: JourneyStatus;
+  async: JourneyAsyncState<TStepId>;
 };
 
-export type FlowPersistedSnapshot<TContext, TStepId extends string> = {
+export type JourneyPersistedSnapshot<TContext, TStepId extends string> = {
   current: TStepId;
   context: TContext;
   history: readonly TStepId[];
-  status: FlowStatus;
+  status: JourneyStatus;
 };
 
-export type FlowPersistedState<TContext, TStepId extends string> = {
+export type JourneyPersistedState<TContext, TStepId extends string> = {
   version: number;
-  snapshot: FlowPersistedSnapshot<TContext, TStepId>;
+  snapshot: JourneyPersistedSnapshot<TContext, TStepId>;
 };
 
-export type FlowStorage = {
+export type JourneyStorage = {
   getItem: (key: string) => string | null;
   setItem: (key: string, value: string) => void;
   removeItem: (key: string) => void;
 };
 
-export type FlowPersistenceOptions<TContext, TStepId extends string> = {
+export type JourneyPersistenceOptions<TContext, TStepId extends string> = {
   key: string;
-  storage?: FlowStorage;
+  storage?: JourneyStorage;
   version?: number;
   clearOnReset?: boolean;
-  serialize?: (value: FlowPersistedState<TContext, TStepId>) => string;
+  serialize?: (value: JourneyPersistedState<TContext, TStepId>) => string;
   deserialize?: (value: string) => unknown;
-  migrate?: (value: unknown, persistedVersion: number) => FlowPersistedSnapshot<TContext, TStepId>;
+  migrate?: (
+    value: unknown,
+    persistedVersion: number
+  ) => JourneyPersistedSnapshot<TContext, TStepId>;
   onError?: (error: unknown) => void;
 };
 
-export type FlowFlow<
+export type JourneyDefinition<
   TContext,
   TStepId extends string,
   TEventType extends string,
-  TPayloadMap extends FlowEventPayloadMap<TEventType> = Record<never, never>
+  TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>
 > = {
   initial: TStepId;
   context: TContext;
   steps: Record<TStepId, unknown>;
-  transitions: readonly FlowTransition<TContext, TStepId, TEventType, TPayloadMap>[];
+  transitions: readonly JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>[];
 };
 
-export type FlowMachineOptions<TContext, TStepId extends string> = {
-  persistence?: FlowPersistenceOptions<TContext, TStepId>;
+export type JourneyMachineOptions<TContext, TStepId extends string> = {
+  persistence?: JourneyPersistenceOptions<TContext, TStepId>;
 };
 
-export type FlowSendResult<TContext, TStepId extends string> = {
+export type JourneySendResult<TContext, TStepId extends string> = {
   transitioned: boolean;
   transitionId?: string;
-  snapshot: FlowSnapshot<TContext, TStepId>;
+  snapshot: JourneySnapshot<TContext, TStepId>;
 };
 
-export type FlowMachine<
+export type JourneyMachine<
   TContext,
   TStepId extends string,
   TEventType extends string,
-  TPayloadMap extends FlowEventPayloadMap<TEventType> = Record<never, never>
+  TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>
 > = {
-  getSnapshot: () => FlowSnapshot<TContext, TStepId>;
+  getSnapshot: () => JourneySnapshot<TContext, TStepId>;
   send: (
-    event: FlowEvent<TStepId, TEventType, TPayloadMap>
-  ) => Promise<FlowSendResult<TContext, TStepId>>;
-  updateContext: (updater: (context: TContext) => TContext) => FlowSnapshot<TContext, TStepId>;
-  clearStepError: (stepId?: TStepId) => FlowSnapshot<TContext, TStepId>;
-  reset: () => FlowSnapshot<TContext, TStepId>;
+    event: JourneyEvent<TStepId, TEventType, TPayloadMap>
+  ) => Promise<JourneySendResult<TContext, TStepId>>;
+  updateContext: (updater: (context: TContext) => TContext) => JourneySnapshot<TContext, TStepId>;
+  clearStepError: (stepId?: TStepId) => JourneySnapshot<TContext, TStepId>;
+  reset: () => JourneySnapshot<TContext, TStepId>;
   subscribe: (listener: () => void) => () => void;
 };

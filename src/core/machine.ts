@@ -1,19 +1,19 @@
 import {
-  FLOW_ASYNC_PHASE,
-  FLOW_EVENT,
-  FLOW_STATUS,
-  FLOW_TERMINAL,
-  FLOW_WILDCARD,
+  JOURNEY_ASYNC_PHASE,
+  JOURNEY_EVENT,
+  JOURNEY_STATUS,
+  JOURNEY_TERMINAL,
+  JOURNEY_WILDCARD,
   HISTORY_TARGET
 } from "./types";
 import type {
-  FlowAsyncState,
-  FlowAsyncPhase,
-  FlowEventPayloadMap,
-  FlowFlow,
-  FlowMachine,
-  FlowMachineOptions,
-  FlowSendResult
+  JourneyAsyncState,
+  JourneyAsyncPhase,
+  JourneyEventPayloadMap,
+  JourneyDefinition,
+  JourneyMachine,
+  JourneyMachineOptions,
+  JourneySendResult
 } from "./types";
 import {
   assertStepExists,
@@ -30,63 +30,65 @@ import {
 } from "./machine-helpers";
 import { createPersistenceController } from "./persistence";
 
-export const createFlowMachine = <
+export const createJourneyMachine = <
   TContext,
   TStepId extends string,
   TEventType extends string = "next" | "back" | "close" | "submit",
-  TPayloadMap extends FlowEventPayloadMap<TEventType> = Record<never, never>
+  TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>
 >(
-  flow: FlowFlow<TContext, TStepId, TEventType, TPayloadMap>,
-  options?: FlowMachineOptions<TContext, TStepId>
-): FlowMachine<TContext, TStepId, TEventType, TPayloadMap> => {
-  if (!flow.steps || typeof flow.steps !== "object") {
-    throw new Error("Flow steps must be a record object.");
+  journey: JourneyDefinition<TContext, TStepId, TEventType, TPayloadMap>,
+  options?: JourneyMachineOptions<TContext, TStepId>
+): JourneyMachine<TContext, TStepId, TEventType, TPayloadMap> => {
+  if (!journey.steps || typeof journey.steps !== "object") {
+    throw new Error("Journey steps must be a record object.");
   }
 
-  if (!Array.isArray(flow.transitions)) {
-    throw new Error("Flow transitions must be an array.");
+  if (!Array.isArray(journey.transitions)) {
+    throw new Error("Journey transitions must be an array.");
   }
 
   assertStepExists(
-    flow.steps,
-    flow.initial,
-    `Flow initial step "${flow.initial}" does not exist in steps registry.`
+    journey.steps,
+    journey.initial,
+    `Journey initial step "${journey.initial}" does not exist in steps registry.`
   );
 
-  for (const [index, transition] of flow.transitions.entries()) {
+  for (const [index, transition] of journey.transitions.entries()) {
     if (!transition || typeof transition !== "object") {
-      throw new Error(`Flow transition at index ${index} must be an object.`);
+      throw new Error(`Journey transition at index ${index} must be an object.`);
     }
 
     if (typeof transition.from !== "string" || typeof transition.event !== "string") {
-      throw new Error(`Flow transition at index ${index} must define string "from" and "event".`);
+      throw new Error(
+        `Journey transition at index ${index} must define string "from" and "event".`
+      );
     }
 
     if (
-      transition.from !== FLOW_WILDCARD &&
-      !((transition.from as string) in (flow.steps as Record<string, unknown>))
+      transition.from !== JOURNEY_WILDCARD &&
+      !((transition.from as string) in (journey.steps as Record<string, unknown>))
     ) {
       throw new Error(
-        `Flow transition at index ${index} references unknown from step "${transition.from}".`
+        `Journey transition at index ${index} references unknown from step "${transition.from}".`
       );
     }
 
     if (
       transition.to !== HISTORY_TARGET &&
       !isTerminalTarget(transition.to) &&
-      !((transition.to as string) in (flow.steps as Record<string, unknown>))
+      !((transition.to as string) in (journey.steps as Record<string, unknown>))
     ) {
       throw new Error(
-        `Flow transition at index ${index} points to unknown step "${transition.to}".`
+        `Journey transition at index ${index} points to unknown step "${transition.to}".`
       );
     }
   }
 
   const { clearOnReset, hydrateSnapshot, persistSnapshot, removePersistedSnapshot } =
     createPersistenceController({
-      initial: flow.initial,
-      context: flow.context,
-      steps: flow.steps,
+      initial: journey.initial,
+      context: journey.context,
+      steps: journey.steps,
       ...(options ? { options } : {})
     });
 
@@ -95,7 +97,7 @@ export const createFlowMachine = <
   let sendQueue: Promise<void> = Promise.resolve();
   snapshot = {
     ...snapshot,
-    async: buildInitialAsyncState(flow.steps)
+    async: buildInitialAsyncState(journey.steps)
   };
 
   const notify = () => {
@@ -104,14 +106,14 @@ export const createFlowMachine = <
     }
   };
 
-  const isAsyncLoadingPhase = (phase: FlowAsyncPhase): boolean =>
-    phase === FLOW_ASYNC_PHASE.EVALUATING_WHEN || phase === FLOW_ASYNC_PHASE.RUNNING_EFFECT;
+  const isAsyncLoadingPhase = (phase: JourneyAsyncPhase): boolean =>
+    phase === JOURNEY_ASYNC_PHASE.EVALUATING_WHEN || phase === JOURNEY_ASYNC_PHASE.RUNNING_EFFECT;
 
   const updateStepAsync = (
     stepId: TStepId,
     updater: (
-      current: FlowAsyncState<TStepId>["byStep"][TStepId]
-    ) => FlowAsyncState<TStepId>["byStep"][TStepId]
+      current: JourneyAsyncState<TStepId>["byStep"][TStepId]
+    ) => JourneyAsyncState<TStepId>["byStep"][TStepId]
   ) => {
     const current = snapshot.async.byStep[stepId] ?? buildIdleStepAsyncState();
     const next = updater(current);
@@ -140,7 +142,7 @@ export const createFlowMachine = <
 
   const setStepLoading = (
     stepId: TStepId,
-    phase: FlowAsyncPhase,
+    phase: JourneyAsyncPhase,
     eventType: string,
     transitionId?: string
   ) => {
@@ -163,7 +165,7 @@ export const createFlowMachine = <
     transitionId?: string
   ) => {
     updateStepAsync(stepId, () => ({
-      phase: FLOW_ASYNC_PHASE.ERROR,
+      phase: JOURNEY_ASYNC_PHASE.ERROR,
       eventType,
       transitionId: transitionId ?? null,
       error
@@ -180,11 +182,11 @@ export const createFlowMachine = <
     },
     reset: () => {
       snapshot = buildSnapshot(
-        flow.initial,
-        flow.context,
+        journey.initial,
+        journey.context,
         [],
-        FLOW_STATUS.RUNNING,
-        buildInitialAsyncState(flow.steps)
+        JOURNEY_STATUS.RUNNING,
+        buildInitialAsyncState(journey.steps)
       );
       if (clearOnReset) {
         removePersistedSnapshot();
@@ -205,7 +207,7 @@ export const createFlowMachine = <
     },
     clearStepError: (stepId) => {
       const resolvedStep = stepId ?? snapshot.current;
-      if (!(resolvedStep in flow.steps)) {
+      if (!(resolvedStep in journey.steps)) {
         return snapshot;
       }
 
@@ -213,29 +215,29 @@ export const createFlowMachine = <
       return snapshot;
     },
     send: (event) => {
-      const run = async (): Promise<FlowSendResult<TContext, TStepId>> => {
-        if (snapshot.status !== FLOW_STATUS.RUNNING) {
+      const run = async (): Promise<JourneySendResult<TContext, TStepId>> => {
+        if (snapshot.status !== JOURNEY_STATUS.RUNNING) {
           return { transitioned: false, snapshot };
         }
 
         const fromStep = snapshot.current;
 
         if (isGoToEvent(event)) {
-          assertStepExists(flow.steps, event.to, `Cannot goTo unknown step "${event.to}".`);
+          assertStepExists(journey.steps, event.to, `Cannot goTo unknown step "${event.to}".`);
           setStepIdle(fromStep);
           snapshot = transitionSnapshot(snapshot, event.to, snapshot.context);
           persistSnapshot(snapshot);
           notify();
-          return buildSendResult(snapshot, true, FLOW_EVENT.GO_TO);
+          return buildSendResult(snapshot, true, JOURNEY_EVENT.GO_TO);
         }
 
         let transition;
         try {
-          transition = await selectTransition(flow.transitions, snapshot, event, {
+          transition = await selectTransition(journey.transitions, snapshot, event, {
             onAsyncGuardStart: (currentTransition) => {
               setStepLoading(
                 fromStep,
-                FLOW_ASYNC_PHASE.EVALUATING_WHEN,
+                JOURNEY_ASYNC_PHASE.EVALUATING_WHEN,
                 event.type,
                 currentTransition.id
               );
@@ -267,7 +269,7 @@ export const createFlowMachine = <
           if (isPromiseLike(effectResultPromise)) {
             setStepLoading(
               fromStep,
-              FLOW_ASYNC_PHASE.RUNNING_EFFECT,
+              JOURNEY_ASYNC_PHASE.RUNNING_EFFECT,
               event.type as string,
               transition.id
             );
@@ -293,7 +295,9 @@ export const createFlowMachine = <
             ...snapshot,
             context: nextContext,
             status:
-              transition.to === FLOW_TERMINAL.COMPLETE ? FLOW_STATUS.COMPLETE : FLOW_STATUS.CLOSED
+              transition.to === JOURNEY_TERMINAL.COMPLETE
+                ? JOURNEY_STATUS.COMPLETE
+                : JOURNEY_STATUS.CLOSED
           };
           persistSnapshot(snapshot);
           notify();
@@ -301,8 +305,8 @@ export const createFlowMachine = <
         }
 
         if (transition.to === HISTORY_TARGET) {
-          const { target, history } = resolveHistoryTarget(snapshot, flow.steps);
-          assertStepExists(flow.steps, target, `Transition points to unknown step "${target}".`);
+          const { target, history } = resolveHistoryTarget(snapshot, journey.steps);
+          assertStepExists(journey.steps, target, `Transition points to unknown step "${target}".`);
           snapshot = buildSnapshot(target, nextContext, history, snapshot.status, snapshot.async);
           persistSnapshot(snapshot);
           notify();
@@ -312,7 +316,7 @@ export const createFlowMachine = <
         const resolvedTarget = transition.to;
 
         assertStepExists(
-          flow.steps,
+          journey.steps,
           resolvedTarget,
           `Transition points to unknown step "${resolvedTarget}".`
         );

@@ -1,18 +1,23 @@
 import React from "react";
 
-import { type FlowReactFlow, useFlow, FlowProvider, FlowStepRenderer } from "../src";
+import {
+  type JourneyReactDefinition,
+  useJourney,
+  JourneyProvider,
+  JourneyStepRenderer
+} from "../src";
 
 type StepId = "step1" | "step2" | "review";
 type Ctx = Record<string, never>;
 
 const Step1 = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.goTo("review")}>Jump to review</button>;
 };
 const Step2 = () => <div>Step 2</div>;
 const Review = () => <div>Review</div>;
 
-export const goToJumpFlow: FlowReactFlow<Ctx, StepId> = {
+export const goToJumpJourney: JourneyReactDefinition<Ctx, StepId> = {
   initial: "step1",
   context: {},
   steps: {
@@ -24,7 +29,7 @@ export const goToJumpFlow: FlowReactFlow<Ctx, StepId> = {
 };
 
 export const GoToJumpExample = () => (
-  <FlowProvider flow={goToJumpFlow}>
-    <FlowStepRenderer<Ctx, StepId> />
-  </FlowProvider>
+  <JourneyProvider journey={goToJumpJourney}>
+    <JourneyStepRenderer<Ctx, StepId> />
+  </JourneyProvider>
 );

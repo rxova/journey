@@ -1,61 +1,61 @@
 import React from "react";
 
-import { createFlowMachine } from "@/src/core";
+import { createJourneyMachine } from "@/src/core";
 import type {
-  FlowProviderProps,
-  FlowReactEventPayloadMap,
-  FlowStoreValue
+  JourneyProviderProps,
+  JourneyReactEventPayloadMap,
+  JourneyStoreValue
 } from "@/src/react/types";
 
-const FlowContext = React.createContext<FlowStoreValue<
+const JourneyContext = React.createContext<JourneyStoreValue<
   unknown,
   string,
   string,
   Record<never, never>
 > | null>(null);
 
-export const FlowProvider = <
+export const JourneyProvider = <
   TContext,
   TStepId extends string,
   TCustomEvent extends string = never,
-  TEventPayloadMap extends FlowReactEventPayloadMap<TCustomEvent> = Record<never, never>
+  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>
 >({
-  flow,
+  journey,
   machine,
   persistence,
   children
-}: FlowProviderProps<TContext, TStepId, TCustomEvent, TEventPayloadMap>) => {
+}: JourneyProviderProps<TContext, TStepId, TCustomEvent, TEventPayloadMap>) => {
   const resolvedMachine = React.useMemo(
-    () => machine ?? createFlowMachine(flow, persistence ? { persistence } : undefined),
-    [flow, machine, persistence]
+    () => machine ?? createJourneyMachine(journey, persistence ? { persistence } : undefined),
+    [journey, machine, persistence]
   );
 
   return (
-    <FlowContext.Provider
+    <JourneyContext.Provider
       value={
         {
           machine: resolvedMachine,
-          flow
-        } as unknown as FlowStoreValue<unknown, string, string>
+          journey
+        } as unknown as JourneyStoreValue<unknown, string, string>
       }
     >
       {children}
-    </FlowContext.Provider>
+    </JourneyContext.Provider>
   );
 };
 
-export const useFlowStore = <
+export const useJourneyStore = <
   TContext,
   TStepId extends string,
   TCustomEvent extends string = never,
-  TEventPayloadMap extends FlowReactEventPayloadMap<TCustomEvent> = Record<never, never>
+  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>
 >(
-  hookName = "useFlow"
-): FlowStoreValue<TContext, TStepId, TCustomEvent, TEventPayloadMap> => {
-  const value = React.useContext(FlowContext);
+  hookName = "useJourney"
+): JourneyStoreValue<TContext, TStepId, TCustomEvent, TEventPayloadMap> => {
+  const value = React.useContext(JourneyContext);
   if (!value) {
-    throw new Error(`${hookName} must be used within <FlowProvider>.`);
+    throw new Error(`${hookName} must be used within <JourneyProvider>.`);
   }
 
-  return value as unknown as FlowStoreValue<TContext, TStepId, TCustomEvent, TEventPayloadMap>;
+  return value as unknown as JourneyStoreValue<TContext, TStepId, TCustomEvent, TEventPayloadMap>;
 };

@@ -2,22 +2,22 @@ import React from "react";
 
 import {
   HISTORY_TARGET,
-  type FlowReactFlow,
-  useFlow,
-  FlowProvider,
-  FlowStepRenderer
+  type JourneyReactDefinition,
+  useJourney,
+  JourneyProvider,
+  JourneyStepRenderer
 } from "../src";
 
 type StepId = "one" | "two" | "three";
 type Ctx = Record<string, never>;
 
 const One = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.next()}>Go</button>;
 };
 
 const Two = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return (
     <div>
       <button onClick={() => api.back()}>Back</button>
@@ -27,11 +27,11 @@ const Two = () => {
 };
 
 const Three = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.back()}>Back</button>;
 };
 
-export const simpleBackFlow: FlowReactFlow<Ctx, StepId> = {
+export const simpleBackJourney: JourneyReactDefinition<Ctx, StepId> = {
   initial: "one",
   context: {},
   steps: {
@@ -46,8 +46,8 @@ export const simpleBackFlow: FlowReactFlow<Ctx, StepId> = {
   ]
 };
 
-export const SimpleBackFlowExample = () => (
-  <FlowProvider flow={simpleBackFlow}>
-    <FlowStepRenderer<Ctx, StepId> />
-  </FlowProvider>
+export const SimpleBackJourneyExample = () => (
+  <JourneyProvider journey={simpleBackJourney}>
+    <JourneyStepRenderer<Ctx, StepId> />
+  </JourneyProvider>
 );

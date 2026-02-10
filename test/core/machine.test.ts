@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  createFlowMachine,
-  FLOW_STATUS,
+  createJourneyMachine,
+  JOURNEY_STATUS,
   HISTORY_TARGET,
-  FLOW_TERMINAL,
-  type FlowFlow
+  JOURNEY_TERMINAL,
+  type JourneyDefinition
 } from "@/src/core";
 
 type StepId = "start" | "details" | "extra" | "review" | "confirmClose";
@@ -33,7 +33,7 @@ const asyncState = () => ({
   }
 });
 
-const baseFlow = (): FlowFlow<Ctx, StepId, Event> => ({
+const baseJourney = (): JourneyDefinition<Ctx, StepId, Event> => ({
   initial: "start",
   context: {
     addExtra: false,
@@ -82,21 +82,21 @@ const baseFlow = (): FlowFlow<Ctx, StepId, Event> => ({
       id: "close-clean",
       from: "*",
       event: "close",
-      to: FLOW_TERMINAL.CLOSE,
+      to: JOURNEY_TERMINAL.CLOSE,
       when: ({ context }) => !context.dirty
     },
     {
       id: "submit",
       from: "review",
       event: "submit",
-      to: FLOW_TERMINAL.COMPLETE
+      to: JOURNEY_TERMINAL.COMPLETE
     }
   ]
 });
 
-describe("createFlowMachine", () => {
+describe("createJourneyMachine", () => {
   it("creates initial snapshot", () => {
-    const machine = createFlowMachine(baseFlow());
+    const machine = createJourneyMachine(baseJourney());
 
     expect(machine.getSnapshot()).toEqual({
       current: "start",
@@ -108,13 +108,13 @@ describe("createFlowMachine", () => {
       },
       history: [],
       visited: ["start"],
-      status: FLOW_STATUS.RUNNING,
+      status: JOURNEY_STATUS.RUNNING,
       async: asyncState()
     });
   });
 
   it("takes first matching transition", async () => {
-    const machine = createFlowMachine(baseFlow());
+    const machine = createJourneyMachine(baseJourney());
 
     await machine.send({ type: "next" });
     await machine.send({ type: "next" });
@@ -123,7 +123,7 @@ describe("createFlowMachine", () => {
   });
 
   it("supports conditional branch to extra step", async () => {
-    const machine = createFlowMachine(baseFlow());
+    const machine = createJourneyMachine(baseJourney());
 
     machine.updateContext((ctx) => ({ ...ctx, addExtra: true }));
     await machine.send({ type: "next" });
@@ -133,7 +133,7 @@ describe("createFlowMachine", () => {
   });
 
   it("uses history target for back", async () => {
-    const machine = createFlowMachine(baseFlow());
+    const machine = createJourneyMachine(baseJourney());
 
     await machine.send({ type: "next" });
     await machine.send({ type: "next" });
@@ -144,7 +144,7 @@ describe("createFlowMachine", () => {
   });
 
   it("uses history target for single back", async () => {
-    const machine = createFlowMachine(baseFlow());
+    const machine = createJourneyMachine(baseJourney());
 
     await machine.send({ type: "next" });
     await machine.send({ type: "next" });
@@ -154,7 +154,7 @@ describe("createFlowMachine", () => {
   });
 
   it("keeps same step when history is empty", async () => {
-    const machine = createFlowMachine(baseFlow());
+    const machine = createJourneyMachine(baseJourney());
 
     await machine.send({ type: "back" });
 
@@ -162,7 +162,7 @@ describe("createFlowMachine", () => {
   });
 
   it("handles sparse history entries when resolving history target", async () => {
-    const machine = createFlowMachine(baseFlow());
+    const machine = createJourneyMachine(baseJourney());
 
     await machine.send({ type: "next" });
     const history = machine.getSnapshot().history as unknown as Array<StepId | undefined>;
@@ -174,27 +174,27 @@ describe("createFlowMachine", () => {
   });
 
   it("handles close event with global transitions", async () => {
-    const machine = createFlowMachine(baseFlow());
+    const machine = createJourneyMachine(baseJourney());
 
     await machine.send({ type: "close" });
 
-    expect(machine.getSnapshot().status).toBe(FLOW_STATUS.CLOSED);
-    expect(machine.getSnapshot().status).not.toBe(FLOW_STATUS.RUNNING);
+    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.CLOSED);
+    expect(machine.getSnapshot().status).not.toBe(JOURNEY_STATUS.RUNNING);
   });
 
   it("routes close to confirm step when dirty", async () => {
-    const machine = createFlowMachine(baseFlow());
+    const machine = createJourneyMachine(baseJourney());
 
     machine.updateContext((ctx) => ({ ...ctx, dirty: true }));
     await machine.send({ type: "close" });
 
     expect(machine.getSnapshot().current).toBe("confirmClose");
-    expect(machine.getSnapshot().status).toBe(FLOW_STATUS.RUNNING);
+    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.RUNNING);
   });
 
   it("supports async guards and effects", async () => {
-    const flow = baseFlow();
-    flow.transitions = [
+    const journey = baseJourney();
+    journey.transitions = [
       {
         from: "start",
         event: "next",
@@ -204,7 +204,7 @@ describe("createFlowMachine", () => {
       }
     ];
 
-    const machine = createFlowMachine(flow);
+    const machine = createJourneyMachine(journey);
 
     await machine.send({ type: "next" });
 
@@ -219,8 +219,8 @@ describe("createFlowMachine", () => {
     const wait = new Promise<boolean>((resolve) => {
       release = () => resolve(true);
     });
-    const flow = baseFlow();
-    flow.transitions = [
+    const journey = baseJourney();
+    journey.transitions = [
       {
         id: "guard-wait",
         from: "start",
@@ -229,7 +229,7 @@ describe("createFlowMachine", () => {
         when: () => wait
       }
     ];
-    const machine = createFlowMachine(flow);
+    const machine = createJourneyMachine(journey);
     const pending = machine.send({ type: "next" });
 
     await Promise.resolve();
@@ -248,8 +248,8 @@ describe("createFlowMachine", () => {
       release = () => reject(new Error("effect-boom"));
       void resolve;
     });
-    const flow = baseFlow();
-    flow.transitions = [
+    const journey = baseJourney();
+    journey.transitions = [
       {
         id: "effect-wait",
         from: "start",
@@ -258,7 +258,7 @@ describe("createFlowMachine", () => {
         effect: () => wait
       }
     ];
-    const machine = createFlowMachine(flow);
+    const machine = createJourneyMachine(journey);
     const pending = machine.send({ type: "next" });
 
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -273,8 +273,8 @@ describe("createFlowMachine", () => {
   });
 
   it("clears step error via clearStepError", async () => {
-    const flow = baseFlow();
-    flow.transitions = [
+    const journey = baseJourney();
+    journey.transitions = [
       {
         id: "guard-fail",
         from: "start",
@@ -285,7 +285,7 @@ describe("createFlowMachine", () => {
         }
       }
     ];
-    const machine = createFlowMachine(flow);
+    const machine = createJourneyMachine(journey);
     await expect(machine.send({ type: "next" })).rejects.toThrow("guard-fail");
     expect(machine.getSnapshot().async.byStep.start.phase).toBe("error");
 
@@ -295,8 +295,8 @@ describe("createFlowMachine", () => {
   });
 
   it("captures async guard rejection as step error", async () => {
-    const flow = baseFlow();
-    flow.transitions = [
+    const journey = baseJourney();
+    journey.transitions = [
       {
         id: "guard-async-fail",
         from: "start",
@@ -308,14 +308,14 @@ describe("createFlowMachine", () => {
         }
       }
     ];
-    const machine = createFlowMachine(flow);
+    const machine = createJourneyMachine(journey);
     await expect(machine.send({ type: "next" })).rejects.toThrow("guard-async-fail");
     expect(machine.getSnapshot().async.byStep.start.phase).toBe("error");
     expect(String(machine.getSnapshot().async.byStep.start.error)).toContain("guard-async-fail");
   });
 
   it("ignores clearStepError for unknown step ids", () => {
-    const machine = createFlowMachine(baseFlow());
+    const machine = createJourneyMachine(baseJourney());
     const before = machine.getSnapshot();
     const after = machine.clearStepError("missing" as StepId);
     expect(after).toBe(before);
@@ -325,10 +325,10 @@ describe("createFlowMachine", () => {
   it("rebuilds missing step async state entries when async work starts", async () => {
     let release = () => {};
     const wait = new Promise<Ctx>((resolve) => {
-      release = () => resolve(baseFlow().context);
+      release = () => resolve(baseJourney().context);
     });
-    const flow = baseFlow();
-    flow.transitions = [
+    const journey = baseJourney();
+    journey.transitions = [
       {
         id: "rebuild-async",
         from: "start",
@@ -337,7 +337,7 @@ describe("createFlowMachine", () => {
         effect: () => wait
       }
     ];
-    const machine = createFlowMachine(flow);
+    const machine = createJourneyMachine(journey);
     const byStep = machine.getSnapshot().async.byStep as unknown as Record<
       StepId,
       | {
@@ -359,8 +359,8 @@ describe("createFlowMachine", () => {
   });
 
   it("serializes concurrent sends", async () => {
-    const flow = baseFlow();
-    flow.transitions = [
+    const journey = baseJourney();
+    journey.transitions = [
       {
         from: "start",
         event: "next",
@@ -378,7 +378,7 @@ describe("createFlowMachine", () => {
       }
     ];
 
-    const machine = createFlowMachine(flow);
+    const machine = createJourneyMachine(journey);
 
     await Promise.all([machine.send({ type: "next" }), machine.send({ type: "next" })]);
 
@@ -388,7 +388,7 @@ describe("createFlowMachine", () => {
   });
 
   it("goTo jumps to specific step", async () => {
-    const machine = createFlowMachine(baseFlow());
+    const machine = createJourneyMachine(baseJourney());
 
     await machine.send({ type: "goTo", to: "review" });
 
@@ -397,7 +397,7 @@ describe("createFlowMachine", () => {
   });
 
   it("throws on unknown goTo target", async () => {
-    const machine = createFlowMachine(baseFlow());
+    const machine = createJourneyMachine(baseJourney());
 
     await expect(machine.send({ type: "goTo", to: "unknown" as StepId })).rejects.toThrow(
       "Cannot goTo unknown step"
@@ -405,7 +405,7 @@ describe("createFlowMachine", () => {
   });
 
   it("does nothing if no transition matches", async () => {
-    const machine = createFlowMachine(baseFlow());
+    const machine = createJourneyMachine(baseJourney());
 
     const result = await machine.send({ type: "submit" });
 
@@ -414,27 +414,27 @@ describe("createFlowMachine", () => {
   });
 
   it("moves to terminal complete on submit", async () => {
-    const machine = createFlowMachine(baseFlow());
+    const machine = createJourneyMachine(baseJourney());
 
     await machine.send({ type: "goTo", to: "review" });
     await machine.send({ type: "submit" });
 
-    expect(machine.getSnapshot().status).toBe(FLOW_STATUS.COMPLETE);
-    expect(machine.getSnapshot().status).not.toBe(FLOW_STATUS.RUNNING);
+    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.COMPLETE);
+    expect(machine.getSnapshot().status).not.toBe(JOURNEY_STATUS.RUNNING);
   });
 
   it("ignores events after terminal state", async () => {
-    const machine = createFlowMachine(baseFlow());
+    const machine = createJourneyMachine(baseJourney());
 
     await machine.send({ type: "close" });
     const result = await machine.send({ type: "next" });
 
     expect(result.transitioned).toBe(false);
-    expect(machine.getSnapshot().status).toBe(FLOW_STATUS.CLOSED);
+    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.CLOSED);
   });
 
   it("supports subscribe and reset", async () => {
-    const machine = createFlowMachine(baseFlow());
+    const machine = createJourneyMachine(baseJourney());
     let updates = 0;
     const unsubscribe = machine.subscribe(() => {
       updates += 1;
@@ -452,8 +452,8 @@ describe("createFlowMachine", () => {
 
   it("validates initial step existence", () => {
     expect(() => {
-      createFlowMachine({
-        ...baseFlow(),
+      createJourneyMachine({
+        ...baseJourney(),
         initial: "missing" as StepId
       });
     }).toThrow("initial step");

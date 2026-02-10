@@ -1,22 +1,24 @@
-import { FLOW_STATUS } from "./types";
+import { JOURNEY_STATUS } from "./types";
 import type {
-  FlowMachineOptions,
-  FlowPersistedSnapshot,
-  FlowPersistedState,
-  FlowStatus,
-  FlowSnapshot,
-  FlowStorage
+  JourneyMachineOptions,
+  JourneyPersistedSnapshot,
+  JourneyPersistedState,
+  JourneyStatus,
+  JourneySnapshot,
+  JourneyStorage
 } from "./types";
 import { buildInitialAsyncState, buildSnapshot } from "./machine-helpers";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
-const isStatusValue = (value: unknown): value is FlowStatus =>
-  value === FLOW_STATUS.RUNNING || value === FLOW_STATUS.COMPLETE || value === FLOW_STATUS.CLOSED;
+const isStatusValue = (value: unknown): value is JourneyStatus =>
+  value === JOURNEY_STATUS.RUNNING ||
+  value === JOURNEY_STATUS.COMPLETE ||
+  value === JOURNEY_STATUS.CLOSED;
 
-const resolveDefaultStorage = (): FlowStorage | null => {
-  const localStorageCandidate = (globalThis as { localStorage?: Partial<FlowStorage> })
+const resolveDefaultStorage = (): JourneyStorage | null => {
+  const localStorageCandidate = (globalThis as { localStorage?: Partial<JourneyStorage> })
     .localStorage;
 
   if (
@@ -28,22 +30,25 @@ const resolveDefaultStorage = (): FlowStorage | null => {
     return null;
   }
 
-  return localStorageCandidate as FlowStorage;
+  return localStorageCandidate as JourneyStorage;
 };
 
 type ResolvedPersistence<TContext, TStepId extends string> = {
   key: string;
-  storage: FlowStorage;
+  storage: JourneyStorage;
   version: number;
   clearOnReset: boolean;
-  serialize: (value: FlowPersistedState<TContext, TStepId>) => string;
+  serialize: (value: JourneyPersistedState<TContext, TStepId>) => string;
   deserialize: (value: string) => unknown;
-  migrate?: (value: unknown, persistedVersion: number) => FlowPersistedSnapshot<TContext, TStepId>;
+  migrate?: (
+    value: unknown,
+    persistedVersion: number
+  ) => JourneyPersistedSnapshot<TContext, TStepId>;
   onError?: (error: unknown) => void;
 };
 
 const resolvePersistence = <TContext, TStepId extends string>(
-  options?: FlowMachineOptions<TContext, TStepId>["persistence"]
+  options?: JourneyMachineOptions<TContext, TStepId>["persistence"]
 ): ResolvedPersistence<TContext, TStepId> | null => {
   if (!options) {
     return null;
@@ -70,7 +75,7 @@ const coercePersistedSnapshot = <TContext, TStepId extends string>(
   value: unknown,
   steps: Record<TStepId, unknown>,
   fallbackContext: TContext
-): FlowPersistedSnapshot<TContext, TStepId> | null => {
+): JourneyPersistedSnapshot<TContext, TStepId> | null => {
   if (!isRecord(value)) {
     return null;
   }
@@ -87,7 +92,7 @@ const coercePersistedSnapshot = <TContext, TStepId extends string>(
       ) as TStepId[])
     : [];
 
-  const status = isStatusValue(value.status) ? value.status : FLOW_STATUS.RUNNING;
+  const status = isStatusValue(value.status) ? value.status : JOURNEY_STATUS.RUNNING;
 
   return {
     current,
@@ -101,7 +106,7 @@ export const createPersistenceController = <TContext, TStepId extends string>(ar
   initial: TStepId;
   context: TContext;
   steps: Record<TStepId, unknown>;
-  options?: FlowMachineOptions<TContext, TStepId>;
+  options?: JourneyMachineOptions<TContext, TStepId>;
 }) => {
   const { initial, context, steps, options } = args;
   const persistence = resolvePersistence(options?.persistence);
@@ -110,13 +115,13 @@ export const createPersistenceController = <TContext, TStepId extends string>(ar
     persistence?.onError?.(error);
   };
 
-  const persistSnapshot = (snapshot: FlowSnapshot<TContext, TStepId>) => {
+  const persistSnapshot = (snapshot: JourneySnapshot<TContext, TStepId>) => {
     if (!persistence) {
       return;
     }
 
     try {
-      const persistedState: FlowPersistedState<TContext, TStepId> = {
+      const persistedState: JourneyPersistedState<TContext, TStepId> = {
         version: persistence.version,
         snapshot: {
           current: snapshot.current,
@@ -143,12 +148,12 @@ export const createPersistenceController = <TContext, TStepId extends string>(ar
     }
   };
 
-  const hydrateSnapshot = (): FlowSnapshot<TContext, TStepId> => {
+  const hydrateSnapshot = (): JourneySnapshot<TContext, TStepId> => {
     const initialSnapshot = buildSnapshot(
       initial,
       context,
       [],
-      FLOW_STATUS.RUNNING,
+      JOURNEY_STATUS.RUNNING,
       buildInitialAsyncState(steps)
     );
     if (!persistence) {
@@ -171,7 +176,7 @@ export const createPersistenceController = <TContext, TStepId extends string>(ar
         return initialSnapshot;
       }
 
-      let persistedSnapshot: FlowPersistedSnapshot<TContext, TStepId> | null = null;
+      let persistedSnapshot: JourneyPersistedSnapshot<TContext, TStepId> | null = null;
       let shouldRewritePersisted = false;
 
       if (persistedVersion === persistence.version) {

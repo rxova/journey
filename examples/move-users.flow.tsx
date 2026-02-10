@@ -2,11 +2,11 @@ import React from "react";
 
 import {
   HISTORY_TARGET,
-  FLOW_TERMINAL,
-  type FlowReactFlow,
-  useFlow,
-  FlowProvider,
-  FlowStepRenderer
+  JOURNEY_TERMINAL,
+  type JourneyReactDefinition,
+  useJourney,
+  JourneyProvider,
+  JourneyStepRenderer
 } from "@/src";
 
 type StepId = "selectTargetGroup" | "warningModal" | "arrangeMove";
@@ -21,21 +21,21 @@ type MoveUsersContext = {
 };
 
 const SelectTargetGroup = () => {
-  const { api } = useFlow<MoveUsersContext, StepId, Event>();
+  const { api } = useJourney<MoveUsersContext, StepId, Event>();
   return <button onClick={() => api.next()}>Continue</button>;
 };
 
 const WarningModal = () => {
-  const { api } = useFlow<MoveUsersContext, StepId, Event>();
+  const { api } = useJourney<MoveUsersContext, StepId, Event>();
   return <button onClick={() => api.next()}>Acknowledge</button>;
 };
 
 const ArrangeMove = () => {
-  const { api } = useFlow<MoveUsersContext, StepId, Event>();
+  const { api } = useJourney<MoveUsersContext, StepId, Event>();
   return <button onClick={() => api.submit()}>Move users</button>;
 };
 
-export const moveUsersFlow: FlowReactFlow<MoveUsersContext, StepId, Event> = {
+export const moveUsersJourney: JourneyReactDefinition<MoveUsersContext, StepId, Event> = {
   initial: "selectTargetGroup",
   context: {
     selectedUsers: [],
@@ -63,13 +63,13 @@ export const moveUsersFlow: FlowReactFlow<MoveUsersContext, StepId, Event> = {
     },
     { from: "warningModal", event: "next", to: "arrangeMove" },
     { from: "*", event: "back", to: HISTORY_TARGET },
-    { from: "arrangeMove", event: "submit", to: FLOW_TERMINAL.COMPLETE },
-    { from: "*", event: "close", to: FLOW_TERMINAL.CLOSE }
+    { from: "arrangeMove", event: "submit", to: JOURNEY_TERMINAL.COMPLETE },
+    { from: "*", event: "close", to: JOURNEY_TERMINAL.CLOSE }
   ]
 };
 
 export const MoveUsersExample = () => (
-  <FlowProvider flow={moveUsersFlow}>
-    <FlowStepRenderer<MoveUsersContext, StepId, Event> />
-  </FlowProvider>
+  <JourneyProvider journey={moveUsersJourney}>
+    <JourneyStepRenderer<MoveUsersContext, StepId, Event> />
+  </JourneyProvider>
 );

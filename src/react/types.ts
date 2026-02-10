@@ -1,96 +1,102 @@
 import type React from "react";
 
 import type {
-  FLOW_EVENT,
-  FlowEvent,
-  FlowEventPayloadMap as FlowCoreEventPayloadMap,
-  FlowFlow,
-  FlowMachine,
-  FlowPayloadFor,
-  FlowPersistenceOptions,
-  FlowSnapshot
+  JOURNEY_EVENT,
+  JourneyEvent,
+  JourneyEventPayloadMap as JourneyCoreEventPayloadMap,
+  JourneyDefinition,
+  JourneyMachine,
+  JourneyPayloadFor,
+  JourneyPersistenceOptions,
+  JourneySnapshot
 } from "@/src/core";
 
-export type FlowDefaultEvent = "next" | "back" | "close" | "submit";
+export type JourneyDefaultEvent = "next" | "back" | "close" | "submit";
 
-export type FlowEventType<TCustomEvent extends string = never> = FlowDefaultEvent | TCustomEvent;
-export type FlowReactEventPayloadMap<TCustomEvent extends string = never> = FlowCoreEventPayloadMap<
-  FlowEventType<TCustomEvent>
->;
+export type JourneyEventType<TCustomEvent extends string = never> =
+  | JourneyDefaultEvent
+  | TCustomEvent;
+export type JourneyReactEventPayloadMap<TCustomEvent extends string = never> =
+  JourneyCoreEventPayloadMap<JourneyEventType<TCustomEvent>>;
 
-export type FlowReactStep = {
+export type JourneyReactStep = {
   component: React.ComponentType;
 };
 
-export type FlowReactFlow<
+export type JourneyReactDefinition<
   TContext,
   TStepId extends string,
   TCustomEvent extends string = never,
-  TEventPayloadMap extends FlowReactEventPayloadMap<TCustomEvent> = Record<never, never>
-> = Omit<FlowFlow<TContext, TStepId, FlowEventType<TCustomEvent>, TEventPayloadMap>, "steps"> & {
-  steps: Record<TStepId, FlowReactStep>;
+  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>
+> = Omit<
+  JourneyDefinition<TContext, TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap>,
+  "steps"
+> & {
+  steps: Record<TStepId, JourneyReactStep>;
 };
 
-export type FlowApi<
+export type JourneyApi<
   TContext,
   TStepId extends string,
   TCustomEvent extends string = never,
-  TEventPayloadMap extends FlowReactEventPayloadMap<TCustomEvent> = Record<never, never>
+  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>
 > = {
-  send: (event: FlowEvent<TStepId, FlowEventType<TCustomEvent>, TEventPayloadMap>) => Promise<void>;
+  send: (
+    event: JourneyEvent<TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap>
+  ) => Promise<void>;
   goTo: (
     stepId: TStepId,
-    payload?: FlowPayloadFor<
-      FlowEventType<TCustomEvent>,
+    payload?: JourneyPayloadFor<
+      JourneyEventType<TCustomEvent>,
       TEventPayloadMap,
-      (typeof FLOW_EVENT)["GO_TO"]
+      (typeof JOURNEY_EVENT)["GO_TO"]
     >
   ) => Promise<void>;
   next: (
-    payload?: FlowPayloadFor<FlowEventType<TCustomEvent>, TEventPayloadMap, "next">
+    payload?: JourneyPayloadFor<JourneyEventType<TCustomEvent>, TEventPayloadMap, "next">
   ) => Promise<void>;
   back: (
-    payload?: FlowPayloadFor<FlowEventType<TCustomEvent>, TEventPayloadMap, "back">
+    payload?: JourneyPayloadFor<JourneyEventType<TCustomEvent>, TEventPayloadMap, "back">
   ) => Promise<void>;
   close: (
-    payload?: FlowPayloadFor<FlowEventType<TCustomEvent>, TEventPayloadMap, "close">
+    payload?: JourneyPayloadFor<JourneyEventType<TCustomEvent>, TEventPayloadMap, "close">
   ) => Promise<void>;
   submit: (
-    payload?: FlowPayloadFor<FlowEventType<TCustomEvent>, TEventPayloadMap, "submit">
+    payload?: JourneyPayloadFor<JourneyEventType<TCustomEvent>, TEventPayloadMap, "submit">
   ) => Promise<void>;
   clearStepError: (stepId?: TStepId) => void;
   updateContext: (updater: (context: TContext) => TContext) => void;
   reset: () => void;
 };
 
-export type FlowHookResult<
+export type JourneyHookResult<
   TContext,
   TStepId extends string,
   TCustomEvent extends string = never,
-  TEventPayloadMap extends FlowReactEventPayloadMap<TCustomEvent> = Record<never, never>
+  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>
 > = {
-  snapshot: FlowSnapshot<TContext, TStepId>;
-  api: FlowApi<TContext, TStepId, TCustomEvent, TEventPayloadMap>;
+  snapshot: JourneySnapshot<TContext, TStepId>;
+  api: JourneyApi<TContext, TStepId, TCustomEvent, TEventPayloadMap>;
 };
 
-export type FlowStoreValue<
+export type JourneyStoreValue<
   TContext,
   TStepId extends string,
   TCustomEvent extends string = never,
-  TEventPayloadMap extends FlowReactEventPayloadMap<TCustomEvent> = Record<never, never>
+  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>
 > = {
-  machine: FlowMachine<TContext, TStepId, FlowEventType<TCustomEvent>, TEventPayloadMap>;
-  flow: FlowReactFlow<TContext, TStepId, TCustomEvent, TEventPayloadMap>;
+  machine: JourneyMachine<TContext, TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap>;
+  journey: JourneyReactDefinition<TContext, TStepId, TCustomEvent, TEventPayloadMap>;
 };
 
-export type FlowProviderProps<
+export type JourneyProviderProps<
   TContext,
   TStepId extends string,
   TCustomEvent extends string = never,
-  TEventPayloadMap extends FlowReactEventPayloadMap<TCustomEvent> = Record<never, never>
+  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>
 > = {
-  flow: FlowReactFlow<TContext, TStepId, TCustomEvent, TEventPayloadMap>;
-  machine?: FlowMachine<TContext, TStepId, FlowEventType<TCustomEvent>, TEventPayloadMap>;
-  persistence?: FlowPersistenceOptions<TContext, TStepId>;
+  journey: JourneyReactDefinition<TContext, TStepId, TCustomEvent, TEventPayloadMap>;
+  machine?: JourneyMachine<TContext, TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap>;
+  persistence?: JourneyPersistenceOptions<TContext, TStepId>;
   children: React.ReactNode;
 };

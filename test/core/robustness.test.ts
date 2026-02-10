@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { createFlowMachine, HISTORY_TARGET, type FlowFlow } from "@/src/core";
+import { createJourneyMachine, HISTORY_TARGET, type JourneyDefinition } from "@/src/core";
 
 type StepId = "s0" | "s1" | "s2";
 type Event = "next" | "back";
 type Ctx = { value: number };
 
-const createSmallFlow = (): FlowFlow<Ctx, StepId, Event> => ({
+const createSmallJourney = (): JourneyDefinition<Ctx, StepId, Event> => ({
   initial: "s0",
   context: { value: 0 },
   steps: {
@@ -24,53 +24,53 @@ const createSmallFlow = (): FlowFlow<Ctx, StepId, Event> => ({
 describe("core robustness", () => {
   it("fails fast for malformed steps config", () => {
     expect(() =>
-      createFlowMachine({
-        ...createSmallFlow(),
-        steps: null as unknown as FlowFlow<Ctx, StepId, Event>["steps"]
+      createJourneyMachine({
+        ...createSmallJourney(),
+        steps: null as unknown as JourneyDefinition<Ctx, StepId, Event>["steps"]
       })
-    ).toThrow("Flow steps must be a record object.");
+    ).toThrow("Journey steps must be a record object.");
   });
 
   it("fails fast for malformed transitions config", () => {
     expect(() =>
-      createFlowMachine({
-        ...createSmallFlow(),
-        transitions: undefined as unknown as FlowFlow<Ctx, StepId, Event>["transitions"]
+      createJourneyMachine({
+        ...createSmallJourney(),
+        transitions: undefined as unknown as JourneyDefinition<Ctx, StepId, Event>["transitions"]
       })
-    ).toThrow("Flow transitions must be an array.");
+    ).toThrow("Journey transitions must be an array.");
   });
 
   it("fails fast when a transition references an unknown source step", () => {
     expect(() =>
-      createFlowMachine({
-        ...createSmallFlow(),
+      createJourneyMachine({
+        ...createSmallJourney(),
         transitions: [{ from: "missing" as StepId, event: "next", to: "s1" }]
       })
-    ).toThrow('Flow transition at index 0 references unknown from step "missing".');
+    ).toThrow('Journey transition at index 0 references unknown from step "missing".');
   });
 
   it("fails fast when a transition points to an unknown target step", () => {
     expect(() =>
-      createFlowMachine({
-        ...createSmallFlow(),
+      createJourneyMachine({
+        ...createSmallJourney(),
         transitions: [{ from: "s0", event: "next", to: "missing" as StepId }]
       })
-    ).toThrow('Flow transition at index 0 points to unknown step "missing".');
+    ).toThrow('Journey transition at index 0 points to unknown step "missing".');
   });
 
   it("fails fast when a transition entry is not an object", () => {
     expect(() =>
-      createFlowMachine({
-        ...createSmallFlow(),
-        transitions: [null] as unknown as FlowFlow<Ctx, StepId, Event>["transitions"]
+      createJourneyMachine({
+        ...createSmallJourney(),
+        transitions: [null] as unknown as JourneyDefinition<Ctx, StepId, Event>["transitions"]
       })
-    ).toThrow("Flow transition at index 0 must be an object.");
+    ).toThrow("Journey transition at index 0 must be an object.");
   });
 
   it("fails fast when transition from/event are not strings", () => {
     expect(() =>
-      createFlowMachine({
-        ...createSmallFlow(),
+      createJourneyMachine({
+        ...createSmallJourney(),
         transitions: [
           {
             from: 0 as unknown as StepId,
@@ -79,11 +79,11 @@ describe("core robustness", () => {
           }
         ]
       })
-    ).toThrow('Flow transition at index 0 must define string "from" and "event".');
+    ).toThrow('Journey transition at index 0 must define string "from" and "event".');
   });
 
   it("handles rapid event firing deterministically", async () => {
-    const machine = createFlowMachine(createSmallFlow());
+    const machine = createJourneyMachine(createSmallJourney());
     const results = await Promise.all(
       Array.from({ length: 100 }, () => machine.send({ type: "next" }))
     );
@@ -107,7 +107,7 @@ describe("core robustness", () => {
       { from: "*", event: "back", to: HISTORY_TARGET }
     ] as const;
 
-    const machine = createFlowMachine({
+    const machine = createJourneyMachine({
       initial: "s0",
       context: { value: 0 },
       steps,

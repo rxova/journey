@@ -3,9 +3,15 @@ import { describe, expect, it, vi } from "vitest";
 import React from "react";
 import { act, render, screen } from "@testing-library/react";
 
-import { FLOW_STATUS, HISTORY_TARGET, FLOW_TERMINAL, type FlowMachine } from "@/src";
-import { FlowProvider, FlowStepRenderer, useFlow, useFlowApi, useFlowSnapshot } from "@/src";
-import type { FlowReactFlow } from "@/src";
+import { JOURNEY_STATUS, HISTORY_TARGET, JOURNEY_TERMINAL, type JourneyMachine } from "@/src";
+import {
+  JourneyProvider,
+  JourneyStepRenderer,
+  useJourney,
+  useJourneyApi,
+  useJourneySnapshot
+} from "@/src";
+import type { JourneyReactDefinition } from "@/src";
 
 type StepId = "one" | "two" | "three";
 type CustomEvent = "custom";
@@ -29,7 +35,7 @@ const One = () => <div data-testid="step">one</div>;
 const Two = () => <div data-testid="step">two</div>;
 const Three = () => <div data-testid="step">three</div>;
 
-const baseFlow: FlowReactFlow<Ctx, StepId, CustomEvent> = {
+const baseJourney: JourneyReactDefinition<Ctx, StepId, CustomEvent> = {
   initial: "one",
   context: { counter: 0, canAdvance: true, closed: false },
   steps: {
@@ -57,12 +63,12 @@ const baseFlow: FlowReactFlow<Ctx, StepId, CustomEvent> = {
     {
       from: "*",
       event: "close",
-      to: FLOW_TERMINAL.CLOSE
+      to: JOURNEY_TERMINAL.CLOSE
     },
     {
       from: "three",
       event: "submit",
-      to: FLOW_TERMINAL.COMPLETE
+      to: JOURNEY_TERMINAL.COMPLETE
     },
     {
       from: "one",
@@ -73,7 +79,7 @@ const baseFlow: FlowReactFlow<Ctx, StepId, CustomEvent> = {
 };
 
 const Controls = () => {
-  const { api, snapshot } = useFlow<Ctx, StepId, CustomEvent>();
+  const { api, snapshot } = useJourney<Ctx, StepId, CustomEvent>();
 
   return (
     <div>
@@ -98,11 +104,15 @@ const Controls = () => {
   );
 };
 
-const App = ({ flow = baseFlow }: { flow?: FlowReactFlow<Ctx, StepId, CustomEvent> }) => (
-  <FlowProvider flow={flow}>
-    <FlowStepRenderer<Ctx, StepId, CustomEvent> />
+const App = ({
+  journey = baseJourney
+}: {
+  journey?: JourneyReactDefinition<Ctx, StepId, CustomEvent>;
+}) => (
+  <JourneyProvider journey={journey}>
+    <JourneyStepRenderer<Ctx, StepId, CustomEvent> />
     <Controls />
-  </FlowProvider>
+  </JourneyProvider>
 );
 
 describe("react hooks/provider edge cases", () => {
@@ -130,7 +140,7 @@ describe("react hooks/provider edge cases", () => {
     await act(async () => {
       screen.getByText("close").click();
     });
-    expect(screen.getByTestId("terminal").textContent).toBe(FLOW_STATUS.CLOSED);
+    expect(screen.getByTestId("terminal").textContent).toBe(JOURNEY_STATUS.CLOSED);
   });
 
   it("submit sets terminal complete", async () => {
@@ -144,7 +154,7 @@ describe("react hooks/provider edge cases", () => {
     await act(async () => {
       screen.getByText("submit").click();
     });
-    expect(screen.getByTestId("terminal").textContent).toBe(FLOW_STATUS.COMPLETE);
+    expect(screen.getByTestId("terminal").textContent).toBe(JOURNEY_STATUS.COMPLETE);
   });
 
   it("custom event works via api.send", async () => {
@@ -183,67 +193,74 @@ describe("react hooks/provider edge cases", () => {
   });
 
   it("can block next with guard when context says no", async () => {
-    const guardFlow: FlowReactFlow<Ctx, StepId, CustomEvent> = {
-      ...baseFlow,
-      context: { ...baseFlow.context, canAdvance: false }
+    const guardJourney: JourneyReactDefinition<Ctx, StepId, CustomEvent> = {
+      ...baseJourney,
+      context: { ...baseJourney.context, canAdvance: false }
     };
-    render(<App flow={guardFlow} />);
+    render(<App journey={guardJourney} />);
     await act(async () => {
       screen.getByText("next").click();
     });
     expect(screen.getByTestId("current").textContent).toBe("one");
   });
 
-  it("useFlowApi throws outside provider", () => {
+  it("useJourneyApi throws outside provider", () => {
     const Broken = () => {
-      useFlowApi<Ctx, StepId, CustomEvent>();
+      useJourneyApi<Ctx, StepId, CustomEvent>();
       return null;
     };
-    expect(() => render(<Broken />)).toThrow("useFlowApi must be used within <FlowProvider>.");
+    expect(() => render(<Broken />)).toThrow(
+      "useJourneyApi must be used within <JourneyProvider>."
+    );
   });
 
-  it("useFlowSnapshot throws outside provider", () => {
+  it("useJourneySnapshot throws outside provider", () => {
     const Broken = () => {
-      useFlowSnapshot<Ctx, StepId, CustomEvent>();
+      useJourneySnapshot<Ctx, StepId, CustomEvent>();
       return null;
     };
-    expect(() => render(<Broken />)).toThrow("useFlowSnapshot must be used within <FlowProvider>.");
+    expect(() => render(<Broken />)).toThrow(
+      "useJourneySnapshot must be used within <JourneyProvider>."
+    );
   });
 
-  it("useFlow throws outside provider", () => {
+  it("useJourney throws outside provider", () => {
     const Broken = () => {
-      useFlow<Ctx, StepId, CustomEvent>();
+      useJourney<Ctx, StepId, CustomEvent>();
       return null;
     };
-    expect(() => render(<Broken />)).toThrow("useFlow must be used within <FlowProvider>.");
+    expect(() => render(<Broken />)).toThrow("useJourney must be used within <JourneyProvider>.");
   });
 
   it("renders fallback when machine current step is unknown", () => {
     const snapshot = {
       current: "missing" as StepId,
-      context: baseFlow.context,
+      context: baseJourney.context,
       history: [],
       visited: ["missing" as StepId],
-      status: FLOW_STATUS.RUNNING,
+      status: JOURNEY_STATUS.RUNNING,
       async: asyncState()
     };
 
-    const mockedMachine: FlowMachine<Ctx, StepId, "next" | "back" | "close" | "submit" | "custom"> =
-      {
-        getSnapshot: () => snapshot,
-        send: async () => ({ transitioned: false, snapshot }),
-        updateContext: () => snapshot,
-        clearStepError: () => snapshot,
-        reset: () => snapshot,
-        subscribe: () => () => {}
-      };
+    const mockedMachine: JourneyMachine<
+      Ctx,
+      StepId,
+      "next" | "back" | "close" | "submit" | "custom"
+    > = {
+      getSnapshot: () => snapshot,
+      send: async () => ({ transitioned: false, snapshot }),
+      updateContext: () => snapshot,
+      clearStepError: () => snapshot,
+      reset: () => snapshot,
+      subscribe: () => () => {}
+    };
 
     render(
-      <FlowProvider flow={baseFlow} machine={mockedMachine}>
-        <FlowStepRenderer<Ctx, StepId, CustomEvent>
+      <JourneyProvider journey={baseJourney} machine={mockedMachine}>
+        <JourneyStepRenderer<Ctx, StepId, CustomEvent>
           fallback={<div data-testid="fallback">empty</div>}
         />
-      </FlowProvider>
+      </JourneyProvider>
     );
 
     expect(screen.getByTestId("fallback")).toBeDefined();
@@ -258,16 +275,16 @@ describe("react hooks/provider edge cases", () => {
     };
 
     render(
-      <FlowProvider
-        flow={baseFlow}
+      <JourneyProvider
+        journey={baseJourney}
         persistence={{
-          key: "flow",
+          key: "journey",
           storage
         }}
       >
-        <FlowStepRenderer<Ctx, StepId, CustomEvent> />
+        <JourneyStepRenderer<Ctx, StepId, CustomEvent> />
         <Controls />
-      </FlowProvider>
+      </JourneyProvider>
     );
 
     await act(async () => {
@@ -280,25 +297,28 @@ describe("react hooks/provider edge cases", () => {
   it("sends default event payloads through hook api", async () => {
     const snapshot = {
       current: "one" as StepId,
-      context: baseFlow.context,
+      context: baseJourney.context,
       history: [],
       visited: ["one" as StepId],
-      status: FLOW_STATUS.RUNNING,
+      status: JOURNEY_STATUS.RUNNING,
       async: asyncState()
     };
     const send = vi.fn(async () => ({ transitioned: false, snapshot }));
-    const mockedMachine: FlowMachine<Ctx, StepId, "next" | "back" | "close" | "submit" | "custom"> =
-      {
-        getSnapshot: () => snapshot,
-        send,
-        updateContext: () => snapshot,
-        clearStepError: () => snapshot,
-        reset: () => snapshot,
-        subscribe: () => () => {}
-      };
+    const mockedMachine: JourneyMachine<
+      Ctx,
+      StepId,
+      "next" | "back" | "close" | "submit" | "custom"
+    > = {
+      getSnapshot: () => snapshot,
+      send,
+      updateContext: () => snapshot,
+      clearStepError: () => snapshot,
+      reset: () => snapshot,
+      subscribe: () => () => {}
+    };
 
     const WithPayload = () => {
-      const api = useFlowApi<Ctx, StepId, CustomEvent>();
+      const api = useJourneyApi<Ctx, StepId, CustomEvent>();
       return (
         <button onClick={() => api.next({ reason: "manual" })} data-testid="next-payload">
           next with payload
@@ -307,9 +327,9 @@ describe("react hooks/provider edge cases", () => {
     };
 
     render(
-      <FlowProvider flow={baseFlow} machine={mockedMachine}>
+      <JourneyProvider journey={baseJourney} machine={mockedMachine}>
         <WithPayload />
-      </FlowProvider>
+      </JourneyProvider>
     );
 
     await act(async () => {
@@ -323,25 +343,28 @@ describe("react hooks/provider edge cases", () => {
   it("sends goTo payloads through hook api", async () => {
     const snapshot = {
       current: "one" as StepId,
-      context: baseFlow.context,
+      context: baseJourney.context,
       history: [],
       visited: ["one" as StepId],
-      status: FLOW_STATUS.RUNNING,
+      status: JOURNEY_STATUS.RUNNING,
       async: asyncState()
     };
     const send = vi.fn(async () => ({ transitioned: false, snapshot }));
-    const mockedMachine: FlowMachine<Ctx, StepId, "next" | "back" | "close" | "submit" | "custom"> =
-      {
-        getSnapshot: () => snapshot,
-        send,
-        updateContext: () => snapshot,
-        clearStepError: () => snapshot,
-        reset: () => snapshot,
-        subscribe: () => () => {}
-      };
+    const mockedMachine: JourneyMachine<
+      Ctx,
+      StepId,
+      "next" | "back" | "close" | "submit" | "custom"
+    > = {
+      getSnapshot: () => snapshot,
+      send,
+      updateContext: () => snapshot,
+      clearStepError: () => snapshot,
+      reset: () => snapshot,
+      subscribe: () => () => {}
+    };
 
     const WithGoToPayload = () => {
-      const api = useFlowApi<Ctx, StepId, CustomEvent>();
+      const api = useJourneyApi<Ctx, StepId, CustomEvent>();
       return (
         <button onClick={() => api.goTo("three", { from: "test" })} data-testid="goto-payload">
           goto with payload
@@ -350,9 +373,9 @@ describe("react hooks/provider edge cases", () => {
     };
 
     render(
-      <FlowProvider flow={baseFlow} machine={mockedMachine}>
+      <JourneyProvider journey={baseJourney} machine={mockedMachine}>
         <WithGoToPayload />
-      </FlowProvider>
+      </JourneyProvider>
     );
 
     await act(async () => {
@@ -366,25 +389,28 @@ describe("react hooks/provider edge cases", () => {
   it("forwards clearStepError calls through hook api", async () => {
     const snapshot = {
       current: "one" as StepId,
-      context: baseFlow.context,
+      context: baseJourney.context,
       history: [],
       visited: ["one" as StepId],
-      status: FLOW_STATUS.RUNNING,
+      status: JOURNEY_STATUS.RUNNING,
       async: asyncState()
     };
     const clearStepError = vi.fn(() => snapshot);
-    const mockedMachine: FlowMachine<Ctx, StepId, "next" | "back" | "close" | "submit" | "custom"> =
-      {
-        getSnapshot: () => snapshot,
-        send: async () => ({ transitioned: false, snapshot }),
-        updateContext: () => snapshot,
-        clearStepError,
-        reset: () => snapshot,
-        subscribe: () => () => {}
-      };
+    const mockedMachine: JourneyMachine<
+      Ctx,
+      StepId,
+      "next" | "back" | "close" | "submit" | "custom"
+    > = {
+      getSnapshot: () => snapshot,
+      send: async () => ({ transitioned: false, snapshot }),
+      updateContext: () => snapshot,
+      clearStepError,
+      reset: () => snapshot,
+      subscribe: () => () => {}
+    };
 
     const WithClearError = () => {
-      const api = useFlowApi<Ctx, StepId, CustomEvent>();
+      const api = useJourneyApi<Ctx, StepId, CustomEvent>();
       return (
         <button onClick={() => api.clearStepError("two")} data-testid="clear-error">
           clear error
@@ -393,9 +419,9 @@ describe("react hooks/provider edge cases", () => {
     };
 
     render(
-      <FlowProvider flow={baseFlow} machine={mockedMachine}>
+      <JourneyProvider journey={baseJourney} machine={mockedMachine}>
         <WithClearError />
-      </FlowProvider>
+      </JourneyProvider>
     );
 
     await act(async () => {
@@ -409,27 +435,30 @@ describe("react hooks/provider edge cases", () => {
   it("unsubscribes from machine snapshot updates on unmount", () => {
     const snapshot = {
       current: "one" as StepId,
-      context: baseFlow.context,
+      context: baseJourney.context,
       history: [],
       visited: ["one" as StepId],
-      status: FLOW_STATUS.RUNNING,
+      status: JOURNEY_STATUS.RUNNING,
       async: asyncState()
     };
     const unsubscribe = vi.fn();
-    const mockedMachine: FlowMachine<Ctx, StepId, "next" | "back" | "close" | "submit" | "custom"> =
-      {
-        getSnapshot: () => snapshot,
-        send: async () => ({ transitioned: false, snapshot }),
-        updateContext: () => snapshot,
-        clearStepError: () => snapshot,
-        reset: () => snapshot,
-        subscribe: () => unsubscribe
-      };
+    const mockedMachine: JourneyMachine<
+      Ctx,
+      StepId,
+      "next" | "back" | "close" | "submit" | "custom"
+    > = {
+      getSnapshot: () => snapshot,
+      send: async () => ({ transitioned: false, snapshot }),
+      updateContext: () => snapshot,
+      clearStepError: () => snapshot,
+      reset: () => snapshot,
+      subscribe: () => unsubscribe
+    };
 
     const { unmount } = render(
-      <FlowProvider flow={baseFlow} machine={mockedMachine}>
-        <FlowStepRenderer<Ctx, StepId, CustomEvent> />
-      </FlowProvider>
+      <JourneyProvider journey={baseJourney} machine={mockedMachine}>
+        <JourneyStepRenderer<Ctx, StepId, CustomEvent> />
+      </JourneyProvider>
     );
 
     unmount();

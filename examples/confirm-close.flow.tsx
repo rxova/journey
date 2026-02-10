@@ -1,12 +1,18 @@
 import React from "react";
 
-import { FLOW_TERMINAL, type FlowReactFlow, useFlow, FlowProvider, FlowStepRenderer } from "../src";
+import {
+  JOURNEY_TERMINAL,
+  type JourneyReactDefinition,
+  useJourney,
+  JourneyProvider,
+  JourneyStepRenderer
+} from "../src";
 
 type StepId = "edit" | "confirmClose";
 type Ctx = { dirty: boolean };
 
 const Edit = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return (
     <div>
       <button onClick={() => api.updateContext((ctx) => ({ ...ctx, dirty: true }))}>
@@ -18,11 +24,11 @@ const Edit = () => {
 };
 
 const ConfirmClose = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.close()}>Confirm close</button>;
 };
 
-export const confirmCloseFlow: FlowReactFlow<Ctx, StepId> = {
+export const confirmCloseJourney: JourneyReactDefinition<Ctx, StepId> = {
   initial: "edit",
   context: { dirty: false },
   steps: {
@@ -39,14 +45,14 @@ export const confirmCloseFlow: FlowReactFlow<Ctx, StepId> = {
     {
       from: "*",
       event: "close",
-      to: FLOW_TERMINAL.CLOSE,
+      to: JOURNEY_TERMINAL.CLOSE,
       when: ({ context }) => !context.dirty
     }
   ]
 };
 
 export const ConfirmCloseExample = () => (
-  <FlowProvider flow={confirmCloseFlow}>
-    <FlowStepRenderer<Ctx, StepId> />
-  </FlowProvider>
+  <JourneyProvider journey={confirmCloseJourney}>
+    <JourneyStepRenderer<Ctx, StepId> />
+  </JourneyProvider>
 );

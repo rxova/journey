@@ -2,11 +2,11 @@ import React from "react";
 
 import {
   HISTORY_TARGET,
-  FLOW_TERMINAL,
-  type FlowReactFlow,
-  useFlow,
-  FlowProvider,
-  FlowStepRenderer
+  JOURNEY_TERMINAL,
+  type JourneyReactDefinition,
+  useJourney,
+  JourneyProvider,
+  JourneyStepRenderer
 } from "@/src";
 
 type StepId = "welcome" | "profile" | "teamInvite" | "summary";
@@ -16,26 +16,26 @@ type Ctx = {
 };
 
 const Welcome = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.next()}>Start onboarding</button>;
 };
 
 const Profile = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.next()}>Save profile</button>;
 };
 
 const TeamInvite = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.next()}>Skip invite</button>;
 };
 
 const Summary = () => {
-  const { api } = useFlow<Ctx, StepId>();
+  const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.submit()}>Finish</button>;
 };
 
-export const onboardingFlow: FlowReactFlow<Ctx, StepId, never> = {
+export const onboardingJourney: JourneyReactDefinition<Ctx, StepId, never> = {
   initial: "welcome",
   context: {
     inviteTeam: false,
@@ -63,13 +63,13 @@ export const onboardingFlow: FlowReactFlow<Ctx, StepId, never> = {
     },
     { from: "teamInvite", event: "next", to: "summary" },
     { from: "*", event: "back", to: HISTORY_TARGET },
-    { from: "summary", event: "submit", to: FLOW_TERMINAL.COMPLETE },
-    { from: "*", event: "close", to: FLOW_TERMINAL.CLOSE }
+    { from: "summary", event: "submit", to: JOURNEY_TERMINAL.COMPLETE },
+    { from: "*", event: "close", to: JOURNEY_TERMINAL.CLOSE }
   ]
 };
 
 export const OnboardingExample = () => (
-  <FlowProvider flow={onboardingFlow}>
-    <FlowStepRenderer<Ctx, StepId> />
-  </FlowProvider>
+  <JourneyProvider journey={onboardingJourney}>
+    <JourneyStepRenderer<Ctx, StepId> />
+  </JourneyProvider>
 );
