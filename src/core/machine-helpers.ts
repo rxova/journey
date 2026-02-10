@@ -7,6 +7,7 @@ import type {
   FlowPayloadFor,
   FlowSendResult,
   FlowSnapshot,
+  FlowStatus,
   FlowStepAsyncState,
   FlowTerminal,
   FlowTransition
@@ -76,14 +77,13 @@ export const buildSnapshot = <TContext, TStepId extends string>(
   current: TStepId,
   context: TContext,
   history: readonly TStepId[],
-  terminal: (typeof FLOW_TERMINAL)[keyof typeof FLOW_TERMINAL] | null,
+  status: FlowStatus,
   asyncState: FlowAsyncState<TStepId>
 ): FlowSnapshot<TContext, TStepId> => ({
+  status,
   current,
   context,
   history,
-  terminal,
-  isDone: terminal !== null,
   visited: unique([...history, current]),
   async: asyncState
 });
@@ -190,5 +190,5 @@ export const transitionSnapshot = <TContext, TStepId extends string>(
       ? [...snapshot.history]
       : [...snapshot.history, snapshot.current];
 
-  return buildSnapshot(nextCurrent, nextContext, history, snapshot.terminal, snapshot.async);
+  return buildSnapshot(nextCurrent, nextContext, history, snapshot.status, snapshot.async);
 };

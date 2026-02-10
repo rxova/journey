@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createFlowMachine, HISTORY_TARGET, FLOW_TERMINAL, type FlowFlow } from "@/src/core";
+import { createFlowMachine, FLOW_STATUS, HISTORY_TARGET, FLOW_TERMINAL, type FlowFlow } from "@/src/core";
 
 type StepId = "start" | "details" | "extra" | "review" | "confirmClose";
 type Ctx = {
@@ -102,8 +102,7 @@ describe("createFlowMachine", () => {
       },
       history: [],
       visited: ["start"],
-      terminal: null,
-      isDone: false,
+      status: FLOW_STATUS.RUNNING,
       async: asyncState()
     });
   });
@@ -173,8 +172,8 @@ describe("createFlowMachine", () => {
 
     await machine.send({ type: "close" });
 
-    expect(machine.getSnapshot().terminal).toBe(FLOW_TERMINAL.CLOSE);
-    expect(machine.getSnapshot().isDone).toBe(true);
+    expect(machine.getSnapshot().status).toBe(FLOW_STATUS.CLOSED);
+    expect(machine.getSnapshot().status).not.toBe(FLOW_STATUS.RUNNING);
   });
 
   it("routes close to confirm step when dirty", async () => {
@@ -184,7 +183,7 @@ describe("createFlowMachine", () => {
     await machine.send({ type: "close" });
 
     expect(machine.getSnapshot().current).toBe("confirmClose");
-    expect(machine.getSnapshot().terminal).toBeNull();
+    expect(machine.getSnapshot().status).toBe(FLOW_STATUS.RUNNING);
   });
 
   it("supports async guards and effects", async () => {
@@ -414,8 +413,8 @@ describe("createFlowMachine", () => {
     await machine.send({ type: "goTo", to: "review" });
     await machine.send({ type: "submit" });
 
-    expect(machine.getSnapshot().terminal).toBe(FLOW_TERMINAL.COMPLETE);
-    expect(machine.getSnapshot().isDone).toBe(true);
+    expect(machine.getSnapshot().status).toBe(FLOW_STATUS.COMPLETE);
+    expect(machine.getSnapshot().status).not.toBe(FLOW_STATUS.RUNNING);
   });
 
   it("ignores events after terminal state", async () => {
@@ -425,7 +424,7 @@ describe("createFlowMachine", () => {
     const result = await machine.send({ type: "next" });
 
     expect(result.transitioned).toBe(false);
-    expect(machine.getSnapshot().terminal).toBe(FLOW_TERMINAL.CLOSE);
+    expect(machine.getSnapshot().status).toBe(FLOW_STATUS.CLOSED);
   });
 
   it("supports subscribe and reset", async () => {

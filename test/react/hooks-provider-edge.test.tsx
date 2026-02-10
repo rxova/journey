@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import React from "react";
 import { act, render, screen } from "@testing-library/react";
 
-import { HISTORY_TARGET, FLOW_TERMINAL, type FlowMachine } from "@/src";
+import { FLOW_STATUS, HISTORY_TARGET, FLOW_TERMINAL, type FlowMachine } from "@/src";
 import { FlowProvider, FlowStepRenderer, useFlow, useFlowApi, useFlowSnapshot } from "@/src";
 import type { FlowReactFlow } from "@/src";
 
@@ -93,7 +93,7 @@ const Controls = () => {
       <button onClick={() => api.reset()}>reset</button>
       <div data-testid="current">{snapshot.current}</div>
       <div data-testid="counter">{snapshot.context.counter}</div>
-      <div data-testid="terminal">{snapshot.terminal ?? "none"}</div>
+      <div data-testid="terminal">{snapshot.status}</div>
     </div>
   );
 };
@@ -130,7 +130,7 @@ describe("react hooks/provider edge cases", () => {
     await act(async () => {
       screen.getByText("close").click();
     });
-    expect(screen.getByTestId("terminal").textContent).toBe(FLOW_TERMINAL.CLOSE);
+    expect(screen.getByTestId("terminal").textContent).toBe(FLOW_STATUS.CLOSED);
   });
 
   it("submit sets terminal complete", async () => {
@@ -144,7 +144,7 @@ describe("react hooks/provider edge cases", () => {
     await act(async () => {
       screen.getByText("submit").click();
     });
-    expect(screen.getByTestId("terminal").textContent).toBe(FLOW_TERMINAL.COMPLETE);
+    expect(screen.getByTestId("terminal").textContent).toBe(FLOW_STATUS.COMPLETE);
   });
 
   it("custom event works via api.send", async () => {
@@ -224,8 +224,7 @@ describe("react hooks/provider edge cases", () => {
       context: baseFlow.context,
       history: [],
       visited: ["missing" as StepId],
-      terminal: null,
-      isDone: false,
+      status: FLOW_STATUS.RUNNING,
       async: asyncState()
     };
 
@@ -284,8 +283,7 @@ describe("react hooks/provider edge cases", () => {
       context: baseFlow.context,
       history: [],
       visited: ["one" as StepId],
-      terminal: null,
-      isDone: false,
+      status: FLOW_STATUS.RUNNING,
       async: asyncState()
     };
     const send = vi.fn(async () => ({ transitioned: false, snapshot }));
@@ -328,8 +326,7 @@ describe("react hooks/provider edge cases", () => {
       context: baseFlow.context,
       history: [],
       visited: ["one" as StepId],
-      terminal: null,
-      isDone: false,
+      status: FLOW_STATUS.RUNNING,
       async: asyncState()
     };
     const send = vi.fn(async () => ({ transitioned: false, snapshot }));
@@ -372,8 +369,7 @@ describe("react hooks/provider edge cases", () => {
       context: baseFlow.context,
       history: [],
       visited: ["one" as StepId],
-      terminal: null,
-      isDone: false,
+      status: FLOW_STATUS.RUNNING,
       async: asyncState()
     };
     const clearStepError = vi.fn(() => snapshot);

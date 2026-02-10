@@ -92,7 +92,7 @@ Persistence options (`options.persistence`):
 
 Important compatibility note:
 
-- Persisted state includes `current`, `context`, `history`, `terminal`.
+- Persisted state includes `current`, `context`, `history`, `status`.
 - Async UX state (`snapshot.async`) is runtime-only and is **not persisted**.
 - On hydrate/reset, async state starts clean (`idle` / no error).
 
@@ -110,14 +110,14 @@ const machine = createFlowMachine(flow, {
           current: "details",
           context: { draftId: v1.context?.draftId ?? null, acceptedTerms: false },
           history: ["start"],
-          terminal: null
+          status: "running"
         };
       }
       return oldSnapshot as {
         current: "start" | "details" | "review";
         context: { draftId: string | null; acceptedTerms: boolean };
         history: Array<"start" | "details" | "review">;
-        terminal: "COMPLETE" | "CLOSE" | null;
+        status: "running" | "complete" | "closed";
       };
     }
   }
@@ -175,8 +175,7 @@ Snapshot:
 - `context`
 - `history`
 - `visited`
-- `terminal`
-- `isDone`
+- `status` (`"running" | "complete" | "closed"`)
 - `async`
   - `isLoading`: `true` while any step is evaluating async guards/effects
   - `byStep[stepId]`

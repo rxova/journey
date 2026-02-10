@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createFlowMachine, type FlowFlow, type FlowStorage } from "@/src/core";
+import { createFlowMachine, FLOW_STATUS, type FlowFlow, type FlowStorage } from "@/src/core";
 import { createPersistenceController } from "@/src/core/persistence";
 
 type StepId = "start" | "details" | "review";
@@ -73,7 +73,7 @@ describe("persistence", () => {
           current: "details",
           context: { count: 7 },
           history: ["start"],
-          terminal: null
+          status: FLOW_STATUS.RUNNING
         }
       })
     });
@@ -164,7 +164,7 @@ describe("persistence", () => {
           current: "missing",
           context: { count: 99 },
           history: ["start"],
-          terminal: null
+          status: FLOW_STATUS.RUNNING
         }
       })
     });
@@ -188,7 +188,7 @@ describe("persistence", () => {
           current: "start",
           context: { oldCount: 4 },
           history: [],
-          terminal: null
+          status: FLOW_STATUS.RUNNING
         }
       })
     });
@@ -204,7 +204,7 @@ describe("persistence", () => {
             current: "details",
             context: { count: snapshot.context?.oldCount ?? 0 },
             history: ["start"],
-            terminal: null
+            status: FLOW_STATUS.RUNNING
           };
         }
       }
@@ -298,14 +298,14 @@ describe("persistence", () => {
     expect(c2.hydrateSnapshot().current).toBe("start");
   });
 
-  it("filters invalid history entries and falls back context/terminal on hydrate", () => {
+  it("filters invalid history entries and falls back context/status on hydrate", () => {
     const storage = createMemoryStorage({
       flow: JSON.stringify({
         version: 1,
         snapshot: {
           current: "details",
           history: ["start", "missing", 42],
-          terminal: "BAD"
+          status: "BAD"
         }
       })
     });
@@ -323,7 +323,7 @@ describe("persistence", () => {
     expect(snapshot.current).toBe("details");
     expect(snapshot.history).toEqual(["start"]);
     expect(snapshot.context).toEqual({ count: 9 });
-    expect(snapshot.terminal).toBeNull();
+    expect(snapshot.status).toBe(FLOW_STATUS.RUNNING);
   });
 
   it("uses empty history when persisted history is not an array", () => {
@@ -334,7 +334,7 @@ describe("persistence", () => {
           current: "details",
           history: "invalid",
           context: { count: 2 },
-          terminal: null
+          status: FLOW_STATUS.RUNNING
         }
       })
     });
@@ -350,7 +350,7 @@ describe("persistence", () => {
     expect(controller.hydrateSnapshot().history).toEqual([]);
   });
 
-  it("hydrates terminal when persisted terminal is valid", () => {
+  it("hydrates status when persisted status is valid", () => {
     const storage = createMemoryStorage({
       flow: JSON.stringify({
         version: 1,
@@ -358,7 +358,7 @@ describe("persistence", () => {
           current: "details",
           history: [],
           context: { count: 2 },
-          terminal: "COMPLETE"
+          status: FLOW_STATUS.COMPLETE
         }
       })
     });
@@ -372,8 +372,7 @@ describe("persistence", () => {
     });
 
     const snapshot = controller.hydrateSnapshot();
-    expect(snapshot.terminal).toBe("COMPLETE");
-    expect(snapshot.isDone).toBe(true);
+    expect(snapshot.status).toBe(FLOW_STATUS.COMPLETE);
   });
 
   it("ignores non-object snapshots on hydrate", () => {
@@ -425,8 +424,7 @@ describe("persistence", () => {
       context: { count: 0 },
       history: [],
       visited: ["start"],
-      terminal: null,
-      isDone: false,
+      status: FLOW_STATUS.RUNNING,
       async: asyncState()
     });
     controller.removePersistedSnapshot();

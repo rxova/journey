@@ -1,4 +1,4 @@
-import { FLOW_ASYNC_PHASE, FLOW_EVENT, HISTORY_TARGET } from "./types";
+import { FLOW_ASYNC_PHASE, FLOW_EVENT, FLOW_STATUS, FLOW_TERMINAL, HISTORY_TARGET } from "./types";
 import type {
   FlowAsyncState,
   FlowAsyncPhase,
@@ -139,7 +139,7 @@ export const createFlowMachine = <
         flow.initial,
         flow.context,
         [],
-        null,
+        FLOW_STATUS.RUNNING,
         buildInitialAsyncState(flow.steps)
       );
       if (clearOnReset) {
@@ -170,7 +170,7 @@ export const createFlowMachine = <
     },
     send: (event) => {
       const run = async (): Promise<FlowSendResult<TContext, TStepId>> => {
-        if (snapshot.isDone) {
+        if (snapshot.status !== FLOW_STATUS.RUNNING) {
           return { transitioned: false, snapshot };
         }
 
@@ -248,8 +248,8 @@ export const createFlowMachine = <
           snapshot = {
             ...snapshot,
             context: nextContext,
-            terminal: transition.to,
-            isDone: true
+            status:
+              transition.to === FLOW_TERMINAL.COMPLETE ? FLOW_STATUS.COMPLETE : FLOW_STATUS.CLOSED
           };
           persistSnapshot(snapshot);
           notify();
@@ -259,7 +259,7 @@ export const createFlowMachine = <
         if (transition.to === HISTORY_TARGET) {
           const { target, history } = resolveHistoryTarget(snapshot, flow.steps);
           assertStepExists(flow.steps, target, `Transition points to unknown step "${target}".`);
-          snapshot = buildSnapshot(target, nextContext, history, snapshot.terminal, snapshot.async);
+          snapshot = buildSnapshot(target, nextContext, history, snapshot.status, snapshot.async);
           persistSnapshot(snapshot);
           notify();
           return buildSendResult(snapshot, true, transition.id);
