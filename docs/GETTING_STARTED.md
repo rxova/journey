@@ -4,8 +4,8 @@ This guide is written for junior developers. You can copy-paste every step.
 
 If you want the smallest possible example first, open:
 
-- `examples/simple-journey.tsx`
-- `examples/simple-sequence.journey.tsx`
+- `examples/simple-flow.tsx`
+- `examples/simple-sequence.flow.tsx`
 
 ## Quickstarts
 
