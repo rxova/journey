@@ -72,7 +72,7 @@ export const DynamicStepsExample = () => {
       </button>
       <p>
         Dynamic step is {includeSurvey ? "enabled" : "disabled"}. Toggling rebuilds the journey
-        graph and remounts the provider.
+        graph; if you want a reset, pass resetOnJourneyChange or remount the provider.
       </p>
       <JourneyProvider journey={journey}>
         <JourneyStepRenderer<Ctx, StepId> />

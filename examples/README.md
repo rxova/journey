@@ -14,6 +14,7 @@
 - `async-guard.flow.tsx`: async validation in `when`.
 - `async-effect.flow.tsx`: async context update in `effect`.
 - `dynamic-steps.flow.tsx`: add/remove optional step by rebuilding journey graph at runtime.
+- `reset-on-journey-change.flow.tsx`: intentionally recreate the internal machine when the `journey` reference changes.
 - `confirm-close.flow.tsx`: dirty-close confirmation journey.
 - `history-back.flow.tsx`: branch-aware back behavior.
 
