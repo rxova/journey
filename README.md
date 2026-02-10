@@ -173,8 +173,8 @@ This library is designed for modal multi-step forms where path length changes dy
 
 ## Why This Over Other Wizard Libraries
 
-| Area                               | Ours                                                                                                                           | Typical index-based wizard libs                                                    |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| Area                               | Ours                                                                                                                            | Typical index-based wizard libs                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | Flow modeling                      | ✅ Declarative graph (`steps` + ordered `transitions`) as the single source of truth.                                           | ⚠️ Usually step index + imperative branching spread across components.              |
 | Conditional branching / skip       | ✅ First-class via `when` guards in transitions.                                                                                | ⚠️ Commonly manual `if` branching in UI handlers.                                   |
 | Runtime dynamic steps              | ✅ Supported by rebuilding `steps` + `transitions` graph at runtime (see `examples/dynamic-steps.journey.tsx`).                 | ⚠️ Often limited to hide/show step UI while navigation logic remains index-coupled. |
