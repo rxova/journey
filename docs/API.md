@@ -143,9 +143,10 @@ Binds a machine to React via `useSyncExternalStore`.
 
 Notes:
 
-- If `journey` object changes, a fresh internal machine is created.
+- By default, the internal machine is created once and not recreated if the `journey` object reference changes.
 - You can pass `machine` prop to use your own machine instance.
 - You can pass `persistence` prop to configure machine persistence when using the internal machine.
+- Set `resetOnJourneyChange` to `true` if you want the internal machine to be recreated when the `journey` prop changes.
 
 Example:
 
@@ -157,6 +158,14 @@ Example:
     version: 1
   }}
 >
+  <JourneyStepRenderer />
+</JourneyProvider>
+```
+
+Reset on journey reference change:
+
+```tsx
+<JourneyProvider journey={journey} resetOnJourneyChange>
   <JourneyStepRenderer />
 </JourneyProvider>
 ```

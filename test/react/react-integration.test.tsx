@@ -126,7 +126,7 @@ describe("react integration", () => {
     expect(screen.getByTestId("terminal").textContent).toBe(JOURNEY_STATUS.COMPLETE);
   });
 
-  it("recreates internal machine when journey prop changes", async () => {
+  it("does not recreate internal machine when journey prop changes by default", async () => {
     const { rerender } = render(
       <JourneyProvider journey={journey}>
         <JourneyStepRenderer<Ctx, StepId, Event> />
@@ -146,6 +146,34 @@ describe("react integration", () => {
 
     rerender(
       <JourneyProvider journey={nextJourney}>
+        <JourneyStepRenderer<Ctx, StepId, Event> />
+        <Controls />
+      </JourneyProvider>
+    );
+
+    expect(screen.getByTestId("current").textContent).toBe("details");
+  });
+
+  it("recreates internal machine when journey prop changes and resetOnJourneyChange is true", async () => {
+    const { rerender } = render(
+      <JourneyProvider journey={journey} resetOnJourneyChange>
+        <JourneyStepRenderer<Ctx, StepId, Event> />
+        <Controls />
+      </JourneyProvider>
+    );
+
+    await act(async () => {
+      screen.getByText("next").click();
+    });
+    expect(screen.getByTestId("current").textContent).toBe("details");
+
+    const nextJourney: JourneyReactDefinition<Ctx, StepId, Event> = {
+      ...journey,
+      initial: "review"
+    };
+
+    rerender(
+      <JourneyProvider journey={nextJourney} resetOnJourneyChange>
         <JourneyStepRenderer<Ctx, StepId, Event> />
         <Controls />
       </JourneyProvider>

@@ -23,19 +23,36 @@ export const JourneyProvider = <
   journey,
   machine,
   persistence,
+  resetOnJourneyChange = false,
   children
 }: JourneyProviderProps<TContext, TStepId, TCustomEvent, TEventPayloadMap>) => {
-  const resolvedMachine = React.useMemo(
-    () => machine ?? createJourneyMachine(journey, persistence ? { persistence } : undefined),
-    [journey, machine, persistence]
-  );
+  const internalMachineRef = React.useRef<
+    JourneyStoreValue<TContext, TStepId, TCustomEvent, TEventPayloadMap>["machine"] | null
+  >(null);
+  const journeyRef = React.useRef(journey);
+  const persistenceRef = React.useRef(persistence);
+
+  const shouldResetInternal = resetOnJourneyChange && journeyRef.current !== journey;
+  const shouldResetPersistence = persistenceRef.current !== persistence;
+
+  if (!machine && (!internalMachineRef.current || shouldResetInternal || shouldResetPersistence)) {
+    internalMachineRef.current = createJourneyMachine(
+      journey,
+      persistence ? { persistence } : undefined
+    );
+    journeyRef.current = journey;
+    persistenceRef.current = persistence;
+  }
+
+  const resolvedMachine = machine ?? internalMachineRef.current!;
+  const resolvedJourney = machine ? journey : journeyRef.current;
 
   return (
     <JourneyContext.Provider
       value={
         {
           machine: resolvedMachine,
-          journey
+          journey: resolvedJourney
         } as unknown as JourneyStoreValue<unknown, string, string>
       }
     >

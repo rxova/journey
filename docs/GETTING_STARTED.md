@@ -70,6 +70,11 @@ export const App = () => (
 );
 ```
 
+Notes:
+
+- Keep `journey` stable (e.g., `useMemo`) to avoid accidental resets from inline object literals.
+- If you intentionally want to reset when the `journey` reference changes, pass `resetOnJourneyChange`.
+
 ### B) Headless Quickstart (Core Only, No React)
 
 Use this in tests, services, or custom renderers.
