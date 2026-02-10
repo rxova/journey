@@ -279,6 +279,11 @@ npm run test
 npm run size
 ```
 
+## Coverage Reports
+
+- Local: `npm run test` writes an HTML report to `coverage/index.html`.
+- CI (GitHub Actions): each `CI` run publishes a `coverage-report` artifact and a coverage summary in the run summary.
+
 ## Bundle Size
 
 - Package metadata includes `"sideEffects": false` to maximize dead-code elimination.

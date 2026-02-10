@@ -405,4 +405,34 @@ describe("react hooks/provider edge cases", () => {
     expect(clearStepError).toHaveBeenCalledTimes(1);
     expect(clearStepError).toHaveBeenCalledWith("two");
   });
+
+  it("unsubscribes from machine snapshot updates on unmount", () => {
+    const snapshot = {
+      current: "one" as StepId,
+      context: baseFlow.context,
+      history: [],
+      visited: ["one" as StepId],
+      status: FLOW_STATUS.RUNNING,
+      async: asyncState()
+    };
+    const unsubscribe = vi.fn();
+    const mockedMachine: FlowMachine<Ctx, StepId, "next" | "back" | "close" | "submit" | "custom"> =
+      {
+        getSnapshot: () => snapshot,
+        send: async () => ({ transitioned: false, snapshot }),
+        updateContext: () => snapshot,
+        clearStepError: () => snapshot,
+        reset: () => snapshot,
+        subscribe: () => unsubscribe
+      };
+
+    const { unmount } = render(
+      <FlowProvider flow={baseFlow} machine={mockedMachine}>
+        <FlowStepRenderer<Ctx, StepId, CustomEvent> />
+      </FlowProvider>
+    );
+
+    unmount();
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+  });
 });

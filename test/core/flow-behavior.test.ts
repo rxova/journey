@@ -235,7 +235,7 @@ describe("flow behavior edge cases", () => {
     expect(machine.getSnapshot().current).toBe("a");
   });
 
-  it("throws when transition points to unknown step", async () => {
+  it("throws when transition points to unknown step", () => {
     const flow = createFlow();
     flow.transitions = [
       {
@@ -244,8 +244,7 @@ describe("flow behavior edge cases", () => {
         to: "missing" as StepId
       }
     ];
-    const machine = createFlowMachine(flow);
-    await expect(machine.send({ type: "next" })).rejects.toThrow("unknown step");
+    expect(() => createFlowMachine(flow)).toThrow("unknown step");
   });
 
   it("throws when initial step is missing", () => {

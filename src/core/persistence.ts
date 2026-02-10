@@ -13,9 +13,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
 const isStatusValue = (value: unknown): value is FlowStatus =>
-  value === FLOW_STATUS.RUNNING ||
-  value === FLOW_STATUS.COMPLETE ||
-  value === FLOW_STATUS.CLOSED;
+  value === FLOW_STATUS.RUNNING || value === FLOW_STATUS.COMPLETE || value === FLOW_STATUS.CLOSED;
 
 const resolveDefaultStorage = (): FlowStorage | null => {
   const localStorageCandidate = (globalThis as { localStorage?: Partial<FlowStorage> })

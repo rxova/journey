@@ -1,4 +1,11 @@
-import { FLOW_ASYNC_PHASE, FLOW_EVENT, FLOW_STATUS, FLOW_TERMINAL, HISTORY_TARGET } from "./types";
+import {
+  FLOW_ASYNC_PHASE,
+  FLOW_EVENT,
+  FLOW_STATUS,
+  FLOW_TERMINAL,
+  FLOW_WILDCARD,
+  HISTORY_TARGET
+} from "./types";
 import type {
   FlowAsyncState,
   FlowAsyncPhase,
@@ -32,11 +39,48 @@ export const createFlowMachine = <
   flow: FlowFlow<TContext, TStepId, TEventType, TPayloadMap>,
   options?: FlowMachineOptions<TContext, TStepId>
 ): FlowMachine<TContext, TStepId, TEventType, TPayloadMap> => {
+  if (!flow.steps || typeof flow.steps !== "object") {
+    throw new Error("Flow steps must be a record object.");
+  }
+
+  if (!Array.isArray(flow.transitions)) {
+    throw new Error("Flow transitions must be an array.");
+  }
+
   assertStepExists(
     flow.steps,
     flow.initial,
     `Flow initial step "${flow.initial}" does not exist in steps registry.`
   );
+
+  for (const [index, transition] of flow.transitions.entries()) {
+    if (!transition || typeof transition !== "object") {
+      throw new Error(`Flow transition at index ${index} must be an object.`);
+    }
+
+    if (typeof transition.from !== "string" || typeof transition.event !== "string") {
+      throw new Error(`Flow transition at index ${index} must define string "from" and "event".`);
+    }
+
+    if (
+      transition.from !== FLOW_WILDCARD &&
+      !((transition.from as string) in (flow.steps as Record<string, unknown>))
+    ) {
+      throw new Error(
+        `Flow transition at index ${index} references unknown from step "${transition.from}".`
+      );
+    }
+
+    if (
+      transition.to !== HISTORY_TARGET &&
+      !isTerminalTarget(transition.to) &&
+      !((transition.to as string) in (flow.steps as Record<string, unknown>))
+    ) {
+      throw new Error(
+        `Flow transition at index ${index} points to unknown step "${transition.to}".`
+      );
+    }
+  }
 
   const { clearOnReset, hydrateSnapshot, persistSnapshot, removePersistedSnapshot } =
     createPersistenceController({
