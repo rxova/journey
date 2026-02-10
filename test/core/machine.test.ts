@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { createFlowMachine, FLOW_STATUS, HISTORY_TARGET, FLOW_TERMINAL, type FlowFlow } from "@/src/core";
+import {
+  createFlowMachine,
+  FLOW_STATUS,
+  HISTORY_TARGET,
+  FLOW_TERMINAL,
+  type FlowFlow
+} from "@/src/core";
 
 type StepId = "start" | "details" | "extra" | "review" | "confirmExit";
 type Ctx = {

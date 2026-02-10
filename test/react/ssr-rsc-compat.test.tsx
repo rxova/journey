@@ -54,4 +54,14 @@ describe("SSR / RSC compatibility", () => {
       snapshot
     });
   });
+
+  it("does not fail on server render when persistence is configured without storage", () => {
+    const html = renderToString(
+      <FlowProvider flow={reactFlow} persistence={{ key: "server-flow" }}>
+        <FlowStepRenderer<Ctx, StepId, Event> />
+      </FlowProvider>
+    );
+
+    expect(html).toContain("server-step");
+  });
 });
