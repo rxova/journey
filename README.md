@@ -1,12 +1,35 @@
 # react-toolkit-flow
 
+[![npm version](https://img.shields.io/npm/v/react-toolkit-flow)](https://www.npmjs.com/package/react-toolkit-flow)
+[![npm downloads](https://img.shields.io/npm/dm/react-toolkit-flow)](https://www.npmjs.com/package/react-toolkit-flow)
 [![Bundlephobia](https://img.shields.io/bundlephobia/minzip/react-toolkit-flow)](https://bundlephobia.com/package/react-toolkit-flow)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
+![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)
+![Build checks](https://img.shields.io/badge/build-lint%20%7C%20typecheck%20%7C%20tests-brightgreen)
 
 Tiny, zero-runtime-dependency React flow/stepper built around one declarative flow model.
 
 ## Why
 
 This library is designed for modal multi-step forms where path length changes dynamically (for example: 4-6 steps depending on user choices), without scattering branch logic across components.
+
+## Why This Over Other Wizard Libraries
+
+| Area                               | Ours                                                                                                                            | Typical index-based wizard libs                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Flow modeling                      | ✅ Declarative graph (`steps` + ordered `transitions`) as the single source of truth.                                           | ⚠️ Usually step index + imperative branching spread across components.              |
+| Conditional branching / skip       | ✅ First-class via `when` guards in transitions.                                                                                | ⚠️ Commonly manual `if` branching in UI handlers.                                   |
+| Runtime dynamic steps              | ✅ Supported by rebuilding `steps` + `transitions` graph at runtime (see `examples/dynamic-steps.flow.tsx`).                    | ⚠️ Often limited to hide/show step UI while navigation logic remains index-coupled. |
+| Deterministic back behavior        | ✅ Built-in with history semantics (`HISTORY_TARGET`).                                                                          | ⚠️ Frequently manual index/history bookkeeping.                                     |
+| Async validation/effects lifecycle | ✅ Built-in async `when`/`effect` with per-step phase/error capture in `snapshot.async`.                                        | ⚠️ Usually hand-rolled loading/error state + race handling.                         |
+| Lifecycle visibility               | ✅ Explicit runtime phases (`idle`, `evaluating-when`, `running-effect`, `error`) for each step.                                | ⚠️ Lifecycle is often implicit and dispersed across local state/effects.            |
+| Persistence                        | ✅ Optional persistence adapter with versioning, migration, and reset behavior controls.                                        | ⚠️ Commonly custom localStorage/session code with no standard migration path.       |
+| SSR / RSC safety                   | ✅ `core` is server-safe, `react` entry is client-bound (`"use client"`), root supports `react-server` condition.               | ⚠️ Frequently undocumented or prone to context/hook usage in server paths.          |
+| Framework compatibility            | ✅ Documented patterns for Next.js App Router, Pages Router, Remix/React Router SSR, and custom SSR.                            | ⚠️ Often focused on CSR-first usage with partial SSR guidance.                      |
+| Type safety                        | ✅ Strong generic typing for steps, events, payloads, context, and API methods.                                                 | ⚠️ Often looser event/payload typing or any-like extension points.                  |
+| Bundle-size discipline             | ✅ Size-limit budgets enforced: core import target `2.2 kB`, react hook target `3.6 kB`, root core tree-shaken target `2.3 kB`. | ⚠️ Often no explicit size budgets or CI guardrails.                                 |
+| Coverage                           | ✅ Test suite runs at 100% (statements, branches, functions, lines).                                                            | ⚠️ Coverage targets are often lower or not enforced.                                |
+| API ergonomics / dev warnings      | ✅ Clear provider-boundary errors (e.g. `useFlow must be used within <FlowProvider>.`).                                         | ⚠️ Commonly generic runtime null/undefined errors.                                  |
 
 ## Install
 
@@ -89,6 +112,18 @@ export const WizardClient = ({
   );
 };
 ```
+
+## Framework Compatibility
+
+- Next.js App Router: supported. Keep flow engine logic in server-safe imports (`react-toolkit-flow/core`) and UI hooks/provider in client components (`react-toolkit-flow/react`).
+- Next.js Pages Router: supported. Use React APIs normally in pages/components.
+- Remix / React Router SSR: supported. Keep provider/hooks inside client-rendered React trees; use core machine in shared/server code paths.
+- Vite SSR / custom React SSR: supported. `core` has no React dependency; `react` entry is client-bound.
+
+Import rule of thumb:
+
+- If code can execute on the server, import from `react-toolkit-flow/core`.
+- If code uses hooks/context/components, import from `react-toolkit-flow/react` in a client component/module.
 
 ## Core Model
 
