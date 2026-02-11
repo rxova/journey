@@ -19,6 +19,13 @@
 
 # What Is Rxova Journey
 
+Rxova Journey is a zero dependency, <3kb gzipped state-machine designed to control non-linear flows. This is specially usefull for:
+- Checkout processes with conditional steps
+- Non‑linear wizards and steppers
+- Multi‑step onboarding with branching logic
+- Support or intake flows with dynamic routing
+- Complex forms that need history, backtracking, or “go to” jumps
+
 Most stepper/flow libraries model the journey as a linear array of steps. That works for simple, fixed sequences, but it gets brittle once you need conditional branching, dynamic step counts, async guards/effects, or deterministic back behavior. You end up scattering logic across components, duplicating state, and fighting edge cases.
 
 Rxova Journey solves those issues with a single declarative model: a graph of `steps` and ordered `transitions`, plus runtime `history` and typed `context`. It stays tiny and dependency-free, while supporting branching, async lifecycle phases, persistence, and SSR/RSC-safe separation between `core` and `react`.
