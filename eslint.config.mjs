@@ -13,7 +13,15 @@ const TEST_FILE_GLOBS = [
 
 export default [
   {
-    ignores: ["dist/**", "coverage/**", "node_modules/**", "flow/**"]
+    ignores: [
+      "dist/**",
+      "**/dist/**",
+      "coverage/**",
+      "node_modules/**",
+      "flow/**",
+      "**/*.d.ts",
+      "**/*.d.ts.map"
+    ]
   },
   js.configs.recommended,
   {

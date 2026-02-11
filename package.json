@@ -1,5 +1,5 @@
 {
-  "name": "@rxova/journey",
+  "name": "rxova-journey",
   "version": "0.1.0",
   "description": "A tiny zero-runtime-dependency React journey/stepper powered by a declarative journey graph.",
   "keywords": [
@@ -11,81 +11,30 @@
     "typescript"
   ],
   "license": "MIT",
+  "private": true,
   "type": "module",
   "engines": {
     "node": ">=20.11.0"
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "react-server": "./dist/index.react-server.js",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    },
-    "./core": {
-      "types": "./dist/core/index.d.ts",
-      "import": "./dist/core/index.js",
-      "require": "./dist/core/index.cjs"
-    },
-    "./react": {
-      "types": "./dist/react/index.d.ts",
-      "import": "./dist/react/index.js",
-      "require": "./dist/react/index.cjs"
-    }
-  },
-  "files": [
-    "dist"
-  ],
-  "sideEffects": false,
-  "peerDependencies": {
-    "react": ">=18.2.0"
-  },
-  "peerDependenciesMeta": {
-    "react": {
-      "optional": false
-    }
-  },
   "scripts": {
-    "build": "pnpm run clean && node ./scripts/build.mjs && tsc -p tsconfig.build.json",
-    "clean": "rm -rf dist coverage",
+    "build": "pnpm -r build",
+    "clean": "pnpm -r clean && rm -rf coverage",
     "changeset": "changeset",
     "changeset:version": "changeset version",
-    "release": "pnpm run build && pnpm publish",
-    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+    "release": "pnpm -r build && changeset publish",
+    "typecheck": "pnpm -r typecheck && tsc --noEmit -p tsconfig.test.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
+    "prepare": "husky install",
     "commitlint": "node ./scripts/commitlint.mjs",
     "test": "vitest run --coverage",
+    "test:precommit": "vitest run --coverage --coverage.reporter=text-summary",
     "test:watch": "vitest",
-    "size": "pnpm run size:check",
-    "size:check": "pnpm run build && size-limit",
-    "prepare": "pnpm run build"
+    "size": "pnpm -r size",
+    "size:check": "pnpm -r size:check"
   },
-  "size-limit": [
-    {
-      "name": "core/createJourneyMachine (subpath)",
-      "path": "dist/core/index.js",
-      "import": "{ createJourneyMachine }",
-      "limit": "2.5 kB"
-    },
-    {
-      "name": "react/useJourney (subpath)",
-      "path": "dist/react/index.js",
-      "import": "{ useJourney }",
-      "limit": "3.6 kB"
-    },
-    {
-      "name": "root/createJourneyMachine (tree-shaken)",
-      "path": "dist/index.js",
-      "import": "{ createJourneyMachine }",
-      "limit": "2.5 kB"
-    }
-  ],
   "devDependencies": {
     "@changesets/cli": "^2.27.8",
     "@commitlint/cli": "^19.8.0",
@@ -93,9 +42,6 @@
     "@eslint/js": "^9.21.0",
     "@size-limit/esbuild": "^12.0.0",
     "@size-limit/file": "^12.0.0",
-    "@testing-library/react": "^16.1.0",
-    "@types/react": "^19.0.8",
-    "@types/react-dom": "^19.0.3",
     "@typescript-eslint/eslint-plugin": "^8.24.0",
     "@typescript-eslint/parser": "^8.24.0",
     "@vitest/coverage-v8": "^3.0.5",
@@ -104,10 +50,9 @@
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-react-hooks": "^5.2.0",
     "globals": "^15.15.0",
+    "husky": "^9.0.11",
     "jsdom": "^26.0.0",
     "prettier": "^3.5.2",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
     "size-limit": "^12.0.0",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"
@@ -116,9 +61,6 @@
     "onlyBuiltDependencies": [
       "esbuild"
     ]
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "packageManager": "pnpm@10.29.2+sha512.bef43fa759d91fd2da4b319a5a0d13ef7a45bb985a3d7342058470f9d2051a3ba8674e629672654686ef9443ad13a82da2beb9eeb3e0221c87b8154fff9d74b8"
 }

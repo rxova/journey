@@ -1,26 +1,4 @@
 {
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "strict": true,
-    "jsx": "react-jsx",
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "noEmit": true,
-    "skipLibCheck": true,
-    "exactOptionalPropertyTypes": true,
-    "noUncheckedIndexedAccess": true,
-    "noFallthroughCasesInSwitch": true,
-    "forceConsistentCasingInFileNames": true,
-    "esModuleInterop": false,
-    "isolatedModules": true,
-    "resolveJsonModule": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["*"]
-    }
-  },
-  "include": ["src", "examples", "vitest.config.ts", "scripts"]
+  "extends": "./tsconfig.base.json",
+  "include": ["packages/*/src", "packages/*/test", "examples", "scripts", "vitest.config.ts"]
 }
