@@ -1,15 +1,73 @@
 # Contributing
 
-## Setup
+## Architecture Overview
+
+Rxova Journey is a small monorepo with two packages and shared tooling:
+
+- `packages/core`: headless journey state machine, types, and runtime logic.
+- `packages/react`: React provider/hooks/renderer built on top of core.
+- `packages/*/scripts`: build pipelines for each package.
+
+If you are unsure where a change belongs, start in `packages/core` for
+state-machine behavior and in `packages/react` for React-specific API or
+rendering.
+
+## Development Workflow
+
+### Requirements
+
+- Node.js `>= 20.11.0`
+- pnpm (see `packageManager` in `package.json`)
+
+### Install
 
 ```bash
-npm install
-npm run format:check
-npm run lint
-npm run typecheck
-npm run test
-npm run build
+pnpm install
 ```
+
+### Common Commands
+
+```bash
+pnpm run format:check
+pnpm run lint
+pnpm run typecheck
+pnpm run test
+pnpm run build
+```
+
+### Package-Scoped Commands
+
+```bash
+# Core only
+pnpm --filter @rxova/journey-core run build
+
+# React only
+pnpm --filter @rxova/journey-react run test
+```
+
+### Pre-PR Checklist
+
+- `pnpm run format:check`
+- `pnpm run lint`
+- `pnpm run typecheck`
+- `pnpm run test`
+- `pnpm run build`
+- `pnpm run size`
+
+## How To Add A Feature
+
+1. Decide which package owns the change (`core` vs `react`).
+2. Update types and runtime behavior in `packages/*/src`.
+3. Add or update tests in `packages/*/test` (and `test/` when appropriate).
+4. Update docs and examples if the API changes.
+5. Run `pnpm run size` to ensure size budgets still pass.
+6. If this is user-facing, add a changeset with `pnpm run changeset`.
+
+## Browser Compatibility
+
+Rxova Journey targets modern evergreen browsers and React 18+.
+If you need legacy browser support (for example, older Safari or IE11),
+you must provide your own transpilation and polyfills in your app build.
 
 ## Rules
 
@@ -17,5 +75,5 @@ npm run build
 - Keep `react` as peer dependency only.
 - Add or update tests for behavior changes.
 - Keep transition logic declarative in flow definitions.
-- Run `npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build` before opening PR.
+- Run `pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build` before opening PR.
 - Follow Conventional Commits (`commitlint` is enforced on pull requests).
