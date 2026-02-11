@@ -1,0 +1,54 @@
+{
+  "name": "@rxova/journey-react",
+  "version": "0.1.0",
+  "description": "React bindings for journey.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@rxova/journey-core": "workspace:^"
+  },
+  "peerDependencies": {
+    "react": ">=18.2.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": false
+    }
+  },
+  "scripts": {
+    "build": "pnpm run clean && node ./scripts/build.mjs && tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "size": "pnpm run size:check",
+    "size:check": "pnpm run build && size-limit"
+  },
+  "size-limit": [
+    {
+      "name": "react/useJourney",
+      "path": "dist/index.js",
+      "import": "{ useJourney }",
+      "limit": "3.6 kB"
+    }
+  ],
+  "devDependencies": {
+    "@testing-library/react": "^16.1.0",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

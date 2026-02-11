@@ -5,20 +5,24 @@ export default defineConfig({
   resolve: {
     alias: [
       {
-        find: /^@\//,
-        replacement: fileURLToPath(new URL("./", import.meta.url))
+        find: "@rxova/journey-core",
+        replacement: fileURLToPath(new URL("./packages/core/src/index.ts", import.meta.url))
+      },
+      {
+        find: "@rxova/journey-react",
+        replacement: fileURLToPath(new URL("./packages/react/src/index.ts", import.meta.url))
       }
     ]
   },
   test: {
-    include: ["test/**/*.test.ts", "test/**/*.test.tsx"],
+    include: ["packages/**/test/**/*.test.ts", "packages/**/test/**/*.test.tsx"],
     globals: true,
     environment: "jsdom",
     coverage: {
       provider: "v8",
       reporter: ["text", "text-summary", "html", "json-summary", "lcov"],
-      include: ["src/**/*.ts", "src/**/*.tsx"],
-      exclude: ["src/**/types.ts"]
+      include: ["packages/*/src/**/*.ts", "packages/*/src/**/*.tsx"],
+      exclude: ["packages/**/types.ts"]
     }
   }
 });
