@@ -53,6 +53,20 @@ npm i @rxova/journey-react
 
 `react` is a peer dependency for `@rxova/journey-react`.
 
+## Browser Compatibility
+
+Targeted (not exhaustively tested) support:
+
+| Environment   | Support Policy            |
+| ------------- | ------------------------- |
+| Chrome        | Latest 2 major versions   |
+| Edge          | Latest 2 major versions   |
+| Firefox       | Latest 2 major versions   |
+| Safari (macOS)| Latest 2 major versions   |
+| iOS Safari    | Latest 2 major versions   |
+| Android Chrome| Latest 2 major versions   |
+| IE 11         | Not supported             |
+
 ## Quickstart
 
 - Vanilla (headless)
