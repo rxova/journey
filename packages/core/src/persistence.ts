@@ -102,6 +102,10 @@ const coercePersistedSnapshot = <TContext, TStepId extends string>(
   };
 };
 
+/**
+ * Creates a persistence controller for snapshots, including hydration,
+ * serialization, and storage error handling.
+ */
 export const createPersistenceController = <TContext, TStepId extends string>(args: {
   initial: TStepId;
   context: TContext;
