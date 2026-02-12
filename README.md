@@ -19,7 +19,7 @@
 
 # What Is Rxova Journey
 
-Rxova Journey is a zero dependency, <3kb gzipped state-machine designed to control non-linear flows. This is specially usefull for:
+Rxova Journey is a zero dependency, <3kb gzipped state-machine designed to control non-linear flows. This is especially useful for:
 
 - Checkout processes with conditional steps
 - Non‑linear wizards and steppers

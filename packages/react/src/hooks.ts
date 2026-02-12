@@ -23,8 +23,14 @@ const useSnapshot = <
   return React.useSyncExternalStore(machine.subscribe, machine.getSnapshot, machine.getSnapshot);
 };
 
+/**
+ * Reads the current journey snapshot and re-renders on changes.
+ */
 export const useJourneySnapshot = useSnapshot;
 
+/**
+ * Returns imperative journey actions (send, goTo, next, back, close, submit).
+ */
 export const useJourneyApi = <
   TContext,
   TStepId extends string,
@@ -160,6 +166,9 @@ export const useJourneyApi = <
   };
 };
 
+/**
+ * Combined hook that returns both snapshot and API helpers.
+ */
 export const useJourney = <
   TContext,
   TStepId extends string,

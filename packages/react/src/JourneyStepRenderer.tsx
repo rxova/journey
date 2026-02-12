@@ -7,6 +7,9 @@ type JourneyStepRendererProps = {
   fallback?: React.ReactNode;
 };
 
+/**
+ * Renders the active step component from the journey definition.
+ */
 export const JourneyStepRenderer = <
   TContext,
   TStepId extends string,

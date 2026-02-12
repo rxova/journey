@@ -10,6 +10,9 @@ const JourneyContext = React.createContext<JourneyStoreValue<
   Record<never, never>
 > | null>(null);
 
+/**
+ * React provider that supplies the journey machine and definition to hooks.
+ */
 export const JourneyProvider = <
   TContext,
   TStepId extends string,

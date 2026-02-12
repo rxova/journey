@@ -30,6 +30,11 @@ import {
 } from "./machine-helpers";
 import { createPersistenceController } from "./persistence";
 
+/**
+ * Creates a journey machine from a journey definition.
+ * Validates steps/transitions, hydrates persisted state (if configured),
+ * and returns an API for sending events and reading snapshots.
+ */
 export const createJourneyMachine = <
   TContext,
   TStepId extends string,
