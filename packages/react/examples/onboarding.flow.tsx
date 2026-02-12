@@ -30,7 +30,7 @@ const TeamInvite = () => {
   return <button onClick={() => api.next()}>Skip invite</button>;
 };
 
-const Summary = () => {
+const Recap = () => {
   const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.submit()}>Finish</button>;
 };
@@ -45,7 +45,7 @@ export const onboardingJourney: JourneyReactDefinition<Ctx, StepId, never> = {
     welcome: { component: Welcome },
     profile: { component: Profile },
     teamInvite: { component: TeamInvite },
-    summary: { component: Summary }
+    recap: { component: Recap }
   },
   transitions: [
     { from: "welcome", event: "next", to: "profile" },

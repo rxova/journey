@@ -22,7 +22,7 @@ export const onboardingJourney: JourneyDefinition<Ctx, StepId, Event> = {
     welcome: {},
     profile: {},
     teamInvite: {},
-    summary: {}
+    recap: {}
   },
   transitions: [
     { from: "welcome", event: "next", to: "profile" },
