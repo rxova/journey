@@ -1,12 +1,19 @@
+Core:
+[![npm version](https://img.shields.io/npm/v/@rxova/journey-core)](https://www.npmjs.com/package/@rxova/journey-core)
+[![npm downloads](https://img.shields.io/npm/dm/@rxova/journey-core)](https://www.npmjs.com/package/@rxova/journey-core)
+[![Bundlephobia](https://img.shields.io/bundlephobia/minzip/@rxova/journey-core)](https://bundlephobia.com/package/@rxova/journey-core)
+
+React:
 [![npm version](https://img.shields.io/npm/v/@rxova/journey-react)](https://www.npmjs.com/package/@rxova/journey-react)
 [![npm downloads](https://img.shields.io/npm/dm/@rxova/journey-react)](https://www.npmjs.com/package/@rxova/journey-react)
 [![Bundlephobia](https://img.shields.io/bundlephobia/minzip/@rxova/journey-react)](https://bundlephobia.com/package/@rxova/journey-react)
+
+[![CI](https://github.com/rxova/journey/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rxova/journey/actions/workflows/ci.yml)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
 ![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)
-![Build checks](https://img.shields.io/badge/build-lint%20%7C%20typecheck%20%7C%20tests-brightgreen)
 
 <div align="center">
-  <img src="./docs/assets/logo-mark.png" alt="Rxova Journey Mark" width="320" />
+  <img src="./docs/assets/logo_mark.jpg" alt="Rxova Journey Mark" width="700" />
 </div>
 
 <p align="center">
@@ -19,7 +26,7 @@
 
 # What Is Rxova Journey
 
-Rxova Journey is a zero dependency, <3kb gzipped state-machine designed to control non-linear flows. This is specially usefull for:
+Rxova Journey is a zero dependency, <3kb gzipped state-machine designed to control non-linear flows. This is especially useful for:
 
 - Checkout processes with conditional steps
 - Non‑linear wizards and steppers
