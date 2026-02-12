@@ -2,6 +2,24 @@
   "name": "@rxova/journey-react",
   "version": "0.1.0",
   "description": "React bindings for journey.",
+  "keywords": [
+    "react",
+    "react-hooks",
+    "journey",
+    "state-machine",
+    "wizard",
+    "stepper",
+    "typescript",
+    "flow"
+  ],
+  "homepage": "https://github.com/rxova/journey",
+  "bugs": {
+    "url": "https://github.com/rxova/journey/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rxova/journey.git"
+  },
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -15,7 +33,9 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "sideEffects": false,
   "dependencies": {
