@@ -35,7 +35,7 @@ const Review = () => {
   return <button onClick={() => api.submit()}>Submit</button>;
 };
 
-const ConfirmClose = () => {
+const ConfirmExit = () => {
   const { api } = useJourney<Ctx, StepId, never>();
   return <button onClick={() => api.close()}>Discard</button>;
 };
@@ -51,7 +51,7 @@ export const supportTicketJourney: JourneyReactDefinition<Ctx, StepId, never> = 
     details: { component: Details },
     screenshot: { component: Screenshot },
     review: { component: Review },
-    confirmExit: { component: ConfirmClose }
+    confirmExit: { component: ConfirmExit }
   },
   transitions: [
     { from: "category", event: "next", to: "details" },

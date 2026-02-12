@@ -23,7 +23,7 @@ const Edit = () => {
   );
 };
 
-const ConfirmClose = () => {
+const ConfirmExit = () => {
   const { api } = useJourney<Ctx, StepId>();
   return <button onClick={() => api.close()}>Confirm close</button>;
 };
@@ -33,7 +33,7 @@ export const confirmExitJourney: JourneyReactDefinition<Ctx, StepId> = {
   context: { dirty: false },
   steps: {
     edit: { component: Edit },
-    confirmExit: { component: ConfirmClose }
+    confirmExit: { component: ConfirmExit }
   },
   transitions: [
     {
@@ -51,7 +51,7 @@ export const confirmExitJourney: JourneyReactDefinition<Ctx, StepId> = {
   ]
 };
 
-export const ConfirmCloseExample = () => (
+export const ConfirmExitExample = () => (
   <JourneyProvider journey={confirmExitJourney}>
     <JourneyStepRenderer<Ctx, StepId> />
   </JourneyProvider>

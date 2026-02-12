@@ -150,7 +150,7 @@ const Review = () => {
   return <button onClick={() => api.submit()}>Submit</button>;
 };
 
-const ConfirmClose = () => <div>Are you sure you want to close?</div>;
+const ConfirmExit = () => <div>Are you sure you want to close?</div>;
 
 const journey: JourneyReactDefinition<Ctx, StepId, Event> = {
   initial: "start",
@@ -159,7 +159,7 @@ const journey: JourneyReactDefinition<Ctx, StepId, Event> = {
     start: { component: Start },
     details: { component: Details },
     review: { component: Review },
-    confirmExit: { component: ConfirmClose }
+    confirmExit: { component: ConfirmExit }
   },
   transitions: [
     {

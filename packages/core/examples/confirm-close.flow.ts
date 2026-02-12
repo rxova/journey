@@ -31,5 +31,5 @@ export const confirmExitJourney: JourneyDefinition<Ctx, StepId, Event> = {
   ]
 };
 
-export const createConfirmCloseMachine = () =>
+export const createConfirmExitMachine = () =>
   createJourneyMachine<Ctx, StepId, Event>(confirmExitJourney);

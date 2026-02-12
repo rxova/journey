@@ -15,7 +15,7 @@ type Ctx = { dirty: boolean; log: string[] };
 const Start = () => <div data-testid="step">start</div>;
 const Details = () => <div data-testid="step">details</div>;
 const Review = () => <div data-testid="step">review</div>;
-const ConfirmClose = () => <div data-testid="step">confirm-close</div>;
+const ConfirmExit = () => <div data-testid="step">confirm-exit</div>;
 
 const journey: JourneyReactDefinition<Ctx, StepId, Event> = {
   initial: "start",
@@ -24,7 +24,7 @@ const journey: JourneyReactDefinition<Ctx, StepId, Event> = {
     start: { component: Start },
     details: { component: Details },
     review: { component: Review },
-    confirmExit: { component: ConfirmClose }
+    confirmExit: { component: ConfirmExit }
   },
   transitions: [
     { from: "start", event: "next", to: "details" },
@@ -107,7 +107,7 @@ describe("react integration", () => {
       screen.getByText("close").click();
     });
 
-    expect(screen.getByTestId("step").textContent).toBe("confirm-close");
+    expect(screen.getByTestId("step").textContent).toBe("confirm-exit");
   });
 
   it("supports terminal transitions", async () => {
