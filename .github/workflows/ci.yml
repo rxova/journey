@@ -31,6 +31,7 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm run test
+      - run: pnpm run packaging:check
       - name: Add coverage summary
         if: always()
         run: node ./scripts/coverage-summary.mjs
