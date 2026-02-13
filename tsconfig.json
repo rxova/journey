@@ -1,4 +1,12 @@
 {
   "extends": "./tsconfig.base.json",
+  "references": [
+    {
+      "path": "./packages/core/tsconfig.build.json"
+    },
+    {
+      "path": "./packages/react/tsconfig.build.json"
+    }
+  ],
   "include": ["packages/*/src", "packages/*/test", "examples", "scripts", "vitest.config.ts"]
 }
