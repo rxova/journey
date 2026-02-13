@@ -132,6 +132,6 @@ machine.clearHistory(); // reset history to []
 
 ## Links
 
-- Docs: https://rxova.org/journey/docs/core/getting-started
-- API: https://rxova.org/journey/docs/core/api
+- Docs: https://rxova.org/docs/core/getting-started
+- API: https://rxova.org/docs/core/api
 - React bindings: ../react
