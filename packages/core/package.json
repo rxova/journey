@@ -19,7 +19,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/rxova/journey.git"
+    "url": "git+https://github.com/rxova/journey.git"
   },
   "publishConfig": {
     "access": "public"
@@ -32,7 +32,10 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": {
+        "import": "./dist/index.d.ts",
+        "require": "./dist/index.d.cts"
+      },
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     }
@@ -44,9 +47,11 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "pnpm run clean && node ./scripts/build.mjs && tsc -p tsconfig.build.json",
+    "build": "pnpm run clean && node ./scripts/build.mjs && tsc -p tsconfig.build.json && node ../../scripts/copy-types.mjs dist",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "publint": "publint",
+    "attw": "attw --pack .",
     "size": "pnpm run size:check",
     "size:check": "pnpm run build && size-limit"
   },
