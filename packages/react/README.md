@@ -69,7 +69,7 @@ export const Example = () => (
 
 ## Links
 
-- Docs: ../../docs/GETTING_STARTED.md
-- API: ../../docs/API.md
-- Recipes: ../../docs/RECIPES.md
+- Docs: https://rxova.org/journey/docs/core/getting-started
+- API: https://rxova.org/journey/docs/core/api
+- Recipes: https://rxova.org/journey/docs/core/recipes
 - Core package: ../core
