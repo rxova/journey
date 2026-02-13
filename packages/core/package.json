@@ -21,7 +21,11 @@
     "type": "git",
     "url": "https://github.com/rxova/journey.git"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "license": "MIT",
+  "author": "Jonatan Kruszewski",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

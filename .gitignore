@@ -3,3 +3,4 @@ dist
 coverage
 .vitest
 .DS_Store
+*.tsbuildinfo
