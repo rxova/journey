@@ -18,13 +18,16 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20, 22, 24]
     steps:
       - uses: actions/checkout@v6
       - run: corepack enable
       - run: corepack prepare pnpm@10.29.3+sha512.498e1fb4cca5aa06c1dcf2611e6fafc50972ffe7189998c409e90de74566444298ffe43e6cd2acdc775ba1aa7cc5e092a8b7054c811ba8c5770f84693d33d2dc --activate
       - uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version: ${{ matrix.node-version }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run format:check
@@ -34,10 +37,10 @@ jobs:
       - run: pnpm run packaging:check
       - run: pnpm run pack:smoke
       - name: Add coverage summary
-        if: always()
+        if: always() && matrix.node-version == 24
         run: node ./scripts/coverage-summary.mjs
       - name: Upload coverage report
-        if: always()
+        if: always() && matrix.node-version == 24
         uses: actions/upload-artifact@v6
         with:
           name: coverage-report
