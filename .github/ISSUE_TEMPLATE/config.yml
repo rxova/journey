@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "Questions and ideas (GitHub Discussions)"
+    url: "https://github.com/rxova/journey/discussions"
+    about: "Usage questions, ideas, or open-ended discussion."
+  - name: "Security reports"
+    url: "https://github.com/rxova/journey/security/policy"
+    about: "Please report security issues via the policy page."
+  - name: "Private contact"
+    url: "mailto:rxova@proton.me"
+    about: "Use email for sensitive or private inquiries."
