@@ -1,1 +1,3 @@
+pnpm run lint
 pnpm packaging:check
+pnpm pack:smoke
