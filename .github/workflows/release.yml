@@ -2,25 +2,36 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
   id-token: write
 
 jobs:
-  publish:
+  release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 24
           registry-url: "https://registry.npmjs.org"
-          cache: pnpm
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Upgrade npm for Trusted Publishing
+        run: npm install -g npm@^11.5.1
       - run: corepack enable
       - run: corepack prepare pnpm@10.29.3+sha512.498e1fb4cca5aa06c1dcf2611e6fafc50972ffe7189998c409e90de74566444298ffe43e6cd2acdc775ba1aa7cc5e092a8b7054c811ba8c5770f84693d33d2dc --activate
       - run: pnpm install --frozen-lockfile
-      - run: pnpm run build
-      - run: pnpm publish --provenance
+      - name: Create Release PR or Publish
+        uses: changesets/action@v1
+        with:
+          version: pnpm run changeset:version
+          publish: pnpm run release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
