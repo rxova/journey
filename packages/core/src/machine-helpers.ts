@@ -25,6 +25,16 @@ export const assertStepExists = <TStepId extends string>(
 
 const unique = <T>(items: readonly T[]): T[] => [...new Set(items)];
 
+export const buildVisited = <TStepId extends string>(
+  history: readonly TStepId[],
+  current: TStepId
+): TStepId[] => unique([...history, current]);
+
+export const appendVisited = <TStepId extends string>(
+  visited: readonly TStepId[],
+  current: TStepId
+): TStepId[] => (visited.includes(current) ? [...visited] : [...visited, current]);
+
 export const isPromiseLike = <T>(value: T | PromiseLike<T>): value is PromiseLike<T> =>
   typeof value === "object" &&
   value !== null &&
@@ -79,13 +89,14 @@ export const buildSnapshot = <TContext, TStepId extends string>(
   context: TContext,
   history: readonly TStepId[],
   status: JourneyStatus,
-  asyncState: JourneyAsyncState<TStepId>
+  asyncState: JourneyAsyncState<TStepId>,
+  visited?: readonly TStepId[]
 ): JourneySnapshot<TContext, TStepId> => ({
   status,
   current,
   context,
   history,
-  visited: unique([...history, current]),
+  visited: visited ? [...visited] : buildVisited(history, current),
   async: asyncState
 });
 
@@ -192,5 +203,7 @@ export const transitionSnapshot = <TContext, TStepId extends string>(
       ? [...snapshot.history]
       : [...snapshot.history, snapshot.current];
 
-  return buildSnapshot(nextCurrent, nextContext, history, snapshot.status, snapshot.async);
+  const visited = appendVisited(snapshot.visited, nextCurrent);
+
+  return buildSnapshot(nextCurrent, nextContext, history, snapshot.status, snapshot.async, visited);
 };

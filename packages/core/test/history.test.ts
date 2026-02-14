@@ -33,6 +33,7 @@ describe("history limits", () => {
     await machine.send({ type: "goTo", to: "d" });
 
     expect(machine.getSnapshot().history).toEqual(["b", "c"]);
+    expect(machine.getSnapshot().visited).toEqual(["a", "b", "c", "d"]);
   });
 
   it("fires onOverflow when history is trimmed automatically", async () => {

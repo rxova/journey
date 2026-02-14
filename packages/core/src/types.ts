@@ -130,6 +130,7 @@ export type JourneyPersistedSnapshot<TContext, TStepId extends string> = {
   context: TContext;
   history: readonly TStepId[];
   status: JourneyStatus;
+  visited: readonly TStepId[];
 };
 
 export type JourneyPersistedState<TContext, TStepId extends string> = {
