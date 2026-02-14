@@ -23,30 +23,13 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - run: |
-          BASE_SHA="${{ github.event.pull_request.base.sha }}"
-          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
-          CHANGED_FILES="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
-
-          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'skip-changeset') }}" == "true" ]]; then
-            echo "skip-changeset label present; skipping changeset check."
-            exit 0
-          fi
-
-          if echo "$CHANGED_FILES" | grep -qE '^(docs/|\\.github/|\\.changeset/|.*\\.md$|.*\\.txt$|.*\\.yml$|.*\\.yaml$|.*\\.json$)'; then
-            if ! echo "$CHANGED_FILES" | grep -qE '^packages/(core|react)/'; then
-              echo "Docs/CI/config-only changes detected; skipping changeset check."
-              exit 0
-            fi
-          fi
-
-          if echo "$CHANGED_FILES" | grep -qE '^\\.changeset/.*\\.md$'; then
-            echo "Changeset found."
-            exit 0
-          fi
-
-          echo "No changeset found. Add one with 'pnpm changeset' or apply the 'skip-changeset' label."
-          exit 1
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: node ./scripts/check-changeset.mjs
 
   test:
     runs-on: ubuntu-latest
