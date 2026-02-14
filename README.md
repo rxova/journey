@@ -385,6 +385,14 @@ npm run test
 npm run size
 ```
 
+## Testing
+
+- Unit and integration tests live in `packages/*/test` and run via `npm run test`.
+- Smoke tests run with `npm run pack:smoke` to validate published bundles.
+- Property-based fuzz tests cover core determinism and React hook parity.
+- Performance budgets run in core and React to catch regressions.
+- CI runs a Node matrix (18/20/22/24) and executes lint, format, typecheck, test, packaging, smoke, and size checks.
+
 ## Coverage Reports
 
 - Local: `npm run test` writes an HTML report to `coverage/index.html`.
