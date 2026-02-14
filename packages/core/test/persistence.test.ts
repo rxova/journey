@@ -95,6 +95,47 @@ describe("persistence", () => {
     expect(machine.getSnapshot().context.count).toBe(7);
   });
 
+  it("trims history on hydrate when maxHistory is exceeded", () => {
+    const storage = createMemoryStorage({
+      journey: JSON.stringify({
+        version: 1,
+        snapshot: {
+          current: "review",
+          context: { count: 3 },
+          history: ["start", "details"],
+          status: JOURNEY_STATUS.RUNNING
+        }
+      })
+    });
+    const onOverflow = vi.fn();
+
+    const machine = createJourneyMachine(createJourney(), {
+      persistence: {
+        key: "journey",
+        storage
+      },
+      history: {
+        maxHistory: 1,
+        onOverflow
+      }
+    });
+
+    expect(machine.getSnapshot().history).toEqual(["details"]);
+    expect(onOverflow).toHaveBeenCalledTimes(1);
+    expect(onOverflow).toHaveBeenCalledWith({
+      previous: ["start", "details"],
+      next: ["details"],
+      trimmed: ["start"],
+      maxHistory: 1,
+      reason: "hydrate"
+    });
+
+    const persisted = JSON.parse(storage.getItem("journey") as string) as {
+      snapshot: { history: StepId[] };
+    };
+    expect(persisted.snapshot.history).toEqual(["details"]);
+  });
+
   it("persists on send and updateContext", async () => {
     const storage = createMemoryStorage();
     const machine = createJourneyMachine(createJourney(), {
