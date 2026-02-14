@@ -35,12 +35,16 @@ describe("useJourneyApi", () => {
       snapshot
     }));
     const updateContext = vi.fn(() => snapshot);
+    const trimHistory = vi.fn(() => snapshot);
+    const clearHistory = vi.fn(() => snapshot);
     const machine: JourneyMachine<Context, StepId, Event> = {
       getSnapshot: () => snapshot,
       send,
       updateContext,
       clearStepError: () => snapshot,
       reset: () => snapshot,
+      trimHistory,
+      clearHistory,
       subscribe: () => () => {}
     };
 
@@ -59,6 +63,12 @@ describe("useJourneyApi", () => {
             data-testid="update"
           >
             update
+          </button>
+          <button onClick={() => api.trimHistory(1)} data-testid="trim">
+            trim
+          </button>
+          <button onClick={() => api.clearHistory()} data-testid="clear">
+            clear
           </button>
         </div>
       );
@@ -90,10 +100,19 @@ describe("useJourneyApi", () => {
     await act(async () => {
       screen.getByTestId("update").click();
     });
+    await act(async () => {
+      screen.getByTestId("trim").click();
+    });
+    await act(async () => {
+      screen.getByTestId("clear").click();
+    });
 
     expect(send).toHaveBeenCalledTimes(2);
     expect(send).toHaveBeenCalledWith({ type: "goTo", to: "two" });
     expect(send).toHaveBeenCalledWith({ type: "next" });
     expect(updateContext).toHaveBeenCalledTimes(1);
+    expect(trimHistory).toHaveBeenCalledTimes(1);
+    expect(trimHistory).toHaveBeenCalledWith(1);
+    expect(clearHistory).toHaveBeenCalledTimes(1);
   });
 });

@@ -11,9 +11,12 @@ import type {
   JourneyAsyncPhase,
   JourneyEventPayloadMap,
   JourneyDefinition,
+  JourneyHistoryOverflowReason,
+  JourneyHistoryOptions,
   JourneyMachine,
   JourneyMachineOptions,
-  JourneySendResult
+  JourneySendResult,
+  JourneySnapshot
 } from "./types";
 import {
   assertStepExists,
@@ -29,6 +32,33 @@ import {
   buildSnapshot
 } from "./machine-helpers";
 import { createPersistenceController } from "./persistence";
+
+const DEFAULT_MAX_HISTORY = 50;
+
+const resolveMaxHistory = (value: number | null | undefined): number | null => {
+  if (value === null) {
+    return null;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(0, Math.trunc(value));
+  }
+  return DEFAULT_MAX_HISTORY;
+};
+
+const applyHistoryLimit = <TStepId extends string>(
+  history: readonly TStepId[],
+  maxHistory: number | null
+): { next: TStepId[]; trimmed: TStepId[] } => {
+  if (maxHistory === null || history.length <= maxHistory) {
+    return { next: [...history], trimmed: [] };
+  }
+
+  const trimCount = history.length - maxHistory;
+  return {
+    next: history.slice(trimCount),
+    trimmed: history.slice(0, trimCount)
+  };
+};
 
 /**
  * Creates a journey machine from a journey definition.
@@ -97,7 +127,56 @@ export const createJourneyMachine = <
       ...(options ? { options } : {})
     });
 
+  const historyOptions: JourneyHistoryOptions<TStepId> | undefined = options?.history;
+
+  const runHistoryTrim = (
+    nextSnapshot: JourneySnapshot<TContext, TStepId>,
+    reason: JourneyHistoryOverflowReason,
+    overrideMaxHistory?: number | null
+  ): {
+    snapshot: JourneySnapshot<TContext, TStepId>;
+    trimmed: TStepId[];
+    maxHistory: number | null;
+  } => {
+    const resolvedMaxHistory = resolveMaxHistory(overrideMaxHistory ?? historyOptions?.maxHistory);
+    const { next, trimmed } = applyHistoryLimit(nextSnapshot.history, resolvedMaxHistory);
+    if (trimmed.length === 0) {
+      return {
+        snapshot: nextSnapshot,
+        trimmed,
+        maxHistory: resolvedMaxHistory
+      };
+    }
+
+    const rebuilt = buildSnapshot(
+      nextSnapshot.current,
+      nextSnapshot.context,
+      next,
+      nextSnapshot.status,
+      nextSnapshot.async
+    );
+
+    historyOptions?.onOverflow?.({
+      previous: nextSnapshot.history,
+      next,
+      trimmed,
+      maxHistory: resolvedMaxHistory,
+      reason
+    });
+
+    return {
+      snapshot: rebuilt,
+      trimmed,
+      maxHistory: resolvedMaxHistory
+    };
+  };
+
   let snapshot = hydrateSnapshot();
+  const hydratedTrim = runHistoryTrim(snapshot, "hydrate");
+  snapshot = hydratedTrim.snapshot;
+  if (hydratedTrim.trimmed.length > 0) {
+    persistSnapshot(snapshot);
+  }
   const listeners = new Set<() => void>();
   let sendQueue: Promise<void> = Promise.resolve();
   snapshot = {
@@ -219,6 +298,31 @@ export const createJourneyMachine = <
       setStepIdle(resolvedStep);
       return snapshot;
     },
+    trimHistory: (maxHistory) => {
+      const result = runHistoryTrim(snapshot, "manual", maxHistory);
+      if (result.trimmed.length === 0) {
+        return snapshot;
+      }
+      snapshot = result.snapshot;
+      persistSnapshot(snapshot);
+      notify();
+      return snapshot;
+    },
+    clearHistory: () => {
+      if (snapshot.history.length === 0) {
+        return snapshot;
+      }
+      snapshot = buildSnapshot(
+        snapshot.current,
+        snapshot.context,
+        [],
+        snapshot.status,
+        snapshot.async
+      );
+      persistSnapshot(snapshot);
+      notify();
+      return snapshot;
+    },
     send: (event) => {
       const run = async (): Promise<JourneySendResult<TContext, TStepId>> => {
         if (snapshot.status !== JOURNEY_STATUS.RUNNING) {
@@ -231,6 +335,7 @@ export const createJourneyMachine = <
           assertStepExists(journey.steps, event.to, `Cannot goTo unknown step "${event.to}".`);
           setStepIdle(fromStep);
           snapshot = transitionSnapshot(snapshot, event.to, snapshot.context);
+          snapshot = runHistoryTrim(snapshot, "auto").snapshot;
           persistSnapshot(snapshot);
           notify();
           return buildSendResult(snapshot, true, JOURNEY_EVENT.GO_TO);
@@ -304,6 +409,7 @@ export const createJourneyMachine = <
                 ? JOURNEY_STATUS.COMPLETE
                 : JOURNEY_STATUS.CLOSED
           };
+          snapshot = runHistoryTrim(snapshot, "auto").snapshot;
           persistSnapshot(snapshot);
           notify();
           return buildSendResult(snapshot, true, transition.id);
@@ -313,6 +419,7 @@ export const createJourneyMachine = <
           const { target, history } = resolveHistoryTarget(snapshot, journey.steps);
           assertStepExists(journey.steps, target, `Transition points to unknown step "${target}".`);
           snapshot = buildSnapshot(target, nextContext, history, snapshot.status, snapshot.async);
+          snapshot = runHistoryTrim(snapshot, "auto").snapshot;
           persistSnapshot(snapshot);
           notify();
           return buildSendResult(snapshot, true, transition.id);
@@ -327,8 +434,7 @@ export const createJourneyMachine = <
         );
 
         const nextSnapshot = transitionSnapshot(snapshot, resolvedTarget, nextContext);
-
-        snapshot = nextSnapshot;
+        snapshot = runHistoryTrim(nextSnapshot, "auto").snapshot;
         persistSnapshot(snapshot);
         notify();
 

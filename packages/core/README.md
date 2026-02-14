@@ -41,6 +41,95 @@ const journey: JourneyDefinition<Ctx, StepId, Event> = {
 const machine = createJourneyMachine<Ctx, StepId, Event>(journey);
 ```
 
+## History behavior
+
+The machine tracks two related collections:
+
+- `history`: ordered list of prior steps. It grows when you move to a different step.
+- `visited`: derived list of steps you have ever reached (including current), with duplicates removed.
+
+Why `visited` is a list (not a `Set`) for the following reasons:
+
+- JSON-friendly for snapshots, logs, and persistence.
+- Deterministic order for tests and UI rendering.
+- Easier to consume in TypeScript (`readonly TStepId[]`).
+- It is derived from `history + current`, so a list is the simplest representation.
+
+History is used when you target `HISTORY_TARGET` in a transition. It resolves to the most recent valid step in `history`. If history is empty (or contains invalid steps), the machine stays on the current step.
+
+### History retention
+
+You can cap history growth with `maxHistory`. When the history exceeds that limit, the oldest entries are trimmed.
+
+Defaults:
+
+- `maxHistory`: `50`
+- `maxHistory: null` disables trimming entirely.
+
+Automatic trimming happens:
+
+- After transitions (including `goTo`)
+- After persistence hydrate
+
+### Overflow callback
+
+`onOverflow` fires only when trimming actually happens. It receives:
+
+- `previous`: history before trimming
+- `next`: history after trimming
+- `trimmed`: entries removed
+- `maxHistory`: resolved limit (number or `null`)
+- `reason`: `"auto" | "hydrate" | "manual"`
+  - `auto`: trimming happened automatically during a transition (including `goTo`)
+  - `hydrate`: trimming happened right after loading persisted state
+  - `manual`: trimming happened because you called `trimHistory()`
+
+### Config example
+
+```ts
+const machine = createJourneyMachine(journey, {
+  history: {
+    maxHistory: 20,
+    onOverflow: ({ trimmed, reason }) => {
+      console.warn("trimmed history", trimmed, "reason:", reason);
+    }
+  }
+});
+```
+
+### History target example
+
+```ts
+import { HISTORY_TARGET } from "@rxova/journey-core";
+
+const journey: JourneyDefinition<Ctx, StepId, Event> = {
+  initial: "one",
+  context: { name: "" },
+  steps: {
+    one: {},
+    two: {},
+    three: {}
+  },
+  transitions: [
+    { from: "one", event: "next", to: "two" },
+    { from: "two", event: "next", to: "three" },
+    { from: "*", event: "back", to: HISTORY_TARGET }
+  ]
+};
+```
+
+### Manual history management
+
+```ts
+const machine = createJourneyMachine(journey, { history: { maxHistory: 5 } });
+
+await machine.send({ type: "goTo", to: "two" });
+await machine.send({ type: "goTo", to: "three" });
+
+machine.trimHistory(1); // keep most recent entry only
+machine.clearHistory(); // reset history to []
+```
+
 ## Links
 
 - Docs: ../../docs/GETTING_STARTED.md
