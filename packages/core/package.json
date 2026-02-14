@@ -19,7 +19,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rxova/journey.git"
+    "url": "git+https://github.com/rxova/journey.git",
+    "directory": "packages/core"
   },
   "publishConfig": {
     "access": "public"
