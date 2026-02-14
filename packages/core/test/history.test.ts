@@ -4,7 +4,7 @@ import {
   createJourneyMachine,
   type JourneyDefinition,
   type JourneyHistoryOverflow
-} from "@/src/core";
+} from "@rxova/journey-core";
 
 type StepId = "a" | "b" | "c" | "d";
 type Context = { value: number };

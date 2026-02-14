@@ -5,7 +5,7 @@ import {
   JOURNEY_STATUS,
   JOURNEY_TERMINAL,
   type JourneyDefinition
-} from "@/src/core";
+} from "@rxova/journey-core";
 
 type StepId = "start" | "confirm";
 

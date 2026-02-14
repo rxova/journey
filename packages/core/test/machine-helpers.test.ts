@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { JOURNEY_STATUS } from "@/src/core";
+import { JOURNEY_STATUS } from "@rxova/journey-core";
 import {
   buildInitialAsyncState,
   buildSnapshot,
   resolveHistoryTarget
-} from "@/src/core/machine-helpers";
+} from "../src/machine-helpers";
 
 type StepId = "a" | "b" | "c";
 
