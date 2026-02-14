@@ -257,6 +257,8 @@ describe("react hooks/provider edge cases", () => {
       updateContext: () => snapshot,
       clearStepError: () => snapshot,
       reset: () => snapshot,
+      trimHistory: () => snapshot,
+      clearHistory: () => snapshot,
       subscribe: () => () => {}
     };
 
@@ -299,6 +301,30 @@ describe("react hooks/provider edge cases", () => {
     expect(setItem).toHaveBeenCalledTimes(1);
   });
 
+  it("passes history options to internal machine", async () => {
+    const HistoryReadout = () => {
+      const snapshot = useJourneySnapshot<Ctx, StepId, CustomEvent>();
+      return <div data-testid="history">{snapshot.history.join(",")}</div>;
+    };
+
+    render(
+      <JourneyProvider journey={baseJourney} history={{ maxHistory: 1 }}>
+        <JourneyStepRenderer<Ctx, StepId, CustomEvent> />
+        <Controls />
+        <HistoryReadout />
+      </JourneyProvider>
+    );
+
+    await act(async () => {
+      screen.getByText("next").click();
+    });
+    await act(async () => {
+      screen.getByText("next").click();
+    });
+
+    expect(screen.getByTestId("history").textContent).toBe("two");
+  });
+
   it("sends default event payloads through hook api", async () => {
     const snapshot = {
       current: "one" as StepId,
@@ -319,6 +345,8 @@ describe("react hooks/provider edge cases", () => {
       updateContext: () => snapshot,
       clearStepError: () => snapshot,
       reset: () => snapshot,
+      trimHistory: () => snapshot,
+      clearHistory: () => snapshot,
       subscribe: () => () => {}
     };
 
@@ -365,6 +393,8 @@ describe("react hooks/provider edge cases", () => {
       updateContext: () => snapshot,
       clearStepError: () => snapshot,
       reset: () => snapshot,
+      trimHistory: () => snapshot,
+      clearHistory: () => snapshot,
       subscribe: () => () => {}
     };
 
@@ -411,6 +441,8 @@ describe("react hooks/provider edge cases", () => {
       updateContext: () => snapshot,
       clearStepError,
       reset: () => snapshot,
+      trimHistory: () => snapshot,
+      clearHistory: () => snapshot,
       subscribe: () => () => {}
     };
 
@@ -457,6 +489,8 @@ describe("react hooks/provider edge cases", () => {
       updateContext: () => snapshot,
       clearStepError: () => snapshot,
       reset: () => snapshot,
+      trimHistory: () => snapshot,
+      clearHistory: () => snapshot,
       subscribe: () => unsubscribe
     };
 

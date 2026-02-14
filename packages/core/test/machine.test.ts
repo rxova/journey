@@ -450,6 +450,51 @@ describe("createJourneyMachine", () => {
     expect(machine.getSnapshot().context.count).toBe(0);
   });
 
+  it("trims history automatically when maxHistory is exceeded", async () => {
+    const overflows: Array<{ trimmed: StepId[]; reason: string }> = [];
+    const machine = createJourneyMachine(baseJourney(), {
+      history: {
+        maxHistory: 2,
+        onOverflow: (info) => {
+          overflows.push({ trimmed: [...info.trimmed], reason: info.reason });
+        }
+      }
+    });
+
+    await machine.send({ type: "goTo", to: "details" }); // history: ["start"]
+    await machine.send({ type: "goTo", to: "review" }); // history: ["start","details"]
+    await machine.send({ type: "goTo", to: "extra" }); // history would be ["start","details","review"]
+
+    expect(machine.getSnapshot().history).toEqual(["details", "review"]);
+    expect(overflows).toEqual([{ trimmed: ["start"], reason: "auto" }]);
+  });
+
+  it("supports manual trimHistory and clearHistory", async () => {
+    const machine = createJourneyMachine(baseJourney(), {
+      history: { maxHistory: 5 }
+    });
+
+    await machine.send({ type: "goTo", to: "details" });
+    await machine.send({ type: "goTo", to: "review" });
+    await machine.send({ type: "goTo", to: "extra" });
+
+    machine.trimHistory(1);
+    expect(machine.getSnapshot().history).toEqual(["review"]);
+
+    machine.clearHistory();
+    expect(machine.getSnapshot().history).toEqual([]);
+  });
+
+  it("no-ops trimHistory and clearHistory when history is empty", () => {
+    const machine = createJourneyMachine(baseJourney());
+
+    machine.trimHistory(10);
+    expect(machine.getSnapshot().history).toEqual([]);
+
+    machine.clearHistory();
+    expect(machine.getSnapshot().history).toEqual([]);
+  });
+
   it("validates initial step existence", () => {
     expect(() => {
       createJourneyMachine({

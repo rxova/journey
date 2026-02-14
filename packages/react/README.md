@@ -18,9 +18,9 @@ import React from "react";
 import {
   JOURNEY_TERMINAL,
   type JourneyReactDefinition,
-  useJourney,
   JourneyProvider,
-  JourneyStepRenderer
+  JourneyStepRenderer,
+  useJourney
 } from "@rxova/journey-react";
 
 type StepId = "one" | "two" | "three";
