@@ -53,6 +53,7 @@ pnpm --filter @rxova/journey-react run test
 - `pnpm run test`
 - `pnpm run build`
 - `pnpm run size`
+- Ensure a changeset exists for user-facing changes. If your PR is docs/CI-only/tooling that doesn't affect the packages, add the `skip-changeset` label.
 
 ## How To Add A Feature
 
@@ -62,6 +63,28 @@ pnpm --filter @rxova/journey-react run test
 4. Update docs and examples if the API changes.
 5. Run `pnpm run size` to ensure size budgets still pass.
 6. If this is user-facing, add a changeset with `pnpm run changeset`.
+
+## Release Process
+
+Releases are automated with Changesets and GitHub Actions.
+
+### Local Steps
+
+1. Create a changeset:
+   - `pnpm run changeset`
+   - Select affected package(s) and bump type (patch/minor/major).
+
+### Publish Flow
+
+1. Merge changes to `main`.
+2. The Release workflow opens/updates a release PR with version bumps and changelog updates.
+3. Merge the release PR to publish to npm.
+
+### Versioning Policy
+
+- Packages are versioned independently.
+- If only `@rxova/journey-react` changes, bump React only.
+- If `@rxova/journey-core` changes, core is bumped and React receives a patch bump to update its dependency range when needed.
 
 ## Browser Compatibility
 
