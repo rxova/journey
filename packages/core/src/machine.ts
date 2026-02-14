@@ -19,6 +19,7 @@ import type {
   JourneySnapshot
 } from "./types";
 import {
+  appendVisited,
   assertStepExists,
   buildIdleStepAsyncState,
   buildInitialAsyncState,
@@ -153,7 +154,8 @@ export const createJourneyMachine = <
       nextSnapshot.context,
       next,
       nextSnapshot.status,
-      nextSnapshot.async
+      nextSnapshot.async,
+      nextSnapshot.visited
     );
 
     historyOptions?.onOverflow?.({
@@ -317,7 +319,8 @@ export const createJourneyMachine = <
         snapshot.context,
         [],
         snapshot.status,
-        snapshot.async
+        snapshot.async,
+        snapshot.visited
       );
       persistSnapshot(snapshot);
       notify();
@@ -418,7 +421,15 @@ export const createJourneyMachine = <
         if (transition.to === HISTORY_TARGET) {
           const { target, history } = resolveHistoryTarget(snapshot, journey.steps);
           assertStepExists(journey.steps, target, `Transition points to unknown step "${target}".`);
-          snapshot = buildSnapshot(target, nextContext, history, snapshot.status, snapshot.async);
+          const visited = appendVisited(snapshot.visited, target);
+          snapshot = buildSnapshot(
+            target,
+            nextContext,
+            history,
+            snapshot.status,
+            snapshot.async,
+            visited
+          );
           snapshot = runHistoryTrim(snapshot, "auto").snapshot;
           persistSnapshot(snapshot);
           notify();
