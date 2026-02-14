@@ -46,14 +46,14 @@ const machine = createJourneyMachine<Ctx, StepId, Event>(journey);
 The machine tracks two related collections:
 
 - `history`: ordered list of prior steps. It grows when you move to a different step.
-- `visited`: derived list of steps you have ever reached (including current), with duplicates removed.
+- `visited`: list of steps you have reached (including current), with duplicates removed. It is not affected by history trimming.
 
 Why `visited` is a list (not a `Set`) for the following reasons:
 
 - JSON-friendly for snapshots, logs, and persistence.
 - Deterministic order for tests and UI rendering.
 - Easier to consume in TypeScript (`readonly TStepId[]`).
-- It is derived from `history + current`, so a list is the simplest representation.
+- It is derived from `history + current` initially, then maintained independently so trimming history does not remove earlier entries.
 
 History is used when you target `HISTORY_TARGET` in a transition. It resolves to the most recent valid step in `history`. If history is empty (or contains invalid steps), the machine stays on the current step.
 

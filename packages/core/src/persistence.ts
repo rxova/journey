@@ -7,7 +7,7 @@ import type {
   JourneySnapshot,
   JourneyStorage
 } from "./types";
-import { buildInitialAsyncState, buildSnapshot } from "./machine-helpers";
+import { buildInitialAsyncState, buildSnapshot, buildVisited } from "./machine-helpers";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
@@ -75,7 +75,7 @@ const coercePersistedSnapshot = <TContext, TStepId extends string>(
   value: unknown,
   steps: Record<TStepId, unknown>,
   fallbackContext: TContext
-): JourneyPersistedSnapshot<TContext, TStepId> | null => {
+): { snapshot: JourneyPersistedSnapshot<TContext, TStepId>; needsRewrite: boolean } | null => {
   if (!isRecord(value)) {
     return null;
   }
@@ -94,11 +94,23 @@ const coercePersistedSnapshot = <TContext, TStepId extends string>(
 
   const status = isStatusValue(value.status) ? value.status : JOURNEY_STATUS.RUNNING;
 
+  const visitedRaw = Array.isArray(value.visited)
+    ? (value.visited.filter(
+        (step): step is TStepId => typeof step === "string" && step in steps
+      ) as TStepId[])
+    : null;
+  const visited = visitedRaw && visitedRaw.length > 0 ? visitedRaw : buildVisited(history, current);
+  const needsRewrite = !visitedRaw || visitedRaw.length === 0;
+
   return {
-    current,
-    context: ("context" in value ? value.context : fallbackContext) as TContext,
-    history,
-    status
+    snapshot: {
+      current,
+      context: ("context" in value ? value.context : fallbackContext) as TContext,
+      history,
+      status,
+      visited
+    },
+    needsRewrite
   };
 };
 
@@ -131,7 +143,8 @@ export const createPersistenceController = <TContext, TStepId extends string>(ar
           current: snapshot.current,
           context: snapshot.context,
           history: [...snapshot.history],
-          status: snapshot.status
+          status: snapshot.status,
+          visited: [...snapshot.visited]
         }
       };
       persistence.storage.setItem(persistence.key, persistence.serialize(persistedState));
@@ -184,10 +197,13 @@ export const createPersistenceController = <TContext, TStepId extends string>(ar
       let shouldRewritePersisted = false;
 
       if (persistedVersion === persistence.version) {
-        persistedSnapshot = coercePersistedSnapshot(parsed.snapshot, steps, context);
+        const coerced = coercePersistedSnapshot(parsed.snapshot, steps, context);
+        persistedSnapshot = coerced?.snapshot ?? null;
+        shouldRewritePersisted = Boolean(coerced?.needsRewrite);
       } else if (persistence.migrate) {
         const migrated = persistence.migrate(parsed.snapshot, persistedVersion);
-        persistedSnapshot = coercePersistedSnapshot(migrated, steps, context);
+        const coerced = coercePersistedSnapshot(migrated, steps, context);
+        persistedSnapshot = coerced?.snapshot ?? null;
         shouldRewritePersisted = persistedSnapshot !== null;
       }
 
@@ -200,7 +216,8 @@ export const createPersistenceController = <TContext, TStepId extends string>(ar
         persistedSnapshot.context,
         persistedSnapshot.history,
         persistedSnapshot.status,
-        buildInitialAsyncState(steps)
+        buildInitialAsyncState(steps),
+        persistedSnapshot.visited
       );
 
       if (shouldRewritePersisted) {

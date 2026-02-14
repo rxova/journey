@@ -136,7 +136,8 @@ const machineOptions = {
       current: "start",
       context: { count: Number(persistedVersion) },
       history: ["start"] as StepId[],
-      status: "running"
+      status: "running",
+      visited: ["start"] as StepId[]
     })
   }
 } satisfies JourneyMachineOptions<Context, StepId>;

@@ -250,7 +250,8 @@ describe("persistence", () => {
             current: "details",
             context: { count: snapshot.context?.oldCount ?? 0 },
             history: ["start"],
-            status: JOURNEY_STATUS.RUNNING
+            status: JOURNEY_STATUS.RUNNING,
+            visited: ["start", "details"]
           };
         }
       }

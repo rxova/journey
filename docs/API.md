@@ -203,7 +203,7 @@ Snapshot:
 - `current`
 - `context`
 - `history`
-- `visited`
+- `visited` (all steps reached since the last reset/hydrate; unaffected by history trimming)
 - `status` (`"running" | "complete" | "closed"`)
 - `async`
   - `isLoading`: `true` while any step is evaluating async guards/effects
