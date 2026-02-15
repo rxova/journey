@@ -5,28 +5,40 @@ sidebar_position: 1
 
 `@rxova/journey-react` is a thin React layer on top of `@rxova/journey-core`.
 
-Use Core for all transition logic, history behavior, persistence rules, and machine semantics.
-Use React bindings only to connect that machine to components.
+Use Core for transition rules/history/persistence semantics. Use React for rendering, hooks, and ergonomics.
 
-## What React Adds
+## What React Package Adds
 
-- `JourneyProvider`: provides a journey machine to the component tree.
-- `JourneyStepRenderer`: renders the active step component.
-- `useJourney`: reads snapshot and exposes navigation API.
+- `JourneyProvider`: creates or accepts a machine and exposes it through context.
+- `JourneyStepRenderer`: renders `journey.steps[snapshot.current].component`.
+- `useJourneySnapshot`: subscribes to snapshot changes.
+- `useJourneyApi`: imperative navigation and machine helpers.
+- `useJourney`: combined snapshot + API convenience hook.
 
-## Recommended Workflow
+## Mental Model
 
-1. Model and verify flow rules in Core first.
-2. Add React components for each step.
-3. Wire components through `JourneyProvider` and `JourneyStepRenderer`.
+1. Define journey graph in Core terms (`steps`, `transitions`, `context`).
+2. Attach React step components.
+3. Keep UI components thin; call API helpers for events.
+4. Read snapshot for rendering state (including async phases).
 
-## Keep Concerns Separate
+## Why This Separation Matters
 
-- Put branching, guards, and side effects in transitions.
-- Keep step components focused on rendering and user interaction.
+- deterministic behavior stays testable in headless mode
+- UI stays focused on user interaction and rendering
+- migration/persistence/history policies stay centralized
 
-For machine details, see Core docs:
+## Key Pages
+
+- `/docs/react/quickstart`
+- `/docs/react/provider-and-hooks`
+- `/docs/react/patterns`
+- `/docs/react/async-ui`
+- `/docs/react/examples`
+
+Core references:
 
 - `/docs/core/getting-started`
 - `/docs/core/api`
-- `/docs/core/recipes`
+- `/docs/core/history`
+- `/docs/core/persistence`
