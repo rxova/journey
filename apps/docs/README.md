@@ -4,12 +4,12 @@ Documentation site for `@rxova/journey-core` and `@rxova/journey-react`, built w
 
 Production docs URL:
 
-- `https://rxova.org/journey/`
+- `https://rxova.org/`
 
 ## Tech Notes
 
 - Docusaurus `url`: `https://rxova.org`
-- Docusaurus `baseUrl`: `/journey/`
+- Docusaurus `baseUrl`: `/`
 - Custom domain CNAME: `rxova.org`
 - Deploys via GitHub Actions workflow: `.github/workflows/docs.yml`
 

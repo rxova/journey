@@ -5,3 +5,4 @@ flow
 pnpm-lock.yaml
 apps/docs/.docusaurus
 apps/docs/build
+apps/docs/build-ci-check*
