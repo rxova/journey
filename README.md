@@ -1,5 +1,17 @@
 # Rxova Journey
 
+<p>
+  <a href="https://github.com/rxova/journey/actions/workflows/ci.yml">
+    <img src="https://github.com/rxova/journey/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" />
+  </a>
+  <img src="https://img.shields.io/badge/TypeScript-strict-blue" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/coverage-100%25-brightgreen" alt="Coverage" />
+</p>
+
+<p align="center">
+  <img src="./apps/docs/static/img/rxova-logo-256.png" alt="Rxova logo" width="180" />
+</p>
+
 Declarative, typed journey graphs for non-linear product flows.
 
 - Docs: https://rxova.org/
