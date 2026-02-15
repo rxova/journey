@@ -148,22 +148,30 @@ button[aria-label^="Switch between dark and light mode"] svg {
   height: 1.1rem;
 }
 
-/* Search modal: hide keyboard shortcut hint while already focused in dialog. */
-[role="dialog"] [class^="searchHintContainer_"],
-[role="dialog"] [class*=" searchHintContainer_"] {
-  display: none;
+/* Search UI: remove keyboard shortcut badges and let inputs use full available width. */
+[class*="searchTriggerShortcut_"] {
+  display: none !important;
 }
 
-/* Search modal: make the input stretch full width of the modal header row. */
-[role="dialog"] [class^="searchBar_"],
-[role="dialog"] [class*=" searchBar_"] {
+[class*="searchPanel_"] [class*="searchHintContainer_"] {
+  display: none !important;
+}
+
+[class*="searchPanel_"] [class*="searchBar_"] {
   display: block !important;
   width: 100% !important;
+  max-width: none !important;
 }
 
-[role="dialog"] .navbar__search-input {
+[class*="searchPanel_"] .navbar__search {
+  margin: 0 !important;
   width: 100% !important;
-  max-width: none;
+  max-width: none !important;
+}
+
+[class*="searchPanel_"] .navbar__search-input {
+  width: 100% !important;
+  max-width: none !important;
 }
 
 /* Make current section clearly visible in the right-side doc TOC. */
