@@ -16,8 +16,8 @@ const config: Config = {
 
   // Production URL/domain
   url: "https://rxova.org",
-  // Serve docs under the project path on the custom domain
-  baseUrl: "/journey/",
+  // Serve docs at the domain root
+  baseUrl: "/",
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
