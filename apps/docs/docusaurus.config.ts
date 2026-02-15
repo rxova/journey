@@ -7,7 +7,7 @@ import type * as Preset from "@docusaurus/preset-classic";
 const config: Config = {
   title: "Rxova Journey",
   tagline: "Declarative journey graphs for non-linear UI flows.",
-  favicon: "img/logo-mark.jpg",
+  favicon: "img/rxova-logo-256.png",
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
@@ -62,16 +62,19 @@ const config: Config = {
 
   themeConfig: {
     // Replace with your project's social card
-    image: "img/logo-mark.jpg",
+    image: "img/rxova-logo-1024.png",
     colorMode: {
       defaultMode: "light",
-      respectPrefersColorScheme: true
+      respectPrefersColorScheme: false
     },
     navbar: {
       title: "Rxova Journey",
       logo: {
         alt: "Rxova Journey Mark",
-        src: "img/logo-mark.jpg"
+        src: "img/rxova-logo-256.png",
+        srcDark: "img/rxova-logo-256.png",
+        width: 34,
+        height: 34
       },
       items: [
         {

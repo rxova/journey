@@ -46,8 +46,9 @@
 
 .searchOverlay {
   align-items: flex-start;
-  backdrop-filter: blur(2px);
-  background: rgba(16, 20, 24, 0.55);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  background: rgba(11, 16, 24, 0.58);
   display: flex;
   inset: 0;
   justify-content: center;
@@ -69,6 +70,8 @@
   border: 1px solid var(--ifm-color-emphasis-300);
   border-radius: 18px;
   box-shadow: 0 22px 48px rgba(16, 20, 24, 0.25);
+  max-height: min(82vh, 760px);
+  overflow: hidden;
   padding: 0.9rem;
 }
 
@@ -123,6 +126,10 @@
   width: 100%;
 }
 
+.searchDialog :global([class*="searchBarContainer"]) {
+  margin-left: 0 !important;
+}
+
 .searchDialog :global(.navbar__search-input) {
   border: 1px solid var(--ifm-color-emphasis-300);
   border-radius: 14px;
@@ -135,6 +142,16 @@
 
 .searchDialog :global(.navbar__search-input:focus) {
   border-color: var(--ifm-color-primary);
+}
+
+.searchDialog :global([class*="dropdownMenu"]) {
+  left: 0 !important;
+  margin-top: 0.65rem !important;
+  max-height: min(56vh, 520px);
+  max-width: 100%;
+  overflow-y: auto;
+  right: 0 !important;
+  width: 100% !important;
 }
 
 @media (max-width: 996px) {

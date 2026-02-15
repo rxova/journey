@@ -180,6 +180,13 @@ machine.reset();
 
 ## Next
 
+- Architecture and model rationale: `/docs/core/architecture`
 - API details: `/docs/core/api`
+- Snapshot model: `/docs/core/snapshot`
+- Lifecycle semantics: `/docs/core/lifecycle`
+- Async transitions: `/docs/core/async`
+- History behavior: `/docs/core/history`
+- Persistence and migrations: `/docs/core/persistence`
 - Common issues and decisions: `/docs/core/faq`
 - Copyable patterns: `/docs/core/recipes`
+- Full example catalog: `/docs/core/examples`

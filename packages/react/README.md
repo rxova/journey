@@ -1,75 +1,60 @@
 # @rxova/journey-react
 
-React bindings for Journey. This package includes the core state machine and provides hooks and provider components.
+React bindings for Journey (`JourneyProvider`, hooks, renderer).
+
+- Docs: https://rxova.org/docs/react/quickstart
+- Provider/Hooks: https://rxova.org/docs/react/provider-and-hooks
+- Patterns: https://rxova.org/docs/react/patterns
+- Async UX: https://rxova.org/docs/react/async-ui
+- Examples: https://rxova.org/docs/react/examples
 
 ## Install
 
 ```bash
-pnpm add @rxova/journey-react
-npm install @rxova/journey-react
-yarn add @rxova/journey-react
+npm i @rxova/journey-react
 ```
 
-## Basic usage
+## Quickstart
 
 ```tsx
-import React from "react";
-
 import {
-  JOURNEY_TERMINAL,
-  type JourneyReactDefinition,
   JourneyProvider,
   JourneyStepRenderer,
-  useJourney
+  useJourney,
+  JOURNEY_TERMINAL,
+  type JourneyReactDefinition
 } from "@rxova/journey-react";
 
-type StepId = "one" | "two" | "three";
+type StepId = "start" | "review";
+
 type Ctx = { name: string };
 
-const One = () => {
+const Start = () => {
   const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.next()}>Next</button>;
+  return <button onClick={() => void api.next()}>Next</button>;
 };
 
-const Two = () => {
+const Review = () => {
   const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.next()}>Next</button>;
-};
-
-const Three = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.submit()}>Finish</button>;
+  return <button onClick={() => void api.submit()}>Submit</button>;
 };
 
 const journey: JourneyReactDefinition<Ctx, StepId> = {
-  initial: "one",
+  initial: "start",
   context: { name: "" },
   steps: {
-    one: { component: One },
-    two: { component: Two },
-    three: { component: Three }
+    start: { component: Start },
+    review: { component: Review }
   },
   transitions: [
-    { from: "one", event: "next", to: "two" },
-    { from: "two", event: "next", to: "three" },
-    { from: "three", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
+    { from: "start", event: "next", to: "review" },
+    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
   ]
 };
 
-export const Example = () => (
+export const App = () => (
   <JourneyProvider journey={journey}>
     <JourneyStepRenderer<Ctx, StepId> />
   </JourneyProvider>
 );
 ```
-
-## Notes
-
-- Requires React as a peer dependency (React 18.2+).
-
-## Links
-
-- Docs: https://rxova.org/docs/core/getting-started
-- API: https://rxova.org/docs/core/api
-- Recipes: https://rxova.org/docs/core/recipes
-- Core package: ../core
