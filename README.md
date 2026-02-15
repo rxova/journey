@@ -1,420 +1,94 @@
-Core:
-[![npm version](https://img.shields.io/npm/v/@rxova/journey-core)](https://www.npmjs.com/package/@rxova/journey-core)
-[![npm downloads](https://img.shields.io/npm/dm/@rxova/journey-core)](https://www.npmjs.com/package/@rxova/journey-core)
-[![Bundlephobia](https://img.shields.io/bundlephobia/minzip/%40rxova%2Fjourney-core)](https://bundlephobia.com/package/@rxova/journey-core)
+# Rxova Journey
 
-React:
-[![npm version](https://img.shields.io/npm/v/@rxova/journey-react)](https://www.npmjs.com/package/@rxova/journey-react)
-[![npm downloads](https://img.shields.io/npm/dm/@rxova/journey-react)](https://www.npmjs.com/package/@rxova/journey-react)
-[![Bundlephobia](https://img.shields.io/bundlephobia/minzip/%40rxova%2Fjourney-react)](https://bundlephobia.com/package/@rxova/journey-react)
+Declarative, typed journey graphs for non-linear product flows.
 
-[![CI](https://github.com/rxova/journey/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rxova/journey/actions/workflows/ci.yml)
-![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
-![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)
-
-<div align="center">
-  <img src="./apps/docs/static/img/logo-mark.jpg" alt="Rxova Journey Mark" width="700" />
-</div>
-
-<p align="center">
-  <a href="https://rxova.org/">Docs</a> |
-  <a href="https://rxova.org/docs/core/getting-started">Get started</a> |
-  <a href="https://rxova.org/docs/core/api">API</a> |
-  <a href="https://rxova.org/docs/core/recipes">Recipes</a> |
-  <a href="https://rxova.org/docs/core/faq">FAQs</a> |
-  <a href="./packages/react/examples/README.md">Examples</a>
-</p>
-
-> Docs always reflect the latest published version until 1.0.
-
-# What Is Rxova Journey
-
-Rxova Journey is a zero dependency, <3kb gzipped state-machine designed to control non-linear flows. This is especially useful for:
-
-- Checkout processes with conditional steps
-- Non‑linear wizards and steppers
-- Multi‑step onboarding with branching logic
-- Support or intake flows with dynamic routing
-- Complex forms that need history, backtracking, or “go to” jumps
-
-Most stepper/flow libraries model the journey as a linear array of steps. That works for simple, fixed sequences, but it gets brittle once you need conditional branching, dynamic step counts, async guards/effects, or deterministic back behavior. You end up scattering logic across components, duplicating state, and fighting edge cases.
-
-Rxova Journey solves those issues with a single declarative model: a graph of `steps` and ordered `transitions`, plus runtime `history` and typed `context`. It stays tiny and dependency-free, while supporting branching, async lifecycle phases, persistence, and SSR/RSC-safe separation between `core` and `react`.
-
-## Features
-
-- One declarative model for steps, transitions, context, and history.
-- Dynamic path length with guarded transitions (`when`) and deterministic back behavior.
-- Async guard/effect lifecycle with explicit runtime phases.
-- Optional persistence with versioned migrations and resets.
-- SSR/RSC-safe `core` package and client-only `react` package.
-- Strict TypeScript typing across steps, events, payloads, and API methods.
-- Size budgets enforced for core and react entrypoints.
+- Docs: https://rxova.org/
+- Core docs: https://rxova.org/docs/core/getting-started
+- React docs: https://rxova.org/docs/react/quickstart
+- Core package: https://www.npmjs.com/package/@rxova/journey-core
+- React package: https://www.npmjs.com/package/@rxova/journey-react
 
 ## Install
 
 ```bash
-# core (headless)
+# headless runtime
 npm i @rxova/journey-core
 
-# react bindings (includes core)
+# React bindings (includes core)
 npm i @rxova/journey-react
 ```
 
-`react` is a peer dependency for `@rxova/journey-react`.
-
-## Browser Compatibility
-
-Targeted (not exhaustively tested) support:
-
-| Environment    | Support Policy          |
-| -------------- | ----------------------- |
-| Chrome         | Latest 2 major versions |
-| Edge           | Latest 2 major versions |
-| Firefox        | Latest 2 major versions |
-| Safari (macOS) | Latest 2 major versions |
-| iOS Safari     | Latest 2 major versions |
-| Android Chrome | Latest 2 major versions |
-| IE 11          | Not supported           |
-
-## Quickstart
-
-- Vanilla (headless)
-- React (provider + renderer)
-
-### Vanilla
+## Quickstart (Core)
 
 ```ts
 import { createJourneyMachine, JOURNEY_TERMINAL } from "@rxova/journey-core";
 
-type StepId = "start" | "details" | "review" | "done";
-type Event = "next" | "back";
-type Ctx = { name: string; agreed: boolean };
+type StepId = "start" | "review";
+type Event = "next" | "submit";
+type Ctx = { accepted: boolean };
 
 const journey = {
   initial: "start",
-  context: { name: "", agreed: false },
-  steps: { start: {}, details: {}, review: {}, done: {} },
+  context: { accepted: false },
+  steps: { start: {}, review: {} },
   transitions: [
-    { from: "start", event: "next", to: "details" },
-    { from: "details", event: "next", to: "review" },
-    { from: "review", event: "next", to: "done" },
-    { from: "*", event: "back", to: "details" }
+    { from: "start", event: "next", to: "review" },
+    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
   ]
 };
 
 const machine = createJourneyMachine<Ctx, StepId, Event>(journey);
-
-const unsubscribe = machine.subscribe(() => {
-  const snapshot = machine.getSnapshot();
-  if (snapshot.current === "review" && !snapshot.context.agreed) {
-    machine.updateContext((ctx) => ({ ...ctx, name: "Ada", agreed: true }));
-  }
-
-  if (snapshot.current === JOURNEY_TERMINAL.COMPLETE) {
-    // flow completed
-  }
-});
-
-const run = async () => {
-  try {
-    await machine.send({ type: "next" }); // start -> details
-    await machine.send({ type: "next" }); // details -> review (context updated)
-    await machine.send({ type: "next" }); // review -> done
-  } finally {
-    unsubscribe();
-  }
-};
-void run();
+await machine.send({ type: "next" });
 ```
 
-### React
+## Quickstart (React)
 
 ```tsx
-import React from "react";
 import {
   JourneyProvider,
   JourneyStepRenderer,
   useJourney,
-  HISTORY_TARGET,
   JOURNEY_TERMINAL,
   type JourneyReactDefinition
 } from "@rxova/journey-react";
 
-type StepId = "start" | "details" | "review" | "confirmExit";
-type Event = "next" | "back" | "close" | "submit";
-type Ctx = { dirty: boolean; includeDetails: boolean };
+type StepId = "start" | "review";
+type Ctx = { name: string };
 
 const Start = () => {
-  const { api } = useJourney<Ctx, StepId, Event>();
-  return <button onClick={() => api.next()}>Next</button>;
-};
-
-const Details = () => {
-  const { api } = useJourney<Ctx, StepId, Event>();
-  return <button onClick={() => api.next()}>Next</button>;
+  const { api } = useJourney<Ctx, StepId>();
+  return <button onClick={() => void api.next()}>Next</button>;
 };
 
 const Review = () => {
-  const { api } = useJourney<Ctx, StepId, Event>();
-  return <button onClick={() => api.submit()}>Submit</button>;
+  const { api } = useJourney<Ctx, StepId>();
+  return <button onClick={() => void api.submit()}>Submit</button>;
 };
 
-const ConfirmExit = () => <div>Are you sure you want to close?</div>;
-
-const journey: JourneyReactDefinition<Ctx, StepId, Event> = {
+const journey: JourneyReactDefinition<Ctx, StepId> = {
   initial: "start",
-  context: { dirty: false, includeDetails: true },
+  context: { name: "" },
   steps: {
     start: { component: Start },
-    details: { component: Details },
-    review: { component: Review },
-    confirmExit: { component: ConfirmExit }
+    review: { component: Review }
   },
   transitions: [
-    {
-      from: "start",
-      event: "next",
-      to: "details",
-      when: ({ context }) => context.includeDetails
-    },
-    {
-      from: "start",
-      event: "next",
-      to: "review",
-      when: ({ context }) => !context.includeDetails
-    },
-    { from: "details", event: "next", to: "review" },
-    { from: "*", event: "back", to: HISTORY_TARGET },
-    {
-      from: "*",
-      event: "close",
-      to: "confirmExit",
-      when: ({ context }) => context.dirty
-    },
-    {
-      from: "*",
-      event: "close",
-      to: JOURNEY_TERMINAL.CLOSE,
-      when: ({ context }) => !context.dirty
-    },
+    { from: "start", event: "next", to: "review" },
     { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
   ]
 };
 
 export const App = () => (
   <JourneyProvider journey={journey}>
-    <JourneyStepRenderer<Ctx, StepId, Event> />
+    <JourneyStepRenderer<Ctx, StepId> />
   </JourneyProvider>
 );
 ```
 
-## Why
+## Learn More
 
-This library is designed for modal multi-step forms where path length changes dynamically (for example: 4-6 steps depending on user choices), without scattering branch logic across components.
-
-## Why This Over Other Wizard Libraries
-
-| Area                               | Ours                                                                                                                        | Typical index-based wizard libs                                                     |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Flow modeling                      | ✅ Declarative graph (`steps` + ordered `transitions`) as the single source of truth.                                       | ⚠️ Usually step index + imperative branching spread across components.              |
-| Conditional branching / skip       | ✅ First-class via `when` guards in transitions.                                                                            | ⚠️ Commonly manual `if` branching in UI handlers.                                   |
-| Runtime dynamic steps              | ✅ Supported by rebuilding `steps` + `transitions` graph at runtime (see `packages/react/examples/dynamic-steps.flow.tsx`). | ⚠️ Often limited to hide/show step UI while navigation logic remains index-coupled. |
-| Deterministic back behavior        | ✅ Built-in with history semantics (`HISTORY_TARGET`).                                                                      | ⚠️ Frequently manual index/history bookkeeping.                                     |
-| Async validation/effects lifecycle | ✅ Built-in async `when`/`effect` with per-step phase/error capture in `snapshot.async`.                                    | ⚠️ Usually hand-rolled loading/error state + race handling.                         |
-| Lifecycle visibility               | ✅ Explicit runtime phases (`idle`, `evaluating-when`, `running-effect`, `error`) for each step.                            | ⚠️ Lifecycle is often implicit and dispersed across local state/effects.            |
-| Persistence                        | ✅ Optional persistence adapter with versioning, migration, and reset behavior controls.                                    | ⚠️ Commonly custom localStorage/session code with no standard migration path.       |
-| SSR / RSC safety                   | ✅ `core` is server-safe and `react` is client-bound (`"use client"`).                                                      | ⚠️ Frequently undocumented or prone to context/hook usage in server paths.          |
-| Framework compatibility            | ✅ Documented patterns for Next.js App Router, Pages Router, Remix/React Router SSR, and custom SSR.                        | ⚠️ Often focused on CSR-first usage with partial SSR guidance.                      |
-| Type safety                        | ✅ Strong generic typing for steps, events, payloads, context, and API methods.                                             | ⚠️ Often looser event/payload typing or any-like extension points.                  |
-| Bundle-size discipline             | ✅ Size-limit budgets enforced: core import target `2.2 kB`, react hook target `3.6 kB`.                                    | ⚠️ Often no explicit size budgets or CI guardrails.                                 |
-| Coverage                           | ✅ Test suite runs at 100% (statements, branches, functions, lines).                                                        | ⚠️ Coverage targets are often lower or not enforced.                                |
-| API ergonomics / dev warnings      | ✅ Clear provider-boundary errors (e.g. `useJourney must be used within <JourneyProvider>.`).                               | ⚠️ Commonly generic runtime null/undefined errors.                                  |
-
-## Next.js App Router (SSR / RSC)
-
-Use subpath imports to keep server and client code separated:
-
-- Server code (RSC, route handlers, server actions): `@rxova/journey-core`
-- Client components (hooks/provider/renderer): `@rxova/journey-react`
-
-`@rxova/journey-react` is a client entrypoint and is marked with `"use client"`.
-
-```tsx
-// app/page.tsx (Server Component)
-import { type JourneyDefinition } from "@rxova/journey-core";
-import { WizardClient } from "./WizardClient";
-
-type StepId = "start" | "done";
-type Event = "next";
-type Ctx = { ok: boolean };
-
-const journey: JourneyDefinition<Ctx, StepId, Event> = {
-  initial: "start",
-  context: { ok: true },
-  steps: { start: {}, done: {} },
-  transitions: [{ from: "start", event: "next", to: "done" }]
-};
-
-export default function Page() {
-  return <WizardClient journey={journey} />;
-}
-```
-
-```tsx
-// app/WizardClient.tsx (Client Component)
-"use client";
-
-import {
-  JourneyProvider,
-  JourneyStepRenderer,
-  useJourney,
-  type JourneyReactDefinition
-} from "@rxova/journey-react";
-
-type StepId = "start" | "done";
-type Event = "next";
-type Ctx = { ok: boolean };
-
-const Start = () => {
-  const { api } = useJourney<Ctx, StepId, Event>();
-  return <button onClick={() => api.next()}>Next</button>;
-};
-
-const Done = () => <div>Done</div>;
-
-export const WizardClient = ({
-  journey
-}: {
-  journey: Omit<JourneyReactDefinition<Ctx, StepId, Event>, "steps">;
-}) => {
-  const clientFlow: JourneyReactDefinition<Ctx, StepId, Event> = {
-    ...journey,
-    steps: {
-      start: { component: Start },
-      done: { component: Done }
-    }
-  };
-
-  return (
-    <JourneyProvider journey={clientFlow}>
-      <JourneyStepRenderer<Ctx, StepId, Event> />
-    </JourneyProvider>
-  );
-};
-```
-
-## Framework Compatibility
-
-- Next.js App Router: supported. Keep journey engine logic in server-safe imports (`@rxova/journey-core`) and UI hooks/provider in client components (`@rxova/journey-react`).
-- Next.js Pages Router: supported. Use React APIs normally in pages/components.
-- Remix / React Router SSR: supported. Keep provider/hooks inside client-rendered React trees; use core machine in shared/server code paths.
-- Vite SSR / custom React SSR: supported. `core` has no React dependency; `react` entry is client-bound.
-
-Import rule of thumb:
-
-- If code can execute on the server, import from `@rxova/journey-core`.
-- If code uses hooks/context/components, import from `@rxova/journey-react` in a client component/module.
-
-## Core Model
-
-One model for all flows:
-
-- `steps`: step registry (what can render)
-- `transitions`: ordered graph edges (what can happen)
-- `context`: form/business state
-- `history`: runtime visited stack (for deterministic back behavior)
-
-## Learn Fast
-
-- Start here: [Getting Started](https://rxova.org/docs/core/getting-started)
-- API details: [API Reference](https://rxova.org/docs/core/api)
-- Practical patterns: [Recipes](https://rxova.org/docs/core/recipes)
-- Common questions: [FAQ](https://rxova.org/docs/core/faq)
-- Example catalog: [packages/react/examples/README.md](./packages/react/examples/README.md)
-- Quickstarts now include: React UI, Core headless, Persistence resume.
-- Recipes now include: analytics hooks, submit confirmation, API-branching, restart.
-
-## Persistence
-
-You can persist and resume flows via `createJourneyMachine(journey, { persistence })` or
-`<JourneyProvider persistence={...} />`. See [Recipes](https://rxova.org/docs/core/recipes) for a
-versioned migration example.
-
-## Async UX States
-
-The engine exposes per-step async loading/error state at `snapshot.async.byStep[stepId]`
-and a global `snapshot.async.isLoading`.
-
-Important: async state is runtime-only and not persisted. After hydrate/reset it starts clean (`idle`).
-See [API Reference](https://rxova.org/docs/core/api) and [Recipes](https://rxova.org/docs/core/recipes) for full examples.
-
-## Examples
-
-Minimal:
-
-- [packages/react/examples/simple-flow.tsx](./packages/react/examples/simple-flow.tsx)
-- [packages/react/examples/simple-sequence.flow.tsx](./packages/react/examples/simple-sequence.flow.tsx)
-- [packages/react/examples/simple-back.flow.tsx](./packages/react/examples/simple-back.flow.tsx)
-
-Specific patterns:
-
-- [packages/react/examples/conditional-skip.flow.tsx](./packages/react/examples/conditional-skip.flow.tsx)
-- [packages/react/examples/first-match-wins.flow.tsx](./packages/react/examples/first-match-wins.flow.tsx)
-- [packages/react/examples/custom-event.flow.tsx](./packages/react/examples/custom-event.flow.tsx)
-- [packages/react/examples/async-guard.flow.tsx](./packages/react/examples/async-guard.flow.tsx)
-- [packages/react/examples/async-effect.flow.tsx](./packages/react/examples/async-effect.flow.tsx)
-- [packages/react/examples/dynamic-steps.flow.tsx](./packages/react/examples/dynamic-steps.flow.tsx)
-- [packages/react/examples/confirm-close.flow.tsx](./packages/react/examples/confirm-close.flow.tsx)
-- [packages/react/examples/go-to-jump.flow.tsx](./packages/react/examples/go-to-jump.flow.tsx)
-- [packages/react/examples/history-back.flow.tsx](./packages/react/examples/history-back.flow.tsx)
-
-Real journeys:
-
-- [packages/react/examples/group-trip.flow.tsx](./packages/react/examples/group-trip.flow.tsx)
-- [packages/react/examples/itinerary-builder.flow.tsx](./packages/react/examples/itinerary-builder.flow.tsx)
-- [packages/react/examples/onboarding.flow.tsx](./packages/react/examples/onboarding.flow.tsx)
-- [packages/react/examples/checkout.flow.tsx](./packages/react/examples/checkout.flow.tsx)
-- [packages/react/examples/support-ticket.flow.tsx](./packages/react/examples/support-ticket.flow.tsx)
-
-## Scripts
-
-```bash
-npm run lint
-npm run format:check
-npm run typecheck
-npm run build
-npm run test
-npm run size
-```
-
-## Testing
-
-- Unit and integration tests live in `packages/*/test` and run via `npm run test`.
-- Smoke tests run with `npm run pack:smoke` to validate published bundles.
-- Property-based fuzz tests cover core determinism and React hook parity.
-- Performance budgets run in core and React to catch regressions.
-- CI runs a Node matrix (18/20/22/24) and executes lint, format, typecheck, test, packaging, smoke, and size checks.
-
-## Coverage Reports
-
-- Local: `npm run test` writes an HTML report to `coverage/index.html`.
-- CI (GitHub Actions): each `CI` run publishes a `coverage-report` artifact and a coverage summary in the run summary.
-
-## Bundle Size
-
-- Package metadata includes `"sideEffects": false` to maximize dead-code elimination.
-- Public entrypoints are split: core (`@rxova/journey-core`) and react (`@rxova/journey-react`).
-- `npm run size` runs `size-limit` import budgets for release checks.
-- `npm run size:check` runs `size-limit` import budgets in CI for battle-tested bundle regression checks.
-
-Recommended import style for smallest bundles:
-
-```ts
-import { createJourneyMachine } from "@rxova/journey-core";
-import { JourneyProvider, useJourney } from "@rxova/journey-react";
-```
-
-## License
-
-MIT.
+- Core architecture/design: https://rxova.org/docs/core/architecture
+- Core API: https://rxova.org/docs/core/api
+- Core history/persistence/async: https://rxova.org/docs/core/history
+- React provider/hooks: https://rxova.org/docs/react/provider-and-hooks
+- React examples: https://rxova.org/docs/react/examples

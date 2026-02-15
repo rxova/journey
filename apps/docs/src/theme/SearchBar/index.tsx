@@ -6,7 +6,9 @@ import React, {
   useRef,
   useState
 } from "react";
+import { createPortal } from "react-dom";
 import { useLocation } from "@docusaurus/router";
+import useIsBrowser from "@docusaurus/useIsBrowser";
 import { translate } from "@docusaurus/Translate";
 import SearchBar from "@theme-original/SearchBar";
 import styles from "./styles.module.css";
@@ -45,6 +47,7 @@ function SearchIcon(): ReactNode {
 }
 
 export default function SearchBarWrapper(props: SearchBarProps): ReactNode {
+  const isBrowser = useIsBrowser();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const modalRef = useRef<HTMLDivElement | null>(null);
@@ -150,42 +153,45 @@ export default function SearchBarWrapper(props: SearchBarProps): ReactNode {
         <kbd className={styles.searchTriggerShortcut}>Ctrl/⌘K</kbd>
       </button>
 
-      {isOpen && (
-        <div className={styles.searchOverlay} onMouseDown={onBackdropMouseDown}>
-          <div
-            ref={modalRef}
-            className={styles.searchDialog}
-            role="dialog"
-            aria-modal="true"
-            aria-label={translate({
-              id: "theme.SearchBar.label",
-              message: "Search",
-              description: "The ARIA label and placeholder for search button"
-            })}
-          >
-            <div className={styles.searchPanel}>
-              <div className={styles.searchPanelHeader}>
-                <p className={styles.searchPanelTitle}>
-                  {translate({
-                    id: "theme.SearchBar.label",
-                    message: "Search",
-                    description: "The ARIA label and placeholder for search button"
-                  })}
-                </p>
-                <button
-                  type="button"
-                  className={styles.closeButton}
-                  onClick={closeModal}
-                  aria-label="Close search"
-                >
-                  ×
-                </button>
+      {isOpen &&
+        isBrowser &&
+        createPortal(
+          <div className={styles.searchOverlay} onMouseDown={onBackdropMouseDown}>
+            <div
+              ref={modalRef}
+              className={styles.searchDialog}
+              role="dialog"
+              aria-modal="true"
+              aria-label={translate({
+                id: "theme.SearchBar.label",
+                message: "Search",
+                description: "The ARIA label and placeholder for search button"
+              })}
+            >
+              <div className={styles.searchPanel}>
+                <div className={styles.searchPanelHeader}>
+                  <p className={styles.searchPanelTitle}>
+                    {translate({
+                      id: "theme.SearchBar.label",
+                      message: "Search",
+                      description: "The ARIA label and placeholder for search button"
+                    })}
+                  </p>
+                  <button
+                    type="button"
+                    className={styles.closeButton}
+                    onClick={closeModal}
+                    aria-label="Close search"
+                  >
+                    ×
+                  </button>
+                </div>
+                <SearchBar {...props} />
               </div>
-              <SearchBar {...props} />
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </>
   );
 }
