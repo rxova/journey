@@ -70,8 +70,8 @@
   border: 1px solid var(--ifm-color-emphasis-300);
   border-radius: 18px;
   box-shadow: 0 22px 48px rgba(16, 20, 24, 0.25);
-  max-height: min(82vh, 760px);
-  overflow: hidden;
+  max-height: min(88vh, 860px);
+  overflow: visible;
   padding: 0.9rem;
 }
 
@@ -128,6 +128,7 @@
 
 .searchDialog :global([class*="searchBarContainer"]) {
   margin-left: 0 !important;
+  position: relative;
 }
 
 .searchDialog :global(.navbar__search-input) {
@@ -147,11 +148,12 @@
 .searchDialog :global([class*="dropdownMenu"]) {
   left: 0 !important;
   margin-top: 0.65rem !important;
-  max-height: min(56vh, 520px);
+  max-height: min(68vh, 620px);
   max-width: 100%;
   overflow-y: auto;
   right: 0 !important;
   width: 100% !important;
+  z-index: 4;
 }
 
 @media (max-width: 996px) {
