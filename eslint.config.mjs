@@ -19,6 +19,8 @@ export default [
       "coverage/**",
       "node_modules/**",
       "flow/**",
+      "apps/docs/.docusaurus/**",
+      "apps/docs/build/**",
       "**/*.d.ts",
       "**/*.d.ts.map"
     ]
