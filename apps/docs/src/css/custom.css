@@ -1,0 +1,197 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ifm-color-primary: #0f8f6a;
+  --ifm-color-primary-dark: #0c7a5b;
+  --ifm-color-primary-darker: #0a6b50;
+  --ifm-color-primary-darkest: #085a43;
+  --ifm-color-primary-light: #18a076;
+  --ifm-color-primary-lighter: #23b284;
+  --ifm-color-primary-lightest: #33c794;
+  --ifm-font-family-base: "Space Grotesk", system-ui, sans-serif;
+  --ifm-heading-font-family: "Space Grotesk", system-ui, sans-serif;
+  --ifm-font-family-monospace: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  --ifm-code-font-size: 90%;
+  --ifm-navbar-height: 4.25rem;
+  --ifm-global-radius: 12px;
+  --docusaurus-highlighted-code-line-bg: rgba(15, 143, 106, 0.12);
+}
+
+[data-theme="dark"] {
+  --ifm-color-primary: #2fd79f;
+  --ifm-color-primary-dark: #21c08c;
+  --ifm-color-primary-darker: #1aa77b;
+  --ifm-color-primary-darkest: #158c67;
+  --ifm-color-primary-light: #3ee2ac;
+  --ifm-color-primary-lighter: #53e6b6;
+  --ifm-color-primary-lightest: #76edc8;
+  --docusaurus-highlighted-code-line-bg: rgba(47, 215, 159, 0.18);
+}
+
+/* Tailwind preflight resets image sizing; restore navbar logo constraints. */
+.navbar__brand {
+  min-width: 0;
+}
+
+.navbar__logo {
+  width: auto;
+  max-width: none;
+}
+
+.navbar__logo img {
+  display: block;
+  height: 2rem;
+  width: auto;
+  max-width: none;
+}
+
+/* Keep external-link icons inline and visually centered with adjacent text. */
+a svg[aria-label="(opens in new tab)"] {
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  margin-left: 0.35rem;
+  vertical-align: -0.1em;
+}
+
+/* Tailwind preflight makes svg block-level; keep docs edit link icon inline with text. */
+.theme-edit-this-page {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+}
+
+.theme-edit-this-page svg {
+  display: inline-block;
+}
+
+/* Add horizontal breathing room for inline code tags. */
+:not(pre) > code {
+  padding-left: 0.3rem;
+  padding-right: 0.3rem;
+}
+
+/* Tailwind preflight reveals all theme-mode icons; restore one visible icon and size it up. */
+button[aria-label^="Switch between dark and light mode"] svg {
+  display: none;
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+html[data-theme-choice="light"]
+  button[aria-label^="Switch between dark and light mode"]
+  svg[class*="lightToggleIcon"] {
+  display: block;
+}
+
+html[data-theme-choice="dark"]
+  button[aria-label^="Switch between dark and light mode"]
+  svg[class*="darkToggleIcon"] {
+  display: block;
+}
+
+/* Fallback for users with stale "system" preference cached from older config. */
+html[data-theme-choice="system"]
+  button[aria-label^="Switch between dark and light mode"]
+  svg[class*="lightToggleIcon"] {
+  display: block;
+}
+
+/* Search modal: hide keyboard shortcut hint while already focused in dialog. */
+[role="dialog"] [class^="searchHintContainer_"],
+[role="dialog"] [class*=" searchHintContainer_"] {
+  display: none;
+}
+
+/* Search modal: make the input stretch full width of the modal header row. */
+[role="dialog"] [class^="searchBar_"],
+[role="dialog"] [class*=" searchBar_"] {
+  display: block !important;
+  width: 100% !important;
+}
+
+[role="dialog"] .navbar__search-input {
+  width: 100% !important;
+  max-width: none;
+}
+
+/* Make current section clearly visible in the right-side doc TOC. */
+.theme-doc-toc-desktop .table-of-contents__link,
+.theme-doc-toc-mobile .table-of-contents__link {
+  border-left: 2px solid transparent;
+  border-radius: 0 8px 8px 0;
+  display: block;
+  margin-left: -1px;
+  padding: 0.2rem 0.55rem 0.2rem 0.75rem;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.theme-doc-toc-desktop .table-of-contents__link:hover,
+.theme-doc-toc-mobile .table-of-contents__link:hover {
+  background: rgba(15, 143, 106, 0.08);
+}
+
+.theme-doc-toc-desktop .table-of-contents__link--active,
+.theme-doc-toc-mobile .table-of-contents__link--active {
+  background: rgba(15, 143, 106, 0.14);
+  border-left-color: var(--ifm-color-primary);
+  color: var(--ifm-color-primary-darkest);
+  font-weight: 600;
+}
+
+[data-theme="dark"] .theme-doc-toc-desktop .table-of-contents__link:hover,
+[data-theme="dark"] .theme-doc-toc-mobile .table-of-contents__link:hover {
+  background: rgba(47, 215, 159, 0.12);
+}
+
+[data-theme="dark"] .theme-doc-toc-desktop .table-of-contents__link--active,
+[data-theme="dark"] .theme-doc-toc-mobile .table-of-contents__link--active {
+  background: rgba(47, 215, 159, 0.2);
+  color: var(--ifm-color-primary-lightest);
+}
+
+/* Keep footer compact and centered as a single, non-repetitive link row. */
+.theme-layout-footer.footer {
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+}
+
+.theme-layout-footer .footer__title {
+  display: none;
+}
+
+.theme-layout-footer .footer__links {
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.theme-layout-footer .footer__col {
+  flex: 0 0 auto;
+  margin-bottom: 0 !important;
+}
+
+.theme-layout-footer .footer__items {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem 1rem;
+}
+
+.theme-layout-footer .footer__item {
+  margin: 0;
+}
+
+.theme-layout-footer .footer__link-item {
+  font-weight: 600;
+}
+
+.theme-layout-footer .footer__bottom {
+  text-align: center;
+}

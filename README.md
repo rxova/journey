@@ -13,16 +13,19 @@ React:
 ![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)
 
 <div align="center">
-  <img src="./docs/assets/logo_mark.jpg" alt="Rxova Journey Mark" width="700" />
+  <img src="./apps/docs/static/img/logo-mark.jpg" alt="Rxova Journey Mark" width="700" />
 </div>
 
 <p align="center">
-  <a href="./docs/GETTING_STARTED.md">Get started</a> |
-  <a href="./docs/API.md">API</a> |
-  <a href="./docs/RECIPES.md">Recipes</a> |
-  <a href="./docs/FAQ.md">FAQs</a> |
+  <a href="https://rxova.org/journey/">Docs</a> |
+  <a href="https://rxova.org/journey/docs/core/getting-started">Get started</a> |
+  <a href="https://rxova.org/journey/docs/core/api">API</a> |
+  <a href="https://rxova.org/journey/docs/core/recipes">Recipes</a> |
+  <a href="https://rxova.org/journey/docs/core/faq">FAQs</a> |
   <a href="./packages/react/examples/README.md">Examples</a>
 </p>
+
+> Docs always reflect the latest published version until 1.0.
 
 # What Is Rxova Journey
 
@@ -324,10 +327,10 @@ One model for all flows:
 
 ## Learn Fast
 
-- Start here: [docs/GETTING_STARTED.md](./docs/GETTING_STARTED.md)
-- API details: [docs/API.md](./docs/API.md)
-- Practical patterns: [docs/RECIPES.md](./docs/RECIPES.md)
-- Common questions: [docs/FAQ.md](./docs/FAQ.md)
+- Start here: [Getting Started](https://rxova.org/journey/docs/core/getting-started)
+- API details: [API Reference](https://rxova.org/journey/docs/core/api)
+- Practical patterns: [Recipes](https://rxova.org/journey/docs/core/recipes)
+- Common questions: [FAQ](https://rxova.org/journey/docs/core/faq)
 - Example catalog: [packages/react/examples/README.md](./packages/react/examples/README.md)
 - Quickstarts now include: React UI, Core headless, Persistence resume.
 - Recipes now include: analytics hooks, submit confirmation, API-branching, restart.
@@ -335,7 +338,7 @@ One model for all flows:
 ## Persistence
 
 You can persist and resume flows via `createJourneyMachine(journey, { persistence })` or
-`<JourneyProvider persistence={...} />`. See [docs/RECIPES.md](./docs/RECIPES.md) for a
+`<JourneyProvider persistence={...} />`. See [Recipes](https://rxova.org/journey/docs/core/recipes) for a
 versioned migration example.
 
 ## Async UX States
@@ -344,7 +347,7 @@ The engine exposes per-step async loading/error state at `snapshot.async.byStep[
 and a global `snapshot.async.isLoading`.
 
 Important: async state is runtime-only and not persisted. After hydrate/reset it starts clean (`idle`).
-See [docs/API.md](./docs/API.md) and [docs/RECIPES.md](./docs/RECIPES.md) for full examples.
+See [API Reference](https://rxova.org/journey/docs/core/api) and [Recipes](https://rxova.org/journey/docs/core/recipes) for full examples.
 
 ## Examples
 
