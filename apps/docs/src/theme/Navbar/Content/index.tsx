@@ -7,6 +7,7 @@ import NavbarColorModeToggle from "@theme/Navbar/ColorModeToggle";
 import SearchBar from "@theme/SearchBar";
 import NavbarMobileSidebarToggle from "@theme/Navbar/MobileSidebar/Toggle";
 import NavbarLogo from "@theme/Navbar/Logo";
+import styles from "./styles.module.css";
 
 function useNavbarItems() {
   // TODO temporary casting until ThemeConfig type is improved
@@ -61,8 +62,8 @@ export default function NavbarContent(): ReactNode {
       right={
         <>
           <NavbarItems items={rightItems} />
+          <NavbarColorModeToggle className={styles.colorModeToggle} />
           {!searchBarItem && <SearchBar />}
-          <NavbarColorModeToggle className="margin-left--sm" />
         </>
       }
     />

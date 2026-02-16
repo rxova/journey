@@ -52,6 +52,14 @@
   border-bottom: 1px solid rgba(189, 203, 224, 0.6);
 }
 
+/* On mobile, backdrop-filter clips Docusaurus fixed mobile sidebar to navbar height. */
+@media (max-width: 996px) {
+  .navbar {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
 [data-theme="dark"] .navbar {
   border-bottom-color: rgba(125, 146, 175, 0.36);
 }
