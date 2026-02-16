@@ -20,7 +20,6 @@
   },
   "license": "MIT",
   "author": "Jonatan Kruszewski",
-  "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
     "start": "docusaurus start",

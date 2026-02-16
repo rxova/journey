@@ -2,7 +2,7 @@
 
 export { JourneyProvider } from "./context";
 export { JourneyStepRenderer } from "./JourneyStepRenderer";
-export { useJourney, useJourneyApi, useJourneySnapshot } from "./hooks";
+export { useJourney, useJourneyApi, useJourneyMachine, useJourneySnapshot } from "./hooks";
 export type {
   JourneyApi,
   JourneyReactEventPayloadMap,

@@ -1,0 +1,67 @@
+{
+  "name": "@rxova/journey-devtools-bridge",
+  "version": "0.3.0",
+  "description": "Bridge API to connect Journey machines to browser devtools.",
+  "keywords": [
+    "journey",
+    "devtools",
+    "chrome",
+    "debug",
+    "state-machine",
+    "typescript"
+  ],
+  "homepage": "https://github.com/rxova/journey",
+  "bugs": {
+    "url": "https://github.com/rxova/journey/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rxova/journey.git",
+    "directory": "packages/devtools-bridge"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "author": "Jonatan Kruszewski",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/index.d.ts",
+        "require": "./dist/index.d.cts"
+      },
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@rxova/journey-core": "workspace:^"
+  },
+  "scripts": {
+    "build": "pnpm run clean && node ./scripts/build.mjs && tsc -p tsconfig.build.json && node ../../scripts/copy-types.mjs dist",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "publint": "publint",
+    "attw": "attw --pack .",
+    "size": "pnpm run size:check",
+    "size:check": "pnpm run build && size-limit"
+  },
+  "size-limit": [
+    {
+      "name": "devtools-bridge/attachJourneyDevtools",
+      "path": "dist/index.js",
+      "import": "{ attachJourneyDevtools }",
+      "limit": "5.5 kB"
+    }
+  ]
+}

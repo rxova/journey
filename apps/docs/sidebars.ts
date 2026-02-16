@@ -49,6 +49,21 @@ const sidebars: SidebarsConfig = {
         "react/async-ui",
         "react/examples"
       ]
+    },
+    {
+      type: "category",
+      label: "Devtool (Coming Soon)",
+      collapsed: false,
+      items: [
+        "devtool/overview",
+        "devtool/getting-started",
+        "devtool/bridge-api",
+        "devtool/panel-guide",
+        "devtool/protocol",
+        "devtool/examples",
+        "devtool/troubleshooting",
+        "devtool/web-store"
+      ]
     }
   ]
 };

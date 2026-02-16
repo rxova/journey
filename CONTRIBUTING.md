@@ -73,6 +73,8 @@ Releases are automated with Changesets and GitHub Actions.
 1. Create a changeset:
    - `pnpm run changeset`
    - Select affected package(s) and bump type (patch/minor/major).
+2. Run release versioning + publish pipeline locally (optional):
+   - `pnpm run releases`
 
 ### Publish Flow
 
@@ -82,7 +84,9 @@ Releases are automated with Changesets and GitHub Actions.
 
 ### Versioning Policy
 
-- Packages are versioned independently.
+- `@rxova/journey-core`, `@rxova/journey-react`, `@rxova/journey-devtools-bridge`, `apps-docs`, and `apps-demo` are versioned together as a fixed release group.
+- `apps-devtools` is versioned independently.
+- Other packages are versioned independently.
 - If only `@rxova/journey-react` changes, bump React only.
 - If `@rxova/journey-core` changes, core is bumped and React receives a patch bump to update its dependency range when needed.
 

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Journey Devtools event log screenshot">
+  <rect width="1600" height="900" fill="#eef5fb"/>
+  <rect x="140" y="80" width="1320" height="740" rx="18" fill="#fff" stroke="#d5dde4"/>
+  <text x="200" y="145" font-size="34" font-family="IBM Plex Sans, Arial" fill="#162530">Event Log</text>
+  <text x="1190" y="145" font-size="20" font-family="IBM Plex Sans, Arial" fill="#5e6d78">Showing 8 / 124</text>
+
+  <rect x="200" y="170" width="260" height="50" rx="8" fill="#fff" stroke="#d5dde4"/>
+  <text x="220" y="202" font-size="17" font-family="IBM Plex Sans, Arial" fill="#5e6d78">Display limit: 8</text>
+  <rect x="480" y="170" width="180" height="50" rx="8" fill="#d8f3ea" stroke="#0f8f6a"/>
+  <text x="532" y="202" font-size="17" font-family="IBM Plex Sans, Arial" fill="#162530">Prune to limit</text>
+
+  <g font-family="IBM Plex Sans, Arial" fill="#162530" font-size="18">
+    <rect x="200" y="250" width="1200" height="70" rx="8" fill="#fbfdfd" stroke="#d5dde4"/>
+    <text x="230" y="292">14:02:31</text><text x="370" y="292" fill="#0f556e" font-weight="700">register</text><text x="560" y="292">Registered: Checkout Flow</text>
+
+    <rect x="200" y="335" width="1200" height="70" rx="8" fill="#fbfdfd" stroke="#d5dde4"/>
+    <text x="230" y="377">14:02:34</text><text x="370" y="377" fill="#0f556e" font-weight="700">snapshot</text><text x="560" y="377">Snapshot: details</text>
+
+    <rect x="200" y="420" width="1200" height="70" rx="8" fill="#fbfdfd" stroke="#d5dde4"/>
+    <text x="230" y="462">14:02:40</text><text x="370" y="462" fill="#0f556e" font-weight="700">commandResult</text><text x="560" y="462">Command req-4 succeeded</text>
+
+    <rect x="200" y="505" width="1200" height="70" rx="8" fill="#fff7f2" stroke="#f0c8b9"/>
+    <text x="230" y="547">14:02:44</text><text x="370" y="547" fill="#b34a2f" font-weight="700">commandError</text><text x="560" y="547">Command req-5 failed: send failed</text>
+
+    <rect x="200" y="590" width="1200" height="70" rx="8" fill="#fbfdfd" stroke="#d5dde4"/>
+    <text x="230" y="632">14:02:48</text><text x="370" y="632" fill="#0f556e" font-weight="700">commandResult</text><text x="560" y="632">Command req-6 succeeded</text>
+  </g>
+</svg>

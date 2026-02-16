@@ -40,6 +40,10 @@ Static output is generated in `apps/docs/build`.
 Deployment is automated on pushes to `main` that touch:
 
 - `apps/docs/**`
+- `apps/devtools/**`
+- `packages/**`
+- top-level workspace files (`package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`)
+- top-level tooling files (`tsconfig*.json`, `vitest.config.ts`, `eslint.config.mjs`)
 - `.github/workflows/docs.yml`
 
 The workflow builds docs and publishes `apps/docs/build` to `gh-pages`.
