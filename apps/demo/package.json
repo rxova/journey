@@ -1,0 +1,26 @@
+{
+  "name": "apps-demo",
+  "version": "0.0.0",
+  "description": "Local React + Core demo app for testing Journey DevTools.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rxova/journey-core": "workspace:^",
+    "@rxova/journey-devtools-bridge": "workspace:^",
+    "@rxova/journey-react": "workspace:^",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^5.0.4",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  }
+}

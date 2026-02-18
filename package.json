@@ -23,6 +23,7 @@
     "changeset": "changeset",
     "changeset:version": "changeset version",
     "release": "pnpm -r build && changeset publish",
+    "releases": "pnpm run changeset:version && pnpm run release",
     "typecheck": "pnpm -r typecheck && tsc --noEmit -p tsconfig.test.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

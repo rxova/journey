@@ -4,6 +4,6 @@
   }
 }
 
-:global(.navbar__items--right) > :last-child {
+:global(.navbar__items--right .navbar__item:last-child) {
   padding-right: 0;
 }

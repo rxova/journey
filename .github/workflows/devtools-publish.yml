@@ -1,0 +1,121 @@
+name: Publish Devtools To Chrome Web Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      extension_id:
+        description: "Chrome Web Store extension ID"
+        required: true
+        type: string
+      publisher_id:
+        description: "Chrome Web Store publisher ID"
+        required: true
+        type: string
+      publish:
+        description: "Publish after upload"
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: devtools-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      CWS_EXTENSION_ID: ${{ inputs.extension_id }}
+      CWS_PUBLISHER_ID: ${{ inputs.publisher_id }}
+      CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+      CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+      CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+      SHOULD_PUBLISH: ${{ inputs.publish }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Pin pnpm
+        run: corepack prepare pnpm@10.29.3+sha512.498e1fb4cca5aa06c1dcf2611e6fafc50972ffe7189998c409e90de74566444298ffe43e6cd2acdc775ba1aa7cc5e092a8b7054c811ba8c5770f84693d33d2dc --activate
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate secrets
+        run: |
+          test -n "$CWS_CLIENT_ID"
+          test -n "$CWS_CLIENT_SECRET"
+          test -n "$CWS_REFRESH_TOKEN"
+
+      - name: Build extension
+        run: pnpm --filter apps-devtools build
+
+      - name: Pack extension zip
+        run: |
+          cd apps/devtools/dist
+          zip -r ../../../apps-devtools.zip .
+
+      - name: Exchange refresh token for access token
+        run: |
+          TOKEN_RESPONSE=$(curl -sS -X POST https://oauth2.googleapis.com/token \
+            -d "client_id=${CWS_CLIENT_ID}" \
+            -d "client_secret=${CWS_CLIENT_SECRET}" \
+            -d "refresh_token=${CWS_REFRESH_TOKEN}" \
+            -d "grant_type=refresh_token")
+
+          ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token')
+          if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" = "null" ]; then
+            echo "Failed to get access token"
+            echo "$TOKEN_RESPONSE"
+            exit 1
+          fi
+
+          echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> "$GITHUB_ENV"
+
+      - name: Upload package to Chrome Web Store
+        run: |
+          RESPONSE=$(curl -sS -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -T apps-devtools.zip \
+            "https://chromewebstore.googleapis.com/upload/v2/publishers/${CWS_PUBLISHER_ID}/items/${CWS_EXTENSION_ID}:upload")
+
+          echo "$RESPONSE"
+
+          ITEM_ERROR=$(echo "$RESPONSE" | jq -r '.itemError[]?.errorCode // empty')
+          if [ -n "$ITEM_ERROR" ]; then
+            echo "Upload failed"
+            exit 1
+          fi
+
+      - name: Publish item
+        if: env.SHOULD_PUBLISH == 'true'
+        run: |
+          RESPONSE=$(curl -sS -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "https://chromewebstore.googleapis.com/v2/publishers/${CWS_PUBLISHER_ID}/items/${CWS_EXTENSION_ID}:publish")
+
+          echo "$RESPONSE"
+
+          STATUS=$(echo "$RESPONSE" | jq -r '.status[]? // empty')
+          if [ -z "$STATUS" ]; then
+            echo "Publish did not return a status"
+            exit 1
+          fi
+
+      - name: Upload packaged zip artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: apps-devtools-upload-zip
+          path: apps-devtools.zip

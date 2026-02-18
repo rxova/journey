@@ -5,7 +5,7 @@ import { act, render, screen } from "@testing-library/react";
 
 import { JOURNEY_ASYNC_PHASE, JOURNEY_STATUS, type JourneyMachine } from "@rxova/journey-core";
 import { JourneyProvider } from "../src/context";
-import { useJourneyApi } from "../src/hooks";
+import { useJourneyApi, useJourneyMachine } from "../src/hooks";
 
 type StepId = "one" | "two";
 
@@ -114,5 +114,42 @@ describe("useJourneyApi", () => {
     expect(trimHistory).toHaveBeenCalledTimes(1);
     expect(trimHistory).toHaveBeenCalledWith(1);
     expect(clearHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it("exposes the provider machine through useJourneyMachine", () => {
+    const machine: JourneyMachine<Context, StepId, Event> = {
+      getSnapshot: () => snapshot,
+      send: async () => ({ transitioned: false, snapshot }),
+      updateContext: () => snapshot,
+      clearStepError: () => snapshot,
+      reset: () => snapshot,
+      trimHistory: () => snapshot,
+      clearHistory: () => snapshot,
+      subscribe: () => () => {}
+    };
+
+    const Probe = () => {
+      const resolvedMachine = useJourneyMachine<Context, StepId, Event>();
+      return <div data-testid="machine-ref">{String(resolvedMachine === machine)}</div>;
+    };
+
+    render(
+      <JourneyProvider
+        journey={{
+          initial: "one",
+          context: { count: 0 },
+          steps: {
+            one: { component: () => null },
+            two: { component: () => null }
+          },
+          transitions: [{ from: "one", event: "next", to: "two" }]
+        }}
+        machine={machine}
+      >
+        <Probe />
+      </JourneyProvider>
+    );
+
+    expect(screen.getByTestId("machine-ref").textContent).toBe("true");
   });
 });

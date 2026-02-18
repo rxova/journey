@@ -58,6 +58,33 @@
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
+
+  /* Keep mobile sidebar fully opaque for readability. */
+  .navbar-sidebar {
+    background-color: #ffffff;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    z-index: calc(var(--ifm-z-index-fixed) + 1);
+  }
+
+  /* Prevent a second inner slide animation when opening the mobile sidebar. */
+  .navbar-sidebar__items {
+    transition: none;
+  }
+
+  [data-theme="dark"] .navbar-sidebar {
+    background-color: #172433;
+  }
+
+  /* Keep backdrop over page content only, not above the sidebar/navbar. */
+  .navbar-sidebar__backdrop {
+    background-color: rgba(8, 16, 28, 0.42);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    left: 0;
+    top: 0;
+    z-index: var(--ifm-z-index-fixed);
+  }
 }
 
 [data-theme="dark"] .navbar {

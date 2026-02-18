@@ -5,6 +5,17 @@ on:
     branches: [main]
     paths:
       - "apps/docs/**"
+      - "apps/devtools/**"
+      - "packages/**"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.json"
+      - "tsconfig.base.json"
+      - "vitest.config.ts"
+      - "eslint.config.mjs"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 

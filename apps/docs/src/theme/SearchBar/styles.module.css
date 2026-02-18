@@ -9,7 +9,7 @@
   font: inherit;
   gap: 0.45rem;
   height: 2.25rem;
-  padding: 0 0.75rem;
+  padding: 0 1rem 0 0.75rem;
   transition:
     border-color 120ms ease,
     transform 120ms ease;

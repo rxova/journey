@@ -66,6 +66,15 @@ api.trimHistory(10);
 api.clearHistory();
 ```
 
+## `useJourneyMachine`
+
+```tsx
+const machine = useJourneyMachine<Context, StepId, CustomEvent, PayloadMap>();
+```
+
+- Returns the underlying `JourneyMachine` from provider context.
+- Useful for explicit integrations such as devtools bridges.
+
 ## `useJourney`
 
 ```tsx
