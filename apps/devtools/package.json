@@ -1,0 +1,31 @@
+{
+  "name": "apps-devtools",
+  "version": "0.1.0",
+  "description": "Chrome DevTools extension for debugging Rxova Journey machines.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:browser": "playwright test e2e/browser-integration.spec.mjs --workers=1"
+  },
+  "dependencies": {
+    "@rxova/journey-devtools-bridge": "workspace:^",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.1.0",
+    "@playwright/test": "1.52.0",
+    "@types/chrome": "^0.0.287",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^5.0.4",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  },
+  "engines": {
+    "node": ">=20.11.0"
+  }
+}

@@ -6,6 +6,9 @@
     },
     {
       "path": "./packages/react/tsconfig.build.json"
+    },
+    {
+      "path": "./packages/devtools-bridge/tsconfig.build.json"
     }
   ],
   "include": ["packages/*/src", "packages/*/test", "examples", "scripts", "vitest.config.ts"]

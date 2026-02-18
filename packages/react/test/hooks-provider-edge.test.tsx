@@ -14,6 +14,7 @@ import {
   JourneyStepRenderer,
   useJourney,
   useJourneyApi,
+  useJourneyMachine,
   useJourneySnapshot
 } from "@rxova/journey-react";
 import type { JourneyReactDefinition } from "@rxova/journey-react";
@@ -119,6 +120,30 @@ const App = ({
     <Controls />
   </JourneyProvider>
 );
+
+const createMockMachine = (
+  current: StepId = "one"
+): JourneyMachine<Ctx, StepId, "next" | "back" | "close" | "submit" | "custom"> => {
+  const snapshot = {
+    current,
+    context: baseJourney.context,
+    history: [],
+    visited: [current],
+    status: JOURNEY_STATUS.RUNNING,
+    async: asyncState()
+  };
+
+  return {
+    getSnapshot: () => snapshot,
+    send: async () => ({ transitioned: false, snapshot }),
+    updateContext: () => snapshot,
+    clearStepError: () => snapshot,
+    reset: () => snapshot,
+    trimHistory: () => snapshot,
+    clearHistory: () => snapshot,
+    subscribe: () => () => {}
+  };
+};
 
 describe("react hooks/provider edge cases", () => {
   it("next transition works through hook api", async () => {
@@ -235,6 +260,52 @@ describe("react hooks/provider edge cases", () => {
       return null;
     };
     expect(() => render(<Broken />)).toThrow("useJourney must be used within <JourneyProvider>.");
+  });
+
+  it("useJourneyMachine throws outside provider", () => {
+    const Broken = () => {
+      useJourneyMachine<Ctx, StepId, CustomEvent>();
+      return null;
+    };
+    expect(() => render(<Broken />)).toThrow(
+      "useJourneyMachine must be used within <JourneyProvider>."
+    );
+  });
+
+  it("useJourneyMachine returns stable reference unless machine prop changes", () => {
+    const machineA = createMockMachine("one");
+    const machineB = createMockMachine("two");
+    const seen: JourneyMachine<Ctx, StepId, "next" | "back" | "close" | "submit" | "custom">[] = [];
+
+    const Probe = () => {
+      const machine = useJourneyMachine<Ctx, StepId, CustomEvent>();
+      React.useEffect(() => {
+        seen.push(machine);
+      });
+      return <div data-testid="machine-probe">probe</div>;
+    };
+
+    const { rerender } = render(
+      <JourneyProvider journey={baseJourney} machine={machineA}>
+        <Probe />
+      </JourneyProvider>
+    );
+
+    rerender(
+      <JourneyProvider journey={baseJourney} machine={machineA}>
+        <Probe />
+      </JourneyProvider>
+    );
+
+    rerender(
+      <JourneyProvider journey={baseJourney} machine={machineB}>
+        <Probe />
+      </JourneyProvider>
+    );
+
+    expect(seen[0]).toBe(machineA);
+    expect(seen[1]).toBe(machineA);
+    expect(seen[2]).toBe(machineB);
   });
 
   it("renders fallback when machine current step is unknown", () => {

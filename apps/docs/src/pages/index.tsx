@@ -96,11 +96,63 @@ export default function Home(): ReactNode {
                   Start with Core
                 </Link>
                 <Link
-                  className={`${ctaClasses} border border-ink-300 text-ink-700 hover:border-ink-400 dark:border-ink-500/80 dark:text-ink-50 dark:hover:border-brand-300 dark:hover:text-brand-200`}
+                  className={`${ctaClasses} bg-ink-900 text-white hover:bg-ink-800 dark:bg-white dark:text-ink-900 dark:hover:bg-ink-100`}
                   to="/docs/react/overview"
                 >
                   Explore React
                 </Link>
+                <Link
+                  className={`${ctaClasses} border border-ink-300 text-ink-700 hover:border-ink-400 dark:border-ink-500/80 dark:text-ink-50 dark:hover:border-brand-300 dark:hover:text-brand-200`}
+                  to="/docs/devtool/overview"
+                >
+                  Check the Devtools Docs (Coming Soon)
+                </Link>
+              </div>
+
+              <div className="grid gap-6 lg:grid-cols-3">
+                <div className="home-surface rounded-2xl border border-ink-300/80 bg-white/90 p-6 shadow-[0_20px_44px_-28px_rgba(20,35,60,0.38)] transition hover:-translate-y-1 hover:border-ink-400/80 hover:shadow-[0_24px_52px_-30px_rgba(20,35,60,0.45)] dark:hover:border-[#5f6d95]">
+                  <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-ink-900 dark:text-ink-50">
+                    Why Journey
+                  </p>
+                  <p className="mt-3 text-sm text-ink-700 dark:text-ink-100">
+                    Replace brittle step arrays with a typed transition graph. Handle branching,
+                    async guards, and deterministic back behavior without scattered state.
+                  </p>
+                </div>
+                <div className="home-surface rounded-2xl border border-ink-300/80 bg-white/90 p-6 shadow-[0_20px_44px_-28px_rgba(20,35,60,0.38)] transition hover:-translate-y-1 hover:border-ink-400/80 hover:shadow-[0_24px_52px_-30px_rgba(20,35,60,0.45)] dark:hover:border-[#5f6d95]">
+                  <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-ink-900 dark:text-ink-50">
+                    Status
+                  </p>
+                  <p className="mt-3 text-sm text-ink-700 dark:text-ink-100">
+                    Pre-1.0 releases are moving fast. Docs always reflect the latest published
+                    version until 1.0 lands.
+                  </p>
+                </div>
+                <div className="home-surface rounded-2xl border border-ink-300/80 bg-white/90 p-6 shadow-[0_20px_44px_-28px_rgba(20,35,60,0.38)] transition hover:-translate-y-1 hover:border-ink-400/80 hover:shadow-[0_24px_52px_-30px_rgba(20,35,60,0.45)] dark:hover:border-[#5f6d95]">
+                  <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-ink-900 dark:text-ink-50">
+                    Packages
+                  </p>
+                  <div className="mt-3 flex flex-col gap-2 text-sm">
+                    <Link
+                      href="https://www.npmjs.com/package/@rxova/journey-core"
+                      className="-mx-2 block rounded-lg px-2 py-1 text-ink-700 transition hover:bg-brand-50 hover:text-brand-700 hover:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-ink-50 dark:hover:bg-ink-700/60 dark:hover:text-brand-200"
+                    >
+                      @rxova/journey-core
+                    </Link>
+                    <Link
+                      href="https://www.npmjs.com/package/@rxova/journey-react"
+                      className="-mx-2 block rounded-lg px-2 py-1 text-ink-700 transition hover:bg-brand-50 hover:text-brand-700 hover:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-ink-50 dark:hover:bg-ink-700/60 dark:hover:text-brand-200"
+                    >
+                      @rxova/journey-react
+                    </Link>
+                    <Link
+                      href="https://www.npmjs.com/package/@rxova/journey-devtools-bridge"
+                      className="-mx-2 block rounded-lg px-2 py-1 text-ink-700 transition hover:bg-brand-50 hover:text-brand-700 hover:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-ink-50 dark:hover:bg-ink-700/60 dark:hover:text-brand-200"
+                    >
+                      @rxova/journey-devtools-bridge
+                    </Link>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -140,45 +192,6 @@ export default function Home(): ReactNode {
                     {item.title}
                   </Link>
                 ))}
-              </div>
-            </div>
-            <div className="grid gap-6 pb-4 pt-6 sm:pb-6 sm:pt-8 lg:grid-cols-3">
-              <div className="home-surface rounded-2xl border border-ink-300/80 bg-white/90 p-6 shadow-[0_20px_44px_-28px_rgba(20,35,60,0.38)] transition hover:-translate-y-1 hover:border-ink-400/80 hover:shadow-[0_24px_52px_-30px_rgba(20,35,60,0.45)] dark:hover:border-[#5f6d95]">
-                <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-ink-900 dark:text-ink-50">
-                  Why Journey
-                </p>
-                <p className="mt-3 text-sm text-ink-700 dark:text-ink-100">
-                  Replace brittle step arrays with a typed transition graph. Handle branching, async
-                  guards, and deterministic back behavior without scattered state.
-                </p>
-              </div>
-              <div className="home-surface rounded-2xl border border-ink-300/80 bg-white/90 p-6 shadow-[0_20px_44px_-28px_rgba(20,35,60,0.38)] transition hover:-translate-y-1 hover:border-ink-400/80 hover:shadow-[0_24px_52px_-30px_rgba(20,35,60,0.45)] dark:hover:border-[#5f6d95]">
-                <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-ink-900 dark:text-ink-50">
-                  Status
-                </p>
-                <p className="mt-3 text-sm text-ink-700 dark:text-ink-100">
-                  Pre-1.0 releases are moving fast. Docs always reflect the latest published version
-                  until 1.0 lands.
-                </p>
-              </div>
-              <div className="home-surface rounded-2xl border border-ink-300/80 bg-white/90 p-6 shadow-[0_20px_44px_-28px_rgba(20,35,60,0.38)] transition hover:-translate-y-1 hover:border-ink-400/80 hover:shadow-[0_24px_52px_-30px_rgba(20,35,60,0.45)] dark:hover:border-[#5f6d95]">
-                <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-ink-900 dark:text-ink-50">
-                  Packages
-                </p>
-                <div className="mt-3 flex flex-col gap-2 text-sm">
-                  <Link
-                    href="https://www.npmjs.com/package/@rxova/journey-core"
-                    className="-mx-2 block rounded-lg px-2 py-1 text-ink-700 transition hover:bg-brand-50 hover:text-brand-700 hover:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-ink-50 dark:hover:bg-ink-700/60 dark:hover:text-brand-200"
-                  >
-                    @rxova/journey-core
-                  </Link>
-                  <Link
-                    href="https://www.npmjs.com/package/@rxova/journey-react"
-                    className="-mx-2 block rounded-lg px-2 py-1 text-ink-700 transition hover:bg-brand-50 hover:text-brand-700 hover:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-ink-50 dark:hover:bg-ink-700/60 dark:hover:text-brand-200"
-                  >
-                    @rxova/journey-react
-                  </Link>
-                </div>
               </div>
             </div>
           </div>

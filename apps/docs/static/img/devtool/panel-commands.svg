@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Journey Devtools command controls screenshot">
+  <rect width="1600" height="900" fill="#edf4f9"/>
+  <rect x="120" y="90" width="1360" height="720" rx="18" fill="#fff" stroke="#d5dde4"/>
+  <text x="180" y="155" font-size="34" font-family="IBM Plex Sans, Arial" fill="#162530">Commands</text>
+
+  <g font-family="IBM Plex Sans, Arial" font-size="20" fill="#162530">
+    <rect x="180" y="190" width="180" height="52" rx="10" fill="#d8f3ea" stroke="#0f8f6a"/>
+    <text x="250" y="224">next</text>
+    <rect x="380" y="190" width="180" height="52" rx="10" fill="#d8f3ea" stroke="#0f8f6a"/>
+    <text x="450" y="224">back</text>
+    <rect x="580" y="190" width="180" height="52" rx="10" fill="#d8f3ea" stroke="#0f8f6a"/>
+    <text x="649" y="224">close</text>
+    <rect x="780" y="190" width="180" height="52" rx="10" fill="#d8f3ea" stroke="#0f8f6a"/>
+    <text x="842" y="224">submit</text>
+  </g>
+
+  <text x="180" y="290" font-size="22" font-family="IBM Plex Sans, Arial" fill="#162530">goTo step</text>
+  <rect x="180" y="306" width="560" height="50" rx="8" fill="#fff" stroke="#d5dde4"/>
+  <text x="205" y="338" font-size="18" font-family="IBM Plex Sans, Arial" fill="#5e6d78">review</text>
+  <rect x="760" y="306" width="140" height="50" rx="8" fill="#d8f3ea" stroke="#0f8f6a"/>
+  <text x="805" y="338" font-size="18" font-family="IBM Plex Sans, Arial" fill="#162530">Send</text>
+
+  <text x="180" y="420" font-size="22" font-family="IBM Plex Sans, Arial" fill="#162530">Custom event type</text>
+  <rect x="180" y="438" width="280" height="50" rx="8" fill="#fff" stroke="#d5dde4"/>
+  <text x="205" y="470" font-size="18" font-family="IBM Plex Sans, Arial" fill="#5e6d78">retry</text>
+
+  <text x="480" y="420" font-size="22" font-family="IBM Plex Sans, Arial" fill="#162530">Custom payload JSON</text>
+  <rect x="480" y="438" width="620" height="130" rx="8" fill="#fff" stroke="#d5dde4"/>
+  <text x="505" y="470" font-size="18" font-family="JetBrains Mono, monospace" fill="#162530">{"attempt": 2, "origin": "panel"}</text>
+
+  <rect x="1120" y="438" width="240" height="50" rx="8" fill="#d8f3ea" stroke="#0f8f6a"/>
+  <text x="1170" y="470" font-size="18" font-family="IBM Plex Sans, Arial" fill="#162530">Send custom event</text>
+
+  <rect x="180" y="620" width="1180" height="120" rx="8" fill="#fff6f2" stroke="#f0c8b9"/>
+  <text x="205" y="664" font-size="20" font-family="IBM Plex Sans, Arial" fill="#c14f2f">Validation feedback appears here when inputs are invalid.</text>
+  <text x="205" y="701" font-size="17" font-family="IBM Plex Sans, Arial" fill="#8a4b38">Example: "Payload must be valid JSON."</text>
+</svg>

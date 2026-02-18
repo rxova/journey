@@ -1,7 +1,12 @@
 import React from "react";
 
 import { JOURNEY_EVENT } from "@rxova/journey-core";
-import type { JourneyEvent, JourneyPayloadFor, JourneySnapshot } from "@rxova/journey-core";
+import type {
+  JourneyEvent,
+  JourneyMachine,
+  JourneyPayloadFor,
+  JourneySnapshot
+} from "@rxova/journey-core";
 import { useJourneyStore } from "./context";
 import type {
   JourneyDefaultEvent,
@@ -27,6 +32,21 @@ const useSnapshot = <
  * Reads the current journey snapshot and re-renders on changes.
  */
 export const useJourneySnapshot = useSnapshot;
+
+/**
+ * Returns the underlying journey machine from provider context.
+ */
+export const useJourneyMachine = <
+  TContext,
+  TStepId extends string,
+  TCustomEvent extends string = never,
+  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>
+>(): JourneyMachine<TContext, TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap> => {
+  const { machine } = useJourneyStore<TContext, TStepId, TCustomEvent, TEventPayloadMap>(
+    "useJourneyMachine"
+  );
+  return machine;
+};
 
 /**
  * Returns imperative journey actions (send, goTo, next, back, close, submit).
