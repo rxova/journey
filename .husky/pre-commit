@@ -1,4 +1,5 @@
 pnpm lint-staged
+pnpm format
 pnpm test:precommit
 pnpm typecheck
 pnpm size:check

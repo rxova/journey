@@ -22,6 +22,8 @@ concurrency:
 
 jobs:
   build:
+    # Temporarily disabled in this branch until the approval process completes.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
