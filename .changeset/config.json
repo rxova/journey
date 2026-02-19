@@ -2,18 +2,10 @@
   "$schema": "https://unpkg.com/@changesets/config@3.0.5/schema.json",
   "changelog": "@changesets/cli/changelog",
   "commit": false,
-  "fixed": [
-    [
-      "@rxova/journey-devtools-bridge",
-      "@rxova/journey-core",
-      "@rxova/journey-react",
-      "apps-docs",
-      "apps-demo"
-    ]
-  ],
+  "fixed": [["@rxova/journey-devtools-bridge", "@rxova/journey-core", "@rxova/journey-react"]],
   "linked": [],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": []
+  "ignore": ["apps-demo", "apps-devtools", "apps-docs"]
 }
