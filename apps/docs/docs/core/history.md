@@ -1,59 +1,31 @@
 ---
-title: History Behavior
+title: Timeline Navigation
 sidebar_position: 7
 ---
 
-History powers deterministic back navigation.
+The runtime uses a canonical timeline-pointer model:
 
-## `history` vs `visited`
+- `history.timeline`: linear sequence of reached steps.
+- `history.index`: pointer to current position.
+- `currentStepId = history.timeline[history.index]`.
 
-- `history`: previous-step stack used by `HISTORY_TARGET`.
-- `visited`: unique ordered list of all reached steps.
+## Built-in Navigation
 
-`visited` survives history trimming.
+- `goToPreviousStep(steps?)`
+- `goToLastVisitedStep()`
 
-## `HISTORY_TARGET` Resolution
+`send({ type: "back" })` is still valid and first-class.
 
-When transition target is `HISTORY_TARGET`:
+If no explicit transition matches `back`, the machine automatically falls back to `goToPreviousStep(1)`.
 
-1. Read latest entry from history.
-2. Skip invalid entries.
-3. Move to first valid prior step.
-4. Remove consumed entry from history.
+## Timeline Branching Rule
 
-If no valid entry exists, machine stays on current step.
+When you are not at the tail (`history.index < history.timeline.length - 1`) and a forward transition happens, the machine:
 
-## Common Back Pattern
+1. Truncates timeline to `history.index + 1`
+2. Appends the new target step
+3. Moves pointer to the new end
 
-```ts
-import { HISTORY_TARGET } from "@rxova/journey-core";
+## `visited`
 
-{ from: "*", event: "back", to: HISTORY_TARGET }
-```
-
-## Capacity and Trimming
-
-Defaults:
-
-- `maxHistory = 50`
-- `maxHistory = null` disables trimming.
-
-`onOverflow` gets:
-
-- `previous`
-- `next`
-- `trimmed`
-- `reason`: `"auto" | "hydrate" | "manual"`
-
-## Manual APIs
-
-```ts
-machine.trimHistory(10);
-machine.clearHistory();
-```
-
-## Design Guidance
-
-- Keep global back rule near top-level transitions.
-- For restricted back paths, add specific transitions before wildcard back.
-- Use `visited` for analytics/progress, not `history`.
+`visited` is a step-id map (`Record<TStepId, boolean>`) and is independent from pointer moves.

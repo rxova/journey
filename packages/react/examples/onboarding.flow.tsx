@@ -1,13 +1,6 @@
 import React from "react";
 
-import {
-  HISTORY_TARGET,
-  JOURNEY_TERMINAL,
-  type JourneyReactDefinition,
-  useJourney,
-  JourneyProvider,
-  JourneyStepRenderer
-} from "@rxova/journey-react";
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
 
 type StepId = "welcome" | "profile" | "teamInvite" | "recap";
 type Ctx = {
@@ -16,23 +9,23 @@ type Ctx = {
 };
 
 const Welcome = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.next()}>Start onboarding</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Start onboarding</button>;
 };
 
 const Profile = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.next()}>Save profile</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Save profile</button>;
 };
 
 const TeamInvite = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.next()}>Skip invite</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Skip invite</button>;
 };
 
 const Recap = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.submit()}>Finish</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.completeJourney()}>Finish</button>;
 };
 
 export const onboardingJourney: JourneyReactDefinition<Ctx, StepId, never> = {
@@ -48,28 +41,34 @@ export const onboardingJourney: JourneyReactDefinition<Ctx, StepId, never> = {
     recap: { component: Recap }
   },
   transitions: [
-    { from: "welcome", event: "next", to: "profile" },
+    { from: "welcome", event: "goToNextStep", to: "profile" },
     {
       from: "profile",
-      event: "next",
+      event: "goToNextStep",
       to: "teamInvite",
       when: ({ context }) => context.inviteTeam
     },
     {
       from: "profile",
-      event: "next",
+      event: "goToNextStep",
       to: "recap",
       when: ({ context }) => !context.inviteTeam
     },
-    { from: "teamInvite", event: "next", to: "recap" },
-    { from: "*", event: "back", to: HISTORY_TARGET },
-    { from: "recap", event: "submit", to: JOURNEY_TERMINAL.COMPLETE },
-    { from: "*", event: "close", to: JOURNEY_TERMINAL.CLOSE }
+    { from: "teamInvite", event: "goToNextStep", to: "recap" },
+    { from: "recap", event: "completeJourney" },
+    { from: "*", event: "terminateJourney" }
   ]
 };
 
-export const OnboardingExample = () => (
-  <JourneyProvider journey={onboardingJourney}>
-    <JourneyStepRenderer<Ctx, StepId> />
-  </JourneyProvider>
-);
+const bindings = createJourneyBindings(onboardingJourney);
+
+export const OnboardingExample = () => {
+  const Provider = bindings.Provider;
+  const StepRenderer = bindings.StepRenderer;
+
+  return (
+    <Provider>
+      <StepRenderer />
+    </Provider>
+  );
+};

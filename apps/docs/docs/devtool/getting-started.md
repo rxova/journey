@@ -35,11 +35,11 @@ const detachDevtools = attachJourneyDevtools(machine, {
 
 ```tsx
 import { useEffect } from "react";
-import { useJourneyMachine } from "@rxova/journey-react";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
+import { checkoutBindings } from "./checkout-bindings";
 
 export const JourneyDebugBridge = () => {
-  const machine = useJourneyMachine();
+  const machine = checkoutBindings.useJourneyMachine();
 
   useEffect(() => {
     return attachJourneyDevtools(machine, {
@@ -79,9 +79,9 @@ If bridge messages are flowing, connection state should change to connected.
 
 Do this quick check:
 
-1. Trigger UI event in app (e.g. `next`).
-2. Confirm `current` step updates in Snapshot tab.
-3. Send `back` command from panel.
+1. Trigger UI event in app (e.g. `goToNextStep`).
+2. Confirm `currentStepId` updates in Snapshot tab.
+3. Send `goToPreviousStep` command from panel.
 4. Confirm app returns to previous step.
 
 ## First Successful Session Screenshot

@@ -1,44 +1,36 @@
 ---
-title: Overview
-sidebar_position: 1
+id: overview
+title: React Overview
+sidebar_label: Overview
 ---
 
-`@rxova/journey-react` is a thin React layer on top of `@rxova/journey-core`.
+`@rxova/journey-react` is bindings-first.
 
-Use Core for transition rules/history/persistence semantics. Use React for rendering, hooks, and ergonomics.
+## Entry Point
 
-## What React Package Adds
+```ts
+import { createJourneyBindings } from "@rxova/journey-react";
+```
 
-- `JourneyProvider`: creates or accepts a machine and exposes it through context.
-- `JourneyStepRenderer`: renders `journey.steps[snapshot.current].component`.
-- `useJourneySnapshot`: subscribes to snapshot changes.
-- `useJourneyApi`: imperative navigation and machine helpers.
-- `useJourney`: combined snapshot + API convenience hook.
+## Bindings API
 
-## Mental Model
+```ts
+const bindings = createJourneyBindings(journey);
 
-1. Define journey graph in Core terms (`steps`, `transitions`, `context`).
-2. Attach React step components.
-3. Keep UI components thin; call API helpers for events.
-4. Read snapshot for rendering state (including async phases).
+bindings.Provider;
+bindings.useJourneyApi();
+bindings.useJourneySnapshot();
+bindings.useJourneyMachine();
+bindings.StepRenderer;
+```
 
-## Why This Separation Matters
+## Why Bindings
 
-- deterministic behavior stays testable in headless mode
-- UI stays focused on user interaction and rendering
-- migration/persistence/history policies stay centralized
+- Journey-specific typing is captured once at creation.
+- Hook callsites do not require generics.
+- Multiple journeys can coexist safely by creating separate bindings.
 
-## Key Pages
+## Responsibilities
 
-- `/docs/react/quickstart`
-- `/docs/react/provider-and-hooks`
-- `/docs/react/patterns`
-- `/docs/react/async-ui`
-- `/docs/react/examples`
-
-Core references:
-
-- `/docs/core/getting-started`
-- `/docs/core/api`
-- `/docs/core/history`
-- `/docs/core/persistence`
+- Core handles runtime state/semantics.
+- React package handles context wiring and rendering ergonomics.

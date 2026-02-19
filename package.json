@@ -1,7 +1,7 @@
 {
   "name": "rxova-journey",
-  "version": "0.1.0",
-  "description": "A tiny zero-runtime-dependency React journey/stepper powered by a declarative journey graph.",
+  "version": "0.5.0",
+  "description": "A declarative journey graph for non-linear UI flows",
   "keywords": [
     "react",
     "journey",

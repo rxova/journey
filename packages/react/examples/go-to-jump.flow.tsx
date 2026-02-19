@@ -1,23 +1,19 @@
 import React from "react";
 
-import {
-  type JourneyReactDefinition,
-  useJourney,
-  JourneyProvider,
-  JourneyStepRenderer
-} from "@rxova/journey-react";
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
 
 type StepId = "step1" | "step2" | "review";
+type Event = "goToNextStep" | "jumpToReview";
 type Ctx = Record<string, never>;
 
 const Step1 = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.goTo("review")}>Jump to review</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.send({ type: "jumpToReview" })}>Jump to review</button>;
 };
 const Step2 = () => <div>Step 2</div>;
 const Review = () => <div>Review</div>;
 
-export const goToJumpJourney: JourneyReactDefinition<Ctx, StepId> = {
+export const goToJumpJourney: JourneyReactDefinition<Ctx, StepId, Event> = {
   initial: "step1",
   context: {},
   steps: {
@@ -25,11 +21,21 @@ export const goToJumpJourney: JourneyReactDefinition<Ctx, StepId> = {
     step2: { component: Step2 },
     review: { component: Review }
   },
-  transitions: [{ from: "step1", event: "next", to: "step2" }]
+  transitions: [
+    { from: "step1", event: "goToNextStep", to: "step2" },
+    { from: "step1", event: "jumpToReview", to: "review" }
+  ]
 };
 
-export const GoToJumpExample = () => (
-  <JourneyProvider journey={goToJumpJourney}>
-    <JourneyStepRenderer<Ctx, StepId> />
-  </JourneyProvider>
-);
+const bindings = createJourneyBindings(goToJumpJourney);
+
+export const GoToJumpExample = () => {
+  const Provider = bindings.Provider;
+  const StepRenderer = bindings.StepRenderer;
+
+  return (
+    <Provider>
+      <StepRenderer />
+    </Provider>
+  );
+};

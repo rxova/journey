@@ -1,7 +1,7 @@
-import { createJourneyMachine, HISTORY_TARGET, type JourneyDefinition } from "@rxova/journey-core";
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "one" | "two" | "three";
-type Event = "next" | "back";
+type Event = "goToNextStep" | "back";
 type Ctx = Record<string, never>;
 
 export const simpleBackJourney: JourneyDefinition<Ctx, StepId, Event> = {
@@ -13,9 +13,8 @@ export const simpleBackJourney: JourneyDefinition<Ctx, StepId, Event> = {
     three: {}
   },
   transitions: [
-    { from: "one", event: "next", to: "two" },
-    { from: "two", event: "next", to: "three" },
-    { from: "*", event: "back", to: HISTORY_TARGET }
+    { from: "one", event: "goToNextStep", to: "two" },
+    { from: "two", event: "goToNextStep", to: "three" }
   ]
 };
 

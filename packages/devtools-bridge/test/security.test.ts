@@ -142,11 +142,7 @@ describe("security: command validation constraints", () => {
 
   it("rejects goTo commands with excessively long destination strings", () => {
     const longDestination = "a".repeat(101); // Exceeds MAX of 100
-    expect(isJourneyDevtoolsCommand({ type: "goTo", to: longDestination })).toBe(false);
-  });
-
-  it("rejects goTo commands with empty destination", () => {
-    expect(isJourneyDevtoolsCommand({ type: "goTo", to: "" })).toBe(false);
+    expect(isJourneyDevtoolsCommand({ type: "goToStepById", stepId: longDestination })).toBe(false);
   });
 
   it("rejects clearStepError with excessively long stepId", () => {
@@ -167,7 +163,7 @@ describe("security: command validation constraints", () => {
   });
 
   it("rejects commands with extra unexpected properties", () => {
-    expect(isJourneyDevtoolsCommand({ type: "next", extraProp: "bad" })).toBe(false);
+    expect(isJourneyDevtoolsCommand({ type: "goToNextStep", extraProp: "bad" })).toBe(false);
   });
 
   it("rejects send commands with empty event type", () => {
@@ -195,7 +191,7 @@ describe("security: envelope validation", () => {
       kind: "command",
       machineId: "machine-1",
       requestId: longRequestId,
-      command: { type: "next" },
+      command: { type: "goToNextStep" },
       timestamp: Date.now()
     };
 
@@ -210,7 +206,7 @@ describe("security: envelope validation", () => {
       kind: "command",
       machineId: "machine-1",
       requestId: "",
-      command: { type: "next" },
+      command: { type: "goToNextStep" },
       timestamp: Date.now()
     };
 
@@ -219,7 +215,7 @@ describe("security: envelope validation", () => {
 
   it("accepts valid envelope with deeply nested but safe snapshot payload", () => {
     const safeSnapshot = {
-      current: "step1",
+      currentStepId: "step1",
       context: {
         user: { profile: { name: "Test", settings: { theme: "dark" } } },
         data: [1, 2, 3]

@@ -1,65 +1,35 @@
 ---
-title: Snapshot Model
-sidebar_position: 4
+id: snapshot
+title: Snapshot
+sidebar_label: Snapshot
 ---
-
-`machine.getSnapshot()` returns the full observable runtime state.
 
 ## Shape
 
 ```ts
-type JourneySnapshot<TContext, TStepId extends string> = {
-  current: TStepId;
-  context: TContext;
-  history: readonly TStepId[];
-  visited: readonly TStepId[];
-  status: "running" | "complete" | "closed";
-  async: {
-    isLoading: boolean;
-    byStep: Record<
-      TStepId,
-      {
-        phase: "idle" | "evaluating-when" | "running-effect" | "error";
-        eventType: string | null;
-        transitionId: string | null;
-        error: unknown | null;
-      }
-    >;
+type JourneySnapshot<TContext, TStepId extends string, TStepMeta = unknown> = {
+  currentStepId: TStepId;
+  history: {
+    timeline: readonly TStepId[];
+    index: number;
   };
+  context: TContext;
+  visited: Record<TStepId, boolean>;
+  stepMeta: Record<TStepId, TStepMeta>;
+  status: "running" | "complete" | "terminated";
+  async: JourneyAsyncState<TStepId>;
 };
 ```
 
-## Field Semantics
+## Key Invariants
 
-- `current`: active step.
-- `context`: current business state.
-- `history`: stack-like trail of previous steps.
-- `visited`: unique ordered trail of all reached steps.
-- `status`: running or terminal (`complete`/`closed`).
+- `history.timeline.length >= 1` while machine exists.
+- `0 <= history.index < history.timeline.length`.
+- `currentStepId === history.timeline[history.index]`.
+- `visited` is a step-id map (`Record<TStepId, boolean>`) independent from pointer moves.
 
-## Invariants
+## Notes
 
-- `visited` always contains `current`.
-- `history` can be trimmed independently of `visited`.
-- `async.byStep` exists for every declared step.
-
-## Subscription Pattern
-
-```ts
-const unsubscribe = machine.subscribe(() => {
-  const snapshot = machine.getSnapshot();
-  console.log(snapshot.current, snapshot.status);
-});
-
-unsubscribe();
-```
-
-## UI Derivations
-
-Example derived booleans (with known step IDs in your app):
-
-- `isReviewStep = snapshot.current === reviewStepId`
-- `isTerminal = snapshot.status !== "running"`
-- `stepLoading = snapshot.async.byStep[snapshot.current].phase !== "idle"`
-
-Keep derivation in render logic or selectors instead of storing duplicated state.
+- `history.timeline` is the realized navigation path.
+- Pointer moves (`goToPreviousStep`, `goToLastVisitedStep`) do not mutate `visited`.
+- `stepMeta` is runtime metadata per step, updated with `updateStepMetadata`.

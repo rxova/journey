@@ -20,11 +20,11 @@ Use this React page as a compatibility entry point if you came from older links.
 
 ```tsx
 import { useEffect } from "react";
-import { useJourneyMachine } from "@rxova/journey-react";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
+import { signupBindings } from "./journey-bindings";
 
 const JourneyDevtoolsBridge = () => {
-  const machine = useJourneyMachine();
+  const machine = signupBindings.useJourneyMachine();
 
   useEffect(() => {
     return attachJourneyDevtools(machine, { label: "Signup" });

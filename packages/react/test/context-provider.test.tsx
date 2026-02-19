@@ -4,43 +4,46 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 
 import { createJourneyMachine } from "@rxova/journey-core";
-import { JourneyProvider, useJourneyStore } from "../src/context";
-import type { JourneyReactDefinition } from "../src/types";
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
 
 type StepId = "one" | "two";
-
 type Context = { count: number };
+type Event = "goToNextStep" | "back" | "terminateJourney" | "completeJourney";
 
-type Event = "next" | "back" | "close" | "submit";
+const StepOne = () => <div>one</div>;
+const StepTwo = () => <div>two</div>;
 
 const journey: JourneyReactDefinition<Context, StepId, Event> = {
   initial: "one",
   context: { count: 0 },
   steps: {
-    one: { component: () => null },
-    two: { component: () => null }
+    one: { component: StepOne },
+    two: { component: StepTwo }
   },
-  transitions: [{ from: "one", event: "next", to: "two" }]
+  transitions: [{ from: "one", event: "goToNextStep", to: "two" }]
 };
 
-describe("JourneyProvider", () => {
-  it("provides machine and journey values via context", () => {
+const bindings = createJourneyBindings(journey);
+
+describe("bindings.Provider", () => {
+  it("provides machine and journey values via hooks", () => {
     const machine = createJourneyMachine(journey);
 
     const ReadStore = () => {
-      const store = useJourneyStore<Context, StepId, Event>("useJourneyStore");
-      const sameMachine = store.machine === machine ? "same" : "diff";
+      const resolvedMachine = bindings.useJourneyMachine();
+      const snapshot = bindings.useJourneySnapshot();
+      const sameMachine = resolvedMachine === machine ? "same" : "diff";
       return (
         <div data-testid="store">
-          {sameMachine}:{store.journey.initial}
+          {sameMachine}:{snapshot.currentStepId}
         </div>
       );
     };
 
     render(
-      <JourneyProvider journey={journey} machine={machine}>
+      <bindings.Provider machine={machine}>
         <ReadStore />
-      </JourneyProvider>
+      </bindings.Provider>
     );
 
     expect(screen.getByTestId("store").textContent).toBe("same:one");

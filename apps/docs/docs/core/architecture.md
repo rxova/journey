@@ -1,100 +1,44 @@
 ---
-title: Architecture and Design
-sidebar_position: 2
+id: architecture
+title: Architecture
+sidebar_label: Architecture
 ---
 
-This page explains how Journey is designed and why the model scales better than index-based wizards.
+This page explains the runtime model.
 
 ## Core Model
 
-Journey uses a graph model:
+Journey runtime is based on:
 
-- `steps`: named states of the flow.
-- `transitions`: ordered edges between steps.
-- `context`: mutable business state.
-- `history`: navigation memory for deterministic back behavior.
+- `steps`: step registry.
+- `transitions`: ordered rules (first-match-wins).
+- `snapshot`: immutable state projection.
 
-The runtime chooses the **first matching transition** for each event.
+Snapshot navigation uses a timeline pointer:
 
-## Why Graphs Instead of Step Indexes
+- `history.timeline`: linear realized path.
+- `history.index`: current pointer.
+- `currentStepId = history.timeline[history.index]`.
 
-Index-driven steppers are easy at first (`currentStep++`), but become brittle when you need:
+## Why Timeline + Pointer
 
-- conditional skips
-- branch-specific back behavior
-- close confirmation gates
-- async validation before navigation
-- deep links or programmatic jumps
+- Current step is always represented in the path.
+- Moving backward/forward is deterministic.
+- Forward-after-back can truncate tail safely before appending new path.
 
-Graph transitions keep all navigation rules in one place instead of scattering them across UI handlers.
+## Back Semantics
 
-## Package Boundaries
+`send({ type: "back" })` behavior:
 
-- `@rxova/journey-core`: headless runtime (framework-agnostic).
-- `@rxova/journey-react`: React bindings (`JourneyProvider`, hooks, renderer).
+1. Try explicit matching back transitions.
+2. If none match, fallback to `goToPreviousStep(1)`.
 
-Recommended boundary:
+## Separation of Concerns
 
-- Business flow rules live in Core definitions.
-- Components call API helpers (`next`, `back`, `submit`, `goTo`).
+- `@rxova/journey-core`: state model, transitions, async guards/effects, persistence, observability.
+- `@rxova/journey-react`: bindings API for Provider/hooks/renderer.
+- `@rxova/journey-devtools-bridge`: runtime bridge for devtools protocol.
 
-## Runtime Guarantees
+## Observability
 
-- Event processing is queued and deterministic.
-- Transition matching is ordered and predictable.
-- Async failures are surfaced in `send(...)` and tracked in step async state.
-- Terminal states (`COMPLETE`/`CLOSE`) lock transitions until `reset()`.
-
-## Comparison Matrix
-
-| Area            | Journey                                         | Typical index-based wizards        |
-| --------------- | ----------------------------------------------- | ---------------------------------- |
-| Flow model      | Graph (`steps` + ordered `transitions`)         | Step index + imperative branching  |
-| Branching/skip  | First-class via `when` guards                   | Usually component-level `if` logic |
-| Back behavior   | Deterministic via `HISTORY_TARGET`              | Manual history/index bookkeeping   |
-| Async lifecycle | Built-in async phases and step-level errors     | Usually ad-hoc loading/error flags |
-| Durability      | Optional persistence + migration hooks          | Custom storage logic per project   |
-| Framework split | Headless core + React bindings                  | Often UI-coupled runtime           |
-| Type safety     | Strong typing for events/steps/context/payloads | Frequently looser typing           |
-| Queue semantics | Serialized sends with failure resilience        | Race handling left to consumers    |
-
-## Lifecycle Surface
-
-The machine exposes explicit async/runtime state:
-
-- `snapshot.async.isLoading`
-- `snapshot.async.byStep[stepId].phase`
-- `snapshot.async.byStep[stepId].error`
-
-This enables reliable UX for loading/error views without ad-hoc flags.
-
-## Durability and Recovery
-
-Journey supports:
-
-- bounded history with overflow callbacks
-- optional persistence adapters
-- versioned migrations
-- configurable reset persistence behavior
-
-See:
-
-- `/docs/core/history`
-- `/docs/core/persistence`
-
-## Recommended Build Workflow
-
-1. Model transitions in Core.
-2. Write tests around transition behavior.
-3. Integrate with React using provider/hooks.
-4. Add persistence/history constraints after behavior is stable.
-
-## Tradeoffs
-
-Journey is intentionally focused on stateful flow orchestration. It is not:
-
-- a URL router
-- a full workflow BPM engine
-- a visual flow editor
-
-It solves step-based product flows where deterministic navigation and typed context matter.
+`subscribeEvent` exposes typed lifecycle telemetry without coupling UI code to internals.

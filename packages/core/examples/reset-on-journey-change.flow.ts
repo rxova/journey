@@ -1,11 +1,7 @@
-import {
-  createJourneyMachine,
-  JOURNEY_TERMINAL,
-  type JourneyDefinition
-} from "@rxova/journey-core";
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "review";
-type Event = "next" | "submit";
+type Event = "goToNextStep" | "completeJourney";
 type Ctx = { label: string };
 
 export const buildResetJourney = (
@@ -19,8 +15,8 @@ export const buildResetJourney = (
     review: {}
   },
   transitions: [
-    { from: "start", event: "next", to: "review" },
-    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
+    { from: "start", event: "goToNextStep", to: "review" },
+    { from: "review", event: "completeJourney" }
   ]
 });
 

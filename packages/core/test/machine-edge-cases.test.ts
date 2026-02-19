@@ -1,0 +1,254 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  createJourneyMachine,
+  type JourneyDefaultEventType,
+  type JourneyDefinition,
+  type JourneyObservationEvent
+} from "@rxova/journey-core";
+
+type StepId = "start" | "middle";
+type Event = JourneyDefaultEventType;
+type Context = { value: number };
+
+const createBaseJourney = (): JourneyDefinition<Context, StepId, Event> => ({
+  initial: "start",
+  context: { value: 0 },
+  steps: {
+    start: { meta: { title: "Start" } },
+    middle: { meta: { title: "Middle" } }
+  },
+  transitions: [{ id: "start-next", from: "start", event: "goToNextStep", to: "middle" }]
+});
+
+const deferred = <T>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+};
+
+const flushAsync = async () => {
+  await new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+};
+
+describe("machine edge cases", () => {
+  it("tracks async guard loading state and clears it after success", async () => {
+    const guard = deferred<boolean>();
+    const machine = createJourneyMachine({
+      ...createBaseJourney(),
+      transitions: [
+        {
+          id: "guarded-next",
+          from: "start",
+          event: "goToNextStep",
+          to: "middle",
+          when: async () => guard.promise
+        }
+      ]
+    });
+
+    const sendPromise = machine.send({ type: "goToNextStep" });
+    await flushAsync();
+
+    const loadingSnapshot = machine.getSnapshot();
+    expect(loadingSnapshot.async.byStep.start.phase).toBe("evaluating-when");
+    expect(loadingSnapshot.async.byStep.start.eventType).toBe("goToNextStep");
+    expect(loadingSnapshot.async.byStep.start.transitionId).toBe("guarded-next");
+    expect(loadingSnapshot.async.isLoading).toBe(true);
+
+    guard.resolve(true);
+    await sendPromise;
+
+    const finalSnapshot = machine.getSnapshot();
+    expect(finalSnapshot.currentStepId).toBe("middle");
+    expect(finalSnapshot.async.byStep.start.phase).toBe("idle");
+    expect(finalSnapshot.async.byStep.start.transitionId).toBeNull();
+    expect(finalSnapshot.async.isLoading).toBe(false);
+  });
+
+  it("reports transition.error when an async guard rejects", async () => {
+    const machine = createJourneyMachine({
+      ...createBaseJourney(),
+      transitions: [
+        {
+          id: "guard-reject",
+          from: "start",
+          event: "goToNextStep",
+          to: "middle",
+          when: async () => {
+            throw new Error("guard failed");
+          }
+        }
+      ]
+    });
+    const events: JourneyObservationEvent<StepId, Event>[] = [];
+    machine.subscribeEvent((event) => {
+      events.push(event);
+    });
+
+    await expect(machine.send({ type: "goToNextStep" })).rejects.toThrow("guard failed");
+
+    const transitionError = events.find((event) => event.type === "transition.error");
+    expect(transitionError?.type).toBe("transition.error");
+    if (transitionError?.type === "transition.error") {
+      expect(transitionError.transitionId).toBeNull();
+      expect(transitionError.eventType).toBe("goToNextStep");
+    }
+
+    const snapshot = machine.getSnapshot();
+    expect(snapshot.async.byStep.start.phase).toBe("error");
+    expect(snapshot.async.byStep.start.transitionId).toBeNull();
+    expect((snapshot.async.byStep.start.error as Error).message).toBe("guard failed");
+  });
+
+  it("reports transition.error when an async effect rejects", async () => {
+    const effectGate = deferred<Context>();
+    const machine = createJourneyMachine({
+      ...createBaseJourney(),
+      transitions: [
+        {
+          id: "effect-reject",
+          from: "start",
+          event: "goToNextStep",
+          to: "middle",
+          effect: async () => effectGate.promise
+        }
+      ]
+    });
+    const events: JourneyObservationEvent<StepId, Event>[] = [];
+    machine.subscribeEvent((event) => {
+      events.push(event);
+    });
+
+    const sendPromise = machine.send({ type: "goToNextStep" });
+    await flushAsync();
+    expect(machine.getSnapshot().async.byStep.start.phase).toBe("running-effect");
+    effectGate.reject(new Error("effect failed"));
+
+    await expect(sendPromise).rejects.toThrow("effect failed");
+
+    const transitionError = events.find((event) => event.type === "transition.error");
+    expect(transitionError?.type).toBe("transition.error");
+    if (transitionError?.type === "transition.error") {
+      expect(transitionError.transitionId).toBe("effect-reject");
+    }
+
+    const snapshot = machine.getSnapshot();
+    expect(snapshot.async.byStep.start.phase).toBe("error");
+    expect(snapshot.async.byStep.start.transitionId).toBe("effect-reject");
+  });
+
+  it("recovers missing async step state when an async guard rejects", async () => {
+    const machine = createJourneyMachine({
+      ...createBaseJourney(),
+      transitions: [
+        {
+          from: "start",
+          event: "goToNextStep",
+          to: "middle",
+          when: async () => {
+            throw new Error("guard failed");
+          }
+        }
+      ]
+    });
+
+    const leakedSnapshot = machine.getSnapshot() as {
+      async: { byStep: Record<string, unknown> };
+    };
+    delete leakedSnapshot.async.byStep.start;
+
+    await expect(machine.send({ type: "goToNextStep" })).rejects.toThrow("guard failed");
+    expect(machine.getSnapshot().async.byStep.start.phase).toBe("error");
+  });
+
+  it("reports null transitionId when an async effect rejects without transition id", async () => {
+    const machine = createJourneyMachine({
+      ...createBaseJourney(),
+      transitions: [
+        {
+          from: "start",
+          event: "goToNextStep",
+          to: "middle",
+          effect: async () => {
+            throw new Error("effect failed");
+          }
+        }
+      ]
+    });
+    const events: JourneyObservationEvent<StepId, Event>[] = [];
+    machine.subscribeEvent((event) => {
+      events.push(event);
+    });
+
+    await expect(machine.send({ type: "goToNextStep" })).rejects.toThrow("effect failed");
+
+    const transitionError = events.find((event) => event.type === "transition.error");
+    expect(transitionError?.type).toBe("transition.error");
+    if (transitionError?.type === "transition.error") {
+      expect(transitionError.transitionId).toBeNull();
+    }
+  });
+
+  it("no-ops metadata and clearStepError calls for unknown or unchanged steps", () => {
+    const machine = createJourneyMachine(createBaseJourney());
+    const before = machine.getSnapshot();
+    const observed: string[] = [];
+    machine.subscribeEvent((event) => {
+      observed.push(event.type);
+    });
+
+    const unknownMetadata = machine.updateStepMetadata("missing" as StepId, () => ({
+      title: "ignored"
+    }));
+    const unchangedMetadata = machine.updateStepMetadata("start", (meta) => meta);
+    const unknownErrorClear = machine.clearStepError("missing" as StepId);
+
+    expect(unknownMetadata).toBe(before);
+    expect(unchangedMetadata).toBe(before);
+    expect(unknownErrorClear).toBe(before);
+    expect(observed).toEqual([]);
+  });
+
+  it("returns non-transitioning previous navigation result for corrupted negative index", async () => {
+    const machine = createJourneyMachine(createBaseJourney());
+    const leakedSnapshot = machine.getSnapshot() as { history: { index: number } };
+    leakedSnapshot.history.index = -1;
+
+    const result = await machine.goToPreviousStep(1);
+    expect(result.transitioned).toBe(false);
+    expect(result.snapshot).toBe(leakedSnapshot);
+  });
+
+  it("clearStepError resets current step async state from error to idle", async () => {
+    const machine = createJourneyMachine({
+      ...createBaseJourney(),
+      transitions: [
+        {
+          id: "guard-reject",
+          from: "start",
+          event: "goToNextStep",
+          to: "middle",
+          when: async () => {
+            throw new Error("guard failed");
+          }
+        }
+      ]
+    });
+
+    await expect(machine.send({ type: "goToNextStep" })).rejects.toThrow("guard failed");
+    expect(machine.getSnapshot().async.byStep.start.phase).toBe("error");
+
+    const cleared = machine.clearStepError();
+    expect(cleared.async.byStep.start.phase).toBe("idle");
+    expect(cleared.async.byStep.start.eventType).toBeNull();
+    expect(cleared.async.byStep.start.transitionId).toBeNull();
+    expect(cleared.async.byStep.start.error).toBeNull();
+  });
+});

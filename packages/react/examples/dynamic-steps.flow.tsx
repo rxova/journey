@@ -1,34 +1,28 @@
 import React from "react";
 
-import {
-  JOURNEY_TERMINAL,
-  type JourneyReactDefinition,
-  useJourney,
-  JourneyProvider,
-  JourneyStepRenderer
-} from "@rxova/journey-react";
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
 
 type StepId = string;
 type Ctx = { includeSurvey: boolean };
 
 const Start = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.next()}>Start</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Start</button>;
 };
 
 const Details = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.next()}>Continue</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Continue</button>;
 };
 
 const Survey = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.next()}>Finish survey</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Finish survey</button>;
 };
 
 const Review = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.submit()}>Submit</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.completeJourney()}>Submit</button>;
 };
 
 const buildJourney = (includeSurvey: boolean): JourneyReactDefinition<Ctx, StepId> => ({
@@ -48,19 +42,23 @@ const buildJourney = (includeSurvey: boolean): JourneyReactDefinition<Ctx, StepI
       },
   transitions: includeSurvey
     ? [
-        { from: "start", event: "next", to: "details" },
-        { from: "details", event: "next", to: "survey" },
-        { from: "survey", event: "next", to: "review" },
-        { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
+        { from: "start", event: "goToNextStep", to: "details" },
+        { from: "details", event: "goToNextStep", to: "survey" },
+        { from: "survey", event: "goToNextStep", to: "review" },
+        { from: "review", event: "completeJourney" }
       ]
     : [
-        { from: "start", event: "next", to: "details" },
-        { from: "details", event: "next", to: "review" },
-        { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
+        { from: "start", event: "goToNextStep", to: "details" },
+        { from: "details", event: "goToNextStep", to: "review" },
+        { from: "review", event: "completeJourney" }
       ]
 });
 
+const bindings = createJourneyBindings(buildJourney(false));
+
 export const DynamicStepsExample = () => {
+  const Provider = bindings.Provider;
+  const StepRenderer = bindings.StepRenderer;
   const [includeSurvey, setIncludeSurvey] = React.useState(false);
 
   const journey = React.useMemo(() => buildJourney(includeSurvey), [includeSurvey]);
@@ -74,9 +72,9 @@ export const DynamicStepsExample = () => {
         Dynamic step is {includeSurvey ? "enabled" : "disabled"}. Toggling rebuilds the journey
         graph; if you want a reset, pass resetOnJourneyChange or remount the provider.
       </p>
-      <JourneyProvider journey={journey}>
-        <JourneyStepRenderer<Ctx, StepId> />
-      </JourneyProvider>
+      <Provider journey={journey}>
+        <StepRenderer />
+      </Provider>
     </div>
   );
 };

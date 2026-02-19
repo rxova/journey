@@ -1,39 +1,32 @@
 import React from "react";
 
-import {
-  HISTORY_TARGET,
-  JOURNEY_TERMINAL,
-  type JourneyReactDefinition,
-  useJourney,
-  JourneyProvider,
-  JourneyStepRenderer
-} from "@rxova/journey-react";
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
 
 type StepId = "invitees" | "preferences" | "budget" | "confirmPlan";
-type Event = "next" | "back" | "close" | "submit";
+type Event = "goToNextStep" | "back" | "terminateJourney" | "completeJourney";
 
 type GroupTripContext = {
   needsBudgetReview: boolean;
 };
 
 const Invitees = () => {
-  const { api } = useJourney<GroupTripContext, StepId, Event>();
-  return <button onClick={() => api.next()}>Invite travelers</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Invite travelers</button>;
 };
 
 const Preferences = () => {
-  const { api } = useJourney<GroupTripContext, StepId, Event>();
-  return <button onClick={() => api.next()}>Save preferences</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Save preferences</button>;
 };
 
 const Budget = () => {
-  const { api } = useJourney<GroupTripContext, StepId, Event>();
-  return <button onClick={() => api.next()}>Set budget</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Set budget</button>;
 };
 
 const ConfirmPlan = () => {
-  const { api } = useJourney<GroupTripContext, StepId, Event>();
-  return <button onClick={() => api.submit()}>Confirm plan</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.completeJourney()}>Confirm plan</button>;
 };
 
 export const groupTripJourney: JourneyReactDefinition<GroupTripContext, StepId, Event> = {
@@ -48,28 +41,34 @@ export const groupTripJourney: JourneyReactDefinition<GroupTripContext, StepId, 
     confirmPlan: { component: ConfirmPlan }
   },
   transitions: [
-    { from: "invitees", event: "next", to: "preferences" },
+    { from: "invitees", event: "goToNextStep", to: "preferences" },
     {
       from: "preferences",
-      event: "next",
+      event: "goToNextStep",
       to: "budget",
       when: ({ context }) => context.needsBudgetReview
     },
     {
       from: "preferences",
-      event: "next",
+      event: "goToNextStep",
       to: "confirmPlan",
       when: ({ context }) => !context.needsBudgetReview
     },
-    { from: "budget", event: "next", to: "confirmPlan" },
-    { from: "*", event: "back", to: HISTORY_TARGET },
-    { from: "confirmPlan", event: "submit", to: JOURNEY_TERMINAL.COMPLETE },
-    { from: "*", event: "close", to: JOURNEY_TERMINAL.CLOSE }
+    { from: "budget", event: "goToNextStep", to: "confirmPlan" },
+    { from: "confirmPlan", event: "completeJourney" },
+    { from: "*", event: "terminateJourney" }
   ]
 };
 
-export const GroupTripExample = () => (
-  <JourneyProvider journey={groupTripJourney}>
-    <JourneyStepRenderer<GroupTripContext, StepId, Event> />
-  </JourneyProvider>
-);
+const bindings = createJourneyBindings(groupTripJourney);
+
+export const GroupTripExample = () => {
+  const Provider = bindings.Provider;
+  const StepRenderer = bindings.StepRenderer;
+
+  return (
+    <Provider>
+      <StepRenderer />
+    </Provider>
+  );
+};

@@ -32,6 +32,13 @@ describe("protocol guard edge coverage", () => {
   it("rejects malformed command variants", () => {
     expect(isJourneyDevtoolsCommand({ type: "send", event: null })).toBe(false);
     expect(isJourneyDevtoolsCommand({ type: "clearStepError", stepId: 123 })).toBe(false);
+    expect(
+      isJourneyDevtoolsCommand({
+        type: "updateStepMetadata",
+        stepId: "review",
+        metadata: { bad: () => undefined }
+      })
+    ).toBe(false);
     expect(isJourneyDevtoolsCommand({ type: "unknown" })).toBe(false);
   });
 
@@ -84,7 +91,7 @@ describe("protocol guard edge coverage", () => {
         ...base,
         kind: "command",
         requestId: "r1",
-        command: { type: "next" }
+        command: { type: "goToNextStep" }
       })
     ).toBe(true);
 
@@ -93,7 +100,7 @@ describe("protocol guard edge coverage", () => {
         ...base,
         kind: "snapshot",
         requestId: "r1",
-        command: { type: "next" }
+        command: { type: "goToNextStep" }
       })
     ).toBe(false);
 

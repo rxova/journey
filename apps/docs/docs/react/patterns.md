@@ -1,58 +1,37 @@
 ---
+id: patterns
 title: React Patterns
-sidebar_position: 4
+sidebar_label: Patterns
 ---
 
-Production patterns for keeping flow logic maintainable.
+## Create Bindings Once Per Journey
 
-## Keep Journey Definitions Stable
-
-Define `journey` outside components or memoize it.
-
-```tsx
-const journey = useMemo(() => createJourneyDefinition(flags), [flags]);
+```ts
+const checkoutBindings = createJourneyBindings(checkoutJourney);
 ```
 
-Avoid accidental machine recreation unless intentional.
+Keep bindings at module scope for stable references.
 
-## Keep Components Thin
-
-Move branching/guard logic into transitions.
-
-- Good: `when` decides route
-- Bad: component-level `if` chains that duplicate navigation rules
-
-## Async UI Pattern
+## Read + Actions Pattern
 
 ```tsx
-const { snapshot, api } = useJourney<Ctx, StepId>();
-const current = snapshot.current;
-const asyncState = snapshot.async.byStep[current];
-
-if (asyncState.phase === "running-effect") return <Spinner />;
-if (asyncState.phase === "error") {
-  return <RetryPanel onDismiss={() => api.clearStepError(current)} />;
-}
+const snapshot = checkoutBindings.useJourneySnapshot();
+const api = checkoutBindings.useJourneyApi();
 ```
 
-## Custom Events
+- read current UI state from `snapshot`
+- perform actions through `api`
 
-Use custom events for domain intent:
+## Split Render and Controls
 
-```tsx
-await api.send({ type: "retry", payload: { attempt: 2 } });
-```
+- render current step with `checkoutBindings.StepRenderer`
+- keep global controls (`goToNextStep`/`goToPreviousStep`/`terminateJourney`) in separate components using `useJourneyApi`
 
-Prefer domain language over overloading `next` for everything.
+## External Machine Injection
 
-## External Machine Ownership
+Use `Provider` with `machine` prop when you need shared ownership outside React.
 
-If app shell owns lifecycle, pass `machine` prop to provider.
+## Journey Swap Strategy
 
-This is useful for integration tests, multi-root apps, and dependency-injected app architecture.
-
-## Analytics Pattern
-
-Subscribe once near app boundary and emit transition events from snapshot changes.
-
-Avoid embedding analytics dispatch logic in every step component.
+- default: preserve internal machine when `journey` prop changes
+- set `resetOnJourneyChange` to `true` when journey updates should reinitialize state

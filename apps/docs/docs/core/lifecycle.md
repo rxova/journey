@@ -1,62 +1,57 @@
 ---
-title: Lifecycle and Transitions
-sidebar_position: 5
+id: lifecycle
+title: Lifecycle
+sidebar_label: Lifecycle
 ---
 
-This page describes the transition pipeline from event dispatch to settled state.
+## Machine Status
 
-## Event Pipeline
+- `running`
+- `complete`
+- `terminated`
 
-For each `send(event)` call:
+Pointer navigation and event transitions are blocked when status is terminal (`complete`/`terminated`) until `resetMachine()`.
 
-1. Event is queued (serialized execution).
-2. Candidate transitions are scanned in array order.
-3. First transition whose `from` + `event` match is selected.
-4. `when` executes (if present).
-5. `effect` executes (if present).
-6. Snapshot is committed and subscribers are notified.
+## Startup
 
-## Selection Rules
+Initial snapshot:
 
-- First match wins.
-- Guards (`when`) can reject movement (`false`).
-- No match returns `{ transitioned: false }`.
+- `timeline = [initial]`
+- `index = 0`
+- `currentStepId = initial`
+- `visited = { [initial]: true }`
+- `status = "running"`
 
-## Terminal Lifecycle
+## Transition Lifecycle Events
 
-When target is terminal:
+Use `subscribeEvent` to observe runtime lifecycle:
 
-- `JOURNEY_TERMINAL.COMPLETE` => `status = "complete"`
-- `JOURNEY_TERMINAL.CLOSE` => `status = "closed"`
+- `transition.start`
+- `transition.success`
+- `transition.error`
+- `step.exit`
+- `step.enter`
+- `journey.complete`
+- `journey.close`
 
-After terminal status, `send(...)` does not transition until `reset()`.
+## Event Order And Effects
 
-## Reset Lifecycle
+Successful step-to-step transitions emit in this order:
 
-`reset()` restores:
+1. `transition.start`
+2. `step.exit` (only if target step differs)
+3. `transition.success`
+4. `step.enter` (only if target step differs)
 
-- `current = initial`
-- `context = initial context`
-- `history = []`
-- `visited = [initial]`
-- all async phases to `idle`
+When a transition has `effect`, it runs after `transition.start` and before `step.exit`/`transition.success`.
 
-## Error Lifecycle
+If `effect` throws/rejects, runtime emits `transition.error` and does not commit step navigation.
 
-If `when`/`effect` throws:
+Navigation APIs emit:
 
-- `send(...)` rejects
-- current step async phase becomes `error`
-- captured error is exposed at `snapshot.async.byStep[current].error`
+- `navigation.previous`
+- `navigation.lastVisited`
 
-Recovery:
+Metadata updates emit:
 
-```ts
-machine.clearStepError();
-```
-
-## Queue Resilience
-
-A failed event does not poison the queue; future sends continue processing.
-
-This is critical for UX flows with intermittent network/validation failures.
+- `metadata.updated`

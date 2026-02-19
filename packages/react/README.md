@@ -1,33 +1,6 @@
 # @rxova/journey-react
 
-<p>
-  <a href="https://www.npmjs.com/package/@rxova/journey-react">
-    <img src="https://img.shields.io/badge/npm-%40rxova%2Fjourney--react-CB3837?logo=npm&logoColor=white" alt="npm package @rxova/journey-react" />
-  </a>
-  <a href="https://rxova.org/docs/react/quickstart">
-    <img src="https://img.shields.io/badge/docs-react-0f8f6a" alt="React docs" />
-  </a>
-  <a href="https://github.com/rxova/journey/actions/workflows/ci.yml">
-    <img src="https://github.com/rxova/journey/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" />
-  </a>
-  <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/coverage%20(react)-100%25-brightgreen" alt="React coverage" />
-  <a href="https://www.npmjs.com/package/@rxova/journey-react">
-    <img src="https://img.shields.io/npm/v/@rxova/journey-react" alt="npm version" />
-  </a>
-  <a href="https://www.npmjs.com/package/@rxova/journey-react">
-    <img src="https://img.shields.io/npm/dm/@rxova/journey-react" alt="npm downloads" />
-  </a>
-  <a href="https://bundlephobia.com/package/@rxova/journey-react">
-    <img src="https://img.shields.io/bundlephobia/minzip/%40rxova%2Fjourney-react" alt="Bundlephobia" />
-  </a>
-</p>
-
-React bindings for Journey (`JourneyProvider`, hooks, renderer).
-
-Use this package when you want Journey flow logic directly inside React components.
-
-`[OVERVIEW](https://rxova.org/docs/react/overview) | [QUICKSTART](https://rxova.org/docs/react/quickstart) | [PROVIDER + HOOKS](https://rxova.org/docs/react/provider-and-hooks) | [PATTERNS](https://rxova.org/docs/react/patterns) | [ASYNC UI](https://rxova.org/docs/react/async-ui) | [EXAMPLES](https://rxova.org/docs/react/examples) | [DEVTOOL](https://rxova.org/docs/devtool/overview)`
+Typed React bindings for Rxova Journey.
 
 ## Install
 
@@ -35,40 +8,38 @@ Use this package when you want Journey flow logic directly inside React componen
 npm i @rxova/journey-react
 ```
 
-## What You Get
+## API Style
 
-- `JourneyProvider` to scope one flow instance.
-- `useJourney()` hooks to read state and send actions.
-- `JourneyStepRenderer` to render the active step component.
-- Full access to the underlying machine when needed.
+`@rxova/journey-react` is bindings-first:
+
+- `createJourneyBindings(journey)` returns a typed bundle:
+- `Provider`
+- `StepRenderer`
+- `useJourneyApi`, `useJourneySnapshot`, `useJourneyMachine`
+
+No per-hook generic arguments are needed at callsites.
 
 ## Quickstart
 
 ```tsx
-import {
-  JourneyProvider,
-  JourneyStepRenderer,
-  useJourney,
-  JOURNEY_TERMINAL,
-  type JourneyReactDefinition
-} from "@rxova/journey-react";
+import React from "react";
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
 
 type StepId = "start" | "review";
-
 type Ctx = { name: string };
 
-// 1) Step components call the Journey API.
+let bindings: ReturnType<typeof createJourneyBindings<Ctx, StepId>>;
+
 const Start = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => void api.next()}>Next</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => void api.goToNextStep()}>Next</button>;
 };
 
 const Review = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => void api.submit()}>Submit</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => void api.completeJourney()}>Submit</button>;
 };
 
-// 2) Journey definition stays declarative and typed.
 const journey: JourneyReactDefinition<Ctx, StepId> = {
   initial: "start",
   context: { name: "" },
@@ -77,31 +48,41 @@ const journey: JourneyReactDefinition<Ctx, StepId> = {
     review: { component: Review }
   },
   transitions: [
-    { from: "start", event: "next", to: "review" },
-    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
+    { from: "start", event: "goToNextStep", to: "review" },
+    { from: "review", event: "completeJourney" }
   ]
 };
 
-// 3) Provider + renderer handle active-step rendering.
-export const App = () => (
-  <JourneyProvider journey={journey}>
-    <JourneyStepRenderer<Ctx, StepId> />
-  </JourneyProvider>
-);
-```
+bindings = createJourneyBindings(journey);
 
-## Machine Access
+export const App = () => {
+  const Provider = bindings.Provider;
+  const StepRenderer = bindings.StepRenderer;
 
-```tsx
-import { useJourneyMachine } from "@rxova/journey-react";
-
-const DebugBridge = () => {
-  // Useful for diagnostics, adapters, or custom dev tooling.
-  const machine = useJourneyMachine();
-  return <pre>{machine.getSnapshot().current}</pre>;
+  return (
+    <Provider>
+      <StepRenderer />
+    </Provider>
+  );
 };
 ```
 
-## Coverage Notes
+## Journey API Helpers
 
-Coverage badge is package-specific (`packages/react/test` against `packages/react/src`), not monorepo-wide.
+From `bindings.useJourneyApi()`:
+
+- `goToNextStep`
+- `terminateJourney`
+- `completeJourney`
+- `send`
+- `goToPreviousStep(steps?)`
+- `goToLastVisitedStep()`
+- `updateContext`
+- `updateStepMetadata`
+- `clearStepError`, `resetJourney`
+
+Imperative jump is available through `send`:
+
+```ts
+await api.send({ type: "goToStepById", stepId: "review" });
+```

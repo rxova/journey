@@ -1,22 +1,17 @@
 import React from "react";
 
-import {
-  type JourneyReactDefinition,
-  useJourney,
-  JourneyProvider,
-  JourneyStepRenderer
-} from "@rxova/journey-react";
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
 
 type StepId = "idle" | "failed" | "done";
 type CustomEvent = "retry";
 type Ctx = { tries: number };
 
 const Idle = () => {
-  const { api } = useJourney<Ctx, StepId, CustomEvent>();
+  const api = bindings.useJourneyApi();
   return <button onClick={() => api.send({ type: "retry" })}>Retry</button>;
 };
 const Failed = () => {
-  const { api } = useJourney<Ctx, StepId, CustomEvent>();
+  const api = bindings.useJourneyApi();
   return <button onClick={() => api.send({ type: "retry" })}>Retry</button>;
 };
 const Done = () => <div>Done</div>;
@@ -45,8 +40,15 @@ export const customEventJourney: JourneyReactDefinition<Ctx, StepId, CustomEvent
   ]
 };
 
-export const CustomEventExample = () => (
-  <JourneyProvider journey={customEventJourney}>
-    <JourneyStepRenderer<Ctx, StepId, CustomEvent> />
-  </JourneyProvider>
-);
+const bindings = createJourneyBindings(customEventJourney);
+
+export const CustomEventExample = () => {
+  const Provider = bindings.Provider;
+  const StepRenderer = bindings.StepRenderer;
+
+  return (
+    <Provider>
+      <StepRenderer />
+    </Provider>
+  );
+};

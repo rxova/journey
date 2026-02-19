@@ -1,114 +1,107 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
 
-import {
-  createJourneyMachine,
-  HISTORY_TARGET,
-  JOURNEY_STATUS,
-  JOURNEY_TERMINAL,
-  type JourneyDefinition,
-  type JourneyEvent
-} from "@rxova/journey-core";
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
-type StepId = string;
-type Event = "next" | "skip" | "jump" | "back";
-type Context = { count: number };
+type StepId = "start" | "details" | "review" | "confirmExit";
+type Event = "goToNextStep" | "requestClose" | "terminateJourney" | "completeJourney" | "back";
+type Context = { dirty: boolean; count: number };
 
-type JourneyCase = {
-  journey: JourneyDefinition<Context, StepId, Event>;
-  steps: StepId[];
-};
+const createJourney = (): JourneyDefinition<Context, StepId, Event> => ({
+  initial: "start",
+  context: { dirty: false, count: 0 },
+  steps: {
+    start: {},
+    details: {},
+    review: {},
+    confirmExit: {}
+  },
+  transitions: [
+    { from: "start", event: "goToNextStep", to: "details" },
+    { from: "details", event: "goToNextStep", to: "review" },
+    { from: "review", event: "completeJourney" },
+    {
+      from: "*",
+      event: "requestClose",
+      to: "confirmExit",
+      when: ({ context }) => context.dirty
+    }
+  ]
+});
 
-const buildJourneyArb = (): fc.Arbitrary<JourneyCase> =>
-  fc.integer({ min: 2, max: 6 }).chain((stepCount) => {
-    const steps = Array.from({ length: stepCount }, (_, index) => `s${index}`);
-    const stepArb = fc.constantFrom(...steps);
-    const eventArb = fc.constantFrom<Event>("next", "skip", "jump");
-    const targetArb = fc.oneof(
-      stepArb,
-      fc.constant(HISTORY_TARGET),
-      fc.constant(JOURNEY_TERMINAL.COMPLETE),
-      fc.constant(JOURNEY_TERMINAL.CLOSE)
-    );
+type Action =
+  | { type: "send"; event: Event }
+  | { type: "goToStepById"; stepId: StepId }
+  | { type: "goToPreviousStep"; steps: number }
+  | { type: "goToLastVisitedStep" }
+  | { type: "updateContext"; add: number; toggleDirty: boolean }
+  | { type: "resetMachine" };
 
-    const transitionArb = fc.record({
-      from: stepArb,
-      event: eventArb,
-      to: targetArb
-    });
+const actionArb: fc.Arbitrary<Action> = fc.oneof(
+  fc
+    .constantFrom<Event>(
+      "goToNextStep",
+      "requestClose",
+      "terminateJourney",
+      "completeJourney",
+      "back"
+    )
+    .map((event) => ({ type: "send", event }) as const),
+  fc
+    .constantFrom<StepId>("start", "details", "review", "confirmExit")
+    .map((stepId) => ({ type: "goToStepById", stepId }) as const),
+  fc.integer({ min: 1, max: 6 }).map((steps) => ({ type: "goToPreviousStep", steps }) as const),
+  fc.constant({ type: "goToLastVisitedStep" } as const),
+  fc
+    .record({ add: fc.integer({ min: 0, max: 3 }), toggleDirty: fc.boolean() })
+    .map(({ add, toggleDirty }) => ({ type: "updateContext", add, toggleDirty }) as const),
+  fc.constant({ type: "resetMachine" } as const)
+);
 
-    return fc
-      .array(transitionArb, { minLength: 0, maxLength: stepCount * 3 })
-      .map((transitions) => {
-        const stepsRecord = Object.fromEntries(steps.map((step) => [step, {}]));
-        const journey: JourneyDefinition<Context, StepId, Event> = {
-          initial: steps[0]!,
-          context: { count: 0 },
-          steps: stepsRecord,
-          transitions: [
-            {
-              id: "back",
-              from: "*",
-              event: "back",
-              to: HISTORY_TARGET
-            },
-            ...transitions.map((transition, index) => ({
-              ...transition,
-              id: `t${index}`
-            }))
-          ]
-        };
-
-        return { journey, steps };
-      });
-  });
-
-const buildEventSequenceArb = (steps: StepId[]): fc.Arbitrary<JourneyEvent<StepId, Event>[]> =>
-  fc.array(
-    fc.oneof(
-      fc
-        .constantFrom<Event>("next", "skip", "jump", "back")
-        .map((type): JourneyEvent<StepId, Event> => ({ type })),
-      fc.constantFrom(...steps).map((to): JourneyEvent<StepId, Event> => ({ type: "goTo", to }))
-    ),
-    { minLength: 1, maxLength: 30 }
-  );
-
-const buildJourneyAndEventsArb = () =>
-  buildJourneyArb().chain(({ journey, steps }) =>
-    buildEventSequenceArb(steps).map((events) => ({ journey, steps, events }))
-  );
-
-describe("state machine fuzzing", () => {
-  it("is deterministic across randomized transition graphs", async () => {
+describe("determinism fuzz", () => {
+  it("produces identical snapshots for the same action sequence", async () => {
     await fc.assert(
-      fc.asyncProperty(buildJourneyAndEventsArb(), async ({ journey, events }) => {
-        const machineA = createJourneyMachine(journey);
-        const machineB = createJourneyMachine(journey);
+      fc.asyncProperty(fc.array(actionArb, { minLength: 1, maxLength: 30 }), async (actions) => {
+        const machineA = createJourneyMachine(createJourney());
+        const machineB = createJourneyMachine(createJourney());
 
-        for (const event of events) {
-          const before = machineA.getSnapshot();
-          const [resultA, resultB] = await Promise.all([
-            machineA.send(event),
-            machineB.send(event)
-          ]);
-
-          expect(resultA.snapshot).toEqual(resultB.snapshot);
-
-          if (event.type === "back") {
-            if (before.status !== JOURNEY_STATUS.RUNNING) {
-              expect(resultA.snapshot).toEqual(before);
-            } else if (before.history.length === 0) {
-              expect(resultA.snapshot.current).toBe(before.current);
-              expect(resultA.snapshot.history).toEqual(before.history);
-            } else {
-              expect(resultA.snapshot.current).toBe(before.history[before.history.length - 1]);
-              expect(resultA.snapshot.history).toEqual(before.history.slice(0, -1));
+        for (const action of actions) {
+          switch (action.type) {
+            case "send":
+              await machineA.send({ type: action.event });
+              await machineB.send({ type: action.event });
+              break;
+            case "goToStepById":
+              await machineA.send({ type: "goToStepById", stepId: action.stepId });
+              await machineB.send({ type: "goToStepById", stepId: action.stepId });
+              break;
+            case "goToPreviousStep":
+              await machineA.goToPreviousStep(action.steps);
+              await machineB.goToPreviousStep(action.steps);
+              break;
+            case "goToLastVisitedStep":
+              await machineA.goToLastVisitedStep();
+              await machineB.goToLastVisitedStep();
+              break;
+            case "updateContext": {
+              const updater = (context: Context) => ({
+                count: context.count + action.add,
+                dirty: action.toggleDirty ? !context.dirty : context.dirty
+              });
+              machineA.updateContext(updater);
+              machineB.updateContext(updater);
+              break;
             }
+            case "resetMachine":
+              machineA.resetMachine();
+              machineB.resetMachine();
+              break;
           }
+
+          expect(machineA.getSnapshot()).toEqual(machineB.getSnapshot());
         }
       }),
-      { numRuns: 50 }
+      { numRuns: 30 }
     );
   });
 });

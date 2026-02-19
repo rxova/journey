@@ -1,17 +1,9 @@
 import React from "react";
-import {
-  createJourneyMachine,
-  HISTORY_TARGET,
-  JOURNEY_STATUS,
-  JOURNEY_TERMINAL,
-  type JourneyDefinition
-} from "@rxova/journey-core";
+import { createJourneyMachine, JOURNEY_STATUS, type JourneyDefinition } from "@rxova/journey-core";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 import {
-  JourneyProvider,
-  JourneyStepRenderer,
-  useJourney,
-  useJourneyMachine,
+  createJourneyBindings,
+  type JourneyBindings,
   type JourneyReactDefinition
 } from "@rxova/journey-react";
 import "./styles.css";
@@ -23,8 +15,16 @@ type ReactContext = {
   dirty: boolean;
 };
 
+type ReactEvent = "requestClose";
+
+let reactBindings: JourneyBindings<ReactContext, ReactStepId, ReactEvent>;
+
+const useReactJourneyApi = () => reactBindings.useJourneyApi();
+const useReactJourneySnapshot = () => reactBindings.useJourneySnapshot();
+const useReactJourneyMachine = () => reactBindings.useJourneyMachine();
+
 const ReactBridge = () => {
-  const machine = useJourneyMachine<ReactContext, ReactStepId>();
+  const machine = useReactJourneyMachine();
 
   React.useEffect(() => {
     return attachJourneyDevtools(machine, {
@@ -40,7 +40,8 @@ const ReactBridge = () => {
 };
 
 const ReactStart = () => {
-  const { snapshot, api } = useJourney<ReactContext, ReactStepId>();
+  const snapshot = useReactJourneySnapshot();
+  const api = useReactJourneyApi();
 
   return (
     <div className="step">
@@ -74,8 +75,15 @@ const ReactStart = () => {
         Visit details step
       </label>
       <div className="actions">
-        <button onClick={() => void api.next()}>Next</button>
-        <button className="secondary" onClick={() => void api.close()}>
+        <button onClick={() => void api.goToNextStep()}>Next</button>
+        <button
+          className="secondary"
+          onClick={() =>
+            void (snapshot.context.dirty
+              ? api.send({ type: "requestClose" })
+              : api.terminateJourney())
+          }
+        >
           Close
         </button>
       </div>
@@ -84,24 +92,25 @@ const ReactStart = () => {
 };
 
 const ReactDetails = () => {
-  const { api } = useJourney<ReactContext, ReactStepId>();
+  const api = useReactJourneyApi();
 
   return (
     <div className="step">
       <h3>Details</h3>
-      <p>Example intermediate step to verify transitions and history.</p>
+      <p>Example intermediate step to verify transitions and timeline behavior.</p>
       <div className="actions">
-        <button className="secondary" onClick={() => void api.back()}>
-          Back
+        <button className="secondary" onClick={() => void api.goToPreviousStep()}>
+          Go to previous step
         </button>
-        <button onClick={() => void api.next()}>Next</button>
+        <button onClick={() => void api.goToNextStep()}>Next</button>
       </div>
     </div>
   );
 };
 
 const ReactReview = () => {
-  const { snapshot, api } = useJourney<ReactContext, ReactStepId>();
+  const snapshot = useReactJourneySnapshot();
+  const api = useReactJourneyApi();
 
   return (
     <div className="step">
@@ -110,36 +119,43 @@ const ReactReview = () => {
         Ready to submit for <strong>{snapshot.context.name || "Anonymous"}</strong>?
       </p>
       <div className="actions">
-        <button className="secondary" onClick={() => void api.back()}>
-          Back
+        <button className="secondary" onClick={() => void api.goToPreviousStep()}>
+          Go to previous step
         </button>
-        <button className="secondary" onClick={() => void api.close()}>
+        <button
+          className="secondary"
+          onClick={() =>
+            void (snapshot.context.dirty
+              ? api.send({ type: "requestClose" })
+              : api.terminateJourney())
+          }
+        >
           Close
         </button>
-        <button onClick={() => void api.submit()}>Submit</button>
+        <button onClick={() => void api.completeJourney()}>Submit</button>
       </div>
     </div>
   );
 };
 
 const ReactConfirmExit = () => {
-  const { api } = useJourney<ReactContext, ReactStepId>();
+  const api = useReactJourneyApi();
 
   return (
     <div className="step">
       <h3>Confirm Exit</h3>
       <p>You have unsaved changes. Confirm close?</p>
       <div className="actions">
-        <button className="secondary" onClick={() => void api.back()}>
+        <button className="secondary" onClick={() => void api.goToPreviousStep()}>
           Keep editing
         </button>
-        <button onClick={() => void api.submit()}>Confirm close</button>
+        <button onClick={() => void api.terminateJourney()}>Confirm close</button>
       </div>
     </div>
   );
 };
 
-const reactJourney: JourneyReactDefinition<ReactContext, ReactStepId> = {
+const reactJourney: JourneyReactDefinition<ReactContext, ReactStepId, ReactEvent> = {
   initial: "start",
   context: {
     name: "",
@@ -147,45 +163,42 @@ const reactJourney: JourneyReactDefinition<ReactContext, ReactStepId> = {
     dirty: false
   },
   steps: {
-    start: { component: ReactStart },
-    details: { component: ReactDetails },
-    review: { component: ReactReview },
-    confirmExit: { component: ReactConfirmExit }
+    start: { component: ReactStart, meta: { label: "Start" } },
+    details: { component: ReactDetails, meta: { label: "Details" } },
+    review: { component: ReactReview, meta: { label: "Review" } },
+    confirmExit: { component: ReactConfirmExit, meta: { label: "Confirm Exit" } }
   },
   transitions: [
     {
       from: "start",
-      event: "next",
+      event: "goToNextStep",
       to: "details",
       when: ({ context }) => context.includeDetails
     },
     {
       from: "start",
-      event: "next",
+      event: "goToNextStep",
       to: "review",
       when: ({ context }) => !context.includeDetails
     },
-    { from: "details", event: "next", to: "review" },
-    { from: "*", event: "back", to: HISTORY_TARGET },
+    { from: "details", event: "goToNextStep", to: "review" },
     {
       from: "*",
-      event: "close",
+      event: "requestClose",
       to: "confirmExit",
       when: ({ context }) => context.dirty
     },
-    {
-      from: "*",
-      event: "close",
-      to: JOURNEY_TERMINAL.CLOSE,
-      when: ({ context }) => !context.dirty
-    },
-    { from: "confirmExit", event: "submit", to: JOURNEY_TERMINAL.CLOSE },
-    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
+    { from: "*", event: "terminateJourney" },
+    { from: "review", event: "completeJourney" }
   ]
 };
 
+reactBindings = createJourneyBindings(reactJourney);
+
 const ReactMachinePanel = () => {
-  const { snapshot, api } = useJourney<ReactContext, ReactStepId>();
+  const snapshot = useReactJourneySnapshot();
+  const api = useReactJourneyApi();
+  const StepRenderer = reactBindings.StepRenderer;
 
   return (
     <section className="card">
@@ -196,13 +209,13 @@ const ReactMachinePanel = () => {
       <p className="hint">
         Powered by <code>@rxova/journey-react</code> and bridged as <code>react-flow</code>.
       </p>
-      <JourneyStepRenderer<ReactContext, ReactStepId> fallback={<p>Missing step component.</p>} />
+      <StepRenderer fallback={<p>Missing step component.</p>} />
       <div className="actions card-actions">
-        <button className="secondary" onClick={() => api.reset()}>
+        <button className="secondary" onClick={() => api.resetJourney()}>
           Reset
         </button>
-        <button className="secondary" onClick={() => api.clearHistory()}>
-          Clear history
+        <button className="secondary" onClick={() => void api.goToLastVisitedStep()}>
+          Go to last visited step
         </button>
       </div>
       <pre className="snapshot">{JSON.stringify(snapshot, null, 2)}</pre>
@@ -211,7 +224,7 @@ const ReactMachinePanel = () => {
 };
 
 type CoreStepId = "one" | "two" | "three";
-type CoreEvent = "next" | "back" | "submit" | "close";
+type CoreEvent = "goToNextStep" | "back" | "completeJourney" | "terminateJourney";
 type CoreContext = {
   owner: string;
   dirty: boolean;
@@ -224,16 +237,15 @@ const coreJourney: JourneyDefinition<CoreContext, CoreStepId, CoreEvent> = {
     dirty: false
   },
   steps: {
-    one: {},
-    two: {},
-    three: {}
+    one: { meta: { label: "One" } },
+    two: { meta: { label: "Two" } },
+    three: { meta: { label: "Three" } }
   },
   transitions: [
-    { from: "one", event: "next", to: "two" },
-    { from: "two", event: "next", to: "three" },
-    { from: "*", event: "back", to: HISTORY_TARGET },
-    { from: "three", event: "submit", to: JOURNEY_TERMINAL.COMPLETE },
-    { from: "*", event: "close", to: JOURNEY_TERMINAL.CLOSE }
+    { from: "one", event: "goToNextStep", to: "two" },
+    { from: "two", event: "goToNextStep", to: "three" },
+    { from: "three", event: "completeJourney" },
+    { from: "*", event: "terminateJourney" }
   ]
 };
 
@@ -273,21 +285,21 @@ const CoreMachinePanel = () => {
       </p>
       <div className="core-view">
         <p>
-          Current step: <strong>{snapshot.current}</strong>
+          Current step: <strong>{snapshot.currentStepId}</strong>
         </p>
         <p>
           Owner: <strong>{snapshot.context.owner}</strong>
         </p>
       </div>
       <div className="actions">
-        <button onClick={() => send("next")}>Next</button>
-        <button className="secondary" onClick={() => send("back")}>
-          Back
+        <button onClick={() => send("goToNextStep")}>Next</button>
+        <button className="secondary" onClick={() => void coreMachine.goToPreviousStep()}>
+          Go to previous step
         </button>
-        <button className="secondary" onClick={() => send("submit")}>
+        <button className="secondary" onClick={() => send("completeJourney")}>
           Submit
         </button>
-        <button className="secondary" onClick={() => send("close")}>
+        <button className="secondary" onClick={() => send("terminateJourney")}>
           Close
         </button>
       </div>
@@ -295,11 +307,11 @@ const CoreMachinePanel = () => {
         <button className="secondary" onClick={randomizeOwner}>
           Update context
         </button>
-        <button className="secondary" onClick={() => coreMachine.reset()}>
+        <button className="secondary" onClick={() => coreMachine.resetMachine()}>
           Reset
         </button>
-        <button className="secondary" onClick={() => coreMachine.clearHistory()}>
-          Clear history
+        <button className="secondary" onClick={() => void coreMachine.goToLastVisitedStep()}>
+          Go to last visited step
         </button>
       </div>
       <pre className="snapshot">{JSON.stringify(snapshot, null, 2)}</pre>
@@ -308,6 +320,8 @@ const CoreMachinePanel = () => {
 };
 
 export const App = () => {
+  const Provider = reactBindings.Provider;
+
   React.useEffect(() => {
     return attachJourneyDevtools(coreMachine, {
       machineId: "core-flow",
@@ -331,16 +345,16 @@ export const App = () => {
         </p>
       </header>
 
-      <JourneyProvider journey={reactJourney}>
+      <Provider>
         <ReactBridge />
         <ReactMachinePanel />
-      </JourneyProvider>
+      </Provider>
 
       <CoreMachinePanel />
 
       <footer className="hint footer-note">
         React status values: <code>{JOURNEY_STATUS.RUNNING}</code>,{" "}
-        <code>{JOURNEY_STATUS.COMPLETE}</code>, <code>{JOURNEY_STATUS.CLOSED}</code>
+        <code>{JOURNEY_STATUS.COMPLETE}</code>, <code>{JOURNEY_STATUS.TERMINATED}</code>
       </footer>
     </main>
   );

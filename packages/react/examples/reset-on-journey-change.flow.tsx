@@ -1,24 +1,18 @@
 import React from "react";
 
-import {
-  JOURNEY_TERMINAL,
-  type JourneyReactDefinition,
-  useJourney,
-  JourneyProvider,
-  JourneyStepRenderer
-} from "@rxova/journey-react";
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
 
 type StepId = "start" | "review";
 type Ctx = { label: string };
 
 const Start = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.next()}>Next</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Next</button>;
 };
 
 const Review = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.submit()}>Submit</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.completeJourney()}>Submit</button>;
 };
 
 const buildJourney = (label: string, initial: StepId): JourneyReactDefinition<Ctx, StepId> => ({
@@ -29,12 +23,16 @@ const buildJourney = (label: string, initial: StepId): JourneyReactDefinition<Ct
     review: { component: Review }
   },
   transitions: [
-    { from: "start", event: "next", to: "review" },
-    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
+    { from: "start", event: "goToNextStep", to: "review" },
+    { from: "review", event: "completeJourney" }
   ]
 });
 
+const bindings = createJourneyBindings(buildJourney("Variant A", "start"));
+
 export const ResetOnJourneyChangeExample = () => {
+  const Provider = bindings.Provider;
+  const StepRenderer = bindings.StepRenderer;
   const [variant, setVariant] = React.useState<"A" | "B">("A");
 
   const journey = React.useMemo(
@@ -52,9 +50,9 @@ export const ResetOnJourneyChangeExample = () => {
         This uses resetOnJourneyChange, so switching variants intentionally recreates the internal
         machine and resets state.
       </p>
-      <JourneyProvider journey={journey} resetOnJourneyChange>
-        <JourneyStepRenderer<Ctx, StepId> />
-      </JourneyProvider>
+      <Provider journey={journey} resetOnJourneyChange>
+        <StepRenderer />
+      </Provider>
     </div>
   );
 };

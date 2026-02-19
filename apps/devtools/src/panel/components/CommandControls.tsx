@@ -6,17 +6,27 @@ import {
   buildClearStepErrorCommand,
   buildCustomSendCommand,
   buildGoToCommand,
-  buildTrimHistoryCommand
+  buildGoToPreviousStepCommand,
+  buildUpdateStepMetadataCommand
 } from "../command-utils";
 
-type CommandField = "customType" | "customPayload" | "goToStep" | "stepErrorId" | "trimHistory";
+type CommandField =
+  | "customType"
+  | "customPayload"
+  | "goToStep"
+  | "stepErrorId"
+  | "previousSteps"
+  | "metadataStepId"
+  | "metadataPayload";
 
 type CommandFormState = {
   customType: string;
   customPayload: string;
   goToStep: string;
   stepErrorId: string;
-  trimHistory: string;
+  previousSteps: string;
+  metadataStepId: string;
+  metadataPayload: string;
   formError: string | null;
 };
 
@@ -36,7 +46,9 @@ const INITIAL_FORM_STATE: CommandFormState = {
   customPayload: "",
   goToStep: "",
   stepErrorId: "",
-  trimHistory: "",
+  previousSteps: "",
+  metadataStepId: "",
+  metadataPayload: "",
   formError: null
 };
 
@@ -57,7 +69,13 @@ const commandFormReducer = (
   };
 };
 
-const PRIMARY_COMMANDS = ["next", "back", "close", "submit", "reset", "clearHistory"] as const;
+const PRIMARY_COMMANDS = [
+  "goToNextStep",
+  "terminateMachine",
+  "completeJourney",
+  "resetMachine",
+  "goToLastVisitedStep"
+] as const;
 
 export const CommandControls = ({
   onCommand,
@@ -105,7 +123,7 @@ export const CommandControls = ({
 
       <div className="command-form-grid">
         <label>
-          goTo step
+          goToStepById step
           <div className="form-row">
             <input
               value={formState.goToStep}
@@ -118,7 +136,26 @@ export const CommandControls = ({
               disabled={disabled}
               onClick={() => runCommand(buildGoToCommand(formState.goToStep))}
             >
-              Send
+              Send goToStepById
+            </button>
+          </div>
+        </label>
+
+        <label>
+          goToPreviousStep steps (optional)
+          <div className="form-row">
+            <input
+              value={formState.previousSteps}
+              onChange={(event) => updateField("previousSteps", event.target.value)}
+              placeholder="1"
+              disabled={disabled}
+            />
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => runCommand(buildGoToPreviousStepCommand(formState.previousSteps))}
+            >
+              Send previous
             </button>
           </div>
         </label>
@@ -171,22 +208,35 @@ export const CommandControls = ({
         </label>
 
         <label>
-          trimHistory max (optional)
+          updateStepMetadata
           <div className="form-row">
             <input
-              value={formState.trimHistory}
-              onChange={(event) => updateField("trimHistory", event.target.value)}
-              placeholder="10"
+              value={formState.metadataStepId}
+              onChange={(event) => updateField("metadataStepId", event.target.value)}
+              placeholder="step-id"
               disabled={disabled}
             />
             <button
               type="button"
               disabled={disabled}
-              onClick={() => runCommand(buildTrimHistoryCommand(formState.trimHistory))}
+              onClick={() =>
+                runCommand(
+                  buildUpdateStepMetadataCommand(
+                    formState.metadataStepId,
+                    formState.metadataPayload
+                  )
+                )
+              }
             >
-              Trim history
+              Update metadata
             </button>
           </div>
+          <textarea
+            value={formState.metadataPayload}
+            onChange={(event) => updateField("metadataPayload", event.target.value)}
+            placeholder='{"title":"Details updated"}'
+            disabled={disabled}
+          />
         </label>
       </div>
 

@@ -1,27 +1,21 @@
 import React from "react";
 
-import {
-  JOURNEY_TERMINAL,
-  type JourneyReactDefinition,
-  useJourney,
-  JourneyProvider,
-  JourneyStepRenderer
-} from "@rxova/journey-react";
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
 
 type StepId = "start" | "optional" | "review";
 type Ctx = { includeOptional: boolean };
 
 const Start = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.next()}>Next</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Next</button>;
 };
 const Optional = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.next()}>Next</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Next</button>;
 };
 const Review = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.submit()}>Submit</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.completeJourney()}>Submit</button>;
 };
 
 export const conditionalSkipJourney: JourneyReactDefinition<Ctx, StepId> = {
@@ -35,23 +29,30 @@ export const conditionalSkipJourney: JourneyReactDefinition<Ctx, StepId> = {
   transitions: [
     {
       from: "start",
-      event: "next",
+      event: "goToNextStep",
       to: "optional",
       when: ({ context }) => context.includeOptional
     },
     {
       from: "start",
-      event: "next",
+      event: "goToNextStep",
       to: "review",
       when: ({ context }) => !context.includeOptional
     },
-    { from: "optional", event: "next", to: "review" },
-    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
+    { from: "optional", event: "goToNextStep", to: "review" },
+    { from: "review", event: "completeJourney" }
   ]
 };
 
-export const ConditionalSkipExample = () => (
-  <JourneyProvider journey={conditionalSkipJourney}>
-    <JourneyStepRenderer<Ctx, StepId> />
-  </JourneyProvider>
-);
+const bindings = createJourneyBindings(conditionalSkipJourney);
+
+export const ConditionalSkipExample = () => {
+  const Provider = bindings.Provider;
+  const StepRenderer = bindings.StepRenderer;
+
+  return (
+    <Provider>
+      <StepRenderer />
+    </Provider>
+  );
+};

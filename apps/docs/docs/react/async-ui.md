@@ -1,40 +1,31 @@
 ---
-title: Async UX in React
-sidebar_position: 5
+id: async-ui
+title: Async UI
+sidebar_label: Async UI
 ---
 
-Journey exposes async phases per step so UI can render deterministic loading/error states.
+Async transition phases come from `snapshot.async`.
 
-## Async State Access
-
-```tsx
-const { snapshot } = useJourney<Ctx, StepId>();
-const step = snapshot.current;
-const asyncState = snapshot.async.byStep[step];
-```
-
-## Recommended Render Strategy
-
-1. Render blocking loading view for `evaluating-when`/`running-effect`.
-2. Render recoverable error view for `error`.
-3. Render normal step UI for `idle`.
+## Read Async State
 
 ```tsx
-if (asyncState.phase === "evaluating-when" || asyncState.phase === "running-effect") {
-  return <StepSkeleton />;
-}
+const snapshot = bindings.useJourneySnapshot();
 
-if (asyncState.phase === "error") {
-  return <ErrorState error={asyncState.error} onRetry={() => api.clearStepError(step)} />;
-}
+const currentAsync = snapshot.async.byStep[snapshot.currentStepId];
+const isBusy = snapshot.async.isLoading;
 ```
 
-## Avoid Common Mistakes
+## Typical UI Mappings
 
-- Do not manage duplicate loading booleans in local component state.
-- Do not swallow rejected `api.next()`/`api.send()` promises.
-- Do not clear errors globally when only one step failed.
+- `phase === "evaluating-when"`: guard evaluation spinner
+- `phase === "running-effect"`: submit/loading state
+- `phase === "error"`: render recoverable error state
 
-## Backpressure and Re-Entrancy
+## Clear Errors
 
-Rapid user clicks are serialized in core queue, but still disable critical buttons while transitions are running for better UX.
+```tsx
+const api = bindings.useJourneyApi();
+api.clearStepError();
+```
+
+You can target a specific step with `api.clearStepError(stepId)`.

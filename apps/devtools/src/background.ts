@@ -28,6 +28,50 @@ const CONTENT_SCRIPT_FILE = chrome.runtime.getManifest().content_scripts?.[0]?.j
 const isTabConnected = (tabId: number): boolean => (machineCacheByTab.get(tabId)?.size ?? 0) > 0;
 const hasPanelPorts = (tabId: number): boolean => (portsByTab.get(tabId)?.size ?? 0) > 0;
 
+const getRuntimeErrorMessage = (error: unknown): string | null => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    return typeof message === "string" ? message : null;
+  }
+
+  return null;
+};
+
+const isIgnorableSendMessageError = (error: unknown): boolean => {
+  const message = getRuntimeErrorMessage(error);
+  if (!message) {
+    return false;
+  }
+
+  // Fire-and-forget message listeners commonly trigger this even when
+  // message delivery worked, because no response callback is used.
+  return message.includes("The message port closed before a response was received.");
+};
+
+const removePanelPort = (port: chrome.runtime.Port) => {
+  const tabId = portTabMap.get(port);
+  if (tabId === undefined) {
+    return;
+  }
+
+  const tabPorts = portsByTab.get(tabId);
+  if (tabPorts) {
+    tabPorts.delete(port);
+    if (tabPorts.size === 0) {
+      portsByTab.delete(tabId);
+    }
+  }
+  portTabMap.delete(port);
+};
+
 const broadcastPanelWarning = (tabId: number, warning: Omit<PanelWarning, "tabId"> | null) => {
   const warningPayload = warning ? { ...warning, tabId } : null;
   warningByTab.set(tabId, warningPayload);
@@ -76,6 +120,13 @@ const injectContentScript = (tabId: number) => {
       }
 
       broadcastPanelWarning(tabId, null);
+      const replayRequest: BackgroundToContentMessage = {
+        type: "bridge-replay-request"
+      };
+      chrome.tabs.sendMessage(tabId, replayRequest, () => {
+        // Accessing lastError prevents unchecked runtime error noise when a receiver is unavailable.
+        void chrome.runtime.lastError;
+      });
     }
   );
 };
@@ -86,8 +137,17 @@ const broadcastToPanel = (tabId: number, message: BackgroundToPanelMessage) => {
     return;
   }
 
+  const stalePorts: chrome.runtime.Port[] = [];
   for (const port of tabPorts) {
-    port.postMessage(message);
+    try {
+      port.postMessage(message);
+    } catch {
+      stalePorts.push(port);
+    }
+  }
+
+  for (const stalePort of stalePorts) {
+    removePanelPort(stalePort);
   }
 };
 
@@ -200,7 +260,7 @@ chrome.runtime.onConnect.addListener((port) => {
 
     chrome.tabs.sendMessage(message.tabId, outboundMessage, () => {
       const runtimeError = chrome.runtime.lastError;
-      if (!runtimeError) {
+      if (!runtimeError || isIgnorableSendMessageError(runtimeError)) {
         return;
       }
 
@@ -217,22 +277,7 @@ chrome.runtime.onConnect.addListener((port) => {
   });
 
   port.onDisconnect.addListener(() => {
-    const tabId = portTabMap.get(port);
-    if (tabId === undefined) {
-      return;
-    }
-
-    const tabPorts = portsByTab.get(tabId);
-    if (!tabPorts) {
-      portTabMap.delete(port);
-      return;
-    }
-
-    tabPorts.delete(port);
-    if (tabPorts.size === 0) {
-      portsByTab.delete(tabId);
-    }
-    portTabMap.delete(port);
+    removePanelPort(port);
   });
 });
 

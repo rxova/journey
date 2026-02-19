@@ -1,6 +1,6 @@
 import type { JourneySnapshot, JourneyStepAsyncState } from "@rxova/journey-core";
 
-export const JOURNEY_DEVTOOLS_PROTOCOL_VERSION = 1 as const;
+export const JOURNEY_DEVTOOLS_PROTOCOL_VERSION = 3 as const;
 export const JOURNEY_DEVTOOLS_CHANNEL = "__RXOVA_JOURNEY_DEVTOOLS__" as const;
 
 export const JOURNEY_DEVTOOLS_BRIDGE_SOURCE = "rxova-journey-bridge" as const;
@@ -29,16 +29,16 @@ export type JourneyDevtoolsSerializedError = {
 };
 
 export type JourneyDevtoolsCommand =
-  | { type: "next" }
-  | { type: "back" }
-  | { type: "close" }
-  | { type: "submit" }
-  | { type: "goTo"; to: string }
+  | { type: "goToNextStep" }
+  | { type: "terminateMachine" }
+  | { type: "completeJourney" }
+  | { type: "goToStepById"; stepId: string }
+  | { type: "goToPreviousStep"; steps?: number }
+  | { type: "goToLastVisitedStep" }
   | { type: "send"; event: { type: string; payload?: unknown } }
-  | { type: "reset" }
-  | { type: "clearStepError"; stepId?: string }
-  | { type: "clearHistory" }
-  | { type: "trimHistory"; maxHistory?: number | null };
+  | { type: "updateStepMetadata"; stepId: string; metadata: unknown }
+  | { type: "resetMachine" }
+  | { type: "clearStepError"; stepId?: string };
 
 export type JourneyDevtoolsEnvelopeBase = {
   channel: typeof JOURNEY_DEVTOOLS_CHANNEL;
@@ -214,37 +214,43 @@ export const isJourneyDevtoolsCommand = (value: unknown): value is JourneyDevtoo
   }
 
   switch (value.type) {
-    case "next":
-    case "back":
-    case "close":
-    case "submit":
-    case "reset":
-    case "clearHistory":
+    case "goToNextStep":
+    case "terminateMachine":
+    case "completeJourney":
+    case "resetMachine":
+    case "goToLastVisitedStep":
       // These commands should have no extra properties beyond type
       return Object.keys(value).length === 1;
-    case "goTo":
+    case "goToStepById":
       return (
-        typeof value.to === "string" &&
-        value.to.length > 0 &&
-        value.to.length <= 100 &&
+        typeof value.stepId === "string" &&
+        value.stepId.length > 0 &&
+        value.stepId.length <= 100 &&
         Object.keys(value).length === 2
+      );
+    case "goToPreviousStep":
+      return (
+        (value.steps === undefined ||
+          (typeof value.steps === "number" &&
+            Number.isInteger(value.steps) &&
+            value.steps >= 1 &&
+            value.steps <= 10000)) &&
+        Object.keys(value).length <= 2
       );
     case "send":
       return isSendEvent(value.event) && Object.keys(value).length === 2;
+    case "updateStepMetadata":
+      return (
+        typeof value.stepId === "string" &&
+        value.stepId.length > 0 &&
+        value.stepId.length <= 100 &&
+        isSafePayload(value.metadata) &&
+        Object.keys(value).length === 3
+      );
     case "clearStepError":
       return (
         (value.stepId === undefined ||
           (typeof value.stepId === "string" && value.stepId.length <= 100)) &&
-        Object.keys(value).length <= 2
-      );
-    case "trimHistory":
-      return (
-        (value.maxHistory === undefined ||
-          value.maxHistory === null ||
-          (typeof value.maxHistory === "number" &&
-            Number.isInteger(value.maxHistory) &&
-            value.maxHistory >= 0 &&
-            value.maxHistory <= 10000)) &&
         Object.keys(value).length <= 2
       );
     default:

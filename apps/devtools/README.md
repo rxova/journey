@@ -6,9 +6,9 @@ Chrome DevTools extension for inspecting and controlling `@rxova/journey-core` m
 
 - Per-tab connection status
 - Multiple machine selection
-- Snapshot inspector (`current/status`, `context`, `history`, `visited`, `async`)
-- Event log (retains latest 2000 entries per machine)
-- Command controls (`next`, `back`, `close`, `submit`, `goTo`, custom `send`, `reset`, `clearStepError`, `clearHistory`, `trimHistory`)
+- Redux-style timeline inspector (`Action`, `State`, `Diff`) with local time travel
+- Timeline retention controls (display limit + prune, retaining latest 2000 rows per machine)
+- Command controls (`next`, `close`, `submit`, `goTo`, `goToPreviousStep`, `goToLastVisitedStep`, `updateStepMetadata`, custom `send`, `reset`, `clearStepError`)
 
 ## Prerequisites
 

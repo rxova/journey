@@ -3,15 +3,16 @@ import React from "react";
 import type { JourneyDevtoolsCommand } from "@rxova/journey-devtools-bridge";
 import { CommandControls } from "./components/CommandControls";
 import { ConnectionStatus } from "./components/ConnectionStatus";
-import { EventLog } from "./components/EventLog";
 import { MachineSelector } from "./components/MachineSelector";
-import { SnapshotTabs } from "./components/SnapshotTabs";
+import { TimelineInspector } from "./components/TimelineInspector";
 import {
-  MAX_MACHINE_LOGS,
+  MAX_MACHINE_TIMELINE_ENTRIES,
   createInitialPanelState,
   panelReducer,
   selectActiveMachine,
-  selectVisibleLogs
+  selectDisplayedSnapshot,
+  selectSelectedDiff,
+  selectSelectedTimelineEntry
 } from "./store";
 import {
   JOURNEY_DEVTOOLS_PANEL_PORT,
@@ -28,11 +29,47 @@ const createRequestId = (): string =>
     ? crypto.randomUUID()
     : `req-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 const PANEL_RECONNECT_DELAY_MS = 600;
+const PANEL_STATUS_DISCONNECT_DELAY_MS = 250;
+const PANEL_CLEAR_MACHINES_DELAY_MS = 1200;
 
 export const App = () => {
   const [state, dispatch] = React.useReducer(panelReducer, undefined, createInitialPanelState);
   const [connectionWarning, setConnectionWarning] = React.useState<PanelWarning | null>(null);
+  const [displayConnected, setDisplayConnected] = React.useState(false);
   const portRef = React.useRef<chrome.runtime.Port | null>(null);
+  const statusDisconnectTimerRef = React.useRef<number | null>(null);
+  const clearMachinesTimerRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    if (statusDisconnectTimerRef.current !== null) {
+      window.clearTimeout(statusDisconnectTimerRef.current);
+      statusDisconnectTimerRef.current = null;
+    }
+
+    if (state.connected) {
+      setDisplayConnected(true);
+      return;
+    }
+
+    statusDisconnectTimerRef.current = window.setTimeout(() => {
+      statusDisconnectTimerRef.current = null;
+      setDisplayConnected(false);
+    }, PANEL_STATUS_DISCONNECT_DELAY_MS);
+  }, [state.connected]);
+
+  React.useEffect(
+    () => () => {
+      if (statusDisconnectTimerRef.current !== null) {
+        window.clearTimeout(statusDisconnectTimerRef.current);
+        statusDisconnectTimerRef.current = null;
+      }
+      if (clearMachinesTimerRef.current !== null) {
+        window.clearTimeout(clearMachinesTimerRef.current);
+        clearMachinesTimerRef.current = null;
+      }
+    },
+    []
+  );
 
   React.useEffect(() => {
     let isDisposed = false;
@@ -71,14 +108,28 @@ export const App = () => {
       port.postMessage(initMessage);
 
       const onMessage = (message: unknown) => {
+        if (portRef.current !== port) {
+          return;
+        }
+
         if (!isBackgroundToPanelMessage(message)) {
           return;
         }
 
         const typedMessage: BackgroundToPanelMessage = message;
         if (typedMessage.type === "panel-connected") {
+          if (clearMachinesTimerRef.current !== null) {
+            window.clearTimeout(clearMachinesTimerRef.current);
+            clearMachinesTimerRef.current = null;
+          }
           dispatch({ type: "set-connected", connected: typedMessage.connected });
           if (typedMessage.connected) {
+            setConnectionWarning(null);
+          } else {
+            clearMachinesTimerRef.current = window.setTimeout(() => {
+              clearMachinesTimerRef.current = null;
+              dispatch({ type: "clear-machines" });
+            }, PANEL_CLEAR_MACHINES_DELAY_MS);
             setConnectionWarning(null);
           }
           return;
@@ -101,6 +152,10 @@ export const App = () => {
         }
 
         dispatch({ type: "set-connected", connected: false });
+        if (clearMachinesTimerRef.current !== null) {
+          window.clearTimeout(clearMachinesTimerRef.current);
+          clearMachinesTimerRef.current = null;
+        }
         setConnectionWarning(null);
 
         if (isDisposed) {
@@ -134,7 +189,16 @@ export const App = () => {
       return;
     }
 
-    const envelope = createCommandEnvelope(machineId, createRequestId(), command);
+    const requestId = createRequestId();
+    dispatch({
+      type: "queue-command",
+      machineId,
+      requestId,
+      command,
+      timestamp: Date.now()
+    });
+
+    const envelope = createCommandEnvelope(machineId, requestId, command);
     const message: PanelCommandMessage = {
       type: "panel-command",
       tabId: chrome.devtools.inspectedWindow.tabId,
@@ -145,11 +209,17 @@ export const App = () => {
   }, []);
 
   const activeMachine = React.useMemo(() => selectActiveMachine(state), [state]);
-  const areMachineCommandsEnabled = activeMachine?.meta.commandsEnabled !== false;
-  const visibleLogs = React.useMemo(
-    () => selectVisibleLogs(activeMachine?.logs ?? [], state.displayLimit),
-    [activeMachine?.logs, state.displayLimit]
+  const displayedSnapshot = React.useMemo(
+    () => selectDisplayedSnapshot(activeMachine),
+    [activeMachine]
   );
+  const selectedTimelineEntry = React.useMemo(
+    () => selectSelectedTimelineEntry(activeMachine),
+    [activeMachine]
+  );
+  const selectedDiff = React.useMemo(() => selectSelectedDiff(activeMachine), [activeMachine]);
+  const areMachineCommandsEnabled = activeMachine?.meta.commandsEnabled !== false;
+  const isCommandChannelReady = state.connected && portRef.current !== null;
 
   return (
     <main className="app-shell">
@@ -158,7 +228,7 @@ export const App = () => {
         <p>Inspect machines, watch snapshots, and trigger events in real time.</p>
       </header>
 
-      <ConnectionStatus connected={state.connected} warning={connectionWarning} />
+      <ConnectionStatus connected={displayConnected} warning={connectionWarning} />
 
       <MachineSelector
         machineOrder={state.machineOrder}
@@ -169,33 +239,49 @@ export const App = () => {
 
       {activeMachine ? (
         <>
-          <SnapshotTabs snapshot={activeMachine.snapshot} />
+          <TimelineInspector
+            entries={activeMachine.timelineEntries}
+            selectedIndex={activeMachine.selectedTimelineIndex}
+            selectedEntry={selectedTimelineEntry}
+            displayedSnapshot={displayedSnapshot}
+            selectedDiff={selectedDiff}
+            followLatest={activeMachine.followLatest}
+            displayLimit={state.displayLimit}
+            retentionCap={MAX_MACHINE_TIMELINE_ENTRIES}
+            onSelectEntry={(index) =>
+              dispatch({
+                type: "select-timeline-entry",
+                machineId: activeMachine.meta.machineId,
+                index
+              })
+            }
+            onFollowLatestChange={(followLatest) =>
+              dispatch({
+                type: "set-follow-latest",
+                machineId: activeMachine.meta.machineId,
+                followLatest
+              })
+            }
+            onDisplayLimitChange={(limit) => dispatch({ type: "set-display-limit", limit })}
+            onPrune={() =>
+              dispatch({
+                type: "prune-timeline",
+                machineId: activeMachine.meta.machineId,
+                keep: state.displayLimit
+              })
+            }
+          />
 
           <CommandControls
-            disabled={!state.connected || !areMachineCommandsEnabled}
+            disabled={!isCommandChannelReady || !areMachineCommandsEnabled}
             disabledReason={
-              !state.connected
+              !isCommandChannelReady
                 ? "Bridge is disconnected from the inspected tab."
                 : !areMachineCommandsEnabled
                   ? "Commands are disabled for this machine."
                   : null
             }
             onCommand={(command) => sendCommand(activeMachine.meta.machineId, command)}
-          />
-
-          <EventLog
-            logs={visibleLogs}
-            totalCount={activeMachine.logs.length}
-            retentionCap={MAX_MACHINE_LOGS}
-            displayLimit={state.displayLimit}
-            onDisplayLimitChange={(limit) => dispatch({ type: "set-display-limit", limit })}
-            onPrune={() =>
-              dispatch({
-                type: "prune-logs",
-                machineId: activeMachine.meta.machineId,
-                keep: state.displayLimit
-              })
-            }
           />
         </>
       ) : (
