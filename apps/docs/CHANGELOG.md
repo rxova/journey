@@ -1,5 +1,13 @@
 # apps-docs
 
+## 0.4.1
+
+### Patch Changes
+
+- Added a dedicated Devtools privacy policy page.
+- Added a direct privacy policy URL reference under Web Store readiness docs.
+- Added privacy policy navigation entry in the Devtool docs sidebar.
+
 ## 0.4.0
 
 ### Minor Changes
