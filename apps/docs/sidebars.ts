@@ -62,7 +62,8 @@ const sidebars: SidebarsConfig = {
         "devtool/protocol",
         "devtool/examples",
         "devtool/troubleshooting",
-        "devtool/web-store"
+        "devtool/web-store",
+        "devtool/privacy-policy"
       ]
     }
   ]

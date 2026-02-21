@@ -11,6 +11,12 @@ Chrome Web Store approval is currently in progress.
 
 Public docs intentionally avoid local unpacked build/install steps while review is pending.
 
+## Privacy Policy URL
+
+Use this direct URL in the Chrome Web Store listing:
+
+- `https://rxova.org/docs/devtool/privacy-policy`
+
 ## Manifest Baseline
 
 - Manifest V3
