@@ -55,7 +55,7 @@ The extension communicates locally between:
 
 ## Permissions We Request
 
-- `activeTab`, `scripting` to enable DevTools-driven inspection/injection
+- `scripting` to enable DevTools-driven inspection/injection
 - host permissions for local development targets:
   - `http://localhost/*`
   - `https://localhost/*`
