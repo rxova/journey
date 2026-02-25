@@ -28,7 +28,7 @@ export default defineManifest({
       run_at: "document_start"
     }
   ],
-  permissions: ["tabs", "scripting", "activeTab"],
+  permissions: ["scripting"],
   host_permissions: [...DEFAULT_HOST_PERMISSIONS],
   optional_host_permissions: [...OPTIONAL_SITE_HOST_PERMISSIONS],
   icons: {
