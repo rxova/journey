@@ -30,7 +30,7 @@
     "lint-staged": "lint-staged",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
-    "prepare": "husky install",
+    "prepare": "husky",
     "commitlint": "node ./scripts/commitlint.mjs",
     "test": "vitest run --coverage",
     "test:precommit": "vitest run --coverage --coverage.reporter=text-summary",
