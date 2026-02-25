@@ -5,7 +5,7 @@ sidebar_position: 9
 
 This Privacy Policy applies to the **Rxova Journey Devtools** Chrome extension (item ID: `bkmdccobpcagbmknjmmhbabcfphinjcm`).
 
-Last updated: **February 20, 2026**
+Last updated: **February 25, 2026**
 
 ## What This Extension Does
 
@@ -55,7 +55,7 @@ The extension communicates locally between:
 
 ## Permissions We Request
 
-- `tabs`, `activeTab`, `scripting` to enable DevTools-driven inspection/injection
+- `activeTab`, `scripting` to enable DevTools-driven inspection/injection
 - host permissions for local development targets:
   - `http://localhost/*`
   - `https://localhost/*`
