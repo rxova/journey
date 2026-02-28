@@ -7,18 +7,30 @@ import {
   type JourneyDevtoolsBridgeEnvelope,
   type JourneyDevtoolsSerializableSnapshot
 } from "@rxova/journey-devtools-bridge";
+import { EMPTY_STRUCTURED_DIFF } from "../src/panel/diff";
 import {
+  MAX_MACHINE_TIMELINE_ENTRIES,
   createInitialPanelState,
   panelReducer,
   selectActiveMachine,
-  selectVisibleLogs
+  selectDisplayedSnapshot,
+  selectSelectedDiff,
+  selectSelectedTimelineEntry,
+  selectVisibleTimelineEntries
 } from "../src/panel/store";
 
-const baseSnapshot = (current: string): JourneyDevtoolsSerializableSnapshot => ({
-  current,
-  context: { count: current.length },
-  history: current === "start" ? [] : ["start"],
-  visited: current === "start" ? ["start"] : ["start", current],
+const baseSnapshot = (
+  current: string,
+  context: Record<string, unknown> = { count: current.length }
+): JourneyDevtoolsSerializableSnapshot => ({
+  currentStepId: current,
+  history: {
+    timeline: current === "start" ? ["start"] : ["start", current],
+    index: current === "start" ? 0 : 1
+  },
+  context,
+  visited: current === "start" ? { start: true } : { start: true, [current]: true },
+  stepMeta: {},
   status: "running",
   async: {
     isLoading: false,
@@ -49,13 +61,17 @@ const registerEnvelope = (machineId: string, label: string): JourneyDevtoolsBrid
   timestamp: nextTs()
 });
 
-const snapshotEnvelope = (machineId: string, current: string): JourneyDevtoolsBridgeEnvelope => ({
+const snapshotEnvelope = (
+  machineId: string,
+  current: string,
+  context?: Record<string, unknown>
+): JourneyDevtoolsBridgeEnvelope => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
   version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
   source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
   kind: "snapshot",
   machineId,
-  snapshot: baseSnapshot(current),
+  snapshot: baseSnapshot(current, context),
   timestamp: nextTs()
 });
 
@@ -72,7 +88,22 @@ const commandResultEnvelope = (
   requestId,
   snapshot: baseSnapshot(current),
   transitioned: true,
-  transitionId: "next",
+  transitionId: "goToNextStep",
+  timestamp: nextTs()
+});
+
+const commandResultEnvelopeWithoutTransitionMeta = (
+  machineId: string,
+  requestId: string,
+  current: string
+): JourneyDevtoolsBridgeEnvelope => ({
+  channel: JOURNEY_DEVTOOLS_CHANNEL,
+  version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+  source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
+  kind: "commandResult",
+  machineId,
+  requestId,
+  snapshot: baseSnapshot(current),
   timestamp: nextTs()
 });
 
@@ -117,9 +148,33 @@ describe("panelReducer", () => {
   });
 
   it("updates connection state", () => {
-    const initial = createInitialPanelState();
-    const state = panelReducer(initial, { type: "set-connected", connected: true });
-    expect(state.connected).toBe(true);
+    const next = panelReducer(createInitialPanelState(), {
+      type: "set-connected",
+      connected: true
+    });
+    expect(next.connected).toBe(true);
+  });
+
+  it("clear-machines removes timeline state while keeping connection and display settings", () => {
+    let state = panelReducer(createInitialPanelState(), {
+      type: "set-connected",
+      connected: true
+    });
+    state = panelReducer(state, {
+      type: "set-display-limit",
+      limit: 25
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: registerEnvelope("a", "Flow A")
+    });
+
+    const cleared = panelReducer(state, { type: "clear-machines" });
+    expect(cleared.connected).toBe(true);
+    expect(cleared.displayLimit).toBe(25);
+    expect(cleared.machines).toEqual({});
+    expect(cleared.machineOrder).toEqual([]);
+    expect(cleared.selectedMachineId).toBeNull();
   });
 
   it("keeps same state when selecting unknown machine", () => {
@@ -128,7 +183,7 @@ describe("panelReducer", () => {
     expect(next).toBe(initial);
   });
 
-  it("registers first machine and auto-selects it", () => {
+  it("registers first machine and appends @@INIT row", () => {
     const next = panelReducer(createInitialPanelState(), {
       type: "bridge-envelope",
       envelope: registerEnvelope("a", "Flow A")
@@ -136,16 +191,16 @@ describe("panelReducer", () => {
 
     expect(next.machineOrder).toEqual(["a"]);
     expect(next.selectedMachineId).toBe("a");
-    expect(next.machines.a?.meta.label).toBe("Flow A");
-    expect(next.machines.a?.logs).toHaveLength(1);
+    expect(next.machines.a?.timelineEntries).toHaveLength(1);
+    expect(next.machines.a?.timelineEntries[0]?.label).toBe("@@INIT");
+    expect(next.machines.a?.followLatest).toBe(true);
   });
 
-  it("preserves selection when registering additional machines", () => {
+  it("preserves selected machine when a second one registers", () => {
     let state = panelReducer(createInitialPanelState(), {
       type: "bridge-envelope",
       envelope: registerEnvelope("a", "Flow A")
     });
-
     state = panelReducer(state, {
       type: "bridge-envelope",
       envelope: registerEnvelope("b", "Flow B")
@@ -155,40 +210,58 @@ describe("panelReducer", () => {
     expect(state.selectedMachineId).toBe("a");
   });
 
-  it("allows selecting a known machine", () => {
+  it("select-machine moves machine back to follow-latest mode", () => {
     let state = panelReducer(createInitialPanelState(), {
       type: "bridge-envelope",
       envelope: registerEnvelope("a", "Flow A")
     });
     state = panelReducer(state, {
       type: "bridge-envelope",
-      envelope: registerEnvelope("b", "Flow B")
+      envelope: snapshotEnvelope("a", "review")
     });
+    state = panelReducer(state, {
+      type: "select-timeline-entry",
+      machineId: "a",
+      index: 0
+    });
+    expect(state.machines.a?.followLatest).toBe(false);
 
-    const next = panelReducer(state, { type: "select-machine", machineId: "b" });
-    expect(next.selectedMachineId).toBe("b");
+    state = panelReducer(state, {
+      type: "select-machine",
+      machineId: "a"
+    });
+    expect(state.machines.a?.followLatest).toBe(true);
+    expect(state.machines.a?.selectedTimelineIndex).toBe(1);
   });
 
-  it("updates snapshot on snapshot envelope", () => {
+  it("uses synthetic label for snapshot rows", () => {
     let state = panelReducer(createInitialPanelState(), {
       type: "bridge-envelope",
       envelope: registerEnvelope("a", "Flow A")
     });
-
     state = panelReducer(state, {
       type: "bridge-envelope",
       envelope: snapshotEnvelope("a", "review")
     });
 
-    expect(state.machines.a?.snapshot.current).toBe("review");
-    const latestLog = state.machines.a?.logs[(state.machines.a?.logs.length ?? 1) - 1];
-    expect(latestLog?.kind).toBe("snapshot");
+    const last =
+      state.machines.a?.timelineEntries[(state.machines.a?.timelineEntries.length ?? 1) - 1];
+    expect(last?.label).toBe("SNAPSHOT/review");
+    expect(last?.kind).toBe("snapshot");
   });
 
-  it("updates snapshot on commandResult envelope", () => {
+  it("correlates queued commands with commandResult rows", () => {
     let state = panelReducer(createInitialPanelState(), {
       type: "bridge-envelope",
       envelope: registerEnvelope("a", "Flow A")
+    });
+
+    state = panelReducer(state, {
+      type: "queue-command",
+      machineId: "a",
+      requestId: "req-1",
+      command: { type: "goToNextStep" },
+      timestamp: nextTs()
     });
 
     state = panelReducer(state, {
@@ -196,26 +269,86 @@ describe("panelReducer", () => {
       envelope: commandResultEnvelope("a", "req-1", "details")
     });
 
-    expect(state.machines.a?.snapshot.current).toBe("details");
-    const latestLog = state.machines.a?.logs[(state.machines.a?.logs.length ?? 1) - 1];
-    expect(latestLog?.kind).toBe("commandResult");
+    const last =
+      state.machines.a?.timelineEntries[(state.machines.a?.timelineEntries.length ?? 1) - 1];
+    expect(last?.label).toBe("COMMAND/goToNextStep");
+    expect(last?.command).toEqual({ type: "goToNextStep" });
+    expect(state.machines.a?.pendingCommandsByRequestId["req-1"]).toBeUndefined();
   });
 
-  it("does not alter snapshot on commandError envelope", () => {
+  it("falls back when commandResult has unknown requestId", () => {
     let state = panelReducer(createInitialPanelState(), {
       type: "bridge-envelope",
       envelope: registerEnvelope("a", "Flow A")
     });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: commandResultEnvelope("a", "missing", "details")
+    });
 
-    const beforeSnapshot = state.machines.a?.snapshot.current;
+    const last =
+      state.machines.a?.timelineEntries[(state.machines.a?.timelineEntries.length ?? 1) - 1];
+    expect(last?.label).toBe("COMMAND_RESULT/missing");
+  });
+
+  it("omits transition metadata when commandResult does not include it", () => {
+    let state = panelReducer(createInitialPanelState(), {
+      type: "bridge-envelope",
+      envelope: registerEnvelope("a", "Flow A")
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: commandResultEnvelopeWithoutTransitionMeta("a", "req-no-meta", "details")
+    });
+
+    const last =
+      state.machines.a?.timelineEntries[(state.machines.a?.timelineEntries.length ?? 1) - 1];
+    expect(last?.meta.transitioned).toBeUndefined();
+    expect(last?.meta.transitionId).toBeUndefined();
+  });
+
+  it("correlates queued commands with commandError rows", () => {
+    let state = panelReducer(createInitialPanelState(), {
+      type: "bridge-envelope",
+      envelope: registerEnvelope("a", "Flow A")
+    });
+    const beforeSnapshot = state.machines.a?.snapshot;
+
+    state = panelReducer(state, {
+      type: "queue-command",
+      machineId: "a",
+      requestId: "req-2",
+      command: { type: "goToStepById", stepId: "review" },
+      timestamp: nextTs()
+    });
     state = panelReducer(state, {
       type: "bridge-envelope",
       envelope: commandErrorEnvelope("a", "req-2")
     });
 
-    expect(state.machines.a?.snapshot.current).toBe(beforeSnapshot);
-    const latestLog = state.machines.a?.logs[(state.machines.a?.logs.length ?? 1) - 1];
-    expect(latestLog?.kind).toBe("commandError");
+    const last =
+      state.machines.a?.timelineEntries[(state.machines.a?.timelineEntries.length ?? 1) - 1];
+    expect(last?.label).toBe("ERROR/goToStepById");
+    expect(last?.snapshot).toEqual(beforeSnapshot);
+    expect(last?.kind).toBe("error");
+    expect(state.machines.a?.pendingCommandsByRequestId["req-2"]).toBeUndefined();
+  });
+
+  it("falls back when commandError has unknown requestId", () => {
+    let state = panelReducer(createInitialPanelState(), {
+      type: "bridge-envelope",
+      envelope: registerEnvelope("a", "Flow A")
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: commandErrorEnvelope("a", "missing-error")
+    });
+
+    const last =
+      state.machines.a?.timelineEntries[(state.machines.a?.timelineEntries.length ?? 1) - 1];
+    expect(last?.label).toBe("ERROR/missing-error");
+    expect(last?.command).toBeNull();
+    expect((last?.actionPayload as { command: unknown }).command).toBeNull();
   });
 
   it("unregister removes machine and selects first remaining", () => {
@@ -239,7 +372,7 @@ describe("panelReducer", () => {
     expect(state.machines.b).toBeUndefined();
   });
 
-  it("keeps selection when unregistering a different machine", () => {
+  it("keeps selectedMachineId when unregistering a different machine", () => {
     let state = panelReducer(createInitialPanelState(), {
       type: "bridge-envelope",
       envelope: registerEnvelope("a", "Flow A")
@@ -248,6 +381,7 @@ describe("panelReducer", () => {
       type: "bridge-envelope",
       envelope: registerEnvelope("b", "Flow B")
     });
+    state = panelReducer(state, { type: "select-machine", machineId: "a" });
 
     state = panelReducer(state, {
       type: "bridge-envelope",
@@ -255,10 +389,25 @@ describe("panelReducer", () => {
     });
 
     expect(state.selectedMachineId).toBe("a");
-    expect(state.machineOrder).toEqual(["a"]);
   });
 
-  it("updates display limit and prunes logs", () => {
+  it("unregister clears selected machine when the last machine is removed", () => {
+    let state = panelReducer(createInitialPanelState(), {
+      type: "bridge-envelope",
+      envelope: registerEnvelope("a", "Flow A")
+    });
+
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: unregisterEnvelope("a")
+    });
+
+    expect(state.machineOrder).toEqual([]);
+    expect(state.selectedMachineId).toBeNull();
+    expect(state.machines.a).toBeUndefined();
+  });
+
+  it("updates display limit and prunes timeline entries", () => {
     let state = panelReducer(createInitialPanelState(), {
       type: "bridge-envelope",
       envelope: registerEnvelope("a", "Flow A")
@@ -273,10 +422,25 @@ describe("panelReducer", () => {
     });
 
     state = panelReducer(state, { type: "set-display-limit", limit: 2 });
-    state = panelReducer(state, { type: "prune-logs", machineId: "a", keep: 2 });
+    state = panelReducer(state, { type: "prune-timeline", machineId: "a", keep: 2 });
 
     expect(state.displayLimit).toBe(2);
-    expect(state.machines.a?.logs).toHaveLength(2);
+    expect(state.machines.a?.timelineEntries).toHaveLength(2);
+  });
+
+  it("does not change machine reference when prune keep is larger than history", () => {
+    let state = panelReducer(createInitialPanelState(), {
+      type: "bridge-envelope",
+      envelope: registerEnvelope("a", "Flow A")
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: snapshotEnvelope("a", "details")
+    });
+
+    const machineBefore = state.machines.a;
+    state = panelReducer(state, { type: "prune-timeline", machineId: "a", keep: 99 });
+    expect(state.machines.a).toBe(machineBefore);
   });
 
   it("keeps state for prune requests on missing machine or null keep", () => {
@@ -286,12 +450,12 @@ describe("panelReducer", () => {
     });
 
     const unchangedForMissing = panelReducer(state, {
-      type: "prune-logs",
+      type: "prune-timeline",
       machineId: "missing",
       keep: 5
     });
     const unchangedForNull = panelReducer(state, {
-      type: "prune-logs",
+      type: "prune-timeline",
       machineId: "a",
       keep: null
     });
@@ -309,17 +473,16 @@ describe("panelReducer", () => {
       type: "bridge-envelope",
       envelope: snapshotEnvelope("a", "details")
     });
-
     state = panelReducer(state, {
-      type: "prune-logs",
+      type: "prune-timeline",
       machineId: "a",
       keep: -10
     });
 
-    expect(state.machines.a?.logs).toHaveLength(0);
+    expect(state.machines.a?.timelineEntries).toHaveLength(0);
   });
 
-  it("uses unique log ids even when multiple envelopes share the same timestamp", () => {
+  it("uses unique row ids even when envelopes share same timestamp", () => {
     const fixedTimestamp = 7777;
     let state = panelReducer(createInitialPanelState(), {
       type: "bridge-envelope",
@@ -328,7 +491,6 @@ describe("panelReducer", () => {
         timestamp: fixedTimestamp
       }
     });
-
     state = panelReducer(state, {
       type: "bridge-envelope",
       envelope: {
@@ -337,26 +499,139 @@ describe("panelReducer", () => {
       }
     });
 
-    const ids = (state.machines.a?.logs ?? []).map((entry) => entry.id);
+    const ids = (state.machines.a?.timelineEntries ?? []).map((entry) => entry.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("retains only the latest 2000 logs per machine", () => {
+  it("supports legacy machine records missing timelineSequence", () => {
+    let state = panelReducer(createInitialPanelState(), {
+      type: "bridge-envelope",
+      envelope: registerEnvelope("a", "Flow A")
+    });
+    const machine = state.machines.a;
+    if (!machine) {
+      throw new Error("expected machine a");
+    }
+
+    const legacyMachine = { ...machine };
+    delete (legacyMachine as { timelineSequence?: number }).timelineSequence;
+    state = {
+      ...state,
+      machines: {
+        ...state.machines,
+        a: legacyMachine
+      }
+    };
+
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: snapshotEnvelope("a", "legacy")
+    });
+
+    expect(state.machines.a?.timelineSequence).toBe(2);
+    expect(state.machines.a?.timelineEntries[1]?.label).toBe("SNAPSHOT/legacy");
+  });
+
+  it("retains only the latest cap of timeline entries per machine", () => {
     let state = panelReducer(createInitialPanelState(), {
       type: "bridge-envelope",
       envelope: registerEnvelope("cap", "Flow Cap")
     });
 
-    for (let index = 0; index < 2500; index += 1) {
+    for (let index = 0; index < MAX_MACHINE_TIMELINE_ENTRIES + 500; index += 1) {
       state = panelReducer(state, {
         type: "bridge-envelope",
         envelope: snapshotEnvelope("cap", `step-${index}`)
       });
     }
 
-    expect(state.machines.cap?.logs).toHaveLength(2000);
-    expect(state.machines.cap?.logs[0]?.summary).toContain("step-500");
-    expect(state.machines.cap?.logs[1999]?.summary).toContain("step-2499");
+    const entries = state.machines.cap?.timelineEntries ?? [];
+    expect(entries).toHaveLength(MAX_MACHINE_TIMELINE_ENTRIES);
+    expect(entries[0]?.label).toContain("step-500");
+    expect(entries[MAX_MACHINE_TIMELINE_ENTRIES - 1]?.label).toContain(
+      `step-${MAX_MACHINE_TIMELINE_ENTRIES + 499}`
+    );
+  });
+
+  it("set-follow-latest no-ops when machine is missing", () => {
+    const state = createInitialPanelState();
+    const next = panelReducer(state, {
+      type: "set-follow-latest",
+      machineId: "missing",
+      followLatest: true
+    });
+    expect(next).toBe(state);
+  });
+
+  it("queue-command no-ops when machine is missing", () => {
+    const state = createInitialPanelState();
+    const next = panelReducer(state, {
+      type: "queue-command",
+      machineId: "missing",
+      requestId: "req-missing",
+      command: { type: "goToNextStep" },
+      timestamp: nextTs()
+    });
+    expect(next).toBe(state);
+  });
+
+  it("toggles follow-latest and keeps selected row bounded", () => {
+    let state = panelReducer(createInitialPanelState(), {
+      type: "bridge-envelope",
+      envelope: registerEnvelope("a", "Flow A")
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: snapshotEnvelope("a", "details")
+    });
+    state = panelReducer(state, {
+      type: "select-timeline-entry",
+      machineId: "a",
+      index: 0
+    });
+    expect(state.machines.a?.followLatest).toBe(false);
+    expect(state.machines.a?.selectedTimelineIndex).toBe(0);
+
+    state = panelReducer(state, {
+      type: "set-follow-latest",
+      machineId: "a",
+      followLatest: true
+    });
+    expect(state.machines.a?.followLatest).toBe(true);
+    expect(state.machines.a?.selectedTimelineIndex).toBe(1);
+  });
+
+  it("select-timeline-entry clamps indexes and no-ops for missing machine", () => {
+    let state = panelReducer(createInitialPanelState(), {
+      type: "bridge-envelope",
+      envelope: registerEnvelope("a", "Flow A")
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: snapshotEnvelope("a", "details")
+    });
+
+    const unchanged = panelReducer(state, {
+      type: "select-timeline-entry",
+      machineId: "missing",
+      index: 5
+    });
+    expect(unchanged).toBe(state);
+
+    state = panelReducer(state, {
+      type: "select-timeline-entry",
+      machineId: "a",
+      index: 999
+    });
+    expect(state.machines.a?.selectedTimelineIndex).toBe(1);
+    expect(state.machines.a?.followLatest).toBe(false);
+
+    state = panelReducer(state, {
+      type: "select-timeline-entry",
+      machineId: "a",
+      index: -2
+    });
+    expect(state.machines.a?.selectedTimelineIndex).toBe(0);
   });
 });
 
@@ -379,25 +654,346 @@ describe("selectors", () => {
     expect(selectActiveMachine(state)?.meta.machineId).toBe("b");
   });
 
-  it("selectVisibleLogs returns full copy for null limit", () => {
-    const logs = [
-      { id: "1", timestamp: 1, kind: "snapshot" as const, summary: "one" },
-      { id: "2", timestamp: 2, kind: "snapshot" as const, summary: "two" }
-    ];
-
-    const visible = selectVisibleLogs(logs, null);
-    expect(visible).toEqual(logs);
-    expect(visible).not.toBe(logs);
+  it("selectActiveMachine returns null when selected id has no machine entry", () => {
+    const state = {
+      ...createInitialPanelState(),
+      selectedMachineId: "missing"
+    };
+    expect(selectActiveMachine(state)).toBeNull();
   });
 
-  it("selectVisibleLogs respects positive and negative limits", () => {
-    const logs = [
-      { id: "1", timestamp: 1, kind: "snapshot" as const, summary: "one" },
-      { id: "2", timestamp: 2, kind: "snapshot" as const, summary: "two" },
-      { id: "3", timestamp: 3, kind: "snapshot" as const, summary: "three" }
+  it("selectVisibleTimelineEntries returns full copy when limit is null", () => {
+    const entries = [
+      {
+        id: "1",
+        timestamp: 1,
+        kind: "snapshot" as const,
+        label: "SNAPSHOT/a",
+        requestId: null,
+        command: null,
+        envelopeKind: "snapshot" as const,
+        snapshot: baseSnapshot("a"),
+        actionPayload: {},
+        meta: { machineId: "a" }
+      },
+      {
+        id: "2",
+        timestamp: 2,
+        kind: "snapshot" as const,
+        label: "SNAPSHOT/b",
+        requestId: null,
+        command: null,
+        envelopeKind: "snapshot" as const,
+        snapshot: baseSnapshot("b"),
+        actionPayload: {},
+        meta: { machineId: "a" }
+      }
     ];
 
-    expect(selectVisibleLogs(logs, 2).map((entry) => entry.id)).toEqual(["2", "3"]);
-    expect(selectVisibleLogs(logs, -2)).toEqual([]);
+    const visible = selectVisibleTimelineEntries(entries, null);
+    expect(visible).toEqual(entries);
+    expect(visible).not.toBe(entries);
+  });
+
+  it("selectVisibleTimelineEntries respects positive and negative limits", () => {
+    const entries = [
+      {
+        id: "1",
+        timestamp: 1,
+        kind: "snapshot" as const,
+        label: "SNAPSHOT/one",
+        requestId: null,
+        command: null,
+        envelopeKind: "snapshot" as const,
+        snapshot: baseSnapshot("one"),
+        actionPayload: {},
+        meta: { machineId: "a" }
+      },
+      {
+        id: "2",
+        timestamp: 2,
+        kind: "snapshot" as const,
+        label: "SNAPSHOT/two",
+        requestId: null,
+        command: null,
+        envelopeKind: "snapshot" as const,
+        snapshot: baseSnapshot("two"),
+        actionPayload: {},
+        meta: { machineId: "a" }
+      },
+      {
+        id: "3",
+        timestamp: 3,
+        kind: "snapshot" as const,
+        label: "SNAPSHOT/three",
+        requestId: null,
+        command: null,
+        envelopeKind: "snapshot" as const,
+        snapshot: baseSnapshot("three"),
+        actionPayload: {},
+        meta: { machineId: "a" }
+      }
+    ];
+
+    expect(selectVisibleTimelineEntries(entries, 2).map((entry) => entry.id)).toEqual(["2", "3"]);
+    expect(selectVisibleTimelineEntries(entries, -2)).toEqual([]);
+  });
+
+  it("selectSelectedTimelineEntry returns selected row and handles empty machine", () => {
+    let state = panelReducer(createInitialPanelState(), {
+      type: "bridge-envelope",
+      envelope: registerEnvelope("a", "Flow A")
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: snapshotEnvelope("a", "review")
+    });
+    state = panelReducer(state, {
+      type: "select-timeline-entry",
+      machineId: "a",
+      index: 0
+    });
+
+    expect(selectSelectedTimelineEntry(state.machines.a ?? null)?.label).toBe("@@INIT");
+    expect(selectSelectedTimelineEntry(null)).toBeNull();
+  });
+
+  it("selectSelectedTimelineEntry returns null for sparse timeline slots", () => {
+    const machine = panelReducer(createInitialPanelState(), {
+      type: "bridge-envelope",
+      envelope: registerEnvelope("a", "Flow A")
+    }).machines.a;
+    if (!machine) {
+      throw new Error("expected machine a");
+    }
+
+    const sparseEntries = [...machine.timelineEntries];
+    delete sparseEntries[0];
+    const sparseMachine = {
+      ...machine,
+      timelineEntries: sparseEntries as typeof machine.timelineEntries,
+      selectedTimelineIndex: 0
+    };
+
+    expect(selectSelectedTimelineEntry(sparseMachine)).toBeNull();
+  });
+
+  it("selectDisplayedSnapshot uses latest for follow mode and selected row for inspect mode", () => {
+    let state = panelReducer(createInitialPanelState(), {
+      type: "bridge-envelope",
+      envelope: registerEnvelope("a", "Flow A")
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: snapshotEnvelope("a", "details")
+    });
+
+    expect(selectDisplayedSnapshot(state.machines.a ?? null)?.currentStepId).toBe("details");
+
+    state = panelReducer(state, {
+      type: "select-timeline-entry",
+      machineId: "a",
+      index: 0
+    });
+    expect(selectDisplayedSnapshot(state.machines.a ?? null)?.currentStepId).toBe("start");
+    expect(selectDisplayedSnapshot(null)).toBeNull();
+  });
+
+  it("selectDisplayedSnapshot returns machine snapshot when inspect mode has no rows", () => {
+    const machine = {
+      meta: {
+        machineId: "m-empty",
+        label: "Empty",
+        appName: null,
+        commandsEnabled: true
+      },
+      snapshot: baseSnapshot("start"),
+      timelineEntries: [],
+      selectedTimelineIndex: 0,
+      followLatest: false,
+      pendingCommandsByRequestId: {}
+    };
+
+    expect(selectDisplayedSnapshot(machine)?.currentStepId).toBe("start");
+  });
+
+  it("selectDisplayedSnapshot falls back when inspect selection has no snapshots", () => {
+    const machine = panelReducer(createInitialPanelState(), {
+      type: "bridge-envelope",
+      envelope: registerEnvelope("a", "Flow A")
+    }).machines.a;
+    if (!machine) {
+      throw new Error("expected machine a");
+    }
+    const initEntry = machine.timelineEntries[0];
+    if (!initEntry) {
+      throw new Error("expected init timeline entry");
+    }
+
+    const nullSnapshotEntries = [
+      {
+        ...initEntry,
+        snapshot: null
+      },
+      {
+        ...initEntry,
+        id: "a-command-null-snapshot",
+        kind: "command" as const,
+        label: "COMMAND_RESULT/missing",
+        requestId: "missing",
+        command: null,
+        envelopeKind: "commandResult" as const,
+        snapshot: null,
+        actionPayload: { type: "COMMAND_RESULT/missing" },
+        meta: { machineId: "a" }
+      }
+    ];
+
+    const inspectMachine = {
+      ...machine,
+      followLatest: false,
+      selectedTimelineIndex: 1,
+      timelineEntries: nullSnapshotEntries
+    };
+    expect(selectDisplayedSnapshot(inspectMachine)?.currentStepId).toBe("start");
+  });
+
+  it("selectSelectedDiff returns deterministic path diff", () => {
+    const contextA = {
+      user: {
+        name: "Ava",
+        age: 30
+      },
+      flags: ["a", "b"]
+    };
+    const contextB = {
+      user: {
+        name: "Ava",
+        age: 31
+      },
+      flags: ["a", "b", "c"],
+      metadata: {
+        region: "us"
+      }
+    };
+
+    let state = panelReducer(createInitialPanelState(), {
+      type: "bridge-envelope",
+      envelope: registerEnvelope("a", "Flow A")
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: snapshotEnvelope("a", "details", contextA)
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: snapshotEnvelope("a", "review", contextB)
+    });
+    state = panelReducer(state, {
+      type: "select-timeline-entry",
+      machineId: "a",
+      index: 2
+    });
+
+    const diff = selectSelectedDiff(state.machines.a ?? null);
+    expect(diff.changed["context.user.age"]).toEqual({ before: 30, after: 31 });
+    expect(diff.added["context.flags[2]"]).toBe("c");
+    expect(diff.added["context.metadata"]).toEqual({ region: "us" });
+  });
+
+  it("selectSelectedDiff skips duplicate snapshot before commandResult", () => {
+    let state = panelReducer(createInitialPanelState(), {
+      type: "bridge-envelope",
+      envelope: registerEnvelope("a", "Flow A")
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: snapshotEnvelope("a", "details")
+    });
+    state = panelReducer(state, {
+      type: "queue-command",
+      machineId: "a",
+      requestId: "req-dup",
+      command: { type: "goToNextStep" },
+      timestamp: nextTs()
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: commandResultEnvelope("a", "req-dup", "details")
+    });
+
+    const machine = state.machines.a;
+    if (!machine) {
+      throw new Error("expected machine a");
+    }
+
+    const diff = selectSelectedDiff(machine);
+    expect(diff.changed.currentStepId).toEqual({ before: "start", after: "details" });
+  });
+
+  it("selectSelectedDiff stays empty for no-op commandResult without intermediate snapshot", () => {
+    let state = panelReducer(createInitialPanelState(), {
+      type: "bridge-envelope",
+      envelope: registerEnvelope("a", "Flow A")
+    });
+    state = panelReducer(state, {
+      type: "queue-command",
+      machineId: "a",
+      requestId: "req-noop",
+      command: { type: "goToNextStep" },
+      timestamp: nextTs()
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: commandResultEnvelope("a", "req-noop", "start")
+    });
+
+    expect(selectSelectedDiff(state.machines.a ?? null)).toEqual(EMPTY_STRUCTURED_DIFF);
+  });
+
+  it("selectSelectedDiff returns empty diff when no previous snapshot exists", () => {
+    let state = panelReducer(createInitialPanelState(), {
+      type: "bridge-envelope",
+      envelope: registerEnvelope("a", "Flow A")
+    });
+    state = panelReducer(state, {
+      type: "select-timeline-entry",
+      machineId: "a",
+      index: 0
+    });
+
+    expect(selectSelectedDiff(state.machines.a ?? null)).toEqual(EMPTY_STRUCTURED_DIFF);
+    expect(selectSelectedDiff(null)).toEqual(EMPTY_STRUCTURED_DIFF);
+  });
+
+  it("selectSelectedDiff returns empty diff when selected entries cannot resolve snapshots", () => {
+    const machine = {
+      meta: {
+        machineId: "m-diff",
+        label: "Diff",
+        appName: null,
+        commandsEnabled: true
+      },
+      snapshot: baseSnapshot("start"),
+      timelineEntries: [
+        {
+          id: "row-1",
+          timestamp: 1,
+          kind: "command" as const,
+          label: "COMMAND/goToNextStep",
+          requestId: "req-1",
+          command: { type: "goToNextStep" as const },
+          envelopeKind: "commandResult" as const,
+          snapshot: null,
+          actionPayload: {},
+          meta: { machineId: "m-diff" }
+        }
+      ],
+      selectedTimelineIndex: 0,
+      followLatest: false,
+      pendingCommandsByRequestId: {}
+    };
+
+    expect(selectSelectedDiff(machine)).toEqual(EMPTY_STRUCTURED_DIFF);
   });
 });

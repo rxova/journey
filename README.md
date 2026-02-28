@@ -8,67 +8,44 @@
     <img src="https://img.shields.io/badge/docs-rxova.org-0f8f6a" alt="Docs" />
   </a>
   <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
-  <a href="https://www.npmjs.com/package/@rxova/journey-core">
-    <img src="https://img.shields.io/npm/v/@rxova/journey-core" alt="Core npm version" />
-  </a>
-  <a href="https://www.npmjs.com/package/@rxova/journey-react">
-    <img src="https://img.shields.io/npm/v/@rxova/journey-react" alt="React npm version" />
-  </a>
-  <a href="https://www.npmjs.com/package/@rxova/journey-devtools-bridge">
-    <img src="https://img.shields.io/npm/v/@rxova/journey-devtools-bridge" alt="Bridge npm version" />
-  </a>
 </p>
 
-<p align="center">
-  <img src="./apps/docs/static/img/rxova-logo-256.png" alt="Rxova logo" width="180" />
-</p>
+Typed journey graphs for non-linear product flows.
 
-Typed journey graphs for non-linear product flows in web apps.
-
-Rxova Journey gives you one place to define step flow logic (branching, history, async guards/effects), then reuse that logic in React or headless runtimes.
+This release introduces timeline-pointer navigation, typed React bindings, transition builder helpers, metadata updates, and richer devtools controls.
 
 `[DOCS](https://rxova.org/) | [CORE](https://rxova.org/docs/core/getting-started) | [REACT](https://rxova.org/docs/react/quickstart) | [DEVTOOL](https://rxova.org/docs/devtool/overview) | [BRIDGE API](https://rxova.org/docs/devtool/bridge-api)`
 
-## Choose Your Package
+## Packages
 
-- `@rxova/journey-core`: headless state machine runtime (framework-agnostic).
-- `@rxova/journey-react`: React provider/hooks/step renderer on top of core.
-- `@rxova/journey-devtools-bridge`: optional bridge for browser DevTools integration.
+- `@rxova/journey-core`: framework-agnostic runtime.
+- `@rxova/journey-react`: typed bindings factory for React.
+- `@rxova/journey-devtools-bridge`: browser bridge for the devtools extension.
 
 ## Install
 
 ```bash
-# headless runtime
-npm i @rxova/journey-core
-
-# React bindings (includes core)
-npm i @rxova/journey-react
+npm i @rxova/journey-core @rxova/journey-react
 ```
 
-## Quickstart (React, most common)
-
-Use this when your journey renders UI.
+## Quickstart (React, bindings-first)
 
 ```tsx
-import {
-  JourneyProvider,
-  JourneyStepRenderer,
-  useJourney,
-  JOURNEY_TERMINAL,
-  type JourneyReactDefinition
-} from "@rxova/journey-react";
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
 
 type StepId = "start" | "review";
 type Ctx = { name: string };
 
+let bindings: ReturnType<typeof createJourneyBindings<Ctx, StepId>>;
+
 const Start = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => void api.next()}>Next</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => void api.goToNextStep()}>Next</button>;
 };
 
 const Review = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => void api.submit()}>Submit</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => void api.completeJourney()}>Submit</button>;
 };
 
 const journey: JourneyReactDefinition<Ctx, StepId> = {
@@ -79,27 +56,32 @@ const journey: JourneyReactDefinition<Ctx, StepId> = {
     review: { component: Review }
   },
   transitions: [
-    { from: "start", event: "next", to: "review" },
-    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
+    { from: "start", event: "goToNextStep", to: "review" },
+    { from: "review", event: "completeJourney" }
   ]
 };
 
-export const App = () => (
-  <JourneyProvider journey={journey}>
-    <JourneyStepRenderer<Ctx, StepId> />
-  </JourneyProvider>
-);
+bindings = createJourneyBindings(journey);
+
+const App = () => {
+  const Provider = bindings.Provider;
+  const StepRenderer = bindings.StepRenderer;
+
+  return (
+    <Provider>
+      <StepRenderer />
+    </Provider>
+  );
+};
 ```
 
-## Quickstart (Core, headless)
-
-Use this when you want journey logic without React UI rendering.
+## Quickstart (Core)
 
 ```ts
-import { createJourneyMachine, JOURNEY_TERMINAL } from "@rxova/journey-core";
+import { createJourneyMachine } from "@rxova/journey-core";
 
 type StepId = "start" | "review";
-type Event = "next" | "submit";
+type Event = "goToNextStep" | "completeJourney" | "back";
 type Ctx = { accepted: boolean };
 
 const journey = {
@@ -107,16 +89,17 @@ const journey = {
   context: { accepted: false },
   steps: { start: {}, review: {} },
   transitions: [
-    { from: "start", event: "next", to: "review" },
-    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
+    { from: "start", event: "goToNextStep", to: "review" },
+    { from: "review", event: "completeJourney" }
   ]
 };
 
 const machine = createJourneyMachine<Ctx, StepId, Event>(journey);
-await machine.send({ type: "next" });
+await machine.send({ type: "goToNextStep" });
+await machine.goToPreviousStep();
 ```
 
-## Optional DevTools Bridge
+## Optional Devtools Bridge
 
 ```ts
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";

@@ -8,6 +8,7 @@ import {
 import {
   createCommandEnvelope,
   createTransportErrorEnvelope,
+  isBackgroundToContentMessage,
   isBackgroundToPanelMessage,
   isContentToBackgroundMessage,
   isPanelToBackgroundMessage,
@@ -16,7 +17,7 @@ import {
 
 describe("shared message guards", () => {
   it("accepts valid panel->background command messages", () => {
-    const envelope = createCommandEnvelope("m1", "req-1", { type: "next" });
+    const envelope = createCommandEnvelope("m1", "req-1", { type: "goToNextStep" });
 
     expect(
       isPanelToBackgroundMessage({
@@ -40,7 +41,7 @@ describe("shared message guards", () => {
         source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
         kind: "snapshot",
         machineId: "m1",
-        snapshot: { current: "start" },
+        snapshot: { currentStepId: "start" },
         timestamp: Date.now()
       }
     };
@@ -98,7 +99,7 @@ describe("shared message guards", () => {
           source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
           kind: "snapshot",
           machineId: "m1",
-          snapshot: { current: "start" },
+          snapshot: { currentStepId: "start" },
           timestamp: Date.now()
         }
       })
@@ -108,6 +109,26 @@ describe("shared message guards", () => {
     );
     expect(isBackgroundToPanelMessage({ type: "other" })).toBe(false);
     expect(isBackgroundToPanelMessage(null)).toBe(false);
+  });
+
+  it("validates background->content payload shape", () => {
+    const extensionEnvelope = createCommandEnvelope("m1", "req-1", { type: "goToNextStep" });
+
+    expect(
+      isBackgroundToContentMessage({
+        type: "extension-envelope",
+        envelope: extensionEnvelope
+      })
+    ).toBe(true);
+    expect(isBackgroundToContentMessage({ type: "bridge-replay-request" })).toBe(true);
+    expect(
+      isBackgroundToContentMessage({
+        type: "extension-envelope",
+        envelope: { kind: "invalid" }
+      })
+    ).toBe(false);
+    expect(isBackgroundToContentMessage({ type: "unknown" })).toBe(false);
+    expect(isBackgroundToContentMessage(null)).toBe(false);
   });
 
   it("serializes transport errors and wraps them in commandError envelopes", () => {
@@ -130,6 +151,19 @@ describe("shared message guards", () => {
       name: null,
       message: "Unknown transport error",
       stack: null,
+      cause: null
+    });
+
+    expect(
+      serializeTransportError({
+        name: "RuntimeError",
+        message: "Could not establish connection. Receiving end does not exist.",
+        stack: "stacktrace"
+      })
+    ).toEqual({
+      name: "RuntimeError",
+      message: "Could not establish connection. Receiving end does not exist.",
+      stack: "stacktrace",
       cause: null
     });
 

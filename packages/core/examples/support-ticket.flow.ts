@@ -1,12 +1,7 @@
-import {
-  createJourneyMachine,
-  HISTORY_TARGET,
-  JOURNEY_TERMINAL,
-  type JourneyDefinition
-} from "@rxova/journey-core";
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "category" | "details" | "screenshot" | "review" | "confirmExit";
-type Event = "next" | "back" | "close" | "submit";
+type Event = "goToNextStep" | "back" | "requestClose" | "terminateJourney" | "completeJourney";
 type Ctx = {
   includeScreenshot: boolean;
   dirty: boolean;
@@ -26,34 +21,28 @@ export const supportTicketJourney: JourneyDefinition<Ctx, StepId, Event> = {
     confirmExit: {}
   },
   transitions: [
-    { from: "category", event: "next", to: "details" },
+    { from: "category", event: "goToNextStep", to: "details" },
     {
       from: "details",
-      event: "next",
+      event: "goToNextStep",
       to: "screenshot",
       when: ({ context }) => context.includeScreenshot
     },
     {
       from: "details",
-      event: "next",
+      event: "goToNextStep",
       to: "review",
       when: ({ context }) => !context.includeScreenshot
     },
-    { from: "screenshot", event: "next", to: "review" },
-    { from: "*", event: "back", to: HISTORY_TARGET },
+    { from: "screenshot", event: "goToNextStep", to: "review" },
     {
       from: "*",
-      event: "close",
+      event: "requestClose",
       to: "confirmExit",
       when: ({ context }) => context.dirty
     },
-    {
-      from: "*",
-      event: "close",
-      to: JOURNEY_TERMINAL.CLOSE,
-      when: ({ context }) => !context.dirty
-    },
-    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
+    { from: "*", event: "terminateJourney" },
+    { from: "review", event: "completeJourney" }
   ]
 };
 

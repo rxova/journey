@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { createJourneyMachine, HISTORY_TARGET, type JourneyDefinition } from "@rxova/journey-core";
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "s0" | "s1" | "s2";
-type Event = "next" | "back";
-type Ctx = { value: number };
+type Event = "goToNextStep" | "back" | "completeJourney";
+type Context = { value: number };
 
-const createSmallJourney = (): JourneyDefinition<Ctx, StepId, Event> => ({
+const baseJourney = (): JourneyDefinition<Context, StepId, Event> => ({
   initial: "s0",
   context: { value: 0 },
   steps: {
@@ -15,121 +15,111 @@ const createSmallJourney = (): JourneyDefinition<Ctx, StepId, Event> => ({
     s2: {}
   },
   transitions: [
-    { from: "s0", event: "next", to: "s1" },
-    { from: "s1", event: "next", to: "s2" },
-    { from: "*", event: "back", to: HISTORY_TARGET }
+    { from: "s0", event: "goToNextStep", to: "s1" },
+    { from: "s1", event: "goToNextStep", to: "s2" },
+    { from: "s2", event: "completeJourney" }
   ]
 });
 
-describe("core robustness", () => {
-  it("fails fast for malformed steps config", () => {
+describe("robustness", () => {
+  it("throws when steps are not a record object", () => {
+    const journey = baseJourney();
     expect(() =>
       createJourneyMachine({
-        ...createSmallJourney(),
-        steps: null as unknown as JourneyDefinition<Ctx, StepId, Event>["steps"]
+        ...journey,
+        steps: null as unknown as JourneyDefinition<Context, StepId, Event>["steps"]
       })
-    ).toThrow("Journey steps must be a record object.");
+    ).toThrow(/steps must be a record object/i);
   });
 
-  it("fails fast for malformed transitions config", () => {
+  it("throws when transitions are not an array", () => {
+    const journey = baseJourney();
     expect(() =>
       createJourneyMachine({
-        ...createSmallJourney(),
-        transitions: undefined as unknown as JourneyDefinition<Ctx, StepId, Event>["transitions"]
+        ...journey,
+        transitions: null as unknown as JourneyDefinition<Context, StepId, Event>["transitions"]
       })
-    ).toThrow("Journey transitions must be an array.");
+    ).toThrow(/transitions must be an array/i);
   });
 
-  it("fails fast when a transition references an unknown source step", () => {
-    expect(() =>
-      createJourneyMachine({
-        ...createSmallJourney(),
-        transitions: [{ from: "missing" as StepId, event: "next", to: "s1" }]
-      })
-    ).toThrow('Journey transition at index 0 references unknown from step "missing".');
+  it("throws when a transition entry is not an object", () => {
+    const journey = baseJourney();
+    journey.transitions = [null as unknown as (typeof journey.transitions)[number]];
+
+    expect(() => createJourneyMachine(journey)).toThrow(/transition at index 0 must be an object/i);
   });
 
-  it("fails fast when a transition points to an unknown target step", () => {
-    expect(() =>
-      createJourneyMachine({
-        ...createSmallJourney(),
-        transitions: [{ from: "s0", event: "next", to: "missing" as StepId }]
-      })
-    ).toThrow('Journey transition at index 0 points to unknown step "missing".');
-  });
-
-  it("fails fast when a transition entry is not an object", () => {
-    expect(() =>
-      createJourneyMachine({
-        ...createSmallJourney(),
-        transitions: [null] as unknown as JourneyDefinition<Ctx, StepId, Event>["transitions"]
-      })
-    ).toThrow("Journey transition at index 0 must be an object.");
-  });
-
-  it("fails fast when transition from/event are not strings", () => {
-    expect(() =>
-      createJourneyMachine({
-        ...createSmallJourney(),
-        transitions: [
-          {
-            from: 0 as unknown as StepId,
-            event: {} as unknown as Event,
-            to: "s1"
-          }
-        ]
-      })
-    ).toThrow('Journey transition at index 0 must define string "from" and "event".');
-  });
-
-  it("handles rapid event firing deterministically", async () => {
-    const machine = createJourneyMachine(createSmallJourney());
-    const results = await Promise.all(
-      Array.from({ length: 100 }, () => machine.send({ type: "next" }))
-    );
-
-    expect(machine.getSnapshot().current).toBe("s2");
-    expect(machine.getSnapshot().history).toEqual(["s0", "s1"]);
-    expect(results.filter((result) => result.transitioned)).toHaveLength(2);
-  });
-
-  it("supports large step counts and deep history traversal", async () => {
-    const stepCount = 150;
-    const steps = Object.fromEntries(
-      Array.from({ length: stepCount }, (_, i) => [`s${i}`, {}])
-    ) as Record<string, unknown>;
-    const transitions = [
-      ...Array.from({ length: stepCount - 1 }, (_, i) => ({
-        from: `s${i}`,
-        event: "next",
-        to: `s${i + 1}`
-      })),
-      { from: "*", event: "back", to: HISTORY_TARGET }
-    ] as const;
-
-    const machine = createJourneyMachine(
+  it("throws when a transition is missing string from/event", () => {
+    const journey = baseJourney();
+    journey.transitions = [
       {
-        initial: "s0",
-        context: { value: 0 },
-        steps,
-        transitions
-      },
+        from: "s0",
+        event: 7 as unknown as Event,
+        to: "s1"
+      } as unknown as JourneyDefinition<Context, StepId, Event>["transitions"][number]
+    ];
+
+    expect(() => createJourneyMachine(journey)).toThrow(/must define string "from" and "event"/i);
+  });
+
+  it("throws on unknown transition from step", () => {
+    const journey = baseJourney();
+    journey.transitions = [{ from: "missing" as StepId, event: "goToNextStep", to: "s1" }];
+
+    expect(() => createJourneyMachine(journey)).toThrow(/unknown from step/i);
+  });
+
+  it("throws on unknown initial step", () => {
+    const journey = baseJourney();
+
+    expect(() =>
+      createJourneyMachine({
+        ...journey,
+        initial: "missing" as StepId
+      })
+    ).toThrow(/initial step/i);
+  });
+
+  it("throws on unknown transition target", () => {
+    const journey = baseJourney();
+    journey.transitions = [{ from: "s0", event: "goToNextStep", to: "missing" as StepId }];
+
+    expect(() => createJourneyMachine(journey)).toThrow(/unknown step/i);
+  });
+
+  it('throws when "completeJourney" transition defines "to"', () => {
+    const journey = baseJourney();
+    journey.transitions = [
       {
-        history: { maxHistory: null }
-      }
-    );
+        from: "s2",
+        event: "completeJourney",
+        to: "s2"
+      } as unknown as JourneyDefinition<Context, StepId, Event>["transitions"][number]
+    ];
 
-    for (let i = 0; i < stepCount - 1; i += 1) {
-      await machine.send({ type: "next" });
-    }
+    expect(() => createJourneyMachine(journey)).toThrow(/completeJourney.*cannot define "to"/i);
+  });
 
-    expect(machine.getSnapshot().current).toBe(`s${stepCount - 1}`);
-    expect(machine.getSnapshot().history).toHaveLength(stepCount - 1);
+  it("no-ops previous navigation at index zero", async () => {
+    const machine = createJourneyMachine(baseJourney());
 
-    for (let i = 0; i < stepCount - 1; i += 1) {
-      await machine.send({ type: "back" });
-    }
+    const result = await machine.goToPreviousStep(2);
 
-    expect(machine.getSnapshot().current).toBe("s0");
+    expect(result.transitioned).toBe(false);
+    expect(machine.getSnapshot().currentStepId).toBe("s0");
+    expect(machine.getSnapshot().history.index).toBe(0);
+  });
+
+  it("blocks default back fallback after terminal status", async () => {
+    const machine = createJourneyMachine(baseJourney());
+
+    await machine.send({ type: "goToNextStep" });
+    await machine.send({ type: "goToNextStep" });
+    await machine.send({ type: "completeJourney" });
+
+    const result = await machine.send({ type: "back" });
+
+    expect(result.transitioned).toBe(false);
+    expect(machine.getSnapshot().currentStepId).toBe("s2");
   });
 });

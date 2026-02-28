@@ -1,12 +1,7 @@
-import {
-  createJourneyMachine,
-  HISTORY_TARGET,
-  JOURNEY_TERMINAL,
-  type JourneyDefinition
-} from "@rxova/journey-core";
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "invitees" | "preferences" | "budget" | "confirmPlan";
-type Event = "next" | "back" | "close" | "submit";
+type Event = "goToNextStep" | "back" | "terminateJourney" | "completeJourney";
 
 type GroupTripContext = {
   needsBudgetReview: boolean;
@@ -24,23 +19,22 @@ export const groupTripJourney: JourneyDefinition<GroupTripContext, StepId, Event
     confirmPlan: {}
   },
   transitions: [
-    { from: "invitees", event: "next", to: "preferences" },
+    { from: "invitees", event: "goToNextStep", to: "preferences" },
     {
       from: "preferences",
-      event: "next",
+      event: "goToNextStep",
       to: "budget",
       when: ({ context }) => context.needsBudgetReview
     },
     {
       from: "preferences",
-      event: "next",
+      event: "goToNextStep",
       to: "confirmPlan",
       when: ({ context }) => !context.needsBudgetReview
     },
-    { from: "budget", event: "next", to: "confirmPlan" },
-    { from: "*", event: "back", to: HISTORY_TARGET },
-    { from: "confirmPlan", event: "submit", to: JOURNEY_TERMINAL.COMPLETE },
-    { from: "*", event: "close", to: JOURNEY_TERMINAL.CLOSE }
+    { from: "budget", event: "goToNextStep", to: "confirmPlan" },
+    { from: "confirmPlan", event: "completeJourney" },
+    { from: "*", event: "terminateJourney" }
   ]
 };
 

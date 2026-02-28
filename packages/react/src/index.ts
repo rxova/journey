@@ -1,14 +1,13 @@
 "use client";
 
-export { JourneyProvider } from "./context";
-export { JourneyStepRenderer } from "./JourneyStepRenderer";
-export { useJourney, useJourneyApi, useJourneyMachine, useJourneySnapshot } from "./hooks";
+export { createJourneyBindings } from "./bindings";
 export type {
   JourneyApi,
-  JourneyReactEventPayloadMap,
-  JourneyHookResult,
-  JourneyProviderProps,
+  JourneyBindings,
+  JourneyBindingsProviderProps,
+  JourneyEventType,
   JourneyReactDefinition,
+  JourneyReactEventPayloadMap,
   JourneyReactStep,
   JourneyStoreValue
 } from "./types";

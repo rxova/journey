@@ -49,7 +49,8 @@
   },
   "scripts": {
     "build": "pnpm run clean && node ./scripts/build.mjs && tsc -p tsconfig.build.json && node ../../scripts/copy-types.mjs dist",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist tsconfig.build.tsbuildinfo",
+    "coverage": "pnpm --workspace-root vitest run --coverage --coverage.include=packages/devtools-bridge/src/** --coverage.reporter=text-summary",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "publint": "publint",
     "attw": "attw --pack .",
@@ -61,7 +62,7 @@
       "name": "devtools-bridge/attachJourneyDevtools",
       "path": "dist/index.js",
       "import": "{ attachJourneyDevtools }",
-      "limit": "5.5 kB"
+      "limit": "3 kB"
     }
   ]
 }

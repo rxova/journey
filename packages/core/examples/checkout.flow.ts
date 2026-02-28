@@ -1,12 +1,7 @@
-import {
-  createJourneyMachine,
-  HISTORY_TARGET,
-  JOURNEY_TERMINAL,
-  type JourneyDefinition
-} from "@rxova/journey-core";
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "cart" | "address" | "giftWrap" | "payment" | "review";
-type Event = "next" | "back" | "close" | "submit";
+type Event = "goToNextStep" | "back" | "terminateJourney" | "completeJourney";
 type Ctx = {
   needsShipping: boolean;
   wantsGiftWrap: boolean;
@@ -28,33 +23,32 @@ export const checkoutJourney: JourneyDefinition<Ctx, StepId, Event> = {
   transitions: [
     {
       from: "cart",
-      event: "next",
+      event: "goToNextStep",
       to: "address",
       when: ({ context }) => context.needsShipping
     },
     {
       from: "cart",
-      event: "next",
+      event: "goToNextStep",
       to: "payment",
       when: ({ context }) => !context.needsShipping
     },
     {
       from: "address",
-      event: "next",
+      event: "goToNextStep",
       to: "giftWrap",
       when: ({ context }) => context.wantsGiftWrap
     },
     {
       from: "address",
-      event: "next",
+      event: "goToNextStep",
       to: "payment",
       when: ({ context }) => !context.wantsGiftWrap
     },
-    { from: "giftWrap", event: "next", to: "payment" },
-    { from: "payment", event: "next", to: "review" },
-    { from: "*", event: "back", to: HISTORY_TARGET },
-    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE },
-    { from: "*", event: "close", to: JOURNEY_TERMINAL.CLOSE }
+    { from: "giftWrap", event: "goToNextStep", to: "payment" },
+    { from: "payment", event: "goToNextStep", to: "review" },
+    { from: "review", event: "completeJourney" },
+    { from: "*", event: "terminateJourney" }
   ]
 };
 

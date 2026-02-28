@@ -139,6 +139,121 @@ button:disabled {
   line-height: 1.45;
 }
 
+.timeline-card {
+  display: grid;
+  gap: 10px;
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.timeline-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+}
+
+.follow-button.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.timeline-layout {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 10px;
+  min-height: 250px;
+}
+
+.timeline-list {
+  margin: 0;
+  padding: 0 0 8px;
+  list-style: none;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  max-height: 320px;
+  overflow: auto;
+  scroll-padding-bottom: 8px;
+}
+
+.timeline-list li {
+  content-visibility: auto;
+  contain-intrinsic-size: 42px;
+}
+
+.timeline-row {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfdfd;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 42px 48px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  text-align: left;
+}
+
+.timeline-row.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(15, 143, 106, 0.28);
+}
+
+.timeline-index {
+  font-family: "JetBrains Mono", "Menlo", monospace;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.timeline-kind {
+  justify-self: start;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 1px 7px;
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+
+.timeline-kind.kind-init {
+  color: #395079;
+}
+
+.timeline-kind.kind-snapshot {
+  color: #0f556e;
+}
+
+.timeline-kind.kind-command {
+  color: #0f8f6a;
+}
+
+.timeline-kind.kind-error {
+  color: var(--warn);
+}
+
+.timeline-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+
+.timeline-time {
+  color: var(--muted);
+  font-size: 0.75rem;
+  justify-self: end;
+}
+
+.timeline-details {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 8px;
+}
+
 .button-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
@@ -212,6 +327,24 @@ button:disabled {
 }
 
 @media (max-width: 640px) {
+  .timeline-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .timeline-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .timeline-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .timeline-time {
+    justify-self: start;
+  }
+
   .log-item {
     grid-template-columns: 1fr;
   }

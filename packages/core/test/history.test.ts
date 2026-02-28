@@ -1,90 +1,116 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import {
-  createJourneyMachine,
-  type JourneyDefinition,
-  type JourneyHistoryOverflow
-} from "@rxova/journey-core";
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "a" | "b" | "c" | "d";
-type Context = { value: number };
-type Event = "next";
+type Event = "goToNextStep" | "back" | "jump";
+type Context = { count: number };
 
 const createJourney = (): JourneyDefinition<Context, StepId, Event> => ({
   initial: "a",
-  context: { value: 0 },
+  context: { count: 0 },
   steps: {
     a: {},
     b: {},
     c: {},
     d: {}
   },
-  transitions: []
+  transitions: [
+    { id: "a-b", from: "a", event: "goToNextStep", to: "b" },
+    { id: "b-c", from: "b", event: "goToNextStep", to: "c" },
+    { id: "c-d", from: "c", event: "goToNextStep", to: "d" },
+    { id: "b-d", from: "b", event: "jump", to: "d" }
+  ]
 });
 
-describe("history limits", () => {
-  it("trims history to maxHistory on transitions", async () => {
-    const machine = createJourneyMachine(createJourney(), {
-      history: { maxHistory: 2 }
-    });
+describe("timeline navigation", () => {
+  it("keeps current as timeline[index]", async () => {
+    const machine = createJourneyMachine(createJourney());
 
-    await machine.send({ type: "goTo", to: "b" });
-    await machine.send({ type: "goTo", to: "c" });
-    await machine.send({ type: "goTo", to: "d" });
+    await machine.send({ type: "goToNextStep" });
+    await machine.send({ type: "goToNextStep" });
 
-    expect(machine.getSnapshot().history).toEqual(["b", "c"]);
-    expect(machine.getSnapshot().visited).toEqual(["a", "b", "c", "d"]);
+    const snapshot = machine.getSnapshot();
+    expect(snapshot.history.timeline).toEqual(["a", "b", "c"]);
+    expect(snapshot.history.index).toBe(2);
+    expect(snapshot.currentStepId).toBe(snapshot.history.timeline[snapshot.history.index]);
   });
 
-  it("fires onOverflow when history is trimmed automatically", async () => {
-    const overflows: Array<JourneyHistoryOverflow<StepId>> = [];
-    const onOverflow = vi.fn((info: JourneyHistoryOverflow<StepId>) => {
-      overflows.push(info);
-    });
+  it("goToPreviousStep clamps and defaults to one step", async () => {
+    const machine = createJourneyMachine(createJourney());
 
-    const machine = createJourneyMachine(createJourney(), {
-      history: { maxHistory: 1, onOverflow }
-    });
+    await machine.send({ type: "goToNextStep" });
+    await machine.send({ type: "goToNextStep" });
+    await machine.send({ type: "goToNextStep" });
 
-    await machine.send({ type: "goTo", to: "b" });
-    await machine.send({ type: "goTo", to: "c" });
+    await machine.goToPreviousStep();
+    expect(machine.getSnapshot().currentStepId).toBe("c");
 
-    expect(machine.getSnapshot().history).toEqual(["b"]);
-    expect(onOverflow).toHaveBeenCalledTimes(1);
-    expect(overflows[0]).toMatchObject({
-      previous: ["a", "b"],
-      next: ["b"],
-      trimmed: ["a"],
-      maxHistory: 1,
-      reason: "auto"
-    });
+    await machine.goToPreviousStep(10);
+    const snapshot = machine.getSnapshot();
+    expect(snapshot.history.index).toBe(0);
+    expect(snapshot.currentStepId).toBe("a");
   });
 
-  it("supports manual trimHistory and clearHistory", async () => {
-    const machine = createJourneyMachine(createJourney(), {
-      history: { maxHistory: 3 }
-    });
+  it("goToLastVisitedStep jumps to timeline tail", async () => {
+    const machine = createJourneyMachine(createJourney());
 
-    await machine.send({ type: "goTo", to: "b" });
-    await machine.send({ type: "goTo", to: "c" });
-    await machine.send({ type: "goTo", to: "d" });
+    await machine.send({ type: "goToNextStep" });
+    await machine.send({ type: "goToNextStep" });
+    await machine.send({ type: "goToNextStep" });
+    await machine.goToPreviousStep(2);
 
-    machine.trimHistory(1);
-    expect(machine.getSnapshot().history).toEqual(["c"]);
+    expect(machine.getSnapshot().currentStepId).toBe("b");
 
-    machine.clearHistory();
-    expect(machine.getSnapshot().history).toEqual([]);
+    await machine.goToLastVisitedStep();
+
+    const snapshot = machine.getSnapshot();
+    expect(snapshot.currentStepId).toBe("d");
+    expect(snapshot.history.index).toBe(snapshot.history.timeline.length - 1);
   });
 
-  it("allows disabling maxHistory with null", async () => {
-    const machine = createJourneyMachine(createJourney(), {
-      history: { maxHistory: null }
-    });
+  it("send(back) falls back to previous-step navigation", async () => {
+    const machine = createJourneyMachine(createJourney());
 
-    await machine.send({ type: "goTo", to: "b" });
-    await machine.send({ type: "goTo", to: "c" });
-    await machine.send({ type: "goTo", to: "d" });
+    await machine.send({ type: "goToNextStep" });
+    await machine.send({ type: "goToNextStep" });
+    const result = await machine.send({ type: "back" });
 
-    expect(machine.getSnapshot().history).toEqual(["a", "b", "c"]);
+    expect(result.transitioned).toBe(true);
+    expect(machine.getSnapshot().currentStepId).toBe("b");
+  });
+
+  it("explicit back transition wins over fallback", async () => {
+    const journey = createJourney();
+    journey.transitions = [
+      ...journey.transitions,
+      { id: "explicit-back", from: "c", event: "back", to: "d" }
+    ];
+
+    const machine = createJourneyMachine(journey);
+
+    await machine.send({ type: "goToNextStep" });
+    await machine.send({ type: "goToNextStep" });
+    const result = await machine.send({ type: "back" });
+
+    expect(result.transitioned).toBe(true);
+    expect(result.transitionId).toBe("explicit-back");
+    expect(machine.getSnapshot().currentStepId).toBe("d");
+  });
+
+  it("truncates tail when moving forward after going back", async () => {
+    const machine = createJourneyMachine(createJourney());
+
+    await machine.send({ type: "goToNextStep" });
+    await machine.send({ type: "goToNextStep" });
+    await machine.send({ type: "goToNextStep" });
+
+    await machine.goToPreviousStep(2);
+    await machine.send({ type: "jump" });
+
+    const snapshot = machine.getSnapshot();
+    expect(snapshot.currentStepId).toBe("d");
+    expect(snapshot.history.timeline).toEqual(["a", "b", "d"]);
+    expect(snapshot.history.index).toBe(2);
   });
 });

@@ -3,139 +3,54 @@ title: Quickstart
 sidebar_position: 2
 ---
 
-Install React bindings:
-
-```bash
-npm i @rxova/journey-react
-```
-
-## 1. Define Types
-
-```tsx
-type StepId = "start" | "details" | "review" | "confirmExit";
-type Event = "next" | "back" | "close" | "submit";
-type Ctx = { name: string; dirty: boolean; includeDetails: boolean };
-```
-
-## 2. Create Step Components
-
 ```tsx
 import React from "react";
-import {
-  HISTORY_TARGET,
-  JOURNEY_TERMINAL,
-  JourneyProvider,
-  JourneyStepRenderer,
-  useJourney,
-  type JourneyReactDefinition
-} from "@rxova/journey-react";
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
+
+type StepId = "start" | "review";
+type Ctx = { name: string };
+
+let bindings: ReturnType<typeof createJourneyBindings<Ctx, StepId>>;
 
 const Start = () => {
-  const { api } = useJourney<Ctx, StepId, Event>();
-
-  return (
-    <button
-      onClick={() => {
-        api.updateContext((ctx) => ({ ...ctx, name: "Ada", dirty: true }));
-        void api.next();
-      }}
-    >
-      Continue
-    </button>
-  );
-};
-
-const Details = () => {
-  const { api } = useJourney<Ctx, StepId, Event>();
-
-  return <button onClick={() => void api.next()}>Continue to review</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => void api.goToNextStep()}>Next</button>;
 };
 
 const Review = () => {
-  const { snapshot, api } = useJourney<Ctx, StepId, Event>();
-
-  return (
-    <div>
-      <p>Ready, {snapshot.context.name}?</p>
-      <button onClick={() => void api.back()}>Back</button>
-      <button onClick={() => void api.submit()}>Finish</button>
-    </div>
-  );
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => void api.completeJourney()}>Submit</button>;
 };
 
-const ConfirmExit = () => <p>You have unsaved changes. Exit anyway?</p>;
-```
-
-## 3. Define Journey Graph
-
-```tsx
-const journey: JourneyReactDefinition<Ctx, StepId, Event> = {
+const journey: JourneyReactDefinition<Ctx, StepId> = {
   initial: "start",
-  context: { name: "", dirty: false, includeDetails: true },
+  context: { name: "" },
   steps: {
     start: { component: Start },
-    details: { component: Details },
-    review: { component: Review },
-    confirmExit: { component: ConfirmExit }
+    review: { component: Review }
   },
   transitions: [
-    { from: "start", event: "next", to: "details" },
-    {
-      from: "details",
-      event: "next",
-      to: "review",
-      when: ({ context }) => context.includeDetails
-    },
-    { from: "*", event: "back", to: HISTORY_TARGET },
-    {
-      from: "*",
-      event: "close",
-      to: "confirmExit",
-      when: ({ context }) => context.dirty
-    },
-    {
-      from: "*",
-      event: "close",
-      to: JOURNEY_TERMINAL.CLOSE,
-      when: ({ context }) => !context.dirty
-    },
-    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
+    { from: "start", event: "goToNextStep", to: "review" },
+    { from: "review", event: "completeJourney" }
   ]
+};
+
+bindings = createJourneyBindings(journey);
+
+export const App = () => {
+  const Provider = bindings.Provider;
+  const StepRenderer = bindings.StepRenderer;
+
+  return (
+    <Provider>
+      <StepRenderer />
+    </Provider>
+  );
 };
 ```
 
-## 4. Mount Provider + Renderer
+Navigation helpers:
 
-```tsx
-export const App = () => (
-  <JourneyProvider journey={journey}>
-    <JourneyStepRenderer<Ctx, StepId, Event> />
-  </JourneyProvider>
-);
-```
-
-## 5. Optional Provider Configuration
-
-```tsx
-<JourneyProvider
-  journey={journey}
-  persistence={{ key: "signup-journey", version: 1 }}
-  history={{ maxHistory: 25 }}
->
-  <JourneyStepRenderer />
-</JourneyProvider>
-```
-
-## 6. Next Steps
-
-- Full hook/provider API: `/docs/react/provider-and-hooks`
-- Production patterns: `/docs/react/patterns`
-- Async loading/error UI: `/docs/react/async-ui`
-- End-to-end examples: `/docs/react/examples`
-
-Core semantics reference:
-
-- `/docs/core/api`
-- `/docs/core/history`
-- `/docs/core/persistence`
-- `/docs/core/async`
+- `api.goToPreviousStep(steps?)`
+- `api.goToLastVisitedStep()`
+- `api.send({ type: "goToStepById", stepId: "review" })`

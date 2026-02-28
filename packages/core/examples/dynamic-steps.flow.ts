@@ -1,11 +1,7 @@
-import {
-  createJourneyMachine,
-  JOURNEY_TERMINAL,
-  type JourneyDefinition
-} from "@rxova/journey-core";
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = string;
-type Event = "next" | "submit";
+type Event = "goToNextStep" | "completeJourney";
 type Ctx = { includeSurvey: boolean };
 
 export const buildDynamicStepsJourney = (
@@ -22,10 +18,10 @@ export const buildDynamicStepsJourney = (
           review: {}
         },
         transitions: [
-          { from: "start", event: "next", to: "details" },
-          { from: "details", event: "next", to: "survey" },
-          { from: "survey", event: "next", to: "review" },
-          { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
+          { from: "start", event: "goToNextStep", to: "details" },
+          { from: "details", event: "goToNextStep", to: "survey" },
+          { from: "survey", event: "goToNextStep", to: "review" },
+          { from: "review", event: "completeJourney" }
         ]
       }
     : {
@@ -37,9 +33,9 @@ export const buildDynamicStepsJourney = (
           review: {}
         },
         transitions: [
-          { from: "start", event: "next", to: "details" },
-          { from: "details", event: "next", to: "review" },
-          { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
+          { from: "start", event: "goToNextStep", to: "details" },
+          { from: "details", event: "goToNextStep", to: "review" },
+          { from: "review", event: "completeJourney" }
         ]
       };
 

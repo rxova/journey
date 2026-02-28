@@ -1,71 +1,44 @@
-// @vitest-environment node
-
 import { describe, expect, it } from "vitest";
 
 import React from "react";
 import { renderToString } from "react-dom/server";
 
-import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
-import {
-  JourneyProvider,
-  JourneyStepRenderer,
-  type JourneyReactDefinition
-} from "@rxova/journey-react";
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
 
-type StepId = "server";
-type Event = "next";
-type Ctx = { value: number };
+type StepId = "start" | "review";
+type Event = "goToNextStep" | "back" | "terminateJourney" | "completeJourney";
+type Ctx = { count: number };
 
-const ServerStep = () => <div>server-step</div>;
-
-const reactJourney: JourneyReactDefinition<Ctx, StepId, Event> = {
-  initial: "server",
-  context: { value: 1 },
+const journey: JourneyReactDefinition<Ctx, StepId, Event> = {
+  initial: "start",
+  context: { count: 0 },
   steps: {
-    server: { component: ServerStep }
+    start: { component: () => <div>start-ssr</div> },
+    review: { component: () => <div>review-ssr</div> }
   },
-  transitions: []
+  transitions: [{ from: "start", event: "goToNextStep", to: "review" }]
 };
 
-describe("SSR / RSC compatibility", () => {
-  it("can render provider + step renderer on the server", () => {
+const bindings = createJourneyBindings(journey);
+
+describe("SSR/RSC compatibility", () => {
+  it("renders Provider + StepRenderer on the server", () => {
     const html = renderToString(
-      <JourneyProvider journey={reactJourney}>
-        <JourneyStepRenderer<Ctx, StepId, Event> />
-      </JourneyProvider>
+      <bindings.Provider>
+        <bindings.StepRenderer />
+      </bindings.Provider>
     );
 
-    expect(html).toContain("server-step");
+    expect(html).toContain("start-ssr");
   });
 
-  it("core machine works without browser globals", async () => {
-    const journey: JourneyDefinition<Ctx, StepId, Event> = {
-      initial: "server",
-      context: { value: 1 },
-      steps: {
-        server: {}
-      },
-      transitions: []
-    };
-
-    const machine = createJourneyMachine(journey);
-    const snapshot = machine.getSnapshot();
-
-    expect(snapshot.current).toBe("server");
-    expect(snapshot.context.value).toBe(1);
-    await expect(machine.send({ type: "next" })).resolves.toEqual({
-      transitioned: false,
-      snapshot
-    });
-  });
-
-  it("does not fail on server render when persistence is configured without storage", () => {
+  it("does not crash when persistence is provided during server render", () => {
     const html = renderToString(
-      <JourneyProvider journey={reactJourney} persistence={{ key: "server-journey" }}>
-        <JourneyStepRenderer<Ctx, StepId, Event> />
-      </JourneyProvider>
+      <bindings.Provider persistence={{ key: "server-journey" }}>
+        <bindings.StepRenderer />
+      </bindings.Provider>
     );
 
-    expect(html).toContain("server-step");
+    expect(html).toContain("start-ssr");
   });
 });

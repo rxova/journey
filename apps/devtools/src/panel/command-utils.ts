@@ -66,8 +66,8 @@ export const buildCustomSendCommand = (
 };
 
 export const buildGoToCommand = (targetStep: string): CommandBuildResult => {
-  const to = targetStep.trim();
-  if (to.length === 0) {
+  const stepId = targetStep.trim();
+  if (stepId.length === 0) {
     return {
       ok: false,
       error: "Target step is required."
@@ -76,9 +76,38 @@ export const buildGoToCommand = (targetStep: string): CommandBuildResult => {
 
   return {
     ok: true,
-    command: { type: "goTo", to }
+    command: { type: "goToStepById", stepId }
   };
 };
+
+export const buildGoToPreviousStepCommand = (stepsRaw: string): CommandBuildResult => {
+  const trimmed = stepsRaw.trim();
+
+  if (trimmed.length === 0) {
+    return {
+      ok: true,
+      command: { type: "goToPreviousStep" }
+    };
+  }
+
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed) || Math.trunc(parsed) < 1) {
+    return {
+      ok: false,
+      error: "Step count must be a positive integer."
+    };
+  }
+
+  return {
+    ok: true,
+    command: { type: "goToPreviousStep", steps: Math.trunc(parsed) }
+  };
+};
+
+export const buildGoToLastVisitedStepCommand = (): CommandBuildResult => ({
+  ok: true,
+  command: { type: "goToLastVisitedStep" }
+});
 
 export const buildClearStepErrorCommand = (stepIdRaw: string): CommandBuildResult => {
   const stepId = stepIdRaw.trim();
@@ -88,26 +117,39 @@ export const buildClearStepErrorCommand = (stepIdRaw: string): CommandBuildResul
   };
 };
 
-export const buildTrimHistoryCommand = (maxHistoryRaw: string): CommandBuildResult => {
-  const trimmed = maxHistoryRaw.trim();
-
-  if (trimmed.length === 0) {
-    return {
-      ok: true,
-      command: { type: "trimHistory" }
-    };
-  }
-
-  const parsed = Number(trimmed);
-  if (!Number.isFinite(parsed)) {
+export const buildUpdateStepMetadataCommand = (
+  stepIdRaw: string,
+  metadataRaw: string
+): CommandBuildResult => {
+  const stepId = stepIdRaw.trim();
+  if (stepId.length === 0) {
     return {
       ok: false,
-      error: "History limit must be a number."
+      error: "Step id is required."
     };
   }
 
-  return {
-    ok: true,
-    command: { type: "trimHistory", maxHistory: Math.trunc(parsed) }
-  };
+  const trimmedMetadata = metadataRaw.trim();
+  if (trimmedMetadata.length === 0) {
+    return {
+      ok: false,
+      error: "Metadata JSON is required."
+    };
+  }
+
+  try {
+    return {
+      ok: true,
+      command: {
+        type: "updateStepMetadata",
+        stepId,
+        metadata: JSON.parse(trimmedMetadata) as unknown
+      }
+    };
+  } catch {
+    return {
+      ok: false,
+      error: "Metadata must be valid JSON."
+    };
+  }
 };

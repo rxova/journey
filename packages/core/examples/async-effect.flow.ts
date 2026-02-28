@@ -1,12 +1,10 @@
 import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
-type StepId = "details" | "review";
-type Event = "next";
 type Ctx = { draftId: string | null };
 
 const saveDraft = async () => "draft-123";
 
-export const asyncEffectJourney: JourneyDefinition<Ctx, StepId, Event> = {
+export const asyncEffectJourney: JourneyDefinition<Ctx> = {
   initial: "details",
   context: { draftId: null },
   steps: {
@@ -16,12 +14,11 @@ export const asyncEffectJourney: JourneyDefinition<Ctx, StepId, Event> = {
   transitions: [
     {
       from: "details",
-      event: "next",
+      event: "goToNextStep",
       to: "review",
       effect: async ({ context }) => ({ ...context, draftId: await saveDraft() })
     }
   ]
 };
 
-export const createAsyncEffectMachine = () =>
-  createJourneyMachine<Ctx, StepId, Event>(asyncEffectJourney);
+export const createAsyncEffectMachine = () => createJourneyMachine(asyncEffectJourney);

@@ -1,210 +1,72 @@
 ---
+id: recipes
 title: Recipes
-sidebar_position: 3
+sidebar_label: Recipes
 ---
 
-Copy these patterns directly into Core journeys.
-
-## 1. Global Back With History
+## Default Back Behavior (No Transition Needed)
 
 ```ts
-import { HISTORY_TARGET } from "@rxova/journey-core";
-
-{ from: "*", event: "back", to: HISTORY_TARGET }
+await machine.send({ type: "back" });
 ```
 
-## 2. Optional Step (Skip Pattern)
+If no explicit back transition matches, core moves to previous timeline position.
+
+## Explicit Back Override
 
 ```ts
-{
-  from: "details",
-  event: "next",
-  to: "optional",
-  when: ({ context }) => context.needsOptional
-},
-{
-  from: "details",
-  event: "next",
-  to: "review",
-  when: ({ context }) => !context.needsOptional
-}
+transitions: [{ from: "review", event: "back", to: "confirmExit" }];
 ```
 
-## 3. Confirm Close If Dirty
+Explicit transition wins over default fallback.
+
+## Jump Back Multiple Steps
 
 ```ts
-import { JOURNEY_TERMINAL } from "@rxova/journey-core";
-
-{
-  from: "*",
-  event: "close",
-  to: "confirmExit",
-  when: ({ context }) => context.dirty
-},
-{
-  from: "*",
-  event: "close",
-  to: JOURNEY_TERMINAL.CLOSE,
-  when: ({ context }) => !context.dirty
-}
+await machine.goToPreviousStep(3);
 ```
 
-## 4. Complete Journey on Submit
+## Jump to Tail After Inspecting Past
 
 ```ts
-{ from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
+await machine.goToLastVisitedStep();
 ```
 
-## 5. Custom Event (`retry`)
+## Update Context
 
 ```ts
-type Event = "next" | "back" | "close" | "submit" | "retry";
-
-{
-  from: "error",
-  event: "retry",
-  to: "details"
-}
-
-await machine.send({ type: "retry" });
+machine.updateContext((context) => ({
+  ...context,
+  dirty: true
+}));
 ```
 
-## 6. Async Guard
+## Update Step Metadata
 
 ```ts
-{
-  id: "validate-payment",
-  from: "payment",
-  event: "next",
-  to: "review",
-  when: async ({ context }) => {
-    const result = await validatePayment(context.cardToken);
-    return result.ok;
-  }
-}
+machine.updateStepMetadata("details", (meta) => ({
+  ...meta,
+  title: "Details (updated)"
+}));
 ```
 
-## 7. Async Effect That Updates Context
+## Observe Lifecycle Events
 
 ```ts
-{
-  id: "save-draft",
-  from: "details",
-  event: "next",
-  to: "review",
-  effect: async ({ context }) => {
-    const saved = await saveDraft(context);
-    return { ...context, draftId: saved.id };
-  }
-}
-```
-
-## 8. Error Handling Around `send`
-
-```ts
-try {
-  await machine.send({ type: "next" });
-} catch (error) {
-  const step = machine.getSnapshot().current;
-  const asyncState = machine.getSnapshot().async.byStep[step];
-  console.error("transition failed", error, asyncState.error);
-
-  machine.clearStepError(step);
-}
-```
-
-## 9. Programmatic Jump (`goTo`)
-
-```ts
-await machine.send({ type: "goTo", to: "review" });
-```
-
-## 10. First-Match-Wins Prioritization
-
-```ts
-transitions: [
-  {
-    id: "priority-path",
-    from: "details",
-    event: "next",
-    to: "manualReview",
-    when: ({ context }) => context.riskScore > 80
-  },
-  {
-    id: "default-path",
-    from: "details",
-    event: "next",
-    to: "confirm"
-  }
-];
-```
-
-Put the highest-priority rule first.
-
-## 11. Manual History Control
-
-```ts
-machine.trimHistory(5); // keep latest 5 entries
-machine.clearHistory(); // clear all entries
-```
-
-## 12. Bounded History With Overflow Observability
-
-```ts
-const machine = createJourneyMachine(journey, {
-  history: {
-    maxHistory: 20,
-    onOverflow: ({ previous, next, trimmed, reason }) => {
-      auditHistoryTrim({ previous, next, trimmed, reason });
-    }
+const unsubscribe = machine.subscribeEvent((event) => {
+  if (event.type === "transition.error") {
+    console.error(event.error);
   }
 });
 ```
 
-`reason` is `"auto" | "hydrate" | "manual"`.
-
-## 13. Persist + Migrate Snapshot
+## Builder Ergonomics
 
 ```ts
-const machine = createJourneyMachine(journey, {
-  persistence: {
-    key: "checkout-journey",
-    version: 2,
-    migrate: (snapshot, persistedVersion) => {
-      if (persistedVersion === 1) {
-        const v1 = snapshot as { context?: { legacyName?: string } };
-        return {
-          current: "details",
-          context: { name: v1.context?.legacyName ?? "", dirty: false },
-          history: ["start"],
-          visited: ["start", "details"],
-          status: "running"
-        };
-      }
-
-      return snapshot as {
-        current: "start" | "details" | "review";
-        context: { name: string; dirty: boolean };
-        history: Array<"start" | "details" | "review">;
-        visited: Array<"start" | "details" | "review">;
-        status: "running" | "complete" | "closed";
-      };
-    }
-  }
-});
-```
-
-## 14. Subscribe for Logging/Analytics
-
-```ts
-const unsubscribe = machine.subscribe(() => {
-  const snapshot = machine.getSnapshot();
-  track("journey_changed", {
-    current: snapshot.current,
-    status: snapshot.status,
-    historyDepth: snapshot.history.length
-  });
-});
-
-unsubscribe();
+const transitions = createTransitions(
+  tx
+    .from("details")
+    .on("goToNextStep")
+    .choose(tx.when(({ context }) => context.includeExtra).to("extra"), tx.otherwise().to("review"))
+);
 ```

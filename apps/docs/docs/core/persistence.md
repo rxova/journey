@@ -1,88 +1,55 @@
 ---
-title: Persistence and Migration
-sidebar_position: 8
+id: persistence
+title: Persistence
+sidebar_label: Persistence
 ---
 
-Persistence is optional and configured through `createJourneyMachine(..., { persistence })`.
+## Overview
 
-## Basic Configuration
+Persistence is optional and configured via machine options:
 
 ```ts
 const machine = createJourneyMachine(journey, {
   persistence: {
-    key: "checkout-journey",
+    key: "journey.checkout",
     version: 2
   }
 });
 ```
 
-## Stored Data
-
-Persisted snapshot includes:
-
-- `current`
-- `context`
-- `history`
-- `visited`
-- `status`
-- wrapper `version`
-
-Not persisted:
-
-- runtime async state (`snapshot.async`)
-
-## Migration
-
-Use `migrate` when persisted version changes.
+## Persisted Snapshot Shape
 
 ```ts
-const machine = createJourneyMachine(journey, {
-  persistence: {
-    key: "checkout-journey",
-    version: 2,
-    migrate: (persisted, oldVersion) => {
-      if (oldVersion === 1) {
-        const v1 = persisted as { context?: { fullName?: string } };
-        return {
-          current: "start",
-          context: { name: v1.context?.fullName ?? "" },
-          history: [],
-          visited: ["start"],
-          status: "running"
-        };
-      }
-
-      return persisted as {
-        current: "start" | "review";
-        context: { name: string };
-        history: Array<"start" | "review">;
-        visited: Array<"start" | "review">;
-        status: "running" | "complete" | "closed";
-      };
-    }
-  }
-});
+type JourneyPersistedSnapshot<TContext, TStepId extends string, TStepMeta = unknown> = {
+  currentStepId: TStepId;
+  history: {
+    timeline: readonly TStepId[];
+    index: number;
+  };
+  context: TContext;
+  status: "running" | "complete" | "terminated";
+  visited: Record<TStepId, boolean>;
+  stepMeta: Record<TStepId, TStepMeta>;
+};
 ```
 
-## Reset Interaction
+## Options
 
-- default `clearOnReset: true`: remove persisted entry on reset
-- `clearOnReset: false`: write reset snapshot instead
+- `key`: storage key.
+- `storage`: custom storage adapter (`localStorage` by default when available).
+- `version`: persisted schema version.
+- `migrate(value, persistedVersion)`: map old data to current snapshot shape.
+- `clearOnReset`: if `true`, reset removes persisted state.
+- `serialize` / `deserialize`: custom codecs.
+- `onError(error)`: persistence error callback.
 
-## Error Handling
+## Migration Notes
 
-Use `onError` to observe storage/serialization failures.
+If persisted data is invalid for the current snapshot shape, hydration falls back to the initial snapshot.
 
-```ts
-persistence: {
-  key: "checkout-journey",
-  version: 1,
-  onError: (error) => reportPersistenceError(error)
-}
-```
+A migration function should return current snapshot fields (`history.timeline`, `history.index`, `visited`, `stepMeta`, etc.).
 
-## Adapter Contract
+## Reset Behavior
 
-You can supply custom storage adapter implementing `getItem`, `setItem`, `removeItem`.
-
-Use this for server-like environments or custom storage backends.
+- `clearOnReset: true` => storage entry removed.
+- `clearOnReset: false` => reset snapshot persisted.

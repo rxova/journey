@@ -1,80 +1,90 @@
-import {
-  JOURNEY_ASYNC_PHASE,
-  JOURNEY_EVENT,
-  JOURNEY_STATUS,
-  JOURNEY_TERMINAL,
-  JOURNEY_WILDCARD,
-  HISTORY_TARGET
-} from "./types";
+import { JOURNEY_ASYNC_PHASE, JOURNEY_EVENT, JOURNEY_STATUS } from "./types";
 import type {
   JourneyAsyncState,
   JourneyAsyncPhase,
-  JourneyEventPayloadMap,
+  JourneyDefaultEventType,
   JourneyDefinition,
-  JourneyHistoryOverflowReason,
-  JourneyHistoryOptions,
+  JourneyEventPayloadMap,
   JourneyMachine,
   JourneyMachineOptions,
+  JourneyObservationEvent,
   JourneySendResult,
-  JourneySnapshot
+  JourneyStepDefinition,
+  JourneyTransition,
+  JourneyTerminal
 } from "./types";
 import {
-  appendVisited,
   assertStepExists,
   buildIdleStepAsyncState,
   buildInitialAsyncState,
   buildSendResult,
-  isGoToEvent,
+  buildSnapshot,
+  isGoToStepByIdEvent,
   isPromiseLike,
   isTerminalTarget,
-  resolveHistoryTarget,
+  normalizeStepCount,
+  now,
   selectTransition,
   transitionSnapshot,
-  buildSnapshot
+  validateJourneyTransitions
 } from "./machine-helpers";
 import { createPersistenceController } from "./persistence";
-
-const DEFAULT_MAX_HISTORY = 50;
-
-const resolveMaxHistory = (value: number | null | undefined): number | null => {
-  if (value === null) {
-    return null;
-  }
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return Math.max(0, Math.trunc(value));
-  }
-  return DEFAULT_MAX_HISTORY;
-};
-
-const applyHistoryLimit = <TStepId extends string>(
-  history: readonly TStepId[],
-  maxHistory: number | null
-): { next: TStepId[]; trimmed: TStepId[] } => {
-  if (maxHistory === null || history.length <= maxHistory) {
-    return { next: [...history], trimmed: [] };
-  }
-
-  const trimCount = history.length - maxHistory;
-  return {
-    next: history.slice(trimCount),
-    trimmed: history.slice(0, trimCount)
-  };
-};
 
 /**
  * Creates a journey machine from a journey definition.
  * Validates steps/transitions, hydrates persisted state (if configured),
  * and returns an API for sending events and reading snapshots.
  */
-export const createJourneyMachine = <
+export function createJourneyMachine<
+  TContext,
+  TStepMeta = unknown,
+  TSteps extends Record<string, JourneyStepDefinition<TStepMeta>> = Record<
+    string,
+    JourneyStepDefinition<TStepMeta>
+  >,
+  TPayloadMap extends JourneyEventPayloadMap<JourneyDefaultEventType> = Record<never, never>
+>(
+  journey: {
+    initial: Extract<keyof TSteps, string>;
+    context: TContext;
+    steps: TSteps;
+    transitions: readonly JourneyTransition<
+      TContext,
+      Extract<keyof TSteps, string>,
+      JourneyDefaultEventType,
+      TPayloadMap
+    >[];
+  },
+  options?: JourneyMachineOptions<TContext, Extract<keyof TSteps, string>, TStepMeta>
+): JourneyMachine<
+  TContext,
+  Extract<keyof TSteps, string>,
+  JourneyDefaultEventType,
+  TPayloadMap,
+  TStepMeta
+>;
+// eslint-disable-next-line no-redeclare
+export function createJourneyMachine<
   TContext,
   TStepId extends string,
-  TEventType extends string = "next" | "back" | "close" | "submit",
-  TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>
+  TEventType extends string = JourneyDefaultEventType,
+  TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>,
+  TStepMeta = unknown
 >(
-  journey: JourneyDefinition<TContext, TStepId, TEventType, TPayloadMap>,
-  options?: JourneyMachineOptions<TContext, TStepId>
-): JourneyMachine<TContext, TStepId, TEventType, TPayloadMap> => {
+  journey: JourneyDefinition<TContext, TStepId, TEventType, TPayloadMap, TStepMeta>,
+  options?: JourneyMachineOptions<TContext, TStepId, TStepMeta>
+): JourneyMachine<TContext, TStepId, TEventType, TPayloadMap, TStepMeta>;
+// eslint-disable-next-line no-redeclare
+export function createJourneyMachine<
+  TContext,
+  TStepId extends string,
+  TEventType extends string = JourneyDefaultEventType,
+  TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>,
+  TStepMeta = unknown
+>(
+  journey: JourneyDefinition<TContext, TStepId, TEventType, TPayloadMap, TStepMeta>,
+  options?: JourneyMachineOptions<TContext, TStepId, TStepMeta>
+): JourneyMachine<TContext, TStepId, TEventType, TPayloadMap, TStepMeta> {
   if (!journey.steps || typeof journey.steps !== "object") {
     throw new Error("Journey steps must be a record object.");
   }
@@ -89,107 +99,56 @@ export const createJourneyMachine = <
     `Journey initial step "${journey.initial}" does not exist in steps registry.`
   );
 
-  for (const [index, transition] of journey.transitions.entries()) {
-    if (!transition || typeof transition !== "object") {
-      throw new Error(`Journey transition at index ${index} must be an object.`);
-    }
+  validateJourneyTransitions(journey.transitions, journey.steps);
 
-    if (typeof transition.from !== "string" || typeof transition.event !== "string") {
-      throw new Error(
-        `Journey transition at index ${index} must define string "from" and "event".`
-      );
-    }
-
-    if (
-      transition.from !== JOURNEY_WILDCARD &&
-      !((transition.from as string) in (journey.steps as Record<string, unknown>))
-    ) {
-      throw new Error(
-        `Journey transition at index ${index} references unknown from step "${transition.from}".`
-      );
-    }
-
-    if (
-      transition.to !== HISTORY_TARGET &&
-      !isTerminalTarget(transition.to) &&
-      !((transition.to as string) in (journey.steps as Record<string, unknown>))
-    ) {
-      throw new Error(
-        `Journey transition at index ${index} points to unknown step "${transition.to}".`
-      );
-    }
-  }
+  const buildStepMeta = (): Record<TStepId, TStepMeta> =>
+    Object.fromEntries(
+      Object.entries(journey.steps).map(([stepId, definition]) => [
+        stepId,
+        (definition as JourneyStepDefinition<TStepMeta>).meta as TStepMeta
+      ])
+    ) as Record<TStepId, TStepMeta>;
 
   const { clearOnReset, hydrateSnapshot, persistSnapshot, removePersistedSnapshot } =
     createPersistenceController({
       initial: journey.initial,
       context: journey.context,
+      stepMeta: buildStepMeta(),
       steps: journey.steps,
       ...(options ? { options } : {})
     });
 
-  const historyOptions: JourneyHistoryOptions<TStepId> | undefined = options?.history;
-
-  const runHistoryTrim = (
-    nextSnapshot: JourneySnapshot<TContext, TStepId>,
-    reason: JourneyHistoryOverflowReason,
-    overrideMaxHistory?: number | null
-  ): {
-    snapshot: JourneySnapshot<TContext, TStepId>;
-    trimmed: TStepId[];
-    maxHistory: number | null;
-  } => {
-    const resolvedMaxHistory = resolveMaxHistory(overrideMaxHistory ?? historyOptions?.maxHistory);
-    const { next, trimmed } = applyHistoryLimit(nextSnapshot.history, resolvedMaxHistory);
-    if (trimmed.length === 0) {
-      return {
-        snapshot: nextSnapshot,
-        trimmed,
-        maxHistory: resolvedMaxHistory
-      };
-    }
-
-    const rebuilt = buildSnapshot(
-      nextSnapshot.current,
-      nextSnapshot.context,
-      next,
-      nextSnapshot.status,
-      nextSnapshot.async,
-      nextSnapshot.visited
-    );
-
-    historyOptions?.onOverflow?.({
-      previous: nextSnapshot.history,
-      next,
-      trimmed,
-      maxHistory: resolvedMaxHistory,
-      reason
-    });
-
-    return {
-      snapshot: rebuilt,
-      trimmed,
-      maxHistory: resolvedMaxHistory
-    };
-  };
-
   let snapshot = hydrateSnapshot();
-  const hydratedTrim = runHistoryTrim(snapshot, "hydrate");
-  snapshot = hydratedTrim.snapshot;
-  if (hydratedTrim.trimmed.length > 0) {
-    persistSnapshot(snapshot);
-  }
-  const listeners = new Set<() => void>();
-  let sendQueue: Promise<void> = Promise.resolve();
   snapshot = {
     ...snapshot,
     async: buildInitialAsyncState(journey.steps)
   };
 
+  const listeners = new Set<() => void>();
+  const eventListeners = new Set<
+    (event: JourneyObservationEvent<TStepId, TEventType, TPayloadMap, TStepMeta>) => void
+  >();
+  let actionQueue: Promise<void> = Promise.resolve();
+
   const notify = () => {
     for (const listener of listeners) {
       listener();
     }
+  };
+
+  const emit = (event: JourneyObservationEvent<TStepId, TEventType, TPayloadMap, TStepMeta>) => {
+    for (const listener of eventListeners) {
+      listener(event);
+    }
+  };
+
+  const queue = <T>(runner: () => Promise<T>): Promise<T> => {
+    const resultPromise = actionQueue.then(runner, runner);
+    actionQueue = resultPromise.then(
+      () => undefined,
+      () => undefined
+    );
+    return resultPromise;
   };
 
   const isAsyncLoadingPhase = (phase: JourneyAsyncPhase): boolean =>
@@ -211,6 +170,7 @@ export const createJourneyMachine = <
     ) {
       return;
     }
+
     const nextByStep = {
       ...snapshot.async.byStep,
       [stepId]: next
@@ -258,7 +218,83 @@ export const createJourneyMachine = <
     }));
   };
 
-  return {
+  const applyPreviousNavigation = (
+    requestedSteps?: number,
+    transitionId?: string
+  ): JourneySendResult<TContext, TStepId, TStepMeta> => {
+    if (snapshot.status !== JOURNEY_STATUS.RUNNING) {
+      return buildSendResult(snapshot, false);
+    }
+
+    const steps = normalizeStepCount(requestedSteps);
+    if (snapshot.history.index === 0) {
+      return buildSendResult(snapshot, false);
+    }
+
+    const from = snapshot.currentStepId;
+    const nextIndex = Math.max(0, snapshot.history.index - steps);
+    const appliedSteps = snapshot.history.index - nextIndex;
+    if (appliedSteps <= 0) {
+      return buildSendResult(snapshot, false);
+    }
+
+    emit({ type: "step.exit", stepId: from, timestamp: now() });
+    snapshot = buildSnapshot(
+      snapshot.history.timeline,
+      nextIndex,
+      snapshot.context,
+      snapshot.status,
+      snapshot.async,
+      snapshot.stepMeta,
+      snapshot.visited
+    );
+    persistSnapshot(snapshot);
+    notify();
+
+    emit({
+      type: "navigation.previous",
+      from,
+      to: snapshot.currentStepId,
+      requestedSteps: steps,
+      appliedSteps,
+      timestamp: now()
+    });
+    emit({ type: "step.enter", stepId: snapshot.currentStepId, timestamp: now() });
+    return buildSendResult(snapshot, true, transitionId);
+  };
+
+  const applyLastVisitedNavigation = (
+    transitionId?: string
+  ): JourneySendResult<TContext, TStepId, TStepMeta> => {
+    if (snapshot.status !== JOURNEY_STATUS.RUNNING) {
+      return buildSendResult(snapshot, false);
+    }
+
+    const targetIndex = snapshot.history.timeline.length - 1;
+    if (snapshot.history.index >= targetIndex) {
+      return buildSendResult(snapshot, false);
+    }
+
+    const from = snapshot.currentStepId;
+    emit({ type: "step.exit", stepId: from, timestamp: now() });
+    snapshot = buildSnapshot(
+      snapshot.history.timeline,
+      targetIndex,
+      snapshot.context,
+      snapshot.status,
+      snapshot.async,
+      snapshot.stepMeta,
+      snapshot.visited
+    );
+    persistSnapshot(snapshot);
+    notify();
+
+    emit({ type: "navigation.lastVisited", from, to: snapshot.currentStepId, timestamp: now() });
+    emit({ type: "step.enter", stepId: snapshot.currentStepId, timestamp: now() });
+    return buildSendResult(snapshot, true, transitionId);
+  };
+
+  const machine: JourneyMachine<TContext, TStepId, TEventType, TPayloadMap, TStepMeta> = {
     getSnapshot: () => snapshot,
     subscribe: (listener) => {
       listeners.add(listener);
@@ -266,13 +302,20 @@ export const createJourneyMachine = <
         listeners.delete(listener);
       };
     },
-    reset: () => {
+    subscribeEvent: (listener) => {
+      eventListeners.add(listener);
+      return () => {
+        eventListeners.delete(listener);
+      };
+    },
+    resetMachine: () => {
       snapshot = buildSnapshot(
-        journey.initial,
+        [journey.initial],
+        0,
         journey.context,
-        [],
         JOURNEY_STATUS.RUNNING,
-        buildInitialAsyncState(journey.steps)
+        buildInitialAsyncState(journey.steps),
+        buildStepMeta()
       );
       if (clearOnReset) {
         removePersistedSnapshot();
@@ -291,8 +334,37 @@ export const createJourneyMachine = <
       notify();
       return snapshot;
     },
+    updateStepMetadata: (stepId, updater) => {
+      if (!(stepId in journey.steps)) {
+        return snapshot;
+      }
+
+      const previousMeta = snapshot.stepMeta[stepId];
+      const nextMeta = updater(previousMeta);
+      if (Object.is(previousMeta, nextMeta)) {
+        return snapshot;
+      }
+
+      snapshot = {
+        ...snapshot,
+        stepMeta: {
+          ...snapshot.stepMeta,
+          [stepId]: nextMeta
+        }
+      };
+      persistSnapshot(snapshot);
+      notify();
+      emit({
+        type: "metadata.updated",
+        stepId,
+        previous: previousMeta,
+        next: nextMeta,
+        timestamp: now()
+      });
+      return snapshot;
+    },
     clearStepError: (stepId) => {
-      const resolvedStep = stepId ?? snapshot.current;
+      const resolvedStep = stepId ?? snapshot.currentStepId;
       if (!(resolvedStep in journey.steps)) {
         return snapshot;
       }
@@ -300,49 +372,83 @@ export const createJourneyMachine = <
       setStepIdle(resolvedStep);
       return snapshot;
     },
-    trimHistory: (maxHistory) => {
-      const result = runHistoryTrim(snapshot, "manual", maxHistory);
-      if (result.trimmed.length === 0) {
-        return snapshot;
-      }
-      snapshot = result.snapshot;
-      persistSnapshot(snapshot);
-      notify();
-      return snapshot;
-    },
-    clearHistory: () => {
-      if (snapshot.history.length === 0) {
-        return snapshot;
-      }
-      snapshot = buildSnapshot(
-        snapshot.current,
-        snapshot.context,
-        [],
-        snapshot.status,
-        snapshot.async,
-        snapshot.visited
-      );
-      persistSnapshot(snapshot);
-      notify();
-      return snapshot;
-    },
-    send: (event) => {
-      const run = async (): Promise<JourneySendResult<TContext, TStepId>> => {
+    goToPreviousStep: (steps) =>
+      queue(async () => {
+        const result = applyPreviousNavigation(steps, "goToPreviousStep");
+        return result;
+      }),
+    goToLastVisitedStep: () =>
+      queue(async () => {
+        const result = applyLastVisitedNavigation("goToLastVisitedStep");
+        return result;
+      }),
+    goToNextStep: () =>
+      machine.send({ type: "goToNextStep" } as Extract<
+        Parameters<typeof machine.send>[0],
+        { type: "goToNextStep" }
+      >),
+    terminateJourney: (payload) =>
+      machine.send(
+        (payload === undefined
+          ? ({ type: "terminateJourney" } as unknown)
+          : ({ type: "terminateJourney", payload } as unknown)) as Extract<
+          Parameters<typeof machine.send>[0],
+          { type: "terminateJourney" }
+        >
+      ),
+    completeJourney: (payload) =>
+      machine.send(
+        (payload === undefined
+          ? ({ type: "completeJourney" } as unknown)
+          : ({ type: "completeJourney", payload } as unknown)) as Extract<
+          Parameters<typeof machine.send>[0],
+          { type: "completeJourney" }
+        >
+      ),
+    send: (event) =>
+      queue(async () => {
         if (snapshot.status !== JOURNEY_STATUS.RUNNING) {
-          return { transitioned: false, snapshot };
+          return buildSendResult(snapshot, false);
         }
 
-        const fromStep = snapshot.current;
+        const fromStep = snapshot.currentStepId;
 
-        if (isGoToEvent(event)) {
-          assertStepExists(journey.steps, event.to, `Cannot goTo unknown step "${event.to}".`);
+        if (isGoToStepByIdEvent(event)) {
+          assertStepExists(
+            journey.steps,
+            event.stepId,
+            `Cannot goToStepById unknown step "${event.stepId}".`
+          );
+          emit({ type: "transition.start", from: fromStep, event, timestamp: now() });
           setStepIdle(fromStep);
-          snapshot = transitionSnapshot(snapshot, event.to, snapshot.context);
-          snapshot = runHistoryTrim(snapshot, "auto").snapshot;
+
+          const beforeCurrent = snapshot.currentStepId;
+          const nextSnapshot = transitionSnapshot(snapshot, event.stepId, snapshot.context);
+          if (nextSnapshot.currentStepId !== beforeCurrent) {
+            emit({ type: "step.exit", stepId: beforeCurrent, timestamp: now() });
+          }
+
+          snapshot = nextSnapshot;
           persistSnapshot(snapshot);
           notify();
-          return buildSendResult(snapshot, true, JOURNEY_EVENT.GO_TO);
+
+          emit({
+            type: "transition.success",
+            from: fromStep,
+            to: snapshot.currentStepId,
+            eventType: JOURNEY_EVENT.GO_TO_STEP_BY_ID,
+            transitionId: JOURNEY_EVENT.GO_TO_STEP_BY_ID,
+            timestamp: now()
+          });
+
+          if (nextSnapshot.currentStepId !== beforeCurrent) {
+            emit({ type: "step.enter", stepId: snapshot.currentStepId, timestamp: now() });
+          }
+
+          return buildSendResult(snapshot, true, JOURNEY_EVENT.GO_TO_STEP_BY_ID);
         }
+
+        emit({ type: "transition.start", from: fromStep, event, timestamp: now() });
 
         let transition;
         try {
@@ -364,10 +470,33 @@ export const createJourneyMachine = <
           });
         } catch (error) {
           setStepError(fromStep, event.type, error);
+          emit({
+            type: "transition.error",
+            from: fromStep,
+            eventType: event.type,
+            transitionId: null,
+            error,
+            timestamp: now()
+          });
           throw error;
         }
 
         if (!transition) {
+          if (event.type === "goToPreviousStep" || event.type === "back") {
+            const fallbackResult = applyPreviousNavigation(1, event.type);
+            if (fallbackResult.transitioned) {
+              emit({
+                type: "transition.success",
+                from: fromStep,
+                to: fallbackResult.snapshot.currentStepId,
+                eventType: event.type,
+                transitionId: null,
+                timestamp: now()
+              });
+            }
+            return fallbackResult;
+          }
+
           return buildSendResult(snapshot, false);
         }
 
@@ -375,8 +504,9 @@ export const createJourneyMachine = <
         if (transition.effect) {
           const effectResultPromise = transition.effect({
             context: snapshot.context,
-            from: snapshot.current,
-            history: snapshot.history,
+            from: snapshot.currentStepId,
+            timeline: snapshot.history.timeline,
+            index: snapshot.history.index,
             event
           });
           if (isPromiseLike(effectResultPromise)) {
@@ -393,6 +523,14 @@ export const createJourneyMachine = <
             effectResult = await effectResultPromise;
           } catch (error) {
             setStepError(fromStep, event.type, error, transition.id);
+            emit({
+              type: "transition.error",
+              from: fromStep,
+              eventType: event.type,
+              transitionId: transition.id ?? null,
+              error,
+              timestamp: now()
+            });
             throw error;
           }
 
@@ -403,40 +541,45 @@ export const createJourneyMachine = <
 
         setStepIdle(fromStep);
 
-        if (isTerminalTarget(transition.to)) {
+        const target: TStepId | JourneyTerminal =
+          transition.event === "completeJourney"
+            ? "COMPLETE"
+            : transition.event === "terminateJourney"
+              ? "TERMINATED"
+              : (transition.to as TStepId | JourneyTerminal);
+
+        if (isTerminalTarget(target)) {
+          const normalizedTimeline = snapshot.history.timeline.slice(0, snapshot.history.index + 1);
           snapshot = {
             ...snapshot,
+            history: {
+              timeline: normalizedTimeline,
+              index: normalizedTimeline.length - 1
+            },
             context: nextContext,
-            status:
-              transition.to === JOURNEY_TERMINAL.COMPLETE
-                ? JOURNEY_STATUS.COMPLETE
-                : JOURNEY_STATUS.CLOSED
+            status: target === "COMPLETE" ? JOURNEY_STATUS.COMPLETE : JOURNEY_STATUS.TERMINATED
           };
-          snapshot = runHistoryTrim(snapshot, "auto").snapshot;
           persistSnapshot(snapshot);
           notify();
+
+          emit({
+            type: "transition.success",
+            from: fromStep,
+            to: target,
+            eventType: event.type,
+            transitionId: transition.id ?? null,
+            timestamp: now()
+          });
+          emit({
+            type: target === "COMPLETE" ? "journey.complete" : "journey.close",
+            stepId: snapshot.currentStepId,
+            timestamp: now()
+          });
+
           return buildSendResult(snapshot, true, transition.id);
         }
 
-        if (transition.to === HISTORY_TARGET) {
-          const { target, history } = resolveHistoryTarget(snapshot, journey.steps);
-          assertStepExists(journey.steps, target, `Transition points to unknown step "${target}".`);
-          const visited = appendVisited(snapshot.visited, target);
-          snapshot = buildSnapshot(
-            target,
-            nextContext,
-            history,
-            snapshot.status,
-            snapshot.async,
-            visited
-          );
-          snapshot = runHistoryTrim(snapshot, "auto").snapshot;
-          persistSnapshot(snapshot);
-          notify();
-          return buildSendResult(snapshot, true, transition.id);
-        }
-
-        const resolvedTarget = transition.to;
+        const resolvedTarget = target;
 
         assertStepExists(
           journey.steps,
@@ -444,20 +587,29 @@ export const createJourneyMachine = <
           `Transition points to unknown step "${resolvedTarget}".`
         );
 
-        const nextSnapshot = transitionSnapshot(snapshot, resolvedTarget, nextContext);
-        snapshot = runHistoryTrim(nextSnapshot, "auto").snapshot;
+        const beforeCurrent = snapshot.currentStepId;
+        if (beforeCurrent !== resolvedTarget) {
+          emit({ type: "step.exit", stepId: beforeCurrent, timestamp: now() });
+        }
+        snapshot = transitionSnapshot(snapshot, resolvedTarget, nextContext);
         persistSnapshot(snapshot);
         notify();
 
-        return buildSendResult(snapshot, true, transition.id);
-      };
+        emit({
+          type: "transition.success",
+          from: fromStep,
+          to: snapshot.currentStepId,
+          eventType: event.type,
+          transitionId: transition.id ?? null,
+          timestamp: now()
+        });
+        if (beforeCurrent !== snapshot.currentStepId) {
+          emit({ type: "step.enter", stepId: snapshot.currentStepId, timestamp: now() });
+        }
 
-      const resultPromise = sendQueue.then(run, run);
-      sendQueue = resultPromise.then(
-        () => undefined,
-        () => undefined
-      );
-      return resultPromise;
-    }
+        return buildSendResult(snapshot, true, transition.id);
+      })
   };
-};
+
+  return machine;
+}

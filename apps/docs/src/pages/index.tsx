@@ -28,7 +28,7 @@ export default function Home(): ReactNode {
   const coreSections = [
     {
       title: "History",
-      body: "Deterministic back behavior, trimming, overflow callbacks, and HISTORY_TARGET rules.",
+      body: "Deterministic back behavior with timeline-pointer navigation and fallback previous-step semantics.",
       href: "/docs/core/history"
     },
     {
@@ -38,7 +38,7 @@ export default function Home(): ReactNode {
     },
     {
       title: "Snapshot",
-      body: "Read current/context/history/visited/async state with predictable runtime invariants.",
+      body: "Read currentStepId/context/history/visited/async state with predictable runtime invariants.",
       href: "/docs/core/snapshot"
     },
     {

@@ -1,192 +1,101 @@
 ---
+id: getting-started
 title: Getting Started
-sidebar_position: 1
+sidebar_label: Getting Started
 ---
 
-This guide is for `@rxova/journey-core` only (headless, framework-agnostic).
-
-Use it when you want to run journey logic in Node services, tests, CLIs, or your own UI layer.
-
-## 1. Install
+## Install
 
 ```bash
-npm i @rxova/journey-core
+pnpm add @rxova/journey-core
 ```
 
-## 2. Define Your Journey Types
+## Define a Journey
 
 ```ts
+import {
+  createJourneyMachine,
+  createTransitions,
+  tx,
+  type JourneyDefinition
+} from "@rxova/journey-core";
+
 type StepId = "start" | "details" | "review" | "confirmExit";
-type Event = "next" | "back" | "close" | "submit";
-type Context = {
-  name: string;
-  dirty: boolean;
-  includeDetails: boolean;
-};
-```
-
-## 3. Create a Journey Definition
-
-```ts
-import { HISTORY_TARGET, JOURNEY_TERMINAL, type JourneyDefinition } from "@rxova/journey-core";
+type Event = "goToNextStep" | "back" | "requestClose" | "terminateJourney" | "completeJourney";
+type Context = { dirty: boolean };
 
 const journey: JourneyDefinition<Context, StepId, Event> = {
   initial: "start",
-  context: {
-    name: "",
-    dirty: false,
-    includeDetails: true
-  },
+  context: { dirty: false },
   steps: {
     start: {},
     details: {},
     review: {},
     confirmExit: {}
   },
-  transitions: [
-    { from: "start", event: "next", to: "details" },
-    {
-      from: "details",
-      event: "next",
-      to: "review",
-      when: ({ context }) => context.includeDetails
-    },
-    { from: "*", event: "back", to: HISTORY_TARGET },
-    {
-      from: "*",
-      event: "close",
-      to: "confirmExit",
-      when: ({ context }) => context.dirty
-    },
-    {
-      from: "*",
-      event: "close",
-      to: JOURNEY_TERMINAL.CLOSE,
-      when: ({ context }) => !context.dirty
-    },
-    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
-  ]
+  transitions: createTransitions(
+    tx.from("start").on("goToNextStep").to("details"),
+    tx.from("details").on("goToNextStep").to("review"),
+    tx
+      .any()
+      .on("requestClose")
+      .to("confirmExit", {
+        when: ({ context }) => context.dirty
+      }),
+    tx.any().toTerminate(),
+    tx.from("review").toComplete()
+  )
 };
 ```
 
-## 4. Create the Machine
+## Create Machine
 
 ```ts
-import { createJourneyMachine } from "@rxova/journey-core";
-
 const machine = createJourneyMachine(journey);
 ```
 
-## 5. Send Events and Read Snapshot
+## Drive It
 
 ```ts
-await machine.send({ type: "next" });
-await machine.send({ type: "next" });
+await machine.send({ type: "goToNextStep" });
+await machine.send({ type: "goToNextStep" });
+await machine.send({ type: "back" }); // explicit transition or fallback previous-step
+await machine.goToPreviousStep(2);
+await machine.goToLastVisitedStep();
+```
 
+## Read Snapshot
+
+```ts
 const snapshot = machine.getSnapshot();
 
-console.log(snapshot.current); // "review"
-console.log(snapshot.history); // ["start", "details"]
-console.log(snapshot.visited); // ["start", "details", "review"]
-console.log(snapshot.status); // "running"
+console.log(snapshot.currentStepId);
+console.log(snapshot.history.timeline, snapshot.history.index);
+console.log(snapshot.visited);
+console.log(snapshot.status);
 ```
 
-## 6. Update Context
+## Subscribe
 
 ```ts
-machine.updateContext((ctx) => ({ ...ctx, name: "Ada", dirty: true }));
+const unsubscribeSnapshot = machine.subscribe(() => {
+  console.log("snapshot changed", machine.getSnapshot());
+});
+
+const unsubscribeEvents = machine.subscribeEvent((event) => {
+  console.log("telemetry event", event.type, event);
+});
 ```
 
-## 7. Use Built-in `goTo`
+## Persistence
 
 ```ts
-await machine.send({ type: "goTo", to: "review" });
-```
-
-- `goTo` is built in.
-- It validates the target step exists.
-- It appends the previous step to `history` (unless target equals current).
-
-## 8. Async Guards and Effects
-
-```ts
-const asyncJourney: JourneyDefinition<Context, StepId, Event> = {
-  ...journey,
-  transitions: [
-    {
-      id: "save-and-continue",
-      from: "details",
-      event: "next",
-      to: "review",
-      when: async ({ context }) => context.name.trim().length > 0,
-      effect: async ({ context }) => {
-        const savedName = await Promise.resolve(context.name.trim());
-        return { ...context, name: savedName };
-      }
-    }
-  ]
-};
-```
-
-If `when` or `effect` throws:
-
-- `send(...)` rejects.
-- Current step async state goes to `error`.
-- You can inspect and clear it:
-
-```ts
-const step = machine.getSnapshot().current;
-const stepAsync = machine.getSnapshot().async.byStep[step];
-
-if (stepAsync.phase === "error") {
-  console.error(stepAsync.error);
-  machine.clearStepError(step);
-}
-```
-
-## 9. Persistence and History Limits
-
-```ts
-const machineWithOptions = createJourneyMachine(journey, {
+const persistedMachine = createJourneyMachine(journey, {
   persistence: {
     key: "checkout-journey",
-    version: 2,
-    clearOnReset: false
-  },
-  history: {
-    maxHistory: 20,
-    onOverflow: ({ trimmed, reason }) => {
-      console.warn("history trimmed", trimmed, reason);
-    }
+    version: 2
   }
 });
 ```
 
-Notes:
-
-- Default `maxHistory` is `50`.
-- Set `maxHistory: null` to disable trimming.
-- Persistence stores `current`, `context`, `history`, `visited`, and `status`.
-- Runtime async state (`snapshot.async`) is not persisted.
-
-## 10. Reset and Terminal States
-
-```ts
-machine.reset();
-```
-
-- `reset()` returns to `initial`, initial `context`, empty `history`, `status: "running"`.
-- After terminal (`COMPLETE` or `CLOSE`), further `send(...)` calls do not transition.
-
-## Next
-
-- Architecture and model rationale: `/docs/core/architecture`
-- API details: `/docs/core/api`
-- Snapshot model: `/docs/core/snapshot`
-- Lifecycle semantics: `/docs/core/lifecycle`
-- Async transitions: `/docs/core/async`
-- History behavior: `/docs/core/history`
-- Persistence and migrations: `/docs/core/persistence`
-- Common issues and decisions: `/docs/core/faq`
-- Copyable patterns: `/docs/core/recipes`
-- Full example catalog: `/docs/core/examples`
+Persisted shape includes `history.timeline`, `history.index`, `currentStepId`, `context`, `visited`, `stepMeta`, and `status`.
