@@ -8,7 +8,6 @@ const DEFAULT_HOST_PERMISSIONS = [
   "http://127.0.0.1/*",
   "https://127.0.0.1/*"
 ] as const;
-const OPTIONAL_SITE_HOST_PERMISSIONS = ["http://*/*", "https://*/*"] as const;
 
 export default defineManifest({
   manifest_version: 3,
@@ -30,7 +29,6 @@ export default defineManifest({
   ],
   permissions: ["scripting"],
   host_permissions: [...DEFAULT_HOST_PERMISSIONS],
-  optional_host_permissions: [...OPTIONAL_SITE_HOST_PERMISSIONS],
   icons: {
     16: "icons/icon16.png",
     32: "icons/icon32.png",

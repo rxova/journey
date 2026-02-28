@@ -1,16 +1,9 @@
 import React from "react";
 
-import {
-  HISTORY_TARGET,
-  JOURNEY_TERMINAL,
-  type JourneyReactDefinition,
-  useJourney,
-  JourneyProvider,
-  JourneyStepRenderer
-} from "@rxova/journey-react";
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
 
 type StepId = "destination" | "dates" | "lodging" | "itinerary" | "confirmExit";
-type Event = "next" | "back" | "close" | "submit";
+type CustomEvent = "requestClose";
 
 type ItineraryContext = {
   flexibleDates: boolean;
@@ -19,31 +12,35 @@ type ItineraryContext = {
 };
 
 const Destination = () => {
-  const { api } = useJourney<ItineraryContext, StepId, Event>();
-  return <button onClick={() => api.next()}>Pick destination</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Pick destination</button>;
 };
 
 const Dates = () => {
-  const { api } = useJourney<ItineraryContext, StepId, Event>();
-  return <button onClick={() => api.next()}>Save dates</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Save dates</button>;
 };
 
 const Lodging = () => {
-  const { api } = useJourney<ItineraryContext, StepId, Event>();
-  return <button onClick={() => api.next()}>Choose lodging</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Choose lodging</button>;
 };
 
 const Itinerary = () => {
-  const { api } = useJourney<ItineraryContext, StepId, Event>();
-  return <button onClick={() => api.submit()}>Finalize itinerary</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.completeJourney()}>Finalize itinerary</button>;
 };
 
 const ConfirmExit = () => {
-  const { api } = useJourney<ItineraryContext, StepId, Event>();
-  return <button onClick={() => api.close()}>Confirm exit</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.terminateJourney()}>Confirm exit</button>;
 };
 
-export const itineraryBuilderJourney: JourneyReactDefinition<ItineraryContext, StepId, Event> = {
+export const itineraryBuilderJourney: JourneyReactDefinition<
+  ItineraryContext,
+  StepId,
+  CustomEvent
+> = {
   initial: "destination",
   context: {
     flexibleDates: false,
@@ -60,54 +57,55 @@ export const itineraryBuilderJourney: JourneyReactDefinition<ItineraryContext, S
   transitions: [
     {
       from: "destination",
-      event: "next",
+      event: "goToNextStep",
       to: "dates",
       when: ({ context }) => context.flexibleDates
     },
     {
       from: "destination",
-      event: "next",
+      event: "goToNextStep",
       to: "lodging",
       when: ({ context }) => !context.flexibleDates && context.needsLodging
     },
     {
       from: "destination",
-      event: "next",
+      event: "goToNextStep",
       to: "itinerary",
       when: ({ context }) => !context.flexibleDates && !context.needsLodging
     },
     {
       from: "dates",
-      event: "next",
+      event: "goToNextStep",
       to: "lodging",
       when: ({ context }) => context.needsLodging
     },
     {
       from: "dates",
-      event: "next",
+      event: "goToNextStep",
       to: "itinerary",
       when: ({ context }) => !context.needsLodging
     },
-    { from: "lodging", event: "next", to: "itinerary" },
-    { from: "*", event: "back", to: HISTORY_TARGET },
+    { from: "lodging", event: "goToNextStep", to: "itinerary" },
     {
       from: "*",
-      event: "close",
+      event: "requestClose",
       to: "confirmExit",
       when: ({ context }) => context.dirty
     },
-    {
-      from: "*",
-      event: "close",
-      to: JOURNEY_TERMINAL.CLOSE,
-      when: ({ context }) => !context.dirty
-    },
-    { from: "itinerary", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
+    { from: "*", event: "terminateJourney" },
+    { from: "itinerary", event: "completeJourney" }
   ]
 };
 
-export const ItineraryBuilderExample = () => (
-  <JourneyProvider journey={itineraryBuilderJourney}>
-    <JourneyStepRenderer<ItineraryContext, StepId, Event> />
-  </JourneyProvider>
-);
+const bindings = createJourneyBindings(itineraryBuilderJourney);
+
+export const ItineraryBuilderExample = () => {
+  const Provider = bindings.Provider;
+  const StepRenderer = bindings.StepRenderer;
+
+  return (
+    <Provider>
+      <StepRenderer />
+    </Provider>
+  );
+};

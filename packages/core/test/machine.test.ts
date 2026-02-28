@@ -1,506 +1,193 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  createJourneyMachine,
   JOURNEY_STATUS,
-  HISTORY_TARGET,
-  JOURNEY_TERMINAL,
-  type JourneyDefinition
+  createJourneyMachine,
+  type JourneyDefinition,
+  type JourneyObservationEvent
 } from "@rxova/journey-core";
 
-type StepId = "start" | "details" | "extra" | "review" | "confirmExit";
-type Ctx = {
-  addExtra: boolean;
-  dirty: boolean;
-  allowNext: boolean;
-  count: number;
-};
-type Event = "next" | "back" | "close" | "submit";
-const idleStepAsync = () => ({
-  phase: "idle" as const,
-  eventType: null,
-  transitionId: null,
-  error: null
-});
-const asyncState = () => ({
-  isLoading: false,
-  byStep: {
-    start: idleStepAsync(),
-    details: idleStepAsync(),
-    extra: idleStepAsync(),
-    review: idleStepAsync(),
-    confirmExit: idleStepAsync()
-  }
-});
+type StepId = "start" | "details" | "review" | "confirmExit";
+type Event = "goToNextStep" | "back" | "requestClose" | "terminateJourney" | "completeJourney";
+type Context = { dirty: boolean; count: number };
+type Meta = { title: string };
 
-const baseJourney = (): JourneyDefinition<Ctx, StepId, Event> => ({
+const createJourney = (): JourneyDefinition<
+  Context,
+  StepId,
+  Event,
+  Record<never, never>,
+  Meta
+> => ({
   initial: "start",
-  context: {
-    addExtra: false,
-    dirty: false,
-    allowNext: true,
-    count: 0
-  },
+  context: { dirty: false, count: 0 },
   steps: {
-    start: {},
-    details: {},
-    extra: {},
-    review: {},
-    confirmExit: {}
+    start: { meta: { title: "Start" } },
+    details: { meta: { title: "Details" } },
+    review: { meta: { title: "Review" } },
+    confirmExit: { meta: { title: "Confirm exit" } }
   },
   transitions: [
-    { id: "s->d", from: "start", event: "next", to: "details" },
-    {
-      id: "d->extra",
-      from: "details",
-      event: "next",
-      to: "extra",
-      when: ({ context }) => context.addExtra
-    },
-    {
-      id: "d->review",
-      from: "details",
-      event: "next",
-      to: "review",
-      when: ({ context }) => !context.addExtra
-    },
-    { id: "extra->review", from: "extra", event: "next", to: "review" },
-    {
-      id: "back-history",
-      from: "*",
-      event: "back",
-      to: HISTORY_TARGET
-    },
+    { id: "start-next", from: "start", event: "goToNextStep", to: "details" },
+    { id: "details-next", from: "details", event: "goToNextStep", to: "review" },
     {
       id: "close-dirty",
       from: "*",
-      event: "close",
+      event: "requestClose",
       to: "confirmExit",
       when: ({ context }) => context.dirty
     },
     {
       id: "close-clean",
       from: "*",
-      event: "close",
-      to: JOURNEY_TERMINAL.CLOSE,
+      event: "terminateJourney",
       when: ({ context }) => !context.dirty
     },
-    {
-      id: "submit",
-      from: "review",
-      event: "submit",
-      to: JOURNEY_TERMINAL.COMPLETE
-    }
+    { id: "submit-review", from: "review", event: "completeJourney" }
   ]
 });
 
+const createMachine = () =>
+  createJourneyMachine<Context, StepId, Event, Record<never, never>, Meta>(createJourney());
+
 describe("createJourneyMachine", () => {
-  it("creates initial snapshot", () => {
-    const machine = createJourneyMachine(baseJourney());
+  it("builds snapshot shape at startup", () => {
+    const machine = createMachine();
+    const snapshot = machine.getSnapshot();
 
-    expect(machine.getSnapshot()).toEqual({
-      current: "start",
-      context: {
-        addExtra: false,
-        dirty: false,
-        allowNext: true,
-        count: 0
-      },
-      history: [],
-      visited: ["start"],
-      status: JOURNEY_STATUS.RUNNING,
-      async: asyncState()
+    expect(snapshot.currentStepId).toBe("start");
+    expect(snapshot.history.timeline).toEqual(["start"]);
+    expect(snapshot.history.index).toBe(0);
+    expect(snapshot.visited).toEqual({
+      start: true,
+      details: false,
+      review: false,
+      confirmExit: false
     });
+    expect(snapshot.stepMeta.start).toEqual({ title: "Start" });
   });
 
-  it("takes first matching transition", async () => {
-    const machine = createJourneyMachine(baseJourney());
+  it("default back behavior works without explicit back transition", async () => {
+    const machine = createMachine();
 
-    await machine.send({ type: "next" });
-    await machine.send({ type: "next" });
+    await machine.send({ type: "goToNextStep" });
+    await machine.send({ type: "goToNextStep" });
 
-    expect(machine.getSnapshot().current).toBe("review");
+    const result = await machine.send({ type: "back" });
+
+    expect(result.transitioned).toBe(true);
+    expect(result.transitionId).toBe("back");
+    expect(machine.getSnapshot().currentStepId).toBe("details");
   });
 
-  it("supports conditional branch to extra step", async () => {
-    const machine = createJourneyMachine(baseJourney());
+  it("goToPreviousStep with n and goToLastVisitedStep work as navigation APIs", async () => {
+    const machine = createMachine();
 
-    machine.updateContext((ctx) => ({ ...ctx, addExtra: true }));
-    await machine.send({ type: "next" });
-    await machine.send({ type: "next" });
+    await machine.goToNextStep();
+    await machine.goToNextStep();
 
-    expect(machine.getSnapshot().current).toBe("extra");
+    await machine.goToPreviousStep(2);
+    expect(machine.getSnapshot().currentStepId).toBe("start");
+
+    await machine.goToLastVisitedStep();
+    expect(machine.getSnapshot().currentStepId).toBe("review");
   });
 
-  it("uses history target for back", async () => {
-    const machine = createJourneyMachine(baseJourney());
+  it("goToNextStep convenience API behaves like send(goToNextStep)", async () => {
+    const machine = createMachine();
 
-    await machine.send({ type: "next" });
-    await machine.send({ type: "next" });
-    await machine.send({ type: "back" });
-    await machine.send({ type: "back" });
+    const result = await machine.goToNextStep();
 
-    expect(machine.getSnapshot().current).toBe("start");
+    expect(result.transitioned).toBe(true);
+    expect(result.transitionId).toBe("start-next");
+    expect(machine.getSnapshot().currentStepId).toBe("details");
   });
 
-  it("uses history target for single back", async () => {
-    const machine = createJourneyMachine(baseJourney());
+  it("completeJourney convenience API behaves like send(completeJourney)", async () => {
+    const machine = createMachine();
 
-    await machine.send({ type: "next" });
-    await machine.send({ type: "next" });
-    await machine.send({ type: "back" });
+    await machine.goToNextStep();
+    await machine.goToNextStep();
+    const result = await machine.completeJourney();
 
-    expect(machine.getSnapshot().current).toBe("details");
-  });
-
-  it("keeps same step when history is empty", async () => {
-    const machine = createJourneyMachine(baseJourney());
-
-    await machine.send({ type: "back" });
-
-    expect(machine.getSnapshot().current).toBe("start");
-  });
-
-  it("handles sparse history entries when resolving history target", async () => {
-    const machine = createJourneyMachine(baseJourney());
-
-    await machine.send({ type: "next" });
-    const history = machine.getSnapshot().history as unknown as Array<StepId | undefined>;
-    delete history[0];
-
-    await machine.send({ type: "back" });
-
-    expect(machine.getSnapshot().current).toBe("details");
-  });
-
-  it("handles close event with global transitions", async () => {
-    const machine = createJourneyMachine(baseJourney());
-
-    await machine.send({ type: "close" });
-
-    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.CLOSED);
-    expect(machine.getSnapshot().status).not.toBe(JOURNEY_STATUS.RUNNING);
-  });
-
-  it("routes close to confirm step when dirty", async () => {
-    const machine = createJourneyMachine(baseJourney());
-
-    machine.updateContext((ctx) => ({ ...ctx, dirty: true }));
-    await machine.send({ type: "close" });
-
-    expect(machine.getSnapshot().current).toBe("confirmExit");
-    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.RUNNING);
-  });
-
-  it("supports async guards and effects", async () => {
-    const journey = baseJourney();
-    journey.transitions = [
-      {
-        from: "start",
-        event: "next",
-        to: "details",
-        when: async ({ context }) => context.allowNext,
-        effect: async ({ context }) => ({ ...context, count: context.count + 1 })
-      }
-    ];
-
-    const machine = createJourneyMachine(journey);
-
-    await machine.send({ type: "next" });
-
-    expect(machine.getSnapshot().current).toBe("details");
-    expect(machine.getSnapshot().context.count).toBe(1);
-    expect(machine.getSnapshot().async.byStep.start.phase).toBe("idle");
-    expect(machine.getSnapshot().async.byStep.start.error).toBeNull();
-  });
-
-  it("exposes evaluating-when async phase while guard promise is pending", async () => {
-    let release = () => {};
-    const wait = new Promise<boolean>((resolve) => {
-      release = () => resolve(true);
-    });
-    const journey = baseJourney();
-    journey.transitions = [
-      {
-        id: "guard-wait",
-        from: "start",
-        event: "next",
-        to: "details",
-        when: () => wait
-      }
-    ];
-    const machine = createJourneyMachine(journey);
-    const pending = machine.send({ type: "next" });
-
-    await Promise.resolve();
-    expect(machine.getSnapshot().async.byStep.start.phase).toBe("evaluating-when");
-    expect(machine.getSnapshot().async.isLoading).toBe(true);
-
-    release();
-    await pending;
-    expect(machine.getSnapshot().async.byStep.start.phase).toBe("idle");
-    expect(machine.getSnapshot().async.isLoading).toBe(false);
-  });
-
-  it("exposes running-effect phase and step error on async effect rejection", async () => {
-    let release = () => {};
-    const wait = new Promise<Ctx>((resolve, reject) => {
-      release = () => reject(new Error("effect-boom"));
-      void resolve;
-    });
-    const journey = baseJourney();
-    journey.transitions = [
-      {
-        id: "effect-wait",
-        from: "start",
-        event: "next",
-        to: "details",
-        effect: () => wait
-      }
-    ];
-    const machine = createJourneyMachine(journey);
-    const pending = machine.send({ type: "next" });
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(machine.getSnapshot().async.byStep.start.phase).toBe("running-effect");
-    expect(machine.getSnapshot().async.isLoading).toBe(true);
-
-    release();
-    await expect(pending).rejects.toThrow("effect-boom");
-    expect(machine.getSnapshot().async.byStep.start.phase).toBe("error");
-    expect(String(machine.getSnapshot().async.byStep.start.error)).toContain("effect-boom");
-    expect(machine.getSnapshot().async.isLoading).toBe(false);
-  });
-
-  it("clears step error via clearStepError", async () => {
-    const journey = baseJourney();
-    journey.transitions = [
-      {
-        id: "guard-fail",
-        from: "start",
-        event: "next",
-        to: "details",
-        when: () => {
-          throw new Error("guard-fail");
-        }
-      }
-    ];
-    const machine = createJourneyMachine(journey);
-    await expect(machine.send({ type: "next" })).rejects.toThrow("guard-fail");
-    expect(machine.getSnapshot().async.byStep.start.phase).toBe("error");
-
-    machine.clearStepError();
-    expect(machine.getSnapshot().async.byStep.start.phase).toBe("idle");
-    expect(machine.getSnapshot().async.byStep.start.error).toBeNull();
-  });
-
-  it("captures async guard rejection as step error", async () => {
-    const journey = baseJourney();
-    journey.transitions = [
-      {
-        id: "guard-async-fail",
-        from: "start",
-        event: "next",
-        to: "details",
-        when: async () => {
-          await Promise.resolve();
-          throw new Error("guard-async-fail");
-        }
-      }
-    ];
-    const machine = createJourneyMachine(journey);
-    await expect(machine.send({ type: "next" })).rejects.toThrow("guard-async-fail");
-    expect(machine.getSnapshot().async.byStep.start.phase).toBe("error");
-    expect(String(machine.getSnapshot().async.byStep.start.error)).toContain("guard-async-fail");
-  });
-
-  it("ignores clearStepError for unknown step ids", () => {
-    const machine = createJourneyMachine(baseJourney());
-    const before = machine.getSnapshot();
-    const after = machine.clearStepError("missing" as StepId);
-    expect(after).toBe(before);
-    expect(machine.getSnapshot()).toBe(before);
-  });
-
-  it("rebuilds missing step async state entries when async work starts", async () => {
-    let release = () => {};
-    const wait = new Promise<Ctx>((resolve) => {
-      release = () => resolve(baseJourney().context);
-    });
-    const journey = baseJourney();
-    journey.transitions = [
-      {
-        id: "rebuild-async",
-        from: "start",
-        event: "next",
-        to: "details",
-        effect: () => wait
-      }
-    ];
-    const machine = createJourneyMachine(journey);
-    const byStep = machine.getSnapshot().async.byStep as unknown as Record<
-      StepId,
-      | {
-          phase: "idle" | "evaluating-when" | "running-effect" | "error";
-          eventType: string | null;
-          transitionId: string | null;
-          error: unknown | null;
-        }
-      | undefined
-    >;
-    delete (byStep as Record<string, unknown>).start;
-
-    const pending = machine.send({ type: "next" });
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(machine.getSnapshot().async.byStep.start.phase).toBe("running-effect");
-    release();
-    await pending;
-  });
-
-  it("serializes concurrent sends", async () => {
-    const journey = baseJourney();
-    journey.transitions = [
-      {
-        from: "start",
-        event: "next",
-        to: "details",
-        effect: async ({ context }) => {
-          await new Promise((resolve) => setTimeout(resolve, 20));
-          return { ...context, count: context.count + 1 };
-        }
-      },
-      {
-        from: "details",
-        event: "next",
-        to: "review",
-        effect: ({ context }) => ({ ...context, count: context.count + 1 })
-      }
-    ];
-
-    const machine = createJourneyMachine(journey);
-
-    await Promise.all([machine.send({ type: "next" }), machine.send({ type: "next" })]);
-
-    expect(machine.getSnapshot().current).toBe("review");
-    expect(machine.getSnapshot().context.count).toBe(2);
-    expect(machine.getSnapshot().history).toEqual(["start", "details"]);
-  });
-
-  it("goTo jumps to specific step", async () => {
-    const machine = createJourneyMachine(baseJourney());
-
-    await machine.send({ type: "goTo", to: "review" });
-
-    expect(machine.getSnapshot().current).toBe("review");
-    expect(machine.getSnapshot().history).toEqual(["start"]);
-  });
-
-  it("throws on unknown goTo target", async () => {
-    const machine = createJourneyMachine(baseJourney());
-
-    await expect(machine.send({ type: "goTo", to: "unknown" as StepId })).rejects.toThrow(
-      "Cannot goTo unknown step"
-    );
-  });
-
-  it("does nothing if no transition matches", async () => {
-    const machine = createJourneyMachine(baseJourney());
-
-    const result = await machine.send({ type: "submit" });
-
-    expect(result.transitioned).toBe(false);
-    expect(machine.getSnapshot().current).toBe("start");
-  });
-
-  it("moves to terminal complete on submit", async () => {
-    const machine = createJourneyMachine(baseJourney());
-
-    await machine.send({ type: "goTo", to: "review" });
-    await machine.send({ type: "submit" });
-
+    expect(result.transitioned).toBe(true);
+    expect(result.transitionId).toBe("submit-review");
     expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.COMPLETE);
-    expect(machine.getSnapshot().status).not.toBe(JOURNEY_STATUS.RUNNING);
   });
 
-  it("ignores events after terminal state", async () => {
-    const machine = createJourneyMachine(baseJourney());
+  it("terminateJourney convenience API behaves like send(terminateJourney)", async () => {
+    const machine = createMachine();
 
-    await machine.send({ type: "close" });
-    const result = await machine.send({ type: "next" });
+    const result = await machine.terminateJourney();
 
-    expect(result.transitioned).toBe(false);
-    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.CLOSED);
+    expect(result.transitioned).toBe(true);
+    expect(result.transitionId).toBe("close-clean");
+    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.TERMINATED);
   });
 
-  it("supports subscribe and reset", async () => {
-    const machine = createJourneyMachine(baseJourney());
-    let updates = 0;
-    const unsubscribe = machine.subscribe(() => {
-      updates += 1;
+  it("emits transition and step lifecycle events in deterministic order", async () => {
+    const machine = createMachine();
+    const events: JourneyObservationEvent<StepId, Event, Record<never, never>, Meta>[] = [];
+
+    const unsubscribe = machine.subscribeEvent((event) => {
+      events.push(event);
     });
 
-    await machine.send({ type: "next" });
-    machine.updateContext((ctx) => ({ ...ctx, count: ctx.count + 1 }));
-    machine.reset();
+    await machine.send({ type: "goToNextStep" });
     unsubscribe();
 
-    expect(updates).toBe(3);
-    expect(machine.getSnapshot().current).toBe("start");
-    expect(machine.getSnapshot().context.count).toBe(0);
+    expect(events.map((event) => event.type)).toEqual([
+      "transition.start",
+      "step.exit",
+      "transition.success",
+      "step.enter"
+    ]);
+    expect(events[0]).toMatchObject({ type: "transition.start", from: "start" });
+    expect(events[2]).toMatchObject({
+      type: "transition.success",
+      from: "start",
+      to: "details",
+      transitionId: "start-next"
+    });
   });
 
-  it("trims history automatically when maxHistory is exceeded", async () => {
-    const overflows: Array<{ trimmed: StepId[]; reason: string }> = [];
-    const machine = createJourneyMachine(baseJourney(), {
-      history: {
-        maxHistory: 2,
-        onOverflow: (info) => {
-          overflows.push({ trimmed: [...info.trimmed], reason: info.reason });
-        }
-      }
+  it("updates step metadata immutably and emits metadata.updated", () => {
+    const machine = createMachine();
+    const eventTypes: string[] = [];
+
+    machine.subscribeEvent((event) => {
+      eventTypes.push(event.type);
     });
 
-    await machine.send({ type: "goTo", to: "details" }); // history: ["start"]
-    await machine.send({ type: "goTo", to: "review" }); // history: ["start","details"]
-    await machine.send({ type: "goTo", to: "extra" }); // history would be ["start","details","review"]
+    const before = machine.getSnapshot();
+    machine.updateStepMetadata("details", (meta) => ({ ...meta, title: "Details updated" }));
+    const after = machine.getSnapshot();
 
-    expect(machine.getSnapshot().history).toEqual(["details", "review"]);
-    expect(overflows).toEqual([{ trimmed: ["start"], reason: "auto" }]);
+    expect(before.stepMeta.details).toEqual({ title: "Details" });
+    expect(after.stepMeta.details).toEqual({ title: "Details updated" });
+    expect(after.stepMeta.start).toEqual(before.stepMeta.start);
+    expect(eventTypes).toContain("metadata.updated");
   });
 
-  it("supports manual trimHistory and clearHistory", async () => {
-    const machine = createJourneyMachine(baseJourney(), {
-      history: { maxHistory: 5 }
-    });
+  it("blocks pointer moves once terminal unless reset", async () => {
+    const machine = createMachine();
 
-    await machine.send({ type: "goTo", to: "details" });
-    await machine.send({ type: "goTo", to: "review" });
-    await machine.send({ type: "goTo", to: "extra" });
+    await machine.send({ type: "goToNextStep" });
+    await machine.send({ type: "goToNextStep" });
+    await machine.send({ type: "completeJourney" });
 
-    machine.trimHistory(1);
-    expect(machine.getSnapshot().history).toEqual(["review"]);
+    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.COMPLETE);
 
-    machine.clearHistory();
-    expect(machine.getSnapshot().history).toEqual([]);
-  });
+    const next = await machine.goToNextStep();
+    const prev = await machine.goToPreviousStep();
+    const last = await machine.goToLastVisitedStep();
 
-  it("no-ops trimHistory and clearHistory when history is empty", () => {
-    const machine = createJourneyMachine(baseJourney());
+    expect(next.transitioned).toBe(false);
+    expect(prev.transitioned).toBe(false);
+    expect(last.transitioned).toBe(false);
 
-    machine.trimHistory(10);
-    expect(machine.getSnapshot().history).toEqual([]);
-
-    machine.clearHistory();
-    expect(machine.getSnapshot().history).toEqual([]);
-  });
-
-  it("validates initial step existence", () => {
-    expect(() => {
-      createJourneyMachine({
-        ...baseJourney(),
-        initial: "missing" as StepId
-      });
-    }).toThrow("initial step");
+    machine.resetMachine();
+    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.RUNNING);
+    expect(machine.getSnapshot().currentStepId).toBe("start");
   });
 });

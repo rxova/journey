@@ -1,13 +1,6 @@
 import React from "react";
 
-import {
-  HISTORY_TARGET,
-  JOURNEY_TERMINAL,
-  type JourneyReactDefinition,
-  useJourney,
-  JourneyProvider,
-  JourneyStepRenderer
-} from "@rxova/journey-react";
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
 
 type StepId = "cart" | "address" | "giftWrap" | "payment" | "review";
 type Ctx = {
@@ -16,28 +9,28 @@ type Ctx = {
 };
 
 const Cart = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.next()}>Checkout</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Checkout</button>;
 };
 
 const Address = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.next()}>Continue</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Continue</button>;
 };
 
 const GiftWrap = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.next()}>Continue</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Continue</button>;
 };
 
 const Payment = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.next()}>Review order</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Review order</button>;
 };
 
 const Review = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.submit()}>Place order</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.completeJourney()}>Place order</button>;
 };
 
 export const checkoutJourney: JourneyReactDefinition<Ctx, StepId> = {
@@ -56,38 +49,44 @@ export const checkoutJourney: JourneyReactDefinition<Ctx, StepId> = {
   transitions: [
     {
       from: "cart",
-      event: "next",
+      event: "goToNextStep",
       to: "address",
       when: ({ context }) => context.needsShipping
     },
     {
       from: "cart",
-      event: "next",
+      event: "goToNextStep",
       to: "payment",
       when: ({ context }) => !context.needsShipping
     },
     {
       from: "address",
-      event: "next",
+      event: "goToNextStep",
       to: "giftWrap",
       when: ({ context }) => context.wantsGiftWrap
     },
     {
       from: "address",
-      event: "next",
+      event: "goToNextStep",
       to: "payment",
       when: ({ context }) => !context.wantsGiftWrap
     },
-    { from: "giftWrap", event: "next", to: "payment" },
-    { from: "payment", event: "next", to: "review" },
-    { from: "*", event: "back", to: HISTORY_TARGET },
-    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE },
-    { from: "*", event: "close", to: JOURNEY_TERMINAL.CLOSE }
+    { from: "giftWrap", event: "goToNextStep", to: "payment" },
+    { from: "payment", event: "goToNextStep", to: "review" },
+    { from: "review", event: "completeJourney" },
+    { from: "*", event: "terminateJourney" }
   ]
 };
 
-export const CheckoutExample = () => (
-  <JourneyProvider journey={checkoutJourney}>
-    <JourneyStepRenderer<Ctx, StepId> />
-  </JourneyProvider>
-);
+const bindings = createJourneyBindings(checkoutJourney);
+
+export const CheckoutExample = () => {
+  const Provider = bindings.Provider;
+  const StepRenderer = bindings.StepRenderer;
+
+  return (
+    <Provider>
+      <StepRenderer />
+    </Provider>
+  );
+};

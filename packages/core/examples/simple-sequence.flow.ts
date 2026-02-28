@@ -1,11 +1,7 @@
-import {
-  createJourneyMachine,
-  JOURNEY_TERMINAL,
-  type JourneyDefinition
-} from "@rxova/journey-core";
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "s1" | "s2";
-type Event = "next" | "submit";
+type Event = "goToNextStep" | "completeJourney";
 type Ctx = Record<string, never>;
 
 export const simpleSequenceJourney: JourneyDefinition<Ctx, StepId, Event> = {
@@ -16,8 +12,8 @@ export const simpleSequenceJourney: JourneyDefinition<Ctx, StepId, Event> = {
     s2: {}
   },
   transitions: [
-    { from: "s1", event: "next", to: "s2" },
-    { from: "s2", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
+    { from: "s1", event: "goToNextStep", to: "s2" },
+    { from: "s2", event: "completeJourney" }
   ]
 };
 

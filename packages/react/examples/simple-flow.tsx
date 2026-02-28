@@ -1,29 +1,23 @@
 import React from "react";
 
-import {
-  JOURNEY_TERMINAL,
-  type JourneyReactDefinition,
-  useJourney,
-  JourneyProvider,
-  JourneyStepRenderer
-} from "@rxova/journey-react";
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
 
 type StepId = "one" | "two" | "three";
 type Ctx = { name: string };
 
 const One = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.next()}>Next</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Next</button>;
 };
 
 const Two = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.next()}>Next</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Next</button>;
 };
 
 const Three = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.submit()}>Finish</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.completeJourney()}>Finish</button>;
 };
 
 export const simpleJourney: JourneyReactDefinition<Ctx, StepId> = {
@@ -35,14 +29,21 @@ export const simpleJourney: JourneyReactDefinition<Ctx, StepId> = {
     three: { component: Three }
   },
   transitions: [
-    { from: "one", event: "next", to: "two" },
-    { from: "two", event: "next", to: "three" },
-    { from: "three", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
+    { from: "one", event: "goToNextStep", to: "two" },
+    { from: "two", event: "goToNextStep", to: "three" },
+    { from: "three", event: "completeJourney" }
   ]
 };
 
-export const SimpleJourneyExample = () => (
-  <JourneyProvider journey={simpleJourney}>
-    <JourneyStepRenderer<Ctx, StepId> />
-  </JourneyProvider>
-);
+const bindings = createJourneyBindings(simpleJourney);
+
+export const SimpleJourneyExample = () => {
+  const Provider = bindings.Provider;
+  const StepRenderer = bindings.StepRenderer;
+
+  return (
+    <Provider>
+      <StepRenderer />
+    </Provider>
+  );
+};

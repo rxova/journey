@@ -1,7 +1,7 @@
 import { createJourneyMachine, JOURNEY_EVENT, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "step1" | "step2" | "review";
-type Event = "next";
+type Event = "goToNextStep";
 type Ctx = Record<string, never>;
 
 export const goToJumpJourney: JourneyDefinition<Ctx, StepId, Event> = {
@@ -12,7 +12,7 @@ export const goToJumpJourney: JourneyDefinition<Ctx, StepId, Event> = {
     step2: {},
     review: {}
   },
-  transitions: [{ from: "step1", event: "next", to: "step2" }]
+  transitions: [{ from: "step1", event: "goToNextStep", to: "step2" }]
 };
 
 export const createGoToJumpMachine = () =>
@@ -20,6 +20,6 @@ export const createGoToJumpMachine = () =>
 
 export const jumpToReview = async () => {
   const machine = createGoToJumpMachine();
-  await machine.send({ type: JOURNEY_EVENT.GO_TO, to: "review" });
+  await machine.send({ type: JOURNEY_EVENT.GO_TO_STEP_BY_ID, stepId: "review" });
   return machine.getSnapshot();
 };

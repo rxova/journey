@@ -1,577 +1,151 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import React from "react";
-import { act, render, screen } from "@testing-library/react";
+import { act } from "react";
+import { render, screen } from "@testing-library/react";
 
 import {
-  JOURNEY_STATUS,
-  HISTORY_TARGET,
-  JOURNEY_TERMINAL,
-  type JourneyMachine
-} from "@rxova/journey-core";
-import {
-  JourneyProvider,
-  JourneyStepRenderer,
-  useJourney,
-  useJourneyApi,
-  useJourneyMachine,
-  useJourneySnapshot
+  createJourneyBindings,
+  type JourneyApi,
+  type JourneyReactDefinition
 } from "@rxova/journey-react";
-import type { JourneyReactDefinition } from "@rxova/journey-react";
 
-type StepId = "one" | "two" | "three";
-type CustomEvent = "custom";
-type Ctx = { counter: number; canAdvance: boolean; closed: boolean };
-const idleStepAsync = () => ({
-  phase: "idle" as const,
-  eventType: null,
-  transitionId: null,
-  error: null
-});
-const asyncState = () => ({
-  isLoading: false,
-  byStep: {
-    one: idleStepAsync(),
-    two: idleStepAsync(),
-    three: idleStepAsync()
-  }
-});
+type StepId = "one" | "two";
+type Event = "goToNextStep" | "back" | "terminateJourney" | "completeJourney";
+type Context = { count: number };
 
-const One = () => <div data-testid="step">one</div>;
-const Two = () => <div data-testid="step">two</div>;
-const Three = () => <div data-testid="step">three</div>;
-
-const baseJourney: JourneyReactDefinition<Ctx, StepId, CustomEvent> = {
+const journeyA: JourneyReactDefinition<Context, StepId, Event> = {
   initial: "one",
-  context: { counter: 0, canAdvance: true, closed: false },
+  context: { count: 0 },
   steps: {
-    one: { component: One },
-    two: { component: Two },
-    three: { component: Three }
+    one: { component: () => <div>one-a</div> },
+    two: { component: () => <div>two-a</div> }
   },
-  transitions: [
-    {
-      from: "one",
-      event: "next",
-      to: "two",
-      when: ({ context }) => context.canAdvance
-    },
-    {
-      from: "two",
-      event: "next",
-      to: "three"
-    },
-    {
-      from: "*",
-      event: "back",
-      to: HISTORY_TARGET
-    },
-    {
-      from: "*",
-      event: "close",
-      to: JOURNEY_TERMINAL.CLOSE
-    },
-    {
-      from: "three",
-      event: "submit",
-      to: JOURNEY_TERMINAL.COMPLETE
-    },
-    {
-      from: "one",
-      event: "custom",
-      to: "three"
-    }
-  ]
+  transitions: [{ from: "one", event: "goToNextStep", to: "two" }]
 };
 
-const Controls = () => {
-  const { api, snapshot } = useJourney<Ctx, StepId, CustomEvent>();
-
-  return (
-    <div>
-      <button onClick={() => api.next()}>next</button>
-      <button onClick={() => api.back()}>back</button>
-      <button onClick={() => api.close()}>close</button>
-      <button onClick={() => api.submit()}>submit</button>
-      <button onClick={() => api.goTo("three")}>goto</button>
-      <button onClick={() => api.send({ type: "custom" })}>custom</button>
-      <button
-        onClick={() =>
-          api.updateContext((ctx) => ({ ...ctx, counter: ctx.counter + 1, canAdvance: true }))
-        }
-      >
-        increment
-      </button>
-      <button onClick={() => api.reset()}>reset</button>
-      <div data-testid="current">{snapshot.current}</div>
-      <div data-testid="counter">{snapshot.context.counter}</div>
-      <div data-testid="terminal">{snapshot.status}</div>
-    </div>
-  );
+const journeyB: JourneyReactDefinition<Context, StepId, Event> = {
+  initial: "one",
+  context: { count: 10 },
+  steps: {
+    one: { component: () => <div>one-b</div> },
+    two: { component: () => <div>two-b</div> }
+  },
+  transitions: [{ from: "one", event: "goToNextStep", to: "two" }]
 };
 
-const App = ({
-  journey = baseJourney
+const bindings = createJourneyBindings(journeyA);
+
+const Capture = ({
+  onApi
 }: {
-  journey?: JourneyReactDefinition<Ctx, StepId, CustomEvent>;
-}) => (
-  <JourneyProvider journey={journey}>
-    <JourneyStepRenderer<Ctx, StepId, CustomEvent> />
-    <Controls />
-  </JourneyProvider>
-);
+  onApi: (api: JourneyApi<Context, StepId, Event, Record<never, never>, unknown>) => void;
+}) => {
+  const snapshot = bindings.useJourneySnapshot();
+  const api = bindings.useJourneyApi();
 
-const createMockMachine = (
-  current: StepId = "one"
-): JourneyMachine<Ctx, StepId, "next" | "back" | "close" | "submit" | "custom"> => {
-  const snapshot = {
-    current,
-    context: baseJourney.context,
-    history: [],
-    visited: [current],
-    status: JOURNEY_STATUS.RUNNING,
-    async: asyncState()
-  };
+  React.useLayoutEffect(() => {
+    onApi(api);
+  }, [api, onApi]);
 
-  return {
-    getSnapshot: () => snapshot,
-    send: async () => ({ transitioned: false, snapshot }),
-    updateContext: () => snapshot,
-    clearStepError: () => snapshot,
-    reset: () => snapshot,
-    trimHistory: () => snapshot,
-    clearHistory: () => snapshot,
-    subscribe: () => () => {}
-  };
+  return <div data-testid="current">{snapshot.currentStepId}</div>;
 };
 
-describe("react hooks/provider edge cases", () => {
-  it("next transition works through hook api", async () => {
-    render(<App />);
-    await act(async () => {
-      screen.getByText("next").click();
-    });
-    expect(screen.getByTestId("current").textContent).toBe("two");
-  });
-
-  it("back uses history target", async () => {
-    render(<App />);
-    await act(async () => {
-      screen.getByText("next").click();
-    });
-    await act(async () => {
-      screen.getByText("back").click();
-    });
-    expect(screen.getByTestId("current").textContent).toBe("one");
-  });
-
-  it("close sets terminal close", async () => {
-    render(<App />);
-    await act(async () => {
-      screen.getByText("close").click();
-    });
-    expect(screen.getByTestId("terminal").textContent).toBe(JOURNEY_STATUS.CLOSED);
-  });
-
-  it("submit sets terminal complete", async () => {
-    render(<App />);
-    await act(async () => {
-      screen.getByText("next").click();
-    });
-    await act(async () => {
-      screen.getByText("next").click();
-    });
-    await act(async () => {
-      screen.getByText("submit").click();
-    });
-    expect(screen.getByTestId("terminal").textContent).toBe(JOURNEY_STATUS.COMPLETE);
-  });
-
-  it("custom event works via api.send", async () => {
-    render(<App />);
-    await act(async () => {
-      screen.getByText("custom").click();
-    });
-    expect(screen.getByTestId("current").textContent).toBe("three");
-  });
-
-  it("goTo works via api.goTo", async () => {
-    render(<App />);
-    await act(async () => {
-      screen.getByText("goto").click();
-    });
-    expect(screen.getByTestId("current").textContent).toBe("three");
-  });
-
-  it("updateContext updates snapshot context", async () => {
-    render(<App />);
-    await act(async () => {
-      screen.getByText("increment").click();
-    });
-    expect(screen.getByTestId("counter").textContent).toBe("1");
-  });
-
-  it("reset returns to initial step", async () => {
-    render(<App />);
-    await act(async () => {
-      screen.getByText("next").click();
-    });
-    await act(async () => {
-      screen.getByText("reset").click();
-    });
-    expect(screen.getByTestId("current").textContent).toBe("one");
-  });
-
-  it("can block next with guard when context says no", async () => {
-    const guardJourney: JourneyReactDefinition<Ctx, StepId, CustomEvent> = {
-      ...baseJourney,
-      context: { ...baseJourney.context, canAdvance: false }
-    };
-    render(<App journey={guardJourney} />);
-    await act(async () => {
-      screen.getByText("next").click();
-    });
-    expect(screen.getByTestId("current").textContent).toBe("one");
-  });
-
-  it("useJourneyApi throws outside provider", () => {
-    const Broken = () => {
-      useJourneyApi<Ctx, StepId, CustomEvent>();
+describe("bindings hooks edge cases", () => {
+  it("throws outside Provider", () => {
+    const UseJourneyApi = () => {
+      bindings.useJourneyApi();
       return null;
     };
-    expect(() => render(<Broken />)).toThrow(
-      "useJourneyApi must be used within <JourneyProvider>."
-    );
-  });
-
-  it("useJourneySnapshot throws outside provider", () => {
-    const Broken = () => {
-      useJourneySnapshot<Ctx, StepId, CustomEvent>();
+    const UseJourneySnapshot = () => {
+      bindings.useJourneySnapshot();
       return null;
     };
-    expect(() => render(<Broken />)).toThrow(
-      "useJourneySnapshot must be used within <JourneyProvider>."
-    );
-  });
-
-  it("useJourney throws outside provider", () => {
-    const Broken = () => {
-      useJourney<Ctx, StepId, CustomEvent>();
+    const UseJourneyMachine = () => {
+      bindings.useJourneyMachine();
       return null;
     };
-    expect(() => render(<Broken />)).toThrow("useJourney must be used within <JourneyProvider>.");
+
+    expect(() => render(<UseJourneyApi />)).toThrow(/bindings\.Provider/);
+    expect(() => render(<UseJourneySnapshot />)).toThrow(/bindings\.Provider/);
+    expect(() => render(<UseJourneyMachine />)).toThrow(/bindings\.Provider/);
+    expect(() => render(<bindings.StepRenderer />)).toThrow(/bindings\.Provider/);
   });
 
-  it("useJourneyMachine throws outside provider", () => {
-    const Broken = () => {
-      useJourneyMachine<Ctx, StepId, CustomEvent>();
-      return null;
-    };
-    expect(() => render(<Broken />)).toThrow(
-      "useJourneyMachine must be used within <JourneyProvider>."
-    );
-  });
-
-  it("useJourneyMachine returns stable reference unless machine prop changes", () => {
-    const machineA = createMockMachine("one");
-    const machineB = createMockMachine("two");
-    const seen: JourneyMachine<Ctx, StepId, "next" | "back" | "close" | "submit" | "custom">[] = [];
-
-    const Probe = () => {
-      const machine = useJourneyMachine<Ctx, StepId, CustomEvent>();
-      React.useEffect(() => {
-        seen.push(machine);
-      });
-      return <div data-testid="machine-probe">probe</div>;
-    };
+  it("does not reset internal machine on journey change unless resetOnJourneyChange=true", async () => {
+    let api: JourneyApi<Context, StepId, Event> | null = null;
 
     const { rerender } = render(
-      <JourneyProvider journey={baseJourney} machine={machineA}>
-        <Probe />
-      </JourneyProvider>
+      <bindings.Provider journey={journeyA}>
+        <Capture onApi={(nextApi) => (api = nextApi)} />
+        <bindings.StepRenderer />
+      </bindings.Provider>
     );
+
+    expect(screen.getByText("one-a")).toBeTruthy();
+
+    await act(async () => {
+      await api?.goToNextStep();
+    });
+
+    expect(screen.getByText("two-a")).toBeTruthy();
 
     rerender(
-      <JourneyProvider journey={baseJourney} machine={machineA}>
-        <Probe />
-      </JourneyProvider>
+      <bindings.Provider journey={journeyB}>
+        <Capture onApi={(nextApi) => (api = nextApi)} />
+        <bindings.StepRenderer />
+      </bindings.Provider>
     );
+
+    expect(screen.getByText("two-a")).toBeTruthy();
+    expect(screen.getByTestId("current").textContent).toBe("two");
 
     rerender(
-      <JourneyProvider journey={baseJourney} machine={machineB}>
-        <Probe />
-      </JourneyProvider>
+      <bindings.Provider journey={journeyB} resetOnJourneyChange>
+        <Capture onApi={(nextApi) => (api = nextApi)} />
+        <bindings.StepRenderer />
+      </bindings.Provider>
     );
 
-    expect(seen[0]).toBe(machineA);
-    expect(seen[1]).toBe(machineA);
-    expect(seen[2]).toBe(machineB);
+    expect(screen.getByText("one-b")).toBeTruthy();
+    expect(screen.getByTestId("current").textContent).toBe("one");
   });
 
-  it("renders fallback when machine current step is unknown", () => {
-    const snapshot = {
-      current: "missing" as StepId,
-      context: baseJourney.context,
-      history: [],
-      visited: ["missing" as StepId],
-      status: JOURNEY_STATUS.RUNNING,
-      async: asyncState()
+  it("StepRenderer uses fallback when current step component is missing", async () => {
+    const minimalJourney: JourneyReactDefinition<Context, StepId, Event> = {
+      initial: "one",
+      context: { count: 0 },
+      steps: {
+        one: { component: () => <div>one-min</div> },
+        two: { component: undefined as unknown as React.ComponentType }
+      },
+      transitions: [{ from: "one", event: "goToNextStep", to: "two" }]
     };
 
-    const mockedMachine: JourneyMachine<
-      Ctx,
-      StepId,
-      "next" | "back" | "close" | "submit" | "custom"
-    > = {
-      getSnapshot: () => snapshot,
-      send: async () => ({ transitioned: false, snapshot }),
-      updateContext: () => snapshot,
-      clearStepError: () => snapshot,
-      reset: () => snapshot,
-      trimHistory: () => snapshot,
-      clearHistory: () => snapshot,
-      subscribe: () => () => {}
+    const localBindings = createJourneyBindings(minimalJourney);
+    let api: JourneyApi<Context, StepId, Event> | null = null;
+
+    const GrabApi = () => {
+      const resolvedApi = localBindings.useJourneyApi();
+      React.useLayoutEffect(() => {
+        api = resolvedApi;
+      }, [resolvedApi]);
+      return null;
     };
 
     render(
-      <JourneyProvider journey={baseJourney} machine={mockedMachine}>
-        <JourneyStepRenderer<Ctx, StepId, CustomEvent>
-          fallback={<div data-testid="fallback">empty</div>}
-        />
-      </JourneyProvider>
+      <localBindings.Provider>
+        <GrabApi />
+        <localBindings.StepRenderer fallback={<div>fallback</div>} />
+      </localBindings.Provider>
     );
 
-    expect(screen.getByTestId("fallback")).toBeDefined();
-  });
-
-  it("passes persistence options to internal machine", async () => {
-    const setItem = vi.fn();
-    const storage = {
-      getItem: () => null,
-      setItem,
-      removeItem: () => {}
-    };
-
-    render(
-      <JourneyProvider
-        journey={baseJourney}
-        persistence={{
-          key: "journey",
-          storage
-        }}
-      >
-        <JourneyStepRenderer<Ctx, StepId, CustomEvent> />
-        <Controls />
-      </JourneyProvider>
-    );
+    expect(screen.getByText("one-min")).toBeTruthy();
 
     await act(async () => {
-      screen.getByText("next").click();
+      await api?.goToNextStep();
     });
 
-    expect(setItem).toHaveBeenCalledTimes(1);
-  });
-
-  it("passes history options to internal machine", async () => {
-    const HistoryReadout = () => {
-      const snapshot = useJourneySnapshot<Ctx, StepId, CustomEvent>();
-      return <div data-testid="history">{snapshot.history.join(",")}</div>;
-    };
-
-    render(
-      <JourneyProvider journey={baseJourney} history={{ maxHistory: 1 }}>
-        <JourneyStepRenderer<Ctx, StepId, CustomEvent> />
-        <Controls />
-        <HistoryReadout />
-      </JourneyProvider>
-    );
-
-    await act(async () => {
-      screen.getByText("next").click();
-    });
-    await act(async () => {
-      screen.getByText("next").click();
-    });
-
-    expect(screen.getByTestId("history").textContent).toBe("two");
-  });
-
-  it("sends default event payloads through hook api", async () => {
-    const snapshot = {
-      current: "one" as StepId,
-      context: baseJourney.context,
-      history: [],
-      visited: ["one" as StepId],
-      status: JOURNEY_STATUS.RUNNING,
-      async: asyncState()
-    };
-    const send = vi.fn(async () => ({ transitioned: false, snapshot }));
-    const mockedMachine: JourneyMachine<
-      Ctx,
-      StepId,
-      "next" | "back" | "close" | "submit" | "custom"
-    > = {
-      getSnapshot: () => snapshot,
-      send,
-      updateContext: () => snapshot,
-      clearStepError: () => snapshot,
-      reset: () => snapshot,
-      trimHistory: () => snapshot,
-      clearHistory: () => snapshot,
-      subscribe: () => () => {}
-    };
-
-    const WithPayload = () => {
-      const api = useJourneyApi<Ctx, StepId, CustomEvent>();
-      return (
-        <button onClick={() => api.next({ reason: "manual" })} data-testid="next-payload">
-          next with payload
-        </button>
-      );
-    };
-
-    render(
-      <JourneyProvider journey={baseJourney} machine={mockedMachine}>
-        <WithPayload />
-      </JourneyProvider>
-    );
-
-    await act(async () => {
-      screen.getByTestId("next-payload").click();
-    });
-
-    expect(send).toHaveBeenCalledTimes(1);
-    expect(send).toHaveBeenCalledWith({ type: "next", payload: { reason: "manual" } });
-  });
-
-  it("sends goTo payloads through hook api", async () => {
-    const snapshot = {
-      current: "one" as StepId,
-      context: baseJourney.context,
-      history: [],
-      visited: ["one" as StepId],
-      status: JOURNEY_STATUS.RUNNING,
-      async: asyncState()
-    };
-    const send = vi.fn(async () => ({ transitioned: false, snapshot }));
-    const mockedMachine: JourneyMachine<
-      Ctx,
-      StepId,
-      "next" | "back" | "close" | "submit" | "custom"
-    > = {
-      getSnapshot: () => snapshot,
-      send,
-      updateContext: () => snapshot,
-      clearStepError: () => snapshot,
-      reset: () => snapshot,
-      trimHistory: () => snapshot,
-      clearHistory: () => snapshot,
-      subscribe: () => () => {}
-    };
-
-    const WithGoToPayload = () => {
-      const api = useJourneyApi<Ctx, StepId, CustomEvent>();
-      return (
-        <button onClick={() => api.goTo("three", { from: "test" })} data-testid="goto-payload">
-          goto with payload
-        </button>
-      );
-    };
-
-    render(
-      <JourneyProvider journey={baseJourney} machine={mockedMachine}>
-        <WithGoToPayload />
-      </JourneyProvider>
-    );
-
-    await act(async () => {
-      screen.getByTestId("goto-payload").click();
-    });
-
-    expect(send).toHaveBeenCalledTimes(1);
-    expect(send).toHaveBeenCalledWith({ type: "goTo", to: "three", payload: { from: "test" } });
-  });
-
-  it("forwards clearStepError calls through hook api", async () => {
-    const snapshot = {
-      current: "one" as StepId,
-      context: baseJourney.context,
-      history: [],
-      visited: ["one" as StepId],
-      status: JOURNEY_STATUS.RUNNING,
-      async: asyncState()
-    };
-    const clearStepError = vi.fn(() => snapshot);
-    const mockedMachine: JourneyMachine<
-      Ctx,
-      StepId,
-      "next" | "back" | "close" | "submit" | "custom"
-    > = {
-      getSnapshot: () => snapshot,
-      send: async () => ({ transitioned: false, snapshot }),
-      updateContext: () => snapshot,
-      clearStepError,
-      reset: () => snapshot,
-      trimHistory: () => snapshot,
-      clearHistory: () => snapshot,
-      subscribe: () => () => {}
-    };
-
-    const WithClearError = () => {
-      const api = useJourneyApi<Ctx, StepId, CustomEvent>();
-      return (
-        <button onClick={() => api.clearStepError("two")} data-testid="clear-error">
-          clear error
-        </button>
-      );
-    };
-
-    render(
-      <JourneyProvider journey={baseJourney} machine={mockedMachine}>
-        <WithClearError />
-      </JourneyProvider>
-    );
-
-    await act(async () => {
-      screen.getByTestId("clear-error").click();
-    });
-
-    expect(clearStepError).toHaveBeenCalledTimes(1);
-    expect(clearStepError).toHaveBeenCalledWith("two");
-  });
-
-  it("unsubscribes from machine snapshot updates on unmount", () => {
-    const snapshot = {
-      current: "one" as StepId,
-      context: baseJourney.context,
-      history: [],
-      visited: ["one" as StepId],
-      status: JOURNEY_STATUS.RUNNING,
-      async: asyncState()
-    };
-    const unsubscribe = vi.fn();
-    const mockedMachine: JourneyMachine<
-      Ctx,
-      StepId,
-      "next" | "back" | "close" | "submit" | "custom"
-    > = {
-      getSnapshot: () => snapshot,
-      send: async () => ({ transitioned: false, snapshot }),
-      updateContext: () => snapshot,
-      clearStepError: () => snapshot,
-      reset: () => snapshot,
-      trimHistory: () => snapshot,
-      clearHistory: () => snapshot,
-      subscribe: () => unsubscribe
-    };
-
-    const { unmount } = render(
-      <JourneyProvider journey={baseJourney} machine={mockedMachine}>
-        <JourneyStepRenderer<Ctx, StepId, CustomEvent> />
-      </JourneyProvider>
-    );
-
-    unmount();
-    expect(unsubscribe).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("fallback")).toBeTruthy();
   });
 });

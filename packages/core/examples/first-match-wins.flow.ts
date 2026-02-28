@@ -1,7 +1,7 @@
 import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "first" | "second";
-type Event = "next";
+type Event = "goToNextStep";
 type Ctx = { chooseFirst: boolean };
 
 export const firstMatchWinsJourney: JourneyDefinition<Ctx, StepId, Event> = {
@@ -16,14 +16,14 @@ export const firstMatchWinsJourney: JourneyDefinition<Ctx, StepId, Event> = {
     {
       id: "first",
       from: "start",
-      event: "next",
+      event: "goToNextStep",
       to: "first",
       when: ({ context }) => context.chooseFirst
     },
     {
       id: "second",
       from: "start",
-      event: "next",
+      event: "goToNextStep",
       to: "second",
       when: ({ context }) => context.chooseFirst
     }

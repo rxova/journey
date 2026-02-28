@@ -1,18 +1,13 @@
 import React from "react";
 
-import {
-  type JourneyReactDefinition,
-  useJourney,
-  JourneyProvider,
-  JourneyStepRenderer
-} from "@rxova/journey-react";
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
 
 type StepId = "start" | "first" | "second";
 type Ctx = { chooseFirst: boolean };
 
 const Start = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.next()}>Next</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Next</button>;
 };
 const First = () => <div>First</div>;
 const Second = () => <div>Second</div>;
@@ -29,22 +24,29 @@ export const firstMatchWinsJourney: JourneyReactDefinition<Ctx, StepId> = {
     {
       id: "first",
       from: "start",
-      event: "next",
+      event: "goToNextStep",
       to: "first",
       when: ({ context }) => context.chooseFirst
     },
     {
       id: "second",
       from: "start",
-      event: "next",
+      event: "goToNextStep",
       to: "second",
       when: ({ context }) => context.chooseFirst
     }
   ]
 };
 
-export const FirstMatchWinsExample = () => (
-  <JourneyProvider journey={firstMatchWinsJourney}>
-    <JourneyStepRenderer<Ctx, StepId> />
-  </JourneyProvider>
-);
+const bindings = createJourneyBindings(firstMatchWinsJourney);
+
+export const FirstMatchWinsExample = () => {
+  const Provider = bindings.Provider;
+  const StepRenderer = bindings.StepRenderer;
+
+  return (
+    <Provider>
+      <StepRenderer />
+    </Provider>
+  );
+};

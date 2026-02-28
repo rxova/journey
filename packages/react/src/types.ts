@@ -1,18 +1,21 @@
 import type React from "react";
 
 import type {
-  JOURNEY_EVENT,
+  JourneyDefinition,
   JourneyEvent,
   JourneyEventPayloadMap as JourneyCoreEventPayloadMap,
-  JourneyDefinition,
-  JourneyHistoryOptions,
   JourneyMachine,
   JourneyPayloadFor,
   JourneyPersistenceOptions,
-  JourneySnapshot
+  JourneySnapshot,
+  JourneyStepDefinition
 } from "@rxova/journey-core";
 
-export type JourneyDefaultEvent = "next" | "back" | "close" | "submit";
+export type JourneyDefaultEvent =
+  | "goToNextStep"
+  | "goToPreviousStep"
+  | "terminateJourney"
+  | "completeJourney";
 
 export type JourneyEventType<TCustomEvent extends string = never> =
   | JourneyDefaultEvent
@@ -20,7 +23,7 @@ export type JourneyEventType<TCustomEvent extends string = never> =
 export type JourneyReactEventPayloadMap<TCustomEvent extends string = never> =
   JourneyCoreEventPayloadMap<JourneyEventType<TCustomEvent>>;
 
-export type JourneyReactStep = {
+export type JourneyReactStep<TStepMeta = unknown> = JourneyStepDefinition<TStepMeta> & {
   component: React.ComponentType;
 };
 
@@ -28,80 +31,100 @@ export type JourneyReactDefinition<
   TContext,
   TStepId extends string,
   TCustomEvent extends string = never,
-  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>
+  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>,
+  TStepMeta = unknown
 > = Omit<
-  JourneyDefinition<TContext, TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap>,
+  JourneyDefinition<TContext, TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap, TStepMeta>,
   "steps"
 > & {
-  steps: Record<TStepId, JourneyReactStep>;
+  steps: Record<TStepId, JourneyReactStep<TStepMeta>>;
 };
 
 export type JourneyApi<
   TContext,
   TStepId extends string,
   TCustomEvent extends string = never,
-  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>
+  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>,
+  TStepMeta = unknown
 > = {
   send: (
     event: JourneyEvent<TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap>
   ) => Promise<void>;
-  goTo: (
-    stepId: TStepId,
+  goToNextStep: () => Promise<void>;
+  terminateJourney: (
     payload?: JourneyPayloadFor<
       JourneyEventType<TCustomEvent>,
       TEventPayloadMap,
-      (typeof JOURNEY_EVENT)["GO_TO"]
+      "terminateJourney"
     >
   ) => Promise<void>;
-  next: (
-    payload?: JourneyPayloadFor<JourneyEventType<TCustomEvent>, TEventPayloadMap, "next">
+  completeJourney: (
+    payload?: JourneyPayloadFor<JourneyEventType<TCustomEvent>, TEventPayloadMap, "completeJourney">
   ) => Promise<void>;
-  back: (
-    payload?: JourneyPayloadFor<JourneyEventType<TCustomEvent>, TEventPayloadMap, "back">
-  ) => Promise<void>;
-  close: (
-    payload?: JourneyPayloadFor<JourneyEventType<TCustomEvent>, TEventPayloadMap, "close">
-  ) => Promise<void>;
-  submit: (
-    payload?: JourneyPayloadFor<JourneyEventType<TCustomEvent>, TEventPayloadMap, "submit">
-  ) => Promise<void>;
+  goToPreviousStep: (steps?: number) => Promise<void>;
+  goToLastVisitedStep: () => Promise<void>;
   clearStepError: (stepId?: TStepId) => void;
   updateContext: (updater: (context: TContext) => TContext) => void;
-  reset: () => void;
-  trimHistory: (maxHistory?: number | null) => void;
-  clearHistory: () => void;
-};
-
-export type JourneyHookResult<
-  TContext,
-  TStepId extends string,
-  TCustomEvent extends string = never,
-  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>
-> = {
-  snapshot: JourneySnapshot<TContext, TStepId>;
-  api: JourneyApi<TContext, TStepId, TCustomEvent, TEventPayloadMap>;
+  updateComponentMetadata: (stepId: TStepId, updater: (metadata: TStepMeta) => TStepMeta) => void;
+  updateStepMetadata: (stepId: TStepId, updater: (metadata: TStepMeta) => TStepMeta) => void;
+  resetJourney: () => void;
 };
 
 export type JourneyStoreValue<
   TContext,
   TStepId extends string,
   TCustomEvent extends string = never,
-  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>
+  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>,
+  TStepMeta = unknown
 > = {
-  machine: JourneyMachine<TContext, TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap>;
-  journey: JourneyReactDefinition<TContext, TStepId, TCustomEvent, TEventPayloadMap>;
+  machine: JourneyMachine<
+    TContext,
+    TStepId,
+    JourneyEventType<TCustomEvent>,
+    TEventPayloadMap,
+    TStepMeta
+  >;
+  journey: JourneyReactDefinition<TContext, TStepId, TCustomEvent, TEventPayloadMap, TStepMeta>;
 };
 
-export type JourneyProviderProps<
+export type JourneyBindingsProviderProps<
   TContext,
   TStepId extends string,
   TCustomEvent extends string = never,
-  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>
+  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>,
+  TStepMeta = unknown
 > = {
-  journey: JourneyReactDefinition<TContext, TStepId, TCustomEvent, TEventPayloadMap>;
-  machine?: JourneyMachine<TContext, TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap>;
-  persistence?: JourneyPersistenceOptions<TContext, TStepId>;
-  history?: JourneyHistoryOptions<TStepId>;
+  journey?: JourneyReactDefinition<TContext, TStepId, TCustomEvent, TEventPayloadMap, TStepMeta>;
+  machine?: JourneyMachine<
+    TContext,
+    TStepId,
+    JourneyEventType<TCustomEvent>,
+    TEventPayloadMap,
+    TStepMeta
+  >;
+  persistence?: JourneyPersistenceOptions<TContext, TStepId, TStepMeta>;
   resetOnJourneyChange?: boolean;
   children: React.ReactNode;
+};
+
+export type JourneyBindings<
+  TContext,
+  TStepId extends string,
+  TCustomEvent extends string = never,
+  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>,
+  TStepMeta = unknown
+> = {
+  Provider: React.ComponentType<
+    JourneyBindingsProviderProps<TContext, TStepId, TCustomEvent, TEventPayloadMap, TStepMeta>
+  >;
+  StepRenderer: React.ComponentType<{ fallback?: React.ReactNode }>;
+  useJourneyApi: () => JourneyApi<TContext, TStepId, TCustomEvent, TEventPayloadMap, TStepMeta>;
+  useJourneyMachine: () => JourneyMachine<
+    TContext,
+    TStepId,
+    JourneyEventType<TCustomEvent>,
+    TEventPayloadMap,
+    TStepMeta
+  >;
+  useJourneySnapshot: () => JourneySnapshot<TContext, TStepId, TStepMeta>;
 };

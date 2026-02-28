@@ -34,11 +34,11 @@ export type JourneyDevtoolsBridgeOptions = {
 };
 
 type JourneySendEvent<TStepId extends string> = Parameters<
-  JourneyMachine<unknown, TStepId, string>["send"]
+  JourneyMachine<unknown, TStepId, string, Record<never, never>, unknown>["send"]
 >[0];
 
-type SendOutcome<TContext, TStepId extends string> = {
-  snapshot: JourneySnapshot<TContext, TStepId>;
+type SendOutcome<TContext, TStepId extends string, TStepMeta> = {
+  snapshot: JourneySnapshot<TContext, TStepId, TStepMeta>;
   transitioned?: boolean;
   transitionId?: string;
 };
@@ -214,8 +214,8 @@ const serializeError = (error: unknown): JourneyDevtoolsSerializedError => {
   };
 };
 
-const serializeSnapshot = <TContext, TStepId extends string>(
-  snapshot: JourneySnapshot<TContext, TStepId>
+const serializeSnapshot = <TContext, TStepId extends string, TStepMeta>(
+  snapshot: JourneySnapshot<TContext, TStepId, TStepMeta>
 ): JourneyDevtoolsSerializableSnapshot => {
   const byStep: Record<string, JourneyDevtoolsSerializableSnapshot["async"]["byStep"][string]> = {};
 
@@ -235,10 +235,19 @@ const serializeSnapshot = <TContext, TStepId extends string>(
   }
 
   return {
-    current: String(snapshot.current),
+    currentStepId: String(snapshot.currentStepId),
     context: cloneForTransport(snapshot.context),
-    history: snapshot.history.map((stepId) => String(stepId)),
-    visited: snapshot.visited.map((stepId) => String(stepId)),
+    history: {
+      timeline: snapshot.history.timeline.map((stepId) => String(stepId)),
+      index: snapshot.history.index
+    },
+    visited: Object.fromEntries(
+      Object.entries(snapshot.visited as Record<string, boolean>).map(([stepId, isVisited]) => [
+        String(stepId),
+        isVisited === true
+      ])
+    ),
+    stepMeta: cloneForTransport(snapshot.stepMeta) as Record<string, unknown>,
     status: snapshot.status,
     async: {
       isLoading: snapshot.async.isLoading,
@@ -247,15 +256,13 @@ const serializeSnapshot = <TContext, TStepId extends string>(
   };
 };
 
-const runCommand = async <TContext, TStepId extends string>(
-  machine: JourneyMachine<TContext, TStepId, string>,
+const runCommand = async <TContext, TStepId extends string, TStepMeta>(
+  machine: JourneyMachine<TContext, TStepId, string, Record<never, never>, TStepMeta>,
   command: JourneyDevtoolsCommand
-): Promise<SendOutcome<TContext, TStepId>> => {
+): Promise<SendOutcome<TContext, TStepId, TStepMeta>> => {
   switch (command.type) {
-    case "next":
-    case "back":
-    case "close":
-    case "submit": {
+    case "goToNextStep":
+    case "completeJourney": {
       const result = await machine.send({ type: command.type } as JourneySendEvent<TStepId>);
       return {
         snapshot: result.snapshot,
@@ -263,11 +270,35 @@ const runCommand = async <TContext, TStepId extends string>(
         ...(result.transitionId ? { transitionId: result.transitionId } : {})
       };
     }
-    case "goTo": {
+    case "terminateMachine": {
+      const result = await machine.send({ type: "terminateJourney" } as JourneySendEvent<TStepId>);
+      return {
+        snapshot: result.snapshot,
+        transitioned: result.transitioned,
+        ...(result.transitionId ? { transitionId: result.transitionId } : {})
+      };
+    }
+    case "goToStepById": {
       const result = await machine.send({
-        type: "goTo",
-        to: command.to
+        type: "goToStepById",
+        stepId: command.stepId
       } as JourneySendEvent<TStepId>);
+      return {
+        snapshot: result.snapshot,
+        transitioned: result.transitioned,
+        ...(result.transitionId ? { transitionId: result.transitionId } : {})
+      };
+    }
+    case "goToPreviousStep": {
+      const result = await machine.goToPreviousStep(command.steps);
+      return {
+        snapshot: result.snapshot,
+        transitioned: result.transitioned,
+        ...(result.transitionId ? { transitionId: result.transitionId } : {})
+      };
+    }
+    case "goToLastVisitedStep": {
+      const result = await machine.goToLastVisitedStep();
       return {
         snapshot: result.snapshot,
         transitioned: result.transitioned,
@@ -279,7 +310,7 @@ const runCommand = async <TContext, TStepId extends string>(
         command.event.payload === undefined
           ? { type: command.event.type }
           : { type: command.event.type, payload: command.event.payload };
-      const result: JourneySendResult<TContext, TStepId> = await machine.send(
+      const result: JourneySendResult<TContext, TStepId, TStepMeta> = await machine.send(
         sendEvent as JourneySendEvent<TStepId>
       );
       return {
@@ -288,21 +319,20 @@ const runCommand = async <TContext, TStepId extends string>(
         ...(result.transitionId ? { transitionId: result.transitionId } : {})
       };
     }
-    case "reset":
+    case "updateStepMetadata":
       return {
-        snapshot: machine.reset()
+        snapshot: machine.updateStepMetadata(
+          command.stepId as TStepId,
+          () => command.metadata as TStepMeta
+        )
+      };
+    case "resetMachine":
+      return {
+        snapshot: machine.resetMachine()
       };
     case "clearStepError":
       return {
         snapshot: machine.clearStepError(command.stepId as TStepId | undefined)
-      };
-    case "clearHistory":
-      return {
-        snapshot: machine.clearHistory()
-      };
-    case "trimHistory":
-      return {
-        snapshot: machine.trimHistory(command.maxHistory)
       };
   }
 };
@@ -311,9 +341,10 @@ export const attachJourneyDevtools = <
   TContext,
   TStepId extends string,
   TEventType extends string,
-  TPayloadMap extends JourneyEventPayloadMap<TEventType>
+  TPayloadMap extends JourneyEventPayloadMap<TEventType>,
+  TStepMeta
 >(
-  machine: JourneyMachine<TContext, TStepId, TEventType, TPayloadMap>,
+  machine: JourneyMachine<TContext, TStepId, TEventType, TPayloadMap, TStepMeta>,
   options: JourneyDevtoolsBridgeOptions = {}
 ): (() => void) => {
   const enabled = options.enabled ?? resolveDefaultEnabled();
@@ -347,7 +378,7 @@ export const attachJourneyDevtools = <
     window.postMessage(envelope, targetOrigin);
   };
 
-  const postSnapshot = (snapshot: JourneySnapshot<TContext, TStepId>) => {
+  const postSnapshot = (snapshot: JourneySnapshot<TContext, TStepId, TStepMeta>) => {
     const envelope: JourneyDevtoolsBridgeSnapshotEnvelope = {
       ...createBaseEnvelope("snapshot"),
       snapshot: serializeSnapshot(snapshot)
@@ -403,7 +434,7 @@ export const attachJourneyDevtools = <
     const run = async () => {
       try {
         const outcome = await runCommand(
-          machine as JourneyMachine<TContext, TStepId, string>,
+          machine as JourneyMachine<TContext, TStepId, string, Record<never, never>, TStepMeta>,
           commandEnvelope.command
         );
         if (isDetached) {

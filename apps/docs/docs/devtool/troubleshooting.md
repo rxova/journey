@@ -33,7 +33,7 @@ In the meantime:
 Potential causes:
 
 - target machine id mismatch
-- machine already terminal (`complete`/`closed`)
+- machine already terminal (`complete`/`terminated`)
 - no matching transition for event
 
 What to inspect:

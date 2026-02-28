@@ -1,7 +1,7 @@
-import { createJourneyMachine, HISTORY_TARGET, type JourneyDefinition } from "@rxova/journey-core";
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "branchA" | "branchB" | "review";
-type Event = "next" | "back";
+type Event = "goToNextStep" | "back";
 type Ctx = { branch: "A" | "B" };
 
 export const historyBackJourney: JourneyDefinition<Ctx, StepId, Event> = {
@@ -16,19 +16,18 @@ export const historyBackJourney: JourneyDefinition<Ctx, StepId, Event> = {
   transitions: [
     {
       from: "start",
-      event: "next",
+      event: "goToNextStep",
       to: "branchA",
       when: ({ context }) => context.branch === "A"
     },
     {
       from: "start",
-      event: "next",
+      event: "goToNextStep",
       to: "branchB",
       when: ({ context }) => context.branch === "B"
     },
-    { from: "branchA", event: "next", to: "review" },
-    { from: "branchB", event: "next", to: "review" },
-    { from: "*", event: "back", to: HISTORY_TARGET }
+    { from: "branchA", event: "goToNextStep", to: "review" },
+    { from: "branchB", event: "goToNextStep", to: "review" }
   ]
 };
 

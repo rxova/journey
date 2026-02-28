@@ -1,34 +1,28 @@
 import React from "react";
 
-import {
-  HISTORY_TARGET,
-  type JourneyReactDefinition,
-  useJourney,
-  JourneyProvider,
-  JourneyStepRenderer
-} from "@rxova/journey-react";
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
 
 type StepId = "one" | "two" | "three";
 type Ctx = Record<string, never>;
 
 const One = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.next()}>Go</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Go</button>;
 };
 
 const Two = () => {
-  const { api } = useJourney<Ctx, StepId>();
+  const api = bindings.useJourneyApi();
   return (
     <div>
-      <button onClick={() => api.back()}>Back</button>
-      <button onClick={() => api.next()}>Next</button>
+      <button onClick={() => api.goToPreviousStep()}>Back</button>
+      <button onClick={() => api.goToNextStep()}>Next</button>
     </div>
   );
 };
 
 const Three = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.back()}>Back</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToPreviousStep()}>Back</button>;
 };
 
 export const simpleBackJourney: JourneyReactDefinition<Ctx, StepId> = {
@@ -40,14 +34,20 @@ export const simpleBackJourney: JourneyReactDefinition<Ctx, StepId> = {
     three: { component: Three }
   },
   transitions: [
-    { from: "one", event: "next", to: "two" },
-    { from: "two", event: "next", to: "three" },
-    { from: "*", event: "back", to: HISTORY_TARGET }
+    { from: "one", event: "goToNextStep", to: "two" },
+    { from: "two", event: "goToNextStep", to: "three" }
   ]
 };
 
-export const SimpleBackJourneyExample = () => (
-  <JourneyProvider journey={simpleBackJourney}>
-    <JourneyStepRenderer<Ctx, StepId> />
-  </JourneyProvider>
-);
+const bindings = createJourneyBindings(simpleBackJourney);
+
+export const SimpleBackJourneyExample = () => {
+  const Provider = bindings.Provider;
+  const StepRenderer = bindings.StepRenderer;
+
+  return (
+    <Provider>
+      <StepRenderer />
+    </Provider>
+  );
+};

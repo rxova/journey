@@ -1,11 +1,7 @@
-import {
-  createJourneyMachine,
-  JOURNEY_TERMINAL,
-  type JourneyDefinition
-} from "@rxova/journey-core";
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "optional" | "review";
-type Event = "next" | "submit";
+type Event = "goToNextStep" | "completeJourney";
 type Ctx = { includeOptional: boolean };
 
 export const conditionalSkipJourney: JourneyDefinition<Ctx, StepId, Event> = {
@@ -19,18 +15,18 @@ export const conditionalSkipJourney: JourneyDefinition<Ctx, StepId, Event> = {
   transitions: [
     {
       from: "start",
-      event: "next",
+      event: "goToNextStep",
       to: "optional",
       when: ({ context }) => context.includeOptional
     },
     {
       from: "start",
-      event: "next",
+      event: "goToNextStep",
       to: "review",
       when: ({ context }) => !context.includeOptional
     },
-    { from: "optional", event: "next", to: "review" },
-    { from: "review", event: "submit", to: JOURNEY_TERMINAL.COMPLETE }
+    { from: "optional", event: "goToNextStep", to: "review" },
+    { from: "review", event: "completeJourney" }
   ]
 };
 

@@ -1,13 +1,12 @@
-import { JOURNEY_STATUS } from "./types";
+import { JOURNEY_STATUS } from "./types/journey.types";
 import type {
-  JourneyMachineOptions,
   JourneyPersistedSnapshot,
   JourneyPersistedState,
-  JourneyStatus,
-  JourneySnapshot,
-  JourneyStorage
-} from "./types";
-import { buildInitialAsyncState, buildSnapshot, buildVisited } from "./machine-helpers";
+  JourneyStorage,
+  ResolvedPersistence
+} from "./types/persistence.types";
+import type { JourneyMachineOptions, JourneySnapshot, JourneyStatus } from "./types/journey.types";
+import { buildInitialAsyncState, buildSnapshot, buildVisitedFromTimeline } from "./machine-helpers";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
@@ -15,7 +14,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const isStatusValue = (value: unknown): value is JourneyStatus =>
   value === JOURNEY_STATUS.RUNNING ||
   value === JOURNEY_STATUS.COMPLETE ||
-  value === JOURNEY_STATUS.CLOSED;
+  value === JOURNEY_STATUS.TERMINATED;
 
 const resolveDefaultStorage = (): JourneyStorage | null => {
   const localStorageCandidate = (globalThis as { localStorage?: Partial<JourneyStorage> })
@@ -33,23 +32,9 @@ const resolveDefaultStorage = (): JourneyStorage | null => {
   return localStorageCandidate as JourneyStorage;
 };
 
-type ResolvedPersistence<TContext, TStepId extends string> = {
-  key: string;
-  storage: JourneyStorage;
-  version: number;
-  clearOnReset: boolean;
-  serialize: (value: JourneyPersistedState<TContext, TStepId>) => string;
-  deserialize: (value: string) => unknown;
-  migrate?: (
-    value: unknown,
-    persistedVersion: number
-  ) => JourneyPersistedSnapshot<TContext, TStepId>;
-  onError?: (error: unknown) => void;
-};
-
-const resolvePersistence = <TContext, TStepId extends string>(
-  options?: JourneyMachineOptions<TContext, TStepId>["persistence"]
-): ResolvedPersistence<TContext, TStepId> | null => {
+const resolvePersistence = <TContext, TStepId extends string, TStepMeta>(
+  options?: JourneyMachineOptions<TContext, TStepId, TStepMeta>["persistence"]
+): ResolvedPersistence<TContext, TStepId, TStepMeta> | null => {
   if (!options) {
     return null;
   }
@@ -71,44 +56,128 @@ const resolvePersistence = <TContext, TStepId extends string>(
   };
 };
 
-const coercePersistedSnapshot = <TContext, TStepId extends string>(
+const coercePersistedSnapshot = <TContext, TStepId extends string, TStepMeta>(
   value: unknown,
   steps: Record<TStepId, unknown>,
-  fallbackContext: TContext
-): { snapshot: JourneyPersistedSnapshot<TContext, TStepId>; needsRewrite: boolean } | null => {
+  fallbackContext: TContext,
+  fallbackStepMeta: Record<TStepId, TStepMeta>
+): {
+  snapshot: JourneyPersistedSnapshot<TContext, TStepId, TStepMeta>;
+  needsRewrite: boolean;
+} | null => {
   if (!isRecord(value)) {
     return null;
   }
 
-  const currentValue = value.current;
-  if (typeof currentValue !== "string" || !(currentValue in steps)) {
-    return null;
-  }
-  const current = currentValue as TStepId;
+  let needsRewrite = false;
 
-  const history = Array.isArray(value.history)
-    ? (value.history.filter(
+  const rawHistory = isRecord(value.history) ? value.history : null;
+  if (!rawHistory) {
+    needsRewrite = true;
+  }
+
+  const rawTimeline = rawHistory?.timeline ?? value.timeline;
+  const timeline = Array.isArray(rawTimeline)
+    ? (rawTimeline.filter(
         (step): step is TStepId => typeof step === "string" && step in steps
       ) as TStepId[])
     : [];
 
-  const status = isStatusValue(value.status) ? value.status : JOURNEY_STATUS.RUNNING;
+  const currentStepIdValue =
+    typeof value.currentStepId === "string" && value.currentStepId in steps
+      ? (value.currentStepId as TStepId)
+      : typeof value.current === "string" && value.current in steps
+        ? (value.current as TStepId)
+        : null;
 
-  const visitedRaw = Array.isArray(value.visited)
-    ? (value.visited.filter(
-        (step): step is TStepId => typeof step === "string" && step in steps
-      ) as TStepId[])
+  if (timeline.length === 0) {
+    if (!currentStepIdValue) {
+      return null;
+    }
+    timeline.push(currentStepIdValue);
+    needsRewrite = true;
+  }
+
+  let index = timeline.length - 1;
+  const rawIndex = rawHistory?.index ?? value.index;
+  if (typeof rawIndex === "number" && Number.isFinite(rawIndex)) {
+    index = Math.max(0, Math.min(Math.trunc(rawIndex), timeline.length - 1));
+    if (index !== rawIndex) {
+      needsRewrite = true;
+    }
+  } else if (currentStepIdValue) {
+    const inferredIndex = timeline.lastIndexOf(currentStepIdValue);
+    if (inferredIndex >= 0) {
+      index = inferredIndex;
+      needsRewrite = true;
+    }
+  }
+
+  const status = isStatusValue(value.status) ? value.status : JOURNEY_STATUS.RUNNING;
+  if (!isStatusValue(value.status)) {
+    needsRewrite = true;
+  }
+
+  const stepIds = Object.keys(steps) as TStepId[];
+  const visitedSource = value.visited;
+  const visitedFromRecord = isRecord(visitedSource)
+    ? (Object.fromEntries(
+        stepIds.map((stepId) => [stepId, visitedSource[stepId] === true])
+      ) as Record<TStepId, boolean>)
     : null;
-  const visited = visitedRaw && visitedRaw.length > 0 ? visitedRaw : buildVisited(history, current);
-  const needsRewrite = !visitedRaw || visitedRaw.length === 0;
+  const visitedFromArray = Array.isArray(visitedSource)
+    ? buildVisitedFromTimeline(
+        visitedSource.filter(
+          (step): step is TStepId => typeof step === "string" && step in steps
+        ) as TStepId[],
+        stepIds
+      )
+    : null;
+
+  let visited = buildVisitedFromTimeline(timeline, stepIds);
+  if (visitedFromRecord) {
+    const visitedRecord = visitedSource as Record<string, unknown>;
+    visited = visitedFromRecord;
+    const hasMissingOrInvalidStep = stepIds.some(
+      (stepId) => typeof visitedRecord[stepId] !== "boolean"
+    );
+    if (hasMissingOrInvalidStep) {
+      needsRewrite = true;
+    }
+  } else if (visitedFromArray) {
+    visited = visitedFromArray;
+    needsRewrite = true;
+  } else {
+    needsRewrite = true;
+  }
+
+  const rawStepMeta = isRecord(value.stepMeta) ? value.stepMeta : null;
+  if (!rawStepMeta) {
+    needsRewrite = true;
+  }
+
+  const stepMeta = Object.fromEntries(
+    Object.keys(steps).map((stepId) => {
+      const typedStepId = stepId as TStepId;
+      const rawValue = rawStepMeta ? rawStepMeta[stepId] : undefined;
+      if (rawValue === undefined) {
+        return [typedStepId, fallbackStepMeta[typedStepId]];
+      }
+      return [typedStepId, rawValue as TStepMeta];
+    })
+  ) as Record<TStepId, TStepMeta>;
 
   return {
     snapshot: {
-      current,
+      currentStepId: timeline[index] as TStepId,
+      history: {
+        timeline,
+        index
+      },
       context: ("context" in value ? value.context : fallbackContext) as TContext,
-      history,
       status,
-      visited
+      visited,
+      stepMeta
     },
     needsRewrite
   };
@@ -118,33 +187,38 @@ const coercePersistedSnapshot = <TContext, TStepId extends string>(
  * Creates a persistence controller for snapshots, including hydration,
  * serialization, and storage error handling.
  */
-export const createPersistenceController = <TContext, TStepId extends string>(args: {
+export const createPersistenceController = <TContext, TStepId extends string, TStepMeta>(args: {
   initial: TStepId;
   context: TContext;
+  stepMeta: Record<TStepId, TStepMeta>;
   steps: Record<TStepId, unknown>;
-  options?: JourneyMachineOptions<TContext, TStepId>;
+  options?: JourneyMachineOptions<TContext, TStepId, TStepMeta>;
 }) => {
-  const { initial, context, steps, options } = args;
+  const { initial, context, stepMeta, steps, options } = args;
   const persistence = resolvePersistence(options?.persistence);
 
   const reportPersistenceError = (error: unknown) => {
     persistence?.onError?.(error);
   };
 
-  const persistSnapshot = (snapshot: JourneySnapshot<TContext, TStepId>) => {
+  const persistSnapshot = (snapshot: JourneySnapshot<TContext, TStepId, TStepMeta>) => {
     if (!persistence) {
       return;
     }
 
     try {
-      const persistedState: JourneyPersistedState<TContext, TStepId> = {
+      const persistedState: JourneyPersistedState<TContext, TStepId, TStepMeta> = {
         version: persistence.version,
         snapshot: {
-          current: snapshot.current,
+          currentStepId: snapshot.currentStepId,
+          history: {
+            timeline: [...snapshot.history.timeline],
+            index: snapshot.history.index
+          },
           context: snapshot.context,
-          history: [...snapshot.history],
           status: snapshot.status,
-          visited: [...snapshot.visited]
+          visited: { ...snapshot.visited },
+          stepMeta: { ...snapshot.stepMeta }
         }
       };
       persistence.storage.setItem(persistence.key, persistence.serialize(persistedState));
@@ -165,13 +239,14 @@ export const createPersistenceController = <TContext, TStepId extends string>(ar
     }
   };
 
-  const hydrateSnapshot = (): JourneySnapshot<TContext, TStepId> => {
+  const hydrateSnapshot = (): JourneySnapshot<TContext, TStepId, TStepMeta> => {
     const initialSnapshot = buildSnapshot(
-      initial,
+      [initial],
+      0,
       context,
-      [],
       JOURNEY_STATUS.RUNNING,
-      buildInitialAsyncState(steps)
+      buildInitialAsyncState(steps),
+      stepMeta
     );
     if (!persistence) {
       return initialSnapshot;
@@ -193,16 +268,16 @@ export const createPersistenceController = <TContext, TStepId extends string>(ar
         return initialSnapshot;
       }
 
-      let persistedSnapshot: JourneyPersistedSnapshot<TContext, TStepId> | null = null;
+      let persistedSnapshot: JourneyPersistedSnapshot<TContext, TStepId, TStepMeta> | null = null;
       let shouldRewritePersisted = false;
 
       if (persistedVersion === persistence.version) {
-        const coerced = coercePersistedSnapshot(parsed.snapshot, steps, context);
+        const coerced = coercePersistedSnapshot(parsed.snapshot, steps, context, stepMeta);
         persistedSnapshot = coerced?.snapshot ?? null;
         shouldRewritePersisted = Boolean(coerced?.needsRewrite);
       } else if (persistence.migrate) {
         const migrated = persistence.migrate(parsed.snapshot, persistedVersion);
-        const coerced = coercePersistedSnapshot(migrated, steps, context);
+        const coerced = coercePersistedSnapshot(migrated, steps, context, stepMeta);
         persistedSnapshot = coerced?.snapshot ?? null;
         shouldRewritePersisted = persistedSnapshot !== null;
       }
@@ -212,11 +287,12 @@ export const createPersistenceController = <TContext, TStepId extends string>(ar
       }
 
       const hydratedSnapshot = buildSnapshot(
-        persistedSnapshot.current,
+        persistedSnapshot.history.timeline,
+        persistedSnapshot.history.index,
         persistedSnapshot.context,
-        persistedSnapshot.history,
         persistedSnapshot.status,
         buildInitialAsyncState(steps),
+        persistedSnapshot.stepMeta,
         persistedSnapshot.visited
       );
 

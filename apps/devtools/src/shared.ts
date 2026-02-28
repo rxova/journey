@@ -18,10 +18,14 @@ export type ContentToBackgroundMessage = {
   envelope: JourneyDevtoolsBridgeEnvelope;
 };
 
-export type BackgroundToContentMessage = {
-  type: "extension-envelope";
-  envelope: JourneyDevtoolsExtensionEnvelope;
-};
+export type BackgroundToContentMessage =
+  | {
+      type: "extension-envelope";
+      envelope: JourneyDevtoolsExtensionEnvelope;
+    }
+  | {
+      type: "bridge-replay-request";
+    };
 
 export type PanelInitMessage = {
   type: "panel-init";
@@ -95,10 +99,19 @@ export const isContentToBackgroundMessage = (
 export const isBackgroundToContentMessage = (
   value: unknown
 ): value is BackgroundToContentMessage => {
-  if (!isRecord(value) || value.type !== "extension-envelope") {
+  if (!isRecord(value) || typeof value.type !== "string") {
     return false;
   }
-  return isJourneyDevtoolsExtensionEnvelope(value.envelope);
+
+  if (value.type === "bridge-replay-request") {
+    return true;
+  }
+
+  if (value.type === "extension-envelope") {
+    return isJourneyDevtoolsExtensionEnvelope(value.envelope);
+  }
+
+  return false;
 };
 
 export const isPanelToBackgroundMessage = (value: unknown): value is PanelToBackgroundMessage => {
@@ -174,6 +187,20 @@ export const serializeTransportError = (error: unknown): JourneyDevtoolsSerializ
       message: error.message,
       stack: typeof error.stack === "string" ? error.stack : null,
       cause: null
+    };
+  }
+
+  if (isRecord(error)) {
+    const message = typeof error.message === "string" ? error.message : null;
+    const name = typeof error.name === "string" ? error.name : null;
+    const stack = typeof error.stack === "string" ? error.stack : null;
+    const cause = "cause" in error ? (error.cause ?? null) : null;
+
+    return {
+      name,
+      message: message ?? "Unknown transport error",
+      stack,
+      cause
     };
   }
 

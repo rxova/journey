@@ -1,18 +1,13 @@
 import React from "react";
 
-import {
-  type JourneyReactDefinition,
-  useJourney,
-  JourneyProvider,
-  JourneyStepRenderer
-} from "@rxova/journey-react";
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
 
 type StepId = "validate" | "blocked" | "allowed";
 type Ctx = { token: string };
 
 const Validate = () => {
-  const { api } = useJourney<Ctx, StepId>();
-  return <button onClick={() => api.next()}>Check token</button>;
+  const api = bindings.useJourneyApi();
+  return <button onClick={() => api.goToNextStep()}>Check token</button>;
 };
 const Blocked = () => <div>Blocked</div>;
 const Allowed = () => <div>Allowed</div>;
@@ -30,21 +25,28 @@ export const asyncGuardJourney: JourneyReactDefinition<Ctx, StepId> = {
   transitions: [
     {
       from: "validate",
-      event: "next",
+      event: "goToNextStep",
       to: "allowed",
       when: async ({ context }) => isTokenValid(context.token)
     },
     {
       from: "validate",
-      event: "next",
+      event: "goToNextStep",
       to: "blocked",
       when: async ({ context }) => !(await isTokenValid(context.token))
     }
   ]
 };
 
-export const AsyncGuardExample = () => (
-  <JourneyProvider journey={asyncGuardJourney}>
-    <JourneyStepRenderer<Ctx, StepId> />
-  </JourneyProvider>
-);
+const bindings = createJourneyBindings(asyncGuardJourney);
+
+export const AsyncGuardExample = () => {
+  const Provider = bindings.Provider;
+  const StepRenderer = bindings.StepRenderer;
+
+  return (
+    <Provider>
+      <StepRenderer />
+    </Provider>
+  );
+};

@@ -1,11 +1,7 @@
-import {
-  createJourneyMachine,
-  JOURNEY_TERMINAL,
-  type JourneyDefinition
-} from "@rxova/journey-core";
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "edit" | "confirmExit";
-type Event = "close";
+type Event = "requestClose" | "terminateJourney";
 type Ctx = { dirty: boolean };
 
 export const confirmExitJourney: JourneyDefinition<Ctx, StepId, Event> = {
@@ -18,16 +14,11 @@ export const confirmExitJourney: JourneyDefinition<Ctx, StepId, Event> = {
   transitions: [
     {
       from: "*",
-      event: "close",
+      event: "requestClose",
       to: "confirmExit",
       when: ({ context }) => context.dirty
     },
-    {
-      from: "*",
-      event: "close",
-      to: JOURNEY_TERMINAL.CLOSE,
-      when: ({ context }) => !context.dirty
-    }
+    { from: "*", event: "terminateJourney" }
   ]
 };
 

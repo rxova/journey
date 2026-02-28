@@ -3,12 +3,12 @@
   "compilerOptions": {
     "composite": true,
     "declaration": true,
-    "declarationMap": true,
+    "declarationMap": false,
     "emitDeclarationOnly": true,
     "declarationDir": "dist",
     "outDir": "dist",
     "rootDir": "src",
-    "tsBuildInfoFile": "dist/tsconfig.build.tsbuildinfo",
+    "tsBuildInfoFile": "tsconfig.build.tsbuildinfo",
     "noEmit": false,
     "paths": {
       "@rxova/journey-core": ["../core/dist/index.d.ts"]

@@ -13,15 +13,25 @@ import {
 
 describe("protocol guards", () => {
   it("accepts valid commands", () => {
-    expect(isJourneyDevtoolsCommand({ type: "next" })).toBe(true);
-    expect(isJourneyDevtoolsCommand({ type: "goTo", to: "review" })).toBe(true);
+    expect(isJourneyDevtoolsCommand({ type: "goToNextStep" })).toBe(true);
+    expect(isJourneyDevtoolsCommand({ type: "goToStepById", stepId: "review" })).toBe(true);
+    expect(
+      isJourneyDevtoolsCommand({
+        type: "updateStepMetadata",
+        stepId: "review",
+        metadata: { title: "Review updated" }
+      })
+    ).toBe(true);
     expect(
       isJourneyDevtoolsCommand({ type: "send", event: { type: "retry", payload: { at: 1 } } })
     ).toBe(true);
   });
 
   it("rejects invalid commands", () => {
-    expect(isJourneyDevtoolsCommand({ type: "goTo" })).toBe(false);
+    expect(isJourneyDevtoolsCommand({ type: "goToStepById" })).toBe(false);
+    expect(isJourneyDevtoolsCommand({ type: "updateStepMetadata", stepId: "", metadata: {} })).toBe(
+      false
+    );
     expect(isJourneyDevtoolsCommand({ type: "trimHistory", maxHistory: "10" })).toBe(false);
     expect(isJourneyDevtoolsCommand({ type: "send", event: { payload: "x" } })).toBe(false);
   });
@@ -34,7 +44,7 @@ describe("protocol guards", () => {
       kind: "command",
       machineId: "machine-1",
       requestId: "req-1",
-      command: { type: "next" },
+      command: { type: "goToNextStep" },
       timestamp: Date.now()
     };
 
@@ -45,7 +55,7 @@ describe("protocol guards", () => {
       kind: "snapshot",
       machineId: "machine-1",
       snapshot: {
-        current: "start"
+        currentStepId: "start"
       },
       timestamp: Date.now()
     };
@@ -57,7 +67,7 @@ describe("protocol guards", () => {
       kind: "command",
       machineId: "machine-1",
       requestId: "req-1",
-      command: { type: "goTo" },
+      command: { type: "goToStepById" },
       timestamp: Date.now()
     };
 
