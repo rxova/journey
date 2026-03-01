@@ -4,7 +4,9 @@ title: Core API
 sidebar_label: API
 ---
 
-## Exports
+This API is designed around one practical goal: help you define a flow once, then drive it predictably at runtime.
+
+## What You Import
 
 ```ts
 import {
@@ -18,60 +20,133 @@ import {
 } from "@rxova/journey-core";
 ```
 
-## Snapshot Model
+Most teams use `createJourneyMachine`, `createTransitions`, and `tx` every day.
+
+## Typical Usage Flow
 
 ```ts
-type JourneySnapshot<TContext, TStepId extends string, TStepMeta = unknown> = {
-  currentStepId: TStepId;
-  history: {
-    timeline: readonly TStepId[];
-    index: number;
-  };
-  context: TContext;
-  visited: Record<TStepId, boolean>;
-  stepMeta: Record<TStepId, TStepMeta>;
-  status: "running" | "complete" | "terminated";
-  async: JourneyAsyncState<TStepId>;
+import { createJourneyMachine, createTransitions, tx } from "@rxova/journey-core";
+
+const journey = {
+  initial: "start",
+  context: { isVip: false },
+  steps: {
+    start: {},
+    payment: {},
+    review: {}
+  },
+  transitions: createTransitions(
+    tx
+      .from("start")
+      .on("goToNextStep")
+      .choose(tx.when(({ context }) => context.isVip).to("review"), tx.otherwise().to("payment")),
+    tx.from("payment").on("goToNextStep").to("review"),
+    tx.from("review").toComplete()
+  )
 };
+
+const machine = createJourneyMachine(journey);
 ```
 
-`currentStepId` is always `history.timeline[history.index]`.
+This pattern scales well: the flow map stays readable even when behavior gets richer.
 
-## Machine API
+## Working With the Machine
+
+You can drive the machine with events (`send`) or convenience helpers.
+
+Use `send` when you want explicit event control:
 
 ```ts
-type JourneyMachine<...> = {
-  getSnapshot(): JourneySnapshot<...>;
-  send(event): Promise<JourneySendResult<...>>;
-  goToNextStep(): Promise<JourneySendResult<...>>;
-  terminateJourney(payload?): Promise<JourneySendResult<...>>;
-  completeJourney(payload?): Promise<JourneySendResult<...>>;
-  goToPreviousStep(steps?: number): Promise<JourneySendResult<...>>;
-  goToLastVisitedStep(): Promise<JourneySendResult<...>>;
-  updateContext(updater): JourneySnapshot<...>;
-  updateStepMetadata(stepId, updater): JourneySnapshot<...>;
-  clearStepError(stepId?): JourneySnapshot<...>;
-  resetMachine(): JourneySnapshot<...>;
-  subscribe(listener: () => void): () => void;
-  subscribeEvent(listener: (event: JourneyObservationEvent<...>) => void): () => void;
+await machine.send({ type: "goToNextStep" });
+await machine.send({ type: "myCustomEvent" });
+```
+
+Use helpers for common actions:
+
+```ts
+await machine.goToNextStep();
+await machine.goToPreviousStep();
+await machine.goToLastVisitedStep();
+await machine.completeJourney();
+await machine.terminateJourney();
+```
+
+You can also update runtime state safely through explicit APIs:
+
+- `updateContext(updater)`
+- `updateStepMetadata(stepId, updater)`
+- `clearStepError(stepId?)`
+- `resetMachine()`
+
+## Snapshot: Your Runtime Truth
+
+`machine.getSnapshot()` gives you the full current state:
+
+- `currentStepId`: where the user is now.
+- `history.timeline`: the path they have taken.
+- `history.index`: the current pointer in that path.
+- `context`: shared state used by guards/effects/UI.
+- `visited`: whether each step has ever been entered.
+- `stepMeta`: per-step runtime metadata.
+- `status`: lifecycle state (`running`, `complete`, `terminated`).
+- `async`: per-step async phase and errors.
+
+Key invariant: `currentStepId` is always `history.timeline[history.index]`.
+
+This invariant is why navigation stays explainable and test-friendly.
+
+Example snapshot:
+
+```ts
+const snapshot = machine.getSnapshot();
+
+const exampleSnapshot = {
+  currentStepId: "payment",
+  history: {
+    timeline: ["start", "details", "payment"],
+    index: 2
+  },
+  context: {
+    isVip: false
+  },
+  visited: {
+    start: true,
+    details: true,
+    payment: true,
+    review: false
+  },
+  stepMeta: {
+    start: {},
+    details: {},
+    payment: {},
+    review: {}
+  },
+  status: "running",
+  async: {
+    isLoading: false,
+    byStep: {
+      start: { phase: "idle", eventType: null, transitionId: null, error: null },
+      details: { phase: "idle", eventType: null, transitionId: null, error: null },
+      payment: { phase: "idle", eventType: null, transitionId: null, error: null },
+      review: { phase: "idle", eventType: null, transitionId: null, error: null }
+    }
+  }
 };
 ```
 
 ## Navigation Semantics
 
-- `goToNextStep()`: convenience for `send({ type: "goToNextStep" })`.
-- `terminateJourney(payload?)`: convenience for `send({ type: "terminateJourney", payload? })`.
-- `completeJourney(payload?)`: convenience for `send({ type: "completeJourney", payload? })`.
-- `goToPreviousStep(steps?)`: pointer move toward index `0` (clamped).
-- `goToLastVisitedStep()`: pointer move to `history.timeline.length - 1`.
-- `send({ type: "back" })`:
+`goToNextStep()` is shorthand for sending `goToNextStep`.
 
-1. tries explicit matching back transitions first
-2. if none matches, falls back to `goToPreviousStep(1)`.
+`completeJourney()` and `terminateJourney()` are shorthands for their event forms.
 
-## Transition Ergonomics
+`goToPreviousStep(steps?)` and `goToLastVisitedStep()` move the history pointer.
 
-Use builders and compile to flat transitions:
+`send({ type: "back" })` first tries explicit `back` transitions, then falls back to `goToPreviousStep(1)` when none match.
+
+## Transition Builder Ergonomics
+
+`tx()` makes transition intent easier to read, especially for branching:
 
 ```ts
 const transitions = createTransitions(
@@ -88,19 +163,13 @@ const transitions = createTransitions(
 );
 ```
 
-Runtime remains first-match-wins.
+Runtime execution is still deterministic: first valid transition wins.
 
-## Metadata
+## Observability
 
-- Define optional per-step `meta` on step definitions.
-- Read runtime metadata from `snapshot.stepMeta`.
-- Update via `machine.updateStepMetadata(stepId, updater)`.
+Use `subscribe` when you only care that snapshot changed.
 
-## Observability Events
-
-Use `subscribeEvent` for typed telemetry (`subscribe` stays snapshot-reactive only).
-
-Minimum union includes:
+Use `subscribeEvent` when you need typed lifecycle telemetry, such as:
 
 - `transition.start`
 - `transition.success`
@@ -113,9 +182,42 @@ Minimum union includes:
 - `navigation.lastVisited`
 - `metadata.updated`
 
-## Removed
+For teams, this usually means better logs, easier debugging, and cleaner analytics hooks.
 
-- top-level `timeline` and `index` snapshot fields
-- `HISTORY_TARGET`
-- `trimHistory()` / `clearHistory()`
-- history overflow options
+In practice:
+
+- Better logs: you can log transition and navigation events with consistent payloads.
+- Easier debugging: you can reconstruct what happened and why a transition failed.
+- Cleaner analytics hooks: event listeners can feed analytics without adding tracking logic inside UI components.
+
+## Constants You May Use
+
+- `JOURNEY_STATUS`: lifecycle status constants.
+- `JOURNEY_EVENT`: built-in event identifiers.
+- `JOURNEY_ASYNC_PHASE`: async transition phase constants.
+- `JOURNEY_WILDCARD`: wildcard source for transitions.
+
+Values:
+
+```ts
+JOURNEY_STATUS = {
+  RUNNING: "running",
+  COMPLETE: "complete",
+  TERMINATED: "terminated"
+};
+
+JOURNEY_EVENT = {
+  GO_TO_STEP_BY_ID: "goToStepById"
+};
+
+JOURNEY_ASYNC_PHASE = {
+  IDLE: "idle",
+  EVALUATING_WHEN: "evaluating-when",
+  RUNNING_EFFECT: "running-effect",
+  ERROR: "error"
+};
+
+JOURNEY_WILDCARD = "*";
+```
+
+These are optional helpers for readability and consistency.

@@ -19,6 +19,7 @@ const sidebars: SidebarsConfig = {
       label: "Core",
       collapsed: false,
       items: [
+        "core/overview",
         "core/getting-started",
         "core/architecture",
         "core/api",
