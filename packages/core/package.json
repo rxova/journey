@@ -1,6 +1,6 @@
 {
   "name": "@rxova/journey-core",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Journey core state machine.",
   "keywords": [
     "journey",
