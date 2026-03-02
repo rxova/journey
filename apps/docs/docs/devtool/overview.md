@@ -9,27 +9,29 @@ Journey devtools has two parts:
 - `@rxova/journey-devtools-bridge`: runtime message bridge.
 - Devtools panel app: visualization + controls.
 
+## Why It Exists
+
+The devtools stack helps teams see journey behavior clearly: timeline movement, transition outcomes, async phases, and command effects.
+
 ## Protocol Version
 
 Bridge protocol uses a fixed internal compatibility version.
 
-## Snapshot Payload Focus
-
-The panel consumes:
-
-- `history.timeline` and `history.index` (pointer model)
-- `currentStepId`, `visited`, `stepMeta`
-- `status` and `async`
-
 ## Command Surface
 
-- `goToNextStep`, `terminateMachine`, `completeJourney`, `resetMachine`
-- `goToStepById`
-- `goToPreviousStep`
-- `goToLastVisitedStep`
-- `updateStepMetadata`
-- `send`
-- `clearStepError`
+The panel can drive navigation, lifecycle controls, metadata updates, error clearing, and custom event sending through the bridge.
+
+See full details in [Bridge API](/docs/devtool/bridge-api) and exact transport types in [Protocol](/docs/devtool/protocol).
+
+## Snapshot Payload Focus
+
+Panel state is driven by serialized machine snapshots including:
+
+- history pointer model (`history.timeline`, `history.index`)
+- current position (`currentStepId`)
+- runtime state (`context`, `visited`, `stepMeta`, `status`, `async`)
+
+For a full payload example, see [Bridge API](/docs/devtool/bridge-api).
 
 ## Time Travel UX
 

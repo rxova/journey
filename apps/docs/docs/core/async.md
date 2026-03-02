@@ -3,11 +3,13 @@ title: Async Behavior
 sidebar_position: 6
 ---
 
-Journey supports async guards and effects while keeping deterministic ordering.
+Journey treats async work as a first-class part of flow logic, not an afterthought.
+
+That means async guards and effects stay deterministic, observable, and easier to debug.
 
 ## Async Guards (`when`)
 
-Use `when` to answer: **is transition allowed now?**
+Use `when` to decide whether a transition is allowed right now.
 
 ```ts
 {
@@ -21,9 +23,11 @@ Use `when` to answer: **is transition allowed now?**
 }
 ```
 
+Think of guards as permission checks.
+
 ## Async Effects (`effect`)
 
-Use `effect` for side effects and optional context updates.
+Use `effect` for side effects and optional context updates tied to transitions.
 
 ```ts
 {
@@ -37,37 +41,55 @@ Use `effect` for side effects and optional context updates.
 }
 ```
 
-### When `effect` Runs
+Think of effects as transition work that runs before state commit.
 
-For `send(event)`:
+### When `effect` runs
 
-1. Machine emits `transition.start`.
-2. Runtime scans transitions in order (first match wins).
-3. Candidate transition must match `from` + `event`.
-4. If a `when` guard exists, it must resolve `true`.
-5. If the selected transition has `effect`, runtime executes it.
-6. After effect resolves, runtime commits navigation/status and emits success events.
+`effect` runs only if all of these are true:
 
-This means `effect` runs after selection/guarding and before `step.exit` / `transition.success` are emitted.
+- machine status is `running`
+- a transition is selected for the event (first valid match wins)
+- the transition guard `when` passes (if present)
+- the selected transition defines `effect`
 
-### Conditions For `effect` To Run
+### How `effect` runs
 
-- Machine status must be `running`.
-- A transition must be selected for the event.
-- The selected transition must define `effect`.
-- If `when` exists on that transition, it must pass.
+For `send(event)`, Journey processes in this order:
 
-`effect` does not run when no transition matches, when a guard blocks selection, or when status is terminal.
+1. Emit `transition.start`.
+2. Select the first matching transition.
+3. Evaluate `when` (if present).
+4. Run `effect` with `{ context, from, timeline, index, event }`.
+5. If `effect` returns context, use it as next context.
+6. Commit snapshot change and emit success events (`transition.success`, `step.exit`, `step.enter`, etc.).
 
-### Effect Failures
+`effect` can be sync or async. If async, the source step moves through `running-effect` phase until it resolves.
 
-If `effect` throws/rejects:
+### When `effect` does not run
 
-- machine emits `transition.error`
-- async phase for the source step becomes `error`
-- navigation is not committed
+`effect` does not run when:
+
+- machine is terminal (`complete` or `terminated`)
+- no transition matches the event
+- the selected transition has no `effect`
+- `when` returns `false`
+- `when` throws/rejects
+- navigation happens via pointer helpers (`goToPreviousStep`, `goToLastVisitedStep`)
+- event is a direct `goToStepById` jump
+
+## Failure Behavior
+
+If guard or effect fails:
+
+- Journey emits `transition.error`
+- source step async phase becomes `error`
+- snapshot navigation is not committed
+
+This prevents partial transitions and keeps state consistent.
 
 ## Observable Async Phases
+
+Per-step async phases:
 
 - `idle`
 - `evaluating-when`
@@ -76,13 +98,24 @@ If `effect` throws/rejects:
 
 Read from `snapshot.async.byStep[stepId]`.
 
-## UI Integration Pattern
-
 ```ts
+const phase = snapshot.async.byStep[snapshot.currentStepId].phase;
+```
+
+Typical UI mappings:
+
+- `phase === "evaluating-when"`: disable controls or show validating state.
+- `phase === "running-effect"`: show submit/loading state.
+- `phase === "error"`: show recoverable error UI.
+- `phase === "idle"`: render normal interactive step UI.
+
+## UI Pattern
+
+```tsx
 const step = snapshot.currentStepId;
 const asyncState = snapshot.async.byStep[step];
 
-if (asyncState.phase === "running-effect") {
+if (asyncState.phase === "running-effect" || asyncState.phase === "evaluating-when") {
   return <Spinner />;
 }
 
@@ -93,7 +126,7 @@ if (asyncState.phase === "error") {
 
 ## Recommendations
 
-- Keep guards pure and fast when possible.
-- Add `id` to important transitions for debugging.
-- Do retries outside guards if failure is expected/transient.
-- Avoid mixing navigation decisions inside UI components.
+- Keep guards focused on decisions, not heavy side effects.
+- Put important side effects inside transition `effect`.
+- Add transition `id` for better production debugging.
+- Keep UI components thin; keep flow rules in transitions.

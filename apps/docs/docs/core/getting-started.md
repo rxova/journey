@@ -1,14 +1,37 @@
 ---
 id: getting-started
-title: Getting Started
-sidebar_label: Getting Started
+title: Quickstart
+sidebar_label: Quickstart
 ---
 
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
 ## Install
+
+<Tabs groupId="package-managers" defaultValue="pnpm">
+  <TabItem value="pnpm" label="pnpm">
 
 ```bash
 pnpm add @rxova/journey-core
 ```
+
+  </TabItem>
+  <TabItem value="yarn" label="yarn">
+
+```bash
+yarn add @rxova/journey-core
+```
+
+  </TabItem>
+  <TabItem value="npm" label="npm">
+
+```bash
+npm install @rxova/journey-core
+```
+
+  </TabItem>
+</Tabs>
 
 ## Define a Journey
 
@@ -47,6 +70,13 @@ const journey: JourneyDefinition<Context, StepId, Event> = {
   )
 };
 ```
+
+## TypeScript Notes
+
+- `StepId`, `Event`, and `Context` are explicit types so flow intent is clear.
+- `JourneyDefinition<...>` enforces step ids and event types across transitions.
+- Add an event payload map when custom events carry structured payloads.
+- For deeper typing patterns, see [Core TypeScript](/docs/core/typescript).
 
 ## Create Machine
 
