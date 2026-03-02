@@ -62,6 +62,13 @@ export default [
     }
   },
   {
+    files: ["packages/vue/**/*.{ts,tsx,mts,cts}"],
+    rules: {
+      "react-hooks/rules-of-hooks": "off",
+      "react-hooks/exhaustive-deps": "off"
+    }
+  },
+  {
     files: TEST_FILE_GLOBS,
     languageOptions: {
       globals: {

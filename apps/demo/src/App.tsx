@@ -6,6 +6,7 @@ import {
   type JourneyBindings,
   type JourneyReactDefinition
 } from "@rxova/journey-react";
+import { mountVueMachinePanel } from "./vue-panel";
 import "./styles.css";
 
 type ReactStepId = "start" | "details" | "review" | "confirmExit";
@@ -319,6 +320,20 @@ const CoreMachinePanel = () => {
   );
 };
 
+const VueMachinePanelMount = () => {
+  const mountRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (!mountRef.current) {
+      return undefined;
+    }
+
+    return mountVueMachinePanel(mountRef.current);
+  }, []);
+
+  return <div ref={mountRef} />;
+};
+
 export const App = () => {
   const Provider = reactBindings.Provider;
 
@@ -337,11 +352,12 @@ export const App = () => {
       <header className="hero">
         <h1>Rxova Journey Demo</h1>
         <p>
-          Open Chrome DevTools and select the <strong>Journey</strong> panel. You should see both
-          machines.
+          Open Chrome DevTools and select the <strong>Journey</strong> panel. You should see all
+          three machines.
         </p>
         <p className="hint">
-          Expected machine ids: <code>react-flow</code> and <code>core-flow</code>.
+          Expected machine ids: <code>react-flow</code>, <code>vue-flow</code>, and{" "}
+          <code>core-flow</code>.
         </p>
       </header>
 
@@ -349,6 +365,8 @@ export const App = () => {
         <ReactBridge />
         <ReactMachinePanel />
       </Provider>
+
+      <VueMachinePanelMount />
 
       <CoreMachinePanel />
 

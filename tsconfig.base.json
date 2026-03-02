@@ -22,6 +22,7 @@
     "paths": {
       "@rxova/journey-core": ["packages/core/src/index.ts"],
       "@rxova/journey-react": ["packages/react/src/index.ts"],
+      "@rxova/journey-vue": ["packages/vue/src/index.ts"],
       "@rxova/journey-devtools-bridge": ["packages/devtools-bridge/src/index.ts"]
     }
   }

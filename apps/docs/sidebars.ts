@@ -53,7 +53,22 @@ const sidebars: SidebarsConfig = {
         "react/provider-and-hooks",
         "react/patterns",
         "react/async-ui",
-        "react/examples"
+        "react/examples",
+        "react/devtools"
+      ]
+    },
+    {
+      type: "category",
+      label: "Vue",
+      collapsed: false,
+      items: [
+        "vue/overview",
+        "vue/quickstart",
+        "vue/provider-and-hooks",
+        "vue/patterns",
+        "vue/async-ui",
+        "vue/examples",
+        "vue/devtools"
       ]
     },
     {

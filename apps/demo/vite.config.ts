@@ -12,10 +12,13 @@ export default defineConfig({
       "@rxova/journey-react": fileURLToPath(
         new URL("../../packages/react/src/index.ts", import.meta.url)
       ),
+      "@rxova/journey-vue": fileURLToPath(
+        new URL("../../packages/vue/src/index.ts", import.meta.url)
+      ),
       "@rxova/journey-devtools-bridge": fileURLToPath(
         new URL("../../packages/devtools-bridge/src/index.ts", import.meta.url)
       )
     },
-    dedupe: ["react", "react-dom"]
+    dedupe: ["react", "react-dom", "vue"]
   }
 });

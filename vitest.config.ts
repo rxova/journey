@@ -13,6 +13,10 @@ export default defineConfig({
         replacement: fileURLToPath(new URL("./packages/react/src/index.ts", import.meta.url))
       },
       {
+        find: "@rxova/journey-vue",
+        replacement: fileURLToPath(new URL("./packages/vue/src/index.ts", import.meta.url))
+      },
+      {
         find: "@rxova/journey-devtools-bridge",
         replacement: fileURLToPath(
           new URL("./packages/devtools-bridge/src/index.ts", import.meta.url)

@@ -14,18 +14,20 @@ Typed journey graphs for non-linear product flows.
 
 This release introduces timeline-pointer navigation, typed React bindings, transition builder helpers, metadata updates, and richer devtools controls.
 
-`[DOCS](https://rxova.org/) | [CORE](https://rxova.org/docs/core/getting-started) | [REACT](https://rxova.org/docs/react/quickstart) | [DEVTOOL](https://rxova.org/docs/devtool/overview) | [BRIDGE API](https://rxova.org/docs/devtool/bridge-api)`
+`[DOCS](https://rxova.org/) | [CORE](https://rxova.org/docs/core/getting-started) | [REACT](https://rxova.org/docs/react/quickstart) | [VUE](https://rxova.org/docs/vue/quickstart) | [DEVTOOL](https://rxova.org/docs/devtool/overview) | [BRIDGE API](https://rxova.org/docs/devtool/bridge-api)`
 
 ## Packages
 
 - `@rxova/journey-core`: framework-agnostic runtime.
 - `@rxova/journey-react`: typed bindings factory for React.
+- `@rxova/journey-vue`: typed bindings factory for Vue.
 - `@rxova/journey-devtools-bridge`: browser bridge for the devtools extension.
 
 ## Install
 
 ```bash
 npm i @rxova/journey-core @rxova/journey-react
+npm i @rxova/journey-core @rxova/journey-vue
 ```
 
 ## Quickstart (React, bindings-first)

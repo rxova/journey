@@ -97,6 +97,11 @@ const config: Config = {
           href: "https://www.npmjs.com/package/@rxova/journey-react",
           label: "React",
           position: "right"
+        },
+        {
+          href: "https://www.npmjs.com/package/@rxova/journey-vue",
+          label: "Vue",
+          position: "right"
         }
       ]
     },
@@ -114,12 +119,20 @@ const config: Config = {
               to: "/docs/react/overview"
             },
             {
+              label: "Vue Guide",
+              to: "/docs/vue/overview"
+            },
+            {
               label: "@rxova/journey-core",
               href: "https://www.npmjs.com/package/@rxova/journey-core"
             },
             {
               label: "@rxova/journey-react",
               href: "https://www.npmjs.com/package/@rxova/journey-react"
+            },
+            {
+              label: "@rxova/journey-vue",
+              href: "https://www.npmjs.com/package/@rxova/journey-vue"
             },
             {
               label: "GitHub",
@@ -132,7 +145,8 @@ const config: Config = {
     },
     prism: {
       theme: prismThemes.github,
-      darkTheme: prismThemes.dracula
+      darkTheme: prismThemes.dracula,
+      additionalLanguages: ["typescript", "tsx"]
     }
   } satisfies Preset.ThemeConfig
 };

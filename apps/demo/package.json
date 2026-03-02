@@ -2,7 +2,7 @@
   "name": "apps-demo",
   "version": "0.6.0",
   "private": true,
-  "description": "Local React + Core demo app for testing Journey DevTools.",
+  "description": "Local React + Vue + Core demo app for testing Journey DevTools.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,8 +14,10 @@
     "@rxova/journey-core": "workspace:^",
     "@rxova/journey-devtools-bridge": "workspace:^",
     "@rxova/journey-react": "workspace:^",
+    "@rxova/journey-vue": "workspace:^",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "vue": "^3.5.18"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",

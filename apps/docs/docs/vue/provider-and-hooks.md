@@ -1,0 +1,81 @@
+---
+title: Provider and Composables API
+sidebar_position: 3
+---
+
+Vue bindings are the UI-facing wrapper for the core machine.
+
+Use this page for Vue integration details.
+Use Core docs for runtime semantics: [Core API](/docs/core/api) and [Core Lifecycle](/docs/core/lifecycle).
+
+## Provider + StepRenderer
+
+```vue
+<script setup lang="ts">
+const bindings = createJourneyBindings(journey);
+
+const Provider = bindings.Provider;
+const StepRenderer = bindings.StepRenderer;
+</script>
+
+<template>
+  <Provider>
+    <StepRenderer />
+  </Provider>
+</template>
+```
+
+- `Provider` creates/hosts machine state for the bound journey.
+- `StepRenderer` renders the current step's `component`.
+
+## Composables and Responsibilities
+
+- `bindings.useJourneySnapshot()`
+  - Read-only runtime state for rendering.
+  - Use when UI depends on current step/context/status/async phase.
+
+- `bindings.useJourneyApi()`
+  - Safe action surface for UI controls.
+  - Includes navigation helpers, event `send`, context/metadata updates, reset and error clear.
+
+- `bindings.useJourneyMachine()`
+  - Direct machine access.
+  - Use when you need lower-level APIs like subscriptions or bridge integrations.
+
+## `useJourneyApi()` Surface
+
+Common methods:
+
+- `goToNextStep`, `goToPreviousStep(steps?)`, `goToLastVisitedStep`
+- `completeJourney`, `terminateJourney`, `send`
+- `updateContext`, `updateStepMetadata`
+- `clearStepError`, `resetJourney`
+
+Imperative jump remains available through `send`:
+
+```ts
+await api.send({ type: "goToStepById", stepId: "review" });
+await api.send({ type: "goToStepById", stepId: "review", payload: { source: "link" } });
+```
+
+## External Machine Injection
+
+Use `Provider` with `machine` prop when machine ownership lives outside Vue (for example, shared orchestration or bridge setup).
+
+## Guardrail
+
+If any Journey composable runs outside `bindings.Provider`, it throws immediately.
+
+That fail-fast behavior avoids silent desync bugs.
+
+## Important Boundary
+
+Even when called from Vue composables, transition ordering, async phase handling, observability events, history behavior, and persistence are all defined by Core.
+
+Reference pages:
+
+- [Core Snapshot](/docs/core/snapshot)
+- [Core Lifecycle](/docs/core/lifecycle)
+- [Core Async Behavior](/docs/core/async)
+- [Core Timeline Navigation](/docs/core/history)
+- [Core Persistence](/docs/core/persistence)

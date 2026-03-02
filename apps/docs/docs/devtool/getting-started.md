@@ -75,6 +75,32 @@ export const JourneyDebugBridge = () => {
 };
 ```
 
+### Vue Example
+
+```ts
+import { defineComponent, onMounted, onBeforeUnmount } from "vue";
+import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
+import { checkoutBindings } from "./checkout-bindings";
+
+export const JourneyDebugBridge = defineComponent(() => {
+  const machine = checkoutBindings.useJourneyMachine();
+  let detach: (() => void) | undefined;
+
+  onMounted(() => {
+    detach = attachJourneyDevtools(machine, {
+      machineId: "onboarding",
+      label: "Onboarding Journey"
+    });
+  });
+
+  onBeforeUnmount(() => {
+    detach?.();
+  });
+
+  return () => null;
+});
+```
+
 ## 3) Extension Availability
 
 The `Rxova Journey Devtools` Chrome extension is currently pending Chrome Web Store approval.

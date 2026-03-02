@@ -3,7 +3,7 @@ title: Devtools Bridge (Chrome)
 sidebar_position: 7
 ---
 
-React integration for devtools is still done through a separate package: `@rxova/journey-devtools-bridge`.
+Vue integration for devtools is still done through a separate package: `@rxova/journey-devtools-bridge`.
 
 This page exists as a compatibility entry point. The full documentation lives in the dedicated Devtool section:
 
@@ -16,22 +16,27 @@ This page exists as a compatibility entry point. The full documentation lives in
 - [Troubleshooting](/docs/devtool/troubleshooting)
 - [Web Store](/docs/devtool/web-store)
 
-## Quick React Integration
+## Quick Vue Integration
 
-```tsx
-import { useEffect } from "react";
+```ts
+import { defineComponent, onMounted, onUnmounted } from "vue";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 import { signupBindings } from "./journey-bindings";
 
-const JourneyDevtoolsBridge = () => {
+export const JourneyDevtoolsBridge = defineComponent(() => {
   const machine = signupBindings.useJourneyMachine();
+  let detach: (() => void) | undefined;
 
-  useEffect(() => {
-    return attachJourneyDevtools(machine, { label: "Signup" });
-  }, [machine]);
+  onMounted(() => {
+    detach = attachJourneyDevtools(machine, { label: "Signup" });
+  });
 
-  return null;
-};
+  onUnmounted(() => {
+    detach?.();
+  });
+
+  return () => null;
+});
 ```
 
 For Chrome Web Store release status and extension details, see [Web Store](/docs/devtool/web-store).
