@@ -31,6 +31,7 @@
     "serve": "docusaurus serve",
     "write-translations": "docusaurus write-translations",
     "write-heading-ids": "docusaurus write-heading-ids",
+    "version:cut": "docusaurus docs:version",
     "typecheck": "tsc"
   },
   "dependencies": {

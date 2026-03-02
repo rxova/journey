@@ -6,6 +6,11 @@ slug: /core/api
 
 This API is designed around one practical goal: help you define a flow once, then drive it predictably at runtime.
 
+## API Stability Baseline
+
+Starting with `0.6.0`, this API is treated as a stabilization baseline.
+In `0.6.x`, prefer additive and bug-fix changes, and avoid breaking API changes unless they are explicitly documented with migration guidance.
+
 ## What You Import
 
 ```ts

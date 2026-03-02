@@ -40,7 +40,13 @@ const config: Config = {
       {
         docs: {
           sidebarPath: "./sidebars.ts",
-          editUrl: "https://github.com/rxova/journey/tree/main/apps/docs/"
+          editUrl: "https://github.com/rxova/journey/tree/main/apps/docs/",
+          lastVersion: "current",
+          versions: {
+            current: {
+              label: "0.6.1 (current)"
+            }
+          }
         },
         blog: false,
         theme: {
@@ -82,6 +88,10 @@ const config: Config = {
           sidebarId: "docsSidebar",
           position: "left",
           label: "Docs"
+        },
+        {
+          type: "docsVersionDropdown",
+          position: "left"
         },
         {
           href: "https://github.com/rxova/journey",

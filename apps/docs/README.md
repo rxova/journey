@@ -35,6 +35,26 @@ pnpm -C apps/docs build
 
 Static output is generated in `apps/docs/build`.
 
+## Docs Versioning
+
+Freeze the current docs into a versioned snapshot:
+
+```bash
+pnpm -C apps/docs run version:cut <version>
+```
+
+Example:
+
+```bash
+pnpm -C apps/docs run version:cut 0.7.0
+```
+
+This creates:
+
+- `apps/docs/versions.json`
+- `apps/docs/versioned_docs/version-<version>/...`
+- `apps/docs/versioned_sidebars/version-<version>-sidebars.json`
+
 ## Deploy
 
 Deployment is automated on pushes to `main` that touch:
