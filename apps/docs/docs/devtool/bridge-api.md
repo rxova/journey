@@ -3,15 +3,74 @@ title: Bridge API
 sidebar_position: 3
 ---
 
-## `attachJourneyDevtools(machine, options?)`
+`attachJourneyDevtools(machine, options?)` connects a Journey machine to the devtools channel.
 
-Attaches a machine to the devtools extension stream.
+Use it when you want live snapshot streaming and optional remote command control from the Journey Devtools panel.
+
+## Basic Usage
 
 ```ts
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 
 const detach = attachJourneyDevtools(machine, {
+  machineId: "checkout-main",
   label: "Checkout Flow",
+  appName: "Storefront"
+});
+
+// later
+// detach();
+```
+
+## Options
+
+### `machineId?: string`
+
+Unique id for this machine instance.
+
+- If omitted, bridge generates one automatically.
+- Use explicit ids when multiple machines exist in the same page/app.
+
+### `label?: string`
+
+Human-readable machine label shown in devtools.
+
+- Default: `"Journey Machine"`
+
+### `appName?: string`
+
+App name shown in the devtools registration metadata.
+
+- Default: `document.title` when available, otherwise `null`.
+
+### `enabled?: boolean`
+
+Turns bridge transport on/off.
+
+- Default behavior: enabled when `NODE_ENV !== "production"`
+- Production default: disabled
+- Non-browser environments: no-op
+
+### `commandsEnabled?: boolean`
+
+Controls whether the panel can send mutating commands back to the machine.
+
+- Default behavior: enabled when `NODE_ENV !== "production"`
+- Production default: disabled
+- Useful when you want read-only inspection in production-like environments.
+
+## Local vs Production Behavior
+
+Default behavior is safety-first:
+
+- Local/development: bridge and commands are enabled by default.
+- Production: bridge is disabled by default.
+- Production with bridge enabled: commands are still disabled by default.
+
+Enable explicitly in production only when intended:
+
+```ts
+attachJourneyDevtools(machine, {
   enabled: true,
   commandsEnabled: true
 });
@@ -19,18 +78,75 @@ const detach = attachJourneyDevtools(machine, {
 
 ## Command Support
 
-- `goToNextStep`, `terminateMachine`, `completeJourney`, `resetMachine`
+The bridge can execute these commands from the panel:
+
+### Navigation
+
+- `goToNextStep`
 - `goToStepById`
 - `goToPreviousStep`
 - `goToLastVisitedStep`
+
+### Lifecycle / Control
+
+- `completeJourney`
+- `terminateMachine` (mapped internally to core `terminateJourney`)
+- `resetMachine`
+
+### State Updates
+
 - `updateStepMetadata`
-- `send` (custom event)
 - `clearStepError`
 
-## Snapshot Shape
+### Custom Event Dispatch
 
-Bridge serializes:
+- `send` (for custom machine events)
 
-- `currentStepId`, `history.timeline`, `history.index`
-- `context`, `visited`, `stepMeta`
-- `status`, `async`
+This command model allows both high-level controls and lower-level event testing.
+
+## Snapshot Payload
+
+Bridge serializes and sends a transport-safe snapshot payload with:
+
+- navigation: `currentStepId`, `history.timeline`, `history.index`
+- runtime data: `context`, `visited`, `stepMeta`
+- lifecycle/async: `status`, `async`
+
+Example payload:
+
+```ts
+{
+  currentStepId: "payment",
+  history: {
+    timeline: ["start", "details", "payment"],
+    index: 2
+  },
+  context: { isVip: false },
+  visited: {
+    start: true,
+    details: true,
+    payment: true,
+    review: false
+  },
+  stepMeta: {
+    start: {},
+    details: {},
+    payment: {},
+    review: {}
+  },
+  status: "running",
+  async: {
+    isLoading: false,
+    byStep: {
+      payment: {
+        phase: "idle",
+        eventType: null,
+        transitionId: null,
+        error: null
+      }
+    }
+  }
+}
+```
+
+For exact command and envelope types, see [Protocol](/docs/devtool/protocol).

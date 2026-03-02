@@ -4,41 +4,135 @@ title: Architecture
 sidebar_label: Architecture
 ---
 
-This page explains the runtime model.
+Journey architecture is built around one goal: make complex product flows easy to reason about.
 
-## Core Model
+If your flow has branching, async checks, retries, and recovery paths, the architecture should help your team stay calm and confident, not fight hidden state.
 
-Journey runtime is based on:
+## The Core Idea
 
-- `steps`: step registry.
-- `transitions`: ordered rules (first-match-wins).
-- `snapshot`: immutable state projection.
+Journey models a flow as three simple parts:
 
-Snapshot navigation uses a timeline pointer:
+- `steps`: where a user can be.
+- `transitions`: how a user can move.
+- `snapshot`: the current truth of the runtime.
 
-- `history.timeline`: linear realized path.
-- `history.index`: current pointer.
-- `currentStepId = history.timeline[history.index]`.
+This keeps the definition small, but still powerful enough for real-world journeys.
+
+## ID-Based Navigation (Not Index-Based)
+
+A key architecture decision is that Journey models movement by step id, not by array index.
+
+Index-based steppers (`goToStepByIndex(2)`) are easy to break when steps are inserted, reordered, hidden behind conditions, or split into branches.
+
+Journey transitions point to ids (`to: "review"`), and direct jumps are id-based (`send({ type: "goToStepById", stepId: "review" })`).
+
+This keeps navigation stable even as flows evolve.
+
+## Snapshot-First Runtime
+
+The snapshot is the source of truth for what is happening right now.
+
+It includes the current step, context, history, status, and async state. Instead of each component guessing, everyone reads the same state.
+
+That shared truth is what makes rendering, debugging, and testing consistent.
+
+The key shape is:
+
+- `currentStepId`
+- `history.timeline` and `history.index`
+- `context`
+- `visited`
+- `stepMeta`
+- `status`
+- `async`
+
+Canonical reference for full shape, field meaning, and examples: [Core Snapshot](/docs/core/snapshot).
 
 ## Why Timeline + Pointer
 
-- Current step is always represented in the path.
-- Moving backward/forward is deterministic.
-- Forward-after-back can truncate tail safely before appending new path.
+Journey history uses a timeline plus a pointer:
 
-## Back Semantics
+- `history.timeline` stores the realized path.
+- `history.index` points to the current position.
+- `currentStepId` always matches `history.timeline[history.index]`.
 
-`send({ type: "back" })` behavior:
+For deeper pointer and snapshot invariants, see [Core Snapshot](/docs/core/snapshot) and [Core Timeline Navigation](/docs/core/history).
 
-1. Try explicit matching back transitions.
-2. If none match, fallback to `goToPreviousStep(1)`.
+This model gives predictable navigation. Going back is a pointer move, not a destructive rewrite. Moving forward after going back can safely replace the old future path.
+
+## Deterministic Transitions
+
+Transitions are checked in order, and the first valid match wins.
+
+That sounds simple, but it matters a lot: deterministic behavior is easier to test, easier to explain in code review, and safer to refactor.
+
+## Back Behavior That Feels Natural
+
+`back` is an event. Journey handles it in two steps:
+
+1. It tries explicit matching `back` transitions.
+2. If none match, it falls back to `goToPreviousStep(1)`.
+
+You get control when you need it, and useful default behavior when you do not.
 
 ## Separation of Concerns
 
-- `@rxova/journey-core`: state model, transitions, async guards/effects, persistence, observability.
-- `@rxova/journey-react`: bindings API for Provider/hooks/renderer.
-- `@rxova/journey-devtools-bridge`: runtime bridge for devtools protocol.
+Journey is split into clear packages:
 
-## Observability
+`@rxova/journey-core` is the runtime model and behavior engine.
 
-`subscribeEvent` exposes typed lifecycle telemetry without coupling UI code to internals.
+`@rxova/journey-react` is typed React bindings (Provider, hooks, renderer) on top of that core.
+
+`@rxova/journey-devtools-bridge` connects runtime behavior to devtools protocols.
+
+This separation lets teams evolve UI ergonomics without rewriting flow semantics.
+
+## Observability by Design
+
+Journey is built to be observable from day one.
+
+Use `subscribe` when you care about current state.
+Use `subscribeEvent` when you care about what just happened.
+
+### `subscribe`: snapshot change reactivity
+
+`subscribe` gives a simple signal that state changed. It does not pass an event payload.
+
+```ts
+const unsubscribe = machine.subscribe(() => {
+  const snapshot = machine.getSnapshot();
+  console.log("render step:", snapshot.currentStepId);
+  console.log("status:", snapshot.status);
+});
+```
+
+Best for UI rendering and reactive state updates.
+
+### `subscribeEvent`: typed lifecycle telemetry
+
+`subscribeEvent` gives detailed event objects such as transition start/success/error, step enter/exit, and navigation events.
+
+```ts
+const unsubscribe = machine.subscribeEvent((event) => {
+  if (event.type === "transition.success") {
+    console.log("moved", event.from, "->", event.to, "via", event.eventType);
+  }
+
+  if (event.type === "transition.error") {
+    console.error("transition failed:", event.error);
+  }
+});
+```
+
+Best for analytics, logging, debugging, and audit trails.
+
+In practice, teams usually use both:
+
+- `subscribe` to render what is true now.
+- `subscribeEvent` to understand how it changed.
+
+## Why This Architecture Works
+
+It is small enough to learn quickly, strict enough to stay predictable, and flexible enough for non-linear product flows.
+
+That combination is why teams can move faster with fewer flow regressions.

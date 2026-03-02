@@ -3,7 +3,9 @@ title: Devtools Bridge (Chrome)
 sidebar_position: 7
 ---
 
-This topic has moved into a dedicated top-level docs section:
+React integration for devtools is still done through a separate package: `@rxova/journey-devtools-bridge`.
+
+This page exists as a compatibility entry point. The full documentation lives in the dedicated Devtool section:
 
 - `/docs/devtool/overview`
 - `/docs/devtool/getting-started`
@@ -13,8 +15,6 @@ This topic has moved into a dedicated top-level docs section:
 - `/docs/devtool/examples`
 - `/docs/devtool/troubleshooting`
 - `/docs/devtool/web-store`
-
-Use this React page as a compatibility entry point if you came from older links.
 
 ## Quick React Integration
 
@@ -33,3 +33,5 @@ const JourneyDevtoolsBridge = () => {
   return null;
 };
 ```
+
+For Chrome Web Store release status and extension details, see `/docs/devtool/web-store`.

@@ -4,9 +4,11 @@ title: Persistence
 sidebar_label: Persistence
 ---
 
-## Overview
+Persistence is optional. Add it when your product needs resume-later behavior.
 
-Persistence is optional and configured via machine options:
+Journey keeps persistence versioned and migration-friendly, so you can evolve flows without breaking existing users.
+
+## Quick Start
 
 ```ts
 const machine = createJourneyMachine(journey, {
@@ -17,7 +19,9 @@ const machine = createJourneyMachine(journey, {
 });
 ```
 
-## Persisted Snapshot Shape
+## What Gets Persisted
+
+Journey persists the runtime snapshot shape that matters for recovery:
 
 ```ts
 type JourneyPersistedSnapshot<TContext, TStepId extends string, TStepMeta = unknown> = {
@@ -33,23 +37,50 @@ type JourneyPersistedSnapshot<TContext, TStepId extends string, TStepMeta = unkn
 };
 ```
 
-## Options
+This is enough to restore where the user is, how they got there, and what data the flow depends on.
 
-- `key`: storage key.
-- `storage`: custom storage adapter (`localStorage` by default when available).
-- `version`: persisted schema version.
-- `migrate(value, persistedVersion)`: map old data to current snapshot shape.
-- `clearOnReset`: if `true`, reset removes persisted state.
+## Persistence Options
+
+- `key`: unique storage key.
+- `storage`: custom adapter (defaults to `localStorage` when available).
+- `version`: schema version for persisted data.
+- `migrate(value, persistedVersion)`: convert older data to current shape.
+- `clearOnReset`: decide whether reset removes persisted entry.
 - `serialize` / `deserialize`: custom codecs.
-- `onError(error)`: persistence error callback.
+- `onError(error)`: error handler for persistence failures.
 
-## Migration Notes
+## Migration Example
 
-If persisted data is invalid for the current snapshot shape, hydration falls back to the initial snapshot.
+```ts
+const machine = createJourneyMachine(journey, {
+  persistence: {
+    key: "journey.checkout",
+    version: 2,
+    migrate: (value, persistedVersion) => {
+      if (persistedVersion === 1) {
+        return {
+          ...value,
+          context: {
+            ...value.context,
+            couponCode: value.context.couponCode ?? null
+          }
+        };
+      }
+      return value;
+    }
+  }
+});
+```
 
-A migration function should return current snapshot fields (`history.timeline`, `history.index`, `visited`, `stepMeta`, etc.).
+## Safety Behavior
+
+If persisted data is invalid for the current journey shape, hydration falls back to a valid initial snapshot.
+
+This protects users from corrupted or outdated stored state.
 
 ## Reset Behavior
 
-- `clearOnReset: true` => storage entry removed.
-- `clearOnReset: false` => reset snapshot persisted.
+- `clearOnReset: true` -> reset removes persisted data.
+- `clearOnReset: false` -> reset writes the new initial snapshot.
+
+Choose based on whether "reset" means "start over clean" or "restart and keep recovery state" in your product.

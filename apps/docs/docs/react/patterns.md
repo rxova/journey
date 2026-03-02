@@ -4,34 +4,70 @@ title: React Patterns
 sidebar_label: Patterns
 ---
 
+These patterns help keep React code clean while Journey core remains the runtime source of truth.
+
 ## Create Bindings Once Per Journey
 
 ```ts
 const checkoutBindings = createJourneyBindings(checkoutJourney);
 ```
 
-Keep bindings at module scope for stable references.
+Keep bindings at module scope so references stay stable across renders.
 
-## Read + Actions Pattern
+Why it helps:
+
+- hook typing is captured once
+- no repeated generic noise at callsites
+- multiple journeys can coexist safely with separate bindings
+
+## Read + Actions Split
 
 ```tsx
 const snapshot = checkoutBindings.useJourneySnapshot();
 const api = checkoutBindings.useJourneyApi();
 ```
 
-- read current UI state from `snapshot`
-- perform actions through `api`
+Use `snapshot` to read state and `api` to change state.
 
-## Split Render and Controls
+This makes render logic easier to scan and reduces accidental side effects in UI code.
+
+## Separate Step Rendering from Global Controls
 
 - render current step with `checkoutBindings.StepRenderer`
-- keep global controls (`goToNextStep`/`goToPreviousStep`/`terminateJourney`) in separate components using `useJourneyApi`
+- keep global controls (next/back/terminate) in separate components using `useJourneyApi`
 
-## External Machine Injection
+This keeps step components focused on step concerns and shared controls focused on navigation concerns.
 
-Use `Provider` with `machine` prop when you need shared ownership outside React.
+## External Machine Ownership
+
+If machine lifecycle is managed outside React, inject it through `Provider`:
+
+```tsx
+<checkoutBindings.Provider machine={externalMachine}>
+  <checkoutBindings.StepRenderer />
+</checkoutBindings.Provider>
+```
+
+Useful when integrating with devtools bridge, orchestrators, or host shells.
 
 ## Journey Swap Strategy
 
-- default: preserve internal machine when `journey` prop changes
-- set `resetOnJourneyChange` to `true` when journey updates should reinitialize state
+When `journey` prop changes on `Provider`:
+
+- default behavior preserves internal machine state
+- set `resetOnJourneyChange={true}` to reinitialize from the new journey
+
+Choose based on product intent:
+
+- preserve state for live configuration updates
+- reset state for hard flow replacement
+
+## Keep Runtime Questions in Core Docs
+
+Patterns here are React wiring patterns.
+
+For runtime semantics, use Core docs:
+
+- transition and lifecycle semantics: [Core Lifecycle](/docs/core/lifecycle)
+- async guard/effect behavior: [Core Async Behavior](/docs/core/async)
+- history pointer model: [Core Timeline Navigation](/docs/core/history)

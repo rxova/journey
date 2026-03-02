@@ -3,13 +3,36 @@ title: Getting Started
 sidebar_position: 2
 ---
 
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
 This guide gets you from zero to a bridge-ready setup while the Chrome extension listing is under review.
 
 ## 1) Install Bridge In Your App
 
+<Tabs groupId="package-managers" defaultValue="pnpm">
+  <TabItem value="pnpm" label="pnpm">
+
 ```bash
-npm i @rxova/journey-devtools-bridge
+pnpm add @rxova/journey-devtools-bridge
 ```
+
+  </TabItem>
+  <TabItem value="yarn" label="yarn">
+
+```bash
+yarn add @rxova/journey-devtools-bridge
+```
+
+  </TabItem>
+  <TabItem value="npm" label="npm">
+
+```bash
+npm install @rxova/journey-devtools-bridge
+```
+
+  </TabItem>
+</Tabs>
 
 ## 2) Attach Bridge To A Machine
 

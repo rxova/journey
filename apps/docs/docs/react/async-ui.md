@@ -4,28 +4,67 @@ title: Async UI
 sidebar_label: Async UI
 ---
 
-Async transition phases come from `snapshot.async`.
+React does not invent async behavior; it renders async state produced by Journey core.
 
-## Read Async State
+Source of truth for async semantics: [Core Async Behavior](/docs/core/async).
+
+## Read Async State in React
 
 ```tsx
 const snapshot = bindings.useJourneySnapshot();
 
-const currentAsync = snapshot.async.byStep[snapshot.currentStepId];
+const stepId = snapshot.currentStepId;
+const stepAsync = snapshot.async.byStep[stepId];
 const isBusy = snapshot.async.isLoading;
 ```
 
 ## Typical UI Mappings
 
-- `phase === "evaluating-when"`: guard evaluation spinner
-- `phase === "running-effect"`: submit/loading state
-- `phase === "error"`: render recoverable error state
+`phase` comes from:
 
-## Clear Errors
+```tsx
+const phase = snapshot.async.byStep[snapshot.currentStepId].phase;
+```
+
+- `phase === "evaluating-when"`: disable controls or show validating state.
+- `phase === "running-effect"`: show submit/loading state.
+- `phase === "error"`: show recoverable error UI.
+- `phase === "idle"`: render normal interactive step UI.
+
+## Common Component Pattern
+
+```tsx
+const StepView = () => {
+  const snapshot = bindings.useJourneySnapshot();
+  const api = bindings.useJourneyApi();
+
+  const stepId = snapshot.currentStepId;
+  const state = snapshot.async.byStep[stepId];
+
+  if (state.phase === "evaluating-when" || state.phase === "running-effect") {
+    return <Spinner />;
+  }
+
+  if (state.phase === "error") {
+    return <ErrorPanel onRetry={() => api.clearStepError(stepId)} />;
+  }
+
+  return <MainStepContent />;
+};
+```
+
+## Clearing Errors
 
 ```tsx
 const api = bindings.useJourneyApi();
-api.clearStepError();
+
+api.clearStepError(); // current step
+api.clearStepError("payment"); // specific step
 ```
 
-You can target a specific step with `api.clearStepError(stepId)`.
+## Important Boundary
+
+React bindings expose `snapshot.async`.
+Core defines when and why phase transitions happen.
+
+If you need exact timing and rules for `when`/`effect`, read [Core Async Behavior](/docs/core/async).
