@@ -11,14 +11,16 @@ const Card = ({ title, body, href }: { title: string; body: string; href: string
     to={href}
     className="home-surface group block rounded-2xl border border-ink-300/80 bg-white/95 p-6 shadow-[0_20px_44px_-28px_rgba(20,35,60,0.38)] backdrop-blur-sm transition hover:-translate-y-1 hover:border-ink-400/80 hover:shadow-[0_24px_52px_-30px_rgba(20,35,60,0.45)] dark:hover:border-[#5f6d95]"
   >
-    <div className="flex items-start justify-between gap-4">
-      <div>
+    <div className="flex items-start gap-4">
+      <div className="min-w-0 flex-1">
         <h3 className="text-lg font-semibold text-ink-900 group-hover:text-brand-700 dark:text-ink-50 dark:group-hover:text-brand-200">
           {title}
         </h3>
-        <p className="mt-2 text-sm text-ink-600 dark:text-ink-100">{body}</p>
+        <p className="mt-2 break-words text-sm text-ink-600 dark:text-ink-100">{body}</p>
       </div>
-      <span className="text-sm font-semibold text-brand-700 dark:text-brand-300">→</span>
+      <span className="ml-auto shrink-0 text-base font-semibold leading-none text-brand-700 dark:text-brand-300">
+        →
+      </span>
     </div>
   </Link>
 );
