@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -13,17 +14,21 @@ const execGit = (cwd: string, args: string[]) =>
 
 const runScript = (cwd: string, env: Record<string, string>) => {
   try {
-    execFileSync("node", [scriptPath], { cwd, env: { ...process.env, ...env } });
+    execFileSync(process.execPath, [scriptPath], { cwd, env: { ...process.env, ...env } });
     return { code: 0 };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
-    return { code: error?.status ?? 1, stderr: error?.stderr?.toString() };
+    const stderr = [error?.stderr?.toString(), error?.stdout?.toString()]
+      .filter((value): value is string => Boolean(value))
+      .join("\n");
+
+    return { code: error?.status ?? 1, stderr };
   }
 };
 
 const initRepo = async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "check-changeset-"));
-  execGit(tempRoot, ["init"]);
+  execGit(tempRoot, ["init", "-q"]);
   execGit(tempRoot, ["config", "user.email", "test@example.com"]);
   execGit(tempRoot, ["config", "user.name", "Test User"]);
 

@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -11,7 +12,7 @@ const scriptPath = resolve(__dirname, "../../../scripts/copy-types.mjs");
 
 const execNode = (args: string[]) =>
   new Promise<void>((resolvePromise, rejectPromise) => {
-    execFile("node", args, (error) => {
+    execFile(process.execPath, args, (error) => {
       if (error) {
         rejectPromise(error);
         return;
