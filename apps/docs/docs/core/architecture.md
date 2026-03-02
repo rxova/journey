@@ -18,6 +18,16 @@ Journey models a flow as three simple parts:
 
 This keeps the definition small, but still powerful enough for real-world journeys.
 
+## ID-Based Navigation (Not Index-Based)
+
+A key architecture decision is that Journey models movement by step id, not by array index.
+
+Index-based steppers (`goToStepByIndex(2)`) are easy to break when steps are inserted, reordered, hidden behind conditions, or split into branches.
+
+Journey transitions point to ids (`to: "review"`), and direct jumps are id-based (`send({ type: "goToStepById", stepId: "review" })`).
+
+This keeps navigation stable even as flows evolve.
+
 ## Snapshot-First Runtime
 
 The snapshot is the source of truth for what is happening right now.
@@ -26,58 +36,17 @@ It includes the current step, context, history, status, and async state. Instead
 
 That shared truth is what makes rendering, debugging, and testing consistent.
 
-### What the snapshot looks like
+The key shape is:
 
-```ts
-const snapshot = machine.getSnapshot();
+- `currentStepId`
+- `history.timeline` and `history.index`
+- `context`
+- `visited`
+- `stepMeta`
+- `status`
+- `async`
 
-// Example shape
-const exampleSnapshot = {
-  currentStepId: "payment",
-  history: {
-    timeline: ["start", "details", "payment"],
-    index: 2
-  },
-  context: {
-    isVip: false
-  },
-  visited: {
-    start: true,
-    details: true,
-    payment: true,
-    review: false
-  },
-  stepMeta: {
-    start: {},
-    details: {},
-    payment: {},
-    review: {}
-  },
-  status: "running",
-  async: {
-    isLoading: false,
-    byStep: {
-      start: { phase: "idle", eventType: null, transitionId: null, error: null },
-      details: { phase: "idle", eventType: null, transitionId: null, error: null },
-      payment: { phase: "idle", eventType: null, transitionId: null, error: null },
-      review: { phase: "idle", eventType: null, transitionId: null, error: null }
-    }
-  }
-};
-```
-
-What each part means:
-
-- `currentStepId`: where the user is now.
-- `history.timeline`: the path the user actually took.
-- `history.index`: where we are in that path.
-- `context`: shared data for decisions.
-- `visited`: which steps have been seen.
-- `stepMeta`: per-step runtime metadata.
-- `status`: journey lifecycle (`running`, `complete`, `terminated`).
-- `async`: loading/error phase per step.
-
-Invariant: `currentStepId` always equals `history.timeline[history.index]`.
+Canonical reference for full shape, field meaning, and examples: [Core Snapshot](/docs/core/snapshot).
 
 ## Why Timeline + Pointer
 
@@ -86,6 +55,8 @@ Journey history uses a timeline plus a pointer:
 - `history.timeline` stores the realized path.
 - `history.index` points to the current position.
 - `currentStepId` always matches `history.timeline[history.index]`.
+
+For deeper pointer and snapshot invariants, see [Core Snapshot](/docs/core/snapshot) and [Core Timeline Navigation](/docs/core/history).
 
 This model gives predictable navigation. Going back is a pointer move, not a destructive rewrite. Moving forward after going back can safely replace the old future path.
 

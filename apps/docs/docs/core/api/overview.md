@@ -1,7 +1,7 @@
 ---
-id: api
 title: Core API
-sidebar_label: API
+sidebar_label: Overview
+slug: /core/api
 ---
 
 This API is designed around one practical goal: help you define a flow once, then drive it predictably at runtime.
@@ -21,6 +21,24 @@ import {
 ```
 
 Most teams use `createJourneyMachine`, `createTransitions`, and `tx` every day.
+
+## TypeScript-First API Surface
+
+Core exports runtime APIs and strong type helpers together.
+
+Common type imports:
+
+```ts
+import type {
+  JourneyDefinition,
+  JourneySnapshot,
+  JourneyMachine,
+  JourneyEvent,
+  JourneyPayloadFor
+} from "@rxova/journey-core";
+```
+
+For a complete typing guide, see [Core TypeScript](/docs/core/typescript).
 
 ## Typical Usage Flow
 
@@ -144,26 +162,13 @@ const exampleSnapshot = {
 
 `send({ type: "back" })` first tries explicit `back` transitions, then falls back to `goToPreviousStep(1)` when none match.
 
-## Transition Builder Ergonomics
+## Transition Syntax
 
-`tx()` makes transition intent easier to read, especially for branching:
+Transition syntax has its own page:
 
-```ts
-const transitions = createTransitions(
-  tx.from("start").on("goToNextStep").to("details"),
-  tx
-    .from("details")
-    .on("goToNextStep")
-    .choose(
-      tx.when(({ context }) => context.includeExtra).to("extra"),
-      tx.otherwise().to("review")
-    ),
-  tx.any().on("requestClose").to("confirmExit"),
-  tx.any().toTerminate()
-);
-```
+- [Transition Syntax](/docs/core/api/transitions-syntax)
 
-Runtime execution is still deterministic: first valid transition wins.
+It covers plain transition objects, `tx` helpers, and when to use each style.
 
 ## Observability
 

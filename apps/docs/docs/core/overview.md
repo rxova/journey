@@ -2,12 +2,25 @@
 
 ## Motivation
 
-The pain point is this: when an app has many steps and choices, the flow logic gets messy very fast.
+Most wizard/stepper implementations start as a linear list of steps plus a pointer (`currentIndex`). That works well for simple next/previous navigation in a fixed order.
 
-Some rules live in one component, other rules live somewhere else, and side effects happen in random places. Then the app can move to the wrong step, and it becomes hard to understand or fix.
+The problem starts when the product grows. You add conditions, branching, step skipping, revisits, async checks, and context-dependent rules. Logic spreads across components, and one pointer no longer explains the real path a user took.
 
-Journey is made to solve that problem. Think of it like one clear map for your app: it keeps the step rules in one place, so the flow is easier to read, test, and debug.
+At that point, behavior gets hard to reason about and easy to break. Logic spreads inside the steps, and there is no longer a single source of truth.
 
+Journey solves this by making the journey graph explicit in one place. Rules stay centralized, so behavior is easier to read, test, and debug. It also includes first-class TypeScript support, built-in history, and optional versioned `localStorage` persistence.
+
+### Important Difference: Index vs ID Navigation
+
+Most steppers move by index (`goToStepByIndex(2)`). That is fragile: add, remove, or reorder a step, and index-based jumps can point to the wrong place.
+
+Journey moves by stable step ids (`"details"`, `"payment"`, `"review"`). Transition rules target ids, and direct jumps use `goToStepById`.
+
+That means flow intent survives refactors and branching.
+
+## Proof of concept
+
+Let's take a look at an example.
 A simple React wizard may start like this:
 
 ```tsx
@@ -20,7 +33,7 @@ const App = () => (
 );
 ```
 
-Each step then calls helpers like `goToPreviousStep`, `goToNextStep`, and `goToStepById`.
+Each step then calls helpers like `goToPreviousStep`, `goToNextStep`, and `goToStepByIndex`.
 
 That feels easy at first, but as rules grow, each step starts making its own decisions:
 
@@ -32,7 +45,7 @@ const Step2 = () => {
     if (!formIsValid()) return;
     const isVip = await checkVip();
 
-    if (isVip) return goToStepById("vipOffer");
+    if (isVip) return goToStepByIndex(2); // manually skipping a step
     return goToNextStep();
   };
 
@@ -40,47 +53,29 @@ const Step2 = () => {
 };
 ```
 
-Now imagine many steps doing this. The flow rules are spread out, so it is hard to see the full map.
+Now imagine many steps doing this. The flow rules are spread out, so it is hard to see the full map. Add to that confirmations to close a flow for example, that usually sit outisde the wizard layer because stacking isn't easy to reproduce.
 
-With Journey, you can write those rules in one declarative list using `tx()`:
+With Journey Core, you define the graph once and run it with the machine API:
 
-```tsx
-import React from "react";
+```ts
 import {
-  createJourneyBindings,
+  createJourneyMachine,
   createTransitions,
   tx,
-  type JourneyReactDefinition
-} from "@rxova/journey-react";
+  type JourneyDefinition
+} from "@rxova/journey-core";
 
-type StepId = "details" | "payment" | "review";
-type CustomEvent = "applyCoupon";
+type StepIds = "details" | "payment" | "review";
+type CustomEvents = "applyCoupon";
 type Context = { isVip: boolean };
 
-let bindings: ReturnType<typeof createJourneyBindings<Context, StepId, CustomEvent>>;
-
-const Details = () => {
-  const api = bindings.useJourneyApi();
-  return <button onClick={() => void api.goToNextStep()}>Next</button>;
-};
-
-const Payment = () => {
-  const api = bindings.useJourneyApi();
-  return <button onClick={() => void api.send({ type: "applyCoupon" })}>Apply coupon</button>;
-};
-
-const Review = () => {
-  const api = bindings.useJourneyApi();
-  return <button onClick={() => void api.completeJourney()}>Finish</button>;
-};
-
-const journey: JourneyReactDefinition<Context, StepId, CustomEvent> = {
+const journey: JourneyDefinition<Context, StepIds, Event> = {
   initial: "details",
   context: { isVip: false },
   steps: {
-    details: { component: Details },
-    payment: { component: Payment },
-    review: { component: Review }
+    details: {},
+    payment: {},
+    review: {}
   },
   transitions: createTransitions(
     tx
@@ -92,95 +87,102 @@ const journey: JourneyReactDefinition<Context, StepId, CustomEvent> = {
   )
 };
 
-bindings = createJourneyBindings(journey);
+const machine = createJourneyMachine(journey);
 
-export const App = () => {
-  const Provider = bindings.Provider;
-  const StepRenderer = bindings.StepRenderer;
+await machine.goToNextStep();
+await machine.send({ type: "applyCoupon" });
 
-  return (
-    <Provider>
-      <StepRenderer />
-    </Provider>
-  );
-};
+console.log(machine.getSnapshot().currentStepId); // "review"
 ```
 
 This is the key idea: instead of hiding flow logic inside many components, Journey keeps the map in one place.
 
+## Framework Agnostic
+
+`createJourneyMachine` is framework agnostic. It runs the journey runtime without any UI framework dependency.
+
+Today we provide official bindings for React in `@rxova/journey-react`, but the same core machine can be connected to any other framework by reading snapshots and subscribing to machine updates.
+
+## Snapshot At A Glance
+
+The runtime snapshot is the single source of truth:
+
+```ts
+const snapshot = machine.getSnapshot();
+// {
+//   currentStepId: "details",
+//   history: {
+//     timeline: ["start", "details"],
+//     index: 1
+//   },
+//   context: { ... },
+//   visited: { start: true, details: true, review: false },
+//   stepMeta: { start: {}, details: {}, review: {} },
+//   status: "running",
+//   async: {
+//     isLoading: false,
+//     byStep: {
+//       start: { phase: "idle", eventType: null, transitionId: null, error: null },
+//       details: { phase: "idle", eventType: null, transitionId: null, error: null },
+//       review: { phase: "idle", eventType: null, transitionId: null, error: null }
+//     }
+//   }
+// }
+```
+
+`stepMeta`, `status`, and `async` are part of every Core snapshot (they are not optional fields).
+
+`steps` are not part of the snapshot payload. This is intentional. Step definitions live in the journey config, while snapshot only contains runtime state. If you need the known step ids at runtime, they are reflected by keys in `visited`, `stepMeta`, and `async.byStep`.
+
+Three invariants to keep in mind:
+
+- `history.timeline.length >= 1`
+- `0 <= history.index < history.timeline.length`
+- `currentStepId === history.timeline[history.index]`
+
+For full field-by-field meaning and examples, see [Core Snapshot](/docs/core/snapshot).
+
+## TypeScript
+
+Journey is TypeScript-first.
+
+Step ids, events, payloads, context, and metadata can all be typed end-to-end, so invalid transitions and wrong payload shapes are caught at compile time.
+
+For full typing patterns, see [Core TypeScript](/docs/core/typescript).
+
 ## Principles
 
-### Think in maps, not lists
+- Model flows as graphs, not fixed lists.
+- Keep runtime state in one snapshot.
+- Declare transitions explicitly (`from`, `event`, `to`, `when`, `effect`).
+- Keep core semantics independent from UI framework code.
+- Keep runtime behavior deterministic (first valid transition wins).
 
-Regular wizards assume one straight line. Journey assumes real product flows, where users branch, return, and recover. You model the real map once, and the runtime follows it.
+## Core Model
 
-### Keep one source of truth
+A journey definition is small and stable:
 
-Current step, history, context, and status live together in one snapshot. Your UI and your business logic stop disagreeing about where the user is.
+- `steps`: where users can be
+- `transitions`: how users move
+- `context`: shared flow state
+- `initial`: entry step
 
-### Make transitions explicit
+At runtime, the snapshot is the source of truth:
 
-Step changes are declared as readable rules. Teams review them faster, reason about them better, and break less during refactors.
+- `currentStepId`
+- `history.timeline` + `history.index`
+- `context`
+- `visited`
+- `stepMeta`
+- `status`
+- `async`
 
-### Keep flow logic independent from UI details
+Reference details: [Core Snapshot](/docs/core/snapshot)
 
-Journey core owns behavior. React bindings make it ergonomic to use. You get flexibility in the UI without rewriting your flow model.
+## Practical Advantages
 
-### Favor predictable behavior
-
-Journey is built around deterministic matching and clear lifecycle states. Predictability is what makes product flows safe to evolve.
-
-## Why This Feels Better
-
-When flow logic is centralized, new engineers can understand it quickly.
-When history is first-class, debugging gets easier.
-When async transition state is visible, loading and error UX becomes consistent.
-
-This is not just cleaner code. It is a better day-to-day developer experience.
-
-## The Mental Model
-
-A journey definition stays intentionally small:
-
-- `steps`: where users can be.
-- `transitions`: how users can move.
-- `context`: shared decision data.
-- `initial`: where the journey starts.
-
-That small model scales surprisingly well. You can start simple, then add branching, guards, effects, and persistence as the product grows.
-
-## Runtime Confidence
-
-At runtime, Journey gives you a snapshot that describes exactly what is happening now: current step, history pointer, context, status, and async phase.
-
-That snapshot is what makes behavior explainable. You can render from it, log it, test it, and trust it.
-
-## History That Helps
-
-Journey tracks the realized path and a pointer into that path. This means back and revisit behavior is not guesswork. It is deterministic and reproducible.
-
-When issues happen in production, this model gives your team a clear story of how the user got there.
-
-## Persistence Without Friction
-
-Persistence is optional, versioned, and migration-friendly.
-
-If your flow needs resume-later behavior, Journey supports it without forcing complexity on teams that do not need it yet.
-
-## React Experience
-
-In React, Journey feels native: create typed bindings once, render with `Provider` + `StepRenderer`, and use hooks where needed.
-
-You keep the flow model centralized while still writing normal React components.
-
-## Safe by Design
-
-Journey keeps definitions stable at runtime. Step ids and structure stay fixed, while runtime state changes through explicit machine APIs.
-
-This separation keeps your model clean, your behavior observable, and your app safer to evolve.
-
-## Why Teams Adopt Journey
-
-Teams adopt Journey when product flows stop being linear and start becoming real.
-
-If your app has branching, async checks, retries, and recovery paths, Journey gives you a simpler mental model and a codebase that stays maintainable over time.
+- Faster debugging: one snapshot + lifecycle events explains what happened.
+- Safer refactors: typed steps/events/payloads catch breakage early.
+- Predictable navigation: timeline + pointer makes back/forward behavior reproducible.
+- Clear async handling: `when`/`effect` phases are explicit and observable.
+- Optional durability: persistence is versioned and migration-friendly.

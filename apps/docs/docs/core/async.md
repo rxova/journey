@@ -98,6 +98,17 @@ Per-step async phases:
 
 Read from `snapshot.async.byStep[stepId]`.
 
+```ts
+const phase = snapshot.async.byStep[snapshot.currentStepId].phase;
+```
+
+Typical UI mappings:
+
+- `phase === "evaluating-when"`: disable controls or show validating state.
+- `phase === "running-effect"`: show submit/loading state.
+- `phase === "error"`: show recoverable error UI.
+- `phase === "idle"`: render normal interactive step UI.
+
 ## UI Pattern
 
 ```tsx

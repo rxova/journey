@@ -20,9 +20,14 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         "core/overview",
-        "core/getting-started",
         "core/architecture",
-        "core/api",
+        "core/typescript",
+        "core/getting-started",
+        {
+          type: "category",
+          label: "API",
+          items: ["core/api/overview", "core/api/transitions-syntax"]
+        },
         {
           type: "category",
           label: "State & Runtime",
@@ -53,12 +58,16 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "category",
+      label: "Devtool Bridge",
+      collapsed: false,
+      items: ["devtool/getting-started", "devtool/bridge-api"]
+    },
+    {
+      type: "category",
       label: "Devtool (Coming Soon)",
       collapsed: false,
       items: [
         "devtool/overview",
-        "devtool/getting-started",
-        "devtool/bridge-api",
         "devtool/panel-guide",
         "devtool/protocol",
         "devtool/examples",
