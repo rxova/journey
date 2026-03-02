@@ -99,7 +99,7 @@ type ChromeHarness = {
   emitTabRemoved: (tabId: number) => void;
   emitTabUpdated: (
     tabId: number,
-    changeInfo: chrome.tabs.TabChangeInfo,
+    changeInfo: chrome.tabs.OnUpdatedInfo,
     tab: chrome.tabs.Tab
   ) => void;
   setSendMessageImpl: (impl: SendMessageImpl) => void;
@@ -114,8 +114,8 @@ const createChromeHarness = (options?: {
 }): ChromeHarness => {
   const onConnect = createListenerSet<[chrome.runtime.Port]>();
   const onRuntimeMessage = createListenerSet<[unknown, chrome.runtime.MessageSender]>();
-  const onTabRemoved = createListenerSet<[number, chrome.tabs.TabRemoveInfo]>();
-  const onTabUpdated = createListenerSet<[number, chrome.tabs.TabChangeInfo, chrome.tabs.Tab]>();
+  const onTabRemoved = createListenerSet<[number, chrome.tabs.OnRemovedInfo]>();
+  const onTabUpdated = createListenerSet<[number, chrome.tabs.OnUpdatedInfo, chrome.tabs.Tab]>();
   const runtimeState: { lastError: Error | undefined } = {
     lastError: undefined
   };
