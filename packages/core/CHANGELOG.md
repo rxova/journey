@@ -1,5 +1,11 @@
 # @rxova/journey-core
 
+## 0.6.0
+
+### Minor Changes
+
+- 56234c2: Improve docs across Core, React, and Devtool Bridge, including API restructuring, clearer runtime semantics references, and TypeScript-focused guidance.
+
 ## 0.5.0
 
 ### Minor Changes
