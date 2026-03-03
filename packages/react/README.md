@@ -12,10 +12,12 @@ npm i @rxova/journey-react
 
 `@rxova/journey-react` is bindings-first:
 
-- `createJourneyBindings(journey)` returns a typed bundle:
-- `Provider`
-- `StepRenderer`
-- `useJourneyApi`, `useJourneySnapshot`, `useJourneyMachine`
+- `createJourneyBindings(journey)` returns a typed bundle that contains:
+  - `Provider`
+  - `StepRenderer`
+  - `useJourneyApi`
+  - `useJourneySnapshot`
+  - `useJourneyMachine`
 
 No per-hook generic arguments are needed at callsites.
 
@@ -67,6 +69,42 @@ export const App = () => {
 };
 ```
 
+## Split Files Pattern (Hooks In Steps)
+
+If step components live in separate files and call Journey hooks, export bindings as `let`:
+
+```tsx
+// journey-bindings.ts
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
+import { Start, Review } from "./steps";
+
+type StepId = "start" | "review";
+type Ctx = { name: string };
+
+export let bindings: ReturnType<typeof createJourneyBindings<Ctx, StepId>>;
+
+const journey: JourneyReactDefinition<Ctx, StepId> = {
+  initial: "start",
+  context: { name: "" },
+  steps: {
+    start: { component: Start },
+    review: { component: Review }
+  },
+  transitions: [
+    { from: "start", event: "goToNextStep", to: "review" },
+    { from: "review", event: "completeJourney" }
+  ]
+};
+
+bindings = createJourneyBindings(journey);
+```
+
+## Hooks
+
+- `useJourneySnapshot()` subscribes to the machine and rerenders on changes.
+- `useJourneyApi()` returns typed commands.
+- `useJourneyMachine()` returns the underlying core machine instance.
+
 ## Journey API Helpers
 
 From `bindings.useJourneyApi()`:
@@ -86,3 +124,77 @@ Imperative jump is available through `send`:
 ```ts
 await api.send({ type: "goToStepById", stepId: "review" });
 ```
+
+## Provider Behavior
+
+- `<Provider />` creates an internal core machine from the bound journey.
+- `<Provider journey={...} />` lets you pass a different journey definition at runtime.
+- Internal machine is preserved across `journey` prop changes by default.
+- Set `resetOnJourneyChange` to rebuild internal machine when `journey` identity changes.
+- `<Provider machine={externalMachine} />` uses your machine directly.
+- `persistence` applies only when Provider owns the internal machine.
+
+```tsx
+<bindings.Provider journey={dynamicJourney} resetOnJourneyChange>
+  <bindings.StepRenderer />
+</bindings.Provider>
+```
+
+## Async and Error UI
+
+Core async state is exposed via snapshot:
+
+```tsx
+const api = bindings.useJourneyApi();
+const snapshot = bindings.useJourneySnapshot();
+
+if (snapshot.async.isLoading) return <p>Working...</p>;
+
+const currentAsync = snapshot.async.byStep[snapshot.currentStepId];
+if (currentAsync.phase === "error") {
+  return (
+    <div>
+      <p>Something failed.</p>
+      <button onClick={() => api.clearStepError()}>Dismiss</button>
+    </div>
+  );
+}
+```
+
+## Devtools Bridge
+
+Use `useJourneyMachine()` and attach the devtools bridge from an effect:
+
+```tsx
+import React from "react";
+import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
+
+const JourneyDevtoolsBridge = () => {
+  const machine = bindings.useJourneyMachine();
+
+  React.useEffect(() => {
+    return attachJourneyDevtools(machine, { label: "Signup" });
+  }, [machine]);
+
+  return null;
+};
+```
+
+## Transition Ergonomics
+
+`@rxova/journey-react` re-exports core transition builders:
+
+```ts
+import { createTransitions, tx } from "@rxova/journey-react";
+
+const transitions = createTransitions(
+  tx.from("start").on("goToNextStep").to("review"),
+  tx.from("review").toComplete()
+);
+```
+
+## SSR and RSC Notes
+
+- This package is a client entry (`"use client"`).
+- In React Server Components environments, call bindings/hooks from client components.
+- Server-side rendering is supported (Provider + StepRenderer render safely on the server).
