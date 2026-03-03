@@ -64,7 +64,7 @@ jobs:
 
       - name: Upload browser integration artifacts
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: apps-devtools-browser-artifacts
           path: |
@@ -77,7 +77,7 @@ jobs:
           tar -czf apps-devtools-dist.tgz -C apps/devtools dist
 
       - name: Upload extension artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: apps-devtools-dist
           path: apps-devtools-dist.tgz

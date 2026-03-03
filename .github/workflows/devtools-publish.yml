@@ -115,7 +115,7 @@ jobs:
           fi
 
       - name: Upload packaged zip artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: apps-devtools-upload-zip
           path: apps-devtools.zip
