@@ -74,7 +74,7 @@ export default function Home(): ReactNode {
     >
       <main className="min-h-screen bg-gradient-to-b from-white via-ink-50 to-white dark:from-[#181a24] dark:via-[#1b1e2b] dark:to-[#171923]">
         <section className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-grid-fade bg-[length:24px_24px] opacity-60 dark:opacity-22" />
+          <div className="absolute inset-0 bg-grid-fade bg-[length:24px_24px] opacity-60 dark:opacity-20" />
           <div className="absolute -top-32 right-0 h-72 w-72 rounded-full bg-brand-200/60 blur-3xl dark:bg-[#8e7dff]/10" />
           <div className="absolute -bottom-40 left-0 h-80 w-80 rounded-full bg-ink-200/50 blur-3xl dark:bg-[#6b78a0]/10" />
 

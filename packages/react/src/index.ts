@@ -1,3 +1,4 @@
+// Mark this entry point as a Next.js App Router client module so it can be used in client components.
 "use client";
 
 export { createJourneyBindings } from "./bindings";
