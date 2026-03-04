@@ -27,7 +27,7 @@ describe("copy-types script", () => {
     const distDir = join(tempRoot, "dist");
     await mkdir(distDir, { recursive: true });
 
-    const dts = "export type Foo = { bar: string };\\n//# sourceMappingURL=index.d.ts.map";
+    const dts = "export type Foo = { bar: string };\n//# sourceMappingURL=index.d.ts.map";
     const dtsMap = JSON.stringify({
       version: 3,
       file: "index.d.ts",
