@@ -1,5 +1,18 @@
 # @rxova/journey-react
 
+## 0.6.1
+
+### Patch Changes
+
+- 7be5e0c: minor updates
+  - adds shell header + set -e to Husky hooks,
+  - fixes test fixture newline escaping,
+  - adds explanatory comment before "use client",
+  - tiny docs visual tweak.
+
+- Updated dependencies [7be5e0c]
+  - @rxova/journey-core@0.6.1
+
 ## 0.6.0
 
 ### Minor Changes
