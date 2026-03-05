@@ -77,10 +77,15 @@ export const createProvider = <
 
     const resolvedMachine = machine ?? internalMachineRef.current!;
     const resolvedJourney = machine ? incomingJourney : journeyRef.current;
-    const value: JourneyStoreValue<TContext, TStepId, TCustomEvent, TEventPayloadMap, TStepMeta> = {
-      machine: resolvedMachine,
-      journey: resolvedJourney
-    };
+    const value = React.useMemo<
+      JourneyStoreValue<TContext, TStepId, TCustomEvent, TEventPayloadMap, TStepMeta>
+    >(
+      () => ({
+        machine: resolvedMachine,
+        journey: resolvedJourney
+      }),
+      [resolvedMachine, resolvedJourney]
+    );
 
     return <JourneyContext.Provider value={value}>{children}</JourneyContext.Provider>;
   };
