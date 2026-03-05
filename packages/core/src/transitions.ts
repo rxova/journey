@@ -85,6 +85,9 @@ const buildTerminalTransition = <
     event
   }) as JourneyEventTransition<TContext, TStepId, TEventType, Record<never, never>>;
 
+/**
+ * Fluent helpers for building journey transitions with type-safe branches.
+ */
 export const tx = {
   from: <TStepId extends string, TContext = unknown>(from: TStepId) => ({
     on: <TEventType extends string>(event: TEventType) =>
@@ -144,6 +147,9 @@ export const tx = {
   })
 };
 
+/**
+ * Flattens transition items and transition arrays into a single transition list.
+ */
 export const createTransitions = <
   TContext,
   TStepId extends string,

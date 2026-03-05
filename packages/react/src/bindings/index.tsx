@@ -12,6 +12,10 @@ import { createUseJourneyApi } from "./useJourneyApi";
 import { createUseJourneyMachine } from "./useJourneyMachine";
 import { createUseJourneySnapshot } from "./useJourneySnapshot";
 
+/**
+ * Creates a typed React integration bundle (Provider, StepRenderer, and hooks)
+ * bound to a specific journey definition.
+ */
 export const createJourneyBindings = <
   TContext,
   TStepId extends string,
