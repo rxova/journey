@@ -4,6 +4,7 @@ import type {
   JourneyAsyncPhase,
   JourneyDefaultEventType,
   JourneyDefinition,
+  JourneyEvent,
   JourneyEventPayloadMap,
   JourneyMachine,
   JourneyMachineOptions,
@@ -101,13 +102,13 @@ export function createJourneyMachine<
 
   validateJourneyTransitions(journey.transitions, journey.steps);
 
-  const buildStepMeta = (): Record<TStepId, TStepMeta> =>
-    Object.fromEntries(
-      Object.entries(journey.steps).map(([stepId, definition]) => [
-        stepId,
-        (definition as JourneyStepDefinition<TStepMeta>).meta as TStepMeta
-      ])
-    ) as Record<TStepId, TStepMeta>;
+  const buildStepMeta = (): Record<TStepId, TStepMeta> => {
+    const stepMeta = {} as Record<TStepId, TStepMeta>;
+    for (const stepId of Object.keys(journey.steps) as TStepId[]) {
+      stepMeta[stepId] = journey.steps[stepId].meta as TStepMeta;
+    }
+    return stepMeta;
+  };
 
   const { clearOnReset, hydrateSnapshot, persistSnapshot, removePersistedSnapshot } =
     createPersistenceController({
@@ -382,29 +383,15 @@ export function createJourneyMachine<
         const result = applyLastVisitedNavigation("goToLastVisitedStep");
         return result;
       }),
-    goToNextStep: () =>
-      machine.send({ type: "goToNextStep" } as Extract<
-        Parameters<typeof machine.send>[0],
-        { type: "goToNextStep" }
-      >),
+    goToNextStep: () => machine.send({ type: "goToNextStep" }),
     terminateJourney: (payload) =>
-      machine.send(
-        (payload === undefined
-          ? ({ type: "terminateJourney" } as unknown)
-          : ({ type: "terminateJourney", payload } as unknown)) as Extract<
-          Parameters<typeof machine.send>[0],
-          { type: "terminateJourney" }
-        >
-      ),
+      payload === undefined
+        ? machine.send({ type: "terminateJourney" })
+        : machine.send({ type: "terminateJourney", payload }),
     completeJourney: (payload) =>
-      machine.send(
-        (payload === undefined
-          ? ({ type: "completeJourney" } as unknown)
-          : ({ type: "completeJourney", payload } as unknown)) as Extract<
-          Parameters<typeof machine.send>[0],
-          { type: "completeJourney" }
-        >
-      ),
+      payload === undefined
+        ? machine.send({ type: "completeJourney" })
+        : machine.send({ type: "completeJourney", payload }),
     send: (event) =>
       queue(async () => {
         if (snapshot.status !== JOURNEY_STATUS.RUNNING) {
@@ -448,16 +435,17 @@ export function createJourneyMachine<
           return buildSendResult(snapshot, true, JOURNEY_EVENT.GO_TO_STEP_BY_ID);
         }
 
+        const transitionEvent = event as JourneyEvent<TStepId, TEventType, TPayloadMap>;
         emit({ type: "transition.start", from: fromStep, event, timestamp: now() });
 
         let transition;
         try {
-          transition = await selectTransition(journey.transitions, snapshot, event, {
+          transition = await selectTransition(journey.transitions, snapshot, transitionEvent, {
             onAsyncGuardStart: (currentTransition) => {
               setStepLoading(
                 fromStep,
                 JOURNEY_ASYNC_PHASE.EVALUATING_WHEN,
-                event.type,
+                transitionEvent.type,
                 currentTransition.id
               );
             },
@@ -465,15 +453,15 @@ export function createJourneyMachine<
               setStepIdle(fromStep);
             },
             onAsyncGuardError: (currentTransition, error) => {
-              setStepError(fromStep, event.type, error, currentTransition.id);
+              setStepError(fromStep, transitionEvent.type, error, currentTransition.id);
             }
           });
         } catch (error) {
-          setStepError(fromStep, event.type, error);
+          setStepError(fromStep, transitionEvent.type, error);
           emit({
             type: "transition.error",
             from: fromStep,
-            eventType: event.type,
+            eventType: transitionEvent.type,
             transitionId: null,
             error,
             timestamp: now()
@@ -507,13 +495,13 @@ export function createJourneyMachine<
             from: snapshot.currentStepId,
             timeline: snapshot.history.timeline,
             index: snapshot.history.index,
-            event
+            event: transitionEvent
           });
           if (isPromiseLike(effectResultPromise)) {
             setStepLoading(
               fromStep,
               JOURNEY_ASYNC_PHASE.RUNNING_EFFECT,
-              event.type as string,
+              transitionEvent.type,
               transition.id
             );
           }
@@ -522,11 +510,11 @@ export function createJourneyMachine<
           try {
             effectResult = await effectResultPromise;
           } catch (error) {
-            setStepError(fromStep, event.type, error, transition.id);
+            setStepError(fromStep, transitionEvent.type, error, transition.id);
             emit({
               type: "transition.error",
               from: fromStep,
-              eventType: event.type,
+              eventType: transitionEvent.type,
               transitionId: transition.id ?? null,
               error,
               timestamp: now()
@@ -566,7 +554,7 @@ export function createJourneyMachine<
             type: "transition.success",
             from: fromStep,
             to: target,
-            eventType: event.type,
+            eventType: transitionEvent.type,
             transitionId: transition.id ?? null,
             timestamp: now()
           });
@@ -599,7 +587,7 @@ export function createJourneyMachine<
           type: "transition.success",
           from: fromStep,
           to: snapshot.currentStepId,
-          eventType: event.type,
+          eventType: transitionEvent.type,
           transitionId: transition.id ?? null,
           timestamp: now()
         });

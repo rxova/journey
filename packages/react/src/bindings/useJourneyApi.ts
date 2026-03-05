@@ -1,6 +1,6 @@
 import React from "react";
 
-import type { JourneyEvent, JourneyPayloadFor } from "@rxova/journey-core";
+import type { JourneyPayloadFor, JourneySendEvent } from "@rxova/journey-core";
 import type { JourneyEventType, JourneyReactEventPayloadMap, JourneyStoreValue } from "../types";
 
 type UseJourneyStore<
@@ -26,7 +26,9 @@ export const createUseJourneyApi = <
     const machine = useJourneyStore("useJourneyApi").machine;
 
     const send = React.useCallback(
-      async (event: JourneyEvent<TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap>) => {
+      async (
+        event: JourneySendEvent<TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap>
+      ) => {
         await machine.send(event);
       },
       [machine]

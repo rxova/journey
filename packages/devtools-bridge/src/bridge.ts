@@ -33,10 +33,6 @@ export type JourneyDevtoolsBridgeOptions = {
   commandsEnabled?: boolean;
 };
 
-type JourneySendEvent<TStepId extends string> = Parameters<
-  JourneyMachine<unknown, TStepId, string, Record<never, never>, unknown>["send"]
->[0];
-
 type SendOutcome<TContext, TStepId extends string, TStepMeta> = {
   snapshot: JourneySnapshot<TContext, TStepId, TStepMeta>;
   transitioned?: boolean;
@@ -256,6 +252,22 @@ const serializeSnapshot = <TContext, TStepId extends string, TStepMeta>(
   };
 };
 
+const isKnownStepId = <TContext, TStepId extends string, TStepMeta>(
+  snapshot: JourneySnapshot<TContext, TStepId, TStepMeta>,
+  stepId: string
+): stepId is TStepId => stepId in snapshot.stepMeta;
+
+const assertKnownStepId = <TContext, TStepId extends string, TStepMeta>(
+  machine: JourneyMachine<TContext, TStepId, string, Record<never, never>, TStepMeta>,
+  stepId: string,
+  commandType: JourneyDevtoolsCommand["type"]
+): TStepId => {
+  if (!isKnownStepId(machine.getSnapshot(), stepId)) {
+    throw new Error(`Unknown stepId "${stepId}" for "${commandType}" command.`);
+  }
+  return stepId;
+};
+
 const runCommand = async <TContext, TStepId extends string, TStepMeta>(
   machine: JourneyMachine<TContext, TStepId, string, Record<never, never>, TStepMeta>,
   command: JourneyDevtoolsCommand
@@ -263,7 +275,7 @@ const runCommand = async <TContext, TStepId extends string, TStepMeta>(
   switch (command.type) {
     case "goToNextStep":
     case "completeJourney": {
-      const result = await machine.send({ type: command.type } as JourneySendEvent<TStepId>);
+      const result = await machine.send({ type: command.type });
       return {
         snapshot: result.snapshot,
         transitioned: result.transitioned,
@@ -271,7 +283,7 @@ const runCommand = async <TContext, TStepId extends string, TStepMeta>(
       };
     }
     case "terminateMachine": {
-      const result = await machine.send({ type: "terminateJourney" } as JourneySendEvent<TStepId>);
+      const result = await machine.send({ type: "terminateJourney" });
       return {
         snapshot: result.snapshot,
         transitioned: result.transitioned,
@@ -279,10 +291,11 @@ const runCommand = async <TContext, TStepId extends string, TStepMeta>(
       };
     }
     case "goToStepById": {
+      const stepId = assertKnownStepId(machine, command.stepId, command.type);
       const result = await machine.send({
         type: "goToStepById",
-        stepId: command.stepId
-      } as JourneySendEvent<TStepId>);
+        stepId
+      });
       return {
         snapshot: result.snapshot,
         transitioned: result.transitioned,
@@ -310,30 +323,32 @@ const runCommand = async <TContext, TStepId extends string, TStepMeta>(
         command.event.payload === undefined
           ? { type: command.event.type }
           : { type: command.event.type, payload: command.event.payload };
-      const result: JourneySendResult<TContext, TStepId, TStepMeta> = await machine.send(
-        sendEvent as JourneySendEvent<TStepId>
-      );
+      const result: JourneySendResult<TContext, TStepId, TStepMeta> = await machine.send(sendEvent);
       return {
         snapshot: result.snapshot,
         transitioned: result.transitioned,
         ...(result.transitionId ? { transitionId: result.transitionId } : {})
       };
     }
-    case "updateStepMetadata":
+    case "updateStepMetadata": {
+      const stepId = assertKnownStepId(machine, command.stepId, command.type);
       return {
-        snapshot: machine.updateStepMetadata(
-          command.stepId as TStepId,
-          () => command.metadata as TStepMeta
-        )
+        snapshot: machine.updateStepMetadata(stepId, () => command.metadata as TStepMeta)
       };
+    }
     case "resetMachine":
       return {
         snapshot: machine.resetMachine()
       };
-    case "clearStepError":
+    case "clearStepError": {
+      const stepId =
+        command.stepId === undefined
+          ? undefined
+          : assertKnownStepId(machine, command.stepId, command.type);
       return {
-        snapshot: machine.clearStepError(command.stepId as TStepId | undefined)
+        snapshot: machine.clearStepError(stepId)
       };
+    }
   }
 };
 
