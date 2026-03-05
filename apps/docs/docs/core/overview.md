@@ -109,25 +109,26 @@ The runtime snapshot is the single source of truth:
 
 ```ts
 const snapshot = machine.getSnapshot();
-// {
-//   currentStepId: "details",
-//   history: {
-//     timeline: ["start", "details"],
-//     index: 1
-//   },
-//   context: { ... },
-//   visited: { start: true, details: true, review: false },
-//   stepMeta: { start: {}, details: {}, review: {} },
-//   status: "running",
-//   async: {
-//     isLoading: false,
-//     byStep: {
-//       start: { phase: "idle", eventType: null, transitionId: null, error: null },
-//       details: { phase: "idle", eventType: null, transitionId: null, error: null },
-//       review: { phase: "idle", eventType: null, transitionId: null, error: null }
-//     }
-//   }
-// }
+
+const exampleSnapshot = {
+  currentStepId: "details",
+  history: {
+    timeline: ["start", "details"],
+    index: 1
+  },
+  context: { couponCode: null },
+  visited: { start: true, details: true, review: false },
+  stepMeta: { start: {}, details: {}, review: {} },
+  status: "running",
+  async: {
+    isLoading: false,
+    byStep: {
+      start: { phase: "idle", eventType: null, transitionId: null, error: null },
+      details: { phase: "idle", eventType: null, transitionId: null, error: null },
+      review: { phase: "idle", eventType: null, transitionId: null, error: null }
+    }
+  }
+};
 ```
 
 `stepMeta`, `status`, and `async` are part of every Core snapshot (they are not optional fields).

@@ -2,10 +2,14 @@
 
 ## Architecture Overview
 
-Rxova Journey is a small monorepo with two packages and shared tooling:
+Rxova Journey is a small monorepo with package and app workspaces:
 
 - `packages/core`: headless journey state machine, types, and runtime logic.
 - `packages/react`: React provider/hooks/renderer built on top of core.
+- `packages/devtools-bridge`: bridge API for integrating machines with devtools.
+- `apps/docs`: Docusaurus documentation site.
+- `apps/demo`: local playground app for runtime integration checks.
+- `apps/devtools`: browser extension app.
 - `packages/*/scripts`: build pipelines for each package.
 
 If you are unsure where a change belongs, start in `packages/core` for
@@ -33,6 +37,7 @@ pnpm run lint
 pnpm run typecheck
 pnpm run test
 pnpm run build
+pnpm run version:major:check
 ```
 
 ### Package-Scoped Commands
@@ -84,11 +89,13 @@ Releases are automated with Changesets and GitHub Actions.
 
 ### Versioning Policy
 
-- `@rxova/journey-core`, `@rxova/journey-react`, `@rxova/journey-devtools-bridge`, `apps-docs`, and `apps-demo` are versioned together as a fixed release group.
-- `apps-devtools` is versioned independently.
-- Other packages are versioned independently.
-- If only `@rxova/journey-react` changes, bump React only.
-- If `@rxova/journey-core` changes, core is bumped and React receives a patch bump to update its dependency range when needed.
+- `@rxova/journey-core`, `@rxova/journey-react`, and `@rxova/journey-devtools-bridge` are independently versioned with Changesets.
+- Their major versions must stay aligned (`pnpm run version:major:check` enforces this in CI).
+- Private app workspaces `apps-docs` and `apps-devtools` are also versioned with Changesets for docs/version tracking, but they are not published to npm.
+- `apps-demo` remains ignored by Changesets.
+- Docs history is tracked with Docusaurus docs version snapshots (`pnpm -C apps/docs run version:cut <version>`).
+- Starting at `0.6.0`, treat the public API surface as stabilization baseline: `0.6.x` releases should be backward compatible by default.
+- If a breaking change is unavoidable before `1.0.0`, call it out explicitly in the changeset and changelog so consumers can plan migrations.
 
 ## Browser Compatibility
 

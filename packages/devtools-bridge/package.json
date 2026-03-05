@@ -49,7 +49,7 @@
   },
   "scripts": {
     "build": "pnpm run clean && node ./scripts/build.mjs && tsc -p tsconfig.build.json && node ../../scripts/copy-types.mjs dist",
-    "clean": "rm -rf dist tsconfig.build.tsbuildinfo",
+    "clean": "node ../../scripts/clean-paths.mjs dist tsconfig.build.tsbuildinfo",
     "coverage": "pnpm --workspace-root vitest run --coverage --coverage.include=packages/devtools-bridge/src/** --coverage.reporter=text-summary",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "publint": "publint",

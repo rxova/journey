@@ -29,7 +29,10 @@ function hasChangeset(files) {
 function isDocsOrConfigOnly(files) {
   const allowedPattern = /^(docs\/|\.github\/|\.changeset\/|.*\.(md|txt|yml|yaml|json))$/;
   const touchesPackage = files.some(
-    (file) => file.startsWith("packages/core/") || file.startsWith("packages/react/")
+    (file) =>
+      file.startsWith("packages/core/") ||
+      file.startsWith("packages/react/") ||
+      file.startsWith("packages/devtools-bridge/")
   );
 
   return files.length > 0 && files.every((file) => allowedPattern.test(file)) && !touchesPackage;

@@ -1,6 +1,6 @@
 {
   "name": "rxova-journey",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "A declarative journey graph for non-linear UI flows",
   "keywords": [
     "react",
@@ -19,9 +19,14 @@
   },
   "scripts": {
     "build": "pnpm -r build",
-    "clean": "pnpm -r clean && rm -rf coverage",
+    "clean": "pnpm -r clean && node ./scripts/clean-paths.mjs coverage",
     "changeset": "changeset",
-    "changeset:version": "changeset version",
+    "version:major:check": "node ./scripts/check-package-major-versions.mjs",
+    "changeset:version": "node ./scripts/changeset-version.mjs && pnpm run docs:version-labels:sync && pnpm run docs:release-notes:sync",
+    "docs:version-labels:sync": "node ./scripts/sync-doc-version-labels.mjs",
+    "docs:version-labels:check": "node ./scripts/sync-doc-version-labels.mjs --check",
+    "docs:release-notes:sync": "node ./scripts/sync-doc-release-notes.mjs",
+    "docs:release-notes:check": "node ./scripts/sync-doc-release-notes.mjs --check",
     "release": "pnpm -r build && changeset publish",
     "releases": "pnpm run changeset:version && pnpm run release",
     "typecheck": "pnpm -r typecheck && tsc --noEmit -p tsconfig.test.json",

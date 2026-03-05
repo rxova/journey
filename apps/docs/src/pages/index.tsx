@@ -104,10 +104,13 @@ export default function Home(): ReactNode {
                   Explore React
                 </Link>
                 <Link
-                  className={`${ctaClasses} border border-ink-300 text-ink-700 hover:border-ink-400 dark:border-ink-500/80 dark:text-ink-50 dark:hover:border-brand-300 dark:hover:text-brand-200`}
+                  className={`${ctaClasses} pl-4 border border-brand-400 bg-brand-100 text-brand-900 hover:border-brand-500 hover:bg-brand-200 dark:border-brand-300 dark:bg-brand-300/20 dark:text-brand-100 dark:hover:border-brand-200 dark:hover:bg-brand-300/30`}
                   to="/docs/devtool/overview"
                 >
-                  Check the Devtools Docs (Coming Soon)
+                  <span className="mr-2 rounded-full bg-brand-700 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-white dark:bg-brand-200 dark:text-ink-900">
+                    New!
+                  </span>
+                  Chrome Developer DevTools
                 </Link>
               </div>
 
@@ -122,12 +125,17 @@ export default function Home(): ReactNode {
                   </p>
                 </div>
                 <div className="home-surface rounded-2xl border border-ink-300/80 bg-white/90 p-6 shadow-[0_20px_44px_-28px_rgba(20,35,60,0.38)] transition hover:-translate-y-1 hover:border-ink-400/80 hover:shadow-[0_24px_52px_-30px_rgba(20,35,60,0.45)] dark:hover:border-[#5f6d95]">
-                  <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-ink-900 dark:text-ink-50">
-                    Status
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-brand-700 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-white dark:bg-brand-200 dark:text-ink-900">
+                      New!
+                    </span>
+                    <span className="text-sm font-extrabold uppercase tracking-[0.14em] text-ink-900 dark:text-ink-50">
+                      Status
+                    </span>
+                  </div>
                   <p className="mt-3 text-sm text-ink-700 dark:text-ink-100">
-                    Pre-1.0 releases are moving fast. Docs always reflect the latest published
-                    version until 1.0 lands.
+                    Since version 0.6.1, docs are versioned per package so you can switch between
+                    released versions in each docs section.
                   </p>
                 </div>
                 <div className="home-surface rounded-2xl border border-ink-300/80 bg-white/90 p-6 shadow-[0_20px_44px_-28px_rgba(20,35,60,0.38)] transition hover:-translate-y-1 hover:border-ink-400/80 hover:shadow-[0_24px_52px_-30px_rgba(20,35,60,0.45)] dark:hover:border-[#5f6d95]">
