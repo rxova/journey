@@ -64,6 +64,41 @@ This creates plugin-scoped version files/directories, for example:
 - `apps/docs/core_versioned_docs/version-<version>/...`
 - `apps/docs/core_versioned_sidebars/version-<version>-sidebars.json`
 
+Current docs labels are synced from package versions (`0.x.y`) so the selector/chip can show latest patch (for example `0.6.2`) while older snapshots remain fixed (for example `0.5.0`).
+
+Sync docs labels:
+
+```bash
+pnpm run docs:version-labels:sync
+```
+
+Check labels are up to date:
+
+```bash
+pnpm run docs:version-labels:check
+```
+
+## Release Notes In Docs
+
+Per-package release notes pages are generated from changelog files:
+
+- Core: `packages/core/CHANGELOG.md` -> `apps/docs/docs/core/releases.md`
+- React: `packages/react/CHANGELOG.md` -> `apps/docs/docs/react/releases.md`
+- Bridge: `packages/devtools-bridge/CHANGELOG.md` -> `apps/docs/docs/bridge/releases.md`
+- Chrome DevTools: `apps/devtools/CHANGELOG.md` -> `apps/docs/docs/devtool/releases.md`
+
+Sync generated release docs:
+
+```bash
+pnpm run docs:release-notes:sync
+```
+
+Check they are up to date:
+
+```bash
+pnpm run docs:release-notes:check
+```
+
 ## Deploy
 
 Deployment is automated on pushes to `main` that touch:

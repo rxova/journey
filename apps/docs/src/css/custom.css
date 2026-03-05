@@ -20,7 +20,7 @@
   --ifm-navbar-height: 4.25rem;
   --ifm-global-radius: 12px;
   --docusaurus-highlighted-code-line-bg: rgba(15, 143, 106, 0.12);
-  --ifm-navbar-background-color: rgba(255, 255, 255, 0.88);
+  --ifm-navbar-background-color: #ffffff;
   --ifm-navbar-link-color: #253041;
   --ifm-footer-background-color: #f4f7fb;
   --ifm-footer-color: #2b374a;
@@ -39,7 +39,7 @@
   --docusaurus-highlighted-code-line-bg: rgba(47, 215, 159, 0.18);
   --ifm-background-color: #111c28;
   --ifm-background-surface-color: #172433;
-  --ifm-navbar-background-color: rgba(23, 36, 51, 0.84);
+  --ifm-navbar-background-color: #172433;
   --ifm-navbar-link-color: #d6e2f3;
   --ifm-footer-background-color: #172433;
   --ifm-footer-color: #d8e3f2;
@@ -66,7 +66,8 @@ body,
 
 /* Tailwind preflight resets image sizing; restore navbar logo constraints. */
 .navbar {
-  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   border-bottom: 1px solid rgba(189, 203, 224, 0.6);
 }
 
@@ -201,6 +202,28 @@ body,
 
 [data-theme="dark"] .menu__link--sublist-caret::after,
 [data-theme="dark"] .menu__caret::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239eb0c9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E");
+  opacity: 0.95;
+}
+
+/* Align mobile in-page TOC caret with sidebar category caret (same icon weight/size). */
+.theme-doc-toc-mobile [class*="tocCollapsibleButton"]::after {
+  content: "";
+  width: 1.29rem;
+  height: 1.29rem;
+  background: no-repeat center / 1.29rem 1.29rem
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23566a86' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E");
+  filter: none;
+  opacity: 0.92;
+  transform: rotate(90deg);
+  transition: transform 160ms ease;
+}
+
+.theme-doc-toc-mobile [class*="tocCollapsibleButtonExpanded"]::after {
+  transform: rotate(-90deg);
+}
+
+[data-theme="dark"] .theme-doc-toc-mobile [class*="tocCollapsibleButton"]::after {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239eb0c9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E");
   opacity: 0.95;
 }

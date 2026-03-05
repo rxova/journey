@@ -3,6 +3,7 @@ import type { SidebarsConfig } from "@docusaurus/plugin-content-docs";
 const sidebars: SidebarsConfig = {
   coreSidebar: [
     "overview",
+    "releases",
     "architecture",
     "typescript",
     "getting-started",

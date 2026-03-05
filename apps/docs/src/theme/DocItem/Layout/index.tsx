@@ -10,7 +10,6 @@ import DocItemFooter from "@theme/DocItem/Footer";
 import DocItemPaginator from "@theme/DocItem/Paginator";
 import DocItemTOCDesktop from "@theme/DocItem/TOC/Desktop";
 import DocItemTOCMobile from "@theme/DocItem/TOC/Mobile";
-import DocVersionBadge from "@theme/DocVersionBadge";
 import DocVersionBanner from "@theme/DocVersionBanner";
 
 import DocsVersionControls from "@site/src/components/DocsVersionControls";
@@ -54,7 +53,6 @@ export default function DocItemLayout({ children }: { children: ReactNode }): Re
           <article>
             <DocBreadcrumbs />
             <DocsVersionControls />
-            <DocVersionBadge />
             {docTOC.mobile}
             <DocItemContent children={children} />
             <DocItemFooter />

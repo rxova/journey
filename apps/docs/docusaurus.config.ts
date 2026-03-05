@@ -1,8 +1,41 @@
 import { themes as prismThemes } from "prism-react-renderer";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
+
+type DocsVersionLabels = {
+  core: string;
+  react: string;
+  bridge: string;
+  "chrome-devtools": string;
+};
+
+function loadDocsVersionLabels(): DocsVersionLabels {
+  const configDir = path.dirname(fileURLToPath(import.meta.url));
+  const labelsPath = path.join(configDir, "version-labels.json");
+  const labels = JSON.parse(readFileSync(labelsPath, "utf8")) as Partial<DocsVersionLabels>;
+
+  const requiredKeys: Array<keyof DocsVersionLabels> = [
+    "core",
+    "react",
+    "bridge",
+    "chrome-devtools"
+  ];
+
+  for (const key of requiredKeys) {
+    if (!labels[key]) {
+      throw new Error(`Missing docs version label for "${key}" in apps/docs/version-labels.json`);
+    }
+  }
+
+  return labels as DocsVersionLabels;
+}
+
+const docsVersionLabels = loadDocsVersionLabels();
 
 const config: Config = {
   title: "Rxova Journey",
@@ -51,7 +84,7 @@ const config: Config = {
         lastVersion: "current",
         versions: {
           current: {
-            label: "0.6.1"
+            label: docsVersionLabels.core
           }
         }
       }
@@ -67,7 +100,7 @@ const config: Config = {
         lastVersion: "current",
         versions: {
           current: {
-            label: "0.6.1"
+            label: docsVersionLabels.react
           }
         }
       }
@@ -83,7 +116,7 @@ const config: Config = {
         lastVersion: "current",
         versions: {
           current: {
-            label: "0.6.1"
+            label: docsVersionLabels.bridge
           }
         }
       }
@@ -99,7 +132,7 @@ const config: Config = {
         lastVersion: "current",
         versions: {
           current: {
-            label: "0.6.1"
+            label: docsVersionLabels["chrome-devtools"]
           }
         }
       }
