@@ -14,7 +14,7 @@ Source: [`packages/core/CHANGELOG.md`](https://github.com/rxova/journey/blob/mai
 ### Patch Changes
 
 - 6a38c50: - Tightened core machine typing by introducing JourneySendEvent and removing unsafe as unknown/as never casts in convenience APIs.
-  - Replaced JourneyStepDefinition’s open Record<string, unknown> escape hatch with explicit typed step extensions.
+  - Replaced JourneyStepDefinition’s open `Record<string, unknown>` escape hatch with explicit typed step extensions.
   - Added runtime validation in devtools bridge for command stepId values (goToStepById, updateStepMetadata, clearStepError), returning commandError for unknown steps.
   - Added/updated tests for type coverage and bridge invalid-step behavior.
   - Added JSDoc to key public core types (including transition/event builder generics) and improved type readability with

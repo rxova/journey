@@ -44,6 +44,14 @@ export function readUtf8(filePath) {
   return readFileSync(filePath, "utf8").replace(/\r\n/g, "\n");
 }
 
+export function escapeMdxInlineGenerics(text) {
+  const segments = text.split("`");
+  for (let index = 0; index < segments.length; index += 2) {
+    segments[index] = segments[index].replace(/\b([A-Za-z_$][\w$.]*<[^<>\n]+>)/g, "`$1`");
+  }
+  return segments.join("`");
+}
+
 export function normalizeChangelog(markdown) {
   const lines = markdown.split("\n");
   const firstLine = lines[0];
@@ -53,7 +61,8 @@ export function normalizeChangelog(markdown) {
     withoutTopHeading.shift();
   }
 
-  return `${withoutTopHeading.join("\n").trimEnd()}\n`;
+  const normalized = `${withoutTopHeading.join("\n").trimEnd()}\n`;
+  return escapeMdxInlineGenerics(normalized);
 }
 
 export function renderReleaseDoc(entry, body) {
