@@ -54,6 +54,7 @@ pnpm --filter @rxova/journey-react run test
 
 - `pnpm run format:check`
 - `pnpm run lint`
+- `pnpm run docs:api:check`
 - `pnpm run typecheck`
 - `pnpm run test`
 - `pnpm run build`
@@ -107,6 +108,7 @@ you must provide your own transpilation and polyfills in your app build.
 
 - Keep runtime dependency count at zero.
 - Keep `react` as peer dependency only.
+- Add TSDoc summaries for public callable exports (entrypoint exports) and keep `pnpm run docs:api:check` passing.
 - Add or update tests for behavior changes.
 - Keep transition logic declarative in flow definitions.
 - Run `pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build` before opening PR.

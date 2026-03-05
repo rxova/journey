@@ -27,6 +27,7 @@
     "docs:version-labels:check": "node ./scripts/sync-doc-version-labels.mjs --check",
     "docs:release-notes:sync": "node ./scripts/sync-doc-release-notes.mjs",
     "docs:release-notes:check": "node ./scripts/sync-doc-release-notes.mjs --check",
+    "docs:api:check": "pnpm exec tsc ./scripts/check-public-api-tsdoc.ts --outDir ./node_modules/.tmp-tsdoc-check --module NodeNext --moduleResolution NodeNext --target ES2020 --skipLibCheck && node ./node_modules/.tmp-tsdoc-check/check-public-api-tsdoc.js",
     "release": "pnpm -r build && changeset publish",
     "releases": "pnpm run changeset:version && pnpm run release",
     "typecheck": "pnpm -r typecheck && tsc --noEmit -p tsconfig.test.json",

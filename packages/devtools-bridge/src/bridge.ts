@@ -352,6 +352,10 @@ const runCommand = async <TContext, TStepId extends string, TStepMeta>(
   }
 };
 
+/**
+ * Attaches a journey machine to the browser devtools transport and returns
+ * a detach function that unsubscribes listeners and unregisters the machine.
+ */
 export const attachJourneyDevtools = <
   TContext,
   TStepId extends string,
