@@ -251,4 +251,70 @@ describe("machine edge cases", () => {
     expect(cleared.async.byStep.start.transitionId).toBeNull();
     expect(cleared.async.byStep.start.error).toBeNull();
   });
+
+  it("does not retain unsubscribed snapshot listeners after churn", () => {
+    const machine = createJourneyMachine(createBaseJourney());
+    const calls = new Array(200).fill(0);
+    const unsubs: Array<() => void> = [];
+
+    for (let index = 0; index < 200; index += 1) {
+      unsubs.push(
+        machine.subscribe(() => {
+          calls[index] += 1;
+        })
+      );
+    }
+
+    for (const unsubscribe of unsubs) {
+      unsubscribe();
+    }
+
+    machine.updateContext((context) => ({ ...context, value: context.value + 1 }));
+    expect(calls.every((count) => count === 0)).toBe(true);
+
+    let retainedCalls = 0;
+    const unsubscribeRetained = machine.subscribe(() => {
+      retainedCalls += 1;
+    });
+
+    machine.updateContext((context) => ({ ...context, value: context.value + 1 }));
+    expect(retainedCalls).toBe(1);
+
+    unsubscribeRetained();
+    machine.updateContext((context) => ({ ...context, value: context.value + 1 }));
+    expect(retainedCalls).toBe(1);
+  });
+
+  it("does not retain unsubscribed event listeners after churn", () => {
+    const machine = createJourneyMachine(createBaseJourney());
+    const calls = new Array(200).fill(0);
+    const unsubs: Array<() => void> = [];
+
+    for (let index = 0; index < 200; index += 1) {
+      unsubs.push(
+        machine.subscribeEvent(() => {
+          calls[index] += 1;
+        })
+      );
+    }
+
+    for (const unsubscribe of unsubs) {
+      unsubscribe();
+    }
+
+    machine.updateStepMetadata("start", () => ({ title: "Start-v2" }));
+    expect(calls.every((count) => count === 0)).toBe(true);
+
+    let retainedCalls = 0;
+    const unsubscribeRetained = machine.subscribeEvent(() => {
+      retainedCalls += 1;
+    });
+
+    machine.updateStepMetadata("start", () => ({ title: "Start-v3" }));
+    expect(retainedCalls).toBe(1);
+
+    unsubscribeRetained();
+    machine.updateStepMetadata("start", () => ({ title: "Start-v4" }));
+    expect(retainedCalls).toBe(1);
+  });
 });

@@ -561,6 +561,116 @@ describe("bridge edge coverage", () => {
     }
   });
 
+  it("swallows postMessage failures across lifecycle and command posting", async () => {
+    const originalWindowDescriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+    const messageListeners = new Set<(event: MessageEvent<unknown>) => void>();
+    const postMessage = vi.fn(() => {
+      throw new Error("post failed");
+    });
+    const fakeWindow = {
+      location: { origin: "https://example.test" },
+      postMessage,
+      addEventListener: vi.fn((type: string, listener: (event: MessageEvent<unknown>) => void) => {
+        if (type === "message") {
+          messageListeners.add(listener);
+        }
+      }),
+      removeEventListener: vi.fn(
+        (type: string, listener: (event: MessageEvent<unknown>) => void) => {
+          if (type === "message") {
+            messageListeners.delete(listener);
+          }
+        }
+      )
+    } as unknown as Window;
+
+    const snapshot = createSnapshot();
+    const subscribers = new Set<() => void>();
+    const send = vi.fn(async () => ({
+      transitioned: true,
+      snapshot,
+      transitionId: "goToNextStep"
+    }));
+    const machine: JourneyMachine<Context, StepId, Event> = {
+      getSnapshot: () => snapshot,
+      send,
+      goToNextStep: async () => ({ transitioned: true, snapshot, transitionId: "goToNextStep" }),
+      terminateJourney: async () => ({
+        transitioned: true,
+        snapshot,
+        transitionId: "terminateJourney"
+      }),
+      completeJourney: async () => ({
+        transitioned: true,
+        snapshot,
+        transitionId: "completeJourney"
+      }),
+      goToPreviousStep: async () => ({ transitioned: false, snapshot }),
+      goToLastVisitedStep: async () => ({ transitioned: false, snapshot }),
+      updateContext: () => snapshot,
+      updateStepMetadata: () => snapshot,
+      clearStepError: () => snapshot,
+      resetMachine: () => snapshot,
+      subscribe: (listener) => {
+        subscribers.add(listener);
+        return () => {
+          subscribers.delete(listener);
+        };
+      },
+      subscribeEvent: () => () => undefined
+    };
+
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: fakeWindow
+    });
+
+    let detach: (() => void) | undefined;
+    try {
+      expect(() => {
+        detach = attachJourneyDevtools(machine, {
+          machineId: "post-failure",
+          enabled: true,
+          commandsEnabled: true
+        });
+      }).not.toThrow();
+
+      subscribers.forEach((listener) => listener());
+
+      const commandListener = Array.from(messageListeners)[0];
+      if (!commandListener) {
+        throw new Error("message listener not registered");
+      }
+
+      commandListener({
+        source: fakeWindow,
+        origin: "https://example.test",
+        data: {
+          channel: JOURNEY_DEVTOOLS_CHANNEL,
+          version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+          source: JOURNEY_DEVTOOLS_EXTENSION_SOURCE,
+          kind: "command",
+          machineId: "post-failure",
+          requestId: "req-post-failure",
+          command: { type: "goToNextStep" },
+          timestamp: Date.now()
+        } satisfies JourneyDevtoolsExtensionEnvelope
+      } as MessageEvent<unknown>);
+      await waitForMessages();
+
+      expect(send).toHaveBeenCalledWith({ type: "goToNextStep" });
+      expect(postMessage).toHaveBeenCalled();
+      expect(() => detach?.()).not.toThrow();
+    } finally {
+      if (detach) {
+        detach();
+      }
+      if (originalWindowDescriptor) {
+        Object.defineProperty(globalThis, "window", originalWindowDescriptor);
+      }
+    }
+  });
+
   it("supports null-origin windows and generated machine ids", async () => {
     process.env.NODE_ENV = "development";
     Object.defineProperty(globalThis, "structuredClone", {

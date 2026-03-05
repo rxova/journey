@@ -32,6 +32,12 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "text-summary", "html", "json-summary", "lcov"],
+      thresholds: {
+        branches: 95,
+        functions: 95,
+        lines: 95,
+        statements: 95
+      },
       include: [
         "packages/*/src/**/*.ts",
         "packages/*/src/**/*.tsx",
