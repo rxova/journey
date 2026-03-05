@@ -49,6 +49,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run version:major:check
+      - name: Audit dependencies
+        if: matrix.node-version == 24
+        run: pnpm audit --audit-level=high
       - run: pnpm run format:check
       - run: pnpm run lint
       - run: pnpm run typecheck
