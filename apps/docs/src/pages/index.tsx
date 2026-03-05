@@ -126,8 +126,8 @@ export default function Home(): ReactNode {
                     Status
                   </p>
                   <p className="mt-3 text-sm text-ink-700 dark:text-ink-100">
-                    Pre-1.0 releases are moving fast. Docs always reflect the latest published
-                    version until 1.0 lands.
+                    Pre-1.0 releases are moving fast. Docs are versioned per package so you can
+                    switch between released versions in each docs section.
                   </p>
                 </div>
                 <div className="home-surface rounded-2xl border border-ink-300/80 bg-white/90 p-6 shadow-[0_20px_44px_-28px_rgba(20,35,60,0.38)] transition hover:-translate-y-1 hover:border-ink-400/80 hover:shadow-[0_24px_52px_-30px_rgba(20,35,60,0.45)] dark:hover:border-[#5f6d95]">

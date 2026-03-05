@@ -1,9 +1,3 @@
-@media (max-width: 996px) {
-  .colorModeToggle {
-    display: none;
-  }
-}
-
 .colorModeToggle {
   margin-right: 0.5rem;
 }

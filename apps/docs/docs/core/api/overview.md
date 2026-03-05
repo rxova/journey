@@ -1,7 +1,7 @@
 ---
 title: Core API
 sidebar_label: Overview
-slug: /core/api
+slug: /api
 ---
 
 This API is designed around one practical goal: help you define a flow once, then drive it predictably at runtime.

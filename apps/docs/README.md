@@ -1,6 +1,6 @@
 # Rxova Journey Docs
 
-Documentation site for `@rxova/journey-core` and `@rxova/journey-react`, built with Docusaurus.
+Documentation site for `@rxova/journey-core`, `@rxova/journey-react`, `@rxova/journey-devtools-bridge`, and Chrome DevTools docs, built with Docusaurus.
 
 Production docs URL:
 
@@ -37,23 +37,32 @@ Static output is generated in `apps/docs/build`.
 
 ## Docs Versioning
 
-Freeze the current docs into a versioned snapshot:
+Freeze each docs instance into its own versioned snapshot:
 
 ```bash
-pnpm -C apps/docs run version:cut <version>
+pnpm -C apps/docs run version:cut:core <version>
+pnpm -C apps/docs run version:cut:react <version>
+pnpm -C apps/docs run version:cut:bridge <version>
+pnpm -C apps/docs run version:cut:chrome-devtools <version>
 ```
 
 Example:
 
 ```bash
-pnpm -C apps/docs run version:cut 0.7.0
+pnpm -C apps/docs run version:cut:core 0.6.0
+pnpm -C apps/docs run version:cut:react 0.7.0
+pnpm -C apps/docs run version:cut:bridge 0.6.0
+pnpm -C apps/docs run version:cut:chrome-devtools 0.3.0
 ```
 
-This creates:
+This creates plugin-scoped version files/directories, for example:
 
-- `apps/docs/versions.json`
-- `apps/docs/versioned_docs/version-<version>/...`
-- `apps/docs/versioned_sidebars/version-<version>-sidebars.json`
+- `apps/docs/core_versions.json`
+- `apps/docs/react_versions.json`
+- `apps/docs/bridge_versions.json`
+- `apps/docs/chrome-devtools_versions.json`
+- `apps/docs/core_versioned_docs/version-<version>/...`
+- `apps/docs/core_versioned_sidebars/version-<version>-sidebars.json`
 
 ## Deploy
 

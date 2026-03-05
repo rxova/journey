@@ -9,26 +9,18 @@ const config: Config = {
   tagline: "Declarative journey graphs for non-linear UI flows.",
   favicon: "img/rxova-logo-256.png",
 
-  // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
-    v4: true // Improve compatibility with the upcoming Docusaurus v4
+    v4: true
   },
 
-  // Production URL/domain
   url: "https://rxova.org",
-  // Serve docs at the domain root
   baseUrl: "/",
 
-  // GitHub pages deployment config.
-  // If you aren't using GitHub pages, you don't need these.
-  organizationName: "rxova", // Usually your GitHub org/user name.
-  projectName: "journey", // Usually your repo name.
+  organizationName: "rxova",
+  projectName: "journey",
 
   onBrokenLinks: "throw",
 
-  // Even if you don't use internationalization, you can use this field to set
-  // useful metadata like html lang. For example, if your site is Chinese, you
-  // may want to replace "en" with "zh-Hans".
   i18n: {
     defaultLocale: "en",
     locales: ["en"]
@@ -38,16 +30,7 @@ const config: Config = {
     [
       "classic",
       {
-        docs: {
-          sidebarPath: "./sidebars.ts",
-          editUrl: "https://github.com/rxova/journey/tree/main/apps/docs/",
-          lastVersion: "current",
-          versions: {
-            current: {
-              label: "0.6.1 (current)"
-            }
-          }
-        },
+        docs: false,
         blog: false,
         theme: {
           customCss: "./src/css/custom.css"
@@ -55,7 +38,72 @@ const config: Config = {
       } satisfies Preset.Options
     ]
   ],
+
   plugins: [
+    [
+      "@docusaurus/plugin-content-docs",
+      {
+        id: "core",
+        path: "docs/core",
+        routeBasePath: "docs/core",
+        sidebarPath: "./sidebars/core.ts",
+        editUrl: "https://github.com/rxova/journey/tree/main/apps/docs/",
+        lastVersion: "current",
+        versions: {
+          current: {
+            label: "0.6.1"
+          }
+        }
+      }
+    ],
+    [
+      "@docusaurus/plugin-content-docs",
+      {
+        id: "react",
+        path: "docs/react",
+        routeBasePath: "docs/react",
+        sidebarPath: "./sidebars/react.ts",
+        editUrl: "https://github.com/rxova/journey/tree/main/apps/docs/",
+        lastVersion: "current",
+        versions: {
+          current: {
+            label: "0.6.1"
+          }
+        }
+      }
+    ],
+    [
+      "@docusaurus/plugin-content-docs",
+      {
+        id: "bridge",
+        path: "docs/bridge",
+        sidebarPath: "./sidebars/bridge.ts",
+        routeBasePath: "docs/bridge",
+        editUrl: "https://github.com/rxova/journey/tree/main/apps/docs/",
+        lastVersion: "current",
+        versions: {
+          current: {
+            label: "0.6.1"
+          }
+        }
+      }
+    ],
+    [
+      "@docusaurus/plugin-content-docs",
+      {
+        id: "chrome-devtools",
+        path: "docs/devtool",
+        routeBasePath: "docs/devtool",
+        sidebarPath: "./sidebars/chrome-devtools.ts",
+        editUrl: "https://github.com/rxova/journey/tree/main/apps/docs/",
+        lastVersion: "current",
+        versions: {
+          current: {
+            label: "0.6.1"
+          }
+        }
+      }
+    ],
     [
       "@easyops-cn/docusaurus-search-local",
       {
@@ -67,7 +115,6 @@ const config: Config = {
   ],
 
   themeConfig: {
-    // Replace with your project's social card
     image: "img/rxova-logo-1024.png",
     colorMode: {
       defaultMode: "light",
@@ -85,59 +132,43 @@ const config: Config = {
       items: [
         {
           type: "docSidebar",
-          sidebarId: "docsSidebar",
+          sidebarId: "coreSidebar",
+          docsPluginId: "core",
           position: "left",
-          label: "Docs"
+          label: "Core"
         },
         {
-          type: "docsVersionDropdown",
-          position: "left"
+          type: "docSidebar",
+          sidebarId: "reactSidebar",
+          docsPluginId: "react",
+          position: "left",
+          label: "React"
+        },
+        {
+          type: "docSidebar",
+          sidebarId: "bridgeSidebar",
+          docsPluginId: "bridge",
+          position: "left",
+          label: "Bridge"
+        },
+        {
+          type: "docSidebar",
+          sidebarId: "chromeDevtoolsSidebar",
+          docsPluginId: "chrome-devtools",
+          position: "left",
+          label: "Chrome DevTools"
         },
         {
           href: "https://github.com/rxova/journey",
           label: "GitHub",
-          position: "right"
-        },
-        {
-          href: "https://www.npmjs.com/package/@rxova/journey-core",
-          label: "Core",
-          position: "right"
-        },
-        {
-          href: "https://www.npmjs.com/package/@rxova/journey-react",
-          label: "React",
+          className: "header-github-link",
+          "aria-label": "GitHub repository",
           position: "right"
         }
       ]
     },
     footer: {
       style: "dark",
-      links: [
-        {
-          items: [
-            {
-              label: "Docs",
-              to: "/docs/core/getting-started"
-            },
-            {
-              label: "React Guide",
-              to: "/docs/react/overview"
-            },
-            {
-              label: "@rxova/journey-core",
-              href: "https://www.npmjs.com/package/@rxova/journey-core"
-            },
-            {
-              label: "@rxova/journey-react",
-              href: "https://www.npmjs.com/package/@rxova/journey-react"
-            },
-            {
-              label: "GitHub",
-              href: "https://github.com/rxova/journey"
-            }
-          ]
-        }
-      ],
       copyright: `Copyright © ${new Date().getFullYear()} Rxova.`
     },
     prism: {

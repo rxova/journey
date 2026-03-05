@@ -149,4 +149,4 @@ Example payload:
 }
 ```
 
-For exact command and envelope types, see [Protocol](/docs/devtool/protocol).
+For exact command and envelope types, see [Protocol](/docs/bridge/protocol).
