@@ -8,6 +8,7 @@ import type {
   JourneyMachineOptions,
   JourneyObservationEvent,
   JourneyPayloadFor,
+  JourneySendEvent,
   JourneyTransitionArgs,
   JourneyTransitionTarget
 } from "@rxova/journey-core";
@@ -58,7 +59,7 @@ type DefaultedSendArg = Parameters<typeof defaultedMachine.send>[0];
 
 expectTypeOf(machine).toEqualTypeOf<JourneyMachine<Context, StepId, EventType, PayloadMap>>();
 expectTypeOf(machine.getSnapshot()).toEqualTypeOf<JourneySnapshot<Context, StepId>>();
-expectTypeOf<SendArg>().toEqualTypeOf<JourneyEvent<StepId, EventType, PayloadMap>>();
+expectTypeOf<SendArg>().toEqualTypeOf<JourneySendEvent<StepId, EventType, PayloadMap>>();
 expectTypeOf<Awaited<ReturnType<typeof machine.goToNextStep>>>().toEqualTypeOf<
   Awaited<ReturnType<typeof machine.send>>
 >();
@@ -78,6 +79,14 @@ expectTypeOf<Extract<DefaultedSendArg, { type: "goToNextStep" }>>().toEqualTypeO
 }>();
 expectTypeOf<Extract<DefaultedSendArg, { type: "goToPreviousStep" }>>().toEqualTypeOf<{
   type: "goToPreviousStep";
+  payload?: unknown;
+}>();
+expectTypeOf<Extract<SendArg, { type: "terminateJourney" }>>().toEqualTypeOf<{
+  type: "terminateJourney";
+  payload?: unknown;
+}>();
+expectTypeOf<Extract<SendArg, { type: "completeJourney" }>>().toEqualTypeOf<{
+  type: "completeJourney";
   payload?: unknown;
 }>();
 

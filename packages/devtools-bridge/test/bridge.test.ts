@@ -256,6 +256,48 @@ describe("attachJourneyDevtools", () => {
     collector.stop();
   });
 
+  it("returns commandError for commands with unknown stepId", async () => {
+    const collector = collectBridgeMessages();
+    const { machine } = createMachine();
+    const detach = attachJourneyDevtools(machine, {
+      machineId: "m-step-validation",
+      enabled: true
+    });
+
+    await waitForMessages();
+
+    const commands: JourneyDevtoolsExtensionEnvelope["command"][] = [
+      { type: "goToStepById", stepId: "missing" },
+      { type: "updateStepMetadata", stepId: "missing", metadata: { title: "Nope" } },
+      { type: "clearStepError", stepId: "missing" }
+    ];
+
+    for (const [index, command] of commands.entries()) {
+      const requestId = `req-step-${index}`;
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          source: window,
+          origin: window.location.origin,
+          data: buildCommandEnvelope("m-step-validation", requestId, command)
+        })
+      );
+      await waitForCollector(() =>
+        collector.messages.some(
+          (message) => message.kind === "commandError" && message.requestId === requestId
+        )
+      );
+    }
+
+    const errors = collector.messages.filter((message) => message.kind === "commandError");
+    expect(errors).toHaveLength(commands.length);
+    for (const error of errors) {
+      expect(error.error.message).toContain('Unknown stepId "missing"');
+    }
+
+    detach();
+    collector.stop();
+  });
+
   it("posts command errors when command execution throws", async () => {
     const collector = collectBridgeMessages();
     const { machine } = createMachine();

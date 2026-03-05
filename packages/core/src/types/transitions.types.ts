@@ -1,11 +1,12 @@
 import type {
-  JOURNEY_EVENT,
   JourneyBuiltInFrom,
   JourneyEvent,
   JourneyEventPayloadMap,
+  JourneyGoToStepByIdEventType,
   JourneyTerminal
 } from "./journey.types";
 
+/** Arguments passed to transition guards and effects. */
 export type JourneyTransitionArgs<
   TContext,
   TStepId extends string,
@@ -19,6 +20,7 @@ export type JourneyTransitionArgs<
   event: JourneyEvent<TStepId, TEventType, TPayloadMap>;
 };
 
+/** Transition destination, either another step or a terminal machine state. */
 export type JourneyTransitionTarget<TStepId extends string> = TStepId | JourneyTerminal;
 
 type JourneyTransitionConfig<
@@ -37,6 +39,7 @@ type JourneyTransitionConfig<
   ) => TContext | void | Promise<TContext | void>;
 };
 
+/** Transition declared for a standard event or terminal event. */
 export type JourneyEventTransition<
   TContext,
   TStepId extends string,
@@ -52,16 +55,18 @@ export type JourneyEventTransition<
       to?: never;
     });
 
+/** Direct jump transition triggered by the built-in `goToStepById` event. */
 export type JourneyGoToStepTransition<
   TContext,
   TStepId extends string,
   TEventType extends string,
   TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>
 > = JourneyTransitionConfig<TContext, TStepId, TEventType, TPayloadMap> & {
-  event: (typeof JOURNEY_EVENT)["GO_TO_STEP_BY_ID"];
+  event: JourneyGoToStepByIdEventType;
   to: TStepId;
 };
 
+/** Any transition shape accepted by `createJourneyMachine`. */
 export type JourneyTransition<
   TContext,
   TStepId extends string,
@@ -71,6 +76,7 @@ export type JourneyTransition<
   | JourneyEventTransition<TContext, TStepId, TEventType, TPayloadMap>
   | JourneyGoToStepTransition<TContext, TStepId, TEventType, TPayloadMap>;
 
+/** Optional transition behavior shared by direct and branch transitions. */
 export type TransitionConfig<
   TContext,
   TStepId extends string,
@@ -83,6 +89,7 @@ export type TransitionConfig<
   ) => TContext | void | Promise<TContext | void>;
 };
 
+/** Branch definition used by `choose(...)`. */
 export type TransitionBranch<
   TContext,
   TStepId extends string,
@@ -95,6 +102,7 @@ export type TransitionBranch<
   ) => boolean | Promise<boolean>;
 };
 
+/** Builder returned by `tx.from(...).on(nonTerminalEvent)` and `tx.any().on(...)`. */
 export type StandardEventBuilder<
   TContext,
   TStepId extends string,
@@ -110,6 +118,7 @@ export type StandardEventBuilder<
   ) => JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>[];
 };
 
+/** Builder returned by `tx.from(...).on("completeJourney")`. */
 export type CompleteJourneyEventBuilder<
   TContext,
   TStepId extends string,
@@ -121,6 +130,7 @@ export type CompleteJourneyEventBuilder<
   ) => JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>;
 };
 
+/** Builder returned by `tx.from(...).on("terminateJourney")`. */
 export type TerminateJourneyEventBuilder<
   TContext,
   TStepId extends string,
@@ -132,6 +142,10 @@ export type TerminateJourneyEventBuilder<
   ) => JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>;
 };
 
+/**
+ * Conditional transition builder returned by `tx.from(...).on(event)`:
+ * terminal events expose terminal-only helpers, other events expose `to/choose`.
+ */
 export type EventBuilder<
   TContext,
   TStepId extends string,

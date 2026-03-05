@@ -1,30 +1,41 @@
 import type { JourneyPersistenceOptions } from "./persistence.types";
 import type { JourneyTransition } from "./transitions.types";
 
+/** Terminal outcomes reached when a journey completes or is explicitly terminated. */
 export type JourneyTerminal = "COMPLETE" | "TERMINATED";
 
+/** Runtime machine status constants. */
 export const JOURNEY_STATUS = {
   RUNNING: "running",
   COMPLETE: "complete",
   TERMINATED: "terminated"
 } as const;
 
+/** Union of possible runtime machine statuses. */
 export type JourneyStatus = (typeof JOURNEY_STATUS)[keyof typeof JOURNEY_STATUS];
 
+/** Wildcard step identifier used by transitions that match from any step. */
 export const JOURNEY_WILDCARD = "*" as const;
 
+/** Built-in event constants that are part of core machine behavior. */
 export const JOURNEY_EVENT = {
   GO_TO_STEP_BY_ID: "goToStepById"
 } as const;
 
+/** Machine event types that are always recognized by core. */
 export type JourneyBuiltInEvent = (typeof JOURNEY_EVENT)[keyof typeof JOURNEY_EVENT];
+/** Event literal type for the built-in go-to-step command. */
+export type JourneyGoToStepByIdEventType = typeof JOURNEY_EVENT.GO_TO_STEP_BY_ID;
+/** Wildcard origin marker for transitions. */
 export type JourneyBuiltInFrom = typeof JOURNEY_WILDCARD;
+/** Default transition event names supported by machine convenience APIs. */
 export type JourneyDefaultEventType =
   | "goToNextStep"
   | "goToPreviousStep"
   | "terminateJourney"
   | "completeJourney";
 
+/** Async lifecycle phases tracked per step while guards/effects run. */
 export const JOURNEY_ASYNC_PHASE = {
   IDLE: "idle",
   EVALUATING_WHEN: "evaluating-when",
@@ -32,8 +43,10 @@ export const JOURNEY_ASYNC_PHASE = {
   ERROR: "error"
 } as const;
 
+/** Union of supported async lifecycle phases. */
 export type JourneyAsyncPhase = (typeof JOURNEY_ASYNC_PHASE)[keyof typeof JOURNEY_ASYNC_PHASE];
 
+/** Async execution state for a single step. */
 export type JourneyStepAsyncState = {
   phase: JourneyAsyncPhase;
   eventType: string | null;
@@ -41,42 +54,59 @@ export type JourneyStepAsyncState = {
   error: unknown | null;
 };
 
+/** Aggregated async state for the machine, keyed by step id. */
 export type JourneyAsyncState<TStepId extends string> = {
   isLoading: boolean;
   byStep: Record<TStepId, JourneyStepAsyncState>;
 };
 
+/** Minimal event shape used across runtime boundaries. */
 export type JourneyBaseEvent = {
   type: string;
   payload?: unknown;
 };
 
+/** Optional event payload map by event type. */
 export type JourneyEventPayloadMap<TEventType extends string> = Partial<
   Record<TEventType | JourneyBuiltInEvent, unknown>
 >;
 
+/** Resolves payload type for a specific event type from the provided payload map. */
 export type JourneyPayloadFor<
   TEventType extends string,
   TPayloadMap extends JourneyEventPayloadMap<TEventType>,
   TEvent extends TEventType | JourneyBuiltInEvent
 > = TEvent extends keyof TPayloadMap ? TPayloadMap[TEvent] : unknown;
 
+/** Event-type union accepted by machine `.send()`, including built-in convenience events. */
+export type JourneyMachineEventType<TEventType extends string> =
+  | TEventType
+  | JourneyDefaultEventType;
+
+/** Payload map available to machine `.send()`, including built-in convenience events. */
+export type JourneyMachinePayloadMap<
+  TEventType extends string,
+  TPayloadMap extends JourneyEventPayloadMap<TEventType>
+> = TPayloadMap & JourneyEventPayloadMap<JourneyDefaultEventType>;
+
 type JourneyPayloadForDefaultEvent<
   TEventType extends string,
   TPayloadMap extends JourneyEventPayloadMap<TEventType>,
   TDefaultEvent extends JourneyDefaultEventType
 > = JourneyPayloadFor<
-  TEventType | TDefaultEvent,
-  TPayloadMap & JourneyEventPayloadMap<TDefaultEvent>,
+  JourneyMachineEventType<TEventType>,
+  JourneyMachinePayloadMap<TEventType, TPayloadMap>,
   TDefaultEvent
 >;
 
+/** Built-in direct-navigation event that targets a specific step id. */
 export type JourneyGoToEvent<TStepId extends string, TPayload = unknown> = {
-  type: (typeof JOURNEY_EVENT)["GO_TO_STEP_BY_ID"];
+  type: JourneyGoToStepByIdEventType;
   stepId: TStepId;
   payload?: TPayload;
 };
 
+/** Event union available to transitions and guards for the declared event type set. */
 export type JourneyEvent<
   TStepId extends string,
   TEventType extends string,
@@ -84,7 +114,7 @@ export type JourneyEvent<
 > =
   | JourneyGoToEvent<
       TStepId,
-      JourneyPayloadFor<TEventType, TPayloadMap, (typeof JOURNEY_EVENT)["GO_TO_STEP_BY_ID"]>
+      JourneyPayloadFor<TEventType, TPayloadMap, JourneyGoToStepByIdEventType>
     >
   | {
       [TType in TEventType]: {
@@ -93,10 +123,59 @@ export type JourneyEvent<
       };
     }[TEventType];
 
-export type JourneyStepDefinition<TStepMeta = unknown> = {
-  meta?: TStepMeta;
-} & Record<string, unknown>;
+type JourneyDefaultMachineEvent<
+  TEventType extends string,
+  TPayloadMap extends JourneyEventPayloadMap<TEventType>
+> = {
+  [TType in JourneyDefaultEventType]: {
+    type: TType;
+    payload?: JourneyPayloadFor<
+      JourneyMachineEventType<TEventType>,
+      JourneyMachinePayloadMap<TEventType, TPayloadMap>,
+      TType
+    >;
+  };
+}[JourneyDefaultEventType];
 
+type JourneyCustomMachineEvent<
+  TEventType extends string,
+  TPayloadMap extends JourneyEventPayloadMap<TEventType>
+> = {
+  [TType in TEventType]: {
+    type: TType;
+    payload?: JourneyPayloadFor<TEventType, TPayloadMap, TType>;
+  };
+}[TEventType];
+
+/** Event union accepted by `JourneyMachine.send`. */
+export type JourneySendEvent<
+  TStepId extends string,
+  TEventType extends string,
+  TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>
+> =
+  | JourneyGoToEvent<
+      TStepId,
+      JourneyPayloadFor<
+        JourneyMachineEventType<TEventType>,
+        JourneyMachinePayloadMap<TEventType, TPayloadMap>,
+        JourneyGoToStepByIdEventType
+      >
+    >
+  | JourneyDefaultMachineEvent<TEventType, TPayloadMap>
+  | JourneyCustomMachineEvent<TEventType, TPayloadMap>;
+
+/**
+ * Step definition with optional metadata and optional typed extension fields.
+ * Use `TStepExtra` to explicitly model additional per-step properties.
+ */
+export type JourneyStepDefinition<
+  TStepMeta = unknown,
+  TStepExtra extends object = Record<never, never>
+> = {
+  meta?: TStepMeta;
+} & TStepExtra;
+
+/** Serializable runtime snapshot of the journey state. */
 export type JourneySnapshot<TContext, TStepId extends string, TStepMeta = unknown> = {
   currentStepId: TStepId;
   history: {
@@ -110,29 +189,34 @@ export type JourneySnapshot<TContext, TStepId extends string, TStepMeta = unknow
   async: JourneyAsyncState<TStepId>;
 };
 
+/** Full machine definition used to create a journey machine instance. */
 export type JourneyDefinition<
   TContext,
   TStepId extends string = string,
   TEventType extends string = JourneyDefaultEventType,
   TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>,
-  TStepMeta = unknown
+  TStepMeta = unknown,
+  TStepExtra extends object = Record<never, never>
 > = {
   initial: TStepId;
   context: TContext;
-  steps: Record<TStepId, JourneyStepDefinition<TStepMeta>>;
+  steps: Record<TStepId, JourneyStepDefinition<TStepMeta, TStepExtra>>;
   transitions: readonly JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>[];
 };
 
+/** Optional machine features (for example, persistence configuration). */
 export type JourneyMachineOptions<TContext, TStepId extends string, TStepMeta = unknown> = {
   persistence?: JourneyPersistenceOptions<TContext, TStepId, TStepMeta>;
 };
 
+/** Result returned from send/navigation APIs. */
 export type JourneySendResult<TContext, TStepId extends string, TStepMeta = unknown> = {
   transitioned: boolean;
   transitionId?: string;
   snapshot: JourneySnapshot<TContext, TStepId, TStepMeta>;
 };
 
+/** Observation events emitted by the machine lifecycle/event stream. */
 export type JourneyObservationEvent<
   TStepId extends string,
   TEventType extends string,
@@ -142,7 +226,7 @@ export type JourneyObservationEvent<
   | {
       type: "transition.start";
       from: TStepId;
-      event: JourneyEvent<TStepId, TEventType, TPayloadMap>;
+      event: JourneySendEvent<TStepId, TEventType, TPayloadMap>;
       timestamp: number;
     }
   | {
@@ -203,6 +287,7 @@ export type JourneyObservationEvent<
       timestamp: number;
     };
 
+/** Runtime machine API for reading snapshots, sending events, and controlling flow. */
 export type JourneyMachine<
   TContext,
   TStepId extends string,
@@ -212,7 +297,7 @@ export type JourneyMachine<
 > = {
   getSnapshot: () => JourneySnapshot<TContext, TStepId, TStepMeta>;
   send: (
-    event: JourneyEvent<TStepId, TEventType, TPayloadMap>
+    event: JourneySendEvent<TStepId, TEventType, TPayloadMap>
   ) => Promise<JourneySendResult<TContext, TStepId, TStepMeta>>;
   goToNextStep: () => Promise<JourneySendResult<TContext, TStepId, TStepMeta>>;
   terminateJourney: (
