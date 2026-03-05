@@ -394,7 +394,11 @@ export const attachJourneyDevtools = <
   });
 
   const post = (envelope: JourneyDevtoolsBridgeEnvelope) => {
-    window.postMessage(envelope, targetOrigin);
+    try {
+      window.postMessage(envelope, targetOrigin);
+    } catch {
+      // Swallow transport failures so bridge lifecycle and commands remain non-throwing.
+    }
   };
 
   const postSnapshot = (snapshot: JourneySnapshot<TContext, TStepId, TStepMeta>) => {
