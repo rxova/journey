@@ -91,7 +91,8 @@ Releases are automated with Changesets and GitHub Actions.
 
 - `@rxova/journey-core`, `@rxova/journey-react`, and `@rxova/journey-devtools-bridge` are independently versioned with Changesets.
 - Their major versions must stay aligned (`pnpm run version:major:check` enforces this in CI).
-- App workspaces (`apps-docs`, `apps-demo`, `apps-devtools`) are ignored by Changesets and are not part of npm package release versioning.
+- Private app workspaces `apps-docs` and `apps-devtools` are also versioned with Changesets for docs/version tracking, but they are not published to npm.
+- `apps-demo` remains ignored by Changesets.
 - Docs history is tracked with Docusaurus docs version snapshots (`pnpm -C apps/docs run version:cut <version>`).
 - Starting at `0.6.0`, treat the public API surface as stabilization baseline: `0.6.x` releases should be backward compatible by default.
 - If a breaking change is unavoidable before `1.0.0`, call it out explicitly in the changeset and changelog so consumers can plan migrations.

@@ -19,7 +19,7 @@
   },
   "scripts": {
     "build": "pnpm -r build",
-    "clean": "pnpm -r clean && rm -rf coverage",
+    "clean": "pnpm -r clean && node ./scripts/clean-paths.mjs coverage",
     "changeset": "changeset",
     "version:major:check": "node ./scripts/check-package-major-versions.mjs",
     "changeset:version": "node ./scripts/changeset-version.mjs && pnpm run docs:version-labels:sync && pnpm run docs:release-notes:sync",
