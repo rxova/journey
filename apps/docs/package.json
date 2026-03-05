@@ -1,6 +1,6 @@
 {
   "name": "apps-docs",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "private": true,
   "description": "Docusaurus documentation website for Rxova Journey.",
   "keywords": [
