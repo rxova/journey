@@ -50,6 +50,15 @@ describe("sync-doc-release-notes script", () => {
     expect(normalized).toBe("## 1.0.0\n\n- x\n");
   });
 
+  it("normalizes changelog and escapes inline generics for MDX", () => {
+    const normalized = normalizeChangelog(
+      "# Title\n\n## 1.0.0\n\n- Uses Record<string, unknown>\n- Keeps `Map<string, number>` untouched\n"
+    );
+
+    expect(normalized).toContain("- Uses `Record<string, unknown>`");
+    expect(normalized).toContain("- Keeps `Map<string, number>` untouched");
+  });
+
   it("reads utf8 and normalizes CRLF", async () => {
     const root = await makeWorkspace();
     const filePath = join(root, "crlf.md");
@@ -96,11 +105,12 @@ describe("sync-doc-release-notes script", () => {
   });
 
   it("computes expected content from source changelog", async () => {
-    const root = await makeWorkspace("# Core\n\n## 2.0.0\n\n- Big\n");
+    const root = await makeWorkspace("# Core\n\n## 2.0.0\n\n- Big with Record<string, unknown>\n");
     const content = expectedContent(oneSource[0], root);
 
     expect(content).toContain("title: Core Releases");
     expect(content).toContain("## 2.0.0");
+    expect(content).toContain("`Record<string, unknown>`");
     expect(content).not.toContain("# Core");
 
     await rm(root, { recursive: true, force: true });
