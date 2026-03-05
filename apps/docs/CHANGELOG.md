@@ -1,5 +1,18 @@
 # apps-docs
 
+## 0.6.2
+
+### Patch Changes
+
+- 11c0218: # Summary
+  - Enable versioned documentation for core, react and devtools-bridge
+  - Minor UI improvements:
+    - Remove navbar transparency
+    - Link to Repo is a Github image
+    - Streamlined footer
+    - Chevron in foldable menues match the one in the left panel
+    - Home Page minor updates
+
 ## 0.4.1
 
 ### Patch Changes
