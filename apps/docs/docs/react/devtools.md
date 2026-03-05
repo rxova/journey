@@ -5,16 +5,10 @@ sidebar_position: 7
 
 React integration for devtools is still done through a separate package: `@rxova/journey-devtools-bridge`.
 
-This page exists as a compatibility entry point. The full documentation lives in the dedicated Devtool section:
+This page exists as a compatibility entry point. The full documentation is split by package:
 
-- `/docs/devtool/overview`
-- `/docs/devtool/getting-started`
-- `/docs/devtool/bridge-api`
-- `/docs/devtool/panel-guide`
-- `/docs/devtool/protocol`
-- `/docs/devtool/examples`
-- `/docs/devtool/troubleshooting`
-- `/docs/devtool/web-store`
+- Bridge package docs: `/docs/bridge/getting-started`, `/docs/bridge/bridge-api`, `/docs/bridge/protocol`, `/docs/bridge/examples`
+- Chrome DevTools extension docs: `/docs/devtool/overview`, `/docs/devtool/panel-guide`, `/docs/devtool/troubleshooting`, `/docs/devtool/web-store`
 
 ## Quick React Integration
 

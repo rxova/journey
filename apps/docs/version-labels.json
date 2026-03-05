@@ -1,0 +1,6 @@
+{
+  "core": "0.6.1",
+  "react": "0.6.1",
+  "bridge": "0.6.1",
+  "chrome-devtools": "0.6.0"
+}

@@ -31,10 +31,15 @@
     "serve": "docusaurus serve",
     "write-translations": "docusaurus write-translations",
     "write-heading-ids": "docusaurus write-heading-ids",
+    "version:cut:core": "docusaurus docs:version:core",
+    "version:cut:react": "docusaurus docs:version:react",
+    "version:cut:bridge": "docusaurus docs:version:bridge",
+    "version:cut:chrome-devtools": "docusaurus docs:version:chrome-devtools",
     "typecheck": "tsc"
   },
   "dependencies": {
     "@docusaurus/core": "3.9.2",
+    "@docusaurus/plugin-content-docs": "3.9.2",
     "@docusaurus/preset-classic": "3.9.2",
     "@docusaurus/theme-common": "3.9.2",
     "@easyops-cn/docusaurus-search-local": "^0.55.1",

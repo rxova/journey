@@ -1,6 +1,6 @@
 ---
 id: overview
-title: Devtool Overview
+title: Chrome DevTools Overview
 sidebar_label: Overview
 ---
 
@@ -21,7 +21,7 @@ Bridge protocol uses a fixed internal compatibility version.
 
 The panel can drive navigation, lifecycle controls, metadata updates, error clearing, and custom event sending through the bridge.
 
-See full details in [Bridge API](/docs/devtool/bridge-api) and exact transport types in [Protocol](/docs/devtool/protocol).
+See full details in [Bridge API](/docs/bridge/bridge-api) and exact transport types in [Protocol](/docs/bridge/protocol).
 
 ## Snapshot Payload Focus
 
@@ -31,7 +31,7 @@ Panel state is driven by serialized machine snapshots including:
 - current position (`currentStepId`)
 - runtime state (`context`, `visited`, `stepMeta`, `status`, `async`)
 
-For a full payload example, see [Bridge API](/docs/devtool/bridge-api).
+For a full payload example, see [Bridge API](/docs/bridge/bridge-api).
 
 ## Time Travel UX
 
