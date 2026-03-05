@@ -203,6 +203,9 @@ const isSendEvent = (value: unknown): value is { type: string; payload?: unknown
   return true;
 };
 
+/**
+ * Validates whether an unknown value is a supported devtools command payload.
+ */
 export const isJourneyDevtoolsCommand = (value: unknown): value is JourneyDevtoolsCommand => {
   if (!isRecord(value) || typeof value.type !== "string") {
     return false;
@@ -258,6 +261,9 @@ export const isJourneyDevtoolsCommand = (value: unknown): value is JourneyDevtoo
   }
 };
 
+/**
+ * Validates whether an unknown value is a bridge-origin envelope.
+ */
 export const isJourneyDevtoolsBridgeEnvelope = (
   value: unknown
 ): value is JourneyDevtoolsBridgeEnvelope => {
@@ -299,6 +305,9 @@ export const isJourneyDevtoolsBridgeEnvelope = (
   }
 };
 
+/**
+ * Validates whether an unknown value is an extension-origin command envelope.
+ */
 export const isJourneyDevtoolsExtensionEnvelope = (
   value: unknown
 ): value is JourneyDevtoolsExtensionEnvelope => {
@@ -319,5 +328,8 @@ export const isJourneyDevtoolsExtensionEnvelope = (
   );
 };
 
+/**
+ * Validates whether an unknown value matches either supported devtools envelope shape.
+ */
 export const isJourneyDevtoolsEnvelope = (value: unknown): value is JourneyDevtoolsEnvelope =>
   isJourneyDevtoolsBridgeEnvelope(value) || isJourneyDevtoolsExtensionEnvelope(value);

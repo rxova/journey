@@ -52,6 +52,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check public API TSDoc coverage
+        run: pnpm run docs:api:check
+
       - name: Build docs
         run: pnpm -C apps/docs build
 

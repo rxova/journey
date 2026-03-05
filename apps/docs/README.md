@@ -99,6 +99,16 @@ Check they are up to date:
 pnpm run docs:release-notes:check
 ```
 
+## API Docs Quality Gate
+
+Public callable exports (from package `src/index.ts` entrypoints) must include TSDoc summaries.
+
+Check TSDoc coverage:
+
+```bash
+pnpm run docs:api:check
+```
+
 ## Deploy
 
 Deployment is automated on pushes to `main` that touch:

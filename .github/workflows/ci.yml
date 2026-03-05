@@ -54,6 +54,7 @@ jobs:
         run: pnpm audit --audit-level=high
       - run: pnpm run format:check
       - run: pnpm run lint
+      - run: pnpm run docs:api:check
       - run: pnpm run typecheck
       - run: pnpm run test
       - run: pnpm run packaging:check
