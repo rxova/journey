@@ -2,11 +2,11 @@ import type React from "react";
 
 import type {
   JourneyDefinition,
-  JourneyEvent,
   JourneyEventPayloadMap as JourneyCoreEventPayloadMap,
   JourneyMachine,
   JourneyPayloadFor,
   JourneyPersistenceOptions,
+  JourneySendEvent,
   JourneySnapshot,
   JourneyStepDefinition
 } from "@rxova/journey-core";
@@ -48,7 +48,7 @@ export type JourneyApi<
   TStepMeta = unknown
 > = {
   send: (
-    event: JourneyEvent<TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap>
+    event: JourneySendEvent<TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap>
   ) => Promise<void>;
   goToNextStep: () => Promise<void>;
   terminateJourney: (

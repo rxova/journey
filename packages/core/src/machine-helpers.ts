@@ -4,7 +4,11 @@ import type {
   JourneyEvent,
   JourneyEventPayloadMap,
   JourneyGoToEvent,
+  JourneyGoToStepByIdEventType,
+  JourneyMachineEventType,
+  JourneyMachinePayloadMap,
   JourneyPayloadFor,
+  JourneySendEvent,
   JourneySendResult,
   JourneySnapshot,
   JourneyStatus,
@@ -99,10 +103,14 @@ export const isGoToStepByIdEvent = <
   TEventType extends string,
   TPayloadMap extends JourneyEventPayloadMap<TEventType>
 >(
-  event: JourneyEvent<TStepId, TEventType, TPayloadMap>
+  event: JourneySendEvent<TStepId, TEventType, TPayloadMap>
 ): event is JourneyGoToEvent<
   TStepId,
-  JourneyPayloadFor<TEventType, TPayloadMap, (typeof JOURNEY_EVENT)["GO_TO_STEP_BY_ID"]>
+  JourneyPayloadFor<
+    JourneyMachineEventType<TEventType>,
+    JourneyMachinePayloadMap<TEventType, TPayloadMap>,
+    JourneyGoToStepByIdEventType
+  >
 > => event.type === JOURNEY_EVENT.GO_TO_STEP_BY_ID && "stepId" in event;
 
 export const isTerminalTarget = <TStepId extends string>(
