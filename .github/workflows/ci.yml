@@ -62,6 +62,9 @@ jobs:
       - run: pnpm run format:check
       - run: pnpm run lint
       - run: pnpm run docs:api:check
+      - name: Check release-note docs sync
+        if: matrix.node-version == 24
+        run: pnpm run docs:release-notes:check
       - run: pnpm run typecheck
       - run: pnpm run test
       - run: pnpm run packaging:check
