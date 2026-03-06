@@ -1,7 +1,9 @@
-import { useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import Link from "@docusaurus/Link";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import Layout from "@theme/Layout";
+import { HomeFeatureCarousel, type HomeFeatureSlide } from "../components/HomeFeatureCarousel";
+import { HomeInstallTypewriter } from "../components/HomeInstallTypewriter";
 
 const ctaClasses =
   "inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2";
@@ -25,13 +27,7 @@ const Card = ({ title, body, href }: { title: string; body: string; href: string
   </Link>
 );
 
-type FeatureSlide = {
-  title: string;
-  body: string;
-  href?: string;
-};
-
-const featureSlides: FeatureSlide[] = [
+const featureSlides: HomeFeatureSlide[] = [
   {
     title: "Test Coverage",
     body: "95%+ coverage baseline across critical runtime paths, React bindings, and integration behavior that ships in every release."
@@ -57,6 +53,12 @@ const featureSlides: FeatureSlide[] = [
     title: "Active Development",
     body: "Active iteration continues with regular releases, updated docs, and expanded tests that track new behavior and fixes."
   }
+];
+
+const installCommands = [
+  "npm install @rxova/journey-core",
+  "yarn add @rxova/journey-react",
+  "pnpm install @rxova/journey-devtools-bridge"
 ];
 
 export default function Home(): ReactNode {
@@ -116,46 +118,6 @@ export default function Home(): ReactNode {
       href: "/docs/react/examples"
     }
   ];
-  const [activeSlide, setActiveSlide] = useState(0);
-  const [carouselTimerVersion, setCarouselTimerVersion] = useState(0);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setActiveSlide((current) => (current + 1) % featureSlides.length);
-    }, 5000);
-
-    return () => {
-      window.clearInterval(timer);
-    };
-  }, [carouselTimerVersion]);
-
-  const resetCarouselTimer = () => {
-    setCarouselTimerVersion((version) => version + 1);
-  };
-
-  const goToPreviousSlide = () => {
-    setActiveSlide((current) => (current - 1 + featureSlides.length) % featureSlides.length);
-    resetCarouselTimer();
-  };
-
-  const goToNextSlide = () => {
-    setActiveSlide((current) => (current + 1) % featureSlides.length);
-    resetCarouselTimer();
-  };
-
-  const currentSlide = featureSlides[activeSlide];
-  const previousSlideIndex = (activeSlide - 1 + featureSlides.length) % featureSlides.length;
-  const nextSlideIndex = (activeSlide + 1) % featureSlides.length;
-  const visibleSlides: Array<{
-    key: "previous" | "current" | "next";
-    index: number;
-    slide: FeatureSlide;
-  }> = [
-    { key: "previous", index: previousSlideIndex, slide: featureSlides[previousSlideIndex] },
-    { key: "current", index: activeSlide, slide: currentSlide },
-    { key: "next", index: nextSlideIndex, slide: featureSlides[nextSlideIndex] }
-  ];
-
   return (
     <Layout
       title={siteConfig.title}
@@ -173,7 +135,8 @@ export default function Home(): ReactNode {
                 Rxova Journey Docs
               </p>
               <h1 className="text-4xl font-semibold text-ink-900 sm:text-5xl lg:text-6xl dark:text-white">
-                Declarative journey graphs for non-linear UI flows.
+                Declarative journey graphs for <span className="whitespace-nowrap">non-linear</span>{" "}
+                UI flows.
               </h1>
               <p className="max-w-2xl text-base text-ink-600 sm:text-lg dark:text-ink-200">
                 Model complex flows as a graph of steps and transitions, then render them in React
@@ -202,6 +165,13 @@ export default function Home(): ReactNode {
                   Chrome Developer DevTools
                 </Link>
               </div>
+              <HomeInstallTypewriter commands={installCommands} className="mt-2" />
+
+              <HomeFeatureCarousel
+                title="Why Teams Pick Journey"
+                slides={featureSlides}
+                className="mt-1"
+              />
 
               <div className="grid gap-6 lg:grid-cols-3">
                 <div className="home-surface rounded-2xl border border-ink-300/80 bg-white/90 p-6 shadow-[0_20px_44px_-28px_rgba(20,35,60,0.38)] transition hover:-translate-y-1 hover:border-ink-400/80 hover:shadow-[0_24px_52px_-30px_rgba(20,35,60,0.45)] dark:hover:border-[#5f6d95]">
@@ -255,107 +225,6 @@ export default function Home(): ReactNode {
               </div>
             </div>
 
-            <div className="px-1 py-1">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-base font-extrabold uppercase tracking-[0.2em] text-ink-900 md:text-lg dark:text-ink-50">
-                  Why Teams Pick Journey
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    aria-label="Previous feature"
-                    onClick={goToPreviousSlide}
-                    className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-ink-300 text-ink-700 transition hover:-translate-y-0.5 hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700 hover:shadow-[0_8px_18px_-12px_rgba(20,35,60,0.55)] active:translate-y-0 dark:border-ink-500 dark:text-ink-100 dark:hover:border-brand-300 dark:hover:bg-brand-300/20 dark:hover:text-brand-200"
-                  >
-                    ‹
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Next feature"
-                    onClick={goToNextSlide}
-                    className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-ink-300 text-ink-700 transition hover:-translate-y-0.5 hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700 hover:shadow-[0_8px_18px_-12px_rgba(20,35,60,0.55)] active:translate-y-0 dark:border-ink-500 dark:text-ink-100 dark:hover:border-brand-300 dark:hover:bg-brand-300/20 dark:hover:text-brand-200"
-                  >
-                    ›
-                  </button>
-                </div>
-              </div>
-
-              <div className="feature-carousel-shell mt-4 overflow-hidden">
-                <div
-                  key={activeSlide}
-                  className="feature-carousel-stage mx-auto flex max-w-[980px] items-center justify-center gap-0"
-                >
-                  {visibleSlides.map(({ key, index, slide }) => {
-                    const isCenter = key === "current";
-                    const sharedClasses =
-                      "feature-carousel-card flex-none rounded-2xl border bg-white/95 text-left transition dark:bg-ink-900/55";
-                    const centerClasses =
-                      "feature-carousel-card--current w-[68%] md:w-[56%] border-brand-300/80 p-5 opacity-100 shadow-[0_24px_56px_-34px_rgba(20,35,60,0.45)]";
-                    const sideClasses =
-                      "feature-carousel-card--side w-[68%] md:w-[56%] scale-[0.9] border-ink-200/90 p-5 opacity-65 hover:opacity-85 dark:border-ink-600/90";
-
-                    if (isCenter) {
-                      return (
-                        <div key={slide.title} className={`${sharedClasses} ${centerClasses}`}>
-                          <div>
-                            <p className="text-2xl font-semibold text-ink-900 dark:text-ink-50 md:text-[1.7rem]">
-                              {slide.title}
-                            </p>
-                            <p className="mt-2 text-base leading-relaxed text-ink-700 dark:text-ink-100">
-                              {slide.body}
-                            </p>
-                            <div className="pt-3">
-                              {slide.href ? (
-                                <Link
-                                  href={slide.href}
-                                  className="inline-flex text-base font-semibold text-brand-700 hover:text-brand-800 dark:text-brand-300 dark:hover:text-brand-200"
-                                >
-                                  Download from Chrome Web Store →
-                                </Link>
-                              ) : (
-                                <span
-                                  aria-hidden="true"
-                                  className="inline-flex text-base font-semibold invisible"
-                                >
-                                  Download from Chrome Web Store →
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <button
-                        key={slide.title}
-                        type="button"
-                        aria-label={`Show ${slide.title}`}
-                        onClick={() => {
-                          setActiveSlide(index);
-                          resetCarouselTimer();
-                        }}
-                        className={`${sharedClasses} ${sideClasses}`}
-                      >
-                        <div className="flex h-full flex-col">
-                          <p className="text-lg font-semibold text-ink-900 dark:text-ink-100 md:text-xl">
-                            {slide.title}
-                          </p>
-                          <p className="mt-2 text-base leading-relaxed text-ink-600 dark:text-ink-200">
-                            {slide.body}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="mt-4 text-right text-xs font-semibold uppercase tracking-[0.14em] text-ink-500 dark:text-ink-300">
-                {activeSlide + 1} / {featureSlides.length}
-              </div>
-            </div>
-
             <div className="grid gap-4 md:grid-cols-2">
               <Card
                 title="Core: the headless engine"
@@ -398,7 +267,9 @@ export default function Home(): ReactNode {
                     className="rounded-xl border border-ink-200 bg-white/80 px-4 py-3 transition hover:-translate-y-0.5 hover:border-brand-400 hover:bg-brand-50/60 hover:no-underline dark:border-ink-600/80 dark:bg-ink-800/50 dark:hover:border-brand-300 dark:hover:bg-ink-700/60"
                   >
                     <div className="flex items-start gap-3">
-                      <span className="mt-0.5 text-brand-700 dark:text-brand-300">●</span>
+                      <span className="mt-0.5 leading-none text-brand-700 dark:text-brand-300">
+                        ●
+                      </span>
                       <div>
                         <p className="text-sm font-semibold text-ink-800 dark:text-ink-50">
                           {item.title}
