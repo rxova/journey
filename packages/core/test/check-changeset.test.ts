@@ -59,15 +59,37 @@ const baseEnv = (baseSha: string, headSha: string) => ({
 });
 
 describe("check-changeset script", () => {
-  it("passes when a changeset is present", async () => {
+  it("passes when a single-package changeset is present", async () => {
     const { tempRoot, baseSha } = await initRepo();
     await mkdir(join(tempRoot, ".changeset"), { recursive: true });
-    await writeFile(join(tempRoot, ".changeset", "test.md"), "---\n---\nchange\n", "utf8");
+    await writeFile(
+      join(tempRoot, ".changeset", "test.md"),
+      '---\n"@rxova/journey-core": patch\n---\nchange\n',
+      "utf8"
+    );
 
     const headSha = commitAll(tempRoot, "add changeset");
     const result = runScript(tempRoot, baseEnv(baseSha, headSha));
 
     expect(result.code).toBe(0);
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("fails when a changeset file contains multiple packages", async () => {
+    const { tempRoot, baseSha } = await initRepo();
+    await mkdir(join(tempRoot, ".changeset"), { recursive: true });
+    await writeFile(
+      join(tempRoot, ".changeset", "test.md"),
+      '---\n"@rxova/journey-core": patch\n"@rxova/journey-react": patch\n---\nchange\n',
+      "utf8"
+    );
+
+    const headSha = commitAll(tempRoot, "add multi-package changeset");
+    const result = runScript(tempRoot, baseEnv(baseSha, headSha));
+
+    expect(result.code).toBe(1);
+    expect(result.stderr ?? "").toContain("Invalid changeset format");
+    expect(result.stderr ?? "").toContain("expected exactly 1 package, found 2");
     await rm(tempRoot, { recursive: true, force: true });
   });
 

@@ -20,7 +20,7 @@
   "scripts": {
     "build": "pnpm -r build",
     "clean": "pnpm -r clean && node --import tsx ./scripts/clean-paths.ts coverage",
-    "changeset": "changeset",
+    "changeset:pkg": "node --import tsx ./scripts/create-package-changeset.ts",
     "version:major:check": "node --import tsx ./scripts/check-package-major-versions.ts",
     "changeset:version": "node --import tsx ./scripts/changeset-version.ts && pnpm run docs:version-labels:sync && pnpm run docs:release-notes:sync",
     "docs:version-labels:sync": "node --import tsx ./scripts/sync-doc-version-labels.ts",

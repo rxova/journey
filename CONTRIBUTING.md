@@ -77,8 +77,8 @@ Releases are automated with Changesets and GitHub Actions.
 ### Local Steps
 
 1. Create a changeset:
-   - `pnpm run changeset`
-   - Select affected package(s) and bump type (patch/minor/major).
+   - Recommended (package-scoped): `pnpm run changeset:pkg -- <package> <patch|minor|major> "<summary>"`
+   - Optional interactive: `pnpm run changeset` (if used, keep one package per changeset file).
 2. Run release versioning + publish pipeline locally (optional):
    - `pnpm run releases`
 
