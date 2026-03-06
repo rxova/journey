@@ -22,7 +22,7 @@ For the runtime architecture model, read [Core Architecture](/docs/core/architec
 
 TypeScript is first-class here too.
 
-`createJourneyBindings` captures journey types once, then `useJourneyApi`, `useJourneySnapshot`, `useJourneySelector`, and `useJourneyMachine` stay typed without repeating generics at each hook call.
+`createJourneyBindings` captures journey types once, then `useJourneyApi`, `useJourneySnapshot`, `useJourneySelector`, `useJourneyEvent`, and `useJourneyMachine` stay typed without repeating generics at each hook call.
 
 For deeper type modeling (events, payload maps, snapshots), see [Core TypeScript](/docs/core/typescript).
 
@@ -33,6 +33,7 @@ For deeper type modeling (events, payload maps, snapshots), see [Core TypeScript
 - `StepRenderer` to render the current step component.
 - Hooks for control and state:
   - `useJourneyApi()`
+  - `useJourneyEvent(listener)`
   - `useJourneySnapshot()`
   - `useJourneySelector(selector, equalityFn?)`
   - `useJourneyMachine()`

@@ -2,9 +2,11 @@ import { expectTypeOf } from "expect-type";
 import type * as React from "react";
 
 import { createJourneyBindings } from "@rxova/journey-react";
+import type { JourneyObservationEvent } from "@rxova/journey-core";
 import type {
   JourneyApi,
   JourneyBindingsProviderProps,
+  JourneyEventType,
   JourneyReactDefinition
 } from "@rxova/journey-react";
 
@@ -51,6 +53,17 @@ expectTypeOf<
   ReturnType<typeof bindings.useJourneySnapshot>["currentStepId"]
 >().toEqualTypeOf<StepId>();
 expectTypeOf<ReturnType<typeof bindings.useJourneyApi>>().toMatchTypeOf<Api>();
+type ObservationFromHook = Parameters<Parameters<typeof bindings.useJourneyEvent>[0]>[0];
+expectTypeOf<ObservationFromHook["type"]>().toEqualTypeOf<
+  JourneyObservationEvent<StepId, JourneyEventType<CustomEvent>, PayloadMap, unknown>["type"]
+>();
+type TransitionStartFromHook = Extract<ObservationFromHook, { type: "transition.start" }>;
+type StartEventTypeFromHook = TransitionStartFromHook["event"]["type"];
+const includesCustomApproveEventType: Extract<StartEventTypeFromHook, "approve"> = "approve";
+expectTypeOf<
+  Extract<ObservationFromHook, { type: "step.enter" }>["stepId"]
+>().toEqualTypeOf<StepId>();
+void includesCustomApproveEventType;
 
 // Negative checks.
 // @ts-expect-error invalid payload for approve
