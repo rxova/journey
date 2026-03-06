@@ -5,6 +5,10 @@ sidebar_position: 7
 
 React integration for devtools is still done through a separate package: `@rxova/journey-devtools-bridge`.
 
+Chrome extension download:
+
+- https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm
+
 This page exists as a compatibility entry point. The full documentation is split by package:
 
 - Bridge package docs: `/docs/bridge/getting-started`, `/docs/bridge/bridge-api`, `/docs/bridge/protocol`, `/docs/bridge/examples`

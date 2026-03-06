@@ -76,4 +76,6 @@ That means issues are easier to replay, explain, and fix than with scattered com
 
 ## Is there a Chrome DevTools extension?
 
-Yes. We are actively working on a Journey Chrome DevTools experience, and the extension is currently awaiting Chrome Web Store approval.
+Yes. Install it from Chrome Web Store:
+
+- https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm

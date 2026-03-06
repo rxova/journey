@@ -7,9 +7,9 @@ This repo includes a web-store-ready baseline for Chrome extension packaging.
 
 ## Current Status
 
-Chrome Web Store approval is currently in progress.
+The extension is available on Chrome Web Store:
 
-Public docs intentionally avoid local unpacked build/install steps while review is pending.
+- https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm
 
 ## Privacy Policy URL
 
