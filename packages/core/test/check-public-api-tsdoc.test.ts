@@ -175,8 +175,8 @@ describe("check-public-api-tsdoc script", () => {
   });
 
   it("entrypoint detection handles all branches", () => {
-    expect(isEntrypoint("", "file:///a/script.mjs")).toBe(false);
-    expect(isEntrypoint("/a/script.mjs", "file:///a/script.mjs")).toBe(true);
-    expect(isEntrypoint("/a/other.mjs", "file:///a/script.mjs")).toBe(false);
+    expect(isEntrypoint("", "file:///a/script.ts")).toBe(false);
+    expect(isEntrypoint("/a/script.ts", "file:///a/script.ts")).toBe(true);
+    expect(isEntrypoint("/a/other.ts", "file:///a/script.ts")).toBe(false);
   });
 });

@@ -12,7 +12,7 @@ on:
       - "tsconfig.json"
       - "tsconfig.base.json"
       - "vitest.config.ts"
-      - "eslint.config.mjs"
+      - "eslint.config.js"
       - ".github/workflows/devtools.yml"
   workflow_dispatch:
 

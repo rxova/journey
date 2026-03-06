@@ -48,8 +48,8 @@
     "@rxova/journey-core": "workspace:^"
   },
   "scripts": {
-    "build": "pnpm run clean && node ./scripts/build.mjs && tsc -p tsconfig.build.json && node ../../scripts/copy-types.mjs dist",
-    "clean": "node ../../scripts/clean-paths.mjs dist tsconfig.build.tsbuildinfo",
+    "build": "pnpm run clean && node --import tsx ./scripts/build.ts && tsc -p tsconfig.build.json && node --import tsx ../../scripts/copy-types.ts dist",
+    "clean": "node --import tsx ../../scripts/clean-paths.ts dist tsconfig.build.tsbuildinfo",
     "coverage": "pnpm --workspace-root vitest run --coverage --coverage.include=packages/devtools-bridge/src/** --coverage.reporter=text-summary",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "publint": "publint",

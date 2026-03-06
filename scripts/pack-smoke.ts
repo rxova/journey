@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { assertIncludes, getExportEntries } from "./pack-smoke-helpers.mjs";
+import { assertIncludes, getExportEntries } from "./pack-smoke-helpers.ts";
 
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const packagesDir = join(repoRoot, "packages");

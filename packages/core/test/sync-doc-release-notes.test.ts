@@ -18,10 +18,10 @@ import {
   syncReleaseNotes,
   toRepoPath,
   writeIfChanged
-} from "../../../scripts/sync-doc-release-notes.mjs";
+} from "../../../scripts/sync-doc-release-notes";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const scriptPath = resolve(__dirname, "../../../scripts/sync-doc-release-notes.mjs");
+const scriptPath = resolve(__dirname, "../../../scripts/sync-doc-release-notes.ts");
 
 const oneSource = [
   {
@@ -214,7 +214,7 @@ describe("sync-doc-release-notes script", () => {
     const syncLogs: string[] = [];
 
     const syncResult = main({
-      argv: ["node", "script.mjs"],
+      argv: ["node", "script.ts"],
       repoRoot: root,
       sources: oneSource,
       log: (message) => syncLogs.push(message)
@@ -225,7 +225,7 @@ describe("sync-doc-release-notes script", () => {
 
     const checkLogs: string[] = [];
     const checkResult = main({
-      argv: ["node", "script.mjs", "--check"],
+      argv: ["node", "script.ts", "--check"],
       repoRoot: root,
       sources: oneSource,
       log: (message) => checkLogs.push(message)
@@ -247,7 +247,7 @@ describe("sync-doc-release-notes script", () => {
 
     expect(() =>
       main({
-        argv: ["node", "script.mjs", "--check"],
+        argv: ["node", "script.ts", "--check"],
         repoRoot: root,
         sources: oneSource,
         error: () => {}
@@ -259,13 +259,13 @@ describe("sync-doc-release-notes script", () => {
   });
 
   it("entrypoint detection handles all branches", () => {
-    expect(isEntrypoint("", "file:///a/script.mjs")).toBe(false);
-    expect(isEntrypoint("/a/script.mjs", "file:///a/script.mjs")).toBe(true);
-    expect(isEntrypoint("/a/other.mjs", "file:///a/script.mjs")).toBe(false);
+    expect(isEntrypoint("", "file:///a/script.ts")).toBe(false);
+    expect(isEntrypoint("/a/script.ts", "file:///a/script.ts")).toBe(true);
+    expect(isEntrypoint("/a/other.ts", "file:///a/script.ts")).toBe(false);
   });
 
   it("script can run as a cli entrypoint in check mode", () => {
-    execFileSync(process.execPath, [scriptPath, "--check"], {
+    execFileSync(process.execPath, ["--import", "tsx", scriptPath, "--check"], {
       cwd: resolve(__dirname, "../../.."),
       stdio: "pipe",
       encoding: "utf8"

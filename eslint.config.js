@@ -6,9 +6,9 @@ import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
 
 const TEST_FILE_GLOBS = [
-  "test/**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
-  "**/__tests__/**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
-  "**/*.{test,spec}.{ts,tsx,js,jsx,mts,cts,mjs,cjs}"
+  "test/**/*.{ts,tsx,js,jsx,mts,cts,cjs}",
+  "**/__tests__/**/*.{ts,tsx,js,jsx,mts,cts,cjs}",
+  "**/*.{test,spec}.{ts,tsx,js,jsx,mts,cts,cjs}"
 ];
 
 export default [
@@ -27,11 +27,23 @@ export default [
   },
   js.configs.recommended,
   {
-    files: ["scripts/**/*.mjs", "*.config.cjs", "*.config.mjs"],
+    files: ["scripts/**/*.ts", "packages/*/scripts/**/*.ts", "*.config.cjs", "*.config.js"],
     languageOptions: {
       globals: {
         ...globals.node
       }
+    }
+  },
+  {
+    files: ["**/*.mjs"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Program",
+          message: "Use .ts or .js files. .mjs is not allowed in this repository."
+        }
+      ]
     }
   },
   {
