@@ -54,16 +54,7 @@ const isJourneyAsyncPhase = (
   value === "running-effect" ||
   value === "error";
 
-const resolveDefaultEnabled = (): boolean => {
-  const nodeEnv = typeof process !== "undefined" ? process.env?.NODE_ENV : undefined;
-  if (typeof nodeEnv !== "string") {
-    return false;
-  }
-
-  return nodeEnv !== "production";
-};
-
-const resolveDefaultCommandsEnabled = (): boolean => {
+const isNonProductionEnvironment = (): boolean => {
   const nodeEnv = typeof process !== "undefined" ? process.env?.NODE_ENV : undefined;
   if (typeof nodeEnv !== "string") {
     return false;
@@ -368,11 +359,11 @@ export const attachJourneyDevtools = <
   machine: JourneyMachine<TContext, TStepId, TEventType, TPayloadMap, TStepMeta>,
   options: JourneyDevtoolsBridgeOptions = {}
 ): (() => void) => {
-  const enabled = options.enabled ?? resolveDefaultEnabled();
+  const enabled = options.enabled ?? isNonProductionEnvironment();
   if (!enabled || typeof window === "undefined") {
     return () => {};
   }
-  const commandsEnabled = options.commandsEnabled ?? resolveDefaultCommandsEnabled();
+  const commandsEnabled = options.commandsEnabled ?? isNonProductionEnvironment();
 
   const machineId = options.machineId?.trim() || createMachineId();
   const meta: JourneyDevtoolsMachineMeta = {
