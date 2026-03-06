@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import React from "react";
 import { act } from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import {
   createJourneyBindings,
@@ -147,5 +147,62 @@ describe("bindings hooks edge cases", () => {
     });
 
     expect(screen.getByText("fallback")).toBeTruthy();
+  });
+
+  it("StepRenderer remounts shared step components when step id changes", async () => {
+    type LocalStepId = "one" | "two";
+    let localBindings!: ReturnType<typeof createJourneyBindings<Context, LocalStepId, Event>>;
+    let api: JourneyApi<Context, LocalStepId, Event> | null = null;
+
+    const SharedStep = () => {
+      const snapshot = localBindings.useJourneySnapshot();
+      const [count, setCount] = React.useState(0);
+
+      return (
+        <div>
+          <div data-testid="shared-step">{`${snapshot.currentStepId}:${count}`}</div>
+          <button data-testid="increment" onClick={() => setCount((value) => value + 1)}>
+            increment
+          </button>
+        </div>
+      );
+    };
+
+    const journeyWithSharedStep: JourneyReactDefinition<Context, LocalStepId, Event> = {
+      initial: "one",
+      context: { count: 0 },
+      steps: {
+        one: { component: SharedStep },
+        two: { component: SharedStep }
+      },
+      transitions: [{ from: "one", event: "goToNextStep", to: "two" }]
+    };
+
+    localBindings = createJourneyBindings(journeyWithSharedStep);
+
+    const GrabApi = () => {
+      const resolvedApi = localBindings.useJourneyApi();
+      React.useLayoutEffect(() => {
+        api = resolvedApi;
+      }, [resolvedApi]);
+      return null;
+    };
+
+    render(
+      <localBindings.Provider>
+        <GrabApi />
+        <localBindings.StepRenderer />
+      </localBindings.Provider>
+    );
+
+    expect(screen.getByTestId("shared-step").textContent).toBe("one:0");
+    fireEvent.click(screen.getByTestId("increment"));
+    expect(screen.getByTestId("shared-step").textContent).toBe("one:1");
+
+    await act(async () => {
+      await api?.goToNextStep();
+    });
+
+    expect(screen.getByTestId("shared-step").textContent).toBe("two:0");
   });
 });

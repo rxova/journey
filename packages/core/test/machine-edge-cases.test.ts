@@ -144,6 +144,195 @@ describe("machine edge cases", () => {
     expect(snapshot.async.byStep.start.transitionId).toBe("effect-reject");
   });
 
+  it("resetMachine cancels in-flight async effects and ignores stale completion", async () => {
+    const effectGate = deferred<Context>();
+    const machine = createJourneyMachine({
+      ...createBaseJourney(),
+      transitions: [
+        {
+          id: "effect-cancel",
+          from: "start",
+          event: "goToNextStep",
+          to: "middle",
+          effect: async () => effectGate.promise
+        }
+      ]
+    });
+    const events: JourneyObservationEvent<StepId, Event>[] = [];
+    machine.subscribeEvent((event) => {
+      events.push(event);
+    });
+
+    const sendPromise = machine.send({ type: "goToNextStep" });
+    await flushAsync();
+    expect(machine.getSnapshot().async.byStep.start.phase).toBe("running-effect");
+
+    machine.resetMachine();
+    expect(machine.getSnapshot().currentStepId).toBe("start");
+    expect(machine.getSnapshot().async.byStep.start.phase).toBe("idle");
+
+    effectGate.resolve({ value: 42 });
+    const result = await sendPromise;
+
+    expect(result.transitioned).toBe(false);
+    const snapshot = machine.getSnapshot();
+    expect(snapshot.currentStepId).toBe("start");
+    expect(snapshot.history.timeline).toEqual(["start"]);
+    expect(snapshot.context.value).toBe(0);
+    expect(events.some((event) => event.type === "transition.success")).toBe(false);
+  });
+
+  it("dispose cancels in-flight transitions and blocks future sends", async () => {
+    const effectGate = deferred<Context>();
+    const machine = createJourneyMachine({
+      ...createBaseJourney(),
+      transitions: [
+        {
+          id: "effect-dispose",
+          from: "start",
+          event: "goToNextStep",
+          to: "middle",
+          effect: async () => effectGate.promise
+        }
+      ]
+    });
+
+    const sendPromise = machine.send({ type: "goToNextStep" });
+    await flushAsync();
+    expect(machine.getSnapshot().async.byStep.start.phase).toBe("running-effect");
+
+    machine.dispose();
+
+    effectGate.resolve({ value: 11 });
+    const inFlightResult = await sendPromise;
+    expect(inFlightResult.transitioned).toBe(false);
+
+    const nextResult = await machine.send({ type: "goToNextStep" });
+    expect(nextResult.transitioned).toBe(false);
+    expect(machine.getSnapshot().currentStepId).toBe("start");
+  });
+
+  it("swallows stale async guard errors after reset cancellation", async () => {
+    const guardGate = deferred<boolean>();
+    const machine = createJourneyMachine({
+      ...createBaseJourney(),
+      transitions: [
+        {
+          id: "guard-reset-reject",
+          from: "start",
+          event: "goToNextStep",
+          to: "middle",
+          when: async () => guardGate.promise
+        }
+      ]
+    });
+
+    const sendPromise = machine.send({ type: "goToNextStep" });
+    await flushAsync();
+    machine.resetMachine();
+
+    guardGate.reject(new Error("guard failed after reset"));
+    const result = await sendPromise;
+
+    expect(result.transitioned).toBe(false);
+    expect(machine.getSnapshot().currentStepId).toBe("start");
+  });
+
+  it("swallows stale async effect errors after reset cancellation", async () => {
+    const effectGate = deferred<Context>();
+    const machine = createJourneyMachine({
+      ...createBaseJourney(),
+      transitions: [
+        {
+          id: "effect-reset-reject",
+          from: "start",
+          event: "goToNextStep",
+          to: "middle",
+          effect: async () => effectGate.promise
+        }
+      ]
+    });
+
+    const sendPromise = machine.send({ type: "goToNextStep" });
+    await flushAsync();
+    machine.resetMachine();
+
+    effectGate.reject(new Error("effect failed after reset"));
+    const result = await sendPromise;
+
+    expect(result.transitioned).toBe(false);
+    expect(machine.getSnapshot().currentStepId).toBe("start");
+  });
+
+  it("handles goToStepById transitions for changed and unchanged targets", async () => {
+    const machine = createJourneyMachine(createBaseJourney());
+
+    const first = await machine.send({ type: "goToStepById", stepId: "middle" });
+    expect(first.transitioned).toBe(true);
+    expect(machine.getSnapshot().currentStepId).toBe("middle");
+
+    const second = await machine.send({ type: "goToStepById", stepId: "middle" });
+    expect(second.transitioned).toBe(true);
+    expect(machine.getSnapshot().history.timeline).toEqual(["start", "middle"]);
+  });
+
+  it("keeps context unchanged when effect returns undefined", async () => {
+    const machine = createJourneyMachine({
+      ...createBaseJourney(),
+      transitions: [
+        {
+          id: "effect-undefined",
+          from: "start",
+          event: "goToNextStep",
+          to: "middle",
+          effect: async () => undefined
+        }
+      ]
+    });
+
+    const before = machine.getSnapshot().context;
+    await machine.send({ type: "goToNextStep" });
+
+    expect(machine.getSnapshot().context).toEqual(before);
+  });
+
+  it("returns non-transitioning result when no transition matches a non-back event", async () => {
+    const machine = createJourneyMachine(createBaseJourney());
+
+    const result = await machine.send({ type: "completeJourney" });
+    expect(result.transitioned).toBe(false);
+    expect(machine.getSnapshot().currentStepId).toBe("start");
+  });
+
+  it("no-ops subscriptions and sync APIs after dispose", async () => {
+    const machine = createJourneyMachine(createBaseJourney());
+    const before = machine.getSnapshot();
+
+    machine.dispose();
+    machine.dispose();
+
+    const unsubscribe = machine.subscribe(() => {
+      throw new Error("disposed subscribe should be noop");
+    });
+    const unsubscribeEvent = machine.subscribeEvent(() => {
+      throw new Error("disposed subscribeEvent should be noop");
+    });
+
+    expect(machine.resetMachine()).toBe(before);
+    expect(machine.updateContext((context) => ({ ...context, value: context.value + 1 }))).toBe(
+      before
+    );
+    expect(machine.updateStepMetadata("start", (meta) => meta)).toBe(before);
+    expect(machine.clearStepError()).toBe(before);
+
+    const result = await machine.goToNextStep();
+    expect(result.transitioned).toBe(false);
+    expect(result.snapshot).toBe(before);
+
+    unsubscribe();
+    unsubscribeEvent();
+  });
+
   it("recovers missing async step state when an async guard rejects", async () => {
     const machine = createJourneyMachine({
       ...createBaseJourney(),
