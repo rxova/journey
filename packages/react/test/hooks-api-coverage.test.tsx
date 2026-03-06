@@ -73,6 +73,7 @@ describe("useJourneyApi", () => {
     const updateStepMetadata = vi.fn(() => snapshot);
     const clearStepError = vi.fn(() => snapshot);
     const resetMachine = vi.fn(() => snapshot);
+    const dispose = vi.fn(() => undefined);
 
     const machine: JourneyMachine<Context, StepId, Event, Record<never, never>, Meta> = {
       getSnapshot: () => snapshot,
@@ -86,6 +87,7 @@ describe("useJourneyApi", () => {
       updateStepMetadata,
       clearStepError,
       resetMachine,
+      dispose,
       subscribe: () => () => undefined,
       subscribeEvent: () => () => undefined
     };
@@ -199,6 +201,7 @@ describe("useJourneyApi", () => {
     expect(updateStepMetadata).toHaveBeenCalledTimes(2);
     expect(clearStepError).toHaveBeenCalledWith("two");
     expect(resetMachine).toHaveBeenCalledTimes(1);
+    expect(dispose).toHaveBeenCalledTimes(0);
   });
 
   it("useJourneyMachine returns the same machine instance", () => {
@@ -216,5 +219,48 @@ describe("useJourneyApi", () => {
     );
 
     expect(screen.getByTestId("machine").textContent).toBe("same");
+  });
+
+  it("returns a stable api object across unrelated parent rerenders", () => {
+    const machine = createJourneyMachine(journey);
+    const reportApiRef = vi.fn();
+
+    const CaptureApi = () => {
+      const api = bindings.useJourneyApi();
+
+      React.useLayoutEffect(() => {
+        reportApiRef(api);
+      }, [api]);
+
+      return null;
+    };
+
+    const Harness = () => {
+      const [tick, setTick] = React.useState(0);
+
+      return (
+        <div>
+          <button data-testid="rerender" onClick={() => setTick((value) => value + 1)}>
+            rerender
+          </button>
+          <div data-testid="tick">{tick}</div>
+          <bindings.Provider machine={machine}>
+            <CaptureApi />
+          </bindings.Provider>
+        </div>
+      );
+    };
+
+    render(<Harness />);
+
+    expect(reportApiRef).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId("rerender"));
+    expect(screen.getByTestId("tick").textContent).toBe("1");
+    expect(reportApiRef).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId("rerender"));
+    expect(screen.getByTestId("tick").textContent).toBe("2");
+    expect(reportApiRef).toHaveBeenCalledTimes(1);
   });
 });

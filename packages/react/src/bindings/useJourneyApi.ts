@@ -100,18 +100,32 @@ export const createUseJourneyApi = <
       machine.resetMachine();
     }, [machine]);
 
-    return {
-      send,
-      goToNextStep,
-      terminateJourney,
-      completeJourney,
-      goToPreviousStep,
-      goToLastVisitedStep,
-      clearStepError,
-      updateContext,
-      updateStepMetadata,
-      updateComponentMetadata: updateStepMetadata,
-      resetJourney
-    };
+    return React.useMemo(
+      () => ({
+        send,
+        goToNextStep,
+        terminateJourney,
+        completeJourney,
+        goToPreviousStep,
+        goToLastVisitedStep,
+        clearStepError,
+        updateContext,
+        updateStepMetadata,
+        updateComponentMetadata: updateStepMetadata,
+        resetJourney
+      }),
+      [
+        send,
+        goToNextStep,
+        terminateJourney,
+        completeJourney,
+        goToPreviousStep,
+        goToLastVisitedStep,
+        clearStepError,
+        updateContext,
+        updateStepMetadata,
+        resetJourney
+      ]
+    );
   };
 };

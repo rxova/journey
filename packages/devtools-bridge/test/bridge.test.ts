@@ -152,6 +152,7 @@ const createMachine = () => {
       listeners.forEach((listener) => listener());
       return snapshot;
     },
+    dispose: () => undefined,
     subscribe: (listener) => {
       listeners.add(listener);
       return () => {

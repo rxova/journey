@@ -69,10 +69,14 @@ export const createProvider = <
       !machine &&
       (!internalMachineRef.current || shouldResetInternal || shouldResetPersistence)
     ) {
+      const previousInternalMachine = internalMachineRef.current;
       const options = persistence ? { persistence } : undefined;
       internalMachineRef.current = createJourneyMachine(incomingJourney, options);
       journeyRef.current = incomingJourney;
       persistenceRef.current = persistence;
+      if (previousInternalMachine && previousInternalMachine !== internalMachineRef.current) {
+        previousInternalMachine.dispose();
+      }
     }
 
     const resolvedMachine = machine ?? internalMachineRef.current!;
@@ -86,6 +90,16 @@ export const createProvider = <
       }),
       [resolvedMachine, resolvedJourney]
     );
+
+    React.useEffect(() => {
+      return () => {
+        if (machine || !internalMachineRef.current) {
+          return;
+        }
+        internalMachineRef.current.dispose();
+        internalMachineRef.current = null;
+      };
+    }, [machine]);
 
     return <JourneyContext.Provider value={value}>{children}</JourneyContext.Provider>;
   };

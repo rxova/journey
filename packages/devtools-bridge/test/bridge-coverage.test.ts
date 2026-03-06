@@ -123,6 +123,7 @@ const createMachine = (): JourneyMachine<Context, StepId, Event> => {
       listeners.forEach((listener) => listener());
       return snapshot;
     },
+    dispose: () => undefined,
     subscribe: (listener) => {
       listeners.add(listener);
       return () => {
