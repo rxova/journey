@@ -92,6 +92,7 @@ This separation lets teams evolve UI ergonomics without rewriting flow semantics
 Journey is built to be observable from day one.
 
 Use `subscribe` when you care about current state.
+Use `subscribeSelector` when you care about one selected slice of state.
 Use `subscribeEvent` when you care about what just happened.
 
 ### `subscribe`: snapshot change reactivity
@@ -107,6 +108,21 @@ const unsubscribe = machine.subscribe(() => {
 ```
 
 Best for UI rendering and reactive state updates.
+
+### `subscribeSelector`: focused snapshot reactivity
+
+`subscribeSelector` derives a selected value from snapshot and notifies only when that selected value changes.
+
+```ts
+const unsubscribe = machine.subscribeSelector(
+  (snapshot) => snapshot.currentStepId,
+  (next, previous) => {
+    console.log("step changed:", previous, "->", next);
+  }
+);
+```
+
+Best for minimizing updates when only part of snapshot matters.
 
 ### `subscribeEvent`: typed lifecycle telemetry
 
@@ -129,6 +145,7 @@ Best for analytics, logging, debugging, and audit trails.
 In practice, teams usually use both:
 
 - `subscribe` to render what is true now.
+- `subscribeSelector` to react to specific state slices.
 - `subscribeEvent` to understand how it changed.
 
 ## Why This Architecture Works
