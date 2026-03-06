@@ -111,7 +111,6 @@ export const createUseJourneyApi = <
         clearStepError,
         updateContext,
         updateStepMetadata,
-        updateComponentMetadata: updateStepMetadata,
         resetJourney
       }),
       [

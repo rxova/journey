@@ -67,7 +67,6 @@ export type JourneyApi<
   goToLastVisitedStep: () => Promise<void>;
   clearStepError: (stepId?: TStepId) => void;
   updateContext: (updater: (context: TContext) => TContext) => void;
-  updateComponentMetadata: (stepId: TStepId, updater: (metadata: TStepMeta) => TStepMeta) => void;
   updateStepMetadata: (stepId: TStepId, updater: (metadata: TStepMeta) => TStepMeta) => void;
   resetJourney: () => void;
 };
