@@ -12,7 +12,7 @@ export function cleanPaths(paths, cwd = process.cwd()) {
 
 function main(argv = process.argv.slice(2)) {
   if (argv.length === 0) {
-    console.error("Usage: node ./scripts/clean-paths.mjs <path> [<path>...]");
+    console.error("Usage: node ./scripts/clean-paths.ts <path> [<path>...]");
     process.exit(1);
   }
 

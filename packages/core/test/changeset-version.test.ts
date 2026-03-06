@@ -11,10 +11,11 @@ import {
   parseVersion,
   runChangesetVersion,
   syncRootVersion
-} from "../../../scripts/changeset-version.mjs";
+} from "../../../scripts/changeset-version";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const scriptPath = resolve(__dirname, "../../../scripts/changeset-version.mjs");
+const scriptPath = resolve(__dirname, "../../../scripts/changeset-version.ts");
+const tsxLoaderPath = resolve(__dirname, "../../../node_modules/tsx/dist/loader.mjs");
 
 async function writePackageJson(root: string, relativeDir: string, name: string, version: string) {
   const packageDir = join(root, relativeDir);
@@ -123,9 +124,9 @@ describe("changeset-version script", () => {
   });
 
   it("entrypoint detection handles all branches", () => {
-    expect(isEntrypoint("", "file:///a/script.mjs")).toBe(false);
-    expect(isEntrypoint("/a/script.mjs", "file:///a/script.mjs")).toBe(true);
-    expect(isEntrypoint("/a/other.mjs", "file:///a/script.mjs")).toBe(false);
+    expect(isEntrypoint("", "file:///a/script.ts")).toBe(false);
+    expect(isEntrypoint("/a/script.ts", "file:///a/script.ts")).toBe(true);
+    expect(isEntrypoint("/a/other.ts", "file:///a/script.ts")).toBe(false);
   });
 
   it("script can execute as cli entrypoint with fake pnpm", async () => {
@@ -136,7 +137,7 @@ describe("changeset-version script", () => {
     await writeFile(fakePnpm, "#!/usr/bin/env sh\nexit 0\n", { mode: 0o755 });
 
     const { execFileSync } = await import("node:child_process");
-    execFileSync(process.execPath, [scriptPath], {
+    execFileSync(process.execPath, ["--import", tsxLoaderPath, scriptPath], {
       cwd: tempRoot,
       env: { ...process.env, PATH: `${binDir}:${process.env.PATH ?? ""}` },
       stdio: "pipe"

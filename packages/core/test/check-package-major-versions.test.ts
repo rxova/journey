@@ -7,11 +7,16 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const scriptPath = resolve(__dirname, "../../../scripts/check-package-major-versions.mjs");
+const scriptPath = resolve(__dirname, "../../../scripts/check-package-major-versions.ts");
+const tsxLoaderPath = resolve(__dirname, "../../../node_modules/tsx/dist/loader.mjs");
 
 const runScript = (cwd: string) => {
   try {
-    execFileSync(process.execPath, [scriptPath], { cwd, stdio: "pipe", encoding: "utf8" });
+    execFileSync(process.execPath, ["--import", tsxLoaderPath, scriptPath], {
+      cwd,
+      stdio: "pipe",
+      encoding: "utf8"
+    });
     return { code: 0 };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {

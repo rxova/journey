@@ -7,14 +7,18 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const scriptPath = resolve(__dirname, "../../../scripts/check-changeset.mjs");
+const scriptPath = resolve(__dirname, "../../../scripts/check-changeset.ts");
+const tsxLoaderPath = resolve(__dirname, "../../../node_modules/tsx/dist/loader.mjs");
 
 const execGit = (cwd: string, args: string[]) =>
   execFileSync("git", args, { cwd, stdio: "pipe", encoding: "utf8" }).trim();
 
 const runScript = (cwd: string, env: Record<string, string>) => {
   try {
-    execFileSync(process.execPath, [scriptPath], { cwd, env: { ...process.env, ...env } });
+    execFileSync(process.execPath, ["--import", tsxLoaderPath, scriptPath], {
+      cwd,
+      env: { ...process.env, ...env }
+    });
     return { code: 0 };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
