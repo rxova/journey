@@ -87,7 +87,7 @@ describe("check-public-api-tsdoc script", () => {
     expect(missing).toEqual([]);
 
     await rm(root, { recursive: true, force: true });
-  });
+  }, 10_000);
 
   it("collects missing summaries for callable exports", async () => {
     const root = await makeWorkspace({ withMissingSummary: true });

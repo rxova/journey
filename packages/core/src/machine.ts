@@ -474,6 +474,10 @@ export function createJourneyMachine<
           }
 
           const fromStep = snapshot.currentStepId;
+          const transitionEvent = event as JourneyEvent<TStepId, TEventType, TPayloadMap>;
+          emit({ type: "transition.start", from: fromStep, event, timestamp: now() });
+
+          let transitionsToEvaluate = journey.transitions;
 
           if (isGoToStepByIdEvent(event)) {
             assertStepExists(
@@ -481,41 +485,52 @@ export function createJourneyMachine<
               event.stepId,
               `Cannot goToStepById unknown step "${event.stepId}".`
             );
-            emit({ type: "transition.start", from: fromStep, event, timestamp: now() });
-            setStepIdle(fromStep, runVersion);
 
-            const beforeCurrent = snapshot.currentStepId;
-            const nextSnapshot = transitionSnapshot(snapshot, event.stepId, snapshot.context);
-            if (nextSnapshot.currentStepId !== beforeCurrent) {
-              emit({ type: "step.exit", stepId: beforeCurrent, timestamp: now() });
-            }
-
-            snapshot = nextSnapshot;
-            persistSnapshot(snapshot);
-            notify();
-
-            emit({
-              type: "transition.success",
-              from: fromStep,
-              to: snapshot.currentStepId,
-              eventType: JOURNEY_EVENT.GO_TO_STEP_BY_ID,
-              transitionId: JOURNEY_EVENT.GO_TO_STEP_BY_ID,
-              timestamp: now()
+            const goToStepTransitions = journey.transitions.filter((transition) => {
+              const fromMatches = transition.from === "*" || transition.from === fromStep;
+              return (
+                fromMatches &&
+                transition.event === JOURNEY_EVENT.GO_TO_STEP_BY_ID &&
+                "to" in transition &&
+                transition.to === event.stepId
+              );
             });
 
-            if (nextSnapshot.currentStepId !== beforeCurrent) {
-              emit({ type: "step.enter", stepId: snapshot.currentStepId, timestamp: now() });
+            if (goToStepTransitions.length === 0) {
+              setStepIdle(fromStep, runVersion);
+
+              const beforeCurrent = snapshot.currentStepId;
+              const nextSnapshot = transitionSnapshot(snapshot, event.stepId, snapshot.context);
+              if (nextSnapshot.currentStepId !== beforeCurrent) {
+                emit({ type: "step.exit", stepId: beforeCurrent, timestamp: now() });
+              }
+
+              snapshot = nextSnapshot;
+              persistSnapshot(snapshot);
+              notify();
+
+              emit({
+                type: "transition.success",
+                from: fromStep,
+                to: snapshot.currentStepId,
+                eventType: JOURNEY_EVENT.GO_TO_STEP_BY_ID,
+                transitionId: JOURNEY_EVENT.GO_TO_STEP_BY_ID,
+                timestamp: now()
+              });
+
+              if (nextSnapshot.currentStepId !== beforeCurrent) {
+                emit({ type: "step.enter", stepId: snapshot.currentStepId, timestamp: now() });
+              }
+
+              return buildSendResult(snapshot, true, JOURNEY_EVENT.GO_TO_STEP_BY_ID);
             }
 
-            return buildSendResult(snapshot, true, JOURNEY_EVENT.GO_TO_STEP_BY_ID);
+            transitionsToEvaluate = goToStepTransitions;
           }
-
-          const transitionEvent = event as JourneyEvent<TStepId, TEventType, TPayloadMap>;
-          emit({ type: "transition.start", from: fromStep, event, timestamp: now() });
 
           let transition;
           try {
-            transition = await selectTransition(journey.transitions, snapshot, transitionEvent, {
+            transition = await selectTransition(transitionsToEvaluate, snapshot, transitionEvent, {
               onAsyncGuardStart: (currentTransition) => {
                 setStepLoading(
                   fromStep,
@@ -560,6 +575,10 @@ export function createJourneyMachine<
           }
 
           if (!transition) {
+            if (isGoToStepByIdEvent(event)) {
+              return buildSendResult(snapshot, false);
+            }
+
             if (event.type === "goToPreviousStep" || event.type === "back") {
               const fallbackResult = applyPreviousNavigation(1, event.type);
               if (fallbackResult.transitioned) {

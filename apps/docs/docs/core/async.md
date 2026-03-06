@@ -75,7 +75,7 @@ For `send(event)`, Journey processes in this order:
 - `when` returns `false`
 - `when` throws/rejects
 - navigation happens via pointer helpers (`goToPreviousStep`, `goToLastVisitedStep`)
-- event is a direct `goToStepById` jump
+- `goToStepById` uses direct-jump fallback because no matching `goToStepById` transition exists
 
 ## Failure Behavior
 
