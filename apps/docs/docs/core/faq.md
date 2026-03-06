@@ -42,9 +42,11 @@ In other words, it behaves like normal history systems: once you branch from the
 
 Use `subscribe(listener)` for snapshot reactivity.
 
+Use `subscribeSelector(selector, listener, equalityFn?)` when you only care about a selected snapshot slice.
+
 Use `subscribeEvent(listener)` for typed lifecycle events.
 
-Teams usually use both: `subscribe` for UI updates, `subscribeEvent` for logs, analytics, and debugging.
+Teams usually use all three: `subscribe` for UI updates, `subscribeSelector` for focused updates, and `subscribeEvent` for logs, analytics, and debugging.
 
 ## Is Journey overkill for simple wizards?
 

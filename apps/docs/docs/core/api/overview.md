@@ -179,6 +179,8 @@ It covers plain transition objects, `tx` helpers, and when to use each style.
 
 Use `subscribe` when you only care that snapshot changed.
 
+Use `subscribeSelector` when you only care about a specific snapshot slice and want to skip updates when that selected value is unchanged.
+
 Use `subscribeEvent` when you need typed lifecycle telemetry, such as:
 
 - `transition.start`
@@ -199,6 +201,25 @@ In practice:
 - Better logs: you can log transition and navigation events with consistent payloads.
 - Easier debugging: you can reconstruct what happened and why a transition failed.
 - Cleaner analytics hooks: event listeners can feed analytics without adding tracking logic inside UI components.
+
+Selector subscription example:
+
+```ts
+const unsubscribeStep = machine.subscribeSelector(
+  (snapshot) => snapshot.currentStepId,
+  (next, previous) => {
+    console.log("step changed:", previous, "->", next);
+  }
+);
+
+const unsubscribeStepObject = machine.subscribeSelector(
+  (snapshot) => ({ step: snapshot.currentStepId }),
+  (next) => {
+    console.log("selected object changed:", next.step);
+  },
+  (previous, next) => previous.step === next.step
+);
+```
 
 ## Constants You May Use
 
