@@ -46,25 +46,18 @@ bindings = createJourneyBindings(subscribeJourney);
 
 const SubscriptionsPanel = () => {
   const snapshot = bindings.useJourneySnapshot();
-  const machine = bindings.useJourneyMachine();
   const [eventTypes, setEventTypes] = React.useState<string[]>([]);
 
-  React.useEffect(() => {
-    const unsubscribeEvents = machine.subscribeEvent((event) => {
-      setEventTypes((current) => [...current, event.type]);
-    });
-
-    return unsubscribeEvents;
-  }, [machine]);
+  bindings.useJourneyEvent((event) => {
+    setEventTypes((current) => [...current, event.type]);
+  });
 
   return (
     <section>
       <div>
         Current step from `useJourneySnapshot` (machine.subscribe): {snapshot.currentStepId}
       </div>
-      <div>
-        Lifecycle events from `machine.subscribeEvent`: {eventTypes.join(", ") || "none yet"}
-      </div>
+      <div>Lifecycle events from `useJourneyEvent`: {eventTypes.join(", ") || "none yet"}</div>
     </section>
   );
 };
