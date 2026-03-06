@@ -366,3 +366,89 @@ button[aria-label^="Switch between dark and light mode"] svg {
   border-color: rgba(83, 96, 126, 0.82);
   box-shadow: 0 16px 38px -26px rgba(0, 0, 0, 0.74);
 }
+
+/* Homepage feature carousel */
+.feature-carousel-stage {
+  animation: feature-carousel-enter-right 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes feature-carousel-enter-right {
+  from {
+    opacity: 0.35;
+    transform: translateX(54px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.feature-carousel-card {
+  height: 178px;
+  overflow: hidden;
+}
+
+.feature-carousel-card--current {
+  height: 198px;
+}
+
+.feature-carousel-shell {
+  position: relative;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(0, 0, 0, 0.12) 4%,
+    rgba(0, 0, 0, 0.85) 10%,
+    #000 14%,
+    #000 86%,
+    rgba(0, 0, 0, 0.85) 90%,
+    rgba(0, 0, 0, 0.12) 96%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(0, 0, 0, 0.12) 4%,
+    rgba(0, 0, 0, 0.85) 10%,
+    #000 14%,
+    #000 86%,
+    rgba(0, 0, 0, 0.85) 90%,
+    rgba(0, 0, 0, 0.12) 96%,
+    transparent 100%
+  );
+}
+
+@media (max-width: 768px) {
+  .feature-carousel-card {
+    height: 162px;
+  }
+
+  .feature-carousel-card--current {
+    height: 182px;
+  }
+
+  .feature-carousel-shell {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      rgba(0, 0, 0, 0.2) 4%,
+      rgba(0, 0, 0, 0.9) 10%,
+      #000 13%,
+      #000 87%,
+      rgba(0, 0, 0, 0.9) 90%,
+      rgba(0, 0, 0, 0.2) 96%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      rgba(0, 0, 0, 0.2) 4%,
+      rgba(0, 0, 0, 0.9) 10%,
+      #000 13%,
+      #000 87%,
+      rgba(0, 0, 0, 0.9) 90%,
+      rgba(0, 0, 0, 0.2) 96%,
+      transparent 100%
+    );
+  }
+}
