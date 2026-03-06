@@ -19,14 +19,14 @@
   },
   "scripts": {
     "build": "pnpm -r build",
-    "clean": "pnpm -r clean && node ./scripts/clean-paths.mjs coverage",
+    "clean": "pnpm -r clean && node --import tsx ./scripts/clean-paths.ts coverage",
     "changeset": "changeset",
-    "version:major:check": "node ./scripts/check-package-major-versions.mjs",
-    "changeset:version": "node ./scripts/changeset-version.mjs && pnpm run docs:version-labels:sync && pnpm run docs:release-notes:sync",
-    "docs:version-labels:sync": "node ./scripts/sync-doc-version-labels.mjs",
-    "docs:version-labels:check": "node ./scripts/sync-doc-version-labels.mjs --check",
-    "docs:release-notes:sync": "node ./scripts/sync-doc-release-notes.mjs",
-    "docs:release-notes:check": "node ./scripts/sync-doc-release-notes.mjs --check",
+    "version:major:check": "node --import tsx ./scripts/check-package-major-versions.ts",
+    "changeset:version": "node --import tsx ./scripts/changeset-version.ts && pnpm run docs:version-labels:sync && pnpm run docs:release-notes:sync",
+    "docs:version-labels:sync": "node --import tsx ./scripts/sync-doc-version-labels.ts",
+    "docs:version-labels:check": "node --import tsx ./scripts/sync-doc-version-labels.ts --check",
+    "docs:release-notes:sync": "node --import tsx ./scripts/sync-doc-release-notes.ts",
+    "docs:release-notes:check": "node --import tsx ./scripts/sync-doc-release-notes.ts --check",
     "docs:api:check": "pnpm exec tsc ./scripts/check-public-api-tsdoc.ts --outDir ./node_modules/.tmp-tsdoc-check --module NodeNext --moduleResolution NodeNext --target ES2020 --skipLibCheck && node ./node_modules/.tmp-tsdoc-check/check-public-api-tsdoc.js",
     "release": "pnpm -r build && changeset publish",
     "releases": "pnpm run changeset:version && pnpm run release",
@@ -37,7 +37,7 @@
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "prepare": "husky",
-    "commitlint": "node ./scripts/commitlint.mjs",
+    "commitlint": "node --import tsx ./scripts/commitlint.ts",
     "test": "vitest run --coverage",
     "test:precommit": "vitest run --coverage --coverage.reporter=text-summary",
     "test:watch": "vitest",
@@ -45,7 +45,7 @@
     "size:check": "pnpm -r size:check",
     "publint": "pnpm -r --filter \"./packages/*\" publint",
     "packaging:check": "pnpm -r --filter \"./packages/*\" build && pnpm run publint",
-    "pack:smoke": "node ./scripts/pack-smoke.mjs"
+    "pack:smoke": "node --import tsx ./scripts/pack-smoke.ts"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.8",
@@ -71,12 +71,13 @@
     "prettier": "^3.8.1",
     "publint": "^0.3.18",
     "size-limit": "^12.0.0",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": "eslint --max-warnings=0 --no-warn-ignored",
-    "*.{js,jsx,ts,tsx,mjs,cjs}": "prettier --write",
+    "*.{js,jsx,ts,tsx,cjs}": "prettier --write",
     "*.{json,md,mdx,yaml,yml,css,scss,html}": "prettier --write"
   },
   "pnpm": {

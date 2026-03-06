@@ -9,7 +9,7 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "test:browser": "playwright test e2e/browser-integration.spec.mjs --workers=1"
+    "test:browser": "playwright test e2e/browser-integration.spec.ts --workers=1"
   },
   "dependencies": {
     "@rxova/journey-devtools-bridge": "workspace:^",

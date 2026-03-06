@@ -19,11 +19,10 @@ import {
   syncDocVersionLabels,
   toRepoPath,
   writeIfChanged
-  // @ts-expect-error TS7016: this test imports a runtime .mjs script with no TS declarations.
-} from "../../../scripts/sync-doc-version-labels.mjs";
+} from "../../../scripts/sync-doc-version-labels";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const scriptPath = resolve(__dirname, "../../../scripts/sync-doc-version-labels.mjs");
+const scriptPath = resolve(__dirname, "../../../scripts/sync-doc-version-labels.ts");
 
 const testSources = [
   { pluginId: "core", source: "packages/core/package.json" },
@@ -244,7 +243,7 @@ describe("sync-doc-version-labels script", () => {
     const syncLogs: string[] = [];
 
     const syncResult = main({
-      argv: ["node", "script.mjs"],
+      argv: ["node", "script.ts"],
       repoRoot: root,
       sources: testSources,
       target: "apps/docs/version-labels.json",
@@ -256,7 +255,7 @@ describe("sync-doc-version-labels script", () => {
 
     const checkLogs: string[] = [];
     const checkResult = main({
-      argv: ["node", "script.mjs", "--check"],
+      argv: ["node", "script.ts", "--check"],
       repoRoot: root,
       sources: testSources,
       target: "apps/docs/version-labels.json",
@@ -279,7 +278,7 @@ describe("sync-doc-version-labels script", () => {
 
     expect(() =>
       main({
-        argv: ["node", "script.mjs", "--check"],
+        argv: ["node", "script.ts", "--check"],
         repoRoot: root,
         sources: testSources,
         target: "apps/docs/version-labels.json",
@@ -292,13 +291,13 @@ describe("sync-doc-version-labels script", () => {
   });
 
   it("entrypoint detection handles all branches", () => {
-    expect(isEntrypoint("", "file:///a/script.mjs")).toBe(false);
-    expect(isEntrypoint("/a/script.mjs", "file:///a/script.mjs")).toBe(true);
-    expect(isEntrypoint("/a/other.mjs", "file:///a/script.mjs")).toBe(false);
+    expect(isEntrypoint("", "file:///a/script.ts")).toBe(false);
+    expect(isEntrypoint("/a/script.ts", "file:///a/script.ts")).toBe(true);
+    expect(isEntrypoint("/a/other.ts", "file:///a/script.ts")).toBe(false);
   });
 
   it("script can run as a cli entrypoint in check mode", () => {
-    execFileSync(process.execPath, [scriptPath, "--check"], {
+    execFileSync(process.execPath, ["--import", "tsx", scriptPath, "--check"], {
       cwd: resolve(__dirname, "../../.."),
       stdio: "pipe",
       encoding: "utf8"
