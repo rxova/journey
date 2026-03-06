@@ -22,6 +22,8 @@ export type {
   JourneyMachinePayloadMap,
   JourneyMachineOptions,
   JourneyObservationEvent,
+  JourneySelector,
+  JourneyEqualityFn,
   JourneyPayloadFor,
   JourneySendEvent,
   JourneySendResult,

@@ -32,6 +32,8 @@ export {
   type JourneyStorage,
   type JourneySendResult,
   type JourneySnapshot,
+  type JourneySelector,
+  type JourneyEqualityFn,
   type JourneyTerminal,
   type JourneyTransition,
   type JourneyTransitionArgs,

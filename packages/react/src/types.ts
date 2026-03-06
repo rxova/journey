@@ -2,10 +2,12 @@ import type React from "react";
 
 import type {
   JourneyDefinition,
+  JourneyEqualityFn,
   JourneyEventPayloadMap as JourneyCoreEventPayloadMap,
   JourneyMachine,
   JourneyPayloadFor,
   JourneyPersistenceOptions,
+  JourneySelector,
   JourneySendEvent,
   JourneySnapshot,
   JourneyStepDefinition
@@ -126,5 +128,9 @@ export type JourneyBindings<
     TEventPayloadMap,
     TStepMeta
   >;
+  useJourneySelector: <TSelected>(
+    selector: JourneySelector<TContext, TStepId, TStepMeta, TSelected>,
+    equalityFn?: JourneyEqualityFn<TSelected>
+  ) => TSelected;
   useJourneySnapshot: () => JourneySnapshot<TContext, TStepId, TStepMeta>;
 };

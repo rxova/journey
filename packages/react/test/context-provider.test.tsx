@@ -68,6 +68,7 @@ describe("bindings.Provider", () => {
       resetMachine: () => snapshot,
       dispose,
       subscribe: () => () => undefined,
+      subscribeSelector: () => () => undefined,
       subscribeEvent: () => () => undefined
     };
 

@@ -163,6 +163,7 @@ const createMachine = (sendImpl?: JourneyMachine<Context, StepId, Event>["send"]
       listeners.add(listener);
       return () => undefined;
     },
+    subscribeSelector: () => () => undefined,
     subscribeEvent: () => () => undefined
   };
 
@@ -619,6 +620,7 @@ describe("bridge edge coverage", () => {
           subscribers.delete(listener);
         };
       },
+      subscribeSelector: () => () => undefined,
       subscribeEvent: () => () => undefined
     };
 
@@ -740,6 +742,7 @@ describe("bridge edge coverage", () => {
       resetMachine: () => snapshot,
       dispose: () => undefined,
       subscribe: () => () => undefined,
+      subscribeSelector: () => () => undefined,
       subscribeEvent: () => () => undefined
     };
     const detach = attachJourneyDevtools(machine, {
@@ -849,6 +852,7 @@ describe("bridge edge coverage", () => {
       resetMachine: () => snapshot,
       dispose: () => undefined,
       subscribe: () => () => undefined,
+      subscribeSelector: () => () => undefined,
       subscribeEvent: () => () => undefined
     };
 
