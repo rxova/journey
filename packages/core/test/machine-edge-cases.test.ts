@@ -264,16 +264,72 @@ describe("machine edge cases", () => {
     expect(machine.getSnapshot().currentStepId).toBe("start");
   });
 
-  it("handles goToStepById transitions for changed and unchanged targets", async () => {
+  it("goToStepById falls back to direct jumps when no matching transitions are declared", async () => {
     const machine = createJourneyMachine(createBaseJourney());
 
     const first = await machine.send({ type: "goToStepById", stepId: "middle" });
     expect(first.transitioned).toBe(true);
+    expect(first.transitionId).toBe("goToStepById");
     expect(machine.getSnapshot().currentStepId).toBe("middle");
 
     const second = await machine.send({ type: "goToStepById", stepId: "middle" });
     expect(second.transitioned).toBe(true);
+    expect(second.transitionId).toBe("goToStepById");
     expect(machine.getSnapshot().history.timeline).toEqual(["start", "middle"]);
+  });
+
+  it("goToStepById runs guards/effects when matching transitions are defined", async () => {
+    const machine = createJourneyMachine({
+      ...createBaseJourney(),
+      transitions: [
+        {
+          id: "go-to-middle-transition",
+          from: "start",
+          event: "goToStepById",
+          to: "middle",
+          when: ({ event }) => "stepId" in event && event.stepId === "middle",
+          effect: ({ context }) => ({ value: context.value + 5 })
+        }
+      ]
+    });
+    const events: JourneyObservationEvent<StepId, Event>[] = [];
+    machine.subscribeEvent((event) => {
+      events.push(event);
+    });
+
+    const result = await machine.send({ type: "goToStepById", stepId: "middle" });
+
+    expect(result.transitioned).toBe(true);
+    expect(result.transitionId).toBe("go-to-middle-transition");
+    expect(machine.getSnapshot().currentStepId).toBe("middle");
+    expect(machine.getSnapshot().context.value).toBe(5);
+    expect(events.map((event) => event.type)).toEqual([
+      "transition.start",
+      "step.exit",
+      "transition.success",
+      "step.enter"
+    ]);
+  });
+
+  it("goToStepById does not fallback-jump when matching transition guards block navigation", async () => {
+    const machine = createJourneyMachine({
+      ...createBaseJourney(),
+      transitions: [
+        {
+          id: "go-to-middle-blocked",
+          from: "start",
+          event: "goToStepById",
+          to: "middle",
+          when: () => false
+        }
+      ]
+    });
+
+    const result = await machine.send({ type: "goToStepById", stepId: "middle" });
+
+    expect(result.transitioned).toBe(false);
+    expect(machine.getSnapshot().currentStepId).toBe("start");
+    expect(machine.getSnapshot().history.timeline).toEqual(["start"]);
   });
 
   it("keeps context unchanged when effect returns undefined", async () => {
