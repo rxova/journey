@@ -9,6 +9,16 @@ Journey devtools has two parts:
 - `@rxova/journey-devtools-bridge`: runtime message bridge.
 - Devtools panel app: visualization + controls.
 
+## Download Extension
+
+Install the extension from Chrome Web Store:
+
+- https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm
+
+Preview:
+
+![Journey Devtools Overview](/img/devtool/panel-overview.png)
+
 ## Why It Exists
 
 The devtools stack helps teams see journey behavior clearly: timeline movement, transition outcomes, async phases, and command effects.
