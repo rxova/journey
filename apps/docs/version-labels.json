@@ -1,6 +1,6 @@
 {
-  "core": "0.6.2",
-  "react": "0.6.2",
-  "bridge": "0.6.2",
+  "core": "0.6.3",
+  "react": "0.6.3",
+  "bridge": "0.6.3",
   "chrome-devtools": "0.6.0"
 }
