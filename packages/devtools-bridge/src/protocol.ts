@@ -123,9 +123,23 @@ const MAX_PAYLOAD_SIZE = 500_000; // 500KB
 
 /**
  * Validates that a value is safe for transport.
- * Checks depth and size constraints to prevent malicious payloads.
+ * Checks size via a single serialization pass, then validates
+ * depth, types, and prototype safety via a structure walk.
  */
-const isSafePayload = (value: unknown, depth = 0): boolean => {
+const isSafePayload = (value: unknown): boolean => {
+  try {
+    const serialized = JSON.stringify(value);
+    if (serialized !== undefined && serialized.length > MAX_PAYLOAD_SIZE) {
+      return false;
+    }
+  } catch {
+    return false;
+  }
+
+  return isStructureSafe(value, 0);
+};
+
+const isStructureSafe = (value: unknown, depth: number): boolean => {
   if (depth > MAX_PAYLOAD_DEPTH) {
     return false;
   }
@@ -134,41 +148,23 @@ const isSafePayload = (value: unknown, depth = 0): boolean => {
     return true;
   }
 
-  const primitiveTypes = ["string", "number", "boolean"];
-  if (primitiveTypes.includes(typeof value)) {
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
     return true;
   }
 
-  if (typeof value === "object") {
-    // Check JSON serialization size
-    try {
-      const serialized = JSON.stringify(value);
-      if (serialized.length > MAX_PAYLOAD_SIZE) {
-        return false;
-      }
-    } catch {
-      // Circular references or non-serializable objects are not safe
-      return false;
-    }
-
-    // Recursively validate nested objects and arrays
-    if (Array.isArray(value)) {
-      return value.every((item) => isSafePayload(item, depth + 1));
-    }
-
-    // Validate plain objects (guard against prototype pollution)
-    if (
-      Object.getPrototypeOf(value) !== Object.prototype &&
-      Object.getPrototypeOf(value) !== null
-    ) {
-      return false;
-    }
-
-    return Object.values(value).every((prop) => isSafePayload(prop, depth + 1));
+  if (typeof value !== "object") {
+    return false;
   }
 
-  // Reject functions, symbols, and other non-serializable types
-  return false;
+  if (Array.isArray(value)) {
+    return value.every((item) => isStructureSafe(item, depth + 1));
+  }
+
+  if (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) {
+    return false;
+  }
+
+  return Object.values(value).every((prop) => isStructureSafe(prop, depth + 1));
 };
 
 const hasBaseEnvelopeShape = (value: unknown): value is JourneyDevtoolsEnvelopeBase => {
