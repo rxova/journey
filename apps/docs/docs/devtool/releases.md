@@ -9,6 +9,33 @@ Release notes sourced from the Chrome DevTools app changelog (outside package Ch
 
 Source: [`apps/devtools/CHANGELOG.md`](https://github.com/rxova/journey/blob/main/apps/devtools/CHANGELOG.md)
 
+## 0.6.0
+
+### Minor Changes
+
+- 01ef543: Version alignment release for Journey 0.6.0.
+  - Aligns the Chrome DevTools app version with the 0.6.0 platform release.
+  - Keeps the extension surface stable while consuming the current bridge/runtime stack.
+
+### Patch Changes
+
+- Updated dependencies [01ef543]
+  - @rxova/journey-devtools-bridge@0.6.0
+
+## 0.5.0
+
+### Minor Changes
+
+- 16db5e3: Platform-level DevTools refresh for Journey 0.5.0.
+  - Reworked panel/store behavior for richer timeline inspection and snapshot diff handling.
+  - Updated background/content/panel command flow to match the stabilized protocol model.
+  - Expanded app-level test coverage across background/content/store/panel behaviors.
+
+### Patch Changes
+
+- Updated dependencies [16db5e3]
+  - @rxova/journey-devtools-bridge@0.5.0
+
 ## 0.2.0
 
 ### Minor Changes
