@@ -199,15 +199,186 @@ describe("attachJourneyDevtools", () => {
     }
 
     triggerChange();
-    await waitForMessages();
-
-    expect(collector.messages.some((message) => message.kind === "snapshot")).toBe(true);
+    await waitForCollector(() =>
+      collector.messages.some(
+        (message) => message.kind === "snapshot" && message.machineId === "m-1"
+      )
+    );
 
     detach();
     await waitForMessages();
 
     expect(collector.messages[collector.messages.length - 1]?.kind).toBe("unregister");
     collector.stop();
+  });
+
+  it("coalesces burst snapshots to one frame and emits the latest snapshot", async () => {
+    const collector = collectBridgeMessages();
+    const { machine } = createMachine();
+    const frameCallbacks = new Map<number, (time: number) => void>();
+    let nextFrameId = 1;
+
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback: (time: number) => void): number => {
+        const id = nextFrameId++;
+        frameCallbacks.set(id, callback);
+        return id;
+      });
+
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation((id: number) => {
+        frameCallbacks.delete(id);
+      });
+
+    const detach = attachJourneyDevtools(machine, { machineId: "m-coalesce", enabled: true });
+    await waitForCollector(() => collector.messages.some((message) => message.kind === "register"));
+
+    machine.updateContext(() => ({ count: 1 }));
+    machine.updateContext(() => ({ count: 2 }));
+    machine.updateContext(() => ({ count: 3 }));
+
+    expect(collector.messages.filter((message) => message.kind === "snapshot")).toHaveLength(0);
+    expect(frameCallbacks.size).toBe(1);
+
+    const [scheduledFrame] = frameCallbacks.values();
+    expect(scheduledFrame).toBeDefined();
+    if (scheduledFrame) {
+      frameCallbacks.clear();
+      scheduledFrame(16);
+    }
+
+    await waitForCollector(
+      () =>
+        collector.messages.filter(
+          (message) => message.kind === "snapshot" && message.machineId === "m-coalesce"
+        ).length === 1
+    );
+
+    const snapshotEnvelope = collector.messages.find(
+      (message) => message.kind === "snapshot" && message.machineId === "m-coalesce"
+    );
+    expect(snapshotEnvelope?.kind).toBe("snapshot");
+    if (snapshotEnvelope?.kind === "snapshot") {
+      expect(snapshotEnvelope.snapshot.context).toEqual({ count: 3 });
+    }
+
+    detach();
+    requestAnimationFrameSpy.mockRestore();
+    cancelAnimationFrameSpy.mockRestore();
+    collector.stop();
+  });
+
+  it("drops pending snapshot posts when detached before frame flush", async () => {
+    const collector = collectBridgeMessages();
+    const { machine } = createMachine();
+    const frameCallbacks = new Map<number, (time: number) => void>();
+    let nextFrameId = 1;
+
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback: (time: number) => void): number => {
+        const id = nextFrameId++;
+        frameCallbacks.set(id, callback);
+        return id;
+      });
+
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation((id: number) => {
+        frameCallbacks.delete(id);
+      });
+
+    const detach = attachJourneyDevtools(machine, { machineId: "m-detach-pending", enabled: true });
+    await waitForCollector(() => collector.messages.some((message) => message.kind === "register"));
+
+    machine.updateContext(() => ({ count: 9 }));
+    expect(frameCallbacks.size).toBe(1);
+    const [staleScheduledFrame] = frameCallbacks.values();
+
+    detach();
+    expect(cancelAnimationFrameSpy).toHaveBeenCalledTimes(1);
+    expect(frameCallbacks.size).toBe(0);
+
+    // Simulate a stale frame callback invocation after detach.
+    staleScheduledFrame?.(16);
+    await waitForMessages();
+
+    expect(
+      collector.messages.filter(
+        (message) => message.kind === "snapshot" && message.machineId === "m-detach-pending"
+      )
+    ).toHaveLength(0);
+    expect(collector.messages[collector.messages.length - 1]?.kind).toBe("unregister");
+
+    requestAnimationFrameSpy.mockRestore();
+    cancelAnimationFrameSpy.mockRestore();
+    collector.stop();
+  });
+
+  it("falls back to setTimeout coalescing when requestAnimationFrame is unavailable", async () => {
+    vi.useFakeTimers();
+    const collector = collectBridgeMessages();
+    const { machine } = createMachine();
+
+    const originalRequestAnimationFrame = window.requestAnimationFrame;
+    const originalCancelAnimationFrame = window.cancelAnimationFrame;
+
+    Object.defineProperty(window, "requestAnimationFrame", {
+      configurable: true,
+      writable: true,
+      value: undefined
+    });
+    Object.defineProperty(window, "cancelAnimationFrame", {
+      configurable: true,
+      writable: true,
+      value: undefined
+    });
+
+    try {
+      const detach = attachJourneyDevtools(machine, {
+        machineId: "m-timeout-fallback",
+        enabled: true
+      });
+      await vi.runAllTimersAsync();
+
+      machine.updateContext(() => ({ count: 7 }));
+
+      expect(collector.messages.filter((message) => message.kind === "snapshot")).toHaveLength(0);
+
+      await vi.runAllTimersAsync();
+
+      const snapshots = collector.messages.filter(
+        (message) => message.kind === "snapshot" && message.machineId === "m-timeout-fallback"
+      );
+      expect(snapshots).toHaveLength(1);
+      if (snapshots[0]?.kind === "snapshot") {
+        expect(snapshots[0].snapshot.context).toEqual({ count: 7 });
+      }
+
+      machine.updateContext(() => ({ count: 8 }));
+      detach();
+      await vi.runAllTimersAsync();
+
+      const snapshotsAfterDetach = collector.messages.filter(
+        (message) => message.kind === "snapshot" && message.machineId === "m-timeout-fallback"
+      );
+      expect(snapshotsAfterDetach).toHaveLength(1);
+    } finally {
+      Object.defineProperty(window, "requestAnimationFrame", {
+        configurable: true,
+        writable: true,
+        value: originalRequestAnimationFrame
+      });
+      Object.defineProperty(window, "cancelAnimationFrame", {
+        configurable: true,
+        writable: true,
+        value: originalCancelAnimationFrame
+      });
+      collector.stop();
+      vi.useRealTimers();
+    }
   });
 
   it("handles command envelopes with full command set", async () => {

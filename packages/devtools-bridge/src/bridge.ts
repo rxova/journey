@@ -39,6 +39,8 @@ type SendOutcome<TContext, TStepId extends string, TStepMeta> = {
   transitionId?: string;
 };
 
+type SnapshotScheduleKind = "raf" | "timeout";
+
 const DEFAULT_MACHINE_LABEL = "Journey Machine";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -411,6 +413,61 @@ export const attachJourneyDevtools = <
 
   let isDetached = false;
   const rateLimiter = new CommandRateLimiter();
+  let pendingSnapshot: JourneySnapshot<TContext, TStepId, TStepMeta> | null = null;
+  let scheduledSnapshotHandle: number | ReturnType<typeof globalThis.setTimeout> | null = null;
+  let scheduledSnapshotKind: SnapshotScheduleKind | null = null;
+
+  const clearScheduledSnapshotState = () => {
+    pendingSnapshot = null;
+    scheduledSnapshotHandle = null;
+    scheduledSnapshotKind = null;
+  };
+
+  const flushScheduledSnapshot = () => {
+    const snapshot = pendingSnapshot;
+    clearScheduledSnapshotState();
+
+    if (!snapshot || isDetached) {
+      return;
+    }
+
+    postSnapshot(snapshot);
+  };
+
+  const scheduleSnapshotPost = (snapshot: JourneySnapshot<TContext, TStepId, TStepMeta>) => {
+    pendingSnapshot = snapshot;
+    if (scheduledSnapshotHandle !== null) {
+      return;
+    }
+
+    if (typeof window.requestAnimationFrame === "function") {
+      scheduledSnapshotKind = "raf";
+      scheduledSnapshotHandle = window.requestAnimationFrame(() => {
+        flushScheduledSnapshot();
+      });
+      return;
+    }
+
+    scheduledSnapshotKind = "timeout";
+    scheduledSnapshotHandle = globalThis.setTimeout(() => {
+      flushScheduledSnapshot();
+    }, 0);
+  };
+
+  const cancelScheduledSnapshot = () => {
+    if (scheduledSnapshotHandle === null) {
+      clearScheduledSnapshotState();
+      return;
+    }
+
+    if (scheduledSnapshotKind === "raf" && typeof window.cancelAnimationFrame === "function") {
+      window.cancelAnimationFrame(scheduledSnapshotHandle as number);
+    } else {
+      globalThis.clearTimeout(scheduledSnapshotHandle);
+    }
+
+    clearScheduledSnapshotState();
+  };
 
   const onMessage = (event: MessageEvent<unknown>) => {
     if (
@@ -495,7 +552,7 @@ export const attachJourneyDevtools = <
     if (isDetached) {
       return;
     }
-    postSnapshot(machine.getSnapshot());
+    scheduleSnapshotPost(machine.getSnapshot());
   });
 
   const registerEnvelope: JourneyDevtoolsBridgeRegisterEnvelope = {
@@ -514,6 +571,7 @@ export const attachJourneyDevtools = <
     rateLimiter.reset();
     unsubscribe();
     window.removeEventListener("message", onMessage);
+    cancelScheduledSnapshot();
 
     const unregisterEnvelope: JourneyDevtoolsBridgeUnregisterEnvelope = {
       ...createBaseEnvelope("unregister")
