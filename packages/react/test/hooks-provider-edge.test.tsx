@@ -61,6 +61,10 @@ describe("bindings hooks edge cases", () => {
       bindings.useJourneySnapshot();
       return null;
     };
+    const UseJourneySelector = () => {
+      bindings.useJourneySelector((snapshot) => snapshot.currentStepId);
+      return null;
+    };
     const UseJourneyMachine = () => {
       bindings.useJourneyMachine();
       return null;
@@ -68,6 +72,7 @@ describe("bindings hooks edge cases", () => {
 
     expect(() => render(<UseJourneyApi />)).toThrow(/bindings\.Provider/);
     expect(() => render(<UseJourneySnapshot />)).toThrow(/bindings\.Provider/);
+    expect(() => render(<UseJourneySelector />)).toThrow(/bindings\.Provider/);
     expect(() => render(<UseJourneyMachine />)).toThrow(/bindings\.Provider/);
     expect(() => render(<bindings.StepRenderer />)).toThrow(/bindings\.Provider/);
   });

@@ -159,6 +159,7 @@ const createMachine = () => {
         listeners.delete(listener);
       };
     },
+    subscribeSelector: () => () => undefined,
     subscribeEvent: () => () => undefined
   };
 

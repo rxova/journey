@@ -89,6 +89,7 @@ describe("useJourneyApi", () => {
       resetMachine,
       dispose,
       subscribe: () => () => undefined,
+      subscribeSelector: () => () => undefined,
       subscribeEvent: () => () => undefined
     };
 

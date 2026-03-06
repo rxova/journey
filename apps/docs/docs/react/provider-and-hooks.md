@@ -27,6 +27,10 @@ const bindings = createJourneyBindings(journey);
   - Read-only runtime state for rendering.
   - Use when UI depends on current step/context/status/async phase.
 
+- `bindings.useJourneySelector(selector, equalityFn?)`
+  - Read only the selected part of snapshot state.
+  - Use when you want to avoid rerenders from unrelated snapshot updates.
+
 - `bindings.useJourneyApi()`
   - Safe action surface for UI controls.
   - Includes navigation helpers, event `send`, context/metadata updates, reset and error clear.
