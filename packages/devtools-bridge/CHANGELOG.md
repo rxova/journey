@@ -1,5 +1,23 @@
 # @rxova/journey-devtools-bridge
 
+## 0.6.4
+
+### Patch Changes
+
+- 4ee201f: Per-package patch notes:
+  - `@rxova/journey-devtools-bridge`
+    - Guarded bridge transport posting with a safe `try/catch` so `window.postMessage` failures are swallowed.
+    - Prevents bridge lifecycle/command flows from throwing when browser messaging is unavailable or rejects.
+  - `@rxova/journey-react`
+    - Memoized provider context value in `Provider` to keep stable references when `machine`/`journey` inputs are unchanged.
+    - Reduces unnecessary rerenders for memoized consumers during unrelated parent rerenders and StrictMode churn.
+  - `@rxova/journey-core`
+    - Added listener-churn edge coverage to verify snapshot/event subscriptions are fully removed after unsubscribe.
+    - Hardens regression protection around subscription retention behavior.
+
+- Updated dependencies [4ee201f]
+  - @rxova/journey-core@0.6.4
+
 ## 0.6.3
 
 ### Patch Changes
