@@ -9,6 +9,7 @@ import type {
 import { createProvider } from "./Provider";
 import { createStepRenderer } from "./StepRenderer";
 import { createUseJourneyApi } from "./useJourneyApi";
+import { createUseJourneyEvent } from "./useJourneyEvent";
 import { createUseJourneyMachine } from "./useJourneyMachine";
 import { createUseJourneySelector } from "./useJourneySelector";
 import { createUseJourneySnapshot } from "./useJourneySnapshot";
@@ -45,6 +46,7 @@ export const createJourneyBindings = <
   const useJourneySnapshot = createUseJourneySnapshot(useJourneyStore);
   const useJourneySelector = createUseJourneySelector(useJourneyStore);
   const useJourneyMachine = createUseJourneyMachine(useJourneyStore);
+  const useJourneyEvent = createUseJourneyEvent(useJourneyStore);
   const useJourneyApi = createUseJourneyApi(useJourneyStore);
 
   const Provider = createProvider({
@@ -61,6 +63,7 @@ export const createJourneyBindings = <
     Provider,
     StepRenderer,
     useJourneyApi,
+    useJourneyEvent,
     useJourneyMachine,
     useJourneySelector,
     useJourneySnapshot

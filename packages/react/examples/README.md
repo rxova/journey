@@ -11,7 +11,7 @@
 - `conditional-skip.flow.tsx`: optional step based on context.
 - `first-match-wins.flow.tsx`: transition ordering behavior.
 - `custom-event.flow.tsx`: custom event via `api.send({ type })`.
-- `subscribe-vs-subscribe-event.flow.tsx`: snapshot updates via bindings hooks and typed telemetry via `machine.subscribeEvent`.
+- `subscribe-vs-subscribe-event.flow.tsx`: snapshot updates via `useJourneySnapshot` and typed telemetry via `useJourneyEvent`.
 - `async-guard.flow.tsx`: async validation in `when`.
 - `async-effect.flow.tsx`: async context update in `effect`.
 - `dynamic-steps.flow.tsx`: add/remove optional step by rebuilding journey graph at runtime.

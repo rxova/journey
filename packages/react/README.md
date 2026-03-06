@@ -16,6 +16,7 @@ npm i @rxova/journey-react
   - `Provider`
   - `StepRenderer`
   - `useJourneyApi`
+  - `useJourneyEvent`
   - `useJourneySelector`
   - `useJourneySnapshot`
   - `useJourneyMachine`
@@ -103,6 +104,7 @@ bindings = createJourneyBindings(journey);
 ## Hooks
 
 - `useJourneySnapshot()` subscribes to the machine and rerenders on changes.
+- `useJourneyEvent(listener)` subscribes to typed lifecycle events.
 - `useJourneySelector(selector, equalityFn?)` subscribes to a selected slice and rerenders only when that selected value changes.
 - `useJourneyApi()` returns typed commands.
 - `useJourneyMachine()` returns the underlying core machine instance.

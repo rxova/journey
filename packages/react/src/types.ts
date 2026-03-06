@@ -5,6 +5,7 @@ import type {
   JourneyEqualityFn,
   JourneyEventPayloadMap as JourneyCoreEventPayloadMap,
   JourneyMachine,
+  JourneyObservationEvent,
   JourneyPayloadFor,
   JourneyPersistenceOptions,
   JourneySelector,
@@ -127,6 +128,16 @@ export type JourneyBindings<
     TEventPayloadMap,
     TStepMeta
   >;
+  useJourneyEvent: (
+    listener: (
+      event: JourneyObservationEvent<
+        TStepId,
+        JourneyEventType<TCustomEvent>,
+        TEventPayloadMap,
+        TStepMeta
+      >
+    ) => void
+  ) => void;
   useJourneySelector: <TSelected>(
     selector: JourneySelector<TContext, TStepId, TStepMeta, TSelected>,
     equalityFn?: JourneyEqualityFn<TSelected>
