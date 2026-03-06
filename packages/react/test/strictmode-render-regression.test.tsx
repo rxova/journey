@@ -71,6 +71,7 @@ const createInstrumentedMachine = () => {
     updateStepMetadata: () => snapshot,
     clearStepError: () => snapshot,
     resetMachine: () => snapshot,
+    dispose: () => undefined,
     subscribe: (
       listener: Parameters<JourneyMachine<Context, StepId, MachineEvent>["subscribe"]>[0]
     ) => {

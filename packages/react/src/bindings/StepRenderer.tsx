@@ -50,7 +50,7 @@ export const createStepRenderer = <
       return <>{fallback}</>;
     }
 
-    return <StepComponent />;
+    return <StepComponent key={snapshot.currentStepId} />;
   };
 
   return StepRenderer;

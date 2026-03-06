@@ -158,6 +158,7 @@ const createMachine = (sendImpl?: JourneyMachine<Context, StepId, Event>["send"]
     updateStepMetadata: () => snapshot,
     clearStepError: () => snapshot,
     resetMachine: () => snapshot,
+    dispose: () => undefined,
     subscribe: (listener) => {
       listeners.add(listener);
       return () => undefined;
@@ -611,6 +612,7 @@ describe("bridge edge coverage", () => {
       updateStepMetadata: () => snapshot,
       clearStepError: () => snapshot,
       resetMachine: () => snapshot,
+      dispose: () => undefined,
       subscribe: (listener) => {
         subscribers.add(listener);
         return () => {
@@ -736,6 +738,7 @@ describe("bridge edge coverage", () => {
       updateStepMetadata: () => snapshot,
       clearStepError: () => snapshot,
       resetMachine: () => snapshot,
+      dispose: () => undefined,
       subscribe: () => () => undefined,
       subscribeEvent: () => () => undefined
     };
@@ -844,6 +847,7 @@ describe("bridge edge coverage", () => {
       updateStepMetadata: () => snapshot,
       clearStepError: () => snapshot,
       resetMachine: () => snapshot,
+      dispose: () => undefined,
       subscribe: () => () => undefined,
       subscribeEvent: () => () => undefined
     };

@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import React from "react";
 import { render, screen } from "@testing-library/react";
 
-import { createJourneyMachine } from "@rxova/journey-core";
+import * as core from "@rxova/journey-core";
+import type { JourneyMachine } from "@rxova/journey-core";
 import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
 
 type StepId = "one" | "two";
@@ -27,7 +28,7 @@ const bindings = createJourneyBindings(journey);
 
 describe("bindings.Provider", () => {
   it("provides machine and journey values via hooks", () => {
-    const machine = createJourneyMachine(journey);
+    const machine = core.createJourneyMachine(journey);
 
     const ReadStore = () => {
       const resolvedMachine = bindings.useJourneyMachine();
@@ -47,5 +48,44 @@ describe("bindings.Provider", () => {
     );
 
     expect(screen.getByTestId("store").textContent).toBe("same:one");
+  });
+
+  it("disposes internally owned machine on unmount", () => {
+    const snapshot = core.createJourneyMachine(journey).getSnapshot();
+    const dispose = vi.fn();
+
+    const machine: JourneyMachine<Context, StepId, Event> = {
+      getSnapshot: () => snapshot,
+      send: async () => ({ transitioned: false, snapshot }),
+      goToNextStep: async () => ({ transitioned: false, snapshot }),
+      terminateJourney: async () => ({ transitioned: false, snapshot }),
+      completeJourney: async () => ({ transitioned: false, snapshot }),
+      goToPreviousStep: async () => ({ transitioned: false, snapshot }),
+      goToLastVisitedStep: async () => ({ transitioned: false, snapshot }),
+      updateContext: () => snapshot,
+      updateStepMetadata: () => snapshot,
+      clearStepError: () => snapshot,
+      resetMachine: () => snapshot,
+      dispose,
+      subscribe: () => () => undefined,
+      subscribeEvent: () => () => undefined
+    };
+
+    const createMachineSpy = vi
+      .spyOn(core, "createJourneyMachine")
+      .mockReturnValue(machine as never);
+    const localBindings = createJourneyBindings(journey);
+
+    const { unmount } = render(
+      <localBindings.Provider>
+        <div>child</div>
+      </localBindings.Provider>
+    );
+
+    expect(createMachineSpy).toHaveBeenCalledTimes(1);
+    unmount();
+    expect(dispose).toHaveBeenCalledTimes(1);
+
+    createMachineSpy.mockRestore();
   });
 });

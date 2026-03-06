@@ -317,6 +317,7 @@ export type JourneyMachine<
   ) => JourneySnapshot<TContext, TStepId, TStepMeta>;
   clearStepError: (stepId?: TStepId) => JourneySnapshot<TContext, TStepId, TStepMeta>;
   resetMachine: () => JourneySnapshot<TContext, TStepId, TStepMeta>;
+  dispose: () => void;
   subscribe: (listener: () => void) => () => void;
   subscribeEvent: (
     listener: (event: JourneyObservationEvent<TStepId, TEventType, TPayloadMap, TStepMeta>) => void
