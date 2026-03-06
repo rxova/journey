@@ -31,6 +31,16 @@ Use `snapshot` to read state and `api` to change state.
 
 This makes render logic easier to scan and reduces accidental side effects in UI code.
 
+## Prefer Selector Reads for Focused Components
+
+```tsx
+const currentStepId = checkoutBindings.useJourneySelector((snapshot) => snapshot.currentStepId);
+const isLoading = checkoutBindings.useJourneySelector((snapshot) => snapshot.async.isLoading);
+```
+
+Use `useJourneySelector` when the component depends on only part of snapshot.
+Use `useJourneySnapshot` when the component genuinely needs the full snapshot object.
+
 ## Separate Step Rendering from Global Controls
 
 - render current step with `checkoutBindings.StepRenderer`

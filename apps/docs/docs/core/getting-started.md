@@ -112,6 +112,13 @@ const unsubscribeSnapshot = machine.subscribe(() => {
   console.log("snapshot changed", machine.getSnapshot());
 });
 
+const unsubscribeCurrentStep = machine.subscribeSelector(
+  (snapshot) => snapshot.currentStepId,
+  (next, previous) => {
+    console.log("step changed", previous, "->", next);
+  }
+);
+
 const unsubscribeEvents = machine.subscribeEvent((event) => {
   console.log("telemetry event", event.type, event);
 });
