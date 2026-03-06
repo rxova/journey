@@ -4,6 +4,7 @@ import type { JourneyDevtoolsCommand } from "@rxova/journey-devtools-bridge";
 import { CommandControls } from "./components/CommandControls";
 import { ConnectionStatus } from "./components/ConnectionStatus";
 import { MachineSelector } from "./components/MachineSelector";
+import { SectionErrorBoundary } from "./components/SectionErrorBoundary";
 import { TimelineInspector } from "./components/TimelineInspector";
 import {
   MAX_MACHINE_TIMELINE_ENTRIES,
@@ -228,61 +229,69 @@ export const App = () => {
         <p>Inspect machines, watch snapshots, and trigger events in real time.</p>
       </header>
 
-      <ConnectionStatus connected={displayConnected} warning={connectionWarning} />
+      <SectionErrorBoundary section="Connection">
+        <ConnectionStatus connected={displayConnected} warning={connectionWarning} />
+      </SectionErrorBoundary>
 
-      <MachineSelector
-        machineOrder={state.machineOrder}
-        machines={state.machines}
-        selectedMachineId={state.selectedMachineId}
-        onSelect={(machineId) => dispatch({ type: "select-machine", machineId })}
-      />
+      <SectionErrorBoundary section="Machine Selector">
+        <MachineSelector
+          machineOrder={state.machineOrder}
+          machines={state.machines}
+          selectedMachineId={state.selectedMachineId}
+          onSelect={(machineId) => dispatch({ type: "select-machine", machineId })}
+        />
+      </SectionErrorBoundary>
 
       {activeMachine ? (
         <>
-          <TimelineInspector
-            entries={activeMachine.timelineEntries}
-            selectedIndex={activeMachine.selectedTimelineIndex}
-            selectedEntry={selectedTimelineEntry}
-            displayedSnapshot={displayedSnapshot}
-            selectedDiff={selectedDiff}
-            followLatest={activeMachine.followLatest}
-            displayLimit={state.displayLimit}
-            retentionCap={MAX_MACHINE_TIMELINE_ENTRIES}
-            onSelectEntry={(index) =>
-              dispatch({
-                type: "select-timeline-entry",
-                machineId: activeMachine.meta.machineId,
-                index
-              })
-            }
-            onFollowLatestChange={(followLatest) =>
-              dispatch({
-                type: "set-follow-latest",
-                machineId: activeMachine.meta.machineId,
-                followLatest
-              })
-            }
-            onDisplayLimitChange={(limit) => dispatch({ type: "set-display-limit", limit })}
-            onPrune={() =>
-              dispatch({
-                type: "prune-timeline",
-                machineId: activeMachine.meta.machineId,
-                keep: state.displayLimit
-              })
-            }
-          />
+          <SectionErrorBoundary section="Timeline">
+            <TimelineInspector
+              entries={activeMachine.timelineEntries}
+              selectedIndex={activeMachine.selectedTimelineIndex}
+              selectedEntry={selectedTimelineEntry}
+              displayedSnapshot={displayedSnapshot}
+              selectedDiff={selectedDiff}
+              followLatest={activeMachine.followLatest}
+              displayLimit={state.displayLimit}
+              retentionCap={MAX_MACHINE_TIMELINE_ENTRIES}
+              onSelectEntry={(index) =>
+                dispatch({
+                  type: "select-timeline-entry",
+                  machineId: activeMachine.meta.machineId,
+                  index
+                })
+              }
+              onFollowLatestChange={(followLatest) =>
+                dispatch({
+                  type: "set-follow-latest",
+                  machineId: activeMachine.meta.machineId,
+                  followLatest
+                })
+              }
+              onDisplayLimitChange={(limit) => dispatch({ type: "set-display-limit", limit })}
+              onPrune={() =>
+                dispatch({
+                  type: "prune-timeline",
+                  machineId: activeMachine.meta.machineId,
+                  keep: state.displayLimit
+                })
+              }
+            />
+          </SectionErrorBoundary>
 
-          <CommandControls
-            disabled={!isCommandChannelReady || !areMachineCommandsEnabled}
-            disabledReason={
-              !isCommandChannelReady
-                ? "Bridge is disconnected from the inspected tab."
-                : !areMachineCommandsEnabled
-                  ? "Commands are disabled for this machine."
-                  : null
-            }
-            onCommand={(command) => sendCommand(activeMachine.meta.machineId, command)}
-          />
+          <SectionErrorBoundary section="Commands">
+            <CommandControls
+              disabled={!isCommandChannelReady || !areMachineCommandsEnabled}
+              disabledReason={
+                !isCommandChannelReady
+                  ? "Bridge is disconnected from the inspected tab."
+                  : !areMachineCommandsEnabled
+                    ? "Commands are disabled for this machine."
+                    : null
+              }
+              onCommand={(command) => sendCommand(activeMachine.meta.machineId, command)}
+            />
+          </SectionErrorBoundary>
         </>
       ) : (
         <section className="panel-card">

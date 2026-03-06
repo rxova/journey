@@ -358,3 +358,41 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Section Error Boundary ── */
+
+.section-error {
+  border-left: 3px solid var(--warn);
+}
+
+.section-error h2 {
+  color: var(--warn);
+  font-size: 0.95rem;
+}
+
+.error-details {
+  background: #fdf2f0;
+  color: var(--warn);
+  padding: 8px 10px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 120px;
+  overflow: auto;
+}
+
+.retry-button {
+  margin-top: 8px;
+  padding: 4px 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.retry-button:hover {
+  background: var(--accent-soft);
+}
