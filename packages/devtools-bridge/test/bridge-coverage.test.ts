@@ -130,6 +130,7 @@ const createMachine = (): JourneyMachine<Context, StepId, Event> => {
         listeners.delete(listener);
       };
     },
+    subscribeSelector: () => () => undefined,
     subscribeEvent: () => () => undefined
   };
 };

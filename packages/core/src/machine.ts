@@ -1,5 +1,6 @@
 import { JOURNEY_ASYNC_PHASE, JOURNEY_EVENT, JOURNEY_STATUS } from "./types";
 import type {
+  JourneyEqualityFn,
   JourneyAsyncState,
   JourneyAsyncPhase,
   JourneyDefaultEventType,
@@ -9,6 +10,7 @@ import type {
   JourneyMachine,
   JourneyMachineOptions,
   JourneyObservationEvent,
+  JourneySelector,
   JourneySendResult,
   JourneyStepDefinition,
   JourneyTransition,
@@ -340,6 +342,29 @@ export function createJourneyMachine<
       return () => {
         listeners.delete(listener);
       };
+    },
+    subscribeSelector: <TSelected>(
+      selector: JourneySelector<TContext, TStepId, TStepMeta, TSelected>,
+      listener: (next: TSelected, previous: TSelected) => void,
+      equalityFn?: JourneyEqualityFn<TSelected>
+    ) => {
+      if (isDisposed) {
+        return () => undefined;
+      }
+
+      const isEqual = equalityFn ?? Object.is;
+      let selected = selector(snapshot);
+
+      return machine.subscribe(() => {
+        const nextSelected = selector(snapshot);
+        if (isEqual(selected, nextSelected)) {
+          return;
+        }
+
+        const previous = selected;
+        selected = nextSelected;
+        listener(nextSelected, previous);
+      });
     },
     subscribeEvent: (listener) => {
       if (isDisposed) {

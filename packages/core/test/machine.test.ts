@@ -169,6 +169,54 @@ describe("createJourneyMachine", () => {
     expect(eventTypes).toContain("metadata.updated");
   });
 
+  it("subscribeSelector notifies only when selected value changes", async () => {
+    const machine = createMachine();
+    const calls: Array<{ next: StepId; previous: StepId }> = [];
+
+    const unsubscribe = machine.subscribeSelector(
+      (snapshot) => snapshot.currentStepId,
+      (next, previous) => {
+        calls.push({ next, previous });
+      }
+    );
+
+    expect(calls).toEqual([]);
+
+    machine.updateContext((context) => ({ ...context, count: context.count + 1 }));
+    expect(calls).toEqual([]);
+
+    await machine.goToNextStep();
+    expect(calls).toEqual([{ next: "details", previous: "start" }]);
+
+    machine.updateContext((context) => ({ ...context, count: context.count + 1 }));
+    expect(calls).toEqual([{ next: "details", previous: "start" }]);
+
+    unsubscribe();
+    await machine.goToNextStep();
+    expect(calls).toEqual([{ next: "details", previous: "start" }]);
+  });
+
+  it("subscribeSelector supports custom equality for derived object values", async () => {
+    const machine = createMachine();
+    const calls: Array<{ next: { step: StepId }; previous: { step: StepId } }> = [];
+
+    machine.subscribeSelector(
+      (snapshot) => ({ step: snapshot.currentStepId }),
+      (next, previous) => {
+        calls.push({ next, previous });
+      },
+      (previous, next) => previous.step === next.step
+    );
+
+    machine.updateContext((context) => ({ ...context, count: context.count + 1 }));
+    expect(calls).toEqual([]);
+
+    await machine.goToNextStep();
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.previous.step).toBe("start");
+    expect(calls[0]?.next.step).toBe("details");
+  });
+
   it("blocks pointer moves once terminal unless reset", async () => {
     const machine = createMachine();
 

@@ -189,6 +189,17 @@ export type JourneySnapshot<TContext, TStepId extends string, TStepMeta = unknow
   async: JourneyAsyncState<TStepId>;
 };
 
+/** Selector function that derives a value from a machine snapshot. */
+export type JourneySelector<
+  TContext,
+  TStepId extends string,
+  TStepMeta = unknown,
+  TSelected = unknown
+> = (snapshot: JourneySnapshot<TContext, TStepId, TStepMeta>) => TSelected;
+
+/** Equality function used to compare selected values between snapshot updates. */
+export type JourneyEqualityFn<TValue> = (previous: TValue, next: TValue) => boolean;
+
 /** Full machine definition used to create a journey machine instance. */
 export type JourneyDefinition<
   TContext,
@@ -319,6 +330,11 @@ export type JourneyMachine<
   resetMachine: () => JourneySnapshot<TContext, TStepId, TStepMeta>;
   dispose: () => void;
   subscribe: (listener: () => void) => () => void;
+  subscribeSelector: <TSelected>(
+    selector: JourneySelector<TContext, TStepId, TStepMeta, TSelected>,
+    listener: (next: TSelected, previous: TSelected) => void,
+    equalityFn?: JourneyEqualityFn<TSelected>
+  ) => () => void;
   subscribeEvent: (
     listener: (event: JourneyObservationEvent<TStepId, TEventType, TPayloadMap, TStepMeta>) => void
   ) => () => void;

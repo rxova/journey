@@ -85,6 +85,7 @@ const createInstrumentedMachine = () => {
         }
       };
     },
+    subscribeSelector: () => () => undefined,
     subscribeEvent: () => () => undefined
   };
 

@@ -10,6 +10,7 @@ import { createProvider } from "./Provider";
 import { createStepRenderer } from "./StepRenderer";
 import { createUseJourneyApi } from "./useJourneyApi";
 import { createUseJourneyMachine } from "./useJourneyMachine";
+import { createUseJourneySelector } from "./useJourneySelector";
 import { createUseJourneySnapshot } from "./useJourneySnapshot";
 
 /**
@@ -42,6 +43,7 @@ export const createJourneyBindings = <
   };
 
   const useJourneySnapshot = createUseJourneySnapshot(useJourneyStore);
+  const useJourneySelector = createUseJourneySelector(useJourneyStore);
   const useJourneyMachine = createUseJourneyMachine(useJourneyStore);
   const useJourneyApi = createUseJourneyApi(useJourneyStore);
 
@@ -60,6 +62,7 @@ export const createJourneyBindings = <
     StepRenderer,
     useJourneyApi,
     useJourneyMachine,
+    useJourneySelector,
     useJourneySnapshot
   };
 };
