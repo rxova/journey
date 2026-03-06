@@ -1,6 +1,6 @@
 {
   "name": "rxova-journey",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "A declarative journey graph for non-linear UI flows",
   "keywords": [
     "react",
