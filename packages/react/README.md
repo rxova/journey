@@ -145,15 +145,18 @@ await api.send({ type: "goToStepById", stepId: "review" });
 - Set `resetOnPersistenceChange` to rebuild internal machine when `persistence` identity changes.
 - `<Provider machine={externalMachine} />` uses your machine directly.
 - `persistence` applies only when Provider owns the internal machine.
+- `onStart(event)` wraps `machine.subscribeStart(...)`.
 - `onComplete(event)` wraps `machine.subscribeComplete(...)`.
 - `onTerminate(event)` wraps `machine.subscribeTerminate(...)`.
-- Both callback props work with internal and external machines and fire only for emitted lifecycle events.
+- All three callback props work with internal and external machines.
+- `onStart` replays startup on mount, matching core `journey.start` behavior.
+- `onComplete` and `onTerminate` fire only for emitted terminal lifecycle events.
 
 ```tsx
 <bindings.Provider
   journey={dynamicJourney}
   resetOnJourneyChange
-  onComplete={() => console.log("finished!")}
+  onStart={() => console.log("started!")}
 >
   <bindings.StepRenderer />
 </bindings.Provider>

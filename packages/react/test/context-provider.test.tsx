@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import React from "react";
 import { act } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 
 import * as core from "@rxova/journey-core";
 import type { JourneyMachine, JourneyObservationEvent } from "@rxova/journey-core";
@@ -160,8 +160,30 @@ describe("bindings.Provider", () => {
     );
   });
 
+  it("calls onStart for internal machines", async () => {
+    const onStart = vi.fn();
+
+    render(
+      <bindings.Provider onStart={onStart}>
+        <div>child</div>
+      </bindings.Provider>
+    );
+
+    await waitFor(() => {
+      expect(onStart).toHaveBeenCalledTimes(1);
+    });
+    expect(onStart).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "journey.start",
+        stepId: "one",
+        timestamp: expect.any(Number)
+      })
+    );
+  });
+
   it("calls provider lifecycle callbacks for external machines", async () => {
     const machine = core.createJourneyMachine(journey);
+    const onStart = vi.fn();
     const onComplete = vi.fn();
     const onTerminate = vi.fn();
     const externalMachine: JourneyMachine<Context, StepId, Event> & {
@@ -180,6 +202,7 @@ describe("bindings.Provider", () => {
     render(
       <bindings.Provider
         machine={externalMachine}
+        onStart={onStart}
         onComplete={onComplete}
         onTerminate={onTerminate}
       >
@@ -187,10 +210,21 @@ describe("bindings.Provider", () => {
       </bindings.Provider>
     );
 
+    await waitFor(() => {
+      expect(onStart).toHaveBeenCalledTimes(1);
+    });
+
     await act(async () => {
       await externalMachine.terminateJourney();
     });
 
+    expect(onStart).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "journey.start",
+        stepId: "one",
+        timestamp: expect.any(Number)
+      })
+    );
     expect(onTerminate).toHaveBeenCalledTimes(1);
     expect(onComplete).not.toHaveBeenCalled();
   });
@@ -268,6 +302,55 @@ describe("bindings.Provider", () => {
     expect(unsubscribeCalls).toBe(1);
   });
 
+  it("keeps one start subscription across callback identity changes", async () => {
+    const machine = core.createJourneyMachine(journey);
+    const baseSubscribeStart = machine.subscribeStart.bind(machine);
+    let unsubscribeCalls = 0;
+    const firstOnStart = vi.fn();
+    const nextOnStart = vi.fn();
+
+    const subscribeStart = vi.fn((...args: Parameters<typeof machine.subscribeStart>) => {
+      const unsubscribe = baseSubscribeStart(...args);
+      return () => {
+        unsubscribeCalls += 1;
+        unsubscribe();
+      };
+    });
+
+    const instrumentedMachine: JourneyMachine<Context, StepId, Event> = {
+      ...machine,
+      subscribeStart
+    };
+
+    const Harness = ({
+      onStart
+    }: {
+      onStart: (
+        event: Extract<JourneyObservationEvent<StepId, Event>, { type: "journey.start" }>
+      ) => void;
+    }) => (
+      <bindings.Provider machine={instrumentedMachine} onStart={onStart}>
+        <div>child</div>
+      </bindings.Provider>
+    );
+
+    const { rerender, unmount } = render(<Harness onStart={firstOnStart} />);
+
+    await waitFor(() => {
+      expect(firstOnStart).toHaveBeenCalledTimes(1);
+    });
+    expect(subscribeStart).toHaveBeenCalledTimes(1);
+
+    rerender(<Harness onStart={nextOnStart} />);
+
+    expect(subscribeStart).toHaveBeenCalledTimes(1);
+    expect(nextOnStart).not.toHaveBeenCalled();
+
+    unmount();
+
+    expect(unsubscribeCalls).toBe(1);
+  });
+
   it("disposes internally owned machine on unmount", () => {
     const snapshot = core.createJourneyMachine(journey).getSnapshot();
     const dispose = vi.fn();
@@ -288,6 +371,7 @@ describe("bindings.Provider", () => {
       subscribe: () => () => undefined,
       subscribeSelector: () => () => undefined,
       subscribeEvent: () => () => undefined,
+      subscribeStart: () => () => undefined,
       subscribeComplete: () => () => undefined,
       subscribeTerminate: () => () => undefined
     };
