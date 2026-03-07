@@ -11,6 +11,7 @@ import {
   type JourneyDevtoolsBridgeEnvelope,
   type JourneyDevtoolsExtensionEnvelope
 } from "@rxova/journey-devtools-bridge";
+import { resolveNonProductionEnvironment } from "../src/bridge";
 
 type StepId = "start" | "review" | "guard" | "effect";
 type Event = "goToNextStep" | "custom" | "send" | "resolve" | "reject" | "cause" | "bad-stack";
@@ -192,57 +193,42 @@ describe("bridge edge coverage", () => {
     vi.unstubAllGlobals();
   });
 
-  it("uses NODE_ENV defaults to enable in non-production", async () => {
-    const collector = collectBridgeMessages();
-    const { machine } = createMachine();
-
-    vi.stubGlobal("process", { env: { NODE_ENV: "development" } });
-    const enabledDetach = attachJourneyDevtools(machine);
-    await waitForMessages();
-    expect(collector.messages.some((message) => message.kind === "register")).toBe(true);
-    enabledDetach();
-    collector.stop();
+  it("uses process env fallback when bundler env is unavailable", () => {
+    expect(resolveNonProductionEnvironment({ bundlerEnv: null, nodeEnv: "development" })).toBe(
+      true
+    );
+    expect(resolveNonProductionEnvironment({ bundlerEnv: null, nodeEnv: "production" })).toBe(
+      false
+    );
   });
 
-  it("defaults commandsEnabled to false in production", async () => {
+  it("returns disabled when neither bundler env nor process env is available", () => {
+    expect(resolveNonProductionEnvironment({ bundlerEnv: null, nodeEnv: undefined })).toBe(false);
+  });
+
+  it("prefers import.meta env defaults over NODE_ENV", async () => {
     const collector = collectBridgeMessages();
-    process.env.NODE_ENV = "production";
     const { machine } = createMachine();
 
+    process.env.NODE_ENV = "production";
     const enabledDetach = attachJourneyDevtools(machine, {
-      machineId: "default-commands-off",
-      enabled: true
+      machineId: "import-meta-precedence"
     });
     await waitForMessages();
 
-    const register = collector.messages.find((message) => message.kind === "register");
+    const register = collector.messages.find(
+      (message) => message.kind === "register" && message.machineId === "import-meta-precedence"
+    );
     expect(register?.kind).toBe("register");
     if (register?.kind === "register") {
-      expect(register.meta.commandsEnabled).toBe(false);
-    }
-
-    window.dispatchEvent(
-      buildCommandEnvelope("default-commands-off", "req-commands-off", { type: "goToNextStep" })
-    );
-    await waitForCollector(() =>
-      collector.messages.some(
-        (message) => message.kind === "commandError" && message.requestId === "req-commands-off"
-      )
-    );
-
-    const commandError = collector.messages.find(
-      (message) => message.kind === "commandError" && message.requestId === "req-commands-off"
-    );
-    expect(commandError?.kind).toBe("commandError");
-    if (commandError?.kind === "commandError") {
-      expect(commandError.error.message).toContain("disabled");
+      expect(register.meta.commandsEnabled).toBe(true);
     }
 
     enabledDetach();
     collector.stop();
   });
 
-  it("treats unavailable process env as disabled defaults", async () => {
+  it("uses bundler env defaults when process is unavailable", async () => {
     const collector = collectBridgeMessages();
     const { machine } = createMachine();
     const originalProcessDescriptor = Object.getOwnPropertyDescriptor(globalThis, "process");
@@ -252,32 +238,17 @@ describe("bridge edge coverage", () => {
         configurable: true,
         value: undefined
       });
-      const disabledDetach = attachJourneyDevtools(machine);
-      expect(collector.messages).toHaveLength(0);
-      expect(() => disabledDetach()).not.toThrow();
-
-      if (originalProcessDescriptor) {
-        Object.defineProperty(globalThis, "process", originalProcessDescriptor);
-      }
-      Object.defineProperty(globalThis, "process", {
-        configurable: true,
-        value: undefined
-      });
       const enabledDetach = attachJourneyDevtools(machine, {
-        enabled: true,
-        machineId: "non-string-env"
+        machineId: "bundler-env-default"
       });
-      if (originalProcessDescriptor) {
-        Object.defineProperty(globalThis, "process", originalProcessDescriptor);
-      }
       await waitForMessages();
 
       const register = collector.messages.find(
-        (message) => message.kind === "register" && message.machineId === "non-string-env"
+        (message) => message.kind === "register" && message.machineId === "bundler-env-default"
       );
       expect(register?.kind).toBe("register");
       if (register?.kind === "register") {
-        expect(register.meta.commandsEnabled).toBe(false);
+        expect(register.meta.commandsEnabled).toBe(true);
       }
 
       enabledDetach();
