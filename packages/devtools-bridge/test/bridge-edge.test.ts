@@ -206,6 +206,92 @@ describe("bridge edge coverage", () => {
     expect(resolveNonProductionEnvironment({ bundlerEnv: null, nodeEnv: undefined })).toBe(false);
   });
 
+  it("sanitizes structured-cloneable snapshot values to protocol-safe payloads", async () => {
+    const collector = collectBridgeMessages();
+    const createdAt = new Date("2026-03-07T08:00:00.000Z");
+    const reviewedAt = new Date("2026-03-07T08:05:00.000Z");
+
+    Object.defineProperty(globalThis, "structuredClone", {
+      configurable: true,
+      writable: true,
+      value:
+        originalStructuredClone ??
+        ((value: unknown) =>
+          JSON.parse(
+            JSON.stringify(value, (_key, currentValue) =>
+              typeof currentValue === "bigint" ? currentValue.toString() : currentValue
+            )
+          ))
+    });
+
+    const { machine, pushSnapshot, setSnapshot } = createMachine();
+    setSnapshot(
+      createSnapshot({
+        context: {
+          count: 1n,
+          createdAt
+        }
+      })
+    );
+
+    const detach = attachJourneyDevtools(machine, {
+      machineId: "json-safe-transport",
+      enabled: true
+    });
+
+    await waitForCollector(() =>
+      collector.messages.some(
+        (message) => message.kind === "register" && message.machineId === "json-safe-transport"
+      )
+    );
+
+    const register = collector.messages.find(
+      (message) => message.kind === "register" && message.machineId === "json-safe-transport"
+    );
+    expect(register?.kind).toBe("register");
+    if (register?.kind === "register") {
+      expect(register.snapshot.context).toEqual({
+        count: "1",
+        createdAt: createdAt.toISOString()
+      });
+    }
+
+    setSnapshot(
+      createSnapshot({
+        currentStepId: "review",
+        history: {
+          timeline: ["start", "review"],
+          index: 1
+        },
+        context: {
+          count: 2n,
+          reviewedAt
+        }
+      })
+    );
+    pushSnapshot();
+
+    await waitForCollector(() =>
+      collector.messages.some(
+        (message) => message.kind === "snapshot" && message.machineId === "json-safe-transport"
+      )
+    );
+
+    const snapshot = collector.messages.find(
+      (message) => message.kind === "snapshot" && message.machineId === "json-safe-transport"
+    );
+    expect(snapshot?.kind).toBe("snapshot");
+    if (snapshot?.kind === "snapshot") {
+      expect(snapshot.snapshot.context).toEqual({
+        count: "2",
+        reviewedAt: reviewedAt.toISOString()
+      });
+    }
+
+    detach();
+    collector.stop();
+  });
+
   it("prefers import.meta env defaults over NODE_ENV", async () => {
     const collector = collectBridgeMessages();
     const { machine } = createMachine();
