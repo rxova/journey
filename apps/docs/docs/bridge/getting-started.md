@@ -32,7 +32,16 @@ npm install @rxova/journey-devtools-bridge
 ```
 
   </TabItem>
+  <TabItem value="bun" label="bun">
+
+```bash
+bun add @rxova/journey-devtools-bridge
+```
+
+  </TabItem>
 </Tabs>
+
+`@rxova/journey-devtools-bridge` can be used in Bun-based SPAs. If your browser bundle does not expose a dev/prod env signal, set `enabled: true` explicitly.
 
 ## 2) Attach Bridge To A Machine
 
