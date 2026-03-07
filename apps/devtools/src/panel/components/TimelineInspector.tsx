@@ -15,6 +15,11 @@ const tabList: readonly { id: TimelineTabId; label: string }[] = [
   { id: "diff", label: "Diff" }
 ];
 
+const TIMELINE_FALLBACK_ROW_HEIGHT_PX = 48;
+const TIMELINE_ROW_GAP_PX = 6;
+const TIMELINE_OVERSCAN_ROWS = 6;
+const TIMELINE_FALLBACK_VIEWPORT_HEIGHT_PX = 320;
+
 const formatTime = (timestamp: number): string => new Date(timestamp).toLocaleTimeString();
 
 const badgeLabelByKind: Record<JourneyPanelTimelineEntry["kind"], string> = {
@@ -55,12 +60,25 @@ export const TimelineInspector = ({
 }: TimelineInspectorProps) => {
   const [activeTab, setActiveTab] = React.useState<TimelineTabId>("action");
   const timelineListRef = React.useRef<HTMLOListElement | null>(null);
+  const firstVirtualRowRef = React.useRef<HTMLLIElement | null>(null);
+  const [scrollTop, setScrollTop] = React.useState(0);
+  const [rowHeight, setRowHeight] = React.useState(TIMELINE_FALLBACK_ROW_HEIGHT_PX);
+  const [viewportHeight, setViewportHeight] = React.useState(TIMELINE_FALLBACK_VIEWPORT_HEIGHT_PX);
 
   const visibleEntries = React.useMemo(
     () => selectVisibleTimelineEntries(entries, displayLimit),
     [entries, displayLimit]
   );
   const visibleStartIndex = Math.max(0, entries.length - visibleEntries.length);
+  const visibleRowCount = Math.max(
+    1,
+    Math.ceil(viewportHeight / rowHeight) + TIMELINE_OVERSCAN_ROWS * 2
+  );
+  const virtualStartIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - TIMELINE_OVERSCAN_ROWS);
+  const virtualEndIndex = Math.min(visibleEntries.length, virtualStartIndex + visibleRowCount);
+  const virtualEntries = visibleEntries.slice(virtualStartIndex, virtualEndIndex);
+  const virtualPaddingTop = virtualStartIndex * rowHeight;
+  const virtualPaddingBottom = Math.max(0, visibleEntries.length - virtualEndIndex) * rowHeight;
 
   const detailsPayload = React.useMemo(() => {
     if (activeTab === "action") {
@@ -73,11 +91,74 @@ export const TimelineInspector = ({
   }, [activeTab, displayedSnapshot, selectedDiff, selectedEntry]);
 
   React.useEffect(() => {
+    const timelineList = timelineListRef.current;
+    if (!timelineList) {
+      return;
+    }
+
+    const measureViewport = () => {
+      const nextHeight = timelineList.clientHeight;
+      if (nextHeight > 0) {
+        setViewportHeight(nextHeight);
+      }
+    };
+
+    measureViewport();
+
+    if (typeof ResizeObserver !== "function") {
+      window.addEventListener("resize", measureViewport);
+      return () => {
+        window.removeEventListener("resize", measureViewport);
+      };
+    }
+
+    const observer = new ResizeObserver(measureViewport);
+    observer.observe(timelineList);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  React.useEffect(() => {
+    const firstVirtualRow = firstVirtualRowRef.current;
+    if (!firstVirtualRow) {
+      return;
+    }
+
+    const measureRowHeight = () => {
+      const nextHeight = firstVirtualRow.getBoundingClientRect().height + TIMELINE_ROW_GAP_PX;
+      if (nextHeight > TIMELINE_ROW_GAP_PX) {
+        setRowHeight(nextHeight);
+      }
+    };
+
+    measureRowHeight();
+
+    if (typeof ResizeObserver !== "function") {
+      window.addEventListener("resize", measureRowHeight);
+      return () => {
+        window.removeEventListener("resize", measureRowHeight);
+      };
+    }
+
+    const observer = new ResizeObserver(measureRowHeight);
+    observer.observe(firstVirtualRow);
+    return () => {
+      observer.disconnect();
+    };
+  }, [virtualEntries]);
+
+  React.useEffect(() => {
     if (!followLatest || !timelineListRef.current) {
       return;
     }
 
+    const nextScrollTop = Math.max(
+      0,
+      timelineListRef.current.scrollHeight - timelineListRef.current.clientHeight
+    );
     timelineListRef.current.scrollTop = timelineListRef.current.scrollHeight;
+    setScrollTop(nextScrollTop);
   }, [followLatest, visibleEntries.length]);
 
   return (
@@ -127,13 +208,21 @@ export const TimelineInspector = ({
       </div>
 
       <div className="timeline-layout">
-        <ol className="timeline-list" ref={timelineListRef}>
-          {visibleEntries.map((entry, visibleIndex) => {
-            const absoluteIndex = visibleStartIndex + visibleIndex;
+        <ol
+          className="timeline-list"
+          ref={timelineListRef}
+          onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+          style={{
+            paddingTop: virtualPaddingTop,
+            paddingBottom: virtualPaddingBottom + 8
+          }}
+        >
+          {virtualEntries.map((entry, visibleIndex) => {
+            const absoluteIndex = visibleStartIndex + virtualStartIndex + visibleIndex;
             const isSelected = absoluteIndex === selectedIndex;
 
             return (
-              <li key={entry.id}>
+              <li key={entry.id} ref={visibleIndex === 0 ? firstVirtualRowRef : null}>
                 <button
                   type="button"
                   className={isSelected ? "timeline-row selected" : "timeline-row"}
