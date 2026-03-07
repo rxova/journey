@@ -593,6 +593,40 @@ describe("persistence", () => {
     expect(onError).toHaveBeenCalled();
   });
 
+  it("disables persistence when reading default storage throws and reports via onError", async () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+    const onError = vi.fn();
+
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      get: () => {
+        throw new Error("blocked");
+      }
+    });
+
+    try {
+      const machine = createJourneyMachine(createJourney(), {
+        persistence: {
+          key: "journey:blocked-default-storage",
+          onError
+        }
+      });
+
+      expect(machine.getSnapshot().currentStepId).toBe("start");
+      await machine.send({ type: "goToNextStep" });
+      expect(machine.getSnapshot().currentStepId).toBe("details");
+
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect((onError.mock.calls[0]?.[0] as Error).message).toBe("blocked");
+    } finally {
+      if (originalDescriptor) {
+        Object.defineProperty(globalThis, "localStorage", originalDescriptor);
+      } else {
+        delete (globalThis as { localStorage?: unknown }).localStorage;
+      }
+    }
+  });
+
   it("disables persistence when default storage is unavailable", async () => {
     const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
 

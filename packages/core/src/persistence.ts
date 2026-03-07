@@ -39,7 +39,16 @@ const resolvePersistence = <TContext, TStepId extends string, TStepMeta>(
     return null;
   }
 
-  const storage = options.storage ?? resolveDefaultStorage();
+  let storage: JourneyStorage | null | undefined = options.storage;
+  if (storage == null) {
+    try {
+      storage = resolveDefaultStorage();
+    } catch (error) {
+      options.onError?.(error);
+      return null;
+    }
+  }
+
   if (!storage) {
     return null;
   }
