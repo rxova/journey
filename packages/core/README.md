@@ -74,6 +74,8 @@ When guards/effects are async, step async state is tracked in `snapshot.async.by
 
 `clearStepError(stepId?)` resets a step from `error` to `idle`.
 
+`updateContext()` updates the current snapshot immediately, but it does not rebase an async transition that is already running. Async guards and effects keep the context they started with, and a running effect can later commit over a newer `updateContext()` call. If a context change must affect a transition, apply it before `send(...)` or wait for the transition promise to settle.
+
 ## Persistence
 
 Persistence is optional and disabled automatically if storage is unavailable.

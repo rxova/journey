@@ -65,6 +65,18 @@ For `send(event)`, Journey processes in this order:
 
 `effect` can be sync or async. If async, the source step moves through `running-effect` phase until it resolves.
 
+## `updateContext()` During In-Flight Transitions
+
+`updateContext()` writes to the current snapshot immediately, but it does not rebase a transition that is already in progress.
+
+- If an async `when` is already evaluating, it keeps the `{ context, from, timeline, index, event }` it started with. A later `updateContext()` call does not change that guard decision.
+- If an async `effect` is already running, it also keeps the args it started with. When that transition commits, it writes either the effect's returned context or the context captured when the effect began, so an intervening `updateContext()` call can be overwritten.
+
+Practical rule:
+
+- If a context change must affect the current transition, apply it before `send(...)` or include it in the event payload.
+- If a context change should happen after the transition, await `send(...)` (or a helper like `goToNextStep()`) first, then call `updateContext()`.
+
 ### When `effect` does not run
 
 `effect` does not run when:
