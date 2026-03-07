@@ -47,7 +47,7 @@ App name shown in the devtools registration metadata.
 
 Turns bridge transport on/off.
 
-- Default behavior: enabled when `NODE_ENV !== "production"`
+- Default behavior: enabled when `import.meta.env.DEV` is true, disabled when `import.meta.env.PROD` is true, otherwise falls back to `NODE_ENV !== "production"`
 - Production default: disabled
 - Non-browser environments: no-op
 
@@ -55,7 +55,7 @@ Turns bridge transport on/off.
 
 Controls whether the panel can send mutating commands back to the machine.
 
-- Default behavior: enabled when `NODE_ENV !== "production"`
+- Default behavior: enabled when `import.meta.env.DEV` is true, disabled when `import.meta.env.PROD` is true, otherwise falls back to `NODE_ENV !== "production"`
 - Production default: disabled
 - Useful when you want read-only inspection in production-like environments.
 
@@ -63,9 +63,10 @@ Controls whether the panel can send mutating commands back to the machine.
 
 Default behavior is safety-first:
 
-- Local/development: bridge and commands are enabled by default.
+- Local/development: bridge and commands are enabled by default when `import.meta.env` or `process.env.NODE_ENV` exposes a non-production runtime.
 - Production: bridge is disabled by default.
 - Production with bridge enabled: commands are still disabled by default.
+- No env signal available: bridge and commands remain disabled unless explicitly enabled.
 
 Enable explicitly in production only when intended:
 
