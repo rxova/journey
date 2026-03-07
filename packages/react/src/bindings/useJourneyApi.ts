@@ -1,6 +1,6 @@
 import React from "react";
 
-import type { JourneyPayloadFor, JourneySendEvent } from "@rxova/journey-core";
+import type { JourneyPayloadFor, JourneySendEvent, JourneySendResult } from "@rxova/journey-core";
 import type { JourneyEventType, JourneyReactEventPayloadMap, JourneyStoreValue } from "../types";
 
 type UseJourneyStore<
@@ -29,11 +29,11 @@ export const createUseJourneyApi = <
       () => ({
         send: async (
           event: JourneySendEvent<TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap>
-        ) => {
-          await machine.send(event);
+        ): Promise<JourneySendResult<TContext, TStepId, TStepMeta>> => {
+          return machine.send(event);
         },
-        goToNextStep: async () => {
-          await machine.goToNextStep();
+        goToNextStep: async (): Promise<JourneySendResult<TContext, TStepId, TStepMeta>> => {
+          return machine.goToNextStep();
         },
         terminateJourney: async (
           payload?: JourneyPayloadFor<
@@ -41,8 +41,8 @@ export const createUseJourneyApi = <
             TEventPayloadMap,
             "terminateJourney"
           >
-        ) => {
-          await machine.terminateJourney(payload);
+        ): Promise<JourneySendResult<TContext, TStepId, TStepMeta>> => {
+          return machine.terminateJourney(payload);
         },
         completeJourney: async (
           payload?: JourneyPayloadFor<
@@ -50,14 +50,16 @@ export const createUseJourneyApi = <
             TEventPayloadMap,
             "completeJourney"
           >
-        ) => {
-          await machine.completeJourney(payload);
+        ): Promise<JourneySendResult<TContext, TStepId, TStepMeta>> => {
+          return machine.completeJourney(payload);
         },
-        goToPreviousStep: async (steps?: number) => {
-          await machine.goToPreviousStep(steps);
+        goToPreviousStep: async (
+          steps?: number
+        ): Promise<JourneySendResult<TContext, TStepId, TStepMeta>> => {
+          return machine.goToPreviousStep(steps);
         },
-        goToLastVisitedStep: async () => {
-          await machine.goToLastVisitedStep();
+        goToLastVisitedStep: async (): Promise<JourneySendResult<TContext, TStepId, TStepMeta>> => {
+          return machine.goToLastVisitedStep();
         },
         clearStepError: (stepId?: TStepId) => {
           machine.clearStepError(stepId);
