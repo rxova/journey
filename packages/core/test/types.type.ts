@@ -144,9 +144,40 @@ void machineOptions;
 const builtTransition = tx.from<StepId>("start").on("goToNextStep").to("review");
 expectTypeOf(builtTransition.from).toEqualTypeOf<StepId | "*">();
 
+const customBuilder = tx.from<StepId, Context, PayloadMap>("review").on("custom");
+customBuilder.to("done", {
+  effect: ({ event }) => {
+    expectTypeOf(event.type).toEqualTypeOf<"custom">();
+    expectTypeOf(event.payload).toEqualTypeOf<{ amount: number } | undefined>();
+    // @ts-expect-error custom payload does not expose goToNextStep fields
+    void event.payload?.origin;
+    return { count: event.payload?.amount ?? 0 };
+  }
+});
+customBuilder.choose(
+  customBuilder
+    .when(({ event }) => {
+      expectTypeOf(event.type).toEqualTypeOf<"custom">();
+      expectTypeOf(event.payload).toEqualTypeOf<{ amount: number } | undefined>();
+      return (event.payload?.amount ?? 0) > 0;
+    })
+    .to("done"),
+  customBuilder.otherwise().to("review")
+);
+
 const builtComplete = tx.from<StepId>("review").toComplete();
 expectTypeOf(builtComplete.event).toEqualTypeOf<"completeJourney">();
 expectTypeOf(builtComplete.from).toEqualTypeOf<StepId | "*">();
+
+const terminalPayloadTransition = tx
+  .from<StepId, Context, PayloadMap & { completeJourney: { reason: "user" } }>("review")
+  .toComplete({
+    effect: ({ event }) => {
+      expectTypeOf(event.type).toEqualTypeOf<"completeJourney">();
+      expectTypeOf(event.payload).toEqualTypeOf<{ reason: "user" } | undefined>();
+    }
+  });
+expectTypeOf(terminalPayloadTransition.event).toEqualTypeOf<"completeJourney">();
 
 const builtTerminate = tx.any().toTerminate();
 expectTypeOf(builtTerminate.event).toEqualTypeOf<"terminateJourney">();
