@@ -29,6 +29,7 @@ Use this direct URL in the Chrome Web Store listing:
 - no remote code execution
 - no runtime remote script injection
 - strict typed protocol for message exchange
+- app-side CSP does not need `unsafe-inline`, `unsafe-eval`, remote script hosts, or browser extension origins for the bridge
 
 ## Submission Asset Checklist
 
