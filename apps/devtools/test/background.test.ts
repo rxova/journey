@@ -520,6 +520,34 @@ describe("background message routing", () => {
     });
   });
 
+  it("replays snapshot-only cache entries for new panel sessions", async () => {
+    const harness = await loadBackground();
+
+    const cachedSnapshot = snapshotEnvelope("m-snapshot-only", "details");
+    harness.emitRuntimeMessage(asContentMessage(cachedSnapshot), senderForTab(45));
+
+    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+    harness.emitConnect(panelPort.port);
+    panelPort.emitMessage({
+      type: "panel-init",
+      tabId: 45
+    } satisfies PanelInitMessage);
+
+    expect(
+      panelPort.postedMessages.filter((message) => {
+        if (typeof message !== "object" || message === null) {
+          return false;
+        }
+        return (message as { type?: string }).type === "panel-bridge-envelope";
+      })
+    ).toEqual([
+      {
+        type: "panel-bridge-envelope",
+        envelope: cachedSnapshot
+      }
+    ]);
+  });
+
   it("routes panel commands to content script via tabs.sendMessage", async () => {
     const harness = await loadBackground();
     const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
@@ -627,6 +655,158 @@ describe("background message routing", () => {
     expect(commandError).toBeUndefined();
   });
 
+  it("treats string callback errors as ignorable when they match the known closure message", async () => {
+    const harness = await loadBackground();
+    harness.setSendMessageImpl((_tabId, _message, callback) => {
+      harness.setRuntimeLastError(
+        "The message port closed before a response was received." as unknown as Error
+      );
+      callback?.();
+      harness.setRuntimeLastError(undefined);
+    });
+
+    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+    harness.emitConnect(panelPort.port);
+    panelPort.emitMessage({
+      type: "panel-init",
+      tabId: 53
+    } satisfies PanelInitMessage);
+    harness.sendMessage.mockClear();
+
+    const envelope = createCommandEnvelope("m-5", "req-benign-string", { type: "goToNextStep" });
+    panelPort.emitMessage({
+      type: "panel-command",
+      tabId: 53,
+      envelope
+    } satisfies PanelCommandMessage);
+
+    expect(
+      panelPort.postedMessages.some((message) => {
+        if (typeof message !== "object" || message === null) {
+          return false;
+        }
+        const typed = message as {
+          type?: string;
+          envelope?: { requestId?: string; kind?: string };
+        };
+        return (
+          typed.type === "panel-bridge-envelope" &&
+          typed.envelope?.kind === "commandError" &&
+          typed.envelope?.requestId === "req-benign-string"
+        );
+      })
+    ).toBe(false);
+  });
+
+  it("serializes object-shaped tab messaging errors", async () => {
+    const harness = await loadBackground();
+    harness.setSendMessageImpl((_tabId, _message, callback) => {
+      harness.setRuntimeLastError({
+        message: "No receiver",
+        name: "RuntimeError"
+      } as unknown as Error);
+      callback?.();
+      harness.setRuntimeLastError(undefined);
+    });
+
+    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+    harness.emitConnect(panelPort.port);
+    panelPort.emitMessage({
+      type: "panel-init",
+      tabId: 54
+    } satisfies PanelInitMessage);
+    harness.sendMessage.mockClear();
+
+    const envelope = createCommandEnvelope("m-6", "req-object-error", { type: "goToNextStep" });
+    panelPort.emitMessage({
+      type: "panel-command",
+      tabId: 54,
+      envelope
+    } satisfies PanelCommandMessage);
+
+    expect(panelPort.postedMessages).toContainEqual({
+      type: "panel-bridge-envelope",
+      envelope: expect.objectContaining({
+        kind: "commandError",
+        requestId: "req-object-error",
+        error: expect.objectContaining({
+          name: "RuntimeError",
+          message: "No receiver"
+        })
+      })
+    });
+  });
+
+  it("falls back to unknown transport errors when callback errors have no string message", async () => {
+    const harness = await loadBackground();
+    harness.setSendMessageImpl((_tabId, _message, callback) => {
+      harness.setRuntimeLastError({ message: 42 } as unknown as Error);
+      callback?.();
+      harness.setRuntimeLastError(undefined);
+    });
+
+    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+    harness.emitConnect(panelPort.port);
+    panelPort.emitMessage({
+      type: "panel-init",
+      tabId: 55
+    } satisfies PanelInitMessage);
+    harness.sendMessage.mockClear();
+
+    const envelope = createCommandEnvelope("m-7", "req-unknown-error", { type: "goToNextStep" });
+    panelPort.emitMessage({
+      type: "panel-command",
+      tabId: 55,
+      envelope
+    } satisfies PanelCommandMessage);
+
+    expect(panelPort.postedMessages).toContainEqual({
+      type: "panel-bridge-envelope",
+      envelope: expect.objectContaining({
+        kind: "commandError",
+        requestId: "req-unknown-error",
+        error: expect.objectContaining({
+          message: "Unknown transport error"
+        })
+      })
+    });
+  });
+
+  it("falls back to unknown transport errors when callback errors have no message property", async () => {
+    const harness = await loadBackground();
+    harness.setSendMessageImpl((_tabId, _message, callback) => {
+      harness.setRuntimeLastError({ code: "E_MISSING_MESSAGE" } as unknown as Error);
+      callback?.();
+      harness.setRuntimeLastError(undefined);
+    });
+
+    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+    harness.emitConnect(panelPort.port);
+    panelPort.emitMessage({
+      type: "panel-init",
+      tabId: 56
+    } satisfies PanelInitMessage);
+    harness.sendMessage.mockClear();
+
+    const envelope = createCommandEnvelope("m-8", "req-missing-message", { type: "goToNextStep" });
+    panelPort.emitMessage({
+      type: "panel-command",
+      tabId: 56,
+      envelope
+    } satisfies PanelCommandMessage);
+
+    expect(panelPort.postedMessages).toContainEqual({
+      type: "panel-bridge-envelope",
+      envelope: expect.objectContaining({
+        kind: "commandError",
+        requestId: "req-missing-message",
+        error: expect.objectContaining({
+          message: "Unknown transport error"
+        })
+      })
+    });
+  });
+
   it("stops broadcasting to disconnected ports", async () => {
     const harness = await loadBackground();
     const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
@@ -642,6 +822,32 @@ describe("background message routing", () => {
 
     harness.emitRuntimeMessage(asContentMessage(registerEnvelope("m-5")), senderForTab(61));
     expect(panelPort.postedMessages).toHaveLength(before);
+  });
+
+  it("handles disconnect cleanup when the tab port set is already missing", async () => {
+    const harness = await loadBackground();
+    const tabId = 63;
+    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+
+    harness.emitConnect(panelPort.port);
+    panelPort.emitMessage({
+      type: "panel-init",
+      tabId
+    } satisfies PanelInitMessage);
+
+    const originalGet = Map.prototype.get;
+    const getSpy = vi.spyOn(Map.prototype, "get").mockImplementation(function (
+      this: Map<unknown, unknown>,
+      key: unknown
+    ) {
+      if (key === tabId) {
+        return undefined;
+      }
+      return originalGet.call(this, key);
+    });
+
+    expect(() => panelPort.emitDisconnect()).not.toThrow();
+    getSpy.mockRestore();
   });
 
   it("drops stale ports that throw during broadcast without affecting active ports", async () => {
@@ -862,6 +1068,28 @@ describe("background message routing", () => {
     harness.emitTabUpdated(tabId, { status: "complete" }, { id: tabId } as chrome.tabs.Tab);
 
     expect(executeScript).not.toHaveBeenCalled();
+  });
+
+  it("handles tab removal when the tab has no panel ports and other tabs remain mapped", async () => {
+    const harness = await loadBackground();
+    const otherPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+
+    harness.emitConnect(otherPort.port);
+    otherPort.emitMessage({
+      type: "panel-init",
+      tabId: 109
+    } satisfies PanelInitMessage);
+
+    expect(() => harness.emitTabRemoved(110)).not.toThrow();
+
+    harness.emitRuntimeMessage(asContentMessage(registerEnvelope("m-other")), senderForTab(109));
+    expect(otherPort.postedMessages).toContainEqual({
+      type: "panel-bridge-envelope",
+      envelope: expect.objectContaining({
+        kind: "register",
+        machineId: "m-other"
+      })
+    });
   });
 
   it("clears tab cache and ports when tab is removed", async () => {

@@ -156,6 +156,34 @@ describe("shared message guards", () => {
 
     expect(
       serializeTransportError({
+        name: "WrappedError",
+        message: "wrapped",
+        stack: "trace",
+        cause: { code: "E_WRAPPED" }
+      })
+    ).toEqual({
+      name: "WrappedError",
+      message: "wrapped",
+      stack: "trace",
+      cause: { code: "E_WRAPPED" }
+    });
+
+    expect(
+      serializeTransportError({
+        name: "NullableCauseError",
+        message: "nullable",
+        stack: "trace",
+        cause: undefined
+      })
+    ).toEqual({
+      name: "NullableCauseError",
+      message: "nullable",
+      stack: "trace",
+      cause: null
+    });
+
+    expect(
+      serializeTransportError({
         name: "RuntimeError",
         message: "Could not establish connection. Receiving end does not exist.",
         stack: "stacktrace"
@@ -172,6 +200,13 @@ describe("shared message guards", () => {
     expect(serializeTransportError(stackless)).toEqual({
       name: "Error",
       message: "stackless",
+      stack: null,
+      cause: null
+    });
+
+    expect(serializeTransportError(404)).toEqual({
+      name: null,
+      message: "Unknown transport error",
       stack: null,
       cause: null
     });

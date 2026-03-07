@@ -9,6 +9,7 @@ import { CommandControls } from "../src/panel/components/CommandControls";
 import { ConnectionStatus } from "../src/panel/components/ConnectionStatus";
 import { JsonBlock } from "../src/panel/components/JsonBlock";
 import { MachineSelector } from "../src/panel/components/MachineSelector";
+import { SectionErrorBoundary } from "../src/panel/components/SectionErrorBoundary";
 import { TimelineInspector } from "../src/panel/components/TimelineInspector";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -326,6 +327,34 @@ describe("panel components", () => {
     await view.unmount();
   });
 
+  it("renders section fallback UI and retries after a render error", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    let shouldThrow = true;
+
+    const FailingSection = () => {
+      if (shouldThrow) {
+        throw new Error("section exploded");
+      }
+      return <p>Section recovered</p>;
+    };
+
+    const view = await mount(
+      <SectionErrorBoundary section="Timeline">
+        <FailingSection />
+      </SectionErrorBoundary>
+    );
+
+    expect(view.container.textContent).toContain("Timeline");
+    expect(view.container.textContent).toContain("section exploded");
+
+    shouldThrow = false;
+    await clickAndFlush(getButton(view.container, "Retry"));
+
+    expect(view.container.textContent).toContain("Section recovered");
+    consoleError.mockRestore();
+    await view.unmount();
+  });
+
   it("handles timeline inspector controls and tab payloads", async () => {
     const onSelectEntry = vi.fn();
     const onFollowLatestChange = vi.fn();
@@ -548,6 +577,179 @@ describe("panel components", () => {
     await view.unmount();
   });
 
+  it("falls back to resize listeners when ResizeObserver is unavailable", async () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    const addEventListener = vi.spyOn(window, "addEventListener");
+    const removeEventListener = vi.spyOn(window, "removeEventListener");
+    // Simulate older browser contexts that only expose resize events.
+    delete (globalThis as { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
+
+    const firstEntry = createTimelineEntry(0);
+    const view = await mount(
+      <TimelineInspector
+        entries={[firstEntry]}
+        selectedIndex={0}
+        selectedEntry={firstEntry}
+        displayedSnapshot={firstEntry.snapshot}
+        selectedDiff={diff}
+        followLatest={false}
+        displayLimit={null}
+        onSelectEntry={vi.fn()}
+        onFollowLatestChange={vi.fn()}
+        onDisplayLimitChange={vi.fn()}
+        onPrune={vi.fn()}
+      />
+    );
+
+    const timelineList = view.container.querySelector(".timeline-list") as HTMLOListElement | null;
+    if (!timelineList) {
+      throw new Error("timeline list not found");
+    }
+    Object.defineProperty(timelineList, "clientHeight", {
+      configurable: true,
+      value: 0
+    });
+    const firstRow = view.container.querySelector(".timeline-list li");
+    if (!firstRow) {
+      throw new Error("timeline row not found");
+    }
+    vi.spyOn(firstRow, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      bottom: 0,
+      right: 0,
+      width: 0,
+      height: 0,
+      toJSON: () => ({})
+    } as DOMRect);
+
+    await view.unmount();
+
+    expect(addEventListener).toHaveBeenCalledWith("resize", expect.any(Function));
+    expect(removeEventListener).toHaveBeenCalledWith("resize", expect.any(Function));
+
+    if (originalResizeObserver) {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
+  it("uses ResizeObserver measurement when it is available", async () => {
+    const observed: Element[] = [];
+    const disconnect = vi.fn();
+    const originalResizeObserver = globalThis.ResizeObserver;
+    const clientHeightDescriptor = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "clientHeight"
+    );
+
+    Object.defineProperty(HTMLElement.prototype, "clientHeight", {
+      configurable: true,
+      get() {
+        return this.classList?.contains("timeline-list") ? 320 : 0;
+      }
+    });
+
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement
+    ) {
+      return {
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        bottom: 42,
+        right: 100,
+        width: 100,
+        height: this.tagName === "LI" ? 42 : 0,
+        toJSON: () => ({})
+      } as DOMRect;
+    });
+
+    globalThis.ResizeObserver = class {
+      constructor(private readonly callback: (...args: unknown[]) => void) {}
+
+      observe(target: Element) {
+        observed.push(target);
+        this.callback(
+          [
+            {
+              target,
+              contentRect: target.getBoundingClientRect()
+            } as ResizeObserverEntry
+          ],
+          this as unknown as ResizeObserver
+        );
+      }
+
+      disconnect() {
+        disconnect();
+      }
+    } as unknown as typeof ResizeObserver;
+
+    const firstEntry = createTimelineEntry(0);
+    const secondEntry = createTimelineEntry(1);
+    const view = await mount(
+      <TimelineInspector
+        entries={[firstEntry, secondEntry]}
+        selectedIndex={1}
+        selectedEntry={secondEntry}
+        displayedSnapshot={secondEntry.snapshot}
+        selectedDiff={diff}
+        followLatest={false}
+        displayLimit={null}
+        onSelectEntry={vi.fn()}
+        onFollowLatestChange={vi.fn()}
+        onDisplayLimitChange={vi.fn()}
+        onPrune={vi.fn()}
+      />
+    );
+
+    expect(
+      observed.some((entry) => (entry as HTMLElement).classList?.contains("timeline-list"))
+    ).toBe(true);
+    expect(observed.some((entry) => entry.tagName === "LI")).toBe(true);
+
+    await view.unmount();
+    expect(disconnect).toHaveBeenCalled();
+
+    if (clientHeightDescriptor) {
+      Object.defineProperty(HTMLElement.prototype, "clientHeight", clientHeightDescriptor);
+    }
+    if (originalResizeObserver) {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
+  it("renders an empty timeline state without attempting row measurement", async () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    delete (globalThis as { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
+
+    const view = await mount(
+      <TimelineInspector
+        entries={[]}
+        selectedIndex={0}
+        selectedEntry={null}
+        displayedSnapshot={null}
+        selectedDiff={diff}
+        followLatest={false}
+        displayLimit={null}
+        onSelectEntry={vi.fn()}
+        onFollowLatestChange={vi.fn()}
+        onDisplayLimitChange={vi.fn()}
+        onPrune={vi.fn()}
+      />
+    );
+
+    expect(view.container.textContent).toContain("Showing 0 / 0");
+
+    if (originalResizeObserver) {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+    await view.unmount();
+  });
+
   it("shows fallback payloads when no action or state is selected", async () => {
     const entries = [
       {
@@ -689,5 +891,57 @@ describe("panel components", () => {
     expect(getButton(view.container, "goToNextStep").disabled).toBe(true);
 
     await view.unmount();
+  });
+
+  it("catches rendering errors and allows retry via SectionErrorBoundary", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    let shouldThrow = true;
+    const Bomb = () => {
+      if (shouldThrow) {
+        throw new Error("boom");
+      }
+      return <div data-testid="child">ok</div>;
+    };
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    // Suppress the uncaught error report React 19 DEV mode fires for caught errors
+    const errorHandler = (event: ErrorEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener("error", errorHandler);
+
+    const root: Root = createRoot(container, {
+      onCaughtError: () => {
+        // expected — error boundary caught the render error
+      }
+    });
+
+    root.render(
+      <SectionErrorBoundary section="Test">
+        <Bomb />
+      </SectionErrorBoundary>
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 16));
+
+    expect(container.textContent).toContain("Test — Error");
+    expect(container.textContent).toContain("boom");
+
+    const retryButton = container.querySelector(".retry-button") as HTMLButtonElement;
+    expect(retryButton).toBeTruthy();
+
+    shouldThrow = false;
+    retryButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 16));
+
+    expect(container.querySelector("[data-testid='child']")?.textContent).toBe("ok");
+
+    window.removeEventListener("error", errorHandler);
+    root.unmount();
+    container.remove();
+    consoleError.mockRestore();
   });
 });

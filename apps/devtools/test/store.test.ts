@@ -996,4 +996,82 @@ describe("selectors", () => {
 
     expect(selectSelectedDiff(machine)).toEqual(EMPTY_STRUCTURED_DIFF);
   });
+
+  it("selectSelectedDiff returns empty diff for sparse selected entries", () => {
+    const machine = panelReducer(createInitialPanelState(), {
+      type: "bridge-envelope",
+      envelope: registerEnvelope("a", "Flow A")
+    }).machines.a;
+    if (!machine) {
+      throw new Error("expected machine a");
+    }
+
+    const sparseEntries = [...machine.timelineEntries];
+    delete sparseEntries[0];
+
+    expect(
+      selectSelectedDiff({
+        ...machine,
+        timelineEntries: sparseEntries as typeof machine.timelineEntries,
+        followLatest: false,
+        selectedTimelineIndex: 0
+      })
+    ).toEqual(EMPTY_STRUCTURED_DIFF);
+  });
+
+  it("selectSelectedDiff stays empty when duplicate command results have no earlier resolvable snapshot", () => {
+    const reviewSnapshot = baseSnapshot("review");
+    const machine = {
+      meta: {
+        machineId: "m-diff-gap",
+        label: "Diff Gap",
+        appName: null,
+        commandsEnabled: true
+      },
+      snapshot: reviewSnapshot,
+      timelineEntries: [
+        {
+          id: "row-null-snapshot",
+          timestamp: 1,
+          kind: "snapshot" as const,
+          label: "SNAPSHOT/missing",
+          requestId: null,
+          command: null,
+          envelopeKind: "snapshot" as const,
+          snapshot: null,
+          actionPayload: {},
+          meta: { machineId: "m-diff-gap" }
+        },
+        {
+          id: "row-review-snapshot",
+          timestamp: 2,
+          kind: "snapshot" as const,
+          label: "SNAPSHOT/review",
+          requestId: null,
+          command: null,
+          envelopeKind: "snapshot" as const,
+          snapshot: reviewSnapshot,
+          actionPayload: {},
+          meta: { machineId: "m-diff-gap" }
+        },
+        {
+          id: "row-review-command",
+          timestamp: 3,
+          kind: "command" as const,
+          label: "COMMAND/goToNextStep",
+          requestId: "req-gap",
+          command: { type: "goToNextStep" as const },
+          envelopeKind: "commandResult" as const,
+          snapshot: reviewSnapshot,
+          actionPayload: { type: "COMMAND/goToNextStep" },
+          meta: { machineId: "m-diff-gap" }
+        }
+      ],
+      selectedTimelineIndex: 2,
+      followLatest: false,
+      pendingCommandsByRequestId: {}
+    };
+
+    expect(selectSelectedDiff(machine)).toEqual(EMPTY_STRUCTURED_DIFF);
+  });
 });
