@@ -96,6 +96,7 @@ If guard or effect fails:
 - Journey emits `transition.error`
 - source step async phase becomes `error`
 - snapshot navigation is not committed
+- `send(...)` resolves with `transitioned: false` and `error`
 
 This prevents partial transitions and keeps state consistent.
 

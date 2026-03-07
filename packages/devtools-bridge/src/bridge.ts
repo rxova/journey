@@ -37,6 +37,7 @@ type SendOutcome<TContext, TStepId extends string, TStepMeta> = {
   snapshot: JourneySnapshot<TContext, TStepId, TStepMeta>;
   transitioned?: boolean;
   transitionId?: string;
+  error?: JourneyDevtoolsSerializedError;
 };
 
 type SnapshotScheduleKind = "raf" | "timeout";
@@ -309,6 +310,15 @@ const assertKnownStepId = <TContext, TStepId extends string, TStepMeta>(
   return stepId;
 };
 
+const toSendOutcome = <TContext, TStepId extends string, TStepMeta>(
+  result: JourneySendResult<TContext, TStepId, TStepMeta>
+): SendOutcome<TContext, TStepId, TStepMeta> => ({
+  snapshot: result.snapshot,
+  transitioned: result.transitioned,
+  ...(result.transitionId ? { transitionId: result.transitionId } : {}),
+  ...("error" in result ? { error: serializeError(result.error) } : {})
+});
+
 const runCommand = async <TContext, TStepId extends string, TStepMeta>(
   machine: JourneyMachine<TContext, TStepId, string, Record<never, never>, TStepMeta>,
   command: JourneyDevtoolsCommand
@@ -317,19 +327,11 @@ const runCommand = async <TContext, TStepId extends string, TStepMeta>(
     case "goToNextStep":
     case "completeJourney": {
       const result = await machine.send({ type: command.type });
-      return {
-        snapshot: result.snapshot,
-        transitioned: result.transitioned,
-        ...(result.transitionId ? { transitionId: result.transitionId } : {})
-      };
+      return toSendOutcome(result);
     }
     case "terminateMachine": {
       const result = await machine.send({ type: "terminateJourney" });
-      return {
-        snapshot: result.snapshot,
-        transitioned: result.transitioned,
-        ...(result.transitionId ? { transitionId: result.transitionId } : {})
-      };
+      return toSendOutcome(result);
     }
     case "goToStepById": {
       const stepId = assertKnownStepId(machine, command.stepId, command.type);
@@ -337,27 +339,15 @@ const runCommand = async <TContext, TStepId extends string, TStepMeta>(
         type: "goToStepById",
         stepId
       });
-      return {
-        snapshot: result.snapshot,
-        transitioned: result.transitioned,
-        ...(result.transitionId ? { transitionId: result.transitionId } : {})
-      };
+      return toSendOutcome(result);
     }
     case "goToPreviousStep": {
       const result = await machine.goToPreviousStep(command.steps);
-      return {
-        snapshot: result.snapshot,
-        transitioned: result.transitioned,
-        ...(result.transitionId ? { transitionId: result.transitionId } : {})
-      };
+      return toSendOutcome(result);
     }
     case "goToLastVisitedStep": {
       const result = await machine.goToLastVisitedStep();
-      return {
-        snapshot: result.snapshot,
-        transitioned: result.transitioned,
-        ...(result.transitionId ? { transitionId: result.transitionId } : {})
-      };
+      return toSendOutcome(result);
     }
     case "send": {
       const sendEvent =
@@ -365,11 +355,7 @@ const runCommand = async <TContext, TStepId extends string, TStepMeta>(
           ? { type: command.event.type }
           : { type: command.event.type, payload: command.event.payload };
       const result: JourneySendResult<TContext, TStepId, TStepMeta> = await machine.send(sendEvent);
-      return {
-        snapshot: result.snapshot,
-        transitioned: result.transitioned,
-        ...(result.transitionId ? { transitionId: result.transitionId } : {})
-      };
+      return toSendOutcome(result);
     }
     case "updateStepMetadata": {
       const stepId = assertKnownStepId(machine, command.stepId, command.type);
@@ -565,7 +551,8 @@ export const attachJourneyDevtools = <
           requestId: commandEnvelope.requestId,
           snapshot: serializeSnapshot(outcome.snapshot),
           ...(outcome.transitioned !== undefined ? { transitioned: outcome.transitioned } : {}),
-          ...(outcome.transitionId ? { transitionId: outcome.transitionId } : {})
+          ...(outcome.transitionId ? { transitionId: outcome.transitionId } : {}),
+          ...("error" in outcome ? { error: outcome.error } : {})
         };
         post(resultEnvelope);
       } catch (error) {

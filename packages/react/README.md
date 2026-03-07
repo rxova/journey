@@ -134,6 +134,8 @@ Imperative jump is available through `send`:
 await api.send({ type: "goToStepById", stepId: "review" });
 ```
 
+`send()` and convenience helpers resolve with `result.error` on guard/effect failure instead of rejecting, so `void api.goToNextStep()` will not create an unhandled rejection if transition logic fails.
+
 `updateContext()` is immediate, but it follows core async timing rules: it does not retroactively change a transition already in `evaluating-when` or `running-effect`, and a running effect can later commit over that update. If the change must affect the current transition, apply it before `send(...)` or await the transition first.
 
 ## Provider Behavior

@@ -74,6 +74,7 @@ export type JourneyDevtoolsBridgeCommandResultEnvelope = JourneyDevtoolsEnvelope
   snapshot: JourneyDevtoolsSerializableSnapshot;
   transitioned?: boolean;
   transitionId?: string;
+  error?: JourneyDevtoolsSerializedError;
 };
 
 export type JourneyDevtoolsBridgeCommandErrorEnvelope = JourneyDevtoolsEnvelopeBase & {
@@ -287,7 +288,8 @@ export const isJourneyDevtoolsBridgeEnvelope = (
         envelope.requestId.length > 0 &&
         envelope.requestId.length <= 100 &&
         isRecord(envelope.snapshot) &&
-        isSafePayload(envelope.snapshot)
+        isSafePayload(envelope.snapshot) &&
+        (!("error" in envelope) || isRecord(envelope.error))
       );
     case "commandError":
       return (

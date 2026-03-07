@@ -72,7 +72,7 @@ describe("machine edge cases", () => {
     expect(finalSnapshot.async.isLoading).toBe(false);
   });
 
-  it("reports transition.error when an async guard rejects", async () => {
+  it("returns a non-transitioning send result when an async guard rejects", async () => {
     const machine = createJourneyMachine({
       ...createBaseJourney(),
       transitions: [
@@ -92,7 +92,12 @@ describe("machine edge cases", () => {
       events.push(event);
     });
 
-    await expect(machine.send({ type: "goToNextStep" })).rejects.toThrow("guard failed");
+    const result = await machine.send({ type: "goToNextStep" });
+
+    expect(result.transitioned).toBe(false);
+    expect(result.transitionId).toBeUndefined();
+    expect(result.error).toBeInstanceOf(Error);
+    expect((result.error as Error).message).toBe("guard failed");
 
     const transitionError = events.find((event) => event.type === "transition.error");
     expect(transitionError?.type).toBe("transition.error");
@@ -107,7 +112,7 @@ describe("machine edge cases", () => {
     expect((snapshot.async.byStep.start.error as Error).message).toBe("guard failed");
   });
 
-  it("reports transition.error when an async effect rejects", async () => {
+  it("returns a non-transitioning send result when an async effect rejects", async () => {
     const effectGate = deferred<Context>();
     const machine = createJourneyMachine({
       ...createBaseJourney(),
@@ -131,7 +136,12 @@ describe("machine edge cases", () => {
     expect(machine.getSnapshot().async.byStep.start.phase).toBe("running-effect");
     effectGate.reject(new Error("effect failed"));
 
-    await expect(sendPromise).rejects.toThrow("effect failed");
+    const result = await sendPromise;
+
+    expect(result.transitioned).toBe(false);
+    expect(result.transitionId).toBe("effect-reject");
+    expect(result.error).toBeInstanceOf(Error);
+    expect((result.error as Error).message).toBe("effect failed");
 
     const transitionError = events.find((event) => event.type === "transition.error");
     expect(transitionError?.type).toBe("transition.error");
@@ -142,6 +152,59 @@ describe("machine edge cases", () => {
     const snapshot = machine.getSnapshot();
     expect(snapshot.async.byStep.start.phase).toBe("error");
     expect(snapshot.async.byStep.start.transitionId).toBe("effect-reject");
+  });
+
+  it("returns a non-transitioning send result when a sync guard throws", async () => {
+    const machine = createJourneyMachine({
+      ...createBaseJourney(),
+      transitions: [
+        {
+          id: "guard-throw",
+          from: "start",
+          event: "goToNextStep",
+          to: "middle",
+          when: () => {
+            throw new Error("guard failed");
+          }
+        }
+      ]
+    });
+
+    const result = await machine.send({ type: "goToNextStep" });
+
+    expect(result.transitioned).toBe(false);
+    expect(result.transitionId).toBeUndefined();
+    expect(result.error).toBeInstanceOf(Error);
+    expect((result.error as Error).message).toBe("guard failed");
+    expect(machine.getSnapshot().async.byStep.start.phase).toBe("error");
+    expect((machine.getSnapshot().async.byStep.start.error as Error).message).toBe("guard failed");
+  });
+
+  it("returns a non-transitioning send result when a sync effect throws", async () => {
+    const machine = createJourneyMachine({
+      ...createBaseJourney(),
+      transitions: [
+        {
+          id: "effect-throw",
+          from: "start",
+          event: "goToNextStep",
+          to: "middle",
+          effect: () => {
+            throw new Error("effect failed");
+          }
+        }
+      ]
+    });
+
+    const result = await machine.send({ type: "goToNextStep" });
+
+    expect(result.transitioned).toBe(false);
+    expect(result.transitionId).toBe("effect-throw");
+    expect(result.error).toBeInstanceOf(Error);
+    expect((result.error as Error).message).toBe("effect failed");
+    expect(machine.getSnapshot().async.byStep.start.phase).toBe("error");
+    expect(machine.getSnapshot().async.byStep.start.transitionId).toBe("effect-throw");
+    expect((machine.getSnapshot().async.byStep.start.error as Error).message).toBe("effect failed");
   });
 
   it("resetMachine cancels in-flight async effects and ignores stale completion", async () => {
@@ -489,7 +552,8 @@ describe("machine edge cases", () => {
     };
     delete leakedSnapshot.async.byStep.start;
 
-    await expect(machine.send({ type: "goToNextStep" })).rejects.toThrow("guard failed");
+    const result = await machine.send({ type: "goToNextStep" });
+    expect(result.error).toBeInstanceOf(Error);
     expect(machine.getSnapshot().async.byStep.start.phase).toBe("error");
   });
 
@@ -512,7 +576,8 @@ describe("machine edge cases", () => {
       events.push(event);
     });
 
-    await expect(machine.send({ type: "goToNextStep" })).rejects.toThrow("effect failed");
+    const result = await machine.send({ type: "goToNextStep" });
+    expect(result.error).toBeInstanceOf(Error);
 
     const transitionError = events.find((event) => event.type === "transition.error");
     expect(transitionError?.type).toBe("transition.error");
@@ -568,7 +633,8 @@ describe("machine edge cases", () => {
       ]
     });
 
-    await expect(machine.send({ type: "goToNextStep" })).rejects.toThrow("guard failed");
+    const result = await machine.send({ type: "goToNextStep" });
+    expect(result.error).toBeInstanceOf(Error);
     expect(machine.getSnapshot().async.byStep.start.phase).toBe("error");
 
     const cleared = machine.clearStepError();

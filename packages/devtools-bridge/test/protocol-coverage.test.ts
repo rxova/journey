@@ -62,7 +62,13 @@ describe("protocol guard edge coverage", () => {
         ...base,
         kind: "commandResult",
         requestId: "r1",
-        snapshot: {}
+        snapshot: {},
+        error: {
+          name: "Error",
+          message: "boom",
+          stack: null,
+          cause: null
+        }
       })
     ).toBe(true);
     expect(

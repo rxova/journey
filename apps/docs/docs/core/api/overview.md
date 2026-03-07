@@ -80,7 +80,11 @@ You can drive the machine with events (`send`) or convenience helpers.
 Use `send` when you want explicit event control:
 
 ```ts
-await machine.send({ type: "goToNextStep" });
+const result = await machine.send({ type: "goToNextStep" });
+if (result.error) {
+  console.error("transition failed", result.error);
+}
+
 await machine.send({ type: "myCustomEvent" });
 ```
 

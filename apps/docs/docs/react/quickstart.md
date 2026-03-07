@@ -89,6 +89,8 @@ await api.send({ type: "goToStepById", stepId: "review" });
 
 `api` is journey-typed automatically from your bindings, so event names and payload shapes are checked at compile time.
 
+Guard/effect failures resolve through `result.error` instead of rejecting, so `void api.goToNextStep()` is safe from unhandled promise rejections.
+
 ## Where To Go Next
 
 - Hook surface and Provider behavior: [Provider and Hooks API](/docs/react/provider-and-hooks)

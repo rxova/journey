@@ -63,6 +63,7 @@ expectTypeOf<CloseEventFromProvider["type"]>().toEqualTypeOf<"journey.close">();
 expectTypeOf<CloseEventFromProvider["stepId"]>().toEqualTypeOf<StepId>();
 
 expectTypeOf<Api["goToNextStep"]>().parameters.toEqualTypeOf<[]>();
+expectTypeOf<Awaited<ReturnType<Api["send"]>>["error"]>().toEqualTypeOf<unknown | undefined>();
 expectTypeOf<ReturnType<typeof bindings.useJourneySnapshot>["context"]>().toEqualTypeOf<Context>();
 expectTypeOf<
   ReturnType<typeof bindings.useJourneySnapshot>["currentStepId"]

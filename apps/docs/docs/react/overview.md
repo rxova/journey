@@ -106,6 +106,8 @@ export const App = () => {
 };
 ```
 
+Guard/effect failures resolve through `result.error` instead of rejecting, so fire-and-forget button handlers like `void api.goToNextStep()` do not surface as unhandled promise rejections.
+
 ## What Still Lives in Core
 
 React bindings do not redefine runtime behavior.
