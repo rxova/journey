@@ -65,6 +65,58 @@ const resolvePersistence = <TContext, TStepId extends string, TStepMeta>(
   };
 };
 
+const resolveVisitedFromPersistence = <TStepId extends string>(
+  visitedSource: unknown,
+  timeline: readonly TStepId[],
+  stepIds: readonly TStepId[]
+): {
+  visited: Record<TStepId, boolean>;
+  needsRewrite: boolean;
+} => {
+  const visitedFromTimeline = buildVisitedFromTimeline(timeline, stepIds);
+
+  if (isRecord(visitedSource)) {
+    let needsRewrite = false;
+    const visited = { ...visitedFromTimeline };
+
+    for (const stepId of stepIds) {
+      const persistedValue = visitedSource[stepId];
+
+      if (persistedValue === true) {
+        visited[stepId] = true;
+        continue;
+      }
+
+      if (persistedValue === false) {
+        if (visitedFromTimeline[stepId]) {
+          needsRewrite = true;
+        }
+        continue;
+      }
+
+      needsRewrite = true;
+    }
+
+    return { visited, needsRewrite };
+  }
+
+  if (Array.isArray(visitedSource)) {
+    const visitedFromArray = buildVisitedFromTimeline(
+      visitedSource.filter(
+        (step): step is TStepId => typeof step === "string" && stepIds.includes(step as TStepId)
+      ) as TStepId[],
+      stepIds
+    );
+    const visited = Object.fromEntries(
+      stepIds.map((stepId) => [stepId, visitedFromTimeline[stepId] || visitedFromArray[stepId]])
+    ) as Record<TStepId, boolean>;
+
+    return { visited, needsRewrite: true };
+  }
+
+  return { visited: visitedFromTimeline, needsRewrite: true };
+};
+
 const coercePersistedSnapshot = <TContext, TStepId extends string, TStepMeta>(
   value: unknown,
   steps: Record<TStepId, unknown>,
@@ -128,35 +180,12 @@ const coercePersistedSnapshot = <TContext, TStepId extends string, TStepMeta>(
   }
 
   const stepIds = Object.keys(steps) as TStepId[];
-  const visitedSource = value.visited;
-  const visitedFromRecord = isRecord(visitedSource)
-    ? (Object.fromEntries(
-        stepIds.map((stepId) => [stepId, visitedSource[stepId] === true])
-      ) as Record<TStepId, boolean>)
-    : null;
-  const visitedFromArray = Array.isArray(visitedSource)
-    ? buildVisitedFromTimeline(
-        visitedSource.filter(
-          (step): step is TStepId => typeof step === "string" && step in steps
-        ) as TStepId[],
-        stepIds
-      )
-    : null;
-
-  let visited = buildVisitedFromTimeline(timeline, stepIds);
-  if (visitedFromRecord) {
-    const visitedRecord = visitedSource as Record<string, unknown>;
-    visited = visitedFromRecord;
-    const hasMissingOrInvalidStep = stepIds.some(
-      (stepId) => typeof visitedRecord[stepId] !== "boolean"
-    );
-    if (hasMissingOrInvalidStep) {
-      needsRewrite = true;
-    }
-  } else if (visitedFromArray) {
-    visited = visitedFromArray;
-    needsRewrite = true;
-  } else {
+  const { visited, needsRewrite: visitedNeedsRewrite } = resolveVisitedFromPersistence(
+    value.visited,
+    timeline,
+    stepIds
+  );
+  if (visitedNeedsRewrite) {
     needsRewrite = true;
   }
 
