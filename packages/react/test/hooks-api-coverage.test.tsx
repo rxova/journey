@@ -90,7 +90,9 @@ describe("useJourneyApi", () => {
       dispose,
       subscribe: () => () => undefined,
       subscribeSelector: () => () => undefined,
-      subscribeEvent: () => () => undefined
+      subscribeEvent: () => () => undefined,
+      subscribeComplete: () => () => undefined,
+      subscribeTerminate: () => () => undefined
     };
 
     const Controls = () => {

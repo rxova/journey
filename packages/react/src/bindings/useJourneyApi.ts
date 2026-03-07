@@ -23,108 +23,56 @@ export const createUseJourneyApi = <
   useJourneyStore: UseJourneyStore<TContext, TStepId, TCustomEvent, TEventPayloadMap, TStepMeta>
 ) => {
   return () => {
-    const machine = useJourneyStore("useJourneyApi").machine;
-
-    const send = React.useCallback(
-      async (
-        event: JourneySendEvent<TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap>
-      ) => {
-        await machine.send(event);
-      },
-      [machine]
-    );
-
-    const goToNextStep = React.useCallback(async () => {
-      await machine.goToNextStep();
-    }, [machine]);
-
-    const terminateJourney = React.useCallback(
-      async (
-        payload?: JourneyPayloadFor<
-          JourneyEventType<TCustomEvent>,
-          TEventPayloadMap,
-          "terminateJourney"
-        >
-      ) => {
-        await machine.terminateJourney(payload);
-      },
-      [machine]
-    );
-
-    const completeJourney = React.useCallback(
-      async (
-        payload?: JourneyPayloadFor<
-          JourneyEventType<TCustomEvent>,
-          TEventPayloadMap,
-          "completeJourney"
-        >
-      ) => {
-        await machine.completeJourney(payload);
-      },
-      [machine]
-    );
-
-    const goToPreviousStep = React.useCallback(
-      async (steps?: number) => {
-        await machine.goToPreviousStep(steps);
-      },
-      [machine]
-    );
-
-    const goToLastVisitedStep = React.useCallback(async () => {
-      await machine.goToLastVisitedStep();
-    }, [machine]);
-
-    const updateContext = React.useCallback(
-      (updater: (context: TContext) => TContext) => {
-        machine.updateContext(updater);
-      },
-      [machine]
-    );
-
-    const updateStepMetadata = React.useCallback(
-      (stepId: TStepId, updater: (metadata: TStepMeta) => TStepMeta) => {
-        machine.updateStepMetadata(stepId, updater);
-      },
-      [machine]
-    );
-
-    const clearStepError = React.useCallback(
-      (stepId?: TStepId) => {
-        machine.clearStepError(stepId);
-      },
-      [machine]
-    );
-
-    const resetJourney = React.useCallback(() => {
-      machine.resetMachine();
-    }, [machine]);
+    const { machine } = useJourneyStore("useJourneyApi");
 
     return React.useMemo(
       () => ({
-        send,
-        goToNextStep,
-        terminateJourney,
-        completeJourney,
-        goToPreviousStep,
-        goToLastVisitedStep,
-        clearStepError,
-        updateContext,
-        updateStepMetadata,
-        resetJourney
+        send: async (
+          event: JourneySendEvent<TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap>
+        ) => {
+          await machine.send(event);
+        },
+        goToNextStep: async () => {
+          await machine.goToNextStep();
+        },
+        terminateJourney: async (
+          payload?: JourneyPayloadFor<
+            JourneyEventType<TCustomEvent>,
+            TEventPayloadMap,
+            "terminateJourney"
+          >
+        ) => {
+          await machine.terminateJourney(payload);
+        },
+        completeJourney: async (
+          payload?: JourneyPayloadFor<
+            JourneyEventType<TCustomEvent>,
+            TEventPayloadMap,
+            "completeJourney"
+          >
+        ) => {
+          await machine.completeJourney(payload);
+        },
+        goToPreviousStep: async (steps?: number) => {
+          await machine.goToPreviousStep(steps);
+        },
+        goToLastVisitedStep: async () => {
+          await machine.goToLastVisitedStep();
+        },
+        clearStepError: (stepId?: TStepId) => {
+          machine.clearStepError(stepId);
+        },
+        updateContext: (updater: (context: TContext) => TContext) => {
+          machine.updateContext(updater);
+        },
+        updateStepMetadata: (stepId: TStepId, updater: (metadata: TStepMeta) => TStepMeta) => {
+          machine.updateStepMetadata(stepId, updater);
+        },
+        resetJourney: () => {
+          machine.resetMachine();
+        }
       }),
-      [
-        send,
-        goToNextStep,
-        terminateJourney,
-        completeJourney,
-        goToPreviousStep,
-        goToLastVisitedStep,
-        clearStepError,
-        updateContext,
-        updateStepMetadata,
-        resetJourney
-      ]
+      [machine]
     );
   };
 };

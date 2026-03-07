@@ -165,7 +165,9 @@ const createMachine = (sendImpl?: JourneyMachine<Context, StepId, Event>["send"]
       return () => undefined;
     },
     subscribeSelector: () => () => undefined,
-    subscribeEvent: () => () => undefined
+    subscribeEvent: () => () => undefined,
+    subscribeComplete: () => () => undefined,
+    subscribeTerminate: () => () => undefined
   };
 
   return {
@@ -678,7 +680,9 @@ describe("bridge edge coverage", () => {
         };
       },
       subscribeSelector: () => () => undefined,
-      subscribeEvent: () => () => undefined
+      subscribeEvent: () => () => undefined,
+      subscribeComplete: () => () => undefined,
+      subscribeTerminate: () => () => undefined
     };
 
     Object.defineProperty(globalThis, "window", {
@@ -800,7 +804,9 @@ describe("bridge edge coverage", () => {
       dispose: () => undefined,
       subscribe: () => () => undefined,
       subscribeSelector: () => () => undefined,
-      subscribeEvent: () => () => undefined
+      subscribeEvent: () => () => undefined,
+      subscribeComplete: () => () => undefined,
+      subscribeTerminate: () => () => undefined
     };
     const detach = attachJourneyDevtools(machine, {
       machineId: "   ",
@@ -910,7 +916,9 @@ describe("bridge edge coverage", () => {
       dispose: () => undefined,
       subscribe: () => () => undefined,
       subscribeSelector: () => () => undefined,
-      subscribeEvent: () => () => undefined
+      subscribeEvent: () => () => undefined,
+      subscribeComplete: () => () => undefined,
+      subscribeTerminate: () => () => undefined
     };
 
     const detach = attachJourneyDevtools(machine, {

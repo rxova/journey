@@ -131,7 +131,9 @@ const createMachine = (): JourneyMachine<Context, StepId, Event> => {
       };
     },
     subscribeSelector: () => () => undefined,
-    subscribeEvent: () => () => undefined
+    subscribeEvent: () => () => undefined,
+    subscribeComplete: () => () => undefined,
+    subscribeTerminate: () => () => undefined
   };
 };
 

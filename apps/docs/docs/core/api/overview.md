@@ -196,6 +196,8 @@ Use `subscribeEvent` when you need typed lifecycle telemetry, such as:
 - `navigation.lastVisited`
 - `metadata.updated`
 
+Use `subscribeComplete` or `subscribeTerminate` when you only want terminal lifecycle events without manually filtering `subscribeEvent`.
+
 For teams, this usually means better logs, easier debugging, and cleaner analytics hooks.
 
 In practice:

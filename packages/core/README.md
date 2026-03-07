@@ -123,6 +123,8 @@ Use `subscribeEvent` to inspect transition and navigation lifecycle events:
 - `journey.close`
 - `metadata.updated`
 
+Use `subscribeComplete(...)` and `subscribeTerminate(...)` when you only care about terminal lifecycle events.
+
 ## Transition Ergonomics
 
 ```ts

@@ -107,6 +107,18 @@ export type JourneyBindingsProviderProps<
   persistence?: JourneyPersistenceOptions<TContext, TStepId, TStepMeta>;
   resetOnJourneyChange?: boolean;
   resetOnPersistenceChange?: boolean;
+  onComplete?: (
+    event: Extract<
+      JourneyObservationEvent<TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap, TStepMeta>,
+      { type: "journey.complete" }
+    >
+  ) => void;
+  onTerminate?: (
+    event: Extract<
+      JourneyObservationEvent<TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap, TStepMeta>,
+      { type: "journey.close" }
+    >
+  ) => void;
   children: React.ReactNode;
 };
 
