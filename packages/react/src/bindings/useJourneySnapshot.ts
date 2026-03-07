@@ -24,6 +24,12 @@ export const createUseJourneySnapshot = <
 ) => {
   return (): JourneySnapshot<TContext, TStepId, TStepMeta> => {
     const { machine } = useJourneyStore("useJourneySnapshot");
-    return React.useSyncExternalStore(machine.subscribe, machine.getSnapshot, machine.getSnapshot);
+    const getSnapshot = React.useCallback(() => machine.getSnapshot(), [machine]);
+    const subscribe = React.useCallback(
+      (onStoreChange: () => void) => machine.subscribe(onStoreChange),
+      [machine]
+    );
+
+    return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   };
 };
