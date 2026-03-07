@@ -523,6 +523,116 @@ describe("panel App", () => {
     });
   });
 
+  it("clears a pending machine reset timer when the panel unmounts", async () => {
+    vi.useFakeTimers();
+    const onMessage = createListenerSet<[unknown]>();
+
+    const port = {
+      postMessage: vi.fn(),
+      disconnect: vi.fn(),
+      onMessage: {
+        addListener: onMessage.addListener,
+        removeListener: onMessage.removeListener
+      },
+      onDisconnect: {
+        addListener: vi.fn(),
+        removeListener: vi.fn()
+      }
+    } as unknown as chrome.runtime.Port;
+
+    const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
+
+    vi.stubGlobal("chrome", {
+      runtime: {
+        connect: vi.fn(() => port)
+      },
+      devtools: {
+        inspectedWindow: {
+          tabId: 134
+        }
+      }
+    } as unknown as typeof chrome);
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<App />);
+    });
+
+    await act(async () => {
+      onMessage.emit({ type: "panel-connected", connected: true });
+      onMessage.emit({
+        type: "panel-bridge-envelope",
+        envelope: createRegisterEnvelope("machine-unmount-pending-clear")
+      });
+      onMessage.emit({ type: "panel-connected", connected: false });
+    });
+
+    await act(async () => {
+      root.unmount();
+    });
+
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+  });
+
+  it("clears a pending machine reset timer when the port disconnects", async () => {
+    vi.useFakeTimers();
+    const onMessage = createListenerSet<[unknown]>();
+    const onDisconnect = createListenerSet<[]>();
+
+    const port = {
+      postMessage: vi.fn(),
+      disconnect: vi.fn(),
+      onMessage: {
+        addListener: onMessage.addListener,
+        removeListener: onMessage.removeListener
+      },
+      onDisconnect: {
+        addListener: onDisconnect.addListener,
+        removeListener: onDisconnect.removeListener
+      }
+    } as unknown as chrome.runtime.Port;
+
+    vi.stubGlobal("chrome", {
+      runtime: {
+        connect: vi.fn(() => port)
+      },
+      devtools: {
+        inspectedWindow: {
+          tabId: 135
+        }
+      }
+    } as unknown as typeof chrome);
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<App />);
+    });
+
+    await act(async () => {
+      onMessage.emit({ type: "panel-connected", connected: true });
+      onMessage.emit({
+        type: "panel-bridge-envelope",
+        envelope: createRegisterEnvelope("machine-disconnect-pending-clear")
+      });
+      onMessage.emit({ type: "panel-connected", connected: false });
+      onDisconnect.emit();
+      vi.advanceTimersByTime(1200);
+    });
+
+    expect(container.textContent).toContain("Checkout (Store)");
+    expect(container.textContent).not.toContain("No Active Machine");
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
   it("keeps timeline state on transient disconnect that quickly recovers", async () => {
     vi.useFakeTimers();
     const onMessage = createListenerSet<[unknown]>();

@@ -68,12 +68,11 @@ const replayCacheToBackground = () => {
         envelope: cachedMachine.register
       } satisfies ContentToBackgroundMessage);
     }
-    if (cachedMachine.snapshot) {
-      chrome.runtime.sendMessage({
-        type: "bridge-envelope",
-        envelope: cachedMachine.snapshot
-      } satisfies ContentToBackgroundMessage);
-    }
+    // Cached machines are only retained after register/snapshot envelopes, both of which seed snapshot state.
+    chrome.runtime.sendMessage({
+      type: "bridge-envelope",
+      envelope: cachedMachine.snapshot!
+    } satisfies ContentToBackgroundMessage);
   }
 };
 
