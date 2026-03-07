@@ -92,4 +92,55 @@ describe("terminal transitions", () => {
     expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.TERMINATED);
     expect(machine.getSnapshot().context.count).toBe(9);
   });
+
+  it("supports tx.from(...).toTerminate()", async () => {
+    const journey = baseJourney<"terminateJourney">();
+    journey.transitions = createTransitions(
+      tx.from<StepId, Context>("start").toTerminate({
+        effect: ({ context }) => ({ ...context, count: 3 })
+      })
+    );
+
+    const machine = createJourneyMachine(journey);
+
+    await machine.send({ type: "terminateJourney" });
+
+    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.TERMINATED);
+    expect(machine.getSnapshot().context.count).toBe(3);
+  });
+
+  it("supports tx.any().toComplete()", async () => {
+    const journey = baseJourney<"completeJourney">();
+    journey.transitions = createTransitions(
+      tx.any<Context, StepId>().toComplete({
+        effect: ({ context }) => ({ ...context, count: 4 })
+      })
+    );
+
+    const machine = createJourneyMachine(journey);
+
+    await machine.send({ type: "completeJourney" });
+
+    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.COMPLETE);
+    expect(machine.getSnapshot().context.count).toBe(4);
+  });
+
+  it("supports tx.from(...).on('terminateJourney').terminate()", async () => {
+    const journey = baseJourney<"terminateJourney">();
+    journey.transitions = createTransitions(
+      tx
+        .from<StepId, Context>("start")
+        .on("terminateJourney")
+        .terminate({
+          effect: ({ context }) => ({ ...context, count: 6 })
+        })
+    );
+
+    const machine = createJourneyMachine(journey);
+
+    await machine.send({ type: "terminateJourney" });
+
+    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.TERMINATED);
+    expect(machine.getSnapshot().context.count).toBe(6);
+  });
 });

@@ -91,10 +91,7 @@ export const TimelineInspector = ({
   }, [activeTab, displayedSnapshot, selectedDiff, selectedEntry]);
 
   React.useEffect(() => {
-    const timelineList = timelineListRef.current;
-    if (!timelineList) {
-      return;
-    }
+    const timelineList = timelineListRef.current!;
 
     const measureViewport = () => {
       const nextHeight = timelineList.clientHeight;

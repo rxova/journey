@@ -215,9 +215,8 @@ const replayCacheToPanel = (tabId: number, port: chrome.runtime.Port) => {
     if (cachedMachine.register) {
       port.postMessage({ type: "panel-bridge-envelope", envelope: cachedMachine.register });
     }
-    if (cachedMachine.snapshot) {
-      port.postMessage({ type: "panel-bridge-envelope", envelope: cachedMachine.snapshot });
-    }
+    // Cached machines are only retained after register/snapshot envelopes, both of which seed snapshot state.
+    port.postMessage({ type: "panel-bridge-envelope", envelope: cachedMachine.snapshot! });
   }
 };
 

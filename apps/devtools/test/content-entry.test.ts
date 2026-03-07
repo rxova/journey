@@ -399,4 +399,91 @@ describe("content script bridge", () => {
 
     expect(fakeWindow.postMessage).toHaveBeenCalledWith(expect.any(Object), "*");
   });
+
+  it("replays snapshot-only cache entries and avoids duplicate listener installation", async () => {
+    const runtimeListeners: RuntimeMessageListener[] = [];
+    const windowListeners: WindowMessageListener[] = [];
+    const sendMessage = vi.fn();
+
+    const addEventListener = vi
+      .spyOn(window, "addEventListener")
+      .mockImplementation((type, listener) => {
+        if (type === "message") {
+          windowListeners.push(listener as WindowMessageListener);
+        }
+      });
+
+    const chromeMock = {
+      runtime: {
+        sendMessage,
+        onMessage: {
+          addListener: vi.fn((listener: RuntimeMessageListener) => {
+            runtimeListeners.push(listener);
+          })
+        }
+      }
+    } as unknown as typeof chrome;
+
+    vi.stubGlobal("chrome", chromeMock);
+    await import("../src/content");
+    await import("../src/content");
+
+    expect(addEventListener).toHaveBeenCalledTimes(1);
+    expect(runtimeListeners).toHaveLength(1);
+    expect(windowListeners).toHaveLength(1);
+
+    const runtime = runtimeListeners[0];
+    const windowListener = windowListeners[0];
+    if (!runtime || !windowListener) {
+      throw new Error("listeners were not registered");
+    }
+
+    const snapshotEnvelope = {
+      channel: JOURNEY_DEVTOOLS_CHANNEL,
+      version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+      source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
+      kind: "snapshot",
+      machineId: "machine-snapshot-only",
+      snapshot: { currentStepId: "review" },
+      timestamp: Date.now()
+    } as const;
+
+    windowListener(
+      new MessageEvent("message", {
+        source: window,
+        origin: window.location.origin,
+        data: snapshotEnvelope
+      })
+    );
+
+    sendMessage.mockClear();
+    runtime({ type: "bridge-replay-request" });
+
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(sendMessage).toHaveBeenCalledWith({
+      type: "bridge-envelope",
+      envelope: snapshotEnvelope
+    });
+  });
+
+  it("skips listener installation when the bridge flag is already present", async () => {
+    const addEventListener = vi.spyOn(window, "addEventListener");
+    const sendMessage = vi.fn();
+
+    (window as Window & { [CONTENT_BRIDGE_FLAG]?: boolean })[CONTENT_BRIDGE_FLAG] = true;
+
+    vi.stubGlobal("chrome", {
+      runtime: {
+        sendMessage,
+        onMessage: {
+          addListener: vi.fn()
+        }
+      }
+    } as unknown as typeof chrome);
+
+    await import("../src/content");
+
+    expect(addEventListener).not.toHaveBeenCalled();
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
 });
