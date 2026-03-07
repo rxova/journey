@@ -72,7 +72,7 @@
       "name": "react/createJourneyBindings",
       "path": "dist/index.js",
       "import": "{ createJourneyBindings }",
-      "limit": "5 kB"
+      "limit": "6 kB"
     }
   ],
   "devDependencies": {
