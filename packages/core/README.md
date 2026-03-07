@@ -55,6 +55,8 @@ const snapshot = machine.getSnapshot();
 console.log(snapshot.history.timeline, snapshot.history.index, snapshot.currentStepId);
 ```
 
+By default, `goToNextStep()` completes the machine when the current step declares no `goToNextStep` transition. Set `completeOnNoNextStep: false` in `createJourneyMachine(...)` options to opt out.
+
 ## Behavioral Guarantees
 
 - Transition selection is ordered: the first matching transition wins.

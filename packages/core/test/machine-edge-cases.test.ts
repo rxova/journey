@@ -361,6 +361,85 @@ describe("machine edge cases", () => {
     expect(machine.getSnapshot().currentStepId).toBe("start");
   });
 
+  it("completes on goToNextStep when no next transition is declared by default", async () => {
+    const machine = createJourneyMachine(createBaseJourney());
+    const events: JourneyObservationEvent<StepId, Event>[] = [];
+
+    machine.subscribeEvent((event) => {
+      events.push(event);
+    });
+
+    await machine.goToNextStep();
+    const result = await machine.goToNextStep();
+
+    expect(result.transitioned).toBe(true);
+    expect(result.transitionId).toBeUndefined();
+    expect(result.snapshot.status).toBe("complete");
+    expect(result.snapshot.currentStepId).toBe("middle");
+    expect(events.map((event) => event.type)).toEqual([
+      "journey.start",
+      "transition.start",
+      "step.exit",
+      "transition.success",
+      "step.enter",
+      "transition.start",
+      "transition.success",
+      "journey.complete"
+    ]);
+    expect(events[6]).toMatchObject({
+      type: "transition.success",
+      from: "middle",
+      to: "COMPLETE",
+      eventType: "goToNextStep",
+      transitionId: null
+    });
+    expect(events[7]).toMatchObject({
+      type: "journey.complete",
+      stepId: "middle"
+    });
+  });
+
+  it("can opt out of goToNextStep auto-completion", async () => {
+    const machine = createJourneyMachine(createBaseJourney(), {
+      completeOnNoNextStep: false
+    });
+
+    await machine.goToNextStep();
+    const result = await machine.goToNextStep();
+
+    expect(result.transitioned).toBe(false);
+    expect(machine.getSnapshot().status).toBe("running");
+    expect(machine.getSnapshot().currentStepId).toBe("middle");
+  });
+
+  it("does not auto-complete when a declared next transition is blocked by guards", async () => {
+    const machine = createJourneyMachine(
+      {
+        ...createBaseJourney(),
+        transitions: [
+          {
+            id: "blocked-next",
+            from: "middle",
+            event: "goToNextStep",
+            to: "start",
+            when: () => false
+          },
+          ...createBaseJourney().transitions
+        ]
+      },
+      {
+        completeOnNoNextStep: true
+      }
+    );
+
+    await machine.goToNextStep();
+    const result = await machine.goToNextStep();
+
+    expect(result.transitioned).toBe(false);
+    expect(machine.getSnapshot().status).toBe("running");
+    expect(machine.getSnapshot().currentStepId).toBe("middle");
+  });
+
   it("no-ops subscriptions and sync APIs after dispose", async () => {
     const machine = createJourneyMachine(createBaseJourney());
     const before = machine.getSnapshot();

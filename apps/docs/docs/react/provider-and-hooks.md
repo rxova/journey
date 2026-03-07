@@ -74,6 +74,11 @@ Optional Provider callbacks:
 - `onStart` replays the machine startup event on mount, matching core `journey.start` replay semantics.
 - `onComplete` and `onTerminate` are event-driven, so they do not fire on mount just because the initial snapshot is already terminal.
 
+Internal machine behavior:
+
+- Internal Provider-owned machines default to completing on `goToNextStep()` when the current step declares no next transition.
+- Set `completeOnNoNextStep={false}` to opt out and preserve non-transitioning `goToNextStep()` results instead.
+
 ```tsx
 <bindings.Provider onStart={() => console.log("started!")}>
   <bindings.StepRenderer />

@@ -106,6 +106,7 @@ export type JourneyBindingsProviderProps<
     TStepMeta
   >;
   persistence?: JourneyPersistenceOptions<TContext, TStepId, TStepMeta>;
+  completeOnNoNextStep?: boolean;
   resetOnJourneyChange?: boolean;
   resetOnPersistenceChange?: boolean;
   onStart?: (

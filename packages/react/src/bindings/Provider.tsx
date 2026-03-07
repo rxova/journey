@@ -47,6 +47,7 @@ export const createProvider = <
     journey,
     machine,
     persistence,
+    completeOnNoNextStep,
     resetOnJourneyChange = false,
     resetOnPersistenceChange = false,
     onStart,
@@ -67,6 +68,7 @@ export const createProvider = <
     >(null);
     const journeyRef = React.useRef(incomingJourney);
     const persistenceRef = React.useRef(persistence);
+    const completeOnNoNextStepRef = React.useRef(completeOnNoNextStep);
     const onStartRef = React.useRef(onStart);
     const onCompleteRef = React.useRef(onComplete);
     const onTerminateRef = React.useRef(onTerminate);
@@ -80,35 +82,62 @@ export const createProvider = <
     onTerminateRef.current = onTerminate;
 
     if (!machine && !internalMachineRef.current) {
-      const options = persistence ? { persistence } : undefined;
+      const options =
+        persistence !== undefined || completeOnNoNextStep !== undefined
+          ? {
+              ...(persistence !== undefined ? { persistence } : {}),
+              ...(completeOnNoNextStep !== undefined ? { completeOnNoNextStep } : {})
+            }
+          : undefined;
       internalMachineRef.current = createJourneyMachine(incomingJourney, options);
       journeyRef.current = incomingJourney;
       persistenceRef.current = persistence;
+      completeOnNoNextStepRef.current = completeOnNoNextStep;
     }
 
     const shouldResetJourney =
       !machine && resetOnJourneyChange && journeyRef.current !== incomingJourney;
     const shouldResetPersistence =
       !machine && resetOnPersistenceChange && persistenceRef.current !== persistence;
+    const shouldResetNextCompletion =
+      !machine && completeOnNoNextStepRef.current !== completeOnNoNextStep;
 
     useSafeLayoutEffect(() => {
-      if (machine || (!shouldResetJourney && !shouldResetPersistence)) {
+      if (
+        machine ||
+        (!shouldResetJourney && !shouldResetPersistence && !shouldResetNextCompletion)
+      ) {
         return;
       }
 
       const previousInternalMachine = internalMachineRef.current;
-      const options = persistence ? { persistence } : undefined;
+      const options =
+        persistence !== undefined || completeOnNoNextStep !== undefined
+          ? {
+              ...(persistence !== undefined ? { persistence } : {}),
+              ...(completeOnNoNextStep !== undefined ? { completeOnNoNextStep } : {})
+            }
+          : undefined;
       const nextInternalMachine = createJourneyMachine(incomingJourney, options);
       internalMachineRef.current = nextInternalMachine;
       journeyRef.current = incomingJourney;
       persistenceRef.current = persistence;
+      completeOnNoNextStepRef.current = completeOnNoNextStep;
 
       if (previousInternalMachine && previousInternalMachine !== nextInternalMachine) {
         previousInternalMachine.dispose();
       }
 
       forceUpdate();
-    }, [incomingJourney, machine, persistence, shouldResetJourney, shouldResetPersistence]);
+    }, [
+      completeOnNoNextStep,
+      incomingJourney,
+      machine,
+      persistence,
+      shouldResetJourney,
+      shouldResetPersistence,
+      shouldResetNextCompletion
+    ]);
 
     const resolvedMachine = machine ?? internalMachineRef.current!;
     const resolvedJourney = machine ? incomingJourney : journeyRef.current;

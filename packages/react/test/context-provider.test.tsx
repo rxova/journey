@@ -136,6 +136,87 @@ describe("bindings.Provider", () => {
     );
   });
 
+  it("auto-completes on goToNextStep for internal machines by default", async () => {
+    const localJourney: JourneyReactDefinition<Context, StepId, Event> = {
+      initial: "one",
+      context: { count: 0 },
+      steps: {
+        one: { component: StepOne },
+        two: { component: StepTwo }
+      },
+      transitions: [{ from: "one", event: "goToNextStep", to: "two" }]
+    };
+    const localBindings = createJourneyBindings(localJourney);
+    let api: JourneyApi<Context, StepId, Event> | null = null;
+    const onComplete = vi.fn();
+    const CaptureLocalApi = () => {
+      const localApi = localBindings.useJourneyApi();
+
+      React.useLayoutEffect(() => {
+        api = localApi;
+      }, [localApi]);
+
+      return null;
+    };
+
+    render(
+      <localBindings.Provider onComplete={onComplete}>
+        <CaptureLocalApi />
+      </localBindings.Provider>
+    );
+
+    await act(async () => {
+      await api?.goToNextStep();
+      await api?.goToNextStep();
+    });
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(onComplete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "journey.complete",
+        stepId: "two",
+        timestamp: expect.any(Number)
+      })
+    );
+  });
+
+  it("can opt out of goToNextStep auto-completion for internal machines", async () => {
+    const localJourney: JourneyReactDefinition<Context, StepId, Event> = {
+      initial: "one",
+      context: { count: 0 },
+      steps: {
+        one: { component: StepOne },
+        two: { component: StepTwo }
+      },
+      transitions: [{ from: "one", event: "goToNextStep", to: "two" }]
+    };
+    const localBindings = createJourneyBindings(localJourney);
+    let api: JourneyApi<Context, StepId, Event> | null = null;
+    const onComplete = vi.fn();
+    const CaptureLocalApi = () => {
+      const localApi = localBindings.useJourneyApi();
+
+      React.useLayoutEffect(() => {
+        api = localApi;
+      }, [localApi]);
+
+      return null;
+    };
+
+    render(
+      <localBindings.Provider completeOnNoNextStep={false} onComplete={onComplete}>
+        <CaptureLocalApi />
+      </localBindings.Provider>
+    );
+
+    await act(async () => {
+      await api?.goToNextStep();
+      await api?.goToNextStep();
+    });
+
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
   it("calls onTerminate for internal machines", async () => {
     let api: JourneyApi<Context, StepId, Event> | null = null;
     const onTerminate = vi.fn();

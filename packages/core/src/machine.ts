@@ -138,6 +138,7 @@ export function createJourneyMachine<
     ...snapshot,
     async: buildInitialAsyncState(journey.steps)
   };
+  const completeOnNoNextStep = options?.completeOnNoNextStep ?? true;
   const startupEvent: JourneyObservationEvent<TStepId, TEventType, TPayloadMap, TStepMeta> = {
     type: "journey.start",
     stepId: snapshot.currentStepId,
@@ -503,6 +504,14 @@ export function createJourneyMachine<
       return fallbackResult;
     }
 
+    if (
+      event.type === "goToNextStep" &&
+      completeOnNoNextStep &&
+      !hasDeclaredTransitionForEvent(fromStep, "goToNextStep")
+    ) {
+      return commitTerminalTransition(fromStep, "COMPLETE", event, null, snapshot.context);
+    }
+
     return buildCanceledSendResult();
   };
 
@@ -579,11 +588,17 @@ export function createJourneyMachine<
         ? "TERMINATED"
         : (transition.to as TStepId | JourneyTerminal);
 
+  const hasDeclaredTransitionForEvent = (fromStep: TStepId, eventType: string): boolean =>
+    journey.transitions.some((transition) => {
+      const fromMatches = transition.from === "*" || transition.from === fromStep;
+      return fromMatches && transition.event === eventType;
+    });
+
   const commitTerminalTransition = (
     fromStep: TStepId,
     target: JourneyTerminal,
-    transitionEvent: RuntimeTransitionEvent,
-    transition: RuntimeTransition,
+    transitionEvent: RuntimeSendEvent,
+    transitionId: string | null,
     nextContext: TContext
   ): JourneySendResult<TContext, TStepId, TStepMeta> => {
     const normalizedTimeline = snapshot.history.timeline.slice(0, snapshot.history.index + 1);
@@ -604,7 +619,7 @@ export function createJourneyMachine<
       from: fromStep,
       to: target,
       eventType: transitionEvent.type,
-      transitionId: transition.id ?? null,
+      transitionId,
       timestamp: now()
     });
     emit({
@@ -613,7 +628,7 @@ export function createJourneyMachine<
       timestamp: now()
     });
 
-    return buildSendResult(snapshot, true, transition.id);
+    return buildSendResult(snapshot, true, transitionId ?? undefined);
   };
 
   const commitStepTransition = (
@@ -702,7 +717,7 @@ export function createJourneyMachine<
         fromStep,
         target,
         transitionEvent,
-        transition,
+        transition.id ?? null,
         contextResolution.nextContext
       );
     }
