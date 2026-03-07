@@ -73,6 +73,28 @@ The devtools bridge uses `window.postMessage` for extension ↔ page communicati
 
 If your application has XSS vulnerabilities, fix them at the application layer. The devtools bridge cannot protect against XSS - no devtools can.
 
+### ✅ CSP Guidance
+
+Keep a strict application Content Security Policy. The bridge is designed to work without loosening your page policy because it does not fetch remote code or require privileged script sources.
+
+- Keep `script-src` limited to your own app plus trusted nonces or hashes.
+- Do not add `unsafe-inline`, `unsafe-eval`, remote script hosts, or browser extension origins just to support the bridge.
+- Restrict `connect-src`, `img-src`, `style-src`, and `font-src` to the origins your app actually needs. The bridge itself does not require extra network destinations.
+- Use `object-src 'none'`, `base-uri 'self'`, and `frame-ancestors 'none'` unless your app has a specific reason to allow more.
+
+Minimal baseline:
+
+```text
+Content-Security-Policy:
+  default-src 'self';
+  script-src 'self' 'nonce-<generated-per-request>';
+  object-src 'none';
+  base-uri 'self';
+  frame-ancestors 'none';
+```
+
+Add other directives only for concrete application needs. If a dev-only integration appears to require a weaker CSP, treat that as an integration bug rather than a reason to relax the policy for all users.
+
 ### ❌ Physical Access to Debug Sessions
 
 If someone has physical access to a machine with devtools open, they can send commands. This is true for all browser devtools.
@@ -122,7 +144,7 @@ attachJourneyDevtools(machine, {
 
 To secure your application:
 
-1. **Fix XSS vulnerabilities** - Sanitize user input, use Content Security Policy
+1. **Fix XSS vulnerabilities** - Sanitize user input and enforce a strict Content Security Policy
 2. **Validate state transitions** - Implement guards in your machine definition
 3. **Server-side validation** - Never trust client state for critical operations
 4. **Disable in production** - Keep devtools disabled for public users
