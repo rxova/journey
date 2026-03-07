@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createJourneyMachine, createTransitions, tx } from "@rxova/journey-core";
-import type { JourneyDefinition, JourneyTransition } from "@rxova/journey-core";
+import type { JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "details" | "extra" | "review" | "confirmExit";
 type Event = "goToNextStep" | "requestClose" | "terminateJourney";
@@ -47,26 +47,15 @@ const createJourney = (): JourneyDefinition<Context, StepId, Event> => ({
 
 describe("flow behavior", () => {
   it("tx + createTransitions flatten branch declarations", () => {
-    const transitions = createTransitions(
-      tx.from("start").on("goToNextStep").to("start", { id: "start-next" }) as JourneyTransition<
-        Context,
-        StepId,
-        Event,
-        Record<never, never>
-      >,
-      tx.any().on("requestClose").to("confirmExit", { id: "wildcard-close" }) as JourneyTransition<
-        Context,
-        StepId,
-        Event,
-        Record<never, never>
-      >,
-      tx
-        .from("start")
-        .on("goToNextStep")
-        .choose(
-          tx.when(() => true).to("start", { id: "branch-1" }) as never,
-          tx.otherwise().to("start", { id: "branch-2" }) as never
-        ) as readonly JourneyTransition<Context, StepId, Event, Record<never, never>>[]
+    const startNext = tx.from<StepId, Context>("start").on("goToNextStep");
+
+    const transitions = createTransitions<Context, StepId, Event, Record<never, never>>(
+      startNext.to("start", { id: "start-next" }),
+      tx.any<Context, StepId>().on("requestClose").to("confirmExit", { id: "wildcard-close" }),
+      startNext.choose(
+        startNext.when(() => true).to("start", { id: "branch-1" }),
+        startNext.otherwise().to("start", { id: "branch-2" })
+      )
     );
 
     expect(transitions).toHaveLength(4);
