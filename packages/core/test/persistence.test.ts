@@ -406,7 +406,7 @@ describe("persistence", () => {
     expect(rewritten.snapshot.status).toBe("running");
   });
 
-  it("marks visited rewrites when visited record has missing or invalid values", () => {
+  it("merges visited rewrites with timeline when the record has missing or invalid values", () => {
     const { storage, store } = createStorage();
     const key = "journey:visited-record-rewrite";
 
@@ -439,15 +439,61 @@ describe("persistence", () => {
 
     expect(machine.getSnapshot().visited).toEqual({
       start: true,
-      details: false,
-      review: false
+      details: true,
+      review: true
     });
 
     const rewritten = JSON.parse(store.get(key) ?? "{}");
     expect(rewritten.snapshot.visited).toEqual({
       start: true,
-      details: false,
-      review: false
+      details: true,
+      review: true
+    });
+  });
+
+  it("rewrites visited records that contradict the timeline with false values", () => {
+    const { storage, store } = createStorage();
+    const key = "journey:visited-record-contradiction";
+
+    store.set(
+      key,
+      JSON.stringify({
+        version: 1,
+        snapshot: {
+          currentStepId: "review",
+          timeline: ["start", "details", "review"],
+          index: 2,
+          context: { count: 3 },
+          status: "running",
+          visited: {
+            start: true,
+            details: false,
+            review: false
+          },
+          stepMeta: {
+            start: { title: "Start" },
+            details: { title: "Details" },
+            review: { title: "Review" }
+          }
+        }
+      })
+    );
+
+    const machine = createJourneyMachine(createJourney(), {
+      persistence: { key, storage, clearOnReset: false }
+    });
+
+    expect(machine.getSnapshot().visited).toEqual({
+      start: true,
+      details: true,
+      review: true
+    });
+
+    const rewritten = JSON.parse(store.get(key) ?? "{}");
+    expect(rewritten.snapshot.visited).toEqual({
+      start: true,
+      details: true,
+      review: true
     });
   });
 
@@ -489,7 +535,7 @@ describe("persistence", () => {
     expect(machine.getSnapshot().currentStepId).toBe("start");
   });
 
-  it("handles array-like visited payloads through visitedFromArray coercion path", () => {
+  it("merges array-like visited payloads with timeline through visitedFromArray coercion path", () => {
     const { storage, store } = createStorage();
     const key = "journey:visited-array-like";
     store.set(key, "raw");
@@ -531,7 +577,7 @@ describe("persistence", () => {
 
       expect(machine.getSnapshot().visited).toEqual({
         start: true,
-        details: false,
+        details: true,
         review: true
       });
     } finally {
