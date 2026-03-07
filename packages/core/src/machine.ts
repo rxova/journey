@@ -748,6 +748,18 @@ export function createJourneyMachine<
         eventListeners.delete(listener);
       };
     },
+    subscribeComplete: (listener) =>
+      machine.subscribeEvent((event) => {
+        if (event.type === "journey.complete") {
+          listener(event);
+        }
+      }),
+    subscribeTerminate: (listener) =>
+      machine.subscribeEvent((event) => {
+        if (event.type === "journey.close") {
+          listener(event);
+        }
+      }),
     resetMachine: () => {
       if (isDisposed) {
         return snapshot;

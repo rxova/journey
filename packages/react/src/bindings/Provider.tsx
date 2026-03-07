@@ -49,6 +49,8 @@ export const createProvider = <
     persistence,
     resetOnJourneyChange = false,
     resetOnPersistenceChange = false,
+    onComplete,
+    onTerminate,
     children
   }: JourneyBindingsProviderProps<
     TContext,
@@ -64,7 +66,14 @@ export const createProvider = <
     >(null);
     const journeyRef = React.useRef(incomingJourney);
     const persistenceRef = React.useRef(persistence);
+    const onCompleteRef = React.useRef(onComplete);
+    const onTerminateRef = React.useRef(onTerminate);
     const [, forceUpdate] = React.useReducer((count: number) => count + 1, 0);
+    const hasOnComplete = onComplete !== undefined;
+    const hasOnTerminate = onTerminate !== undefined;
+
+    onCompleteRef.current = onComplete;
+    onTerminateRef.current = onTerminate;
 
     if (!machine && !internalMachineRef.current) {
       const options = persistence ? { persistence } : undefined;
@@ -108,6 +117,29 @@ export const createProvider = <
       }),
       [resolvedMachine, resolvedJourney]
     );
+
+    React.useEffect(() => {
+      if (!hasOnComplete && !hasOnTerminate) {
+        return;
+      }
+
+      const unsubComplete = hasOnComplete
+        ? resolvedMachine.subscribeComplete((event) => {
+            onCompleteRef.current?.(event);
+          })
+        : undefined;
+
+      const unsubTerminate = hasOnTerminate
+        ? resolvedMachine.subscribeTerminate((event) => {
+            onTerminateRef.current?.(event);
+          })
+        : undefined;
+
+      return () => {
+        unsubComplete?.();
+        unsubTerminate?.();
+      };
+    }, [hasOnComplete, hasOnTerminate, resolvedMachine]);
 
     React.useEffect(() => {
       return () => {

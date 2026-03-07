@@ -169,6 +169,55 @@ describe("createJourneyMachine", () => {
     expect(eventTypes).toContain("metadata.updated");
   });
 
+  it("subscribeComplete filters to terminal completion events", async () => {
+    const machine = createMachine();
+    const events: Array<{ stepId: StepId; timestamp: number }> = [];
+
+    machine.subscribeComplete((event) => {
+      events.push({ stepId: event.stepId, timestamp: event.timestamp });
+    });
+
+    await machine.goToNextStep();
+    await machine.goToNextStep();
+
+    expect(events).toEqual([]);
+
+    await machine.completeJourney();
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toEqual({
+      stepId: "review",
+      timestamp: expect.any(Number)
+    });
+  });
+
+  it("subscribeTerminate filters to terminal close events and respects unsubscribe", async () => {
+    const machine = createMachine();
+    const events: Array<{ stepId: StepId; timestamp: number }> = [];
+    const unsubscribe = machine.subscribeTerminate((event) => {
+      events.push({ stepId: event.stepId, timestamp: event.timestamp });
+    });
+
+    unsubscribe();
+    await machine.terminateJourney();
+
+    expect(events).toEqual([]);
+
+    const activeMachine = createMachine();
+    const activeEvents: Array<{ stepId: StepId; timestamp: number }> = [];
+    activeMachine.subscribeTerminate((event) => {
+      activeEvents.push({ stepId: event.stepId, timestamp: event.timestamp });
+    });
+
+    await activeMachine.terminateJourney();
+
+    expect(activeEvents).toHaveLength(1);
+    expect(activeEvents[0]).toEqual({
+      stepId: "start",
+      timestamp: expect.any(Number)
+    });
+  });
+
   it("subscribeSelector notifies only when selected value changes", async () => {
     const machine = createMachine();
     const calls: Array<{ next: StepId; previous: StepId }> = [];

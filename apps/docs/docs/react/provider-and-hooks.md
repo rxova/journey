@@ -65,6 +65,19 @@ await api.send({ type: "goToStepById", stepId: "review", payload: { source: "lin
 
 Use `Provider` with `machine` prop when machine ownership lives outside React (for example, shared orchestration or bridge setup).
 
+Optional Provider callbacks:
+
+- `onComplete(event)` wraps `machine.subscribeComplete(...)`.
+- `onTerminate(event)` wraps `machine.subscribeTerminate(...)`.
+- Both work with internal and external machines.
+- They are event-driven, so they do not fire on mount just because the initial snapshot is already terminal.
+
+```tsx
+<bindings.Provider onComplete={() => console.log("finished!")}>
+  <bindings.StepRenderer />
+</bindings.Provider>
+```
+
 ## Guardrail
 
 If any Journey hook runs outside `bindings.Provider`, it throws immediately.
