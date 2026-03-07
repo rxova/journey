@@ -67,13 +67,15 @@ Use `Provider` with `machine` prop when machine ownership lives outside React (f
 
 Optional Provider callbacks:
 
+- `onStart(event)` wraps `machine.subscribeStart(...)`.
 - `onComplete(event)` wraps `machine.subscribeComplete(...)`.
 - `onTerminate(event)` wraps `machine.subscribeTerminate(...)`.
-- Both work with internal and external machines.
-- They are event-driven, so they do not fire on mount just because the initial snapshot is already terminal.
+- All three work with internal and external machines.
+- `onStart` replays the machine startup event on mount, matching core `journey.start` replay semantics.
+- `onComplete` and `onTerminate` are event-driven, so they do not fire on mount just because the initial snapshot is already terminal.
 
 ```tsx
-<bindings.Provider onComplete={() => console.log("finished!")}>
+<bindings.Provider onStart={() => console.log("started!")}>
   <bindings.StepRenderer />
 </bindings.Provider>
 ```

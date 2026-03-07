@@ -49,6 +49,7 @@ export const createProvider = <
     persistence,
     resetOnJourneyChange = false,
     resetOnPersistenceChange = false,
+    onStart,
     onComplete,
     onTerminate,
     children
@@ -66,12 +67,15 @@ export const createProvider = <
     >(null);
     const journeyRef = React.useRef(incomingJourney);
     const persistenceRef = React.useRef(persistence);
+    const onStartRef = React.useRef(onStart);
     const onCompleteRef = React.useRef(onComplete);
     const onTerminateRef = React.useRef(onTerminate);
     const [, forceUpdate] = React.useReducer((count: number) => count + 1, 0);
+    const hasOnStart = onStart !== undefined;
     const hasOnComplete = onComplete !== undefined;
     const hasOnTerminate = onTerminate !== undefined;
 
+    onStartRef.current = onStart;
     onCompleteRef.current = onComplete;
     onTerminateRef.current = onTerminate;
 
@@ -119,9 +123,15 @@ export const createProvider = <
     );
 
     React.useEffect(() => {
-      if (!hasOnComplete && !hasOnTerminate) {
+      if (!hasOnStart && !hasOnComplete && !hasOnTerminate) {
         return;
       }
+
+      const unsubStart = hasOnStart
+        ? resolvedMachine.subscribeStart((event) => {
+            onStartRef.current?.(event);
+          })
+        : undefined;
 
       const unsubComplete = hasOnComplete
         ? resolvedMachine.subscribeComplete((event) => {
@@ -136,10 +146,11 @@ export const createProvider = <
         : undefined;
 
       return () => {
+        unsubStart?.();
         unsubComplete?.();
         unsubTerminate?.();
       };
-    }, [hasOnComplete, hasOnTerminate, resolvedMachine]);
+    }, [hasOnStart, hasOnComplete, hasOnTerminate, resolvedMachine]);
 
     React.useEffect(() => {
       return () => {

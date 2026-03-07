@@ -108,6 +108,12 @@ export type JourneyBindingsProviderProps<
   persistence?: JourneyPersistenceOptions<TContext, TStepId, TStepMeta>;
   resetOnJourneyChange?: boolean;
   resetOnPersistenceChange?: boolean;
+  onStart?: (
+    event: Extract<
+      JourneyObservationEvent<TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap, TStepMeta>,
+      { type: "journey.start" }
+    >
+  ) => void;
   onComplete?: (
     event: Extract<
       JourneyObservationEvent<TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap, TStepMeta>,

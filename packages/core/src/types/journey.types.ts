@@ -343,6 +343,14 @@ export type JourneyMachine<
   subscribeEvent: (
     listener: (event: JourneyObservationEvent<TStepId, TEventType, TPayloadMap, TStepMeta>) => void
   ) => () => void;
+  subscribeStart: (
+    listener: (
+      event: Extract<
+        JourneyObservationEvent<TStepId, TEventType, TPayloadMap, TStepMeta>,
+        { type: "journey.start" }
+      >
+    ) => void
+  ) => () => void;
   subscribeComplete: (
     listener: (
       event: Extract<

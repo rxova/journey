@@ -765,6 +765,12 @@ export function createJourneyMachine<
         eventListeners.delete(listener);
       };
     },
+    subscribeStart: (listener) =>
+      machine.subscribeEvent((event) => {
+        if (event.type === "journey.start") {
+          listener(event);
+        }
+      }),
     subscribeComplete: (listener) =>
       machine.subscribeEvent((event) => {
         if (event.type === "journey.complete") {
