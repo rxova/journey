@@ -14,6 +14,7 @@ import type {
   JourneyStatus,
   JourneyStepAsyncState,
   JourneyTerminal,
+  JourneyTransitionArgs,
   JourneyTransition
 } from "./types";
 
@@ -242,7 +243,11 @@ export const selectTransition = async <
       return transition;
     }
 
-    const guardResult = transition.when({
+    const guardResult = (
+      transition.when as (
+        args: JourneyTransitionArgs<TContext, TStepId, TEventType, TPayloadMap>
+      ) => boolean | Promise<boolean>
+    )({
       context: snapshot.context,
       from: snapshot.currentStepId,
       timeline: snapshot.history.timeline,

@@ -14,6 +14,7 @@ import type {
   JourneySendEvent,
   JourneySendResult,
   JourneyStepDefinition,
+  JourneyTransitionArgs,
   JourneyTransition,
   JourneyTerminal
 } from "./types";
@@ -48,9 +49,13 @@ export function createJourneyMachine<
   >,
   TPayloadMap extends JourneyEventPayloadMap<JourneyDefaultEventType> = Record<never, never>
 >(
-  journey: {
-    initial: Extract<keyof TSteps, string>;
-    context: TContext;
+  journey: JourneyDefinition<
+    TContext,
+    Extract<keyof TSteps, string>,
+    JourneyDefaultEventType,
+    TPayloadMap,
+    TStepMeta
+  > & {
     steps: TSteps;
     transitions: readonly JourneyTransition<
       TContext,
@@ -504,7 +509,11 @@ export function createJourneyMachine<
       return { nextContext, earlyResult: null };
     }
 
-    const effectResultPromise = transition.effect({
+    const effectResultPromise = (
+      transition.effect as (
+        args: JourneyTransitionArgs<TContext, TStepId, TEventType, TPayloadMap>
+      ) => TContext | void | Promise<TContext | void>
+    )({
       context: snapshot.context,
       from: snapshot.currentStepId,
       timeline: snapshot.history.timeline,
