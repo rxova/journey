@@ -137,17 +137,35 @@ describe("createJourneyMachine", () => {
     unsubscribe();
 
     expect(events.map((event) => event.type)).toEqual([
+      "journey.start",
       "transition.start",
       "step.exit",
       "transition.success",
       "step.enter"
     ]);
-    expect(events[0]).toMatchObject({ type: "transition.start", from: "start" });
-    expect(events[2]).toMatchObject({
+    expect(events[0]).toMatchObject({ type: "journey.start", stepId: "start" });
+    expect(events[1]).toMatchObject({ type: "transition.start", from: "start" });
+    expect(events[3]).toMatchObject({
       type: "transition.success",
       from: "start",
       to: "details",
       transitionId: "start-next"
+    });
+  });
+
+  it("replays journey.start immediately when subscribing to lifecycle events", () => {
+    const machine = createMachine();
+    const events: JourneyObservationEvent<StepId, Event, Record<never, never>, Meta>[] = [];
+
+    machine.subscribeEvent((event) => {
+      events.push(event);
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toEqual({
+      type: "journey.start",
+      stepId: "start",
+      timestamp: expect.any(Number)
     });
   });
 

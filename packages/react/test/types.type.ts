@@ -67,6 +67,9 @@ type ObservationFromHook = Parameters<Parameters<typeof bindings.useJourneyEvent
 expectTypeOf<ObservationFromHook["type"]>().toEqualTypeOf<
   JourneyObservationEvent<StepId, JourneyEventType<CustomEvent>, PayloadMap, unknown>["type"]
 >();
+expectTypeOf<
+  Extract<ObservationFromHook, { type: "journey.start" }>["stepId"]
+>().toEqualTypeOf<StepId>();
 type TransitionStartFromHook = Extract<ObservationFromHook, { type: "transition.start" }>;
 type StartEventTypeFromHook = TransitionStartFromHook["event"]["type"];
 const includesCustomApproveEventType: Extract<StartEventTypeFromHook, "approve"> = "approve";

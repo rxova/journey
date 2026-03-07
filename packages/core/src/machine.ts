@@ -132,6 +132,11 @@ export function createJourneyMachine<
     ...snapshot,
     async: buildInitialAsyncState(journey.steps)
   };
+  const startupEvent: JourneyObservationEvent<TStepId, TEventType, TPayloadMap, TStepMeta> = {
+    type: "journey.start",
+    stepId: snapshot.currentStepId,
+    timestamp: now()
+  };
 
   const listeners = new Set<() => void>();
   const eventListeners = new Set<
@@ -744,6 +749,12 @@ export function createJourneyMachine<
         return () => undefined;
       }
       eventListeners.add(listener);
+      try {
+        listener(startupEvent);
+      } catch (error) {
+        eventListeners.delete(listener);
+        throw error;
+      }
       return () => {
         eventListeners.delete(listener);
       };

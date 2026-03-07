@@ -304,6 +304,7 @@ describe("machine edge cases", () => {
     expect(machine.getSnapshot().currentStepId).toBe("middle");
     expect(machine.getSnapshot().context.value).toBe(5);
     expect(events.map((event) => event.type)).toEqual([
+      "journey.start",
       "transition.start",
       "step.exit",
       "transition.success",
@@ -448,6 +449,7 @@ describe("machine edge cases", () => {
     machine.subscribeEvent((event) => {
       observed.push(event.type);
     });
+    observed.length = 0;
 
     const unknownMetadata = machine.updateStepMetadata("missing" as StepId, () => ({
       title: "ignored"
@@ -542,6 +544,7 @@ describe("machine edge cases", () => {
         })
       );
     }
+    calls.fill(0);
 
     for (const unsubscribe of unsubs) {
       unsubscribe();
@@ -554,6 +557,7 @@ describe("machine edge cases", () => {
     const unsubscribeRetained = machine.subscribeEvent(() => {
       retainedCalls += 1;
     });
+    retainedCalls = 0;
 
     machine.updateStepMetadata("start", () => ({ title: "Start-v3" }));
     expect(retainedCalls).toBe(1);
