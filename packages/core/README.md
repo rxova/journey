@@ -5,8 +5,13 @@ Headless runtime for non-linear journeys.
 ## Install
 
 ```bash
+pnpm add @rxova/journey-core
+yarn add @rxova/journey-core
 npm i @rxova/journey-core
+bun add @rxova/journey-core
 ```
+
+Runs in Bun-based SPAs and other standard ESM runtimes.
 
 ## What You Get
 

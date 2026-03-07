@@ -5,8 +5,13 @@ Bridge that connects Journey machines to the browser devtools extension.
 ## Install
 
 ```bash
+pnpm add @rxova/journey-devtools-bridge
+yarn add @rxova/journey-devtools-bridge
 npm i @rxova/journey-devtools-bridge
+bun add @rxova/journey-devtools-bridge
 ```
+
+The bridge can run in Bun-based browser apps; explicit `enabled: true` remains the safest option when your bundler does not expose a dev/prod env signal.
 
 ## Usage
 

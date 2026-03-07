@@ -31,7 +31,16 @@ npm install @rxova/journey-core
 ```
 
   </TabItem>
+  <TabItem value="bun" label="bun">
+
+```bash
+bun add @rxova/journey-core
+```
+
+  </TabItem>
 </Tabs>
+
+`@rxova/journey-core` also works in Bun-based SPAs and other standard ESM runtimes.
 
 ## Define a Journey
 
