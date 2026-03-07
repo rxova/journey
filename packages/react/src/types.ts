@@ -106,6 +106,7 @@ export type JourneyBindingsProviderProps<
   >;
   persistence?: JourneyPersistenceOptions<TContext, TStepId, TStepMeta>;
   resetOnJourneyChange?: boolean;
+  resetOnPersistenceChange?: boolean;
   children: React.ReactNode;
 };
 

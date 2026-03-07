@@ -60,12 +60,13 @@ If machine lifecycle is managed outside React, inject it through `Provider`:
 
 Useful when integrating with devtools bridge, orchestrators, or host shells.
 
-## Journey Swap Strategy
+## Journey and Persistence Swap Strategy
 
-When `journey` prop changes on `Provider`:
+When `journey` or `persistence` props change on `Provider`:
 
 - default behavior preserves internal machine state
 - set `resetOnJourneyChange={true}` to reinitialize from the new journey
+- set `resetOnPersistenceChange={true}` to rebuild from the new persistence config
 
 Choose based on product intent:
 
