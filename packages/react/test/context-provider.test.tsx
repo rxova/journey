@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import React from "react";
+import { act } from "react";
 import { render, screen } from "@testing-library/react";
 
 import * as core from "@rxova/journey-core";
@@ -48,6 +49,44 @@ describe("bindings.Provider", () => {
     );
 
     expect(screen.getByTestId("store").textContent).toBe("same:one");
+  });
+
+  it("supports external machines whose subscribe/getSnapshot rely on this", async () => {
+    const machine = core.createJourneyMachine(journey);
+    const externalMachine: JourneyMachine<Context, StepId, Event> & {
+      inner: JourneyMachine<Context, StepId, Event>;
+    } = {
+      ...machine,
+      inner: machine,
+      getSnapshot() {
+        return this.inner.getSnapshot();
+      },
+      subscribe(listener) {
+        return this.inner.subscribe(listener);
+      }
+    };
+
+    const ReadStore = () => {
+      const snapshot = bindings.useJourneySnapshot();
+      return <div data-testid="store">{snapshot.currentStepId}</div>;
+    };
+
+    render(
+      <bindings.Provider machine={externalMachine}>
+        <ReadStore />
+        <bindings.StepRenderer />
+      </bindings.Provider>
+    );
+
+    expect(screen.getByTestId("store").textContent).toBe("one");
+    expect(screen.getAllByText("one")).toHaveLength(2);
+
+    await act(async () => {
+      await externalMachine.goToNextStep();
+    });
+
+    expect(screen.getByTestId("store").textContent).toBe("two");
+    expect(screen.getAllByText("two")).toHaveLength(2);
   });
 
   it("disposes internally owned machine on unmount", () => {
