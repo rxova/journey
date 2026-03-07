@@ -117,6 +117,31 @@ const diff: JourneyPanelStructuredDiff = {
   }
 };
 
+const createTimelineEntry = (index: number) => {
+  const kind: "init" | "snapshot" = index === 0 ? "init" : "snapshot";
+  const envelopeKind: "register" | "snapshot" = index === 0 ? "register" : "snapshot";
+
+  return {
+    id: `${index}`,
+    timestamp: index,
+    kind,
+    label: index === 0 ? "@@INIT" : `SNAPSHOT/${index}`,
+    requestId: null,
+    command: null,
+    envelopeKind,
+    snapshot: {
+      ...snapshot,
+      currentStepId: index === 0 ? "start" : `step-${index}`,
+      history: {
+        ...snapshot.history,
+        index: Math.min(index, snapshot.history.timeline.length - 1)
+      }
+    },
+    actionPayload: { type: index === 0 ? "@@INIT" : `SNAPSHOT/${index}` },
+    meta: { machineId: "m1" }
+  };
+};
+
 afterEach(() => {
   document.body.innerHTML = "";
   vi.restoreAllMocks();
@@ -407,33 +432,16 @@ describe("panel components", () => {
   });
 
   it("auto-scrolls to the newest row while follow-latest is enabled", async () => {
-    const firstEntry = {
-      id: "1",
-      timestamp: 1,
-      kind: "init" as const,
-      label: "@@INIT",
-      requestId: null,
-      command: null,
-      envelopeKind: "register" as const,
-      snapshot,
-      actionPayload: { type: "@@INIT" },
-      meta: { machineId: "m1" }
-    };
+    const firstEntry = createTimelineEntry(0);
     const secondEntry = {
-      id: "2",
-      timestamp: 2,
-      kind: "snapshot" as const,
+      ...createTimelineEntry(2),
       label: "SNAPSHOT/review",
-      requestId: null,
-      command: null,
-      envelopeKind: "snapshot" as const,
       snapshot: {
         ...snapshot,
         currentStepId: "review",
         history: { ...snapshot.history, index: 1 }
       },
-      actionPayload: { type: "SNAPSHOT/review" },
-      meta: { machineId: "m1" }
+      actionPayload: { type: "SNAPSHOT/review" }
     };
 
     const view = await mount(
@@ -456,6 +464,10 @@ describe("panel components", () => {
     if (!timelineList) {
       throw new Error("timeline list not found");
     }
+    Object.defineProperty(timelineList, "clientHeight", {
+      configurable: true,
+      value: 320
+    });
     Object.defineProperty(timelineList, "scrollHeight", {
       configurable: true,
       value: 1200
@@ -479,6 +491,59 @@ describe("panel components", () => {
     );
 
     expect(timelineList.scrollTop).toBe(1200);
+
+    await view.unmount();
+  });
+
+  it("virtualizes large timeline lists and updates the rendered window on scroll", async () => {
+    const entries = Array.from({ length: 200 }, (_, index) => createTimelineEntry(index));
+    const selectedEntry = entries[0];
+    if (!selectedEntry) {
+      throw new Error("expected selected timeline entry");
+    }
+
+    const view = await mount(
+      <TimelineInspector
+        entries={entries}
+        selectedIndex={0}
+        selectedEntry={selectedEntry}
+        displayedSnapshot={selectedEntry.snapshot}
+        selectedDiff={diff}
+        followLatest={false}
+        displayLimit={null}
+        onSelectEntry={vi.fn()}
+        onFollowLatestChange={vi.fn()}
+        onDisplayLimitChange={vi.fn()}
+        onPrune={vi.fn()}
+      />
+    );
+
+    const timelineList = view.container.querySelector(".timeline-list") as HTMLOListElement | null;
+    if (!timelineList) {
+      throw new Error("timeline list not found");
+    }
+    Object.defineProperty(timelineList, "clientHeight", {
+      configurable: true,
+      value: 320
+    });
+
+    expect(view.container.querySelectorAll(".timeline-list li").length).toBeLessThan(200);
+    expect(
+      Array.from(view.container.querySelectorAll(".timeline-label")).some(
+        (entry) => entry.textContent?.trim() === "SNAPSHOT/199"
+      )
+    ).toBe(false);
+
+    await act(async () => {
+      timelineList.scrollTop = 48 * 190;
+      timelineList.dispatchEvent(new Event("scroll", { bubbles: true }));
+    });
+
+    expect(
+      Array.from(view.container.querySelectorAll(".timeline-label")).some(
+        (entry) => entry.textContent?.trim() === "SNAPSHOT/199"
+      )
+    ).toBe(true);
 
     await view.unmount();
   });
