@@ -225,6 +225,7 @@ export type JourneyMachineOptions<TContext, TStepId extends string, TStepMeta = 
 export type JourneySendResult<TContext, TStepId extends string, TStepMeta = unknown> = {
   transitioned: boolean;
   transitionId?: string;
+  error?: unknown;
   snapshot: JourneySnapshot<TContext, TStepId, TStepMeta>;
 };
 

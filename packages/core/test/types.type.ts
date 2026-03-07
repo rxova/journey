@@ -8,6 +8,7 @@ import type {
   JourneyMachineOptions,
   JourneyObservationEvent,
   JourneyPayloadFor,
+  JourneySendResult,
   JourneySendEvent,
   JourneyTransitionArgs,
   JourneyTransitionTarget
@@ -75,6 +76,12 @@ expectTypeOf<Awaited<ReturnType<typeof machine.terminateJourney>>>().toEqualType
 >();
 expectTypeOf<Awaited<ReturnType<typeof machine.completeJourney>>>().toEqualTypeOf<
   Awaited<ReturnType<typeof machine.send>>
+>();
+expectTypeOf<Awaited<ReturnType<typeof machine.send>>>().toEqualTypeOf<
+  JourneySendResult<Context, StepId>
+>();
+expectTypeOf<Awaited<ReturnType<typeof machine.send>>["error"]>().toEqualTypeOf<
+  unknown | undefined
 >();
 expectTypeOf<ObsEvent>().toMatchTypeOf<{ type: string }>();
 expectTypeOf(defaultedMachine.getSnapshot().currentStepId).toEqualTypeOf<

@@ -95,7 +95,10 @@ const journey = {
 };
 
 const machine = createJourneyMachine<Ctx, StepId, Event>(journey);
-await machine.send({ type: "goToNextStep" });
+const result = await machine.send({ type: "goToNextStep" });
+if (result.error) {
+  console.error(result.error);
+}
 await machine.goToPreviousStep();
 ```
 
