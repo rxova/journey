@@ -41,6 +41,7 @@ type SendArg = Parameters<Api["send"]>[0];
 
 const providerProps: JourneyBindingsProviderProps<Context, StepId, CustomEvent, PayloadMap> = {
   journey,
+  resetOnPersistenceChange: true,
   children: null
 };
 expectTypeOf(providerProps.journey).toEqualTypeOf<
