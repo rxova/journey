@@ -145,6 +145,8 @@ await api.send({ type: "goToStepById", stepId: "review" });
 - Set `resetOnPersistenceChange` to rebuild internal machine when `persistence` identity changes.
 - `<Provider machine={externalMachine} />` uses your machine directly.
 - `persistence` applies only when Provider owns the internal machine.
+- Internal Provider-owned machines default to completing on `goToNextStep()` when the current step declares no next transition.
+- Set `completeOnNoNextStep={false}` to opt out.
 - `onStart(event)` wraps `machine.subscribeStart(...)`.
 - `onComplete(event)` wraps `machine.subscribeComplete(...)`.
 - `onTerminate(event)` wraps `machine.subscribeTerminate(...)`.

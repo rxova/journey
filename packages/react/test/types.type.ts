@@ -45,6 +45,7 @@ type CloseEventFromProvider = Parameters<NonNullable<ProviderProps["onTerminate"
 
 const providerProps: ProviderProps = {
   journey,
+  completeOnNoNextStep: true,
   resetOnPersistenceChange: true,
   onStart: () => undefined,
   onComplete: () => undefined,
