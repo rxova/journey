@@ -5,8 +5,13 @@ Typed React bindings for Rxova Journey.
 ## Install
 
 ```bash
+pnpm add @rxova/journey-react
+yarn add @rxova/journey-react
 npm i @rxova/journey-react
+bun add @rxova/journey-react
 ```
+
+Works in Bun-based SPAs as long as your app runtime supports React 18+.
 
 ## API Style
 
