@@ -187,18 +187,20 @@ class CommandRateLimiter {
 }
 
 const cloneForTransport = (value: unknown): unknown => {
-  if (typeof structuredClone === "function") {
-    try {
-      return structuredClone(value);
-    } catch {
-      // Fall through to the JSON serializer below.
-    }
-  }
-
+  const transportValue =
+    typeof structuredClone === "function"
+      ? (() => {
+          try {
+            return structuredClone(value);
+          } catch {
+            return value;
+          }
+        })()
+      : value;
   const seen = new WeakSet<object>();
 
   try {
-    const serialized = JSON.stringify(value, (_key, currentValue) => {
+    const serialized = JSON.stringify(transportValue, (_key, currentValue) => {
       if (typeof currentValue === "bigint") {
         return currentValue.toString();
       }

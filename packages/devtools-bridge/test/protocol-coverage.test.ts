@@ -77,6 +77,30 @@ describe("protocol guard edge coverage", () => {
     expect(isJourneyDevtoolsBridgeEnvelope({ ...base, kind: "unknown" })).toBe(false);
   });
 
+  it("rejects bridge envelopes with non-JSON-safe payload values", () => {
+    const base = {
+      channel: JOURNEY_DEVTOOLS_CHANNEL,
+      version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+      source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
+      machineId: "m-json-safe",
+      timestamp: Date.now()
+    };
+
+    expect(
+      isJourneyDevtoolsBridgeEnvelope({
+        ...base,
+        kind: "snapshot",
+        snapshot: {
+          currentStepId: "start",
+          context: {
+            createdAt: new Date("2026-03-07T08:00:00.000Z"),
+            count: 1n
+          }
+        }
+      })
+    ).toBe(false);
+  });
+
   it("rejects extension envelopes with invalid kind or payload", () => {
     const base = {
       channel: JOURNEY_DEVTOOLS_CHANNEL,
