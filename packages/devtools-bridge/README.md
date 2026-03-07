@@ -37,6 +37,8 @@ Snapshots include `history.timeline`, `history.index`, `currentStepId`, `visited
 
 ## Runtime Defaults
 
-- Enabled in non-production by default.
+- Defaults use `import.meta.env.DEV` / `import.meta.env.PROD` when available, otherwise `process.env.NODE_ENV`.
+- Enabled by default in non-production browser runtimes.
 - Disabled in production unless `enabled: true`.
 - Commands disabled in production unless `commandsEnabled: true`.
+- If neither env source is available, bridge and commands default to disabled unless explicitly enabled.

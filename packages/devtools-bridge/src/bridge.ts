@@ -54,13 +54,59 @@ const isJourneyAsyncPhase = (
   value === "running-effect" ||
   value === "error";
 
-const isNonProductionEnvironment = (): boolean => {
-  const nodeEnv = typeof process !== "undefined" ? process.env?.NODE_ENV : undefined;
-  if (typeof nodeEnv !== "string") {
+type JourneyImportMetaEnv = {
+  DEV?: unknown;
+  PROD?: unknown;
+};
+
+const resolveImportMetaEnvironment = (
+  bundlerEnv: JourneyImportMetaEnv | null | undefined
+): boolean | null => {
+  if (!isRecord(bundlerEnv)) {
+    return null;
+  }
+
+  if (bundlerEnv.PROD === true) {
     return false;
   }
 
+  if (bundlerEnv.DEV === true) {
+    return true;
+  }
+
+  return null;
+};
+
+const resolveNodeEnvironment = (nodeEnv: string | undefined): boolean | null => {
+  if (typeof nodeEnv !== "string") {
+    return null;
+  }
+
   return nodeEnv !== "production";
+};
+
+export const resolveNonProductionEnvironment = (
+  options: {
+    bundlerEnv?: JourneyImportMetaEnv | null | undefined;
+    nodeEnv?: string | undefined;
+  } = {}
+): boolean => {
+  const resolvedBundlerEnv =
+    "bundlerEnv" in options
+      ? options.bundlerEnv
+      : (import.meta as ImportMeta & { env?: JourneyImportMetaEnv }).env;
+  const resolvedNodeEnv =
+    "nodeEnv" in options
+      ? options.nodeEnv
+      : typeof process !== "undefined"
+        ? process.env?.NODE_ENV
+        : undefined;
+
+  return (
+    resolveImportMetaEnvironment(resolvedBundlerEnv) ??
+    resolveNodeEnvironment(resolvedNodeEnv) ??
+    false
+  );
 };
 
 const resolveWindowTargetOrigin = (): string => {
@@ -359,11 +405,11 @@ export const attachJourneyDevtools = <
   machine: JourneyMachine<TContext, TStepId, TEventType, TPayloadMap, TStepMeta>,
   options: JourneyDevtoolsBridgeOptions = {}
 ): (() => void) => {
-  const enabled = options.enabled ?? isNonProductionEnvironment();
+  const enabled = options.enabled ?? resolveNonProductionEnvironment();
   if (!enabled || typeof window === "undefined") {
     return () => {};
   }
-  const commandsEnabled = options.commandsEnabled ?? isNonProductionEnvironment();
+  const commandsEnabled = options.commandsEnabled ?? resolveNonProductionEnvironment();
 
   const machineId = options.machineId?.trim() || createMachineId();
   const meta: JourneyDevtoolsMachineMeta = {

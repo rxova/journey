@@ -115,9 +115,10 @@ Do this quick check:
 
 If you do nothing else:
 
-- Bridge is enabled in development.
+- Bridge is enabled in development when `import.meta.env` or `process.env.NODE_ENV` exposes a non-production runtime.
 - Bridge is disabled in production.
 - No-op in non-browser environments.
+- If neither env source is available, bridge defaults to disabled.
 
 To force production enablement:
 
