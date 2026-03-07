@@ -10,6 +10,7 @@ import type {
   JourneyPersistenceOptions,
   JourneySelector,
   JourneySendEvent,
+  JourneySendResult,
   JourneySnapshot,
   JourneyStepDefinition
 } from "@rxova/journey-core";
@@ -52,20 +53,20 @@ export type JourneyApi<
 > = {
   send: (
     event: JourneySendEvent<TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap>
-  ) => Promise<void>;
-  goToNextStep: () => Promise<void>;
+  ) => Promise<JourneySendResult<TContext, TStepId, TStepMeta>>;
+  goToNextStep: () => Promise<JourneySendResult<TContext, TStepId, TStepMeta>>;
   terminateJourney: (
     payload?: JourneyPayloadFor<
       JourneyEventType<TCustomEvent>,
       TEventPayloadMap,
       "terminateJourney"
     >
-  ) => Promise<void>;
+  ) => Promise<JourneySendResult<TContext, TStepId, TStepMeta>>;
   completeJourney: (
     payload?: JourneyPayloadFor<JourneyEventType<TCustomEvent>, TEventPayloadMap, "completeJourney">
-  ) => Promise<void>;
-  goToPreviousStep: (steps?: number) => Promise<void>;
-  goToLastVisitedStep: () => Promise<void>;
+  ) => Promise<JourneySendResult<TContext, TStepId, TStepMeta>>;
+  goToPreviousStep: (steps?: number) => Promise<JourneySendResult<TContext, TStepId, TStepMeta>>;
+  goToLastVisitedStep: () => Promise<JourneySendResult<TContext, TStepId, TStepMeta>>;
   clearStepError: (stepId?: TStepId) => void;
   updateContext: (updater: (context: TContext) => TContext) => void;
   updateStepMetadata: (stepId: TStepId, updater: (metadata: TStepMeta) => TStepMeta) => void;
