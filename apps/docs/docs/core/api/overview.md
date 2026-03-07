@@ -101,6 +101,8 @@ You can also update runtime state safely through explicit APIs:
 - `clearStepError(stepId?)`
 - `resetMachine()`
 
+`updateContext(updater)` is immediate, but it is not retroactive to an async transition already in progress. If a context change must affect the current `send(...)`, apply it before sending; if it should happen after the transition, await the transition first. See [Core Async Behavior](/docs/core/async).
+
 ## Snapshot: Your Runtime Truth
 
 `machine.getSnapshot()` gives you the full current state:

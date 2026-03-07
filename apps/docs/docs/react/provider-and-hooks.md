@@ -59,6 +59,8 @@ await api.send({ type: "goToStepById", stepId: "review" });
 await api.send({ type: "goToStepById", stepId: "review", payload: { source: "link" } });
 ```
 
+`updateContext` follows core timing semantics. It updates the visible snapshot immediately, but it does not re-run an async transition already in `evaluating-when` or `running-effect`, and a running effect can later commit over that update. If the change must affect the current transition, apply it before `send(...)` or await the transition first. See [Core Async Behavior](/docs/core/async).
+
 ## External Machine Injection
 
 Use `Provider` with `machine` prop when machine ownership lives outside React (for example, shared orchestration or bridge setup).
