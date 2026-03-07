@@ -5,8 +5,12 @@ import { act } from "react";
 import { render, screen } from "@testing-library/react";
 
 import * as core from "@rxova/journey-core";
-import type { JourneyMachine } from "@rxova/journey-core";
-import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
+import type { JourneyMachine, JourneyObservationEvent } from "@rxova/journey-core";
+import {
+  createJourneyBindings,
+  type JourneyApi,
+  type JourneyReactDefinition
+} from "@rxova/journey-react";
 
 type StepId = "one" | "two";
 type Context = { count: number };
@@ -22,10 +26,28 @@ const journey: JourneyReactDefinition<Context, StepId, Event> = {
     one: { component: StepOne },
     two: { component: StepTwo }
   },
-  transitions: [{ from: "one", event: "goToNextStep", to: "two" }]
+  transitions: [
+    { from: "one", event: "goToNextStep", to: "two" },
+    { from: "one", event: "terminateJourney" },
+    { from: "two", event: "completeJourney" }
+  ]
 };
 
 const bindings = createJourneyBindings(journey);
+
+const CaptureApi = ({
+  onApi
+}: {
+  onApi: (api: JourneyApi<Context, StepId, Event, Record<never, never>, unknown>) => void;
+}) => {
+  const api = bindings.useJourneyApi();
+
+  React.useLayoutEffect(() => {
+    onApi(api);
+  }, [api, onApi]);
+
+  return null;
+};
 
 describe("bindings.Provider", () => {
   it("provides machine and journey values via hooks", () => {
@@ -89,6 +111,163 @@ describe("bindings.Provider", () => {
     expect(screen.getAllByText("two")).toHaveLength(2);
   });
 
+  it("calls onComplete for internal machines", async () => {
+    let api: JourneyApi<Context, StepId, Event> | null = null;
+    const onComplete = vi.fn();
+
+    render(
+      <bindings.Provider onComplete={onComplete}>
+        <CaptureApi onApi={(nextApi) => (api = nextApi)} />
+      </bindings.Provider>
+    );
+
+    await act(async () => {
+      await api?.goToNextStep();
+      await api?.completeJourney();
+    });
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(onComplete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "journey.complete",
+        stepId: "two",
+        timestamp: expect.any(Number)
+      })
+    );
+  });
+
+  it("calls onTerminate for internal machines", async () => {
+    let api: JourneyApi<Context, StepId, Event> | null = null;
+    const onTerminate = vi.fn();
+
+    render(
+      <bindings.Provider onTerminate={onTerminate}>
+        <CaptureApi onApi={(nextApi) => (api = nextApi)} />
+      </bindings.Provider>
+    );
+
+    await act(async () => {
+      await api?.terminateJourney();
+    });
+
+    expect(onTerminate).toHaveBeenCalledTimes(1);
+    expect(onTerminate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "journey.close",
+        stepId: "one",
+        timestamp: expect.any(Number)
+      })
+    );
+  });
+
+  it("calls provider lifecycle callbacks for external machines", async () => {
+    const machine = core.createJourneyMachine(journey);
+    const onComplete = vi.fn();
+    const onTerminate = vi.fn();
+    const externalMachine: JourneyMachine<Context, StepId, Event> & {
+      inner: JourneyMachine<Context, StepId, Event>;
+    } = {
+      ...machine,
+      inner: machine,
+      getSnapshot() {
+        return this.inner.getSnapshot();
+      },
+      subscribe(listener) {
+        return this.inner.subscribe(listener);
+      }
+    };
+
+    render(
+      <bindings.Provider
+        machine={externalMachine}
+        onComplete={onComplete}
+        onTerminate={onTerminate}
+      >
+        <div>child</div>
+      </bindings.Provider>
+    );
+
+    await act(async () => {
+      await externalMachine.terminateJourney();
+    });
+
+    expect(onTerminate).toHaveBeenCalledTimes(1);
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it("does not fire lifecycle callbacks on mount for already terminal machines", async () => {
+    const machine = core.createJourneyMachine(journey);
+    const onComplete = vi.fn();
+    const onTerminate = vi.fn();
+
+    await act(async () => {
+      await machine.goToNextStep();
+      await machine.completeJourney();
+    });
+
+    render(
+      <bindings.Provider machine={machine} onComplete={onComplete} onTerminate={onTerminate}>
+        <div>child</div>
+      </bindings.Provider>
+    );
+
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(onTerminate).not.toHaveBeenCalled();
+  });
+
+  it("keeps one terminal subscription across callback identity changes", async () => {
+    const machine = core.createJourneyMachine(journey);
+    const baseSubscribeComplete = machine.subscribeComplete.bind(machine);
+    let unsubscribeCalls = 0;
+    const firstOnComplete = vi.fn();
+    const nextOnComplete = vi.fn();
+
+    const subscribeComplete = vi.fn((...args: Parameters<typeof machine.subscribeComplete>) => {
+      const unsubscribe = baseSubscribeComplete(...args);
+      return () => {
+        unsubscribeCalls += 1;
+        unsubscribe();
+      };
+    });
+
+    const instrumentedMachine: JourneyMachine<Context, StepId, Event> = {
+      ...machine,
+      subscribeComplete
+    };
+
+    const Harness = ({
+      onComplete
+    }: {
+      onComplete: (
+        event: Extract<JourneyObservationEvent<StepId, Event>, { type: "journey.complete" }>
+      ) => void;
+    }) => (
+      <bindings.Provider machine={instrumentedMachine} onComplete={onComplete}>
+        <div>child</div>
+      </bindings.Provider>
+    );
+
+    const { rerender, unmount } = render(<Harness onComplete={firstOnComplete} />);
+
+    expect(subscribeComplete).toHaveBeenCalledTimes(1);
+
+    rerender(<Harness onComplete={nextOnComplete} />);
+
+    expect(subscribeComplete).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await machine.goToNextStep();
+      await machine.completeJourney();
+    });
+
+    expect(firstOnComplete).not.toHaveBeenCalled();
+    expect(nextOnComplete).toHaveBeenCalledTimes(1);
+
+    unmount();
+
+    expect(unsubscribeCalls).toBe(1);
+  });
+
   it("disposes internally owned machine on unmount", () => {
     const snapshot = core.createJourneyMachine(journey).getSnapshot();
     const dispose = vi.fn();
@@ -108,7 +287,9 @@ describe("bindings.Provider", () => {
       dispose,
       subscribe: () => () => undefined,
       subscribeSelector: () => () => undefined,
-      subscribeEvent: () => () => undefined
+      subscribeEvent: () => () => undefined,
+      subscribeComplete: () => () => undefined,
+      subscribeTerminate: () => () => undefined
     };
 
     const createMachineSpy = vi

@@ -56,6 +56,10 @@ const defaultedMachine = createJourneyMachine(defaultedJourney);
 type SendArg = Parameters<typeof machine.send>[0];
 type ObsEvent = JourneyObservationEvent<StepId, EventType, PayloadMap>;
 type DefaultedSendArg = Parameters<typeof defaultedMachine.send>[0];
+type CompleteObservationFromMachine = Parameters<
+  Parameters<typeof machine.subscribeComplete>[0]
+>[0];
+type CloseObservationFromMachine = Parameters<Parameters<typeof machine.subscribeTerminate>[0]>[0];
 
 expectTypeOf(machine).toEqualTypeOf<JourneyMachine<Context, StepId, EventType, PayloadMap>>();
 expectTypeOf(machine.getSnapshot()).toEqualTypeOf<JourneySnapshot<Context, StepId>>();
@@ -89,6 +93,10 @@ expectTypeOf<Extract<SendArg, { type: "completeJourney" }>>().toEqualTypeOf<{
   type: "completeJourney";
   payload?: unknown;
 }>();
+expectTypeOf<CompleteObservationFromMachine["type"]>().toEqualTypeOf<"journey.complete">();
+expectTypeOf<CompleteObservationFromMachine["stepId"]>().toEqualTypeOf<StepId>();
+expectTypeOf<CloseObservationFromMachine["type"]>().toEqualTypeOf<"journey.close">();
+expectTypeOf<CloseObservationFromMachine["stepId"]>().toEqualTypeOf<StepId>();
 
 expectTypeOf<JourneyPayloadFor<EventType, PayloadMap, "goToNextStep">>().toEqualTypeOf<{
   origin: "ui";

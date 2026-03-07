@@ -160,7 +160,9 @@ const createMachine = () => {
       };
     },
     subscribeSelector: () => () => undefined,
-    subscribeEvent: () => () => undefined
+    subscribeEvent: () => () => undefined,
+    subscribeComplete: () => () => undefined,
+    subscribeTerminate: () => () => undefined
   };
 
   return {

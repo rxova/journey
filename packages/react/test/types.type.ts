@@ -38,15 +38,24 @@ void bindings;
 
 type Api = JourneyApi<Context, StepId, CustomEvent, PayloadMap>;
 type SendArg = Parameters<Api["send"]>[0];
+type ProviderProps = JourneyBindingsProviderProps<Context, StepId, CustomEvent, PayloadMap>;
+type CompleteEventFromProvider = Parameters<NonNullable<ProviderProps["onComplete"]>>[0];
+type CloseEventFromProvider = Parameters<NonNullable<ProviderProps["onTerminate"]>>[0];
 
-const providerProps: JourneyBindingsProviderProps<Context, StepId, CustomEvent, PayloadMap> = {
+const providerProps: ProviderProps = {
   journey,
   resetOnPersistenceChange: true,
+  onComplete: () => undefined,
+  onTerminate: () => undefined,
   children: null
 };
 expectTypeOf(providerProps.journey).toEqualTypeOf<
   JourneyReactDefinition<Context, StepId, CustomEvent, PayloadMap> | undefined
 >();
+expectTypeOf<CompleteEventFromProvider["type"]>().toEqualTypeOf<"journey.complete">();
+expectTypeOf<CompleteEventFromProvider["stepId"]>().toEqualTypeOf<StepId>();
+expectTypeOf<CloseEventFromProvider["type"]>().toEqualTypeOf<"journey.close">();
+expectTypeOf<CloseEventFromProvider["stepId"]>().toEqualTypeOf<StepId>();
 
 expectTypeOf<Api["goToNextStep"]>().parameters.toEqualTypeOf<[]>();
 expectTypeOf<ReturnType<typeof bindings.useJourneySnapshot>["context"]>().toEqualTypeOf<Context>();
