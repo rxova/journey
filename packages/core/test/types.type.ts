@@ -93,6 +93,7 @@ expectTypeOf<Extract<SendArg, { type: "completeJourney" }>>().toEqualTypeOf<{
   type: "completeJourney";
   payload?: unknown;
 }>();
+expectTypeOf<Extract<ObsEvent, { type: "journey.start" }>["stepId"]>().toEqualTypeOf<StepId>();
 expectTypeOf<CompleteObservationFromMachine["type"]>().toEqualTypeOf<"journey.complete">();
 expectTypeOf<CompleteObservationFromMachine["stepId"]>().toEqualTypeOf<StepId>();
 expectTypeOf<CloseObservationFromMachine["type"]>().toEqualTypeOf<"journey.close">();

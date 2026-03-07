@@ -185,6 +185,7 @@ Use `subscribeSelector` when you only care about a specific snapshot slice and w
 
 Use `subscribeEvent` when you need typed lifecycle telemetry, such as:
 
+- `journey.start`
 - `transition.start`
 - `transition.success`
 - `transition.error`
@@ -197,6 +198,8 @@ Use `subscribeEvent` when you need typed lifecycle telemetry, such as:
 - `metadata.updated`
 
 Use `subscribeComplete` or `subscribeTerminate` when you only want terminal lifecycle events without manually filtering `subscribeEvent`.
+
+`journey.start` is replayed immediately to each `subscribeEvent` listener so late subscribers can still observe machine startup.
 
 For teams, this usually means better logs, easier debugging, and cleaner analytics hooks.
 

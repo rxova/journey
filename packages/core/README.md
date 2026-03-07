@@ -112,6 +112,7 @@ Hydration coercion is defensive: malformed timeline/index/visited/status values 
 
 Use `subscribeEvent` to inspect transition and navigation lifecycle events:
 
+- `journey.start`
 - `transition.start`
 - `transition.success`
 - `transition.error`
@@ -124,6 +125,8 @@ Use `subscribeEvent` to inspect transition and navigation lifecycle events:
 - `metadata.updated`
 
 Use `subscribeComplete(...)` and `subscribeTerminate(...)` when you only care about terminal lifecycle events.
+
+`journey.start` is delivered immediately to each `subscribeEvent(...)` listener with the machine's startup step and startup timestamp.
 
 ## Transition Ergonomics
 
