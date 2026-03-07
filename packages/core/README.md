@@ -60,6 +60,7 @@ By default, `goToNextStep()` completes the machine when the current step declare
 ## Behavioral Guarantees
 
 - Transition selection is ordered: the first matching transition wins.
+- Same-step transitions are non-reentrant: when a transition resolves to the current step id, Journey emits `transition.start`/`transition.success` but skips `step.exit` and `step.enter`.
 - `send({ type: "back" })` falls back to previous-step navigation when no explicit `back` transition exists.
 - Once status is `complete` or `terminated`, pointer navigation and transitions no-op until `resetMachine()`.
 - Forward navigation after moving back truncates timeline tail before appending the next step.

@@ -57,9 +57,11 @@ For a normal step-to-step transition, emitted order is:
 3. `transition.success`
 4. `step.enter` (if target differs)
 
+Same-step transitions do not re-enter. If a transition resolves from `a` to `a`, Journey still emits `transition.start` and `transition.success`, but it intentionally skips `step.exit` and `step.enter`.
+
 If a transition defines `effect`, it runs after `transition.start` and before commit events.
 
-If an effect throws/rejects, Journey emits `transition.error` and does not commit navigation.
+If a guard or effect throws/rejects, Journey emits `transition.error`, does not commit navigation, and resolves the `send(...)` result with `error`.
 
 ## Terminal Events
 
