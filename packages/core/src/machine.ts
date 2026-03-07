@@ -321,7 +321,9 @@ export function createJourneyMachine<
       timestamp: now()
     });
     emit({ type: "step.enter", stepId: snapshot.currentStepId, timestamp: now() });
-    return buildSendResult(snapshot, true, transitionId);
+    return buildSendResult(snapshot, true, {
+      ...(transitionId !== undefined ? { transitionId } : {})
+    });
   };
 
   const applyLastVisitedNavigation = (
@@ -352,7 +354,9 @@ export function createJourneyMachine<
 
     emit({ type: "navigation.lastVisited", from, to: snapshot.currentStepId, timestamp: now() });
     emit({ type: "step.enter", stepId: snapshot.currentStepId, timestamp: now() });
-    return buildSendResult(snapshot, true, transitionId);
+    return buildSendResult(snapshot, true, {
+      ...(transitionId !== undefined ? { transitionId } : {})
+    });
   };
 
   type RuntimeSendEvent = JourneySendEvent<TStepId, TEventType, TPayloadMap>;
@@ -361,6 +365,34 @@ export function createJourneyMachine<
 
   const buildCanceledSendResult = (): JourneySendResult<TContext, TStepId, TStepMeta> =>
     buildSendResult(snapshot, false);
+
+  const buildErroredSendResult = (
+    error: unknown,
+    transitionId?: string
+  ): JourneySendResult<TContext, TStepId, TStepMeta> =>
+    buildSendResult(snapshot, false, {
+      ...(transitionId !== undefined ? { transitionId } : {}),
+      error
+    });
+
+  const buildTransitionErrorResult = (
+    fromStep: TStepId,
+    eventType: string,
+    error: unknown,
+    transitionId: string | null,
+    runVersion: number
+  ): JourneySendResult<TContext, TStepId, TStepMeta> => {
+    setStepError(fromStep, eventType, error, transitionId ?? undefined, runVersion);
+    emit({
+      type: "transition.error",
+      from: fromStep,
+      eventType,
+      transitionId,
+      error,
+      timestamp: now()
+    });
+    return buildErroredSendResult(error, transitionId ?? undefined);
+  };
 
   const applyDirectGoToStepById = (
     stepId: TStepId,
@@ -392,7 +424,7 @@ export function createJourneyMachine<
       emit({ type: "step.enter", stepId: snapshot.currentStepId, timestamp: now() });
     }
 
-    return buildSendResult(snapshot, true, JOURNEY_EVENT.GO_TO_STEP_BY_ID);
+    return buildSendResult(snapshot, true, { transitionId: JOURNEY_EVENT.GO_TO_STEP_BY_ID });
   };
 
   const resolveTransitionsForSend = (
@@ -466,16 +498,16 @@ export function createJourneyMachine<
         return { transition: null, earlyResult: buildCanceledSendResult() };
       }
 
-      setStepError(fromStep, transitionEvent.type, error, undefined, runVersion);
-      emit({
-        type: "transition.error",
-        from: fromStep,
-        eventType: transitionEvent.type,
-        transitionId: null,
-        error,
-        timestamp: now()
-      });
-      throw error;
+      return {
+        transition: null,
+        earlyResult: buildTransitionErrorResult(
+          fromStep,
+          transitionEvent.type,
+          error,
+          null,
+          runVersion
+        )
+      };
     }
 
     return { transition, earlyResult: null };
@@ -529,17 +561,36 @@ export function createJourneyMachine<
       return { nextContext, earlyResult: null };
     }
 
-    const effectResultPromise = (
-      transition.effect as (
-        args: JourneyTransitionArgs<TContext, TStepId, TEventType, TPayloadMap>
-      ) => TContext | void | Promise<TContext | void>
-    )({
-      context: snapshot.context,
-      from: snapshot.currentStepId,
-      timeline: snapshot.history.timeline,
-      index: snapshot.history.index,
-      event: transitionEvent
-    });
+    let effectResultPromise: TContext | void | Promise<TContext | void>;
+    try {
+      effectResultPromise = (
+        transition.effect as (
+          args: JourneyTransitionArgs<TContext, TStepId, TEventType, TPayloadMap>
+        ) => TContext | void | Promise<TContext | void>
+      )({
+        context: snapshot.context,
+        from: snapshot.currentStepId,
+        timeline: snapshot.history.timeline,
+        index: snapshot.history.index,
+        event: transitionEvent
+      });
+    } catch (error) {
+      if (!isRunActive(runVersion)) {
+        return { nextContext: null, earlyResult: buildCanceledSendResult() };
+      }
+
+      return {
+        nextContext: null,
+        earlyResult: buildTransitionErrorResult(
+          fromStep,
+          transitionEvent.type,
+          error,
+          transition.id ?? null,
+          runVersion
+        )
+      };
+    }
+
     if (isPromiseLike(effectResultPromise)) {
       setStepLoading(
         fromStep,
@@ -558,16 +609,16 @@ export function createJourneyMachine<
         return { nextContext: null, earlyResult: buildCanceledSendResult() };
       }
 
-      setStepError(fromStep, transitionEvent.type, error, transition.id, runVersion);
-      emit({
-        type: "transition.error",
-        from: fromStep,
-        eventType: transitionEvent.type,
-        transitionId: transition.id ?? null,
-        error,
-        timestamp: now()
-      });
-      throw error;
+      return {
+        nextContext: null,
+        earlyResult: buildTransitionErrorResult(
+          fromStep,
+          transitionEvent.type,
+          error,
+          transition.id ?? null,
+          runVersion
+        )
+      };
     }
 
     if (!isRunActive(runVersion)) {
@@ -628,7 +679,9 @@ export function createJourneyMachine<
       timestamp: now()
     });
 
-    return buildSendResult(snapshot, true, transitionId ?? undefined);
+    return buildSendResult(snapshot, true, {
+      ...(transitionId !== null ? { transitionId } : {})
+    });
   };
 
   const commitStepTransition = (
@@ -660,7 +713,9 @@ export function createJourneyMachine<
       emit({ type: "step.enter", stepId: snapshot.currentStepId, timestamp: now() });
     }
 
-    return buildSendResult(snapshot, true, transition.id);
+    return buildSendResult(snapshot, true, {
+      ...(transition.id !== undefined ? { transitionId: transition.id } : {})
+    });
   };
 
   const executeSend = async (

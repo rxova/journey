@@ -172,9 +172,16 @@ export const validateJourneyTransitions = <
 export const buildSendResult = <TContext, TStepId extends string, TStepMeta>(
   snapshot: JourneySnapshot<TContext, TStepId, TStepMeta>,
   transitioned: boolean,
-  transitionId?: string
-): JourneySendResult<TContext, TStepId, TStepMeta> =>
-  transitionId ? { transitioned, transitionId, snapshot } : { transitioned, snapshot };
+  options: {
+    transitionId?: string;
+    error?: unknown;
+  } = {}
+): JourneySendResult<TContext, TStepId, TStepMeta> => ({
+  transitioned,
+  ...(options.transitionId !== undefined ? { transitionId: options.transitionId } : {}),
+  ...("error" in options ? { error: options.error } : {}),
+  snapshot
+});
 
 export const buildSnapshot = <TContext, TStepId extends string, TStepMeta>(
   timeline: readonly TStepId[],

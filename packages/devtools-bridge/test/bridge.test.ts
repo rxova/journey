@@ -522,4 +522,49 @@ describe("attachJourneyDevtools", () => {
     detach();
     collector.stop();
   });
+
+  it("posts command results with serialized machine send errors", async () => {
+    const collector = collectBridgeMessages();
+    const { machine } = createMachine();
+
+    const send = vi.spyOn(machine, "send").mockResolvedValueOnce({
+      transitioned: false,
+      snapshot: createSnapshot("start", 0),
+      error: new Error("guard failed")
+    });
+
+    const detach = attachJourneyDevtools(machine, { machineId: "m-4", enabled: true });
+    await waitForMessages();
+
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        source: window,
+        origin: window.location.origin,
+        data: buildCommandEnvelope("m-4", "req-result-error", { type: "goToNextStep" })
+      })
+    );
+
+    await waitForCollector(() =>
+      collector.messages.some(
+        (message) => message.kind === "commandResult" && message.requestId === "req-result-error"
+      )
+    );
+
+    const resultEnvelope = collector.messages.find(
+      (message) => message.kind === "commandResult" && message.requestId === "req-result-error"
+    );
+
+    expect(resultEnvelope?.kind).toBe("commandResult");
+    if (resultEnvelope?.kind === "commandResult") {
+      expect(resultEnvelope.transitioned).toBe(false);
+      expect(resultEnvelope.error).toMatchObject({
+        name: "Error",
+        message: "guard failed"
+      });
+    }
+
+    send.mockRestore();
+    detach();
+    collector.stop();
+  });
 });
