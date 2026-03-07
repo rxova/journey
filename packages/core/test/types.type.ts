@@ -52,6 +52,7 @@ const defaultedJourney = {
 } as const satisfies JourneyDefinition<Context>;
 
 const defaultedMachine = createJourneyMachine(defaultedJourney);
+const configuredMachine = createJourneyMachine(journey, { completeOnNoNextStep: true });
 
 type SendArg = Parameters<typeof machine.send>[0];
 type ObsEvent = JourneyObservationEvent<StepId, EventType, PayloadMap>;
@@ -64,6 +65,7 @@ type CloseObservationFromMachine = Parameters<Parameters<typeof machine.subscrib
 
 expectTypeOf(machine).toEqualTypeOf<JourneyMachine<Context, StepId, EventType, PayloadMap>>();
 expectTypeOf(machine.getSnapshot()).toEqualTypeOf<JourneySnapshot<Context, StepId>>();
+expectTypeOf(configuredMachine.getSnapshot()).toEqualTypeOf<JourneySnapshot<Context, StepId>>();
 expectTypeOf<SendArg>().toEqualTypeOf<JourneySendEvent<StepId, EventType, PayloadMap>>();
 expectTypeOf<Awaited<ReturnType<typeof machine.goToNextStep>>>().toEqualTypeOf<
   Awaited<ReturnType<typeof machine.send>>

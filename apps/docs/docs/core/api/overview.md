@@ -163,6 +163,8 @@ const exampleSnapshot = {
 
 `goToNextStep()` is shorthand for sending `goToNextStep`.
 
+By default, `goToNextStep()` completes the machine when the current step declares no `goToNextStep` transition. Set `completeOnNoNextStep: false` to opt out. It does not auto-complete when a declared next transition is merely blocked by guards.
+
 `completeJourney()` and `terminateJourney()` are shorthands for their event forms.
 
 `goToPreviousStep(steps?)` and `goToLastVisitedStep()` move the history pointer.

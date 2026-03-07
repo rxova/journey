@@ -218,6 +218,7 @@ export type JourneyDefinition<
 /** Optional machine features (for example, persistence configuration). */
 export type JourneyMachineOptions<TContext, TStepId extends string, TStepMeta = unknown> = {
   persistence?: JourneyPersistenceOptions<TContext, TStepId, TStepMeta>;
+  completeOnNoNextStep?: boolean;
 };
 
 /** Result returned from send/navigation APIs. */
