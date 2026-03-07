@@ -30,10 +30,13 @@ A new machine starts from a known snapshot:
 
 This consistent start is why behavior is reproducible across environments.
 
+`subscribeEvent(...)` listeners receive `journey.start` immediately on subscribe, using the machine's startup step and startup timestamp, so startup is still observable even though subscriptions are usually attached after machine creation.
+
 ## Transition Event Lifecycle
 
 Use `subscribeEvent` to observe lifecycle events:
 
+- `journey.start`
 - `transition.start`
 - `transition.success`
 - `transition.error`
@@ -71,6 +74,10 @@ This makes completion and termination easy to observe separately in analytics an
 
 ```ts
 const unsubscribe = machine.subscribeEvent((event) => {
+  if (event.type === "journey.start") {
+    console.log("journey started at", event.stepId);
+  }
+
   if (event.type === "transition.success") {
     console.log("transition", event.from, "->", event.to, event.eventType);
   }

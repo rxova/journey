@@ -235,6 +235,11 @@ export type JourneyObservationEvent<
   TStepMeta = unknown
 > =
   | {
+      type: "journey.start";
+      stepId: TStepId;
+      timestamp: number;
+    }
+  | {
       type: "transition.start";
       from: TStepId;
       event: JourneySendEvent<TStepId, TEventType, TPayloadMap>;

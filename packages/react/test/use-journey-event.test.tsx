@@ -45,6 +45,7 @@ describe("useJourneyEvent", () => {
       await machine.goToNextStep();
     });
 
+    expect(receivedTypes).toContain("journey.start");
     expect(receivedTypes).toContain("transition.start");
     expect(receivedTypes).toContain("transition.success");
     expect(receivedTypes).toContain("step.exit");
