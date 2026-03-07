@@ -102,6 +102,12 @@ export function createJourneyMachine<
     throw new Error("Journey transitions must be an array.");
   }
 
+  for (const stepId of Object.keys(journey.steps)) {
+    if (stepId === "*") {
+      throw new Error('Step id "*" is reserved as a wildcard and cannot be used as a step name.');
+    }
+  }
+
   assertStepExists(
     journey.steps,
     journey.initial,
