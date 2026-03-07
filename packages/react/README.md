@@ -134,6 +134,8 @@ Imperative jump is available through `send`:
 await api.send({ type: "goToStepById", stepId: "review" });
 ```
 
+`updateContext()` is immediate, but it follows core async timing rules: it does not retroactively change a transition already in `evaluating-when` or `running-effect`, and a running effect can later commit over that update. If the change must affect the current transition, apply it before `send(...)` or await the transition first.
+
 ## Provider Behavior
 
 - `<Provider />` creates an internal core machine from the bound journey.
