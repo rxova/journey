@@ -60,6 +60,7 @@ What it shows:
 What it shows:
 
 - `resetOnJourneyChange`
+- `resetOnPersistenceChange`
 - state preservation vs full reset behavior
 
 ## Full Integration Reference

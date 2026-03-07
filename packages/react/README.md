@@ -138,8 +138,9 @@ await api.send({ type: "goToStepById", stepId: "review" });
 
 - `<Provider />` creates an internal core machine from the bound journey.
 - `<Provider journey={...} />` lets you pass a different journey definition at runtime.
-- Internal machine is preserved across `journey` prop changes by default.
+- Internal machine is preserved across `journey` and `persistence` prop changes by default.
 - Set `resetOnJourneyChange` to rebuild internal machine when `journey` identity changes.
+- Set `resetOnPersistenceChange` to rebuild internal machine when `persistence` identity changes.
 - `<Provider machine={externalMachine} />` uses your machine directly.
 - `persistence` applies only when Provider owns the internal machine.
 

@@ -1,9 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import React from "react";
 import { act } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
+import * as core from "@rxova/journey-core";
+import type { JourneyStorage } from "@rxova/journey-core";
 import {
   createJourneyBindings,
   type JourneyApi,
@@ -35,6 +37,21 @@ const journeyB: JourneyReactDefinition<Context, StepId, Event> = {
 };
 
 const bindings = createJourneyBindings(journeyA);
+
+const createStorage = () => {
+  const store = new Map<string, string>();
+  const storage: JourneyStorage = {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      store.set(key, value);
+    },
+    removeItem: (key: string) => {
+      store.delete(key);
+    }
+  };
+
+  return { storage, store };
+};
 
 const Capture = ({
   onApi
@@ -117,8 +134,89 @@ describe("bindings hooks edge cases", () => {
       </bindings.Provider>
     );
 
-    expect(screen.getByText("one-b")).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText("one-b")).toBeTruthy();
+    });
     expect(screen.getByTestId("current").textContent).toBe("one");
+  });
+
+  it("does not recreate the internal machine when persistence identity changes by default", async () => {
+    const createMachineSpy = vi.spyOn(core, "createJourneyMachine");
+    const { storage } = createStorage();
+    let api: JourneyApi<Context, StepId, Event> | null = null;
+
+    try {
+      const { rerender } = render(
+        <bindings.Provider persistence={{ key: "journey:persisted", storage }}>
+          <Capture onApi={(nextApi) => (api = nextApi)} />
+          <bindings.StepRenderer />
+        </bindings.Provider>
+      );
+
+      expect(createMachineSpy).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await api?.goToNextStep();
+      });
+
+      expect(screen.getByText("two-a")).toBeTruthy();
+
+      rerender(
+        <bindings.Provider persistence={{ key: "journey:persisted", storage }}>
+          <Capture onApi={(nextApi) => (api = nextApi)} />
+          <bindings.StepRenderer />
+        </bindings.Provider>
+      );
+
+      expect(screen.getByText("two-a")).toBeTruthy();
+      expect(screen.getByTestId("current").textContent).toBe("two");
+      expect(createMachineSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      createMachineSpy.mockRestore();
+    }
+  });
+
+  it("can rebuild the internal machine when resetOnPersistenceChange=true", async () => {
+    const createMachineSpy = vi.spyOn(core, "createJourneyMachine");
+    const { storage } = createStorage();
+    let api: JourneyApi<Context, StepId, Event> | null = null;
+
+    try {
+      const { rerender } = render(
+        <bindings.Provider
+          persistence={{ key: "journey:persistence-a", storage }}
+          resetOnPersistenceChange
+        >
+          <Capture onApi={(nextApi) => (api = nextApi)} />
+          <bindings.StepRenderer />
+        </bindings.Provider>
+      );
+
+      await act(async () => {
+        await api?.goToNextStep();
+      });
+
+      expect(screen.getByText("two-a")).toBeTruthy();
+      expect(createMachineSpy).toHaveBeenCalledTimes(1);
+
+      rerender(
+        <bindings.Provider
+          persistence={{ key: "journey:persistence-b", storage }}
+          resetOnPersistenceChange
+        >
+          <Capture onApi={(nextApi) => (api = nextApi)} />
+          <bindings.StepRenderer />
+        </bindings.Provider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("one-a")).toBeTruthy();
+      });
+      expect(screen.getByTestId("current").textContent).toBe("one");
+      expect(createMachineSpy).toHaveBeenCalledTimes(2);
+    } finally {
+      createMachineSpy.mockRestore();
+    }
   });
 
   it("StepRenderer uses fallback when current step component is missing", async () => {

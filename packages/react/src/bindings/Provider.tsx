@@ -8,6 +8,8 @@ import type {
   JourneyStoreValue
 } from "../types";
 
+const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
+
 type ProviderFactoryProps<
   TContext,
   TStepId extends string,
@@ -46,6 +48,7 @@ export const createProvider = <
     machine,
     persistence,
     resetOnJourneyChange = false,
+    resetOnPersistenceChange = false,
     children
   }: JourneyBindingsProviderProps<
     TContext,
@@ -61,23 +64,38 @@ export const createProvider = <
     >(null);
     const journeyRef = React.useRef(incomingJourney);
     const persistenceRef = React.useRef(persistence);
+    const [, forceUpdate] = React.useReducer((count: number) => count + 1, 0);
 
-    const shouldResetInternal = resetOnJourneyChange && journeyRef.current !== incomingJourney;
-    const shouldResetPersistence = persistenceRef.current !== persistence;
-
-    if (
-      !machine &&
-      (!internalMachineRef.current || shouldResetInternal || shouldResetPersistence)
-    ) {
-      const previousInternalMachine = internalMachineRef.current;
+    if (!machine && !internalMachineRef.current) {
       const options = persistence ? { persistence } : undefined;
       internalMachineRef.current = createJourneyMachine(incomingJourney, options);
       journeyRef.current = incomingJourney;
       persistenceRef.current = persistence;
-      if (previousInternalMachine && previousInternalMachine !== internalMachineRef.current) {
+    }
+
+    const shouldResetJourney =
+      !machine && resetOnJourneyChange && journeyRef.current !== incomingJourney;
+    const shouldResetPersistence =
+      !machine && resetOnPersistenceChange && persistenceRef.current !== persistence;
+
+    useSafeLayoutEffect(() => {
+      if (machine || (!shouldResetJourney && !shouldResetPersistence)) {
+        return;
+      }
+
+      const previousInternalMachine = internalMachineRef.current;
+      const options = persistence ? { persistence } : undefined;
+      const nextInternalMachine = createJourneyMachine(incomingJourney, options);
+      internalMachineRef.current = nextInternalMachine;
+      journeyRef.current = incomingJourney;
+      persistenceRef.current = persistence;
+
+      if (previousInternalMachine && previousInternalMachine !== nextInternalMachine) {
         previousInternalMachine.dispose();
       }
-    }
+
+      forceUpdate();
+    }, [incomingJourney, machine, persistence, shouldResetJourney, shouldResetPersistence]);
 
     const resolvedMachine = machine ?? internalMachineRef.current!;
     const resolvedJourney = machine ? incomingJourney : journeyRef.current;
