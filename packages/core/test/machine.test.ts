@@ -169,6 +169,24 @@ describe("createJourneyMachine", () => {
     });
   });
 
+  it("subscribeStart filters to startup events", async () => {
+    const machine = createMachine();
+    const events: Array<{ stepId: StepId; timestamp: number }> = [];
+
+    machine.subscribeStart((event) => {
+      events.push({ stepId: event.stepId, timestamp: event.timestamp });
+    });
+
+    await machine.goToNextStep();
+
+    expect(events).toEqual([
+      {
+        stepId: "start",
+        timestamp: expect.any(Number)
+      }
+    ]);
+  });
+
   it("updates step metadata immutably and emits metadata.updated", () => {
     const machine = createMachine();
     const eventTypes: string[] = [];

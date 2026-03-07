@@ -124,7 +124,7 @@ Use `subscribeEvent` to inspect transition and navigation lifecycle events:
 - `journey.close`
 - `metadata.updated`
 
-Use `subscribeComplete(...)` and `subscribeTerminate(...)` when you only care about terminal lifecycle events.
+Use `subscribeStart(...)`, `subscribeComplete(...)`, and `subscribeTerminate(...)` when you only care about a specific lifecycle event.
 
 `journey.start` is delivered immediately to each `subscribeEvent(...)` listener with the machine's startup step and startup timestamp.
 

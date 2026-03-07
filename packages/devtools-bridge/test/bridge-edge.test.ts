@@ -166,6 +166,7 @@ const createMachine = (sendImpl?: JourneyMachine<Context, StepId, Event>["send"]
     },
     subscribeSelector: () => () => undefined,
     subscribeEvent: () => () => undefined,
+    subscribeStart: () => () => undefined,
     subscribeComplete: () => () => undefined,
     subscribeTerminate: () => () => undefined
   };
@@ -681,6 +682,7 @@ describe("bridge edge coverage", () => {
       },
       subscribeSelector: () => () => undefined,
       subscribeEvent: () => () => undefined,
+      subscribeStart: () => () => undefined,
       subscribeComplete: () => () => undefined,
       subscribeTerminate: () => () => undefined
     };
@@ -805,6 +807,7 @@ describe("bridge edge coverage", () => {
       subscribe: () => () => undefined,
       subscribeSelector: () => () => undefined,
       subscribeEvent: () => () => undefined,
+      subscribeStart: () => () => undefined,
       subscribeComplete: () => () => undefined,
       subscribeTerminate: () => () => undefined
     };
@@ -917,6 +920,7 @@ describe("bridge edge coverage", () => {
       subscribe: () => () => undefined,
       subscribeSelector: () => () => undefined,
       subscribeEvent: () => () => undefined,
+      subscribeStart: () => () => undefined,
       subscribeComplete: () => () => undefined,
       subscribeTerminate: () => () => undefined
     };
