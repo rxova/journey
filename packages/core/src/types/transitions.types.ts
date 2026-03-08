@@ -51,6 +51,7 @@ type JourneyTransitionConfig<
   TPayloadMap extends Partial<Record<string, unknown>> = Record<never, never>
 > = {
   id?: string;
+  timeoutMs?: number;
   from: TStepId | JourneyBuiltInFrom;
   when?: (
     args: JourneySelectedTransitionArgs<
@@ -125,6 +126,7 @@ export type TransitionConfig<
   TPayloadMap extends JourneyEventPayloadMap<TEventType>
 > = {
   id?: string;
+  timeoutMs?: number;
   effect?: (
     args: JourneySelectedTransitionArgs<TContext, TStepId, TEventType, TPayloadMap>
   ) => TContext | void | Promise<TContext | void>;

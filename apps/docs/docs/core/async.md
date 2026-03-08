@@ -65,6 +65,29 @@ For `send(event)`, Journey processes in this order:
 
 `effect` can be sync or async. If async, the source step moves through `running-effect` phase until it resolves.
 
+### Transition Timeouts
+
+Add `timeoutMs` to a transition to cap async `when` and `effect` work individually.
+
+```ts
+{
+  id: "payment-review",
+  from: "payment",
+  event: "goToNextStep",
+  to: "review",
+  timeoutMs: 5_000,
+  when: async ({ context }) => validateCard(context.cardToken),
+  effect: async ({ context }) => {
+    await syncDraft(context);
+    return context;
+  }
+}
+```
+
+If the async guard or effect does not settle before the timeout, Journey resolves the send result with `transitioned: false`, emits `transition.error`, and moves the source step into async `error`.
+
+`timeoutMs` must be finite when provided. `undefined`, `0`, and negative values disable the timeout.
+
 ## `updateContext()` During In-Flight Transitions
 
 `updateContext()` writes to the current snapshot immediately, but it does not rebase a transition that is already in progress.

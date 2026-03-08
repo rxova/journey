@@ -20,6 +20,7 @@ Runs in Bun-based SPAs and other standard ESM runtimes.
 - Built-in navigation and terminal events:
   `goToNextStep()`, `goToPreviousStep()`, `goToLastVisitedStep()`, `completeJourney()`, `terminateJourney()`.
 - Async guard/effect lifecycle state in `snapshot.async`.
+- Per-transition timeouts for async guards and effects.
 - Typed observability stream via `subscribeEvent`.
 - Step metadata updates via `updateStepMetadata`.
 - Optional persistence with schema versioning and migration hooks.
@@ -80,6 +81,44 @@ When guards/effects are async, step async state is tracked in `snapshot.async.by
 `updateContext()` updates the current snapshot immediately, but it does not rebase an async transition that is already running. Async guards and effects keep the context they started with, and a running effect can later commit over a newer `updateContext()` call. If a context change must affect a transition, apply it before `send(...)` or wait for the transition promise to settle.
 
 `send(...)` and convenience helpers resolve with `transitioned: false` and `error` when a guard or effect fails. They still emit `transition.error` and leave the source step in async `error` phase.
+
+### Transition Timeouts
+
+Set `timeoutMs` on a transition to bound async `when` and async `effect` work:
+
+```ts
+const saveDraft = async () => "draft-123";
+
+const journey = {
+  initial: "verify",
+  context: { token: "ok-123", draftId: null },
+  steps: {
+    verify: {},
+    review: {}
+  },
+  transitions: [
+    {
+      id: "verify-and-save",
+      from: "verify",
+      event: "goToNextStep",
+      to: "review",
+      timeoutMs: 1_500,
+      when: async ({ context }) => context.token.length > 0,
+      effect: async ({ context }) => ({
+        ...context,
+        draftId: await saveDraft()
+      })
+    }
+  ]
+};
+```
+
+- `timeoutMs` is applied independently to the async guard and the async effect on that transition.
+- `timeoutMs` must be finite when provided. `undefined`, `0`, and negative values disable the timeout.
+- On timeout, `send(...)` resolves with `transitioned: false` and an `error` whose `name` is `JourneyTimeoutError`.
+- The machine stays on the source step and marks that step as async `error` until `clearStepError(...)` or a later successful send.
+
+See `examples/async-timeout.flow.ts` for a complete timeout-aware flow.
 
 ## Persistence
 
@@ -150,3 +189,5 @@ const transitions = createTransitions(
   tx.from("review").toComplete()
 );
 ```
+
+`timeoutMs` is available on plain transition objects and on the `config` argument passed to fluent helpers such as `to(...)`, `complete(...)`, and `terminate(...)`.
