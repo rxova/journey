@@ -27,6 +27,8 @@ import {
   isGoToStepByIdEvent,
   isPromiseLike,
   isTerminalTarget,
+  JourneyTimeoutError,
+  withTimeout,
   normalizeStepCount,
   now,
   selectTransition,
@@ -591,13 +593,24 @@ export function createJourneyMachine<
       };
     }
 
-    if (isPromiseLike(effectResultPromise)) {
+    const asyncEffect = isPromiseLike(effectResultPromise);
+    if (asyncEffect) {
       setStepLoading(
         fromStep,
         JOURNEY_ASYNC_PHASE.RUNNING_EFFECT,
         transitionEvent.type,
         transition.id,
         runVersion
+      );
+
+      const timeoutMs = transition.timeoutMs;
+      effectResultPromise = withTimeout(
+        effectResultPromise as PromiseLike<TContext | void>,
+        timeoutMs,
+        () =>
+          new JourneyTimeoutError(
+            `Transition effect timed out after ${timeoutMs}ms (event: ${transitionEvent.type}, transition: ${transition.id ?? "<anonymous>"}).`
+          )
       );
     }
 

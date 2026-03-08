@@ -86,6 +86,7 @@ Core fields you can use regardless of syntax:
 - `to`: target step (for non-terminal transitions)
 - `when`: optional guard (sync or async)
 - `effect`: optional side effect/context updater (sync or async)
+- `timeoutMs`: optional finite millisecond limit for async `when` and `effect`
 - `id`: optional stable identifier for observability/debugging
 
 For runtime semantics of guards/effects, see [Async Behavior](/docs/core/async).
