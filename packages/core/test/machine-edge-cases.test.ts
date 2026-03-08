@@ -532,6 +532,28 @@ describe("machine edge cases", () => {
     unsubscribeEvent();
   });
 
+  it("throws when updateContext updater returns undefined", () => {
+    const machine = createJourneyMachine(createBaseJourney());
+    const before = machine.getSnapshot();
+
+    expect(() => {
+      machine.updateContext(() => undefined as unknown as Context);
+    }).toThrow(/updateContext updater must return a context value/);
+
+    expect(machine.getSnapshot()).toBe(before);
+  });
+
+  it("throws when updateStepMetadata updater returns undefined", () => {
+    const machine = createJourneyMachine(createBaseJourney());
+    const before = machine.getSnapshot();
+
+    expect(() => {
+      machine.updateStepMetadata("start", () => undefined as unknown);
+    }).toThrow(/updateStepMetadata updater must return a metadata value/);
+
+    expect(machine.getSnapshot()).toBe(before);
+  });
+
   it("recovers missing async step state when an async guard rejects", async () => {
     const machine = createJourneyMachine({
       ...createBaseJourney(),

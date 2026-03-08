@@ -880,9 +880,14 @@ export function createJourneyMachine<
         return snapshot;
       }
 
+      const nextContext = updater(snapshot.context);
+      if (nextContext === undefined) {
+        throw new Error("updateContext updater must return a context value; received undefined.");
+      }
+
       snapshot = {
         ...snapshot,
-        context: updater(snapshot.context)
+        context: nextContext
       };
       persistSnapshot(snapshot);
       notify();
@@ -899,6 +904,12 @@ export function createJourneyMachine<
 
       const previousMeta = snapshot.stepMeta[stepId];
       const nextMeta = updater(previousMeta);
+      if (nextMeta === undefined) {
+        throw new Error(
+          `updateStepMetadata updater must return a metadata value; received undefined (step: ${stepId}).`
+        );
+      }
+
       if (Object.is(previousMeta, nextMeta)) {
         return snapshot;
       }
