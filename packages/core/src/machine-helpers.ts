@@ -79,6 +79,44 @@ export const isPromiseLike = <T>(value: T | PromiseLike<T>): value is PromiseLik
   "then" in value &&
   typeof (value as { then: unknown }).then === "function";
 
+const isFiniteNumber = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value);
+
+export class JourneyTimeoutError extends Error {
+  override name = "JourneyTimeoutError";
+
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+export const withTimeout = async <T>(
+  promise: PromiseLike<T>,
+  timeoutMs: number | undefined,
+  buildError: () => Error
+): Promise<T> => {
+  if (!isFiniteNumber(timeoutMs) || timeoutMs <= 0) {
+    return await promise;
+  }
+
+  return await new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(buildError());
+    }, timeoutMs);
+
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+};
+
 export const buildIdleStepAsyncState = (): JourneyStepAsyncState => ({
   phase: JOURNEY_ASYNC_PHASE.IDLE,
   eventType: null,
@@ -143,6 +181,12 @@ export const validateJourneyTransitions = <
     if (transition.from !== JOURNEY_WILDCARD && !(transition.from in stepRegistry)) {
       throw new Error(
         `Journey transition at index ${index} references unknown from step "${transition.from}".`
+      );
+    }
+
+    if (transition.timeoutMs !== undefined && !isFiniteNumber(transition.timeoutMs)) {
+      throw new Error(
+        `Journey transition at index ${index} must define a finite numeric "timeoutMs" when provided.`
       );
     }
 
@@ -266,9 +310,21 @@ export const selectTransition = async <
       hooks?.onAsyncGuardStart?.(transition);
     }
 
+    const timeoutMs = transition.timeoutMs;
+    const guardPromise = asyncGuard
+      ? withTimeout(
+          guardResult,
+          timeoutMs,
+          () =>
+            new JourneyTimeoutError(
+              `Transition guard timed out after ${timeoutMs}ms (event: ${event.type}, transition: ${transition.id ?? "<anonymous>"}).`
+            )
+        )
+      : guardResult;
+
     let allowed: boolean;
     try {
-      allowed = await guardResult;
+      allowed = await guardPromise;
     } catch (error) {
       if (asyncGuard) {
         hooks?.onAsyncGuardError?.(transition, error);

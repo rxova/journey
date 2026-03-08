@@ -102,6 +102,8 @@ if (result.error) {
 await machine.goToPreviousStep();
 ```
 
+Async guards and effects can set `timeoutMs` per transition; timeouts resolve the send with `transitioned: false` plus `error` instead of hanging indefinitely.
+
 ## Optional Devtools Bridge
 
 ```ts
