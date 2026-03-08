@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   createJourneyMachine,
@@ -70,6 +70,113 @@ describe("machine edge cases", () => {
     expect(finalSnapshot.async.byStep.start.phase).toBe("idle");
     expect(finalSnapshot.async.byStep.start.transitionId).toBeNull();
     expect(finalSnapshot.async.isLoading).toBe(false);
+  });
+
+  it("returns a non-transitioning send result when an async guard times out", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const machine = createJourneyMachine({
+        ...createBaseJourney(),
+        transitions: [
+          {
+            id: "guard-timeout",
+            from: "start",
+            event: "goToNextStep",
+            to: "middle",
+            timeoutMs: 25,
+            when: async () => new Promise<boolean>(() => {})
+          }
+        ]
+      });
+
+      const sendPromise = machine.send({ type: "goToNextStep" });
+      // Let the queued transition start.
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(machine.getSnapshot().async.byStep.start.phase).toBe("evaluating-when");
+
+      await vi.advanceTimersByTimeAsync(30);
+      const result = await sendPromise;
+
+      expect(result.transitioned).toBe(false);
+      expect(result.error).toBeInstanceOf(Error);
+      expect((result.error as Error).message).toContain("guard timed out");
+
+      const snapshot = machine.getSnapshot();
+      expect(snapshot.async.byStep.start.phase).toBe("error");
+      expect(snapshot.async.isLoading).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("returns a non-transitioning send result when an async effect times out", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const machine = createJourneyMachine({
+        ...createBaseJourney(),
+        transitions: [
+          {
+            id: "effect-timeout",
+            from: "start",
+            event: "goToNextStep",
+            to: "middle",
+            timeoutMs: 25,
+            effect: async () => new Promise<Context>(() => {})
+          }
+        ]
+      });
+
+      const sendPromise = machine.send({ type: "goToNextStep" });
+
+      // Let the queued transition start and reach the async effect phase.
+      for (let attempts = 0; attempts < 5; attempts += 1) {
+        await Promise.resolve();
+        if (machine.getSnapshot().async.byStep.start.phase === "running-effect") {
+          break;
+        }
+      }
+
+      expect(machine.getSnapshot().async.byStep.start.phase).toBe("running-effect");
+
+      await vi.advanceTimersByTimeAsync(30);
+      const result = await sendPromise;
+
+      expect(result.transitioned).toBe(false);
+      expect(result.transitionId).toBe("effect-timeout");
+      expect(result.error).toBeInstanceOf(Error);
+      expect((result.error as Error).message).toContain("effect timed out");
+
+      const snapshot = machine.getSnapshot();
+      expect(snapshot.async.byStep.start.phase).toBe("error");
+      expect(snapshot.async.isLoading).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    { label: "NaN", timeoutMs: Number.NaN },
+    { label: "Infinity", timeoutMs: Number.POSITIVE_INFINITY },
+    { label: "-Infinity", timeoutMs: Number.NEGATIVE_INFINITY }
+  ])("throws when transition timeoutMs is not finite ($label)", ({ timeoutMs }) => {
+    expect(() =>
+      createJourneyMachine({
+        ...createBaseJourney(),
+        transitions: [
+          {
+            id: "invalid-timeout",
+            from: "start",
+            event: "goToNextStep",
+            to: "middle",
+            timeoutMs
+          }
+        ]
+      })
+    ).toThrow('finite numeric "timeoutMs"');
   });
 
   it("returns a non-transitioning send result when an async guard rejects", async () => {

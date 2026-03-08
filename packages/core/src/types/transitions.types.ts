@@ -51,6 +51,11 @@ type JourneyTransitionConfig<
   TPayloadMap extends Partial<Record<string, unknown>> = Record<never, never>
 > = {
   id?: string;
+  /**
+   * Timeout in milliseconds applied independently to async `when` and async `effect`.
+   * Must be finite when provided. `undefined`, `0`, and negative values disable the timeout.
+   */
+  timeoutMs?: number;
   from: TStepId | JourneyBuiltInFrom;
   when?: (
     args: JourneySelectedTransitionArgs<
@@ -125,6 +130,11 @@ export type TransitionConfig<
   TPayloadMap extends JourneyEventPayloadMap<TEventType>
 > = {
   id?: string;
+  /**
+   * Timeout in milliseconds applied independently to async `when` and async `effect`.
+   * Must be finite when provided. `undefined`, `0`, and negative values disable the timeout.
+   */
+  timeoutMs?: number;
   effect?: (
     args: JourneySelectedTransitionArgs<TContext, TStepId, TEventType, TPayloadMap>
   ) => TContext | void | Promise<TContext | void>;
