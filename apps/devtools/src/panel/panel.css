@@ -1,14 +1,93 @@
 :root {
+  /* Default (light) theme with DevTools system-token overrides when available. */
   color-scheme: light;
-  --bg-top: #f5efe6;
-  --bg-bottom: #e4eef5;
-  --card: #ffffff;
-  --ink: #162530;
-  --muted: #5e6d78;
-  --accent: #0f8f6a;
-  --accent-soft: #d8f3ea;
-  --warn: #c14f2f;
-  --border: #d5dde4;
+
+  --fallback-accent: #1a73e8;
+  --fallback-accent-soft: rgba(26, 115, 232, 0.14);
+  --fallback-accent-ring: rgba(26, 115, 232, 0.24);
+  --fallback-warn: #c5221f;
+  --fallback-kind-init: #5b8def;
+  --fallback-kind-snapshot: #1a73e8;
+  --fallback-kind-command: #0b57d0;
+
+  --fallback-ink: #202124;
+  --fallback-muted: #5f6368;
+  --fallback-border: rgba(60, 64, 67, 0.18);
+
+  --fallback-bg-top: #f3f5f7;
+  --fallback-bg-bottom: #edf1f4;
+  --fallback-card: #ffffff;
+  --fallback-surface: #f7f9fb;
+  --fallback-surface-2: #f2f5f8;
+  --fallback-error-surface: rgba(197, 34, 31, 0.08);
+
+  --ink: var(--sys-color-on-surface, var(--fallback-ink));
+  --muted: var(--sys-color-on-surface-subtle, var(--fallback-muted));
+  --border: var(--sys-color-divider, var(--fallback-border));
+
+  --accent: var(--sys-color-primary, var(--fallback-accent));
+  --accent-soft: var(--sys-color-tonal-container, var(--fallback-accent-soft));
+  --accent-ink: var(--sys-color-on-tonal-container, var(--ink));
+  --accent-ring: var(--sys-color-state-focus-ring, var(--fallback-accent-ring));
+  --warn: var(--sys-color-error, var(--fallback-warn));
+  --kind-init: var(--sys-color-primary-bright, var(--fallback-kind-init));
+  --kind-snapshot: var(--sys-color-blue-bright, var(--fallback-kind-snapshot));
+  --kind-command: var(--sys-color-green-bright, var(--fallback-kind-command));
+
+  --bg-top: var(--sys-color-base-container-elevated, var(--fallback-bg-top));
+  --bg-bottom: var(--sys-color-cdt-base-container, var(--fallback-bg-bottom));
+  --card: var(--sys-color-surface1, var(--fallback-card));
+  --surface: var(--sys-color-cdt-base-container, var(--fallback-surface));
+  --surface-2: var(--sys-color-surface2, var(--fallback-surface-2));
+  --error-surface: var(--sys-color-surface-error, var(--fallback-error-surface));
+}
+
+/* Prefer OS theme when running outside Chrome devtools, but allow an explicit
+   [data-theme] override (set by JS in main.tsx). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --fallback-accent: #8ab4f8;
+    --fallback-accent-soft: rgba(138, 180, 248, 0.16);
+    --fallback-accent-ring: rgba(138, 180, 248, 0.3);
+    --fallback-warn: #f28b82;
+    --fallback-kind-init: #a1c2fa;
+    --fallback-kind-snapshot: #8ab4f8;
+    --fallback-kind-command: #6ea8ff;
+
+    --fallback-ink: #e8eaed;
+    --fallback-muted: #9aa0a6;
+    --fallback-border: rgba(232, 234, 237, 0.16);
+
+    --fallback-bg-top: #202124;
+    --fallback-bg-bottom: #202124;
+    --fallback-card: #2a2b2e;
+    --fallback-surface: #252629;
+    --fallback-surface-2: #303134;
+    --fallback-error-surface: rgba(242, 139, 130, 0.14);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --fallback-accent: #8ab4f8;
+  --fallback-accent-soft: rgba(138, 180, 248, 0.16);
+  --fallback-accent-ring: rgba(138, 180, 248, 0.3);
+  --fallback-warn: #f28b82;
+  --fallback-kind-init: #a1c2fa;
+  --fallback-kind-snapshot: #8ab4f8;
+  --fallback-kind-command: #6ea8ff;
+
+  --fallback-ink: #e8eaed;
+  --fallback-muted: #9aa0a6;
+  --fallback-border: rgba(232, 234, 237, 0.16);
+
+  --fallback-bg-top: #202124;
+  --fallback-bg-bottom: #202124;
+  --fallback-card: #2a2b2e;
+  --fallback-surface: #252629;
+  --fallback-surface-2: #303134;
+  --fallback-error-surface: rgba(242, 139, 130, 0.14);
 }
 
 * {
@@ -18,7 +97,7 @@
 body {
   margin: 0;
   font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
-  background: linear-gradient(160deg, var(--bg-top), var(--bg-bottom));
+  background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
   color: var(--ink);
 }
 
@@ -92,16 +171,24 @@ textarea {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 8px 10px;
-  background: #fff;
+  background: var(--surface-2);
+  color: var(--ink);
 }
 
 button {
-  border: 1px solid var(--accent);
+  min-width: 0;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--accent-soft);
+  background: var(--surface-2);
   color: var(--ink);
   padding: 7px 10px;
   cursor: pointer;
+}
+
+button:hover:enabled {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
 }
 
 button:disabled {
@@ -117,13 +204,15 @@ button:disabled {
 }
 
 .tab-button {
-  background: #fff;
+  background: var(--card);
   border-color: var(--border);
+  color: var(--ink);
 }
 
 .tab-button.active {
   background: var(--accent-soft);
   border-color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .json-block {
@@ -133,7 +222,7 @@ button:disabled {
   border-radius: 10px;
   border: 1px solid var(--border);
   padding: 10px;
-  background: #f8fbfd;
+  background: var(--surface-2);
   font-family: "JetBrains Mono", "Menlo", monospace;
   font-size: 0.78rem;
   line-height: 1.45;
@@ -159,6 +248,7 @@ button:disabled {
 .follow-button.active {
   border-color: var(--accent);
   background: var(--accent-soft);
+  color: var(--accent-ink);
 }
 
 .timeline-layout {
@@ -189,7 +279,7 @@ button:disabled {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fbfdfd;
+  background: var(--surface);
   padding: 8px;
   display: grid;
   grid-template-columns: 42px 48px 1fr auto;
@@ -200,7 +290,7 @@ button:disabled {
 
 .timeline-row.selected {
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px rgba(15, 143, 106, 0.28);
+  box-shadow: 0 0 0 1px var(--accent-ring);
 }
 
 .timeline-index {
@@ -220,15 +310,15 @@ button:disabled {
 }
 
 .timeline-kind.kind-init {
-  color: #395079;
+  color: var(--kind-init);
 }
 
 .timeline-kind.kind-snapshot {
-  color: #0f556e;
+  color: var(--kind-snapshot);
 }
 
 .timeline-kind.kind-command {
-  color: #0f8f6a;
+  color: var(--kind-command);
 }
 
 .timeline-kind.kind-error {
@@ -256,9 +346,21 @@ button:disabled {
 
 .button-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(124px, 1fr));
   gap: 8px;
   margin-bottom: 10px;
+}
+
+.button-grid button,
+.form-row button,
+.command-form-grid > button {
+  width: 100%;
+  min-height: 38px;
+  line-height: 1.2;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .command-form-grid {
@@ -268,7 +370,7 @@ button:disabled {
 
 .form-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) minmax(132px, 0.9fr);
   gap: 8px;
 }
 
@@ -313,13 +415,13 @@ button:disabled {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 8px;
-  background: #fbfdfd;
+  background: var(--surface);
   font-size: 0.82rem;
 }
 
 .log-kind {
   font-weight: 700;
-  color: #0f556e;
+  color: var(--kind-snapshot);
 }
 
 .muted {
@@ -371,7 +473,7 @@ button:disabled {
 }
 
 .error-details {
-  background: #fdf2f0;
+  background: var(--error-surface);
   color: var(--warn);
   padding: 8px 10px;
   border-radius: 4px;
@@ -395,4 +497,5 @@ button:disabled {
 
 .retry-button:hover {
   background: var(--accent-soft);
+  color: var(--accent-ink);
 }
