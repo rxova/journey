@@ -3,13 +3,13 @@ import type { SidebarsConfig } from "@docusaurus/plugin-content-docs";
 const sidebars: SidebarsConfig = {
   reactSidebar: [
     "overview",
-    "releases",
     "quickstart",
     "provider-and-hooks",
     "patterns",
     "async-ui",
     "devtools",
-    "examples"
+    "examples",
+    "releases"
   ]
 };
 
