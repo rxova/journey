@@ -125,6 +125,8 @@ See `examples/async-timeout.flow.ts` for a complete timeout-aware flow.
 Persistence is optional and disabled automatically if storage is unavailable.
 
 ```ts
+import { createJourneyMachine } from "@rxova/journey-core/persistence";
+
 const machine = createJourneyMachine(journey, {
   persistence: {
     key: "checkout:journey",

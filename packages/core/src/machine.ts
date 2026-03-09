@@ -13,6 +13,7 @@ import type {
   JourneySelector,
   JourneySendEvent,
   JourneySendResult,
+  JourneySnapshot,
   JourneyStepDefinition,
   JourneyTransitionArgs,
   JourneyTransition,
@@ -35,12 +36,18 @@ import {
   transitionSnapshot,
   validateJourneyTransitions
 } from "./machine-helpers";
-import { createPersistenceController } from "./persistence";
+
+export type JourneyPersistenceRuntime<TContext, TStepId extends string, TStepMeta = unknown> = {
+  clearOnReset: boolean;
+  hydrateSnapshot: () => JourneySnapshot<TContext, TStepId, TStepMeta>;
+  persistSnapshot: (snapshot: JourneySnapshot<TContext, TStepId, TStepMeta>) => void;
+  removePersistedSnapshot: () => void;
+};
 
 /**
  * Creates a journey machine from a journey definition.
- * Validates steps/transitions, hydrates persisted state (if configured),
- * and returns an API for sending events and reading snapshots.
+ * Validates steps/transitions and returns an API for sending events and reading snapshots.
+ * Use `@rxova/journey-core/persistence` to opt into persisted hydration/runtime persistence.
  */
 export function createJourneyMachine<
   TContext,
@@ -66,7 +73,7 @@ export function createJourneyMachine<
       TPayloadMap
     >[];
   },
-  options?: JourneyMachineOptions<TContext, Extract<keyof TSteps, string>, TStepMeta>
+  options?: JourneyMachineOptions
 ): JourneyMachine<
   TContext,
   Extract<keyof TSteps, string>,
@@ -83,7 +90,7 @@ export function createJourneyMachine<
   TStepMeta = unknown
 >(
   journey: JourneyDefinition<TContext, TStepId, TEventType, TPayloadMap, TStepMeta>,
-  options?: JourneyMachineOptions<TContext, TStepId, TStepMeta>
+  options?: JourneyMachineOptions
 ): JourneyMachine<TContext, TStepId, TEventType, TPayloadMap, TStepMeta>;
 // eslint-disable-next-line no-redeclare
 export function createJourneyMachine<
@@ -94,7 +101,10 @@ export function createJourneyMachine<
   TStepMeta = unknown
 >(
   journey: JourneyDefinition<TContext, TStepId, TEventType, TPayloadMap, TStepMeta>,
-  options?: JourneyMachineOptions<TContext, TStepId, TStepMeta>
+  options?: JourneyMachineOptions,
+  internalOptions?: {
+    persistenceRuntime?: JourneyPersistenceRuntime<TContext, TStepId, TStepMeta>;
+  }
 ): JourneyMachine<TContext, TStepId, TEventType, TPayloadMap, TStepMeta> {
   if (!journey.steps || typeof journey.steps !== "object") {
     throw new Error("Journey steps must be a record object.");
@@ -126,14 +136,23 @@ export function createJourneyMachine<
     return stepMeta;
   };
 
+  const initialStepMeta = buildStepMeta();
+  const fallbackRuntime: JourneyPersistenceRuntime<TContext, TStepId, TStepMeta> = {
+    clearOnReset: true,
+    hydrateSnapshot: () =>
+      buildSnapshot(
+        [journey.initial],
+        0,
+        journey.context,
+        JOURNEY_STATUS.RUNNING,
+        buildInitialAsyncState(journey.steps),
+        initialStepMeta
+      ),
+    persistSnapshot: () => undefined,
+    removePersistedSnapshot: () => undefined
+  };
   const { clearOnReset, hydrateSnapshot, persistSnapshot, removePersistedSnapshot } =
-    createPersistenceController({
-      initial: journey.initial,
-      context: journey.context,
-      stepMeta: buildStepMeta(),
-      steps: journey.steps,
-      ...(options ? { options } : {})
-    });
+    internalOptions?.persistenceRuntime ?? fallbackRuntime;
 
   let snapshot = hydrateSnapshot();
   snapshot = {
@@ -988,3 +1007,17 @@ export function createJourneyMachine<
 
   return machine;
 }
+
+export const createJourneyMachineWithPersistenceRuntime = createJourneyMachine as unknown as <
+  TContext,
+  TStepId extends string,
+  TEventType extends string = JourneyDefaultEventType,
+  TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>,
+  TStepMeta = unknown
+>(
+  journey: JourneyDefinition<TContext, TStepId, TEventType, TPayloadMap, TStepMeta>,
+  options: JourneyMachineOptions | undefined,
+  internalOptions: {
+    persistenceRuntime?: JourneyPersistenceRuntime<TContext, TStepId, TStepMeta>;
+  }
+) => JourneyMachine<TContext, TStepId, TEventType, TPayloadMap, TStepMeta>;

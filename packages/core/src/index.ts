@@ -1,5 +1,4 @@
 export { createJourneyMachine } from "./machine";
-export { createPersistenceController } from "./persistence";
 export { createTransitions, tx } from "./transitions";
 export {
   JOURNEY_EVENT,
@@ -22,17 +21,18 @@ export {
   type JourneyGoToEvent,
   type JourneyGoToStepByIdEventType,
   type JourneyMachine,
+  type JourneyMachinePersistenceOptions,
   type JourneyObservationEvent,
   type JourneyPayloadFor,
-  type JourneySendEvent,
   type JourneyPersistedSnapshot,
   type JourneyPersistedState,
   type JourneyPersistenceOptions,
+  type JourneySendEvent,
   type JourneyStepDefinition,
-  type JourneyStorage,
   type JourneySendResult,
   type JourneySnapshot,
   type JourneySelector,
+  type JourneyStorage,
   type JourneyEqualityFn,
   type JourneyTerminal,
   type JourneyTransition,

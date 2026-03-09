@@ -1,12 +1,32 @@
 import { JOURNEY_STATUS } from "./types/journey.types";
+import { createJourneyMachineWithPersistenceRuntime } from "./machine";
 import type {
+  JourneyMachinePersistenceOptions,
+  JourneyPersistenceOptions,
   JourneyPersistedSnapshot,
   JourneyPersistedState,
   JourneyStorage,
   ResolvedPersistence
 } from "./types/persistence.types";
-import type { JourneyMachineOptions, JourneySnapshot, JourneyStatus } from "./types/journey.types";
+import type {
+  JourneyDefaultEventType,
+  JourneyDefinition,
+  JourneyEventPayloadMap,
+  JourneyMachine,
+  JourneySnapshot,
+  JourneyStatus,
+  JourneyStepDefinition
+} from "./types/journey.types";
+import type { JourneyTransition } from "./types/transitions.types";
 import { buildInitialAsyncState, buildSnapshot, buildVisitedFromTimeline } from "./machine-helpers";
+
+export type {
+  JourneyMachinePersistenceOptions,
+  JourneyPersistenceOptions,
+  JourneyPersistedSnapshot,
+  JourneyPersistedState,
+  JourneyStorage
+} from "./types/persistence.types";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
@@ -33,7 +53,7 @@ const resolveDefaultStorage = (): JourneyStorage | null => {
 };
 
 const resolvePersistence = <TContext, TStepId extends string, TStepMeta>(
-  options?: JourneyMachineOptions<TContext, TStepId, TStepMeta>["persistence"]
+  options?: JourneyPersistenceOptions<TContext, TStepId, TStepMeta>
 ): ResolvedPersistence<TContext, TStepId, TStepMeta> | null => {
   if (!options) {
     return null;
@@ -230,7 +250,7 @@ export const createPersistenceController = <TContext, TStepId extends string, TS
   context: TContext;
   stepMeta: Record<TStepId, TStepMeta>;
   steps: Record<TStepId, unknown>;
-  options?: JourneyMachineOptions<TContext, TStepId, TStepMeta>;
+  options?: JourneyMachinePersistenceOptions<TContext, TStepId, TStepMeta>;
 }) => {
   const { initial, context, stepMeta, steps, options } = args;
   const persistence = resolvePersistence(options?.persistence);
@@ -352,3 +372,85 @@ export const createPersistenceController = <TContext, TStepId extends string, TS
     removePersistedSnapshot
   };
 };
+
+/**
+ * Creates a journey machine with persistence support enabled.
+ * Import from `@rxova/journey-core/persistence` to opt into persistence code.
+ */
+export function createJourneyMachine<
+  TContext,
+  TStepMeta = unknown,
+  TSteps extends Record<string, JourneyStepDefinition<TStepMeta>> = Record<
+    string,
+    JourneyStepDefinition<TStepMeta>
+  >,
+  TPayloadMap extends JourneyEventPayloadMap<JourneyDefaultEventType> = Record<never, never>
+>(
+  journey: JourneyDefinition<
+    TContext,
+    Extract<keyof TSteps, string>,
+    JourneyDefaultEventType,
+    TPayloadMap,
+    TStepMeta
+  > & {
+    steps: TSteps;
+    transitions: readonly JourneyTransition<
+      TContext,
+      Extract<keyof TSteps, string>,
+      JourneyDefaultEventType,
+      TPayloadMap
+    >[];
+  },
+  options?: JourneyMachinePersistenceOptions<TContext, Extract<keyof TSteps, string>, TStepMeta>
+): JourneyMachine<
+  TContext,
+  Extract<keyof TSteps, string>,
+  JourneyDefaultEventType,
+  TPayloadMap,
+  TStepMeta
+>;
+// eslint-disable-next-line no-redeclare
+export function createJourneyMachine<
+  TContext,
+  TStepId extends string,
+  TEventType extends string = JourneyDefaultEventType,
+  TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>,
+  TStepMeta = unknown
+>(
+  journey: JourneyDefinition<TContext, TStepId, TEventType, TPayloadMap, TStepMeta>,
+  options?: JourneyMachinePersistenceOptions<TContext, TStepId, TStepMeta>
+): JourneyMachine<TContext, TStepId, TEventType, TPayloadMap, TStepMeta>;
+// eslint-disable-next-line no-redeclare
+export function createJourneyMachine<
+  TContext,
+  TStepId extends string,
+  TEventType extends string = JourneyDefaultEventType,
+  TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>,
+  TStepMeta = unknown
+>(
+  journey: JourneyDefinition<TContext, TStepId, TEventType, TPayloadMap, TStepMeta>,
+  options?: JourneyMachinePersistenceOptions<TContext, TStepId, TStepMeta>
+): JourneyMachine<TContext, TStepId, TEventType, TPayloadMap, TStepMeta> {
+  const stepMeta = Object.fromEntries(
+    Object.keys(journey.steps).map((stepId) => {
+      const typedStepId = stepId as TStepId;
+      return [typedStepId, journey.steps[typedStepId].meta as TStepMeta];
+    })
+  ) as Record<TStepId, TStepMeta>;
+
+  const persistenceRuntime = createPersistenceController({
+    initial: journey.initial,
+    context: journey.context,
+    stepMeta,
+    steps: journey.steps,
+    ...(options ? { options } : {})
+  });
+  const coreOptions =
+    options?.completeOnNoNextStep === undefined
+      ? undefined
+      : { completeOnNoNextStep: options.completeOnNoNextStep };
+
+  return createJourneyMachineWithPersistenceRuntime(journey, coreOptions, {
+    persistenceRuntime
+  });
+}

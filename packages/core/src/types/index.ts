@@ -43,6 +43,7 @@ export type {
 } from "./transitions.types";
 
 export type {
+  JourneyMachinePersistenceOptions,
   JourneyPersistedSnapshot,
   JourneyPersistedState,
   JourneyPersistenceOptions,

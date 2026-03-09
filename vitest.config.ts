@@ -5,6 +5,10 @@ export default defineConfig({
   resolve: {
     alias: [
       {
+        find: "@rxova/journey-core/persistence",
+        replacement: fileURLToPath(new URL("./packages/core/src/persistence.ts", import.meta.url))
+      },
+      {
         find: "@rxova/journey-core",
         replacement: fileURLToPath(new URL("./packages/core/src/index.ts", import.meta.url))
       },

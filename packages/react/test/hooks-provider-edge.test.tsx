@@ -4,7 +4,7 @@ import React from "react";
 import { act } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-import * as core from "@rxova/journey-core";
+import * as corePersistence from "@rxova/journey-core/persistence";
 import type { JourneyStorage } from "@rxova/journey-core";
 import {
   createJourneyBindings,
@@ -141,7 +141,7 @@ describe("bindings hooks edge cases", () => {
   });
 
   it("does not recreate the internal machine when persistence identity changes by default", async () => {
-    const createMachineSpy = vi.spyOn(core, "createJourneyMachine");
+    const createMachineSpy = vi.spyOn(corePersistence, "createJourneyMachine");
     const { storage } = createStorage();
     let api: JourneyApi<Context, StepId, Event> | null = null;
 
@@ -177,7 +177,7 @@ describe("bindings hooks edge cases", () => {
   });
 
   it("can rebuild the internal machine when resetOnPersistenceChange=true", async () => {
-    const createMachineSpy = vi.spyOn(core, "createJourneyMachine");
+    const createMachineSpy = vi.spyOn(corePersistence, "createJourneyMachine");
     const { storage } = createStorage();
     let api: JourneyApi<Context, StepId, Event> | null = null;
 

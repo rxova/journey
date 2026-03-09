@@ -1,6 +1,7 @@
 import React from "react";
 
-import { createJourneyMachine } from "@rxova/journey-core";
+import { createJourneyMachine } from "@rxova/journey-core/persistence";
+import type { JourneyMachinePersistenceOptions } from "@rxova/journey-core";
 import type {
   JourneyBindingsProviderProps,
   JourneyReactDefinition,
@@ -33,6 +34,34 @@ type ProviderFactoryProps<
   >;
 };
 
+const resolveMachineOptions = <
+  TContext,
+  TStepId extends string,
+  TCustomEvent extends string,
+  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent>,
+  TStepMeta
+>(
+  persistence: JourneyBindingsProviderProps<
+    TContext,
+    TStepId,
+    TCustomEvent,
+    TEventPayloadMap,
+    TStepMeta
+  >["persistence"],
+  completeOnNoNextStep: boolean | undefined
+): JourneyMachinePersistenceOptions<TContext, TStepId, TStepMeta> | undefined => {
+  const normalizedPersistence = persistence ?? undefined;
+
+  if (normalizedPersistence === undefined && completeOnNoNextStep === undefined) {
+    return undefined;
+  }
+
+  return {
+    ...(normalizedPersistence !== undefined ? { persistence: normalizedPersistence } : {}),
+    ...(completeOnNoNextStep !== undefined ? { completeOnNoNextStep } : {})
+  };
+};
+
 export const createProvider = <
   TContext,
   TStepId extends string,
@@ -62,12 +91,20 @@ export const createProvider = <
     TStepMeta
   >) => {
     const incomingJourney = journey ?? boundJourney;
+    const resolvedPersistence = persistence ?? undefined;
+    const options = resolveMachineOptions<
+      TContext,
+      TStepId,
+      TCustomEvent,
+      TEventPayloadMap,
+      TStepMeta
+    >(persistence, completeOnNoNextStep);
     const internalMachineRef = React.useRef<
       | JourneyStoreValue<TContext, TStepId, TCustomEvent, TEventPayloadMap, TStepMeta>["machine"]
       | null
     >(null);
     const journeyRef = React.useRef(incomingJourney);
-    const persistenceRef = React.useRef(persistence);
+    const persistenceRef = React.useRef(resolvedPersistence);
     const completeOnNoNextStepRef = React.useRef(completeOnNoNextStep);
     const onStartRef = React.useRef(onStart);
     const onCompleteRef = React.useRef(onComplete);
@@ -82,23 +119,16 @@ export const createProvider = <
     onTerminateRef.current = onTerminate;
 
     if (!machine && !internalMachineRef.current) {
-      const options =
-        persistence !== undefined || completeOnNoNextStep !== undefined
-          ? {
-              ...(persistence !== undefined ? { persistence } : {}),
-              ...(completeOnNoNextStep !== undefined ? { completeOnNoNextStep } : {})
-            }
-          : undefined;
       internalMachineRef.current = createJourneyMachine(incomingJourney, options);
       journeyRef.current = incomingJourney;
-      persistenceRef.current = persistence;
+      persistenceRef.current = resolvedPersistence;
       completeOnNoNextStepRef.current = completeOnNoNextStep;
     }
 
     const shouldResetJourney =
       !machine && resetOnJourneyChange && journeyRef.current !== incomingJourney;
     const shouldResetPersistence =
-      !machine && resetOnPersistenceChange && persistenceRef.current !== persistence;
+      !machine && resetOnPersistenceChange && persistenceRef.current !== resolvedPersistence;
     const shouldResetNextCompletion =
       !machine && completeOnNoNextStepRef.current !== completeOnNoNextStep;
 
@@ -111,17 +141,10 @@ export const createProvider = <
       }
 
       const previousInternalMachine = internalMachineRef.current;
-      const options =
-        persistence !== undefined || completeOnNoNextStep !== undefined
-          ? {
-              ...(persistence !== undefined ? { persistence } : {}),
-              ...(completeOnNoNextStep !== undefined ? { completeOnNoNextStep } : {})
-            }
-          : undefined;
       const nextInternalMachine = createJourneyMachine(incomingJourney, options);
       internalMachineRef.current = nextInternalMachine;
       journeyRef.current = incomingJourney;
-      persistenceRef.current = persistence;
+      persistenceRef.current = resolvedPersistence;
       completeOnNoNextStepRef.current = completeOnNoNextStep;
 
       if (previousInternalMachine && previousInternalMachine !== nextInternalMachine) {
@@ -133,7 +156,8 @@ export const createProvider = <
       completeOnNoNextStep,
       incomingJourney,
       machine,
-      persistence,
+      options,
+      resolvedPersistence,
       shouldResetJourney,
       shouldResetPersistence,
       shouldResetNextCompletion

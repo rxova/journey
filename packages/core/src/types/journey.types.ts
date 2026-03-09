@@ -1,4 +1,3 @@
-import type { JourneyPersistenceOptions } from "./persistence.types";
 import type { JourneyTransition } from "./transitions.types";
 
 /** Terminal outcomes reached when a journey completes or is explicitly terminated. */
@@ -215,9 +214,8 @@ export type JourneyDefinition<
   transitions: readonly JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>[];
 };
 
-/** Optional machine features (for example, persistence configuration). */
-export type JourneyMachineOptions<TContext, TStepId extends string, TStepMeta = unknown> = {
-  persistence?: JourneyPersistenceOptions<TContext, TStepId, TStepMeta>;
+/** Optional machine features */
+export type JourneyMachineOptions = {
   completeOnNoNextStep?: boolean;
 };
 

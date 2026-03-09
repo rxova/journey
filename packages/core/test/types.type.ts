@@ -5,7 +5,7 @@ import type {
   JourneyDefinition,
   JourneyEvent,
   JourneyMachine,
-  JourneyMachineOptions,
+  JourneyPersistedSnapshot,
   JourneyObservationEvent,
   JourneyPayloadFor,
   JourneySendResult,
@@ -13,6 +13,7 @@ import type {
   JourneyTransitionArgs,
   JourneyTransitionTarget
 } from "@rxova/journey-core";
+import type { JourneyMachinePersistenceOptions } from "@rxova/journey-core/persistence";
 
 type Context = { count: number };
 type StepId = "start" | "review" | "done";
@@ -67,6 +68,9 @@ type CloseObservationFromMachine = Parameters<Parameters<typeof machine.subscrib
 expectTypeOf(machine).toEqualTypeOf<JourneyMachine<Context, StepId, EventType, PayloadMap>>();
 expectTypeOf(machine.getSnapshot()).toEqualTypeOf<JourneySnapshot<Context, StepId>>();
 expectTypeOf(configuredMachine.getSnapshot()).toEqualTypeOf<JourneySnapshot<Context, StepId>>();
+expectTypeOf<JourneyPersistedSnapshot<Context, StepId>>().toEqualTypeOf<
+  Omit<JourneySnapshot<Context, StepId>, "async">
+>();
 expectTypeOf<SendArg>().toEqualTypeOf<JourneySendEvent<StepId, EventType, PayloadMap>>();
 expectTypeOf<Awaited<ReturnType<typeof machine.goToNextStep>>>().toEqualTypeOf<
   Awaited<ReturnType<typeof machine.send>>
@@ -159,7 +163,7 @@ const machineOptions = {
       }
     })
   }
-} satisfies JourneyMachineOptions<Context, StepId>;
+} satisfies JourneyMachinePersistenceOptions<Context, StepId>;
 void machineOptions;
 
 const builtTransition = tx.from<StepId>("start").on("goToNextStep").to("review");

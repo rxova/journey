@@ -20,6 +20,7 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
+      "@rxova/journey-core/persistence": ["packages/core/src/persistence.ts"],
       "@rxova/journey-core": ["packages/core/src/index.ts"],
       "@rxova/journey-react": ["packages/react/src/index.ts"],
       "@rxova/journey-devtools-bridge": ["packages/devtools-bridge/src/index.ts"]

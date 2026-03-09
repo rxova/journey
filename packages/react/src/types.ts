@@ -5,9 +5,9 @@ import type {
   JourneyEqualityFn,
   JourneyEventPayloadMap as JourneyCoreEventPayloadMap,
   JourneyMachine,
+  JourneyMachinePersistenceOptions,
   JourneyObservationEvent,
   JourneyPayloadFor,
-  JourneyPersistenceOptions,
   JourneySelector,
   JourneySendEvent,
   JourneySendResult,
@@ -105,7 +105,9 @@ export type JourneyBindingsProviderProps<
     TEventPayloadMap,
     TStepMeta
   >;
-  persistence?: JourneyPersistenceOptions<TContext, TStepId, TStepMeta>;
+  persistence?:
+    | JourneyMachinePersistenceOptions<TContext, TStepId, TStepMeta>["persistence"]
+    | null;
   completeOnNoNextStep?: boolean;
   resetOnJourneyChange?: boolean;
   resetOnPersistenceChange?: boolean;

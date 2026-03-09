@@ -5,6 +5,7 @@ import { act } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 
 import * as core from "@rxova/journey-core";
+import * as corePersistence from "@rxova/journey-core/persistence";
 import type { JourneyMachine, JourneyObservationEvent } from "@rxova/journey-core";
 import {
   createJourneyBindings,
@@ -458,7 +459,7 @@ describe("bindings.Provider", () => {
     };
 
     const createMachineSpy = vi
-      .spyOn(core, "createJourneyMachine")
+      .spyOn(corePersistence, "createJourneyMachine")
       .mockReturnValue(machine as never);
     const localBindings = createJourneyBindings(journey);
 

@@ -1,11 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  createJourneyMachine,
-  createPersistenceController,
-  type JourneyDefinition,
-  type JourneyStorage
-} from "@rxova/journey-core";
+import { type JourneyDefinition, type JourneyStorage } from "@rxova/journey-core";
+import { createJourneyMachine, createPersistenceController } from "@rxova/journey-core/persistence";
 
 type StepId = "start" | "details" | "review";
 type Event = "goToNextStep" | "back";

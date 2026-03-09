@@ -1,7 +1,12 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@rxova/journey-core": ["../core/src/index.ts"],
+      "@rxova/journey-core/persistence": ["../core/src/persistence.ts"]
+    }
   },
   "include": ["src"]
 }

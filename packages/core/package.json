@@ -39,6 +39,14 @@
       },
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./persistence": {
+      "types": {
+        "import": "./dist/persistence.d.ts",
+        "require": "./dist/persistence.d.cts"
+      },
+      "import": "./dist/persistence.js",
+      "require": "./dist/persistence.cjs"
     }
   },
   "files": [
@@ -62,6 +70,11 @@
       "name": "core/createJourneyMachine",
       "path": "dist/index.js",
       "import": "{ createJourneyMachine }",
+      "limit": "5 kB"
+    },
+    {
+      "name": "core/persistence module",
+      "path": "dist/persistence.js",
       "limit": "5 kB"
     }
   ]
