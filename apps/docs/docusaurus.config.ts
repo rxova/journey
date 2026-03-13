@@ -142,7 +142,10 @@ const config: Config = {
       {
         hashed: true,
         indexDocs: true,
-        indexBlog: false
+        indexBlog: false,
+        // The site uses only named docs plugin instances, so search needs an explicit
+        // fallback instead of assuming the default docs plugin exists.
+        docsPluginIdForPreferredVersion: "core"
       }
     ]
   ],
