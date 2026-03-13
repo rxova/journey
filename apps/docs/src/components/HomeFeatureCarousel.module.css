@@ -14,12 +14,12 @@
 }
 
 .card {
-  height: 178px;
+  min-height: 178px;
   overflow: hidden;
 }
 
 .cardCurrent {
-  height: 198px;
+  min-height: 198px;
 }
 
 .shell {
@@ -50,11 +50,13 @@
 
 @media (max-width: 768px) {
   .card {
-    height: 162px;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
   }
 
   .cardCurrent {
-    height: 182px;
+    min-height: 0;
   }
 
   .shell {

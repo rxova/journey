@@ -120,10 +120,10 @@ export const HomeFeatureCarousel = ({
                   className={`${sharedClasses} ${centerClasses}`}
                 >
                   <div>
-                    <p className="text-2xl font-semibold text-ink-900 dark:text-ink-50 md:text-[1.7rem]">
+                    <p className="text-xl font-semibold text-ink-900 dark:text-ink-50 md:text-[1.7rem]">
                       {slide.title}
                     </p>
-                    <p className="mt-2 text-base leading-relaxed text-ink-700 dark:text-ink-100">
+                    <p className="mt-2 text-sm leading-relaxed text-ink-700 dark:text-ink-100 md:text-base">
                       {slide.body}
                     </p>
                     <div className="pt-3">
@@ -159,10 +159,10 @@ export const HomeFeatureCarousel = ({
                 className={`${sharedClasses} ${sideClasses}`}
               >
                 <div className="flex h-full flex-col">
-                  <p className="text-lg font-semibold text-ink-900 dark:text-ink-100 md:text-xl">
+                  <p className="text-base font-semibold text-ink-900 dark:text-ink-100 md:text-xl">
                     {slide.title}
                   </p>
-                  <p className="mt-2 text-base leading-relaxed text-ink-600 dark:text-ink-200">
+                  <p className="mt-2 text-sm leading-relaxed text-ink-600 dark:text-ink-200 md:text-base">
                     {slide.body}
                   </p>
                 </div>
