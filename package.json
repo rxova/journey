@@ -83,6 +83,8 @@
   "pnpm": {
     "overrides": {
       "svgo": "3.3.3",
+      "jsdom>undici": "7.24.2",
+      "cheerio>undici": "7.24.2",
       "@crxjs/vite-plugin>rollup": "2.80.0",
       "serve-handler>minimatch": "3.1.5",
       "terser-webpack-plugin>serialize-javascript": "7.0.3",
