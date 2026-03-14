@@ -22,12 +22,7 @@ This reduces runtime surprises and makes refactors safer.
 ## Core Type Pattern
 
 ```ts
-import {
-  createJourneyMachine,
-  createTransitions,
-  tx,
-  type JourneyDefinition
-} from "@rxova/journey-core";
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "details" | "review";
 type Event = "goToNextStep" | "completeJourney" | "requestClose";
@@ -44,11 +39,12 @@ const journey: JourneyDefinition<Context, StepId, Event, PayloadMap> = {
     details: {},
     review: {}
   },
-  transitions: createTransitions(
-    tx.from("start").on("goToNextStep").to("details"),
-    tx.from("details").on("goToNextStep").to("review"),
-    tx.from("review").toComplete()
-  )
+  transitions: ({ tx, createTransitions }) =>
+    createTransitions(
+      tx.from("start").on("goToNextStep").to("details"),
+      tx.from("details").on("goToNextStep").to("review"),
+      tx.from("review").toComplete()
+    )
 };
 
 const machine = createJourneyMachine(journey);

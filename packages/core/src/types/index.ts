@@ -13,6 +13,7 @@ export type {
   JourneyBuiltInFrom,
   JourneyDefaultEventType,
   JourneyDefinition,
+  JourneyResolvedDefinition,
   JourneyEvent,
   JourneyEventPayloadMap,
   JourneyGoToEvent,
@@ -35,11 +36,18 @@ export type {
 } from "./journey.types";
 
 export type {
+  JourneyCreateTransitions,
   JourneyEventTransition,
   JourneyGoToStepTransition,
   JourneyTransition,
+  JourneyTransitionHelpers,
+  JourneyTransitionItem,
+  JourneyTransitionsFactory,
+  JourneyTransitionsInput,
+  JourneyTransitionPayloadMap,
   JourneyTransitionArgs,
-  JourneyTransitionTarget
+  JourneyTransitionTarget,
+  JourneyTypedTx
 } from "./transitions.types";
 
 export type {

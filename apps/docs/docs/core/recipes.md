@@ -63,10 +63,16 @@ const unsubscribe = machine.subscribeEvent((event) => {
 ## Builder Ergonomics
 
 ```ts
-const transitions = createTransitions(
-  tx
-    .from("details")
-    .on("goToNextStep")
-    .choose(tx.when(({ context }) => context.includeExtra).to("extra"), tx.otherwise().to("review"))
-);
+const journey = {
+  transitions: ({ tx, createTransitions }) =>
+    createTransitions(
+      tx
+        .from("details")
+        .on("goToNextStep")
+        .choose(({ when, otherwise }) => [
+          when(({ context }) => context.includeExtra).to("extra"),
+          otherwise().to("review")
+        ])
+    )
+};
 ```

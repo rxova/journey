@@ -3,8 +3,6 @@
 
 export { createJourneyBindings } from "./bindings";
 export {
-  createTransitions,
-  tx,
   JOURNEY_STATUS,
   JOURNEY_EVENT,
   JOURNEY_ASYNC_PHASE,

@@ -25,23 +25,28 @@ function getJavascriptValue(tree: Root): string {
 
 describe("remarkTypescriptTabs", () => {
   it("preserves author formatting when the TypeScript snippet is already valid JavaScript", async () => {
-    const source = `const transitions = createTransitions(
-  tx.from("start").on("goToNextStep").to("details", { id: "start-next" }),
-  tx
-    .from("details")
-    .on("goToNextStep")
-    .choose(
-      tx.when(({ context }) => context.canContinue).to("review", { id: "details-next-guarded" }),
-      tx.otherwise().to("review", {
-        id: "details-save",
-        effect: async ({ context }) => {
-          const saved = await saveDraft(context);
-          return { ...context, draftId: saved.id };
-        }
-      })
-    ),
-  tx.any().toTerminate({ id: "cancel-anywhere" })
-);`;
+    const source = `const journey = {
+  transitions: ({ tx, createTransitions }) =>
+    createTransitions(
+      tx.from("start").on("goToNextStep").to("details", { id: "start-next" }),
+      tx
+        .from("details")
+        .on("goToNextStep")
+        .choose(({ when, otherwise }) => [
+          when(({ context }) => context.canContinue).to("review", {
+            id: "details-next-guarded"
+          }),
+          otherwise().to("review", {
+            id: "details-save",
+            effect: async ({ context }) => {
+              const saved = await saveDraft(context);
+              return { ...context, draftId: saved.id };
+            }
+          })
+        ]),
+      tx.any().toTerminate({ id: "cancel-anywhere" })
+    )
+};`;
     const tree: Root = {
       type: "root",
       children: [{ type: "code", lang: "ts", value: source }]
@@ -98,12 +103,7 @@ const App = ({ isReady }: Props) => {
   });
 
   it("preserves blank-line grouping when transpiling TypeScript-only declarations away", async () => {
-    const source = `import {
-  createJourneyMachine,
-  createTransitions,
-  tx,
-  type JourneyDefinition
-} from "@rxova/journey-core";
+    const source = `import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "details" | "review";
 type Event = "goToNextStep" | "completeJourney" | "requestClose";
@@ -120,11 +120,12 @@ const journey: JourneyDefinition<Context, StepId, Event, PayloadMap> = {
     details: {},
     review: {}
   },
-  transitions: createTransitions(
-    tx.from("start").on("goToNextStep").to("details"),
-    tx.from("details").on("goToNextStep").to("review"),
-    tx.from("review").toComplete()
-  )
+  transitions: ({ tx, createTransitions }) =>
+    createTransitions(
+      tx.from("start").on("goToNextStep").to("details"),
+      tx.from("details").on("goToNextStep").to("review"),
+      tx.from("review").toComplete()
+    )
 };
 
 const machine = createJourneyMachine(journey);`;
@@ -135,11 +136,8 @@ const machine = createJourneyMachine(journey);`;
 
     await remarkTypescriptTabs()(tree);
 
-    expect(getJavascriptValue(tree)).toBe(`import {
-  createJourneyMachine,
-  createTransitions,
-  tx,
-} from "@rxova/journey-core";
+    expect(getJavascriptValue(tree))
+      .toBe(`import { createJourneyMachine } from "@rxova/journey-core";
 
 const journey = {
   initial: "start",
@@ -149,11 +147,12 @@ const journey = {
     details: {},
     review: {},
   },
-  transitions: createTransitions(
-    tx.from("start").on("goToNextStep").to("details"),
-    tx.from("details").on("goToNextStep").to("review"),
-    tx.from("review").toComplete(),
-  ),
+  transitions: ({ tx, createTransitions }) =>
+    createTransitions(
+      tx.from("start").on("goToNextStep").to("details"),
+      tx.from("details").on("goToNextStep").to("review"),
+      tx.from("review").toComplete(),
+    ),
 };
 
 const machine = createJourneyMachine(journey);`);

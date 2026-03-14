@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  createJourneyMachine,
-  createTransitions,
-  JOURNEY_STATUS,
-  tx,
-  type JourneyDefinition
-} from "@rxova/journey-core";
+import { createJourneyMachine, JOURNEY_STATUS, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "confirm";
 
@@ -63,11 +57,12 @@ describe("terminal transitions", () => {
 
   it("supports tx.from(...).toComplete()", async () => {
     const journey = baseJourney<"completeJourney">();
-    journey.transitions = createTransitions(
-      tx.from<StepId, Context>("start").toComplete({
-        effect: ({ context }) => ({ ...context, count: 5 })
-      })
-    );
+    journey.transitions = ({ createTransitions, tx }) =>
+      createTransitions(
+        tx.from("start").toComplete({
+          effect: ({ context }) => ({ ...context, count: 5 })
+        })
+      );
 
     const machine = createJourneyMachine(journey);
 
@@ -79,11 +74,12 @@ describe("terminal transitions", () => {
 
   it("supports tx.any().toTerminate()", async () => {
     const journey = baseJourney<"terminateJourney">();
-    journey.transitions = createTransitions(
-      tx.any<Context, StepId>().toTerminate({
-        effect: ({ context }) => ({ ...context, count: 9 })
-      })
-    );
+    journey.transitions = ({ createTransitions, tx }) =>
+      createTransitions(
+        tx.any().toTerminate({
+          effect: ({ context }) => ({ ...context, count: 9 })
+        })
+      );
 
     const machine = createJourneyMachine(journey);
 
@@ -95,11 +91,12 @@ describe("terminal transitions", () => {
 
   it("supports tx.from(...).toTerminate()", async () => {
     const journey = baseJourney<"terminateJourney">();
-    journey.transitions = createTransitions(
-      tx.from<StepId, Context>("start").toTerminate({
-        effect: ({ context }) => ({ ...context, count: 3 })
-      })
-    );
+    journey.transitions = ({ createTransitions, tx }) =>
+      createTransitions(
+        tx.from("start").toTerminate({
+          effect: ({ context }) => ({ ...context, count: 3 })
+        })
+      );
 
     const machine = createJourneyMachine(journey);
 
@@ -111,11 +108,12 @@ describe("terminal transitions", () => {
 
   it("supports tx.any().toComplete()", async () => {
     const journey = baseJourney<"completeJourney">();
-    journey.transitions = createTransitions(
-      tx.any<Context, StepId>().toComplete({
-        effect: ({ context }) => ({ ...context, count: 4 })
-      })
-    );
+    journey.transitions = ({ createTransitions, tx }) =>
+      createTransitions(
+        tx.any().toComplete({
+          effect: ({ context }) => ({ ...context, count: 4 })
+        })
+      );
 
     const machine = createJourneyMachine(journey);
 
@@ -127,14 +125,15 @@ describe("terminal transitions", () => {
 
   it("supports tx.from(...).on('terminateJourney').terminate()", async () => {
     const journey = baseJourney<"terminateJourney">();
-    journey.transitions = createTransitions(
-      tx
-        .from<StepId, Context>("start")
-        .on("terminateJourney")
-        .terminate({
-          effect: ({ context }) => ({ ...context, count: 6 })
-        })
-    );
+    journey.transitions = ({ createTransitions, tx }) =>
+      createTransitions(
+        tx
+          .from("start")
+          .on("terminateJourney")
+          .terminate({
+            effect: ({ context }) => ({ ...context, count: 6 })
+          })
+      );
 
     const machine = createJourneyMachine(journey);
 

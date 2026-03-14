@@ -5,8 +5,14 @@ import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-cor
 type StepId = "s0" | "s1" | "s2";
 type Event = "goToNextStep" | "back" | "completeJourney";
 type Context = { value: number };
+type TransitionList = Extract<
+  JourneyDefinition<Context, StepId, Event>["transitions"],
+  readonly unknown[]
+>;
 
-const baseJourney = (): JourneyDefinition<Context, StepId, Event> => ({
+const baseJourney = (): JourneyDefinition<Context, StepId, Event> & {
+  transitions: TransitionList;
+} => ({
   initial: "s0",
   context: { value: 0 },
   steps: {
@@ -18,7 +24,7 @@ const baseJourney = (): JourneyDefinition<Context, StepId, Event> => ({
     { from: "s0", event: "goToNextStep", to: "s1" },
     { from: "s1", event: "goToNextStep", to: "s2" },
     { from: "s2", event: "completeJourney" }
-  ]
+  ] as TransitionList
 });
 
 describe("robustness", () => {
@@ -39,7 +45,7 @@ describe("robustness", () => {
         ...journey,
         transitions: null as unknown as JourneyDefinition<Context, StepId, Event>["transitions"]
       })
-    ).toThrow(/transitions must be an array/i);
+    ).toThrow(/transitions must be an array or a factory function/i);
   });
 
   it("throws when a transition entry is not an object", () => {
@@ -56,7 +62,7 @@ describe("robustness", () => {
         from: "s0",
         event: 7 as unknown as Event,
         to: "s1"
-      } as unknown as JourneyDefinition<Context, StepId, Event>["transitions"][number]
+      } as unknown as (typeof journey.transitions)[number]
     ];
 
     expect(() => createJourneyMachine(journey)).toThrow(/must define string "from" and "event"/i);
@@ -94,7 +100,7 @@ describe("robustness", () => {
         from: "s2",
         event: "completeJourney",
         to: "s2"
-      } as unknown as JourneyDefinition<Context, StepId, Event>["transitions"][number]
+      } as unknown as (typeof journey.transitions)[number]
     ];
 
     expect(() => createJourneyMachine(journey)).toThrow(/completeJourney.*cannot define "to"/i);

@@ -45,12 +45,7 @@ bun add @rxova/journey-core
 ## Define a Journey
 
 ```ts
-import {
-  createJourneyMachine,
-  createTransitions,
-  tx,
-  type JourneyDefinition
-} from "@rxova/journey-core";
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "details" | "review" | "confirmExit";
 type Event = "goToNextStep" | "back" | "requestClose" | "terminateJourney" | "completeJourney";
@@ -65,18 +60,19 @@ const journey: JourneyDefinition<Context, StepId, Event> = {
     review: {},
     confirmExit: {}
   },
-  transitions: createTransitions(
-    tx.from("start").on("goToNextStep").to("details"),
-    tx.from("details").on("goToNextStep").to("review"),
-    tx
-      .any()
-      .on("requestClose")
-      .to("confirmExit", {
-        when: ({ context }) => context.dirty
-      }),
-    tx.any().toTerminate(),
-    tx.from("review").toComplete()
-  )
+  transitions: ({ tx, createTransitions }) =>
+    createTransitions(
+      tx.from("start").on("goToNextStep").to("details"),
+      tx.from("details").on("goToNextStep").to("review"),
+      tx
+        .any()
+        .on("requestClose")
+        .to("confirmExit", {
+          when: ({ context }) => context.dirty
+        }),
+      tx.from("requestClose").toTerminate(),
+      tx.from("review").toComplete()
+    )
 };
 ```
 

@@ -13,12 +13,7 @@ Type modeling comes from Core too: [Core TypeScript](/docs/core/typescript).
 
 ```tsx
 // journey-bindings.ts
-import {
-  createJourneyBindings,
-  createTransitions,
-  tx,
-  type JourneyReactDefinition
-} from "@rxova/journey-react";
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
 import { Start, Review } from "./steps";
 
 type StepId = "start" | "review";
@@ -33,10 +28,11 @@ const journey: JourneyReactDefinition<Ctx, StepId> = {
     start: { component: Start },
     review: { component: Review }
   },
-  transitions: createTransitions(
-    tx.from("start").on("goToNextStep").to("review"),
-    tx.from("review").toComplete()
-  )
+  transitions: ({ tx, createTransitions }) =>
+    createTransitions(
+      tx.from("start").on("goToNextStep").to("review"),
+      tx.from("review").toComplete()
+    )
 };
 
 bindings = createJourneyBindings(journey);

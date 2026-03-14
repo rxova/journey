@@ -1,6 +1,5 @@
 export { createJourneyMachine } from "./machine";
 export { createPersistenceController } from "./persistence";
-export { createTransitions, tx } from "./transitions";
 export {
   JOURNEY_EVENT,
   JOURNEY_ASYNC_PHASE,
@@ -19,6 +18,7 @@ export {
   type JourneyMachinePayloadMap,
   type JourneyDefinition,
   type JourneyMachineOptions,
+  type JourneyCreateTransitions,
   type JourneyGoToEvent,
   type JourneyGoToStepByIdEventType,
   type JourneyMachine,
@@ -28,6 +28,7 @@ export {
   type JourneyPersistedSnapshot,
   type JourneyPersistedState,
   type JourneyPersistenceOptions,
+  type JourneyResolvedDefinition,
   type JourneyStepDefinition,
   type JourneyStorage,
   type JourneySendResult,
@@ -36,6 +37,12 @@ export {
   type JourneyEqualityFn,
   type JourneyTerminal,
   type JourneyTransition,
+  type JourneyTransitionHelpers,
+  type JourneyTransitionItem,
+  type JourneyTransitionsFactory,
+  type JourneyTransitionsInput,
+  type JourneyTransitionPayloadMap,
   type JourneyTransitionArgs,
-  type JourneyTransitionTarget
+  type JourneyTransitionTarget,
+  type JourneyTypedTx
 } from "./types";

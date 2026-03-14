@@ -59,12 +59,7 @@ Now let's take a look at an example with Journey Core, and let's make it more co
 In Journey you define the `journey` once and then just trigger events:
 
 ```ts
-import {
-  createJourneyMachine,
-  createTransitions,
-  tx,
-  type JourneyDefinition
-} from "@rxova/journey-core";
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type Context = { isVip: boolean; couponCode: string | null };
 type StepIds = "details" | "payment" | "review";
@@ -83,7 +78,7 @@ const journey: JourneyDefinition<Context, StepIds, CustomEvents, CustomEventPayl
     payment: {},
     review: {}
   },
-  transitions: createTransitions(
+  transitions: [
     {
       from: "details",
       event: "goToNextStep",
@@ -105,7 +100,7 @@ const journey: JourneyDefinition<Context, StepIds, CustomEvents, CustomEventPayl
         couponCode: event.payload?.couponCode ?? context.couponCode
       })
     }
-  )
+  ]
 };
 
 const machine = createJourneyMachine(journey); // current step 'details';
