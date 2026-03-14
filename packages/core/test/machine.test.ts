@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  JOURNEY_STATUS,
   createJourneyMachine,
   type JourneyDefinition,
   type JourneyObservationEvent
@@ -112,7 +111,7 @@ describe("createJourneyMachine", () => {
 
     expect(result.transitioned).toBe(true);
     expect(result.transitionId).toBe("submit-review");
-    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.COMPLETE);
+    expect(machine.getSnapshot().status).toBe("complete");
   });
 
   it("terminateJourney convenience API behaves like send(terminateJourney)", async () => {
@@ -122,7 +121,7 @@ describe("createJourneyMachine", () => {
 
     expect(result.transitioned).toBe(true);
     expect(result.transitionId).toBe("close-clean");
-    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.TERMINATED);
+    expect(machine.getSnapshot().status).toBe("terminated");
   });
 
   it("emits transition and step lifecycle events in deterministic order", async () => {
@@ -309,7 +308,7 @@ describe("createJourneyMachine", () => {
     await machine.send({ type: "goToNextStep" });
     await machine.send({ type: "completeJourney" });
 
-    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.COMPLETE);
+    expect(machine.getSnapshot().status).toBe("complete");
 
     const next = await machine.goToNextStep();
     const prev = await machine.goToPreviousStep();
@@ -320,7 +319,7 @@ describe("createJourneyMachine", () => {
     expect(last.transitioned).toBe(false);
 
     machine.resetMachine();
-    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.RUNNING);
+    expect(machine.getSnapshot().status).toBe("running");
     expect(machine.getSnapshot().currentStepId).toBe("start");
   });
 });

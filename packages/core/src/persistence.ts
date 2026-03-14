@@ -1,4 +1,3 @@
-import { JOURNEY_STATUS } from "./types/journey.types";
 import type {
   JourneyPersistedSnapshot,
   JourneyPersistedState,
@@ -12,9 +11,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
 const isStatusValue = (value: unknown): value is JourneyStatus =>
-  value === JOURNEY_STATUS.RUNNING ||
-  value === JOURNEY_STATUS.COMPLETE ||
-  value === JOURNEY_STATUS.TERMINATED;
+  value === "running" || value === "complete" || value === "terminated";
 
 const resolveDefaultStorage = (): JourneyStorage | null => {
   const localStorageCandidate = (globalThis as { localStorage?: Partial<JourneyStorage> })
@@ -174,7 +171,7 @@ const coercePersistedSnapshot = <TContext, TStepId extends string, TStepMeta>(
     }
   }
 
-  const status = isStatusValue(value.status) ? value.status : JOURNEY_STATUS.RUNNING;
+  const status = isStatusValue(value.status) ? value.status : "running";
   if (!isStatusValue(value.status)) {
     needsRewrite = true;
   }
@@ -282,7 +279,7 @@ export const createPersistenceController = <TContext, TStepId extends string, TS
       [initial],
       0,
       context,
-      JOURNEY_STATUS.RUNNING,
+      "running",
       buildInitialAsyncState(steps),
       stepMeta
     );

@@ -1,4 +1,3 @@
-import { JOURNEY_ASYNC_PHASE, JOURNEY_EVENT, JOURNEY_WILDCARD } from "./types";
 import type {
   JourneyAsyncState,
   JourneyEvent,
@@ -118,7 +117,7 @@ export const withTimeout = async <T>(
 };
 
 export const buildIdleStepAsyncState = (): JourneyStepAsyncState => ({
-  phase: JOURNEY_ASYNC_PHASE.IDLE,
+  phase: "idle",
   eventType: null,
   transitionId: null,
   error: null
@@ -150,7 +149,7 @@ export const isGoToStepByIdEvent = <
     JourneyMachinePayloadMap<TEventType, TPayloadMap>,
     JourneyGoToStepByIdEventType
   >
-> => event.type === JOURNEY_EVENT.GO_TO_STEP_BY_ID && "stepId" in event;
+> => event.type === "goToStepById" && "stepId" in event;
 
 export const isTerminalTarget = <TStepId extends string>(
   target: TStepId | JourneyTerminal
@@ -178,7 +177,7 @@ export const validateJourneyTransitions = <
       );
     }
 
-    if (transition.from !== JOURNEY_WILDCARD && !(transition.from in stepRegistry)) {
+    if (transition.from !== "*" && !(transition.from in stepRegistry)) {
       throw new Error(
         `Journey transition at index ${index} references unknown from step "${transition.from}".`
       );
@@ -282,8 +281,7 @@ export const selectTransition = async <
   }
 ): Promise<JourneyTransition<TContext, TStepId, TEventType, TPayloadMap> | null> => {
   for (const transition of transitions) {
-    const fromMatches =
-      transition.from === JOURNEY_WILDCARD || transition.from === snapshot.currentStepId;
+    const fromMatches = transition.from === "*" || transition.from === snapshot.currentStepId;
     const eventMatches = transition.event === event.type;
 
     if (!fromMatches || !eventMatches) {

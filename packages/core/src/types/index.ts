@@ -1,10 +1,3 @@
-export {
-  JOURNEY_ASYNC_PHASE,
-  JOURNEY_EVENT,
-  JOURNEY_STATUS,
-  JOURNEY_WILDCARD
-} from "./journey.types";
-
 export type {
   JourneyAsyncPhase,
   JourneyAsyncState,

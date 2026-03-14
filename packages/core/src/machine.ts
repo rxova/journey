@@ -1,5 +1,5 @@
-import { JOURNEY_ASYNC_PHASE, JOURNEY_EVENT, JOURNEY_STATUS } from "./types";
 import { createTypedTransitionHelpers } from "./transitions";
+
 import type {
   JourneyEqualityFn,
   JourneyAsyncState,
@@ -223,7 +223,7 @@ export function createJourneyMachine<
   };
 
   const isAsyncLoadingPhase = (phase: JourneyAsyncPhase): boolean =>
-    phase === JOURNEY_ASYNC_PHASE.EVALUATING_WHEN || phase === JOURNEY_ASYNC_PHASE.RUNNING_EFFECT;
+    phase === "evaluating-when" || phase === "running-effect";
 
   const updateStepAsync = (
     stepId: TStepId,
@@ -295,7 +295,7 @@ export function createJourneyMachine<
     updateStepAsync(
       stepId,
       () => ({
-        phase: JOURNEY_ASYNC_PHASE.ERROR,
+        phase: "error",
         eventType,
         transitionId: transitionId ?? null,
         error
@@ -308,7 +308,7 @@ export function createJourneyMachine<
     requestedSteps?: number,
     transitionId?: string
   ): JourneySendResult<TContext, TStepId, TStepMeta> => {
-    if (snapshot.status !== JOURNEY_STATUS.RUNNING) {
+    if (snapshot.status !== "running") {
       return buildSendResult(snapshot, false);
     }
 
@@ -354,7 +354,7 @@ export function createJourneyMachine<
   const applyLastVisitedNavigation = (
     transitionId?: string
   ): JourneySendResult<TContext, TStepId, TStepMeta> => {
-    if (snapshot.status !== JOURNEY_STATUS.RUNNING) {
+    if (snapshot.status !== "running") {
       return buildSendResult(snapshot, false);
     }
 
@@ -440,8 +440,8 @@ export function createJourneyMachine<
       type: "transition.success",
       from: fromStep,
       to: snapshot.currentStepId,
-      eventType: JOURNEY_EVENT.GO_TO_STEP_BY_ID,
-      transitionId: JOURNEY_EVENT.GO_TO_STEP_BY_ID,
+      eventType: "goToStepById",
+      transitionId: "goToStepById",
       timestamp: now()
     });
 
@@ -449,7 +449,7 @@ export function createJourneyMachine<
       emit({ type: "step.enter", stepId: snapshot.currentStepId, timestamp: now() });
     }
 
-    return buildSendResult(snapshot, true, { transitionId: JOURNEY_EVENT.GO_TO_STEP_BY_ID });
+    return buildSendResult(snapshot, true, { transitionId: "goToStepById" });
   };
 
   const resolveTransitionsForSend = (
@@ -474,7 +474,7 @@ export function createJourneyMachine<
       const fromMatches = transition.from === "*" || transition.from === fromStep;
       return (
         fromMatches &&
-        transition.event === JOURNEY_EVENT.GO_TO_STEP_BY_ID &&
+        transition.event === "goToStepById" &&
         "to" in transition &&
         transition.to === event.stepId
       );
@@ -505,7 +505,7 @@ export function createJourneyMachine<
         onAsyncGuardStart: (currentTransition) => {
           setStepLoading(
             fromStep,
-            JOURNEY_ASYNC_PHASE.EVALUATING_WHEN,
+            "evaluating-when",
             transitionEvent.type,
             currentTransition.id,
             runVersion
@@ -618,13 +618,7 @@ export function createJourneyMachine<
 
     const asyncEffect = isPromiseLike(effectResultPromise);
     if (asyncEffect) {
-      setStepLoading(
-        fromStep,
-        JOURNEY_ASYNC_PHASE.RUNNING_EFFECT,
-        transitionEvent.type,
-        transition.id,
-        runVersion
-      );
+      setStepLoading(fromStep, "running-effect", transitionEvent.type, transition.id, runVersion);
 
       const timeoutMs = transition.timeoutMs;
       effectResultPromise = withTimeout(
@@ -696,7 +690,7 @@ export function createJourneyMachine<
         index: normalizedTimeline.length - 1
       },
       context: nextContext,
-      status: target === "COMPLETE" ? JOURNEY_STATUS.COMPLETE : JOURNEY_STATUS.TERMINATED
+      status: target === "COMPLETE" ? "complete" : "terminated"
     };
     persistSnapshot(snapshot);
     notify();
@@ -762,7 +756,7 @@ export function createJourneyMachine<
     event: RuntimeSendEvent,
     runVersion: number
   ): Promise<JourneySendResult<TContext, TStepId, TStepMeta>> => {
-    if (snapshot.status !== JOURNEY_STATUS.RUNNING) {
+    if (snapshot.status !== "running") {
       return buildCanceledSendResult();
     }
 
@@ -902,9 +896,9 @@ export function createJourneyMachine<
       snapshot = buildSnapshot(
         [resolvedJourney.initial],
         0,
-        resolvedJourney.context,
-        JOURNEY_STATUS.RUNNING,
-        buildInitialAsyncState(resolvedJourney.steps),
+        journey.context,
+        "running",
+        buildInitialAsyncState(journey.steps),
         buildStepMeta()
       );
       if (clearOnReset) {

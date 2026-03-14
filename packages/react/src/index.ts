@@ -2,12 +2,6 @@
 "use client";
 
 export { createJourneyBindings } from "./bindings";
-export {
-  JOURNEY_STATUS,
-  JOURNEY_EVENT,
-  JOURNEY_ASYNC_PHASE,
-  JOURNEY_WILDCARD
-} from "@rxova/journey-core";
 export type { JourneyDefinition, JourneySendResult } from "@rxova/journey-core";
 export type {
   JourneyApi,
