@@ -2,10 +2,14 @@ import { JOURNEY_WILDCARD } from "./types/journey.types";
 import type { JourneyEventPayloadMap } from "./types/journey.types";
 import type {
   EventBuilder,
+  JourneyCreateTransitions,
   JourneyEventTransition,
+  JourneyTransitionHelpers,
   JourneyTransition,
+  JourneyTransitionItem,
   JourneySelectedTransitionArgs,
   JourneyTransitionTarget,
+  JourneyTypedTx,
   TransitionBranch,
   TransitionBranchBuilder,
   TransitionConfig
@@ -16,6 +20,101 @@ type SelectedPayloadMap<
   TEventType extends string,
   TPayloadMap extends TransitionPayloadMap
 > = TPayloadMap & JourneyEventPayloadMap<TEventType>;
+
+const createTypedTx = <
+  TContext,
+  TStepId extends string,
+  TEventType extends string,
+  TPayloadMap extends TransitionPayloadMap = Record<never, never>
+>(): JourneyTypedTx<TContext, TStepId, TEventType, TPayloadMap> => ({
+  from: (from) => ({
+    on: <TSelectedEvent extends TEventType>(event: TSelectedEvent) =>
+      createEventBuilder<
+        TContext,
+        TStepId,
+        TSelectedEvent,
+        SelectedPayloadMap<TSelectedEvent, TPayloadMap>
+      >(from, event),
+    toComplete: (
+      config: TransitionConfig<
+        TContext,
+        TStepId,
+        "completeJourney",
+        SelectedPayloadMap<"completeJourney", TPayloadMap>
+      > = {}
+    ) =>
+      buildTerminalTransition<TContext, TStepId, "completeJourney", TPayloadMap>(
+        from,
+        "completeJourney",
+        config
+      ),
+    toTerminate: (
+      config: TransitionConfig<
+        TContext,
+        TStepId,
+        "terminateJourney",
+        SelectedPayloadMap<"terminateJourney", TPayloadMap>
+      > = {}
+    ) =>
+      buildTerminalTransition<TContext, TStepId, "terminateJourney", TPayloadMap>(
+        from,
+        "terminateJourney",
+        config
+      )
+  }),
+  any: () => ({
+    on: <TSelectedEvent extends TEventType>(event: TSelectedEvent) =>
+      createEventBuilder<
+        TContext,
+        TStepId,
+        TSelectedEvent,
+        SelectedPayloadMap<TSelectedEvent, TPayloadMap>
+      >(JOURNEY_WILDCARD, event),
+    toComplete: (
+      config: TransitionConfig<
+        TContext,
+        TStepId,
+        "completeJourney",
+        SelectedPayloadMap<"completeJourney", TPayloadMap>
+      > = {}
+    ) =>
+      buildTerminalTransition<TContext, TStepId, "completeJourney", TPayloadMap>(
+        JOURNEY_WILDCARD,
+        "completeJourney",
+        config
+      ),
+    toTerminate: (
+      config: TransitionConfig<
+        TContext,
+        TStepId,
+        "terminateJourney",
+        SelectedPayloadMap<"terminateJourney", TPayloadMap>
+      > = {}
+    ) =>
+      buildTerminalTransition<TContext, TStepId, "terminateJourney", TPayloadMap>(
+        JOURNEY_WILDCARD,
+        "terminateJourney",
+        config
+      )
+  }),
+  when: (
+    predicate: (
+      args: JourneySelectedTransitionArgs<
+        TContext,
+        TStepId,
+        TEventType,
+        SelectedPayloadMap<TEventType, TPayloadMap>
+      >
+    ) => boolean | Promise<boolean>
+  ) => createBranchBuilder(predicate),
+  otherwise: () =>
+    createBranchBuilder<
+      TContext,
+      TStepId,
+      TEventType,
+      SelectedPayloadMap<TEventType, TPayloadMap>
+    >()
+});
 
 const createBranchBuilder = <
   TContext,
@@ -84,16 +183,36 @@ const createEventBuilder = <
         to
       }) as JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>,
     choose: (
-      ...branches: Array<TransitionBranch<TContext, TStepId, TEventType, TPayloadMap>>
-    ): JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>[] =>
-      branches.map(
+      ...input:
+        | [
+            factory: (helpers: {
+              when: (
+                predicate: (
+                  args: JourneySelectedTransitionArgs<TContext, TStepId, TEventType, TPayloadMap>
+                ) => boolean | Promise<boolean>
+              ) => TransitionBranchBuilder<TContext, TStepId, TEventType, TPayloadMap>;
+              otherwise: () => TransitionBranchBuilder<TContext, TStepId, TEventType, TPayloadMap>;
+            }) => readonly TransitionBranch<TContext, TStepId, TEventType, TPayloadMap>[]
+          ]
+        | Array<TransitionBranch<TContext, TStepId, TEventType, TPayloadMap>>
+    ): JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>[] => {
+      const branches =
+        input.length === 1 && typeof input[0] === "function"
+          ? input[0]({
+              when: (predicate) => createBranchBuilder(predicate),
+              otherwise: () => createBranchBuilder()
+            })
+          : input;
+
+      return branches.map(
         (branch) =>
           ({
             ...branch,
             from,
             event: event as Exclude<TEventType, "completeJourney" | "terminateJourney">
           }) as JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>
-      ),
+      );
+    },
     when: (
       predicate: (
         args: JourneySelectedTransitionArgs<TContext, TStepId, TEventType, TPayloadMap>
@@ -135,136 +254,29 @@ const buildTerminalTransition = <
   >;
 
 /**
- * Fluent helpers for building journey transitions with type-safe branches.
- */
-export const tx = {
-  from: <
-    TStepId extends string,
-    TContext = unknown,
-    TPayloadMap extends TransitionPayloadMap = Record<never, never>
-  >(
-    from: TStepId
-  ) => ({
-    on: <TEventType extends string>(event: TEventType) =>
-      createEventBuilder<
-        TContext,
-        TStepId,
-        TEventType,
-        SelectedPayloadMap<TEventType, TPayloadMap>
-      >(from, event),
-    toComplete: (
-      config: TransitionConfig<
-        TContext,
-        TStepId,
-        "completeJourney",
-        SelectedPayloadMap<"completeJourney", TPayloadMap>
-      > = {}
-    ) =>
-      buildTerminalTransition<TContext, TStepId, "completeJourney", TPayloadMap>(
-        from,
-        "completeJourney",
-        config
-      ),
-    toTerminate: (
-      config: TransitionConfig<
-        TContext,
-        TStepId,
-        "terminateJourney",
-        SelectedPayloadMap<"terminateJourney", TPayloadMap>
-      > = {}
-    ) =>
-      buildTerminalTransition<TContext, TStepId, "terminateJourney", TPayloadMap>(
-        from,
-        "terminateJourney",
-        config
-      )
-  }),
-  any: <
-    TContext = unknown,
-    TStepId extends string = string,
-    TPayloadMap extends TransitionPayloadMap = Record<never, never>
-  >() => ({
-    on: <TEventType extends string>(event: TEventType) =>
-      createEventBuilder<
-        TContext,
-        TStepId,
-        TEventType,
-        SelectedPayloadMap<TEventType, TPayloadMap>
-      >(JOURNEY_WILDCARD, event),
-    toComplete: (
-      config: TransitionConfig<
-        TContext,
-        TStepId,
-        "completeJourney",
-        SelectedPayloadMap<"completeJourney", TPayloadMap>
-      > = {}
-    ) =>
-      buildTerminalTransition<TContext, TStepId, "completeJourney", TPayloadMap>(
-        JOURNEY_WILDCARD,
-        "completeJourney",
-        config
-      ),
-    toTerminate: (
-      config: TransitionConfig<
-        TContext,
-        TStepId,
-        "terminateJourney",
-        SelectedPayloadMap<"terminateJourney", TPayloadMap>
-      > = {}
-    ) =>
-      buildTerminalTransition<TContext, TStepId, "terminateJourney", TPayloadMap>(
-        JOURNEY_WILDCARD,
-        "terminateJourney",
-        config
-      )
-  }),
-  when: <
-    TContext,
-    TStepId extends string,
-    TEventType extends string,
-    TPayloadMap extends JourneyEventPayloadMap<TEventType>
-  >(
-    predicate: (
-      args: JourneySelectedTransitionArgs<TContext, TStepId, TEventType, TPayloadMap>
-    ) => boolean | Promise<boolean>
-  ) => ({
-    to: (
-      to: JourneyTransitionTarget<TStepId>,
-      config: TransitionConfig<TContext, TStepId, TEventType, TPayloadMap> = {}
-    ): TransitionBranch<TContext, TStepId, TEventType, TPayloadMap> => ({
-      ...config,
-      to,
-      when: predicate
-    })
-  }),
-  otherwise: <
-    TContext,
-    TStepId extends string,
-    TEventType extends string,
-    TPayloadMap extends JourneyEventPayloadMap<TEventType>
-  >() => ({
-    to: (
-      to: JourneyTransitionTarget<TStepId>,
-      config: TransitionConfig<TContext, TStepId, TEventType, TPayloadMap> = {}
-    ): TransitionBranch<TContext, TStepId, TEventType, TPayloadMap> => ({
-      ...config,
-      to
-    })
-  })
-};
-
-/**
  * Flattens transition items and transition arrays into a single transition list.
  */
-export const createTransitions = <
+const createTransitions = <
   TContext,
   TStepId extends string,
   TEventType extends string,
   TPayloadMap extends JourneyEventPayloadMap<TEventType>
 >(
-  ...items: Array<
-    | JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>
-    | readonly JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>[]
-  >
+  ...items: Array<JourneyTransitionItem<TContext, TStepId, TEventType, TPayloadMap>>
 ): JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>[] =>
   items.flatMap((item) => (Array.isArray(item) ? [...item] : [item]));
+
+export const createTypedTransitionHelpers = <
+  TContext,
+  TStepId extends string,
+  TEventType extends string,
+  TPayloadMap extends JourneyEventPayloadMap<TEventType>
+>(): JourneyTransitionHelpers<TContext, TStepId, TEventType, TPayloadMap> => ({
+  tx: createTypedTx<TContext, TStepId, TEventType, TPayloadMap>(),
+  createTransitions: ((
+    ...items: Array<JourneyTransitionItem<TContext, TStepId, TEventType, TPayloadMap>>
+  ) =>
+    createTransitions<TContext, TStepId, TEventType, TPayloadMap>(
+      ...items
+    )) satisfies JourneyCreateTransitions<TContext, TStepId, TEventType, TPayloadMap>
+});

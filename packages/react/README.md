@@ -208,15 +208,16 @@ const JourneyDevtoolsBridge = () => {
 
 ## Transition Ergonomics
 
-`@rxova/journey-react` re-exports core transition builders:
+Use the typed transition helpers inside `journey.transitions`:
 
 ```ts
-import { createTransitions, tx } from "@rxova/journey-react";
-
-const transitions = createTransitions(
-  tx.from("start").on("goToNextStep").to("review"),
-  tx.from("review").toComplete()
-);
+const journey = {
+  transitions: ({ tx, createTransitions }) =>
+    createTransitions(
+      tx.from("start").on("goToNextStep").to("review"),
+      tx.from("review").toComplete()
+    )
+};
 ```
 
 ## SSR and RSC Notes

@@ -5,8 +5,14 @@ import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-cor
 type StepId = "a" | "b" | "c" | "d";
 type Event = "goToNextStep" | "back" | "jump";
 type Context = { count: number };
+type TransitionList = Extract<
+  JourneyDefinition<Context, StepId, Event>["transitions"],
+  readonly unknown[]
+>;
 
-const createJourney = (): JourneyDefinition<Context, StepId, Event> => ({
+const createJourney = (): JourneyDefinition<Context, StepId, Event> & {
+  transitions: TransitionList;
+} => ({
   initial: "a",
   context: { count: 0 },
   steps: {
@@ -20,7 +26,7 @@ const createJourney = (): JourneyDefinition<Context, StepId, Event> => ({
     { id: "b-c", from: "b", event: "goToNextStep", to: "c" },
     { id: "c-d", from: "c", event: "goToNextStep", to: "d" },
     { id: "b-d", from: "b", event: "jump", to: "d" }
-  ]
+  ] as TransitionList
 });
 
 describe("timeline navigation", () => {
@@ -85,7 +91,7 @@ describe("timeline navigation", () => {
     journey.transitions = [
       ...journey.transitions,
       { id: "explicit-back", from: "c", event: "back", to: "d" }
-    ];
+    ] as TransitionList;
 
     const machine = createJourneyMachine(journey);
 

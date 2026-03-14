@@ -1,5 +1,5 @@
 import type { JourneyPersistenceOptions } from "./persistence.types";
-import type { JourneyTransition } from "./transitions.types";
+import type { JourneyTransition, JourneyTransitionsInput } from "./transitions.types";
 
 /** Terminal outcomes reached when a journey completes or is explicitly terminated. */
 export type JourneyTerminal = "COMPLETE" | "TERMINATED";
@@ -212,6 +212,20 @@ export type JourneyDefinition<
   initial: TStepId;
   context: TContext;
   steps: Record<TStepId, JourneyStepDefinition<TStepMeta, TStepExtra>>;
+  transitions: JourneyTransitionsInput<TContext, TStepId, TEventType, TPayloadMap>;
+};
+
+export type JourneyResolvedDefinition<
+  TContext,
+  TStepId extends string = string,
+  TEventType extends string = JourneyDefaultEventType,
+  TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>,
+  TStepMeta = unknown,
+  TStepExtra extends object = Record<never, never>
+> = Omit<
+  JourneyDefinition<TContext, TStepId, TEventType, TPayloadMap, TStepMeta, TStepExtra>,
+  "transitions"
+> & {
   transitions: readonly JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>[];
 };
 

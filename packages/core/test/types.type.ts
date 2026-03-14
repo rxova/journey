@@ -1,7 +1,8 @@
 import { expectTypeOf } from "expect-type";
 
-import { createJourneyMachine, tx, type JourneySnapshot } from "@rxova/journey-core";
+import { createJourneyMachine, type JourneySnapshot } from "@rxova/journey-core";
 import type {
+  JourneyCreateTransitions,
   JourneyDefinition,
   JourneyEvent,
   JourneyMachine,
@@ -10,6 +11,8 @@ import type {
   JourneyPayloadFor,
   JourneySendResult,
   JourneySendEvent,
+  JourneyTypedTx,
+  JourneyTransition,
   JourneyTransitionArgs,
   JourneyTransitionTarget
 } from "@rxova/journey-core";
@@ -162,10 +165,18 @@ const machineOptions = {
 } satisfies JourneyMachineOptions<Context, StepId>;
 void machineOptions;
 
-const builtTransition = tx.from<StepId>("start").on("goToNextStep").to("review");
+declare const helperTx: JourneyTypedTx<Context, StepId, EventType, PayloadMap>;
+declare const helperCreateTransitions: JourneyCreateTransitions<
+  Context,
+  StepId,
+  EventType,
+  PayloadMap
+>;
+
+const builtTransition = helperTx.from("start").on("goToNextStep").to("review");
 expectTypeOf(builtTransition.from).toEqualTypeOf<StepId | "*">();
 
-const customBuilder = tx.from<StepId, Context, PayloadMap>("review").on("custom");
+const customBuilder = helperTx.from("review").on("custom");
 customBuilder.to("done", {
   effect: ({ event }) => {
     expectTypeOf(event.type).toEqualTypeOf<"custom">();
@@ -175,39 +186,60 @@ customBuilder.to("done", {
     return { count: event.payload?.amount ?? 0 };
   }
 });
-customBuilder.choose(
-  customBuilder
-    .when(({ event }) => {
-      expectTypeOf(event.type).toEqualTypeOf<"custom">();
-      expectTypeOf(event.payload).toEqualTypeOf<{ amount: number } | undefined>();
-      return (event.payload?.amount ?? 0) > 0;
-    })
-    .to("done"),
-  customBuilder.otherwise().to("review")
-);
+customBuilder.choose(({ when, otherwise }) => [
+  when(({ event }) => {
+    expectTypeOf(event.type).toEqualTypeOf<"custom">();
+    expectTypeOf(event.payload).toEqualTypeOf<{ amount: number } | undefined>();
+    return (event.payload?.amount ?? 0) > 0;
+  }).to("done"),
+  otherwise().to("review")
+]);
+helperTx
+  .from("start")
+  .on("goToNextStep")
+  .choose(({ when, otherwise }) => [
+    when(({ context }) => {
+      expectTypeOf(context).toEqualTypeOf<Context>();
+      return context.count > 0;
+    }).to("review"),
+    otherwise().to("done")
+  ]);
 
-const builtComplete = tx.from<StepId>("review").toComplete();
+const builtTransitions = helperCreateTransitions(
+  builtTransition,
+  customBuilder.to("done"),
+  customBuilder.choose(customBuilder.otherwise().to("review"))
+);
+expectTypeOf(builtTransitions).toEqualTypeOf<
+  Array<JourneyTransition<Context, StepId, EventType, PayloadMap>>
+>();
+
+const builtComplete = helperTx.from("review").toComplete();
 expectTypeOf(builtComplete.event).toEqualTypeOf<"completeJourney">();
 expectTypeOf(builtComplete.from).toEqualTypeOf<StepId | "*">();
 
-const terminalPayloadTransition = tx
-  .from<StepId, Context, PayloadMap & { completeJourney: { reason: "user" } }>("review")
-  .toComplete({
-    effect: ({ event }) => {
-      expectTypeOf(event.type).toEqualTypeOf<"completeJourney">();
-      expectTypeOf(event.payload).toEqualTypeOf<{ reason: "user" } | undefined>();
-    }
-  });
+declare const terminalHelperTx: JourneyTypedTx<
+  Context,
+  StepId,
+  EventType,
+  PayloadMap & { completeJourney: { reason: "user" } }
+>;
+const terminalPayloadTransition = terminalHelperTx.from("review").toComplete({
+  effect: ({ event }) => {
+    expectTypeOf(event.type).toEqualTypeOf<"completeJourney">();
+    expectTypeOf(event.payload).toEqualTypeOf<{ reason: "user" } | undefined>();
+  }
+});
 expectTypeOf(terminalPayloadTransition.event).toEqualTypeOf<"completeJourney">();
 
-const builtTerminate = tx.any().toTerminate();
+const builtTerminate = helperTx.any().toTerminate();
 expectTypeOf(builtTerminate.event).toEqualTypeOf<"terminateJourney">();
-expectTypeOf(builtTerminate.from).toEqualTypeOf<string | "*">();
+expectTypeOf(builtTerminate.from).toEqualTypeOf<StepId | "*">();
 
 // @ts-expect-error terminal builders do not accept "to"
-tx.from<StepId>("start").toComplete({ to: "done" });
+helperTx.from("start").toComplete({ to: "done" });
 // @ts-expect-error terminal builders do not accept "to"
-tx.any().toTerminate({ to: "done" });
+helperTx.any().toTerminate({ to: "done" });
 
 const badPayloadEvent: JourneyEvent<StepId, EventType, PayloadMap> = {
   type: "custom",

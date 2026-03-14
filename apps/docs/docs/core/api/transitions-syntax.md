@@ -6,7 +6,7 @@ sidebar_label: Transition Syntax
 Journey supports two equivalent ways to define transitions:
 
 - plain objects
-- `tx` helpers
+- callback-scoped `tx` helpers
 
 Both produce the same runtime behavior. Transition matching is still deterministic: first valid transition wins.
 
@@ -47,35 +47,42 @@ const transitions = [
 ];
 ```
 
-## Option B: `tx` Helpers
+## Option B: Callback `tx` Helpers
 
 Use `tx` helpers when transitions get larger and you want more fluent branching syntax.
+They are provided inside `journey.transitions`.
 
 ```ts
-const transitions = createTransitions(
-  tx.from("start").on("goToNextStep").to("details", { id: "start-next" }),
-  tx
-    .from("details")
-    .on("goToNextStep")
-    .choose(
-      tx.when(({ context }) => context.canContinue).to("review", { id: "details-next-guarded" }),
-      tx.otherwise().to("review", {
-        id: "details-save",
-        effect: async ({ context }) => {
-          const saved = await saveDraft(context);
-          return { ...context, draftId: saved.id };
-        }
-      })
-    ),
-  tx.any().toTerminate({ id: "cancel-anywhere" })
-);
+const journey = {
+  transitions: ({ tx, createTransitions }) =>
+    createTransitions(
+      tx.from("start").on("goToNextStep").to("details", { id: "start-next" }),
+      tx
+        .from("details")
+        .on("goToNextStep")
+        .choose(({ when, otherwise }) => [
+          when(({ context }) => context.canContinue).to("review", {
+            id: "details-next-guarded"
+          }),
+          otherwise().to("review", {
+            id: "details-save",
+            effect: async ({ context }) => {
+              const saved = await saveDraft(context);
+              return { ...context, draftId: saved.id };
+            }
+          })
+        ]),
+      tx.any().toTerminate({ id: "cancel-anywhere" })
+    )
+};
 ```
 
 ## Which Style Should You Use?
 
 - Choose plain objects if your team prefers direct JSON-like definitions.
-- Choose `tx` helpers if your team prefers fluent composition and readable branching.
-- Mix both when useful; `createTransitions(...)` accepts both built transitions and arrays.
+- Choose callback `tx` helpers if your team prefers fluent composition and readable branching.
+  Prefer `choose(({ when, otherwise }) => [...])` for inline branching.
+- Mix both when useful; `createTransitions(...)` inside the callback accepts both built transitions and arrays.
 
 ## Transition Fields (Both Styles)
 
