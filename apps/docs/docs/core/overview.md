@@ -39,7 +39,7 @@ That feels easy at first, but as rules grow, each step starts making its own dec
 
 ```tsx
 const Step2 = () => {
-  const { goToNextStep, goToStepById } = useWizard();
+  const { goToNextStep, goToStepByIndex } = useWizard();
 
   const onNext = async () => {
     if (!formIsValid()) return;
@@ -55,7 +55,8 @@ const Step2 = () => {
 
 Now imagine many steps doing this. The flow rules are spread out, so it is hard to see the full map. Add to that confirmations to close a flow for example, that usually sit outisde the wizard layer because stacking isn't easy to reproduce.
 
-With Journey Core, you define the graph once and run it with the machine API:
+Now let's take a look at an example with Journey Core, and let's make it more complicated just to see the point.
+In Journey you define the `journey` once and then just trigger events:
 
 ```ts
 import {
@@ -65,37 +66,62 @@ import {
   type JourneyDefinition
 } from "@rxova/journey-core";
 
+type Context = { isVip: boolean; couponCode: string | null };
 type StepIds = "details" | "payment" | "review";
 type CustomEvents = "applyCoupon";
-type Context = { isVip: boolean };
+type CustomEventPayloadMap = {
+  applyCoupon: {
+    couponCode: string;
+  };
+}
 
-const journey: JourneyDefinition<Context, StepIds, Event> = {
+const journey: JourneyDefinition<Context, StepIds, CustomEvents, CustomEventPayloadMap> = {
   initial: "details",
-  context: { isVip: false },
+  context: { isVip: false, couponCode: null},
   steps: {
     details: {},
     payment: {},
     review: {}
   },
   transitions: createTransitions(
-    tx
-      .from("details")
-      .on("goToNextStep")
-      .choose(tx.when(({ context }) => context.isVip).to("review"), tx.otherwise().to("payment")),
-    tx.from("payment").on("applyCoupon").to("review"),
-    tx.from("review").toComplete()
+    {
+      from: "details",
+      event: "goToNextStep",
+      to: "review",
+      when: ({ context }) => context.isVip
+    },
+    {
+      from: "details",
+      event: "goToNextStep",
+      to: "payment",
+      when: ({ context }) => !context.isVip
+    },
+    {
+      from: "payment",
+      event: "applyCoupon",
+      to: "review",
+      effect: ({ context, event }) => ({
+        ...context,
+        couponCode: event.payload?.couponCode ?? context.couponCode
+      })
+    }
   )
 };
 
-const machine = createJourneyMachine(journey);
-
-await machine.goToNextStep();
-await machine.send({ type: "applyCoupon" });
-
+const machine = createJourneyMachine(journey); // current step 'details';
+console.log(machine.getSnapshot().status); // "running"
+await machine.goToNextStep(); // since VIP is false, it navigates to 'payment'
+await machine.send({
+  type: "applyCoupon",
+  payload: { couponCode: "VIP20" }
+}); // Moved to the next step 'review' and also updated the context thanks to the `effect` defined before
+await machine.goToNextStep() // since we are in the last step (review), going to the next step finishes the machine.
+console.log(machine.getSnapshot().status); // "complete"
 console.log(machine.getSnapshot().currentStepId); // "review"
 ```
 
-This is the key idea: instead of hiding flow logic inside many components, Journey keeps the map in one place.
+This is the key idea: instead of scattering flow logic across many components, Journey keeps it in one place.
+All changes are event-driven, which means you can log, debug, and inspect them consistently.
 
 ## Framework Agnostic
 
@@ -105,33 +131,44 @@ Today we provide official bindings for React in `@rxova/journey-react`, but the 
 
 ## Snapshot At A Glance
 
-The runtime snapshot is the single source of truth:
+Following the previous example, after all those events our final snapshot would look like:
 
 ```ts
 const snapshot = machine.getSnapshot();
 
-const exampleSnapshot = {
-  currentStepId: "details",
+const exampleSnapshot =   {
+  currentStepId: "review",
   history: {
-    timeline: ["start", "details"],
-    index: 1
+    timeline: ["details", "payment", "review"],
+    index: 2
   },
-  context: { couponCode: null },
-  visited: { start: true, details: true, review: false },
-  stepMeta: { start: {}, details: {}, review: {} },
-  status: "running",
+  context: {
+    isVip: false,
+    couponCode: "VIP20"
+  },
+  visited: {
+    details: true,
+    payment: true,
+    review: true
+  },
+  stepMeta: {
+    details: undefined,
+    payment: undefined,
+    review: undefined
+  },
+  status: "complete",
   async: {
     isLoading: false,
     byStep: {
-      start: { phase: "idle", eventType: null, transitionId: null, error: null },
       details: { phase: "idle", eventType: null, transitionId: null, error: null },
+      payment: { phase: "idle", eventType: null, transitionId: null, error: null },
       review: { phase: "idle", eventType: null, transitionId: null, error: null }
     }
   }
 };
 ```
 
-`stepMeta`, `status`, and `async` are part of every Core snapshot (they are not optional fields).
+Where `stepMeta`, `status`, and `async` are part of every Core snapshot (they are not optional fields).
 
 `steps` are not part of the snapshot payload. This is intentional. Step definitions live in the journey config, while snapshot only contains runtime state. If you need the known step ids at runtime, they are reflected by keys in `visited`, `stepMeta`, and `async.byStep`.
 
