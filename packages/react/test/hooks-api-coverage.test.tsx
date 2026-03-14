@@ -4,7 +4,6 @@ import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import {
-  JOURNEY_STATUS,
   createJourneyMachine,
   type JourneyMachine,
   type JourneySendResult,
@@ -46,7 +45,7 @@ const snapshot: JourneySnapshot<Context, StepId, Meta> = {
     one: { title: "One" },
     two: { title: "Two" }
   },
-  status: JOURNEY_STATUS.RUNNING,
+  status: "running",
   async: {
     isLoading: false,
     byStep: {

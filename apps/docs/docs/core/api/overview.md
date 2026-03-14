@@ -16,10 +16,10 @@ In `0.6.x`, prefer additive and bug-fix changes, and avoid breaking API changes 
 ```ts
 import {
   createJourneyMachine,
-  JOURNEY_STATUS,
-  JOURNEY_EVENT,
-  JOURNEY_ASYNC_PHASE,
-  JOURNEY_WILDCARD
+  type JOURNEY_STATUS,
+  type JOURNEY_EVENT,
+  type JOURNEY_ASYNC_PHASE,
+  type JOURNEY_WILDCARD
 } from "@rxova/journey-core";
 ```
 
@@ -236,34 +236,34 @@ const unsubscribeStepObject = machine.subscribeSelector(
 );
 ```
 
-## Constants You May Use
+## Type Helpers You May Use
 
-- `JOURNEY_STATUS`: lifecycle status constants.
-- `JOURNEY_EVENT`: built-in event identifiers.
-- `JOURNEY_ASYNC_PHASE`: async transition phase constants.
-- `JOURNEY_WILDCARD`: wildcard source for transitions.
+- `JOURNEY_STATUS`: type-only lifecycle status map.
+- `JOURNEY_EVENT`: type-only built-in event map.
+- `JOURNEY_ASYNC_PHASE`: type-only async transition phase map.
+- `JOURNEY_WILDCARD`: type-only wildcard source literal.
 
-Values:
+Definitions:
 
 ```ts
-JOURNEY_STATUS = {
-  RUNNING: "running",
-  COMPLETE: "complete",
-  TERMINATED: "terminated"
+type JOURNEY_STATUS = {
+  RUNNING: "running";
+  COMPLETE: "complete";
+  TERMINATED: "terminated";
 };
 
-JOURNEY_EVENT = {
-  GO_TO_STEP_BY_ID: "goToStepById"
+type JOURNEY_EVENT = {
+  GO_TO_STEP_BY_ID: "goToStepById";
 };
 
-JOURNEY_ASYNC_PHASE = {
-  IDLE: "idle",
-  EVALUATING_WHEN: "evaluating-when",
-  RUNNING_EFFECT: "running-effect",
-  ERROR: "error"
+type JOURNEY_ASYNC_PHASE = {
+  IDLE: "idle";
+  EVALUATING_WHEN: "evaluating-when";
+  RUNNING_EFFECT: "running-effect";
+  ERROR: "error";
 };
 
-JOURNEY_WILDCARD = "*";
+type JOURNEY_WILDCARD = "*";
 ```
 
-These are optional helpers for readability and consistency.
+These are type-only helpers for readability and consistency.

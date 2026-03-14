@@ -1,5 +1,5 @@
 import React from "react";
-import { createJourneyMachine, JOURNEY_STATUS, type JourneyDefinition } from "@rxova/journey-core";
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 import {
   createJourneyBindings,
@@ -353,8 +353,7 @@ export const App = () => {
       <CoreMachinePanel />
 
       <footer className="hint footer-note">
-        React status values: <code>{JOURNEY_STATUS.RUNNING}</code>,{" "}
-        <code>{JOURNEY_STATUS.COMPLETE}</code>, <code>{JOURNEY_STATUS.TERMINATED}</code>
+        React status values: <code>running</code>, <code>complete</code>, <code>terminated</code>
       </footer>
     </main>
   );
