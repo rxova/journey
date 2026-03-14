@@ -73,11 +73,11 @@ type CustomEventPayloadMap = {
   applyCoupon: {
     couponCode: string;
   };
-}
+};
 
 const journey: JourneyDefinition<Context, StepIds, CustomEvents, CustomEventPayloadMap> = {
   initial: "details",
-  context: { isVip: false, couponCode: null},
+  context: { isVip: false, couponCode: null },
   steps: {
     details: {},
     payment: {},
@@ -115,7 +115,7 @@ await machine.send({
   type: "applyCoupon",
   payload: { couponCode: "VIP20" }
 }); // Moved to the next step 'review' and also updated the context thanks to the `effect` defined before
-await machine.goToNextStep() // since we are in the last step (review), going to the next step finishes the machine.
+await machine.goToNextStep(); // since we are in the last step (review), going to the next step finishes the machine.
 console.log(machine.getSnapshot().status); // "complete"
 console.log(machine.getSnapshot().currentStepId); // "review"
 ```
@@ -136,7 +136,7 @@ Following the previous example, after all those events our final snapshot would 
 ```ts
 const snapshot = machine.getSnapshot();
 
-const exampleSnapshot =   {
+const exampleSnapshot = {
   currentStepId: "review",
   history: {
     timeline: ["details", "payment", "review"],
