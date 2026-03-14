@@ -1,10 +1,6 @@
 export { createJourneyMachine } from "./machine";
 export { createPersistenceController } from "./persistence";
 export {
-  JOURNEY_EVENT,
-  JOURNEY_ASYNC_PHASE,
-  JOURNEY_STATUS,
-  JOURNEY_WILDCARD,
   type JourneyBuiltInEvent,
   type JourneyBuiltInFrom,
   type JourneyDefaultEventType,

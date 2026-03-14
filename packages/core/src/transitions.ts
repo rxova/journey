@@ -1,5 +1,4 @@
-import { JOURNEY_WILDCARD } from "./types/journey.types";
-import type { JourneyEventPayloadMap } from "./types/journey.types";
+import type { JourneyBuiltInFrom, JourneyEventPayloadMap } from "./types/journey.types";
 import type {
   EventBuilder,
   JourneyCreateTransitions,
@@ -69,7 +68,7 @@ const createTypedTx = <
         TStepId,
         TSelectedEvent,
         SelectedPayloadMap<TSelectedEvent, TPayloadMap>
-      >(JOURNEY_WILDCARD, event),
+      >("*", event),
     toComplete: (
       config: TransitionConfig<
         TContext,
@@ -79,7 +78,7 @@ const createTypedTx = <
       > = {}
     ) =>
       buildTerminalTransition<TContext, TStepId, "completeJourney", TPayloadMap>(
-        JOURNEY_WILDCARD,
+        "*",
         "completeJourney",
         config
       ),
@@ -92,7 +91,7 @@ const createTypedTx = <
       > = {}
     ) =>
       buildTerminalTransition<TContext, TStepId, "terminateJourney", TPayloadMap>(
-        JOURNEY_WILDCARD,
+        "*",
         "terminateJourney",
         config
       )
@@ -142,7 +141,7 @@ const createEventBuilder = <
   TEventType extends string,
   TPayloadMap extends JourneyEventPayloadMap<TEventType>
 >(
-  from: TStepId | typeof JOURNEY_WILDCARD,
+  from: TStepId | JourneyBuiltInFrom,
   event: TEventType
 ): EventBuilder<TContext, TStepId, TEventType, TPayloadMap> => {
   if (event === "completeJourney") {
@@ -228,7 +227,7 @@ const buildTerminalTransition = <
   TEventType extends "completeJourney" | "terminateJourney",
   TPayloadMap extends TransitionPayloadMap = Record<never, never>
 >(
-  from: TStepId | typeof JOURNEY_WILDCARD,
+  from: TStepId | JourneyBuiltInFrom,
   event: TEventType,
   config: TransitionConfig<
     TContext,

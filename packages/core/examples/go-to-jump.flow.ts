@@ -1,4 +1,4 @@
-import { createJourneyMachine, JOURNEY_EVENT, type JourneyDefinition } from "@rxova/journey-core";
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "step1" | "step2" | "review";
 type Event = "goToNextStep";
@@ -20,6 +20,6 @@ export const createGoToJumpMachine = () =>
 
 export const jumpToReview = async () => {
   const machine = createGoToJumpMachine();
-  await machine.send({ type: JOURNEY_EVENT.GO_TO_STEP_BY_ID, stepId: "review" });
+  await machine.send({ type: "goToStepById", stepId: "review" });
   return machine.getSnapshot();
 };

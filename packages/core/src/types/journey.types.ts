@@ -4,30 +4,17 @@ import type { JourneyTransition, JourneyTransitionsInput } from "./transitions.t
 /** Terminal outcomes reached when a journey completes or is explicitly terminated. */
 export type JourneyTerminal = "COMPLETE" | "TERMINATED";
 
-/** Runtime machine status constants. */
-export const JOURNEY_STATUS = {
-  RUNNING: "running",
-  COMPLETE: "complete",
-  TERMINATED: "terminated"
-} as const;
-
 /** Union of possible runtime machine statuses. */
-export type JourneyStatus = (typeof JOURNEY_STATUS)[keyof typeof JOURNEY_STATUS];
+export type JourneyStatus = "running" | "complete" | "terminated";
 
 /** Wildcard step identifier used by transitions that match from any step. */
-export const JOURNEY_WILDCARD = "*" as const;
-
-/** Built-in event constants that are part of core machine behavior. */
-export const JOURNEY_EVENT = {
-  GO_TO_STEP_BY_ID: "goToStepById"
-} as const;
+/** Wildcard step identifier, exposed as a type-only literal. */
+export type JourneyBuiltInFrom = "*";
 
 /** Machine event types that are always recognized by core. */
-export type JourneyBuiltInEvent = (typeof JOURNEY_EVENT)[keyof typeof JOURNEY_EVENT];
+export type JourneyBuiltInEvent = "goToStepById";
 /** Event literal type for the built-in go-to-step command. */
-export type JourneyGoToStepByIdEventType = typeof JOURNEY_EVENT.GO_TO_STEP_BY_ID;
-/** Wildcard origin marker for transitions. */
-export type JourneyBuiltInFrom = typeof JOURNEY_WILDCARD;
+export type JourneyGoToStepByIdEventType = "goToStepById";
 /** Default transition event names supported by machine convenience APIs. */
 export type JourneyDefaultEventType =
   | "goToNextStep"
@@ -35,16 +22,8 @@ export type JourneyDefaultEventType =
   | "terminateJourney"
   | "completeJourney";
 
-/** Async lifecycle phases tracked per step while guards/effects run. */
-export const JOURNEY_ASYNC_PHASE = {
-  IDLE: "idle",
-  EVALUATING_WHEN: "evaluating-when",
-  RUNNING_EFFECT: "running-effect",
-  ERROR: "error"
-} as const;
-
 /** Union of supported async lifecycle phases. */
-export type JourneyAsyncPhase = (typeof JOURNEY_ASYNC_PHASE)[keyof typeof JOURNEY_ASYNC_PHASE];
+export type JourneyAsyncPhase = "idle" | "evaluating-when" | "running-effect" | "error";
 
 /** Async execution state for a single step. */
 export type JourneyStepAsyncState = {

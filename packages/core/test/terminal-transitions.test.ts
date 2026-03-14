@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createJourneyMachine, JOURNEY_STATUS, type JourneyDefinition } from "@rxova/journey-core";
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "confirm";
 
@@ -32,7 +32,7 @@ describe("terminal transitions", () => {
 
     await machine.send({ type: "completeJourney" });
 
-    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.COMPLETE);
+    expect(machine.getSnapshot().status).toBe("complete");
     expect(machine.getSnapshot().context.count).toBe(7);
   });
 
@@ -51,7 +51,7 @@ describe("terminal transitions", () => {
 
     await machine.send({ type: "terminateJourney" });
 
-    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.TERMINATED);
+    expect(machine.getSnapshot().status).toBe("terminated");
     expect(machine.getSnapshot().context.count).toBe(2);
   });
 
@@ -68,7 +68,7 @@ describe("terminal transitions", () => {
 
     await machine.send({ type: "completeJourney" });
 
-    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.COMPLETE);
+    expect(machine.getSnapshot().status).toBe("complete");
     expect(machine.getSnapshot().context.count).toBe(5);
   });
 
@@ -85,7 +85,7 @@ describe("terminal transitions", () => {
 
     await machine.send({ type: "terminateJourney" });
 
-    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.TERMINATED);
+    expect(machine.getSnapshot().status).toBe("terminated");
     expect(machine.getSnapshot().context.count).toBe(9);
   });
 
@@ -102,7 +102,7 @@ describe("terminal transitions", () => {
 
     await machine.send({ type: "terminateJourney" });
 
-    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.TERMINATED);
+    expect(machine.getSnapshot().status).toBe("terminated");
     expect(machine.getSnapshot().context.count).toBe(3);
   });
 
@@ -119,7 +119,7 @@ describe("terminal transitions", () => {
 
     await machine.send({ type: "completeJourney" });
 
-    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.COMPLETE);
+    expect(machine.getSnapshot().status).toBe("complete");
     expect(machine.getSnapshot().context.count).toBe(4);
   });
 
@@ -139,7 +139,7 @@ describe("terminal transitions", () => {
 
     await machine.send({ type: "terminateJourney" });
 
-    expect(machine.getSnapshot().status).toBe(JOURNEY_STATUS.TERMINATED);
+    expect(machine.getSnapshot().status).toBe("terminated");
     expect(machine.getSnapshot().context.count).toBe(6);
   });
 });
