@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
+import remarkTypescriptTabs from "./src/remark/remarkTypescriptTabs";
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
@@ -36,6 +37,7 @@ function loadDocsVersionLabels(): DocsVersionLabels {
 }
 
 const docsVersionLabels = loadDocsVersionLabels();
+const sharedDocsRemarkPlugins = [remarkTypescriptTabs];
 
 const config: Config = {
   title: "Rxova Journey",
@@ -80,6 +82,7 @@ const config: Config = {
         path: "docs/core",
         routeBasePath: "docs/core",
         sidebarPath: "./sidebars/core.ts",
+        remarkPlugins: sharedDocsRemarkPlugins,
         editUrl: "https://github.com/rxova/journey/tree/main/apps/docs/",
         lastVersion: "current",
         versions: {
@@ -96,6 +99,7 @@ const config: Config = {
         path: "docs/react",
         routeBasePath: "docs/react",
         sidebarPath: "./sidebars/react.ts",
+        remarkPlugins: sharedDocsRemarkPlugins,
         editUrl: "https://github.com/rxova/journey/tree/main/apps/docs/",
         lastVersion: "current",
         versions: {
@@ -112,6 +116,7 @@ const config: Config = {
         path: "docs/bridge",
         sidebarPath: "./sidebars/bridge.ts",
         routeBasePath: "docs/bridge",
+        remarkPlugins: sharedDocsRemarkPlugins,
         editUrl: "https://github.com/rxova/journey/tree/main/apps/docs/",
         lastVersion: "current",
         versions: {
@@ -128,6 +133,7 @@ const config: Config = {
         path: "docs/devtool",
         routeBasePath: "docs/devtool",
         sidebarPath: "./sidebars/chrome-devtools.ts",
+        remarkPlugins: sharedDocsRemarkPlugins,
         editUrl: "https://github.com/rxova/journey/tree/main/apps/docs/",
         lastVersion: "current",
         versions: {
