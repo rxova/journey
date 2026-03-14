@@ -1,4 +1,5 @@
 import { JOURNEY_ASYNC_PHASE, JOURNEY_EVENT, JOURNEY_STATUS } from "./types";
+import { createTypedTransitionHelpers } from "./transitions";
 import type {
   JourneyEqualityFn,
   JourneyAsyncState,
@@ -10,12 +11,13 @@ import type {
   JourneyMachine,
   JourneyMachineOptions,
   JourneyObservationEvent,
+  JourneyResolvedDefinition,
   JourneySelector,
   JourneySendEvent,
   JourneySendResult,
   JourneyStepDefinition,
-  JourneyTransitionArgs,
   JourneyTransition,
+  JourneyTransitionArgs,
   JourneyTerminal
 } from "./types";
 import {
@@ -36,6 +38,32 @@ import {
   validateJourneyTransitions
 } from "./machine-helpers";
 import { createPersistenceController } from "./persistence";
+
+const resolveJourneyTransitions = <
+  TContext,
+  TStepId extends string,
+  TEventType extends string,
+  TPayloadMap extends JourneyEventPayloadMap<TEventType>,
+  TStepMeta = unknown,
+  TStepExtra extends object = Record<never, never>
+>(
+  journey: JourneyDefinition<TContext, TStepId, TEventType, TPayloadMap, TStepMeta, TStepExtra>
+): JourneyResolvedDefinition<
+  TContext,
+  TStepId,
+  TEventType,
+  TPayloadMap,
+  TStepMeta,
+  TStepExtra
+> => ({
+  ...journey,
+  transitions:
+    typeof journey.transitions === "function"
+      ? journey.transitions(
+          createTypedTransitionHelpers<TContext, TStepId, TEventType, TPayloadMap>()
+        )
+      : journey.transitions
+});
 
 /**
  * Creates a journey machine from a journey definition.
@@ -59,12 +87,6 @@ export function createJourneyMachine<
     TStepMeta
   > & {
     steps: TSteps;
-    transitions: readonly JourneyTransition<
-      TContext,
-      Extract<keyof TSteps, string>,
-      JourneyDefaultEventType,
-      TPayloadMap
-    >[];
   },
   options?: JourneyMachineOptions<TContext, Extract<keyof TSteps, string>, TStepMeta>
 ): JourneyMachine<
@@ -100,8 +122,8 @@ export function createJourneyMachine<
     throw new Error("Journey steps must be a record object.");
   }
 
-  if (!Array.isArray(journey.transitions)) {
-    throw new Error("Journey transitions must be an array.");
+  if (typeof journey.transitions !== "function" && !Array.isArray(journey.transitions)) {
+    throw new Error("Journey transitions must be an array or a factory function.");
   }
 
   for (const stepId of Object.keys(journey.steps)) {
@@ -116,29 +138,30 @@ export function createJourneyMachine<
     `Journey initial step "${journey.initial}" does not exist in steps registry.`
   );
 
-  validateJourneyTransitions(journey.transitions, journey.steps);
+  const resolvedJourney = resolveJourneyTransitions(journey);
+  validateJourneyTransitions(resolvedJourney.transitions, resolvedJourney.steps);
 
   const buildStepMeta = (): Record<TStepId, TStepMeta> => {
     const stepMeta = {} as Record<TStepId, TStepMeta>;
-    for (const stepId of Object.keys(journey.steps) as TStepId[]) {
-      stepMeta[stepId] = journey.steps[stepId].meta as TStepMeta;
+    for (const stepId of Object.keys(resolvedJourney.steps) as TStepId[]) {
+      stepMeta[stepId] = resolvedJourney.steps[stepId].meta as TStepMeta;
     }
     return stepMeta;
   };
 
   const { clearOnReset, hydrateSnapshot, persistSnapshot, removePersistedSnapshot } =
     createPersistenceController({
-      initial: journey.initial,
-      context: journey.context,
+      initial: resolvedJourney.initial,
+      context: resolvedJourney.context,
       stepMeta: buildStepMeta(),
-      steps: journey.steps,
+      steps: resolvedJourney.steps,
       ...(options ? { options } : {})
     });
 
   let snapshot = hydrateSnapshot();
   snapshot = {
     ...snapshot,
-    async: buildInitialAsyncState(journey.steps)
+    async: buildInitialAsyncState(resolvedJourney.steps)
   };
   const completeOnNoNextStep = options?.completeOnNoNextStep ?? true;
   const startupEvent: JourneyObservationEvent<TStepId, TEventType, TPayloadMap, TStepMeta> = {
@@ -438,16 +461,16 @@ export function createJourneyMachine<
     earlyResult: JourneySendResult<TContext, TStepId, TStepMeta> | null;
   } => {
     if (!isGoToStepByIdEvent(event)) {
-      return { transitionsToEvaluate: journey.transitions, earlyResult: null };
+      return { transitionsToEvaluate: resolvedJourney.transitions, earlyResult: null };
     }
 
     assertStepExists(
-      journey.steps,
+      resolvedJourney.steps,
       event.stepId,
       `Cannot goToStepById unknown step "${event.stepId}".`
     );
 
-    const goToStepTransitions = journey.transitions.filter((transition) => {
+    const goToStepTransitions = resolvedJourney.transitions.filter((transition) => {
       const fromMatches = transition.from === "*" || transition.from === fromStep;
       return (
         fromMatches &&
@@ -459,7 +482,7 @@ export function createJourneyMachine<
 
     if (goToStepTransitions.length === 0) {
       return {
-        transitionsToEvaluate: journey.transitions,
+        transitionsToEvaluate: resolvedJourney.transitions,
         earlyResult: applyDirectGoToStepById(event.stepId, fromStep, runVersion)
       };
     }
@@ -653,7 +676,7 @@ export function createJourneyMachine<
         : (transition.to as TStepId | JourneyTerminal);
 
   const hasDeclaredTransitionForEvent = (fromStep: TStepId, eventType: string): boolean =>
-    journey.transitions.some((transition) => {
+    resolvedJourney.transitions.some((transition) => {
       const fromMatches = transition.from === "*" || transition.from === fromStep;
       return fromMatches && transition.event === eventType;
     });
@@ -704,7 +727,11 @@ export function createJourneyMachine<
     transition: RuntimeTransition,
     nextContext: TContext
   ): JourneySendResult<TContext, TStepId, TStepMeta> => {
-    assertStepExists(journey.steps, target, `Transition points to unknown step "${target}".`);
+    assertStepExists(
+      resolvedJourney.steps,
+      target,
+      `Transition points to unknown step "${target}".`
+    );
 
     const beforeCurrent = snapshot.currentStepId;
     if (beforeCurrent !== target) {
@@ -873,11 +900,11 @@ export function createJourneyMachine<
 
       cancelInFlight();
       snapshot = buildSnapshot(
-        [journey.initial],
+        [resolvedJourney.initial],
         0,
-        journey.context,
+        resolvedJourney.context,
         JOURNEY_STATUS.RUNNING,
-        buildInitialAsyncState(journey.steps),
+        buildInitialAsyncState(resolvedJourney.steps),
         buildStepMeta()
       );
       if (clearOnReset) {
@@ -906,7 +933,7 @@ export function createJourneyMachine<
         return snapshot;
       }
 
-      if (!(stepId in journey.steps)) {
+      if (!(stepId in resolvedJourney.steps)) {
         return snapshot;
       }
 
@@ -940,7 +967,7 @@ export function createJourneyMachine<
       }
 
       const resolvedStep = stepId ?? snapshot.currentStepId;
-      if (!(resolvedStep in journey.steps)) {
+      if (!(resolvedStep in resolvedJourney.steps)) {
         return snapshot;
       }
 

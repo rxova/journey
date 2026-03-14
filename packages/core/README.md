@@ -175,19 +175,20 @@ Use `subscribeStart(...)`, `subscribeComplete(...)`, and `subscribeTerminate(...
 ## Transition Ergonomics
 
 ```ts
-import { createTransitions, tx } from "@rxova/journey-core";
-
-const transitions = createTransitions(
-  tx.from("start").on("goToNextStep").to("review"),
-  tx
-    .from("review")
-    .on("goToNextStep")
-    .choose(
-      tx.when(({ context }) => context.canSubmit).to("done", { id: "review-submit" }),
-      tx.otherwise().to("review", { id: "review-stay" })
-    ),
-  tx.from("review").toComplete()
-);
+const journey = {
+  transitions: ({ tx, createTransitions }) =>
+    createTransitions(
+      tx.from("start").on("goToNextStep").to("review"),
+      tx
+        .from("review")
+        .on("goToNextStep")
+        .choose(({ when, otherwise }) => [
+          when(({ context }) => context.canSubmit).to("done", { id: "review-submit" }),
+          otherwise().to("review", { id: "review-stay" })
+        ]),
+      tx.from("review").toComplete()
+    )
+};
 ```
 
-`timeoutMs` is available on plain transition objects and on the `config` argument passed to fluent helpers such as `to(...)`, `complete(...)`, and `terminate(...)`.
+`timeoutMs` is available on plain transition objects and on the `config` argument passed to callback-scoped helpers such as `to(...)`, `complete(...)`, and `terminate(...)`.

@@ -46,12 +46,7 @@ Here is the same graph style wired with React bindings:
 
 ```tsx
 import React from "react";
-import {
-  createJourneyBindings,
-  createTransitions,
-  tx,
-  type JourneyReactDefinition
-} from "@rxova/journey-react";
+import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
 
 type StepId = "details" | "payment" | "review";
 type CustomEvent = "applyCoupon";
@@ -82,14 +77,18 @@ const journey: JourneyReactDefinition<Context, StepId, CustomEvent> = {
     payment: { component: Payment },
     review: { component: Review }
   },
-  transitions: createTransitions(
-    tx
-      .from("details")
-      .on("goToNextStep")
-      .choose(tx.when(({ context }) => context.isVip).to("review"), tx.otherwise().to("payment")),
-    tx.from("payment").on("applyCoupon").to("review"),
-    tx.from("review").toComplete()
-  )
+  transitions: ({ tx, createTransitions }) =>
+    createTransitions(
+      tx
+        .from("details")
+        .on("goToNextStep")
+        .choose(({ when, otherwise }) => [
+          when(({ context }) => context.isVip).to("review"),
+          otherwise().to("payment")
+        ]),
+      tx.from("payment").on("applyCoupon").to("review"),
+      tx.from("review").toComplete()
+    )
 };
 
 bindings = createJourneyBindings(journey);

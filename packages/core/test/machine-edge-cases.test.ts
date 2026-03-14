@@ -10,15 +10,23 @@ import {
 type StepId = "start" | "middle";
 type Event = JourneyDefaultEventType;
 type Context = { value: number };
+type TransitionList = Extract<
+  JourneyDefinition<Context, StepId, Event>["transitions"],
+  readonly unknown[]
+>;
 
-const createBaseJourney = (): JourneyDefinition<Context, StepId, Event> => ({
+const createBaseJourney = (): JourneyDefinition<Context, StepId, Event> & {
+  transitions: TransitionList;
+} => ({
   initial: "start",
   context: { value: 0 },
   steps: {
     start: { meta: { title: "Start" } },
     middle: { meta: { title: "Middle" } }
   },
-  transitions: [{ id: "start-next", from: "start", event: "goToNextStep", to: "middle" }]
+  transitions: [
+    { id: "start-next", from: "start", event: "goToNextStep", to: "middle" }
+  ] as TransitionList
 });
 
 const deferred = <T>() => {

@@ -16,8 +16,6 @@ In `0.6.x`, prefer additive and bug-fix changes, and avoid breaking API changes 
 ```ts
 import {
   createJourneyMachine,
-  createTransitions,
-  tx,
   JOURNEY_STATUS,
   JOURNEY_EVENT,
   JOURNEY_ASYNC_PHASE,
@@ -25,7 +23,7 @@ import {
 } from "@rxova/journey-core";
 ```
 
-Most teams use `createJourneyMachine`, `createTransitions`, and `tx` every day.
+Most teams use `createJourneyMachine` plus the typed transition helpers available inside `journey.transitions`.
 
 ## TypeScript-First API Surface
 
@@ -48,7 +46,7 @@ For a complete typing guide, see [Core TypeScript](/docs/core/typescript).
 ## Typical Usage Flow
 
 ```ts
-import { createJourneyMachine, createTransitions, tx } from "@rxova/journey-core";
+import { createJourneyMachine } from "@rxova/journey-core";
 
 const journey = {
   initial: "start",
@@ -58,14 +56,18 @@ const journey = {
     payment: {},
     review: {}
   },
-  transitions: createTransitions(
-    tx
-      .from("start")
-      .on("goToNextStep")
-      .choose(tx.when(({ context }) => context.isVip).to("review"), tx.otherwise().to("payment")),
-    tx.from("payment").on("goToNextStep").to("review"),
-    tx.from("review").toComplete()
-  )
+  transitions: ({ tx, createTransitions }) =>
+    createTransitions(
+      tx
+        .from("start")
+        .on("goToNextStep")
+        .choose(({ when, otherwise }) => [
+          when(({ context }) => context.isVip).to("review"),
+          otherwise().to("payment")
+        ]),
+      tx.from("payment").on("goToNextStep").to("review"),
+      tx.from("review").toComplete()
+    )
 };
 
 const machine = createJourneyMachine(journey);
@@ -181,7 +183,7 @@ Transition syntax has its own page:
 
 - [Transition Syntax](/docs/core/api/transitions-syntax)
 
-It covers plain transition objects, `tx` helpers, and when to use each style.
+It covers plain transition objects, callback-scoped `tx` helpers, and when to use each style.
 
 ## Observability
 

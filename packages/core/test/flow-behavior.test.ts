@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import { createJourneyMachine, createTransitions, tx } from "@rxova/journey-core";
+import { createJourneyMachine } from "@rxova/journey-core";
 import type { JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "details" | "extra" | "review" | "confirmExit";
 type Event = "goToNextStep" | "requestClose" | "terminateJourney";
 type Context = { includeDetails: boolean; dirty: boolean };
+type TransitionList = Extract<
+  JourneyDefinition<Context, StepId, Event>["transitions"],
+  readonly unknown[]
+>;
 
-const createJourney = (): JourneyDefinition<Context, StepId, Event> => ({
+const createJourney = (): JourneyDefinition<Context, StepId, Event> & {
+  transitions: TransitionList;
+} => ({
   initial: "start",
   context: { includeDetails: false, dirty: false },
   steps: {
@@ -42,21 +48,44 @@ const createJourney = (): JourneyDefinition<Context, StepId, Event> => ({
       when: ({ context }) => context.dirty
     },
     { id: "close-clean", from: "*", event: "terminateJourney" }
-  ]
+  ] as TransitionList
 });
 
 describe("flow behavior", () => {
   it("tx + createTransitions flatten branch declarations", () => {
-    const startNext = tx.from<StepId, Context>("start").on("goToNextStep");
+    let transitions!: ReturnType<
+      Extract<
+        JourneyDefinition<Context, StepId, Event>["transitions"],
+        (...args: never[]) => unknown
+      >
+    >;
+    const journey: JourneyDefinition<Context, StepId, Event> = {
+      initial: "start",
+      context: { includeDetails: false, dirty: false },
+      steps: {
+        start: {},
+        details: {},
+        extra: {},
+        review: {},
+        confirmExit: {}
+      },
+      transitions: ({ tx, createTransitions }) => {
+        transitions = createTransitions(
+          tx.from("start").on("goToNextStep").to("start", { id: "start-next" }),
+          tx.any().on("requestClose").to("confirmExit", { id: "wildcard-close" }),
+          tx
+            .from("start")
+            .on("goToNextStep")
+            .choose(({ when, otherwise }) => [
+              when(() => true).to("start", { id: "branch-1" }),
+              otherwise().to("start", { id: "branch-2" })
+            ])
+        );
+        return transitions;
+      }
+    };
 
-    const transitions = createTransitions<Context, StepId, Event, Record<never, never>>(
-      startNext.to("start", { id: "start-next" }),
-      tx.any<Context, StepId>().on("requestClose").to("confirmExit", { id: "wildcard-close" }),
-      startNext.choose(
-        startNext.when(() => true).to("start", { id: "branch-1" }),
-        startNext.otherwise().to("start", { id: "branch-2" })
-      )
-    );
+    const machine = createJourneyMachine(journey);
 
     expect(transitions).toHaveLength(4);
     expect(transitions.map((transition) => transition.id)).toEqual([
@@ -66,6 +95,7 @@ describe("flow behavior", () => {
       "branch-2"
     ]);
     expect(transitions[1]?.from).toBe("*");
+    expect(machine.getSnapshot().currentStepId).toBe("start");
   });
 
   it("supports branch-like behavior via first-match transitions", async () => {
@@ -95,7 +125,7 @@ describe("flow behavior", () => {
         to: "review"
       },
       ...journey.transitions
-    ];
+    ] as TransitionList;
 
     const machine = createJourneyMachine(journey);
     const result = await machine.send({ type: "goToNextStep" });

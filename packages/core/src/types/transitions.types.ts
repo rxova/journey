@@ -36,7 +36,7 @@ export type JourneySelectedTransitionArgs<
   event: JourneySelectedTransitionEvent<TStepId, TEventType, TPayloadMap>;
 };
 
-type JourneyTransitionPayloadMap<
+export type JourneyTransitionPayloadMap<
   TEventType extends string,
   TPayloadMap extends Partial<Record<string, unknown>>
 > = TPayloadMap & JourneyEventPayloadMap<TEventType>;
@@ -158,6 +158,21 @@ export type TransitionBranchBuilder<
   ) => TransitionBranch<TContext, TStepId, TEventType, TPayloadMap>;
 };
 
+/** Builder-local helpers passed to callback-based `choose(...)` declarations. */
+export type TransitionChoiceHelpers<
+  TContext,
+  TStepId extends string,
+  TEventType extends string,
+  TPayloadMap extends JourneyEventPayloadMap<TEventType>
+> = {
+  when: (
+    predicate: (
+      args: JourneySelectedTransitionArgs<TContext, TStepId, TEventType, TPayloadMap>
+    ) => boolean | Promise<boolean>
+  ) => TransitionBranchBuilder<TContext, TStepId, TEventType, TPayloadMap>;
+  otherwise: () => TransitionBranchBuilder<TContext, TStepId, TEventType, TPayloadMap>;
+};
+
 /** Builder returned by `tx.from(...).on(nonTerminalEvent)` and `tx.any().on(...)`. */
 export type StandardEventBuilder<
   TContext,
@@ -170,7 +185,13 @@ export type StandardEventBuilder<
     config?: TransitionConfig<TContext, TStepId, TEventType, TPayloadMap>
   ) => JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>;
   choose: (
-    ...branches: Array<TransitionBranch<TContext, TStepId, TEventType, TPayloadMap>>
+    ...input:
+      | Array<TransitionBranch<TContext, TStepId, TEventType, TPayloadMap>>
+      | [
+          factory: (
+            helpers: TransitionChoiceHelpers<TContext, TStepId, TEventType, TPayloadMap>
+          ) => readonly TransitionBranch<TContext, TStepId, TEventType, TPayloadMap>[]
+        ]
   ) => JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>[];
   when: (
     predicate: (
@@ -218,3 +239,150 @@ export type EventBuilder<
   : TEventType extends "terminateJourney"
     ? TerminateJourneyEventBuilder<TContext, TStepId, TEventType, TPayloadMap>
     : StandardEventBuilder<TContext, TStepId, TEventType, TPayloadMap>;
+
+export type JourneyTransitionItem<
+  TContext,
+  TStepId extends string,
+  TEventType extends string,
+  TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>
+> =
+  | JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>
+  | readonly JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>[];
+
+export type JourneyCreateTransitions<
+  TContext,
+  TStepId extends string,
+  TEventType extends string,
+  TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>
+> = (
+  ...items: Array<JourneyTransitionItem<TContext, TStepId, TEventType, TPayloadMap>>
+) => JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>[];
+
+export type JourneyTypedTx<
+  TContext,
+  TStepId extends string,
+  TEventType extends string,
+  TPayloadMap extends Partial<Record<string, unknown>> = Record<never, never>
+> = {
+  from: (from: TStepId) => {
+    on: <TSelectedEvent extends TEventType>(
+      event: TSelectedEvent
+    ) => EventBuilder<
+      TContext,
+      TStepId,
+      TSelectedEvent,
+      JourneyTransitionPayloadMap<TSelectedEvent, TPayloadMap>
+    >;
+    toComplete: (
+      config?: TransitionConfig<
+        TContext,
+        TStepId,
+        "completeJourney",
+        JourneyTransitionPayloadMap<"completeJourney", TPayloadMap>
+      >
+    ) => JourneyEventTransition<
+      TContext,
+      TStepId,
+      "completeJourney",
+      JourneyTransitionPayloadMap<"completeJourney", TPayloadMap>
+    >;
+    toTerminate: (
+      config?: TransitionConfig<
+        TContext,
+        TStepId,
+        "terminateJourney",
+        JourneyTransitionPayloadMap<"terminateJourney", TPayloadMap>
+      >
+    ) => JourneyEventTransition<
+      TContext,
+      TStepId,
+      "terminateJourney",
+      JourneyTransitionPayloadMap<"terminateJourney", TPayloadMap>
+    >;
+  };
+  any: () => {
+    on: <TSelectedEvent extends TEventType>(
+      event: TSelectedEvent
+    ) => EventBuilder<
+      TContext,
+      TStepId,
+      TSelectedEvent,
+      JourneyTransitionPayloadMap<TSelectedEvent, TPayloadMap>
+    >;
+    toComplete: (
+      config?: TransitionConfig<
+        TContext,
+        TStepId,
+        "completeJourney",
+        JourneyTransitionPayloadMap<"completeJourney", TPayloadMap>
+      >
+    ) => JourneyEventTransition<
+      TContext,
+      TStepId,
+      "completeJourney",
+      JourneyTransitionPayloadMap<"completeJourney", TPayloadMap>
+    >;
+    toTerminate: (
+      config?: TransitionConfig<
+        TContext,
+        TStepId,
+        "terminateJourney",
+        JourneyTransitionPayloadMap<"terminateJourney", TPayloadMap>
+      >
+    ) => JourneyEventTransition<
+      TContext,
+      TStepId,
+      "terminateJourney",
+      JourneyTransitionPayloadMap<"terminateJourney", TPayloadMap>
+    >;
+  };
+  when: (
+    predicate: (
+      args: JourneySelectedTransitionArgs<
+        TContext,
+        TStepId,
+        TEventType,
+        JourneyTransitionPayloadMap<TEventType, TPayloadMap>
+      >
+    ) => boolean | Promise<boolean>
+  ) => TransitionBranchBuilder<
+    TContext,
+    TStepId,
+    TEventType,
+    JourneyTransitionPayloadMap<TEventType, TPayloadMap>
+  >;
+  otherwise: () => TransitionBranchBuilder<
+    TContext,
+    TStepId,
+    TEventType,
+    JourneyTransitionPayloadMap<TEventType, TPayloadMap>
+  >;
+};
+
+export type JourneyTransitionHelpers<
+  TContext,
+  TStepId extends string,
+  TEventType extends string,
+  TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>
+> = {
+  tx: JourneyTypedTx<TContext, TStepId, TEventType, TPayloadMap>;
+  createTransitions: JourneyCreateTransitions<TContext, TStepId, TEventType, TPayloadMap>;
+};
+
+export type JourneyTransitionsFactory<
+  TContext,
+  TStepId extends string,
+  TEventType extends string,
+  TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>
+> = (
+  helpers: JourneyTransitionHelpers<TContext, TStepId, TEventType, TPayloadMap>
+) => readonly JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>[];
+
+export type JourneyTransitionsInput<
+  TContext,
+  TStepId extends string,
+  TEventType extends string,
+  TPayloadMap extends JourneyEventPayloadMap<TEventType> = Record<never, never>
+> =
+  | readonly JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>[]
+  | JourneyTransitionsFactory<TContext, TStepId, TEventType, TPayloadMap>;
