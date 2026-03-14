@@ -1,5 +1,16 @@
 # @rxova/journey-devtools-bridge
 
+## 0.8.0
+
+### Minor Changes
+
+- 16f4c24: Bump @rxova/journey-devtools-bridge to stay in sync with the new @rxova/journey-core minor release. There are no bridge-specific API changes in this branch beyond compatibility with the updated core package. See the @rxova/journey-core release notes in this release for the detailed transition-builder changes.
+
+### Patch Changes
+
+- Updated dependencies [15c9822]
+  - @rxova/journey-core@0.8.0
+
 ## 0.7.0
 
 ### Minor Changes

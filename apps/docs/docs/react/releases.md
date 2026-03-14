@@ -9,6 +9,17 @@ Release notes sourced from the React package changelog (Changesets).
 
 Source: [`packages/react/CHANGELOG.md`](https://github.com/rxova/journey/blob/main/packages/react/CHANGELOG.md)
 
+## 0.8.0
+
+### Minor Changes
+
+- 16f4c24: Align @rxova/journey-react with the @rxova/journey-core transition-definition refactor. React journey definitions now use the callback-scoped transition helpers exposed inside journey.transitions, including the preferred choose(({ when, otherwise }) => [...]) branching syntax. See the @rxova/journey-core release notes in this release for the full API change details.
+
+### Patch Changes
+
+- Updated dependencies [15c9822]
+  - @rxova/journey-core@0.8.0
+
 ## 0.7.0
 
 ### Minor Changes
