@@ -1,5 +1,11 @@
 # apps-docs
 
+## 0.7.2
+
+### Patch Changes
+
+- b2ab1b8: Improved the docs experience for TypeScript examples by generating matching JavaScript tabs automatically. This includes better formatting preservation during TS-to-JS conversion, more consistent dark-theme syntax highlighting between TS and JS tabs, and updated Core overview examples that show more realistic event-driven journey flows.
+
 ## 0.7.1
 
 ### Patch Changes

@@ -9,6 +9,13 @@ Release notes sourced from the Devtools Bridge package changelog (Changesets).
 
 Source: [`packages/devtools-bridge/CHANGELOG.md`](https://github.com/rxova/journey/blob/main/packages/devtools-bridge/CHANGELOG.md)
 
+## 0.7.1
+
+### Patch Changes
+
+- Updated dependencies [15c9822]
+  - @rxova/journey-core@0.8.0
+
 ## 0.7.0
 
 ### Minor Changes
