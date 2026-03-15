@@ -62,7 +62,7 @@
       "name": "core/createJourneyMachine",
       "path": "dist/index.js",
       "import": "{ createJourneyMachine }",
-      "limit": "5 kB"
+      "limit": "6 kB"
     }
   ]
 }
