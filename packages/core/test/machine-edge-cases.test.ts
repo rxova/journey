@@ -478,12 +478,12 @@ describe("machine edge cases", () => {
 
     const first = await machine.send({ type: "goToStepById", stepId: "middle" });
     expect(first.transitioned).toBe(true);
-    expect(first.transitionId).toBe("goToStepById");
+    expect(first.transitionId).toBeUndefined();
     expect(machine.getSnapshot().currentStepId).toBe("middle");
 
     const second = await machine.send({ type: "goToStepById", stepId: "middle" });
     expect(second.transitioned).toBe(true);
-    expect(second.transitionId).toBe("goToStepById");
+    expect(second.transitionId).toBeUndefined();
     expect(machine.getSnapshot().history.timeline).toEqual(["start", "middle"]);
   });
 

@@ -155,6 +155,20 @@ export const isTerminalTarget = <TStepId extends string>(
   target: TStepId | JourneyTerminal
 ): target is JourneyTerminal => target === "COMPLETE" || target === "TERMINATED";
 
+export const resolveTransitionTarget = <
+  TContext,
+  TStepId extends string,
+  TEventType extends string,
+  TPayloadMap extends JourneyEventPayloadMap<TEventType>
+>(
+  transition: JourneyTransition<TContext, TStepId, TEventType, TPayloadMap>
+): TStepId | JourneyTerminal =>
+  transition.event === "completeJourney"
+    ? "COMPLETE"
+    : transition.event === "terminateJourney"
+      ? "TERMINATED"
+      : (transition.to as TStepId | JourneyTerminal);
+
 export const validateJourneyTransitions = <
   TContext,
   TStepId extends string,
