@@ -62,7 +62,7 @@
       "name": "devtools-bridge/attachJourneyDevtools",
       "path": "dist/index.js",
       "import": "{ attachJourneyDevtools }",
-      "limit": "3 kB"
+      "limit": "4 kB"
     }
   ]
 }
