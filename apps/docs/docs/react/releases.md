@@ -9,6 +9,38 @@ Release notes sourced from the React package changelog (Changesets).
 
 Source: [`packages/react/CHANGELOG.md`](https://github.com/rxova/journey/blob/main/packages/react/CHANGELOG.md)
 
+## 0.8.0
+
+### Minor Changes
+
+- 16f4c24: Align @rxova/journey-react with the @rxova/journey-core transition-definition refactor. React journey definitions now use the callback-scoped transition helpers exposed inside journey.transitions, including the preferred choose(({ when, otherwise }) => [...]) branching syntax. See the @rxova/journey-core release notes in this release for the full API change details.
+- 2551cd3: Align `@rxova/journey-react` with the `@rxova/journey-core` removal of exported Journey runtime constants.
+
+  This release also keeps React aligned with the earlier `@rxova/journey-core` transition timeout addition for async
+  guards and effects (`timeoutMs` on transitions). There are no React-specific APIs for timeout handling beyond consuming
+  the updated core machine behavior through the existing bindings.
+
+  This package no longer re-exports:
+  - `JOURNEY_STATUS`
+  - `JOURNEY_EVENT`
+  - `JOURNEY_ASYNC_PHASE`
+  - `JOURNEY_WILDCARD`
+
+  If your React app imported those from `@rxova/journey-react`, switch to the corresponding literal values or core type
+  exports.
+
+  See the `@rxova/journey-core` release notes in this release for the detailed API changes, including transition timeout
+  support.
+
+- d0ddbdf: The journey machine has been refactored for readability. See the changes in @rxova/journey-core for the implementation details.
+
+### Patch Changes
+
+- Updated dependencies [15c9822]
+- Updated dependencies [2551cd3]
+- Updated dependencies [d0ddbdf]
+  - @rxova/journey-core@0.8.0
+
 ## 0.7.0
 
 ### Minor Changes
