@@ -10,12 +10,13 @@ sidebar_label: Examples
 import { createJourneyMachine } from "@rxova/journey-core";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 
-const machine = createJourneyMachine(journey);
-const detach = attachJourneyDevtools(machine, {
+const journeyMachine = createJourneyMachine(journey);
+const detach = attachJourneyDevtools(journeyMachine, {
   machineId: "checkout",
   label: "Checkout Journey",
   enabled: true
 });
+journeyMachine.start();
 ```
 
 ## Attach Bridge to React Flow
@@ -25,18 +26,18 @@ When using bindings, attach once to the shared machine (outside or before React 
 ## Command Examples
 
 ```ts
+{ type: "startJourney" }
 { type: "goToNextStep" }
 { type: "goToStepById", stepId: "review" }
 { type: "goToPreviousStep", steps: 2 }
 { type: "goToLastVisitedStep" }
-{ type: "updateStepMetadata", stepId: "review", metadata: { title: "Review step" } }
 { type: "send", event: { type: "custom", payload: { source: "panel" } } }
-{ type: "resetMachine" }
+{ type: "resetJourney" }
 { type: "clearStepError", stepId: "review" }
 ```
 
 ## Snapshot Fields Used by Panel
 
 - `currentStepId`, `history.timeline`, `history.index`
-- `visited`, `stepMeta`
+- `visited`, `context`
 - `status`, `async`

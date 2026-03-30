@@ -5,91 +5,168 @@ sidebar_position: 2
 
 This quickstart shows the React wiring.
 
-Runtime semantics (history, observability, persistence, async behavior) come from Core: [Core Overview](/docs/core/overview) and [Core API](/docs/core/api).
+Runtime semantics such as history, observability, persistence, and async behavior still come from Core: [Core Overview](/docs/core/overview) and [Core API](/docs/core/api).
 
-Type modeling comes from Core too: [Core TypeScript](/docs/core/typescript).
+Type modeling also comes from Core: [Core TypeScript](/docs/core/typescript).
 
-## 1) Create Typed Bindings
+If you want to understand how event sending, queueing, and navigation commits work under the hood, read [Core
+Machine Architecture](/docs/core/architecture).
+
+## 1. Create The Journey Once
+
+Prefer creating the journey at module scope. If you create it inside a component, memoize it and decide explicitly whether the provider or the component owns disposal.
+
+The value returned from `createJourney(...)` is a `JourneyRuntime`.
 
 ```tsx
-// journey-bindings.ts
-import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
+// signup-journey.tsx
+import { createJourney, type JourneyViews } from "@rxova/journey-react";
+import type { JourneyDefinition } from "@rxova/journey-core";
 import { Start, Review } from "./steps";
 
 type StepId = "start" | "review";
-type Ctx = { name: string };
+type Context = { name: string };
 
-export let bindings: ReturnType<typeof createJourneyBindings<Ctx, StepId>>;
-
-const journey: JourneyReactDefinition<Ctx, StepId> = {
+const definition: JourneyDefinition<Context, StepId> = {
   initial: "start",
   context: { name: "" },
   steps: {
-    start: { component: Start },
-    review: { component: Review }
+    start: { meta: { title: "Start" } },
+    review: { meta: { title: "Review" } }
   },
-  transitions: ({ tx, createTransitions }) =>
-    createTransitions(
-      tx.from("start").on("goToNextStep").to("review"),
-      tx.from("review").toComplete()
-    )
+  transitions: {
+    start: {
+      goToNextStep: [{ to: "review" }]
+    },
+    review: {
+      completeJourney: true
+    }
+  }
 };
 
-bindings = createJourneyBindings(journey);
+export const signupJourney = createJourney(definition);
+
+export const signupViews: JourneyViews<StepId> = {
+  start: Start,
+  review: Review
+};
 ```
 
-## 2) Build Step Components
+## 2. Build Step Components
+
+Hooks work without a provider because they close over the created machine.
 
 ```tsx
 // steps.tsx
-import { bindings } from "./journey-bindings";
+import { signupJourney } from "./signup-journey";
 
 export const Start = () => {
-  const api = bindings.useJourneyApi();
+  const api = signupJourney.useJourneyApi();
   return <button onClick={() => void api.goToNextStep()}>Next</button>;
 };
 
 export const Review = () => {
-  const api = bindings.useJourneyApi();
+  const api = signupJourney.useJourneyApi();
   return <button onClick={() => void api.completeJourney()}>Submit</button>;
 };
 ```
 
-## 3) Mount Provider + StepRenderer
+## 3. Mount `JourneyProvider` And `StepRenderer`
+
+`JourneyProvider` only supplies the `views` record and lifecycle callbacks for `StepRenderer`.
 
 ```tsx
 // App.tsx
-import { bindings } from "./journey-bindings";
+import { signupJourney, signupViews } from "./signup-journey";
 
 export const App = () => {
-  const Provider = bindings.Provider;
-  const StepRenderer = bindings.StepRenderer;
+  const JourneyProvider = signupJourney.JourneyProvider;
+  const StepRenderer = signupJourney.StepRenderer;
 
   return (
-    <Provider>
+    <JourneyProvider views={signupViews}>
       <StepRenderer />
-    </Provider>
+    </JourneyProvider>
   );
 };
 ```
 
-## 4) Use Navigation Helpers
+## 4. Use Navigation Helpers
 
 ```tsx
-const api = bindings.useJourneyApi();
+const api = signupJourney.useJourneyApi();
 
 await api.goToPreviousStep(1);
 await api.goToLastVisitedStep();
-await api.send({ type: "goToStepById", stepId: "review" });
+await api.goToStepById("review");
 ```
 
-`api` is journey-typed automatically from your bindings, so event names and payload shapes are checked at compile time.
+`api` is fully typed from your definition, so event names and payload shapes stay checked at compile time.
 
-Guard/effect failures resolve through `result.error` instead of rejecting, so `void api.goToNextStep()` is safe from unhandled promise rejections.
+Guard and `updateContext` failures resolve through `result.error` instead of rejecting, so `void api.goToNextStep()` is safe from unhandled promise rejections.
+
+## Request-Scoped Ownership
+
+For server-rendered or request-scoped UI, create the runtime inside the owned client boundary instead of sharing one global runtime:
+
+```tsx
+"use client";
+
+import React from "react";
+import { createJourney } from "@rxova/journey-react";
+
+export function CheckoutFlow({ customerId }: { customerId: string }) {
+  const checkout = React.useMemo(
+    () =>
+      createJourney({
+        ...definition,
+        context: {
+          ...definition.context,
+          customerId
+        }
+      }),
+    [customerId]
+  );
+
+  return (
+    <checkout.JourneyProvider views={views} disposeOnUnmount>
+      <checkout.StepRenderer />
+    </checkout.JourneyProvider>
+  );
+}
+```
+
+This creates one runtime per mounted boundary. If a prop change should reset the journey, remount that boundary deliberately.
+
+## Multiple Independent Instances
+
+Multiple isolated flows come from multiple runtimes, not from repeating the same provider:
+
+```tsx
+const makeSignupJourney = createJourneyFactory(definition);
+
+const SignupCard = () => {
+  const signup = React.useMemo(() => makeSignupJourney(), []);
+
+  return (
+    <signup.JourneyProvider views={views} disposeOnUnmount>
+      <signup.StepRenderer />
+    </signup.JourneyProvider>
+  );
+};
+
+export const ComparisonGrid = () => (
+  <>
+    <SignupCard />
+    <SignupCard />
+  </>
+);
+```
 
 ## Where To Go Next
 
-- Hook surface and Provider behavior: [Provider and Hooks API](/docs/react/provider-and-hooks)
+- Hook surface and provider behavior: [Provider and Hooks API](/docs/react/provider-and-hooks)
 - React usage patterns: [React Patterns](/docs/react/patterns)
 - Async UI states in React: [Async UI](/docs/react/async-ui)
-- Runtime semantics (source of truth): [Core API](/docs/core/api)
+- Runtime semantics: [Core API](/docs/core/api)
+- Compatibility promises: [Stability Contract](/docs/core/stability)

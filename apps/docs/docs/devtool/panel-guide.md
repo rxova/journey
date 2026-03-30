@@ -21,10 +21,9 @@ The panel uses a Redux-style inspector layout:
 
 Built-ins:
 
-- `goToNextStep`, `terminateMachine`, `completeJourney`, `resetMachine`
+- `startJourney`, `goToNextStep`, `terminateJourney`, `completeJourney`, `resetJourney`
 - `goToStepById`
 - `goToPreviousStep`
 - `goToLastVisitedStep`
-- `updateStepMetadata`
 - custom `send`
 - `clearStepError`

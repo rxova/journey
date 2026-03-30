@@ -27,7 +27,6 @@ const phase = snapshot.async.byStep[snapshot.currentStepId].phase;
 ```
 
 - `phase === "evaluating-when"`: disable controls or show validating state.
-- `phase === "running-effect"`: show submit/loading state.
 - `phase === "error"`: show recoverable error UI.
 - `phase === "idle"`: render normal interactive step UI.
 
@@ -41,7 +40,7 @@ const StepView = () => {
   const stepId = snapshot.currentStepId;
   const state = snapshot.async.byStep[stepId];
 
-  if (state.phase === "evaluating-when" || state.phase === "running-effect") {
+  if (state.phase === "evaluating-when") {
     return <Spinner />;
   }
 
@@ -67,4 +66,4 @@ api.clearStepError("payment"); // specific step
 React bindings expose `snapshot.async`.
 Core defines when and why phase transitions happen.
 
-If you need exact timing and rules for `when`/`effect`, read [Core Async Behavior](/docs/core/async).
+If you need exact timing and rules for `when`, `updateContext`, and async errors, read [Core Async Behavior](/docs/core/async).

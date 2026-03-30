@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Core And React Runtime
+
+- The current runtime model is now documented as the contract being frozen for the upcoming `1.0.0-rc` line.
+- Runtime `context` remains JSON-only; non-JSON runtime state is no longer part of the supported model.
+- Step `meta` is documented as static definition data rather than mutable runtime state.
+- `updateContext()` is documented as the single queued context-write API.
+- React docs now treat `createJourneyFactory()` as the primary isolation helper for request-scoped or boundary-scoped runtimes.
+
 - Devtools extension now uses runtime content-script injection scoped to active DevTools sessions.
 - Bridge now enforces strict same-origin message handling (empty-origin messages are rejected).
 - Bridge command execution defaults to dev-only; production requires explicit `commandsEnabled: true`.
@@ -15,6 +23,8 @@
 
 ### Migration Notes
 
+- Keep runtime `context` JSON-serializable. Move non-JSON runtime data into step `meta`, handlers, or application-owned state outside the machine.
+- Treat React `createJourney(...)` runtimes as instance-bound singletons. Use `createJourneyFactory(...)` when you need isolated instances.
 - If you relied on production command execution, pass `commandsEnabled: true` to `attachJourneyDevtools`.
 - If your browser build does not expose `process.env.NODE_ENV`, pass `enabled: true` (and `commandsEnabled: true` when needed).
 - Legacy command-auth APIs are no longer documented in this branch.

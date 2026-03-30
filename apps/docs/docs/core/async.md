@@ -3,9 +3,28 @@ title: Async Behavior
 sidebar_position: 6
 ---
 
-Journey treats async work as a first-class part of flow logic, not an afterthought.
+Journey treats async work as a first-class part of transition selection, but state writes stay synchronous and queued.
 
-That means async guards and effects stay deterministic, observable, and easier to debug.
+## Mental Model
+
+```text
+transition.start
+  -> when?         -> evaluating-when
+  -> updateContext -> snapshot commit -> idle
+  -> failure       -> transition.error -> error
+```
+
+The active step keeps async state in `snapshot.async.byStep[stepId]`, while `snapshot.async.isLoading`
+answers the machine-wide question "is any async transition work currently in flight?".
+
+## Guard vs Update
+
+| Part            | Purpose                                | Runs when                        | Can change context? |
+| --------------- | -------------------------------------- | -------------------------------- | ------------------- |
+| `when`          | decide whether a transition is allowed | before commit                    | no                  |
+| `updateContext` | derive the next context                | only for the selected transition | yes, synchronously  |
+
+`when` may be sync or async. `updateContext` is sync only.
 
 ## Async Guards (`when`)
 
@@ -16,58 +35,71 @@ Use `when` to decide whether a transition is allowed right now.
   from: "payment",
   event: "goToNextStep",
   to: "review",
-  when: async ({ context }) => {
-    const validation = await validateCard(context.cardToken);
-    return validation.ok;
+  when: async ({ context, handlers, signal }) => {
+    return await handlers.validateCard(context.cardToken, { signal });
   }
 }
 ```
 
 Think of guards as permission checks.
 
-## Async Effects (`effect`)
+## Sync Transition Updates (`updateContext`)
 
-Use `effect` for side effects and optional context updates tied to transitions.
+Use transition `updateContext` to derive the next context from the current `context` and triggering `event`.
 
 ```ts
 {
   from: "details",
-  event: "goToNextStep",
+  event: "draftSaved",
   to: "review",
-  effect: async ({ context }) => {
-    const draft = await saveDraft(context);
-    return { ...context, draftId: draft.id };
-  }
+  updateContext: ({ context, event }) => ({
+    ...context,
+    draftId: event.payload?.draftId ?? null
+  })
 }
 ```
 
-Think of effects as transition work that runs before state commit.
+If you need async work to produce data for the next state, do it before `send(...)` and put the resolved data in the event payload.
 
-### When `effect` runs
+## Lifecycle Callbacks
 
-`effect` runs only if all of these are true:
+Definition-level `handlers`, `onEnter`, and `onLeave` may still perform async work, but they are observational helpers around the transition pipeline. They do not define a separate transition phase in `snapshot.async`, and failures there are treated as lifecycle diagnostics rather than `transition.error`.
 
-- machine status is `running`
-- a transition is selected for the event (first valid match wins)
-- the transition guard `when` passes (if present)
-- the selected transition defines `effect`
+## Observable Async Phases
 
-### How `effect` runs
+Per-step async phases are:
 
-For `send(event)`, Journey processes in this order:
+- `idle`
+- `evaluating-when`
+- `error`
 
-1. Emit `transition.start`.
-2. Select the first matching transition.
-3. Evaluate `when` (if present).
-4. Run `effect` with `{ context, from, timeline, index, event }`.
-5. If `effect` returns context, use it as next context.
-6. Commit snapshot change and emit success events (`transition.success`, `step.exit`, `step.enter`, etc.).
+Typical UI mappings:
 
-`effect` can be sync or async. If async, the source step moves through `running-effect` phase until it resolves.
+- `phase === "evaluating-when"`: disable controls or show validation state
+- `phase === "error"`: show recoverable error UI
+- `phase === "idle"`: render normal interactive state
 
-### Transition Timeouts
+## Transition Arguments
 
-Add `timeoutMs` to a transition to cap async `when` and `effect` work individually.
+Every `when` receives a single args object:
+
+```ts
+when: async ({ snapshot, context, from, timeline, index, event, signal, handlers }) => {
+  return true;
+};
+```
+
+Transition `updateContext` receives the same transition state without `signal` or `handlers` because it must stay synchronous:
+
+```ts
+updateContext: ({ snapshot, context, from, timeline, index, event }) => {
+  return context;
+};
+```
+
+## Timeouts
+
+Add `timeoutMs` to a transition to cap async `when` work.
 
 ```ts
 {
@@ -76,93 +108,24 @@ Add `timeoutMs` to a transition to cap async `when` and `effect` work individual
   event: "goToNextStep",
   to: "review",
   timeoutMs: 5_000,
-  when: async ({ context }) => validateCard(context.cardToken),
-  effect: async ({ context }) => {
-    await syncDraft(context);
-    return context;
+  when: async ({ context, handlers, signal }) => {
+    return await handlers.validateCard(context.cardToken, { signal });
   }
 }
 ```
 
-If the async guard or effect does not settle before the timeout, Journey resolves the send result with `transitioned: false`, emits `transition.error`, and moves the source step into async `error`.
+If async work does not settle before the timeout, Journey resolves the send result with `transitioned: false`, emits `transition.error`, and moves the source step into async `error`.
 
-`timeoutMs` must be finite when provided. `undefined`, `0`, and negative values disable the timeout.
+## `updateContext()` During In-Flight Async Work
 
-## `updateContext()` During In-Flight Transitions
+All writes share one queue.
 
-`updateContext()` writes to the current snapshot immediately, but it does not rebase a transition that is already in progress.
-
-- If an async `when` is already evaluating, it keeps the `{ context, from, timeline, index, event }` it started with. A later `updateContext()` call does not change that guard decision.
-- If an async `effect` is already running, it also keeps the args it started with. When that transition commits, it writes either the effect's returned context or the context captured when the effect began, so an intervening `updateContext()` call can be overwritten.
+- A running async `when` keeps the args it started with.
+- An external `updateContext()` call waits in the same queue instead of racing a second write lane.
+- If a context change must affect the current transition decision, apply it before `send(...)` or include it in the event payload.
 
 Practical rule:
 
-- If a context change must affect the current transition, apply it before `send(...)` or include it in the event payload.
-- If a context change should happen after the transition, await `send(...)` (or a helper like `goToNextStep()`) first, then call `updateContext()`.
-
-### When `effect` does not run
-
-`effect` does not run when:
-
-- machine is terminal (`complete` or `terminated`)
-- no transition matches the event
-- the selected transition has no `effect`
-- `when` returns `false`
-- `when` throws/rejects
-- navigation happens via pointer helpers (`goToPreviousStep`, `goToLastVisitedStep`)
-- `goToStepById` uses direct-jump fallback because no matching `goToStepById` transition exists
-
-## Failure Behavior
-
-If guard or effect fails:
-
-- Journey emits `transition.error`
-- source step async phase becomes `error`
-- snapshot navigation is not committed
-- `send(...)` resolves with `transitioned: false` and `error`
-
-This prevents partial transitions and keeps state consistent.
-
-## Observable Async Phases
-
-Per-step async phases:
-
-- `idle`
-- `evaluating-when`
-- `running-effect`
-- `error`
-
-Read from `snapshot.async.byStep[stepId]`.
-
-```ts
-const phase = snapshot.async.byStep[snapshot.currentStepId].phase;
-```
-
-Typical UI mappings:
-
-- `phase === "evaluating-when"`: disable controls or show validating state.
-- `phase === "running-effect"`: show submit/loading state.
-- `phase === "error"`: show recoverable error UI.
-- `phase === "idle"`: render normal interactive step UI.
-
-## UI Pattern
-
-```tsx
-const step = snapshot.currentStepId;
-const asyncState = snapshot.async.byStep[step];
-
-if (asyncState.phase === "running-effect" || asyncState.phase === "evaluating-when") {
-  return <Spinner />;
-}
-
-if (asyncState.phase === "error") {
-  return <ErrorPanel onDismiss={() => api.clearStepError(step)} />;
-}
-```
-
-## Recommendations
-
-- Keep guards focused on decisions, not heavy side effects.
-- Put important side effects inside transition `effect`.
-- Add transition `id` for better production debugging.
-- Keep UI components thin; keep flow rules in transitions.
+- async work decides
+- events carry resolved data
+- transition `updateContext` commits the next context synchronously

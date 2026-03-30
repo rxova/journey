@@ -35,6 +35,8 @@ pnpm -C apps/docs build
 
 Static output is generated in `apps/docs/build`.
 
+This build is the authoritative docs validation gate in CI. The docs app also has local editor TypeScript support, but release validation for the site is the Docusaurus build itself.
+
 ## Docs Versioning
 
 Freeze each docs instance into its own versioned snapshot:
@@ -107,6 +109,12 @@ Check TSDoc coverage:
 
 ```bash
 pnpm run docs:api:check
+```
+
+Check that the docs site itself still builds:
+
+```bash
+pnpm run docs:check
 ```
 
 ## Deploy

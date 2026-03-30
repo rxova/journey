@@ -40,73 +40,154 @@ bun add @rxova/journey-core
   </TabItem>
 </Tabs>
 
-`@rxova/journey-core` also works in Bun-based SPAs and other standard ESM runtimes.
+`@rxova/journey-core` works in any standard ESM runtime and does not require a UI framework.
 
 ## Define a Journey
+
+Journey supports three ways to define transitions: **linear**, **graph**, and **headless**. All three share the same runtime, snapshot shape, and navigation API. Pick the one that fits your flow.
+
+Reserved step ids: `*`, `global`, `COMPLETE`, and `TERMINATED`. They are used by the runtime and cannot be used as actual step names.
+
+### Linear
+
+Use the array shorthand when steps follow a fixed sequence. Each entry is a step id or an object with synchronous context updates and timeouts.
 
 ```ts
 import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
-type StepId = "start" | "details" | "review" | "confirmExit";
-type Event = "goToNextStep" | "back" | "requestClose" | "terminateJourney" | "completeJourney";
-type Context = { dirty: boolean };
+type StepId = "account" | "details" | "payment" | "review";
+type Context = { email: string; completedSteps: number };
+type StepMeta = { label: string };
 
-const journey: JourneyDefinition<Context, StepId, Event> = {
-  initial: "start",
-  context: { dirty: false },
+const checkout: JourneyDefinition<Context, StepId, Record<never, never>, StepMeta> = {
+  initial: "account",
+  context: { email: "", completedSteps: 0 },
   steps: {
-    start: {},
-    details: {},
-    review: {},
-    confirmExit: {}
+    account: { meta: { label: "Account" } },
+    details: { meta: { label: "Details" } },
+    payment: { meta: { label: "Payment" } },
+    review: { meta: { label: "Review" } }
   },
-  transitions: ({ tx, createTransitions }) =>
-    createTransitions(
-      tx.from("start").on("goToNextStep").to("details"),
-      tx.from("details").on("goToNextStep").to("review"),
-      tx
-        .any()
-        .on("requestClose")
-        .to("confirmExit", {
-          when: ({ context }) => context.dirty
-        }),
-      tx.from("requestClose").toTerminate(),
-      tx.from("review").toComplete()
-    )
+  transitions: [
+    "account",
+    {
+      step: "details",
+      timeoutMs: 5000,
+      updateContext: ({ context }) => ({
+        ...context,
+        completedSteps: context.completedSteps + 1
+      })
+    },
+    "payment",
+    "review"
+  ]
 };
+
+const machine = createJourneyMachine(checkout);
+machine.start();
 ```
 
-## TypeScript Notes
+### Graph
 
-- `StepId`, `Event`, and `Context` are explicit types so flow intent is clear.
-- `JourneyDefinition<...>` enforces step ids and event types across transitions.
-- Add an event payload map when custom events carry structured payloads.
-- For deeper typing patterns, see [Core TypeScript](/docs/core/typescript).
-
-## Create Machine
+Use step-keyed transitions when your flow has branching, conditional routing, retries, or custom events.
 
 ```ts
-const machine = createJourneyMachine(journey);
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
+
+type StepId = "login" | "admin" | "dashboard" | "blocked";
+type Context = { role: "admin" | "user" | null };
+
+const auth: JourneyDefinition<Context, StepId> = {
+  initial: "login",
+  context: { role: null },
+  steps: {
+    login: {},
+    admin: {},
+    dashboard: {},
+    blocked: {}
+  },
+  transitions: {
+    login: {
+      goToNextStep: [
+        { to: "admin", when: ({ context }) => context.role === "admin" },
+        { to: "dashboard", when: ({ context }) => context.role === "user" },
+        { to: "blocked" }
+      ]
+    },
+    admin: { completeJourney: true },
+    dashboard: { completeJourney: true },
+    blocked: { terminateJourney: true },
+    global: { terminateJourney: true }
+  }
+};
+
+const machine = createJourneyMachine(auth);
+machine.start();
 ```
+
+### Headless
+
+Omit `transitions` entirely and navigate with `goToStepById`. Useful for custom renderers, non-React environments, or flows where the driver decides the path at runtime.
+
+```ts
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
+
+type StepId = "intro" | "configure" | "confirm";
+
+const flow: JourneyDefinition<Record<string, never>, StepId> = {
+  initial: "intro",
+  context: {},
+  steps: { intro: {}, configure: {}, confirm: {} }
+};
+
+const machine = createJourneyMachine(flow);
+machine.start();
+
+await machine.goToStepById("configure");
+await machine.goToStepById("confirm");
+```
+
+In headless mode, `goToStepById(...)` is the forward-navigation primitive. `goToNextStep()` and custom events stay no-op until you define transitions.
 
 ## Drive It
 
+All three modes share the same runtime API, but not every command is meaningful in every mode:
+
 ```ts
 await machine.send({ type: "goToNextStep" });
-await machine.send({ type: "goToNextStep" });
-await machine.send({ type: "back" }); // explicit transition or fallback previous-step
-await machine.goToPreviousStep(2);
+await machine.goToPreviousStep();
 await machine.goToLastVisitedStep();
+await machine.goToStepById("review");
+
+await machine.send({ type: "completeJourney" });
+await machine.send({ type: "terminateJourney" });
 ```
 
-## Read Snapshot
+- Use `goToNextStep` in linear and graph flows.
+- Use `goToStepById` in headless flows.
+- `goToPreviousStep`, `goToLastVisitedStep`, `completeJourney`, and `terminateJourney` work in all modes.
+
+After `dispose()`, send-style APIs resolve with `transitioned: false` and `error: JourneyDisposedError`. Sync control APIs such as `start()` and `updateContext()` stay no-op and emit a development warning.
+
+Convenience helpers are also available:
+
+```ts
+await machine.goToNextStep();
+await machine.goToPreviousStep(2); // go back 2 steps
+await machine.completeJourney();
+await machine.terminateJourney();
+```
+
+## Read the Snapshot
 
 ```ts
 const snapshot = machine.getSnapshot();
 
 console.log(snapshot.currentStepId);
 console.log(snapshot.history.timeline, snapshot.history.index);
+console.log(snapshot.context);
 console.log(snapshot.visited);
+console.log(snapshot.async.byStep[snapshot.currentStepId]);
 console.log(snapshot.status);
 ```
 
@@ -125,19 +206,31 @@ const unsubscribeCurrentStep = machine.subscribeSelector(
 );
 
 const unsubscribeEvents = machine.subscribeEvent((event) => {
-  console.log("telemetry event", event.type, event);
+  console.log("lifecycle event", event.type, event);
 });
 ```
 
 ## Persistence
 
 ```ts
-const persistedMachine = createJourneyMachine(journey, {
-  persistence: {
-    key: "checkout-journey",
-    version: 2
-  }
+import { createPersistencePlugin } from "@rxova/journey-core/persistence";
+
+const machine = createJourneyMachine(checkout, {
+  plugins: [
+    createPersistencePlugin({
+      key: "checkout-journey",
+      version: 2,
+      blockList: ["payment.cardNumber", "payment.cvv"]
+    })
+  ]
 });
 ```
 
-Persisted shape includes `history.timeline`, `history.index`, `currentStepId`, `context`, `visited`, `stepMeta`, and `status`.
+Persisted shape includes `history.timeline`, `history.index`, `currentStepId`, `context`, `visited`, and `status`. Context can be filtered with `allowList` and `blockList` when some fields should never be stored.
+
+## What to Read Next
+
+- [Overview](/docs/core/overview) for the product-level picture
+- [Usage](/docs/core/usage) for a deeper look at linear, graph, and headless modes
+- [TypeScript](/docs/core/typescript) for type modeling patterns
+- [Plugins](/docs/core/plugins/overview) for persistence and execution-path extensions

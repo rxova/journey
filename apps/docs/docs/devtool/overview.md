@@ -29,7 +29,7 @@ Bridge protocol uses a fixed internal compatibility version.
 
 ## Command Surface
 
-The panel can drive navigation, lifecycle controls, metadata updates, error clearing, and custom event sending through the bridge.
+The panel can drive navigation, lifecycle controls, error clearing, and custom event sending through the bridge.
 
 See full details in [Bridge API](/docs/bridge/bridge-api) and exact transport types in [Protocol](/docs/bridge/protocol).
 
@@ -39,7 +39,7 @@ Panel state is driven by serialized machine snapshots including:
 
 - history pointer model (`history.timeline`, `history.index`)
 - current position (`currentStepId`)
-- runtime state (`context`, `visited`, `stepMeta`, `status`, `async`)
+- runtime state (`context`, `visited`, `status`, `async`)
 
 For a full payload example, see [Bridge API](/docs/bridge/bridge-api).
 

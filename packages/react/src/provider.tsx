@@ -7,11 +7,7 @@ import type {
   JourneyMachineWithPlugins,
   JourneyMachinePlugin
 } from "@rxova/journey-core";
-import type {
-  JourneyProviderErrorContext,
-  JourneyProviderProps,
-  JourneyViews
-} from "./types";
+import type { JourneyProviderErrorContext, JourneyProviderProps, JourneyViews } from "./types";
 
 const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
 

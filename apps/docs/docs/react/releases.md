@@ -9,6 +9,14 @@ Release notes sourced from the React package changelog (Changesets).
 
 Source: [`packages/react/CHANGELOG.md`](https://github.com/rxova/journey/blob/main/packages/react/CHANGELOG.md)
 
+## Unreleased
+
+### Patch Changes
+
+- `StepRenderer` and `JourneyProvider` status tracking now subscribe through selectors so unrelated snapshot updates no longer rerender those paths.
+- `useJourneyApi()` now includes `start()` to match the core machine control surface.
+- React tests now cover inline selector usage, `startTransition` read consistency, and hook behavior after runtime disposal.
+
 ## 0.7.0
 
 ### Minor Changes
@@ -18,9 +26,9 @@ Source: [`packages/react/CHANGELOG.md`](https://github.com/rxova/journey/blob/ma
   - That aligns React with the new core error model: fire-and-forget calls like `void api.goToNextStep()` no longer surface unhandled promise rejections when guards or effects fail, because failures now come back on `result.error`.
   - A new `useJourneySelector(selector, equalityFn?)` hook was added on top of the new core selector subscription primitive, letting components subscribe to a derived slice and skip rerenders when unrelated snapshot fields change.
   - A new `useJourneyEvent(listener)` hook was added so bindings users can consume typed lifecycle telemetry without manually wiring `machine.subscribeEvent(...)`.
-  - Provider lifecycle handling is much safer. Internally owned machines are now disposed when replaced or unmounted, which prevents stale async work from an older machine instance from committing later.
+  - Provider lifecycle handling is now explicit. `JourneyProvider` still auto-starts an `idled` machine, but disposal is opt-in through `disposeOnUnmount`, so shared runtimes survive provider unmounts by default.
   - Provider no longer resets its internal machine just because the `persistence` prop identity changes. For apps that depended on the old behavior, `resetOnPersistenceChange` was added as the explicit opt-in path.
-  - Provider also now accepts `completeOnNoNextStep`, plus `onStart`, `onComplete`, and `onTerminate` callbacks that wrap the new core lifecycle subscriptions for both internal and external machines.
+  - Provider also now accepts `requireExplicitCompletion`, plus `onStart`, `onComplete`, and `onTerminate` callbacks that wrap the new core lifecycle subscriptions for both internal and external machines.
   - `useJourneySnapshot()` now binds `subscribe` and `getSnapshot` before handing them to `useSyncExternalStore`, fixing compatibility with external machine wrappers whose methods rely on `this`.
   - `StepRenderer` now remounts by `currentStepId`, which matters when different steps intentionally share the same React component but should not share local component state.
   - The old `updateComponentMetadata` alias was removed from both the exported API type and the runtime object returned by `useJourneyApi()`. `updateStepMetadata` is now the single supported name.
@@ -145,7 +153,7 @@ Source: [`packages/react/CHANGELOG.md`](https://github.com/rxova/journey/blob/ma
   - Built-in fallback semantics for `back`/`goToPreviousStep` event sends when no explicit transition matches.
   - Strongly typed transition builder ergonomics via `createTransitions` and `tx` helpers (`toComplete`, `toTerminate`, branching builders).
   - First-match-wins transition execution preserved and clarified for reliability.
-  - Typed async transition phases exposed in snapshot: `idle`, `evaluating-when`, `running-effect`, `error`.
+  - Typed async transition phases exposed in snapshot: `idle`, `evaluating-when`, `error`.
   - Metadata is now first-class at runtime via `snapshot.stepMeta` and `updateStepMetadata(stepId, updater)`.
   - Typed observability stream via `subscribeEvent(...)` with lifecycle/navigation/metadata events.
   - Expanded persistence model with versioning/migration support and safer hydration of invalid data.
@@ -175,7 +183,7 @@ Source: [`packages/react/CHANGELOG.md`](https://github.com/rxova/journey/blob/ma
 
   ### New and improved
   - Protocol remains version `3` (no protocol version bump in this release).
-  - Richer command set for runtime control: `goToNextStep`, `terminateMachine`, `completeJourney`, `goToStepById`, `goToPreviousStep`, `goToLastVisitedStep`, `updateStepMetadata`, `send`, `resetMachine`, `clearStepError`.
+  - Richer command set for runtime control: `goToNextStep`, `terminateJourney`, `completeJourney`, `goToStepById`, `goToPreviousStep`, `goToLastVisitedStep`, `updateStepMetadata`, `send`, `resetJourney`, `clearStepError`.
   - Snapshot payloads now include full v2 runtime state: `currentStepId`, `history.timeline`, `history.index`, `context`, `visited`, `stepMeta`, `status`, `async`.
   - Safer runtime defaults: bridge enabled by default in non-production; disabled by default in production unless explicitly enabled; commands disabled by default in production unless explicitly enabled.
 

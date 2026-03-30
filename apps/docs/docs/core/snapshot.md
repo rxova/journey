@@ -4,14 +4,26 @@ title: Snapshot
 sidebar_label: Snapshot
 ---
 
-The snapshot is the single source of truth for your journey at any moment.
+The snapshot is the single read model for a live journey machine.
 
-If you only look at one thing to understand what is happening right now, look at the snapshot.
+If you only inspect one value to understand what is true right now, inspect the snapshot.
+
+## Mental Model
+
+```text
+snapshot
+├─ currentStepId        -> where the machine is now
+├─ history              -> realized path + current pointer
+├─ context              -> shared runtime data
+├─ visited              -> whether each step was ever entered
+├─ status               -> idled / running / completed / terminated
+└─ async                -> loading phases and last async error by step
+```
 
 ## Snapshot Shape
 
 ```ts
-type JourneySnapshot<TContext, TStepId extends string, TStepMeta = unknown> = {
+type JourneySnapshot<TContext, TStepId extends string> = {
   currentStepId: TStepId;
   history: {
     timeline: readonly TStepId[];
@@ -19,22 +31,28 @@ type JourneySnapshot<TContext, TStepId extends string, TStepMeta = unknown> = {
   };
   context: TContext;
   visited: Record<TStepId, boolean>;
-  stepMeta: Record<TStepId, TStepMeta>;
-  status: "running" | "complete" | "terminated";
+  status: "idled" | "running" | "completed" | "terminated";
   async: JourneyAsyncState<TStepId>;
 };
 ```
 
-## What Each Field Means
+## Field Guide
 
-- `currentStepId`: the exact step currently active right now. This is the value your UI usually renders from.
-- `history.timeline`: an ordered array of step ids that records the real path the user has taken so far.
-- `history.index`: the current pointer position inside `history.timeline`; it tells you which timeline entry is "now".
-- `context`: shared journey data (form values, flags, ids, etc.) used by guards, effects, and components.
-- `visited`: an object map keyed by step id (`{ [stepId]: boolean }`) that tells you if a step was ever entered at least once.
-- `stepMeta`: per-step runtime metadata map for extra UI or business info that belongs to a specific step.
-- `status`: lifecycle state of the machine: `running` (active), `complete` (finished), or `terminated` (closed early).
-- `async`: async state per step, including loading phase and last error, so UI can show spinners/retries/errors consistently.
+| Field              | Answers                                                            | Related docs                       |
+| ------------------ | ------------------------------------------------------------------ | ---------------------------------- |
+| `currentStepId`    | Which step is active right now?                                    | [History](/docs/core/history)      |
+| `history.timeline` | Which realized path did the user actually take?                    | [History](/docs/core/history)      |
+| `history.index`    | Which timeline entry is considered "now"?                          | [History](/docs/core/history)      |
+| `context`          | What shared data do guards, transition updates, and UI read from?  | [Async Behavior](/docs/core/async) |
+| `visited`          | Which steps have ever been entered at least once?                  | [History](/docs/core/history)      |
+| `status`           | Is the machine idled, active, complete, or terminated?             | [Lifecycle](/docs/core/lifecycle)  |
+| `async`            | Is async work in flight, and which step owns the last async error? | [Async Behavior](/docs/core/async) |
+
+Treat the snapshot as a read model. Rendering, debugging, persistence, and selector subscriptions should all be able
+to explain themselves from this one object.
+
+The value returned from `getSnapshot()` is immutable runtime output. Read it, derive from it, and discard it. Do not
+try to mutate it in place.
 
 ## Example Snapshot
 
@@ -56,12 +74,6 @@ const exampleSnapshot = {
     payment: true,
     review: false
   },
-  stepMeta: {
-    start: {},
-    details: {},
-    payment: {},
-    review: {}
-  },
   status: "running",
   async: {
     isLoading: false,
@@ -77,18 +89,57 @@ const exampleSnapshot = {
 
 ## Invariants You Can Trust
 
-These are always true while a machine exists:
+These stay true while a machine exists:
 
 - `history.timeline.length >= 1`
 - `0 <= history.index < history.timeline.length`
 - `currentStepId === history.timeline[history.index]`
 
-These invariants are why Journey behavior is predictable and testable.
+Those invariants are what make history navigation, snapshot selectors, and persistence safer to reason about.
+
+## How Snapshot Writes Happen
+
+Different runtime actions update the snapshot for different reasons:
+
+| Reason       | Typical source                                                                                   | See implementation                                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `transition` | step-to-step sends, terminal sends, headless `goToStepById`, declared `goToStepById` transitions | [Send Pipeline](/docs/core/architecture/send), [Navigation Commits](/docs/core/architecture/navigation) |
+| `navigation` | `goToPreviousStep(...)`, `goToLastVisitedStep()`                                                 | [Navigation Commits](/docs/core/architecture/navigation)                                                |
+| `async`      | guard loading, idle, or error updates                                                            | [Async State](/docs/core/architecture/async-state)                                                      |
+| `context`    | `updateContext(...)`                                                                             | [Controls](/docs/core/architecture/controls)                                                            |
+| `start`      | `start()`                                                                                        | [Controls](/docs/core/architecture/controls)                                                            |
+| `reset`      | `resetJourney()`                                                                                 | [Controls](/docs/core/architecture/controls)                                                            |
+
+This is mainly visible to plugins and advanced instrumentation, but it is also a useful debugging frame: not every
+snapshot write means "a transition happened".
 
 ## Practical Notes
 
-`history.timeline` represents where the user really went, not where you expected them to go.
+- `history.timeline` is realized history, not authored step order.
+- A fresh machine snapshot is `idled` until `start()` is called.
+- Pointer moves such as `goToPreviousStep(...)` and `goToLastVisitedStep()` do not rewrite `visited`.
+- `context` and `async` are immutable read branches in the returned snapshot. Change runtime state through
+  `updateContext(...)`, transition updates, or reset/start APIs instead of mutating the
+  snapshot object.
+- `async.isLoading` is machine-wide, while `async.byStep[stepId]` gives you the step-level detail for UI.
+- Step definition metadata lives outside the snapshot. Read it through `machine.getStepMeta(stepId)` when needed.
 
-Pointer moves (`goToPreviousStep`, `goToLastVisitedStep`) do not rewrite `visited`.
+## Useful Reads
 
-`stepMeta` is runtime metadata and should be updated through `updateStepMetadata`.
+```ts
+const snapshot = machine.getSnapshot();
+
+const currentStep = snapshot.currentStepId;
+const currentAsync = snapshot.async.byStep[currentStep];
+const atHistoryTail = snapshot.history.index === snapshot.history.timeline.length - 1;
+const canRenderNormally = snapshot.status === "running" && currentAsync.phase === "idle";
+```
+
+## Recommended Reading
+
+- Read [Runtime Reference Overview](/docs/core/runtime-reference) for the section map.
+- Read [Lifecycle](/docs/core/lifecycle) for the events that explain how this snapshot changed.
+- Read [Async Behavior](/docs/core/async) for the `async` branch of the snapshot.
+- Read [Timeline Navigation](/docs/core/history) for `history`, `visited`, and pointer behavior.
+- Read [Runtime Queue](/docs/core/architecture/runtime) and [Navigation Commits](/docs/core/architecture/navigation)
+  if you want the implementation side.

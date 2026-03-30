@@ -76,7 +76,7 @@ Core capabilities:
 - Context updates (`updateContext`)
 - Metadata updates (`updateStepMetadata`)
 - Error clearing (`clearStepError`)
-- Full reset (`resetMachine`)
+- Full reset (`resetJourney`)
 
 Transition matching is deterministic: first valid match wins.
 
@@ -84,7 +84,6 @@ Async behavior is modeled explicitly:
 
 - `idle`
 - `evaluating-when`
-- `running-effect`
 - `error`
 
 And exposed through `snapshot.async` (`isLoading` + per-step async state).

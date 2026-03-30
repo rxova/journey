@@ -4,16 +4,22 @@ title: Core Examples
 sidebar_label: Examples
 ---
 
-Representative examples:
+Representative examples are useful when you want to see the runtime as a product shape, not as a list of features.
 
-| Flow                  | Highlights                                                    |
-| --------------------- | ------------------------------------------------------------- |
-| Linear checkout       | `goToNextStep`, `completeJourney`, terminal completion        |
-| Pointer navigation    | `goToPreviousStep(n)`, `goToLastVisitedStep()`                |
-| Conditional branching | ordered transitions with `when`                               |
-| Exit confirmation     | wildcard `terminateJourney` transitions + context guards      |
-| Metadata updates      | `updateStepMetadata(stepId, updater)`                         |
-| Observability         | `subscribeEvent` telemetry stream                             |
-| Builder ergonomics    | `journey.transitions` callback + `tx.from/any/when/otherwise` |
+| Example                     | What it demonstrates                                                         | Good fit                               |
+| --------------------------- | ---------------------------------------------------------------------------- | -------------------------------------- |
+| Typed checkout wizard       | stable step ids, optional skip rules, typed payloads, completion             | onboarding, checkout, setup flows      |
+| Verification graph          | branching, retry loops, timeout-aware guards, alternate completion paths     | KYC, approvals, support tooling        |
+| Confirm-close flow          | wildcard or cross-cutting close handling with explicit exit confirmation     | long forms, draft-heavy flows          |
+| Observable runtime          | `subscribe`, `subscribeSelector`, and `subscribeEvent` working together      | analytics, debugging, custom renderers |
+| Persistence-enabled machine | resume-later behavior using the persistence plugin                           | multi-session flows                    |
+| Structural path analysis    | execution-path inspection without running guards or committing runtime state | flow audits, product review, tests     |
 
-See package examples under `packages/core/examples` for concrete runnable snippets.
+## What To Look For In The Examples
+
+- How many of the movement rules live in transitions instead of UI handlers
+- Whether step ids stay stable as the flow grows
+- Whether the snapshot alone can explain current runtime truth
+- Whether the event stream is enough to understand how the machine changed
+
+See package examples under `packages/core/examples` for runnable snippets, and pair them with [Recipes](/docs/core/recipes) when you need smaller focused patterns.

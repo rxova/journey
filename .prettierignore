@@ -1,6 +1,7 @@
 dist
 coverage
 node_modules
+worktrees
 flow
 pnpm-lock.yaml
 apps/docs/.docusaurus

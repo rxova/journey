@@ -1,9 +1,12 @@
 node_modules
 dist
 coverage
+worktrees
 .vitest
 .DS_Store
 *.tsbuildinfo
 .last-run.json
 test-results
 *.zip
+.next
+.claude/

@@ -4,81 +4,84 @@ title: React Patterns
 sidebar_label: Patterns
 ---
 
-These patterns help keep React code clean while Journey core remains the runtime source of truth.
+These patterns keep React code clean while Journey core remains the runtime source of truth.
 
-## Create Bindings Once Per Journey
+## Create The Journey Once Per Flow
 
 ```ts
-const checkoutBindings = createJourneyBindings(checkoutJourney);
+const checkoutJourney = createJourney(checkoutDefinition);
 ```
 
-Keep bindings at module scope so references stay stable across renders.
+Keep the journey at module scope when possible so references stay stable across renders.
 
 Why it helps:
 
 - hook typing is captured once
-- no repeated generic noise at callsites
-- multiple journeys can coexist safely with separate bindings
+- views stay separate from runtime definition
+- multiple journeys can coexist safely with separate closures
 
-## Read + Actions Split
+## Read And Actions Split
 
 ```tsx
-const snapshot = checkoutBindings.useJourneySnapshot();
-const api = checkoutBindings.useJourneyApi();
+const snapshot = checkoutJourney.useJourneySnapshot();
+const api = checkoutJourney.useJourneyApi();
 ```
 
 Use `snapshot` to read state and `api` to change state.
 
-This makes render logic easier to scan and reduces accidental side effects in UI code.
-
-## Prefer Selector Reads for Focused Components
+## Prefer Selector Reads For Focused Components
 
 ```tsx
-const currentStepId = checkoutBindings.useJourneySelector((snapshot) => snapshot.currentStepId);
-const isLoading = checkoutBindings.useJourneySelector((snapshot) => snapshot.async.isLoading);
+const currentStepId = checkoutJourney.useJourneySelector((snapshot) => snapshot.currentStepId);
+const isLoading = checkoutJourney.useJourneySelector((snapshot) => snapshot.async.isLoading);
 ```
 
-Use `useJourneySelector` when the component depends on only part of snapshot.
-Use `useJourneySnapshot` when the component genuinely needs the full snapshot object.
+Use `useJourneySelector` when a component depends on only part of the snapshot.
+Use `useJourneySnapshot` when it genuinely needs the full object.
 
-## Separate Step Rendering from Global Controls
+## Keep Step Rendering Separate From Global Controls
 
-- render current step with `checkoutBindings.StepRenderer`
-- keep global controls (next/back/terminate) in separate components using `useJourneyApi`
+- render the current step with `checkoutJourney.StepRenderer`
+- keep shared controls in separate components using `checkoutJourney.useJourneyApi()`
 
-This keeps step components focused on step concerns and shared controls focused on navigation concerns.
+This keeps step views focused on step concerns and shared controls focused on navigation concerns.
 
-## External Machine Ownership
-
-If machine lifecycle is managed outside React, inject it through `Provider`:
+## Use The Provider Only For Views
 
 ```tsx
-<checkoutBindings.Provider machine={externalMachine}>
-  <checkoutBindings.StepRenderer />
-</checkoutBindings.Provider>
+<checkoutJourney.JourneyProvider views={checkoutViews}>
+  <checkoutJourney.StepRenderer />
+</checkoutJourney.JourneyProvider>
 ```
 
-Useful when integrating with devtools bridge, orchestrators, or host shells.
+Hooks do not need the provider. The provider only supplies the view map and lifecycle callbacks for `StepRenderer`.
 
-## Journey and Persistence Swap Strategy
+## Creating A Journey Inside A Component
 
-When `journey` or `persistence` props change on `Provider`:
+If you need dynamic journey creation in React, memoize it and opt into provider-owned disposal:
 
-- default behavior preserves internal machine state
-- set `resetOnJourneyChange={true}` to reinitialize from the new journey
-- set `resetOnPersistenceChange={true}` to rebuild from the new persistence config
+```tsx
+function App() {
+  const journey = React.useMemo(() => createJourney(definition), []);
 
-Choose based on product intent:
+  return (
+    <journey.JourneyProvider views={views} disposeOnUnmount>
+      <journey.StepRenderer />
+    </journey.JourneyProvider>
+  );
+}
+```
 
-- preserve state for live configuration updates
-- reset state for hard flow replacement
+## Devtools And Other Integrations
 
-## Keep Runtime Questions in Core Docs
+Use `journey.machine` directly when wiring external tools such as the devtools bridge.
+
+## Keep Runtime Questions In Core Docs
 
 Patterns here are React wiring patterns.
 
 For runtime semantics, use Core docs:
 
 - transition and lifecycle semantics: [Core Lifecycle](/docs/core/lifecycle)
-- async guard/effect behavior: [Core Async Behavior](/docs/core/async)
+- async guard behavior: [Core Async Behavior](/docs/core/async)
 - history pointer model: [Core Timeline Navigation](/docs/core/history)

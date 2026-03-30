@@ -33,7 +33,7 @@ In the meantime:
 Potential causes:
 
 - target machine id mismatch
-- machine already terminal (`complete`/`terminated`)
+- machine already terminal (`completed`/`terminated`)
 - no matching transition for event
 
 What to inspect:
@@ -47,7 +47,7 @@ What to inspect:
 Typical reasons:
 
 - async `when` throws/rejects
-- async `effect` throws/rejects
+- transition `updateContext` throws
 - custom event payload shape mismatch
 
 Actions:
