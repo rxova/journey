@@ -9,15 +9,23 @@ import { describe, expect, it } from "vitest";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const scriptPath = resolve(__dirname, "../../../scripts/check-changeset.ts");
 const tsxLoaderPath = resolve(__dirname, "../../../node_modules/tsx/dist/loader.mjs");
+const sanitizedEnv = Object.fromEntries(
+  Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_"))
+);
 
 const execGit = (cwd: string, args: string[]) =>
-  execFileSync("git", args, { cwd, stdio: "pipe", encoding: "utf8" }).trim();
+  execFileSync("git", args, {
+    cwd,
+    env: sanitizedEnv,
+    stdio: "pipe",
+    encoding: "utf8"
+  }).trim();
 
 const runScript = (cwd: string, env: Record<string, string>) => {
   try {
     execFileSync(process.execPath, ["--import", tsxLoaderPath, scriptPath], {
       cwd,
-      env: { ...process.env, ...env }
+      env: { ...sanitizedEnv, ...env }
     });
     return { code: 0 };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -105,6 +113,31 @@ describe("check-changeset script", () => {
     await rm(tempRoot, { recursive: true, force: true });
   });
 
+  it("passes when deleted changesets are replaced by current single-package files", async () => {
+    const { tempRoot } = await initRepo();
+    await mkdir(join(tempRoot, ".changeset"), { recursive: true });
+    await writeFile(
+      join(tempRoot, ".changeset", "old-core.md"),
+      '---\n"@rxova/journey-core": patch\n---\nold change\n',
+      "utf8"
+    );
+
+    const baseSha = commitAll(tempRoot, "seed old changeset");
+
+    await rm(join(tempRoot, ".changeset", "old-core.md"));
+    await writeFile(
+      join(tempRoot, ".changeset", "new-core.md"),
+      '---\n"@rxova/journey-core": patch\n---\nnew change\n',
+      "utf8"
+    );
+
+    const headSha = commitAll(tempRoot, "replace changeset");
+    const result = runScript(tempRoot, baseEnv(baseSha, headSha));
+
+    expect(result.code).toBe(0);
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
   it("fails when package code changes without a changeset", async () => {
     const { tempRoot, baseSha } = await initRepo();
     const srcDir = join(tempRoot, "packages", "core", "src");
@@ -112,6 +145,30 @@ describe("check-changeset script", () => {
     await writeFile(join(srcDir, "index.ts"), "export const x = 1;\n", "utf8");
 
     const headSha = commitAll(tempRoot, "core change");
+    const result = runScript(tempRoot, baseEnv(baseSha, headSha));
+
+    expect(result.code).toBe(1);
+    expect(result.stderr ?? "").toContain("No changeset found");
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("fails when only deleted changesets remain for package code changes", async () => {
+    const { tempRoot } = await initRepo();
+    await mkdir(join(tempRoot, ".changeset"), { recursive: true });
+    await writeFile(
+      join(tempRoot, ".changeset", "old-core.md"),
+      '---\n"@rxova/journey-core": patch\n---\nold change\n',
+      "utf8"
+    );
+
+    const baseSha = commitAll(tempRoot, "seed old changeset");
+
+    await rm(join(tempRoot, ".changeset", "old-core.md"));
+    const srcDir = join(tempRoot, "packages", "core", "src");
+    await mkdir(srcDir, { recursive: true });
+    await writeFile(join(srcDir, "index.ts"), "export const x = 1;\n", "utf8");
+
+    const headSha = commitAll(tempRoot, "delete changeset and change core");
     const result = runScript(tempRoot, baseEnv(baseSha, headSha));
 
     expect(result.code).toBe(1);

@@ -6,8 +6,21 @@ if (!fs.existsSync(summaryPath)) {
   process.exit(0);
 }
 
-const summary = JSON.parse(fs.readFileSync(summaryPath, "utf8")).total;
-const formatPercent = (value) => `${Number(value).toFixed(2)}%`;
+type CoverageMetric = {
+  pct: number;
+};
+
+type CoverageSummary = {
+  total: {
+    lines: CoverageMetric;
+    branches: CoverageMetric;
+    functions: CoverageMetric;
+    statements: CoverageMetric;
+  };
+};
+
+const summary = (JSON.parse(fs.readFileSync(summaryPath, "utf8")) as CoverageSummary).total;
+const formatPercent = (value: number): string => `${Number(value).toFixed(2)}%`;
 
 const lines = [
   "## Coverage",

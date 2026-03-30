@@ -6,21 +6,30 @@ const PACKAGES = [
   "packages/core/package.json",
   "packages/react/package.json",
   "packages/devtools-bridge/package.json"
-];
+] as const;
 
-function readJson(filePath) {
-  return JSON.parse(readFileSync(filePath, "utf8"));
+type PackageJson = {
+  name: string;
+  version: string;
+};
+
+function readJson(filePath: string): PackageJson {
+  return JSON.parse(readFileSync(filePath, "utf8")) as PackageJson;
 }
 
-function parseMajor(version) {
+function parseMajor(version: string): number {
   const match = /^(\d+)\./.exec(version);
   if (!match) {
     throw new Error(`Invalid semver version: ${version}`);
   }
-  return Number.parseInt(match[1], 10);
+  const majorText = match[1];
+  if (majorText === undefined) {
+    throw new Error(`Invalid semver version: ${version}`);
+  }
+  return Number.parseInt(majorText, 10);
 }
 
-function main() {
+function main(): void {
   const repoRoot = process.cwd();
   const entries = PACKAGES.map((relativePath) => {
     const packageJsonPath = path.join(repoRoot, relativePath);
