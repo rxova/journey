@@ -11,7 +11,9 @@
     "tsBuildInfoFile": "tsconfig.build.tsbuildinfo",
     "noEmit": false,
     "paths": {
-      "@rxova/journey-core": ["../core/src/index.ts"]
+      "@rxova/journey-core": ["../core/src/index.ts"],
+      "@rxova/journey-core/execution-paths": ["../core/src/plugins/execution-paths/index.ts"],
+      "@rxova/journey-core/persistence": ["../core/src/plugins/persistence/index.ts"]
     }
   },
   "references": [

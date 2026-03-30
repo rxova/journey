@@ -14,18 +14,19 @@ import {
   type PanelWarning
 } from "./shared";
 
-type CachedMachine = {
+type CachedJourneyMachine = {
   register: JourneyDevtoolsBridgeRegisterEnvelope | null;
   snapshot: JourneyDevtoolsBridgeSnapshotEnvelope | null;
 };
 
 const portTabMap = new Map<chrome.runtime.Port, number>();
 const portsByTab = new Map<number, Set<chrome.runtime.Port>>();
-const machineCacheByTab = new Map<number, Map<string, CachedMachine>>();
+const journeyMachineCacheByTab = new Map<number, Map<string, CachedJourneyMachine>>();
 const warningByTab = new Map<number, PanelWarning | null>();
 const CONTENT_SCRIPT_FILE = chrome.runtime.getManifest().content_scripts?.[0]?.js?.[0] ?? null;
 
-const isTabConnected = (tabId: number): boolean => (machineCacheByTab.get(tabId)?.size ?? 0) > 0;
+const isTabConnected = (tabId: number): boolean =>
+  (journeyMachineCacheByTab.get(tabId)?.size ?? 0) > 0;
 const hasPanelPorts = (tabId: number): boolean => (portsByTab.get(tabId)?.size ?? 0) > 0;
 
 const getRuntimeErrorMessage = (error: unknown): string | null => {
@@ -152,36 +153,45 @@ const broadcastToPanel = (tabId: number, message: BackgroundToPanelMessage) => {
 };
 
 const cacheEnvelope = (tabId: number, envelope: JourneyDevtoolsBridgeEnvelope) => {
-  if (envelope.kind === "commandResult" || envelope.kind === "commandError") {
+  if (
+    envelope.kind === "commandResult" ||
+    envelope.kind === "commandError" ||
+    envelope.kind === "observation" ||
+    envelope.kind === "executionPathsResult"
+  ) {
     return;
   }
 
-  const tabCache = machineCacheByTab.get(tabId) ?? new Map<string, CachedMachine>();
-  const cachedMachine = tabCache.get(envelope.machineId) ?? { register: null, snapshot: null };
+  const tabJourneyMachineCache =
+    journeyMachineCacheByTab.get(tabId) ?? new Map<string, CachedJourneyMachine>();
+  const cachedJourneyMachine = tabJourneyMachineCache.get(envelope.machineId) ?? {
+    register: null,
+    snapshot: null
+  };
 
   if (envelope.kind === "register") {
-    cachedMachine.register = envelope;
-    cachedMachine.snapshot = {
+    cachedJourneyMachine.register = envelope;
+    cachedJourneyMachine.snapshot = {
       ...envelope,
       kind: "snapshot"
     };
   }
 
   if (envelope.kind === "snapshot") {
-    cachedMachine.snapshot = envelope;
+    cachedJourneyMachine.snapshot = envelope;
   }
 
   if (envelope.kind === "unregister") {
-    tabCache.delete(envelope.machineId);
+    tabJourneyMachineCache.delete(envelope.machineId);
   } else {
-    tabCache.set(envelope.machineId, cachedMachine);
+    tabJourneyMachineCache.set(envelope.machineId, cachedJourneyMachine);
   }
 
-  machineCacheByTab.set(tabId, tabCache);
+  journeyMachineCacheByTab.set(tabId, tabJourneyMachineCache);
 };
 
-const clearTabMachineCache = (tabId: number) => {
-  machineCacheByTab.delete(tabId);
+const clearTabJourneyMachineCache = (tabId: number) => {
+  journeyMachineCacheByTab.delete(tabId);
   warningByTab.delete(tabId);
   broadcastToPanel(tabId, {
     type: "panel-connected",
@@ -205,19 +215,21 @@ const clearTabPortState = (tabId: number) => {
   }
 };
 
-const replayCacheToPanel = (tabId: number, port: chrome.runtime.Port) => {
-  const tabCache = machineCacheByTab.get(tabId);
-  if (!tabCache) {
-    return;
+const replayCacheToPanel = (tabId: number, port: chrome.runtime.Port): boolean => {
+  const tabJourneyMachineCache = journeyMachineCacheByTab.get(tabId);
+  if (!tabJourneyMachineCache) {
+    return false;
   }
 
-  for (const cachedMachine of tabCache.values()) {
-    if (cachedMachine.register) {
-      port.postMessage({ type: "panel-bridge-envelope", envelope: cachedMachine.register });
+  for (const cachedJourneyMachine of tabJourneyMachineCache.values()) {
+    if (cachedJourneyMachine.register) {
+      port.postMessage({ type: "panel-bridge-envelope", envelope: cachedJourneyMachine.register });
     }
     // Cached machines are only retained after register/snapshot envelopes, both of which seed snapshot state.
-    port.postMessage({ type: "panel-bridge-envelope", envelope: cachedMachine.snapshot! });
+    port.postMessage({ type: "panel-bridge-envelope", envelope: cachedJourneyMachine.snapshot! });
   }
+
+  return tabJourneyMachineCache.size > 0;
 };
 
 const registerPanelPort = (port: chrome.runtime.Port, tabId: number) => {
@@ -233,8 +245,10 @@ const registerPanelPort = (port: chrome.runtime.Port, tabId: number) => {
     type: "panel-warning",
     warning: warningByTab.get(tabId) ?? null
   } satisfies BackgroundToPanelMessage);
-  replayCacheToPanel(tabId, port);
-  injectContentScript(tabId);
+  const replayedCachedState = replayCacheToPanel(tabId, port);
+  if (!replayedCachedState) {
+    injectContentScript(tabId);
+  }
 };
 
 chrome.runtime.onConnect.addListener((port) => {
@@ -266,7 +280,8 @@ chrome.runtime.onConnect.addListener((port) => {
       const errorEnvelope = createTransportErrorEnvelope(
         message.envelope.machineId,
         message.envelope.requestId,
-        serializeTransportError(runtimeError)
+        serializeTransportError(runtimeError),
+        message.envelope.version
       );
       broadcastToPanel(message.tabId, {
         type: "panel-bridge-envelope",
@@ -304,7 +319,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender) => {
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === "loading") {
-    clearTabMachineCache(tabId);
+    clearTabJourneyMachineCache(tabId);
     return;
   }
 
@@ -314,7 +329,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  clearTabMachineCache(tabId);
+  clearTabJourneyMachineCache(tabId);
   clearTabPortState(tabId);
   warningByTab.delete(tabId);
 });

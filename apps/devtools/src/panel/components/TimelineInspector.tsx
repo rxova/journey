@@ -26,6 +26,8 @@ const badgeLabelByKind: Record<JourneyPanelTimelineEntry["kind"], string> = {
   init: "INIT",
   snapshot: "SNAP",
   command: "CMD",
+  query: "QRY",
+  event: "EVT",
   error: "ERR"
 };
 

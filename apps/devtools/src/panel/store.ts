@@ -1,9 +1,14 @@
 import type {
   JourneyDevtoolsBridgeEnvelope,
   JourneyDevtoolsCommand,
+  JourneyDevtoolsMachineCapabilities,
   JourneyDevtoolsMachineMeta,
+  JourneyDevtoolsProtocolVersion,
+  JourneyDevtoolsSerializableExecutionPathsResult,
+  JourneyDevtoolsSerializableObservationEvent,
   JourneyDevtoolsSerializableSnapshot
 } from "@rxova/journey-devtools-bridge";
+import { JOURNEY_DEVTOOLS_PROTOCOL_VERSION } from "@rxova/journey-devtools-bridge";
 import {
   EMPTY_STRUCTURED_DIFF,
   computeStructuredDiff,
@@ -11,8 +16,21 @@ import {
 } from "./diff";
 
 type TimelineEnvelopeKind = Exclude<JourneyDevtoolsBridgeEnvelope["kind"], "unregister">;
+type NonUnregisterBridgeEnvelope = Exclude<JourneyDevtoolsBridgeEnvelope, { kind: "unregister" }>;
+type JourneyMachineUpdatersByEnvelopeKind = {
+  [TKind in NonUnregisterBridgeEnvelope["kind"]]: (
+    machine: JourneyPanelMachineState,
+    envelope: Extract<NonUnregisterBridgeEnvelope, { kind: TKind }>
+  ) => JourneyPanelMachineState;
+};
 
-export type JourneyPanelTimelineKind = "init" | "snapshot" | "command" | "error";
+export type JourneyPanelTimelineKind =
+  | "init"
+  | "snapshot"
+  | "command"
+  | "query"
+  | "event"
+  | "error";
 
 export type JourneyPanelPendingCommand = {
   requestId: string;
@@ -38,8 +56,13 @@ export type JourneyPanelTimelineEntry = {
   };
 };
 
+type JourneyPanelMachineMeta = JourneyDevtoolsMachineMeta & {
+  capabilities: JourneyDevtoolsMachineCapabilities;
+};
+
 export type JourneyPanelMachineState = {
-  meta: JourneyDevtoolsMachineMeta;
+  meta: JourneyPanelMachineMeta;
+  protocolVersion?: JourneyDevtoolsProtocolVersion;
   snapshot: JourneyDevtoolsSerializableSnapshot;
   timelineEntries: JourneyPanelTimelineEntry[];
   selectedTimelineIndex: number;
@@ -75,32 +98,50 @@ export type JourneyPanelAction =
 
 export const MAX_MACHINE_TIMELINE_ENTRIES = 2000;
 
+const LEGACY_MUTATING_COMMANDS: JourneyDevtoolsCommand["type"][] = [
+  "goToNextStep",
+  "terminateJourney",
+  "completeJourney",
+  "goToStepById",
+  "goToPreviousStep",
+  "goToLastVisitedStep",
+  "send",
+  "resetJourney",
+  "clearStepError"
+];
+
 const initialSnapshot: JourneyDevtoolsSerializableSnapshot = {
   currentStepId: "unknown",
   history: {
     timeline: ["unknown"],
     index: 0
   },
-  context: null,
+  context: {},
   visited: {},
-  stepMeta: {},
-  status: "running",
+  status: "idled",
   async: {
     isLoading: false,
     byStep: {}
   }
 };
 
-const buildMachineState = (
+const buildJourneyMachineState = (
   machineId: string,
-  snapshot: JourneyDevtoolsSerializableSnapshot
+  snapshot: JourneyDevtoolsSerializableSnapshot,
+  protocolVersion: JourneyDevtoolsProtocolVersion = JOURNEY_DEVTOOLS_PROTOCOL_VERSION
 ): JourneyPanelMachineState => ({
   meta: {
     machineId,
     label: machineId,
     appName: null,
-    commandsEnabled: true
+    commandsEnabled: true,
+    capabilities: {
+      commands: [],
+      observe: false,
+      executionPaths: false
+    }
   },
+  protocolVersion,
   snapshot,
   timelineEntries: [],
   selectedTimelineIndex: 0,
@@ -108,6 +149,60 @@ const buildMachineState = (
   timelineSequence: 0,
   pendingCommandsByRequestId: {}
 });
+
+const getLegacyCapabilities = (commandsEnabled: boolean): JourneyDevtoolsMachineCapabilities => ({
+  commands: commandsEnabled ? LEGACY_MUTATING_COMMANDS : [],
+  observe: false,
+  executionPaths: false
+});
+
+const normalizeMachineMeta = (meta: JourneyDevtoolsMachineMeta): JourneyPanelMachineMeta => {
+  const commandsEnabled = meta.commandsEnabled ?? true;
+
+  return {
+    ...meta,
+    commandsEnabled,
+    capabilities: meta.capabilities ?? getLegacyCapabilities(commandsEnabled)
+  };
+};
+
+const journeyMachineUpdatersByEnvelopeKind: JourneyMachineUpdatersByEnvelopeKind = {
+  register: (
+    machine: JourneyPanelMachineState,
+    envelope: Extract<NonUnregisterBridgeEnvelope, { kind: "register" }>
+  ): JourneyPanelMachineState => ({
+    ...machine,
+    meta: normalizeMachineMeta(envelope.meta),
+    protocolVersion: envelope.version,
+    snapshot: envelope.snapshot
+  }),
+  snapshot: (
+    machine: JourneyPanelMachineState,
+    envelope: Extract<NonUnregisterBridgeEnvelope, { kind: "snapshot" }>
+  ): JourneyPanelMachineState => ({
+    ...machine,
+    protocolVersion: envelope.version,
+    snapshot: envelope.snapshot
+  }),
+  commandResult: (
+    machine: JourneyPanelMachineState,
+    envelope: Extract<NonUnregisterBridgeEnvelope, { kind: "commandResult" }>
+  ): JourneyPanelMachineState => ({
+    ...machine,
+    protocolVersion: envelope.version,
+    snapshot: envelope.snapshot
+  }),
+  observation: (machine: JourneyPanelMachineState): JourneyPanelMachineState => machine,
+  commandError: (machine: JourneyPanelMachineState): JourneyPanelMachineState => machine,
+  executionPathsResult: (machine: JourneyPanelMachineState): JourneyPanelMachineState => machine
+};
+
+export const applyMachineUpdateForEnvelope = <TKind extends NonUnregisterBridgeEnvelope["kind"]>(
+  machine: JourneyPanelMachineState,
+  envelope: Extract<NonUnregisterBridgeEnvelope, { kind: TKind }>
+): JourneyPanelMachineState => {
+  return journeyMachineUpdatersByEnvelopeKind[envelope.kind](machine, envelope);
+};
 
 const buildEntryId = (
   machineId: string,
@@ -128,6 +223,17 @@ const buildCommandLabel = (
 
   return isError ? `ERROR/${requestId}` : `COMMAND_RESULT/${requestId}`;
 };
+
+const buildObservationLabel = (event: JourneyDevtoolsSerializableObservationEvent): string =>
+  `EVENT/${event.type}`;
+
+const buildExecutionPathsLabel = (
+  pendingCommand: JourneyPanelPendingCommand | null,
+  requestId: string
+): string =>
+  pendingCommand?.command.type === "getExecutionPaths"
+    ? "QUERY/getExecutionPaths"
+    : `QUERY/${requestId}`;
 
 const buildTimelineEntry = (
   machine: JourneyPanelMachineState,
@@ -172,6 +278,53 @@ const buildTimelineEntry = (
         machineId: envelope.machineId,
         currentStepId: envelope.snapshot.currentStepId,
         index: envelope.snapshot.history.index
+      },
+      meta: {
+        machineId: envelope.machineId
+      }
+    };
+  }
+
+  if (envelope.kind === "observation") {
+    const label = buildObservationLabel(envelope.event);
+    return {
+      id: buildEntryId(envelope.machineId, envelope.kind, envelope.timestamp, nextSequence),
+      timestamp: envelope.timestamp,
+      kind: "event",
+      label,
+      requestId: null,
+      command: null,
+      envelopeKind: envelope.kind,
+      snapshot: null,
+      actionPayload: {
+        type: label,
+        machineId: envelope.machineId,
+        event: envelope.event
+      },
+      meta: {
+        machineId: envelope.machineId
+      }
+    };
+  }
+
+  if (envelope.kind === "executionPathsResult") {
+    const pendingCommand = machine.pendingCommandsByRequestId[envelope.requestId] ?? null;
+    const label = buildExecutionPathsLabel(pendingCommand, envelope.requestId);
+    return {
+      id: buildEntryId(envelope.machineId, envelope.kind, envelope.timestamp, nextSequence),
+      timestamp: envelope.timestamp,
+      kind: "query",
+      label,
+      requestId: envelope.requestId,
+      command: pendingCommand?.command ?? null,
+      envelopeKind: envelope.kind,
+      snapshot: null,
+      actionPayload: {
+        type: label,
+        machineId: envelope.machineId,
+        requestId: envelope.requestId,
+        command: pendingCommand?.command ?? null,
+        result: envelope.result as JourneyDevtoolsSerializableExecutionPathsResult
       },
       meta: {
         machineId: envelope.machineId
@@ -225,7 +378,7 @@ const buildTimelineEntry = (
     requestId: envelope.requestId,
     command: pendingCommand?.command ?? null,
     envelopeKind: envelope.kind,
-    snapshot: machine.snapshot,
+    snapshot: null,
     actionPayload: {
       type: label,
       machineId: envelope.machineId,
@@ -286,14 +439,14 @@ const pruneTimelineEntries = (
   };
 };
 
-const upsertMachineOrder = (order: string[], machineId: string): string[] => {
+const upsertJourneyMachineOrder = (order: string[], machineId: string): string[] => {
   if (order.includes(machineId)) {
     return order;
   }
   return [...order, machineId];
 };
 
-const removeMachineOrder = (order: string[], machineId: string): string[] =>
+const removeJourneyMachineOrder = (order: string[], machineId: string): string[] =>
   order.filter((id) => id !== machineId);
 
 const clearPendingCommand = (
@@ -463,7 +616,7 @@ export const panelReducer = (
 
   const envelope = action.envelope;
   if (envelope.kind === "unregister") {
-    const nextOrder = removeMachineOrder(state.machineOrder, envelope.machineId);
+    const nextOrder = removeJourneyMachineOrder(state.machineOrder, envelope.machineId);
     const nextMachines = { ...state.machines };
     delete nextMachines[envelope.machineId];
 
@@ -479,34 +632,17 @@ export const panelReducer = (
   }
 
   const existingMachine =
-    state.machines[envelope.machineId] ?? buildMachineState(envelope.machineId, initialSnapshot);
+    state.machines[envelope.machineId] ??
+    buildJourneyMachineState(envelope.machineId, initialSnapshot, envelope.version);
 
-  const machineWithSnapshot =
-    envelope.kind === "register"
-      ? {
-          ...existingMachine,
-          meta: {
-            ...envelope.meta,
-            commandsEnabled: envelope.meta.commandsEnabled ?? true
-          },
-          snapshot: envelope.snapshot
-        }
-      : envelope.kind === "snapshot"
-        ? {
-            ...existingMachine,
-            snapshot: envelope.snapshot
-          }
-        : envelope.kind === "commandResult"
-          ? {
-              ...existingMachine,
-              snapshot: envelope.snapshot
-            }
-          : existingMachine;
+  const machineWithSnapshot = applyMachineUpdateForEnvelope(existingMachine, envelope);
 
   const timelineEntry = buildTimelineEntry(machineWithSnapshot, envelope);
   const machineWithEntry = appendTimelineEntry(machineWithSnapshot, timelineEntry);
   const machineWithPendingCleanup =
-    envelope.kind === "commandResult" || envelope.kind === "commandError"
+    envelope.kind === "commandResult" ||
+    envelope.kind === "commandError" ||
+    envelope.kind === "executionPathsResult"
       ? {
           ...machineWithEntry,
           pendingCommandsByRequestId: clearPendingCommand(
@@ -515,7 +651,7 @@ export const panelReducer = (
           )
         }
       : machineWithEntry;
-  const nextOrder = upsertMachineOrder(state.machineOrder, envelope.machineId);
+  const nextOrder = upsertJourneyMachineOrder(state.machineOrder, envelope.machineId);
 
   return {
     ...state,

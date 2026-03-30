@@ -1,17 +1,19 @@
 # @rxova/journey-devtools-bridge
 
-Bridge that connects Journey machines to the browser devtools extension.
+Connect Journey machines to Chrome DevTools.
+
+<p>
+  <a href="https://www.npmjs.com/package/@rxova/journey-devtools-bridge">
+    <img src="https://img.shields.io/npm/v/@rxova/journey-devtools-bridge?color=0f8f6a" alt="npm" />
+  </a>
+  <img src="https://img.shields.io/badge/3.2%20kB-brotli-0f8f6a" alt="size" />
+</p>
 
 ## Install
 
 ```bash
-pnpm add @rxova/journey-devtools-bridge
-yarn add @rxova/journey-devtools-bridge
 npm i @rxova/journey-devtools-bridge
-bun add @rxova/journey-devtools-bridge
 ```
-
-The bridge can run in Bun-based browser apps; explicit `enabled: true` remains the safest option when your bundler does not expose a dev/prod env signal.
 
 ## Usage
 
@@ -19,31 +21,24 @@ The bridge can run in Bun-based browser apps; explicit `enabled: true` remains t
 import { createJourneyMachine } from "@rxova/journey-core";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 
-const machine = createJourneyMachine(journey);
+const machine = createJourneyMachine(definition);
+machine.start();
 
-const detach = attachJourneyDevtools(machine, {
-  label: "Checkout Flow"
-});
+const detach = attachJourneyDevtools(machine, { label: "Checkout" });
 ```
 
-## Protocol Notes
+## What It Does
 
-Bridge command support includes:
+- Streams snapshots and lifecycle events to the Journey DevTools panel in Chrome
+- Supports remote commands: navigate steps, reset, send events, inspect execution paths
+- Enabled by default in development, disabled in production unless explicitly opted in
 
-- `goToNextStep`, `terminateMachine`, `completeJourney`, `resetMachine`
-- `goToStepById`
-- `goToPreviousStep`
-- `goToLastVisitedStep`
-- `updateStepMetadata`
-- `send` (custom event)
-- `clearStepError`
+## Documentation
 
-Snapshots include `history.timeline`, `history.index`, `currentStepId`, `visited`, `stepMeta`, `status`, and `async`.
+- [Chrome DevTools Overview](https://rxova.org/docs/devtool/overview)
+- [Panel Guide](https://rxova.org/docs/devtool/panel-guide)
+- [Bridge API](https://rxova.org/docs/bridge/bridge-api)
 
-## Runtime Defaults
+## License
 
-- Defaults use `import.meta.env.DEV` / `import.meta.env.PROD` when available, otherwise `process.env.NODE_ENV`.
-- Enabled by default in non-production browser runtimes.
-- Disabled in production unless `enabled: true`.
-- Commands disabled in production unless `commandsEnabled: true`.
-- If neither env source is available, bridge and commands default to disabled unless explicitly enabled.
+MIT

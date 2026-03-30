@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
   JOURNEY_DEVTOOLS_CHANNEL,
+  JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION
 } from "@rxova/journey-devtools-bridge";
 import {
@@ -30,6 +31,24 @@ describe("shared message guards", () => {
     expect(isPanelToBackgroundMessage({ type: "panel-command", tabId: "5", envelope })).toBe(false);
     expect(isPanelToBackgroundMessage(null)).toBe(false);
     expect(isPanelToBackgroundMessage({ type: "unknown" })).toBe(false);
+  });
+
+  it("creates legacy-version command envelopes when requested", () => {
+    const envelope = createCommandEnvelope(
+      "m-legacy",
+      "req-legacy",
+      { type: "goToNextStep" },
+      JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION
+    );
+
+    expect(envelope.version).toBe(JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION);
+    expect(
+      isPanelToBackgroundMessage({
+        type: "panel-command",
+        tabId: 5,
+        envelope
+      })
+    ).toBe(true);
   });
 
   it("accepts valid content->background bridge envelopes and rejects malformed ones", () => {

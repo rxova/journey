@@ -5,6 +5,7 @@ import {
   JOURNEY_DEVTOOLS_CHANNEL,
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
   type JourneyDevtoolsBridgeEnvelope,
+  type JourneyDevtoolsMachineCapabilities,
   type JourneyDevtoolsSerializableSnapshot
 } from "@rxova/journey-devtools-bridge";
 import {
@@ -204,7 +205,6 @@ const baseSnapshot = (current: string): JourneyDevtoolsSerializableSnapshot => (
   },
   context: { count: current.length },
   visited: current === "start" ? { start: true } : { start: true, [current]: true },
-  stepMeta: {},
   status: "running",
   async: {
     isLoading: false,
@@ -217,6 +217,25 @@ const baseSnapshot = (current: string): JourneyDevtoolsSerializableSnapshot => (
       }
     }
   }
+});
+
+const capabilityCommands: JourneyDevtoolsMachineCapabilities["commands"] = [
+  "goToNextStep",
+  "terminateJourney",
+  "completeJourney",
+  "goToStepById",
+  "goToPreviousStep",
+  "goToLastVisitedStep",
+  "send",
+  "resetJourney",
+  "clearStepError",
+  "getExecutionPaths"
+];
+
+const buildCapabilities = (commandsEnabled = true): JourneyDevtoolsMachineCapabilities => ({
+  commands: commandsEnabled ? [...capabilityCommands] : [],
+  observe: true as const,
+  executionPaths: commandsEnabled
 });
 
 let timestamp = 2000;
@@ -235,7 +254,8 @@ const registerEnvelope = (machineId: string): JourneyDevtoolsBridgeEnvelope => (
   meta: {
     machineId,
     label: "Checkout",
-    appName: "Storefront"
+    appName: "Storefront",
+    capabilities: buildCapabilities()
   },
   snapshot: baseSnapshot("start")
 });
@@ -518,6 +538,66 @@ describe("background message routing", () => {
       type: "panel-bridge-envelope",
       envelope: cachedSnapshot
     });
+  });
+
+  it("does not request a second replay when reconnecting to a tab with cached state", async () => {
+    const harness = await loadBackground();
+    harness.setSendMessageImpl((tabId, message, callback) => {
+      harness.setRuntimeLastError(undefined);
+
+      if (
+        typeof message === "object" &&
+        message !== null &&
+        (message as { type?: string }).type === "bridge-replay-request"
+      ) {
+        harness.emitRuntimeMessage(
+          asContentMessage(registerEnvelope("m-reconnect")),
+          senderForTab(tabId)
+        );
+        harness.emitRuntimeMessage(
+          asContentMessage(snapshotEnvelope("m-reconnect", "review")),
+          senderForTab(tabId)
+        );
+      }
+
+      callback?.();
+    });
+
+    const cachedRegister = registerEnvelope("m-reconnect");
+    const cachedSnapshot = snapshotEnvelope("m-reconnect", "details");
+    harness.emitRuntimeMessage(asContentMessage(cachedRegister), senderForTab(46));
+    harness.emitRuntimeMessage(asContentMessage(cachedSnapshot), senderForTab(46));
+
+    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+    harness.emitConnect(panelPort.port);
+    panelPort.emitMessage({
+      type: "panel-init",
+      tabId: 46
+    } satisfies PanelInitMessage);
+
+    const replayedBridgeMessages = panelPort.postedMessages.filter((message) => {
+      if (typeof message !== "object" || message === null) {
+        return false;
+      }
+      return (message as { type?: string }).type === "panel-bridge-envelope";
+    });
+
+    expect(replayedBridgeMessages).toEqual([
+      {
+        type: "panel-bridge-envelope",
+        envelope: cachedRegister
+      },
+      {
+        type: "panel-bridge-envelope",
+        envelope: cachedSnapshot
+      }
+    ]);
+    expect(harness.executeScript).not.toHaveBeenCalled();
+    expect(harness.sendMessage).not.toHaveBeenCalledWith(
+      46,
+      { type: "bridge-replay-request" },
+      expect.any(Function)
+    );
   });
 
   it("replays snapshot-only cache entries for new panel sessions", async () => {

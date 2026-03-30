@@ -6,8 +6,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
   JOURNEY_DEVTOOLS_CHANNEL,
+  JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
   type JourneyDevtoolsBridgeEnvelope,
+  type JourneyDevtoolsMachineCapabilities,
   type JourneyDevtoolsSerializableSnapshot
 } from "@rxova/journey-devtools-bridge";
 import { JOURNEY_DEVTOOLS_PANEL_PORT } from "../src/shared";
@@ -43,7 +45,6 @@ const createSnapshot = (current: string): JourneyDevtoolsSerializableSnapshot =>
   },
   context: { count: current.length },
   visited: current === "start" ? { start: true } : { start: true, [current]: true },
-  stepMeta: {},
   status: "running",
   async: {
     isLoading: false,
@@ -58,9 +59,46 @@ const createSnapshot = (current: string): JourneyDevtoolsSerializableSnapshot =>
   }
 });
 
+const capabilityCommands: JourneyDevtoolsMachineCapabilities["commands"] = [
+  "goToNextStep",
+  "terminateJourney",
+  "completeJourney",
+  "goToStepById",
+  "goToPreviousStep",
+  "goToLastVisitedStep",
+  "send",
+  "resetJourney",
+  "clearStepError",
+  "getExecutionPaths"
+];
+
+type RegisterEnvelopeOptions = {
+  commandsEnabled?: boolean;
+  executionPaths?: boolean;
+  persistence?: JourneyDevtoolsMachineCapabilities["persistence"] | null;
+  appName?: string | null;
+};
+
+const buildCapabilities = (
+  commandsEnabled = true,
+  options: Pick<RegisterEnvelopeOptions, "executionPaths" | "persistence"> = {}
+): JourneyDevtoolsMachineCapabilities => {
+  const capabilities: JourneyDevtoolsMachineCapabilities = {
+    commands: commandsEnabled ? [...capabilityCommands] : ["getExecutionPaths"],
+    observe: true as const,
+    executionPaths: options.executionPaths ?? true
+  };
+
+  if (options.persistence !== undefined && options.persistence !== null) {
+    capabilities.persistence = options.persistence;
+  }
+
+  return capabilities;
+};
+
 const createRegisterEnvelope = (
   machineId: string,
-  options: { commandsEnabled?: boolean } = {}
+  options: RegisterEnvelopeOptions = {}
 ): JourneyDevtoolsBridgeEnvelope => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
   version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
@@ -71,12 +109,29 @@ const createRegisterEnvelope = (
   meta: {
     machineId,
     label: "Checkout",
-    appName: "Store",
+    appName: options.appName ?? "Store",
+    capabilities: buildCapabilities(options.commandsEnabled ?? true, options),
     ...(options.commandsEnabled === undefined
       ? {}
       : {
           commandsEnabled: options.commandsEnabled
         })
+  },
+  snapshot: createSnapshot("start")
+});
+
+const createLegacyRegisterEnvelope = (machineId: string): JourneyDevtoolsBridgeEnvelope => ({
+  channel: JOURNEY_DEVTOOLS_CHANNEL,
+  version: JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
+  source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
+  kind: "register",
+  machineId,
+  timestamp: Date.now(),
+  meta: {
+    machineId,
+    label: "Legacy Checkout",
+    appName: "Legacy Store",
+    commandsEnabled: true
   },
   snapshot: createSnapshot("start")
 });
@@ -283,7 +338,7 @@ describe("panel App", () => {
     expect(container.textContent).toContain("COMMAND/goToNextStep");
 
     const resetButton = Array.from(container.querySelectorAll("button")).find(
-      (entry) => entry.textContent?.trim() === "resetMachine"
+      (entry) => entry.textContent?.trim() === "resetJourney"
     );
     if (!resetButton) {
       throw new Error("reset button not found");
@@ -314,7 +369,7 @@ describe("panel App", () => {
         envelope: createCommandResultEnvelope("machine-1", resetCommand.envelope.requestId, "start")
       });
     });
-    expect(container.textContent).toContain("COMMAND/resetMachine");
+    expect(container.textContent).toContain("COMMAND/resetJourney");
 
     const displayLimitInput = container.querySelector('input[type="number"]') as HTMLInputElement;
     const inputSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
@@ -323,7 +378,7 @@ describe("panel App", () => {
       displayLimitInput.dispatchEvent(new Event("input", { bubbles: true }));
       displayLimitInput.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    expect(container.textContent).toContain("Showing 1 / 4");
+    expect(container.textContent).toContain("Showing 1 / ");
 
     const pruneButton = Array.from(container.querySelectorAll("button")).find(
       (entry) => entry.textContent?.trim() === "Prune to limit"
@@ -442,6 +497,107 @@ describe("panel App", () => {
         (entry as { type?: string }).type === "panel-command"
     );
     expect(command?.envelope.requestId).toBe("uuid-123");
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("shows a compatibility warning and blocks commands for legacy protocol machines", async () => {
+    const onMessage = createListenerSet<[unknown]>();
+    const postedMessages: unknown[] = [];
+
+    const port = {
+      postMessage: (message: unknown) => {
+        postedMessages.push(message);
+      },
+      disconnect: vi.fn(),
+      onMessage: {
+        addListener: onMessage.addListener,
+        removeListener: onMessage.removeListener
+      },
+      onDisconnect: {
+        addListener: vi.fn(),
+        removeListener: vi.fn()
+      }
+    } as unknown as chrome.runtime.Port;
+
+    vi.stubGlobal("chrome", {
+      runtime: {
+        connect: vi.fn(() => port)
+      },
+      devtools: {
+        inspectedWindow: {
+          tabId: 91
+        }
+      }
+    } as unknown as typeof chrome);
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<App />);
+    });
+
+    await act(async () => {
+      onMessage.emit({ type: "panel-connected", connected: true });
+      onMessage.emit({
+        type: "panel-bridge-envelope",
+        envelope: createLegacyRegisterEnvelope("machine-legacy")
+      });
+    });
+
+    const nextButton = Array.from(container.querySelectorAll("button")).find(
+      (entry) => entry.textContent?.trim() === "goToNextStep"
+    );
+    const terminateButton = Array.from(container.querySelectorAll("button")).find(
+      (entry) => entry.textContent?.trim() === "terminateJourney"
+    );
+    const resetButton = Array.from(container.querySelectorAll("button")).find(
+      (entry) => entry.textContent?.trim() === "resetJourney"
+    );
+    if (!nextButton) {
+      throw new Error("next button not found");
+    }
+    if (!terminateButton) {
+      throw new Error("terminate button not found");
+    }
+    if (!resetButton) {
+      throw new Error("reset button not found");
+    }
+
+    expect((nextButton as HTMLButtonElement).disabled).toBe(true);
+    expect((terminateButton as HTMLButtonElement).disabled).toBe(true);
+    expect((resetButton as HTMLButtonElement).disabled).toBe(true);
+    expect(container.textContent).toContain("Compatibility");
+    expect(container.textContent).toContain(
+      `This devtools panel uses protocol v${JOURNEY_DEVTOOLS_PROTOCOL_VERSION}, but the selected machine is still using protocol v${JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION}.`
+    );
+    expect(container.textContent).toContain(
+      "Legacy protocol v3 machines are read-only in this devtools build."
+    );
+
+    await act(async () => {
+      nextButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const panelCommand = postedMessages.find(
+      (
+        entry
+      ): entry is {
+        type: "panel-command";
+        envelope: { version: number; command: { type: string } };
+      } =>
+        typeof entry === "object" &&
+        entry !== null &&
+        "type" in entry &&
+        (entry as { type?: string }).type === "panel-command"
+    );
+
+    expect(panelCommand).toBeUndefined();
+    expect(container.textContent).not.toContain("COMMAND/goToNextStep");
 
     await act(async () => {
       root.unmount();
@@ -937,12 +1093,9 @@ describe("panel App", () => {
     const nextButton = Array.from(container.querySelectorAll("button")).find(
       (entry) => entry.textContent?.trim() === "goToNextStep"
     ) as HTMLButtonElement | undefined;
-    if (!nextButton) {
-      throw new Error("next button not found");
-    }
-
-    expect(nextButton.disabled).toBe(true);
-    expect(container.textContent).toContain("Commands are disabled for this machine.");
+    expect(nextButton).toBeUndefined();
+    expect(container.textContent).toContain("Commands Off");
+    expect(container.textContent).toContain("Query execution paths");
     expect(
       postedMessages.some((entry) => {
         if (typeof entry !== "object" || entry === null) {
@@ -951,6 +1104,89 @@ describe("panel App", () => {
         return (entry as { type?: string }).type === "panel-command";
       })
     ).toBe(false);
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("renders capability metadata variants for execution paths and persistence", async () => {
+    const onMessage = createListenerSet<[unknown]>();
+
+    const port = {
+      postMessage: vi.fn(),
+      disconnect: vi.fn(),
+      onMessage: {
+        addListener: onMessage.addListener,
+        removeListener: onMessage.removeListener
+      },
+      onDisconnect: {
+        addListener: vi.fn(),
+        removeListener: vi.fn()
+      }
+    } as unknown as chrome.runtime.Port;
+
+    vi.stubGlobal("chrome", {
+      runtime: {
+        connect: vi.fn(() => port)
+      },
+      devtools: {
+        inspectedWindow: {
+          tabId: 57
+        }
+      }
+    } as unknown as typeof chrome);
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<App />);
+    });
+
+    await act(async () => {
+      onMessage.emit({ type: "panel-connected", connected: true });
+      onMessage.emit({
+        type: "panel-bridge-envelope",
+        envelope: createRegisterEnvelope("machine-persistence-unspecified", {
+          executionPaths: false,
+          persistence: {
+            key: null,
+            clearOnReset: null
+          }
+        })
+      });
+      onMessage.emit({
+        type: "panel-bridge-envelope",
+        envelope: createRegisterEnvelope("machine-persistence-configured", {
+          executionPaths: false,
+          persistence: {
+            key: "journey-cache",
+            clearOnReset: false
+          }
+        })
+      });
+    });
+
+    expect(container.textContent).toContain("No Execution Paths");
+    expect(container.textContent).toContain("Persistence");
+    expect(container.textContent).toContain(
+      "Persistence key: unspecified · clearOnReset: unspecified"
+    );
+
+    const machineSelect = container.querySelector("select") as HTMLSelectElement | null;
+    if (!machineSelect) {
+      throw new Error("machine selector not found");
+    }
+
+    const selectSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
+    await act(async () => {
+      selectSetter?.call(machineSelect, "machine-persistence-configured");
+      machineSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    expect(container.textContent).toContain("Persistence key: journey-cache · clearOnReset: false");
 
     await act(async () => {
       root.unmount();

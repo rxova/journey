@@ -1,10 +1,22 @@
-import type { JourneySnapshot, JourneyStepAsyncState } from "@rxova/journey-core";
+import type {
+  JourneyExecutionPathOptions,
+  JourneyExecutionPathsResult,
+  JourneyJsonObject,
+  JourneyObservationEvent,
+  JourneySnapshot,
+  JourneyStepAsyncState
+} from "@rxova/journey-core";
 
-export const JOURNEY_DEVTOOLS_PROTOCOL_VERSION = 3 as const;
+export const JOURNEY_DEVTOOLS_PROTOCOL_VERSION = 4 as const;
+export const JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION = 3 as const;
 export const JOURNEY_DEVTOOLS_CHANNEL = "__RXOVA_JOURNEY_DEVTOOLS__" as const;
 
 export const JOURNEY_DEVTOOLS_BRIDGE_SOURCE = "rxova-journey-bridge" as const;
 export const JOURNEY_DEVTOOLS_EXTENSION_SOURCE = "rxova-journey-extension" as const;
+
+export type JourneyDevtoolsProtocolVersion =
+  | typeof JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION
+  | typeof JOURNEY_DEVTOOLS_PROTOCOL_VERSION;
 
 export type JourneyDevtoolsSource =
   | typeof JOURNEY_DEVTOOLS_BRIDGE_SOURCE
@@ -12,13 +24,32 @@ export type JourneyDevtoolsSource =
 
 export type JourneyDevtoolsStepAsyncState = JourneyStepAsyncState;
 
-export type JourneyDevtoolsSerializableSnapshot = JourneySnapshot<unknown, string>;
+export type JourneyDevtoolsSerializableSnapshot = JourneySnapshot<JourneyJsonObject, string>;
+export type JourneyDevtoolsSerializableObservationEvent = JourneyObservationEvent<
+  string,
+  Record<never, never>
+>;
+export type JourneyDevtoolsSerializableExecutionPathsResult = JourneyExecutionPathsResult<
+  string,
+  string
+>;
+
+export type JourneyDevtoolsMachineCapabilities = {
+  commands: JourneyDevtoolsCommand["type"][];
+  observe: boolean;
+  executionPaths: boolean;
+  persistence?: {
+    key: string | null;
+    clearOnReset: boolean | null;
+  };
+};
 
 export type JourneyDevtoolsMachineMeta = {
   machineId: string;
   label: string;
   appName: string | null;
   commandsEnabled?: boolean;
+  capabilities?: JourneyDevtoolsMachineCapabilities;
 };
 
 export type JourneyDevtoolsSerializedError = {
@@ -29,20 +60,21 @@ export type JourneyDevtoolsSerializedError = {
 };
 
 export type JourneyDevtoolsCommand =
+  | { type: "startJourney" }
   | { type: "goToNextStep" }
-  | { type: "terminateMachine" }
+  | { type: "terminateJourney" }
   | { type: "completeJourney" }
   | { type: "goToStepById"; stepId: string }
   | { type: "goToPreviousStep"; steps?: number }
   | { type: "goToLastVisitedStep" }
   | { type: "send"; event: { type: string; payload?: unknown } }
-  | { type: "updateStepMetadata"; stepId: string; metadata: unknown }
-  | { type: "resetMachine" }
-  | { type: "clearStepError"; stepId?: string };
+  | { type: "resetJourney" }
+  | { type: "clearStepError"; stepId?: string }
+  | { type: "getExecutionPaths"; options?: JourneyExecutionPathOptions };
 
 export type JourneyDevtoolsEnvelopeBase = {
   channel: typeof JOURNEY_DEVTOOLS_CHANNEL;
-  version: typeof JOURNEY_DEVTOOLS_PROTOCOL_VERSION;
+  version: JourneyDevtoolsProtocolVersion;
   source: JourneyDevtoolsSource;
   kind: string;
   machineId: string;
@@ -67,6 +99,12 @@ export type JourneyDevtoolsBridgeSnapshotEnvelope = JourneyDevtoolsEnvelopeBase 
   snapshot: JourneyDevtoolsSerializableSnapshot;
 };
 
+export type JourneyDevtoolsBridgeObservationEnvelope = JourneyDevtoolsEnvelopeBase & {
+  source: typeof JOURNEY_DEVTOOLS_BRIDGE_SOURCE;
+  kind: "observation";
+  event: JourneyDevtoolsSerializableObservationEvent;
+};
+
 export type JourneyDevtoolsBridgeCommandResultEnvelope = JourneyDevtoolsEnvelopeBase & {
   source: typeof JOURNEY_DEVTOOLS_BRIDGE_SOURCE;
   kind: "commandResult";
@@ -75,6 +113,13 @@ export type JourneyDevtoolsBridgeCommandResultEnvelope = JourneyDevtoolsEnvelope
   transitioned?: boolean;
   transitionId?: string;
   error?: JourneyDevtoolsSerializedError;
+};
+
+export type JourneyDevtoolsBridgeExecutionPathsResultEnvelope = JourneyDevtoolsEnvelopeBase & {
+  source: typeof JOURNEY_DEVTOOLS_BRIDGE_SOURCE;
+  kind: "executionPathsResult";
+  requestId: string;
+  result: JourneyDevtoolsSerializableExecutionPathsResult;
 };
 
 export type JourneyDevtoolsBridgeCommandErrorEnvelope = JourneyDevtoolsEnvelopeBase & {
@@ -95,7 +140,9 @@ export type JourneyDevtoolsBridgeEnvelope =
   | JourneyDevtoolsBridgeRegisterEnvelope
   | JourneyDevtoolsBridgeUnregisterEnvelope
   | JourneyDevtoolsBridgeSnapshotEnvelope
+  | JourneyDevtoolsBridgeObservationEnvelope
   | JourneyDevtoolsBridgeCommandResultEnvelope
+  | JourneyDevtoolsBridgeExecutionPathsResultEnvelope
   | JourneyDevtoolsBridgeCommandErrorEnvelope;
 
 export type JourneyDevtoolsExtensionEnvelope = JourneyDevtoolsExtensionCommandEnvelope;
@@ -109,6 +156,26 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const isKnownSource = (value: unknown): value is JourneyDevtoolsSource =>
   value === JOURNEY_DEVTOOLS_BRIDGE_SOURCE || value === JOURNEY_DEVTOOLS_EXTENSION_SOURCE;
+
+const isSupportedProtocolVersion = (value: unknown): value is JourneyDevtoolsProtocolVersion =>
+  value === JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION || value === JOURNEY_DEVTOOLS_PROTOCOL_VERSION;
+
+const JOURNEY_COMMAND_TYPES = [
+  "startJourney",
+  "goToNextStep",
+  "terminateJourney",
+  "completeJourney",
+  "goToStepById",
+  "goToPreviousStep",
+  "goToLastVisitedStep",
+  "send",
+  "resetJourney",
+  "clearStepError",
+  "getExecutionPaths"
+] as const;
+
+const isKnownCommandType = (value: unknown): value is JourneyDevtoolsCommand["type"] =>
+  typeof value === "string" && (JOURNEY_COMMAND_TYPES as readonly string[]).includes(value);
 
 /**
  * Maximum depth for nested object validation.
@@ -175,11 +242,26 @@ const hasBaseEnvelopeShape = (value: unknown): value is JourneyDevtoolsEnvelopeB
 
   return (
     value.channel === JOURNEY_DEVTOOLS_CHANNEL &&
-    value.version === JOURNEY_DEVTOOLS_PROTOCOL_VERSION &&
+    isSupportedProtocolVersion(value.version) &&
     isKnownSource(value.source) &&
     typeof value.kind === "string" &&
     typeof value.machineId === "string" &&
     typeof value.timestamp === "number"
+  );
+};
+
+const isPositiveInteger = (value: unknown, max = 10000): value is number =>
+  typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= max;
+
+const isExecutionPathOptionsShape = (value: unknown): value is JourneyExecutionPathOptions => {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    Object.keys(value).length <= 2 &&
+    (value.maxDepth === undefined || isPositiveInteger(value.maxDepth)) &&
+    (value.maxPaths === undefined || isPositiveInteger(value.maxPaths))
   );
 };
 
@@ -192,12 +274,104 @@ const isSendEvent = (value: unknown): value is { type: string; payload?: unknown
     return false;
   }
 
-  // Validate payload if present
   if ("payload" in value && value.payload !== undefined) {
     return isSafePayload(value.payload);
   }
 
   return true;
+};
+
+const isMachineCapabilities = (value: unknown): value is JourneyDevtoolsMachineCapabilities => {
+  if (
+    !isRecord(value) ||
+    typeof value.observe !== "boolean" ||
+    typeof value.executionPaths !== "boolean"
+  ) {
+    return false;
+  }
+
+  if (
+    !Array.isArray(value.commands) ||
+    !value.commands.every((command) => isKnownCommandType(command))
+  ) {
+    return false;
+  }
+
+  if (value.persistence === undefined) {
+    return true;
+  }
+
+  if (!isRecord(value.persistence)) {
+    return false;
+  }
+
+  return (
+    (value.persistence.key === null || typeof value.persistence.key === "string") &&
+    (value.persistence.clearOnReset === null || typeof value.persistence.clearOnReset === "boolean")
+  );
+};
+
+const isMachineMeta = (
+  value: unknown,
+  version: JourneyDevtoolsProtocolVersion
+): value is JourneyDevtoolsMachineMeta => {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.machineId === "string" &&
+    typeof value.label === "string" &&
+    (value.appName === null || typeof value.appName === "string") &&
+    (value.commandsEnabled === undefined || typeof value.commandsEnabled === "boolean") &&
+    (version === JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION
+      ? value.capabilities === undefined || isMachineCapabilities(value.capabilities)
+      : isMachineCapabilities(value.capabilities))
+  );
+};
+
+const isSerializableObservationEvent = (
+  value: unknown
+): value is JourneyDevtoolsSerializableObservationEvent => {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.type === "string" &&
+    value.type.length > 0 &&
+    value.type.length <= 100 &&
+    typeof value.timestamp === "number" &&
+    isSafePayload(value)
+  );
+};
+
+const isExecutionPathResult = (
+  value: unknown
+): value is JourneyDevtoolsSerializableExecutionPathsResult => {
+  if (!isRecord(value) || !Array.isArray(value.paths)) {
+    return false;
+  }
+
+  const isPathTerminated = (terminated: unknown): terminated is string =>
+    terminated === "final" ||
+    terminated === "depth" ||
+    terminated === "cycle" ||
+    terminated === "limit";
+
+  return (
+    value.paths.every(
+      (path) =>
+        isRecord(path) &&
+        Array.isArray(path.steps) &&
+        path.steps.every((step) => typeof step === "string") &&
+        Array.isArray(path.events) &&
+        path.events.every((event) => typeof event === "string") &&
+        isPathTerminated(path.terminated)
+    ) &&
+    typeof value.truncated === "boolean" &&
+    typeof value.cyclesDetected === "boolean"
+  );
 };
 
 /**
@@ -208,18 +382,17 @@ export const isJourneyDevtoolsCommand = (value: unknown): value is JourneyDevtoo
     return false;
   }
 
-  // Validate command type is within reasonable length
   if (value.type.length === 0 || value.type.length > 50) {
     return false;
   }
 
   switch (value.type) {
+    case "startJourney":
     case "goToNextStep":
-    case "terminateMachine":
+    case "terminateJourney":
     case "completeJourney":
-    case "resetMachine":
+    case "resetJourney":
     case "goToLastVisitedStep":
-      // These commands should have no extra properties beyond type
       return Object.keys(value).length === 1;
     case "goToStepById":
       return (
@@ -230,27 +403,20 @@ export const isJourneyDevtoolsCommand = (value: unknown): value is JourneyDevtoo
       );
     case "goToPreviousStep":
       return (
-        (value.steps === undefined ||
-          (typeof value.steps === "number" &&
-            Number.isInteger(value.steps) &&
-            value.steps >= 1 &&
-            value.steps <= 10000)) &&
+        (value.steps === undefined || isPositiveInteger(value.steps)) &&
         Object.keys(value).length <= 2
       );
     case "send":
       return isSendEvent(value.event) && Object.keys(value).length === 2;
-    case "updateStepMetadata":
-      return (
-        typeof value.stepId === "string" &&
-        value.stepId.length > 0 &&
-        value.stepId.length <= 100 &&
-        isSafePayload(value.metadata) &&
-        Object.keys(value).length === 3
-      );
     case "clearStepError":
       return (
         (value.stepId === undefined ||
           (typeof value.stepId === "string" && value.stepId.length <= 100)) &&
+        Object.keys(value).length <= 2
+      );
+    case "getExecutionPaths":
+      return (
+        (value.options === undefined || isExecutionPathOptionsShape(value.options)) &&
         Object.keys(value).length <= 2
       );
     default:
@@ -273,15 +439,16 @@ export const isJourneyDevtoolsBridgeEnvelope = (
   switch (value.kind) {
     case "register":
       return (
-        isRecord(envelope.meta) &&
+        isMachineMeta(envelope.meta, value.version) &&
         isRecord(envelope.snapshot) &&
-        isSafePayload(envelope.meta) &&
         isSafePayload(envelope.snapshot)
       );
     case "unregister":
       return true;
     case "snapshot":
       return isRecord(envelope.snapshot) && isSafePayload(envelope.snapshot);
+    case "observation":
+      return isSerializableObservationEvent(envelope.event);
     case "commandResult":
       return (
         typeof envelope.requestId === "string" &&
@@ -290,6 +457,13 @@ export const isJourneyDevtoolsBridgeEnvelope = (
         isRecord(envelope.snapshot) &&
         isSafePayload(envelope.snapshot) &&
         (!("error" in envelope) || isRecord(envelope.error))
+      );
+    case "executionPathsResult":
+      return (
+        typeof envelope.requestId === "string" &&
+        envelope.requestId.length > 0 &&
+        envelope.requestId.length <= 100 &&
+        isExecutionPathResult(envelope.result)
       );
     case "commandError":
       return (

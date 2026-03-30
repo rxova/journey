@@ -5,9 +5,9 @@ import {
   type CommandBuildResult,
   buildClearStepErrorCommand,
   buildCustomSendCommand,
+  buildExecutionPathsCommand,
   buildGoToCommand,
-  buildGoToPreviousStepCommand,
-  buildUpdateStepMetadataCommand
+  buildGoToPreviousStepCommand
 } from "../command-utils";
 
 type CommandField =
@@ -16,8 +16,8 @@ type CommandField =
   | "goToStep"
   | "stepErrorId"
   | "previousSteps"
-  | "metadataStepId"
-  | "metadataPayload";
+  | "executionMaxDepth"
+  | "executionMaxPaths";
 
 type CommandFormState = {
   customType: string;
@@ -25,8 +25,8 @@ type CommandFormState = {
   goToStep: string;
   stepErrorId: string;
   previousSteps: string;
-  metadataStepId: string;
-  metadataPayload: string;
+  executionMaxDepth: string;
+  executionMaxPaths: string;
   formError: string | null;
 };
 
@@ -47,10 +47,19 @@ const INITIAL_FORM_STATE: CommandFormState = {
   goToStep: "",
   stepErrorId: "",
   previousSteps: "",
-  metadataStepId: "",
-  metadataPayload: "",
+  executionMaxDepth: "",
+  executionMaxPaths: "",
   formError: null
 };
+
+const PRIMARY_COMMANDS = [
+  "startJourney",
+  "goToNextStep",
+  "terminateJourney",
+  "completeJourney",
+  "resetJourney",
+  "goToLastVisitedStep"
+] as const;
 
 const commandFormReducer = (
   state: CommandFormState,
@@ -69,24 +78,20 @@ const commandFormReducer = (
   };
 };
 
-const PRIMARY_COMMANDS = [
-  "goToNextStep",
-  "terminateMachine",
-  "completeJourney",
-  "resetMachine",
-  "goToLastVisitedStep"
-] as const;
-
 export const CommandControls = ({
+  availableCommands,
   onCommand,
   disabled,
   disabledReason
 }: {
+  availableCommands: readonly JourneyDevtoolsCommand["type"][];
   onCommand: (command: JourneyDevtoolsCommand) => void;
   disabled: boolean;
   disabledReason?: string | null;
 }) => {
   const [formState, dispatch] = React.useReducer(commandFormReducer, INITIAL_FORM_STATE);
+  const availableCommandSet = new Set(availableCommands);
+  const visiblePrimaryCommands = PRIMARY_COMMANDS.filter((type) => availableCommandSet.has(type));
 
   const updateField = React.useCallback((field: CommandField, value: string) => {
     dispatch({
@@ -113,133 +118,155 @@ export const CommandControls = ({
     <section className="panel-card">
       <h2>Commands</h2>
 
-      <div className="button-grid">
-        {PRIMARY_COMMANDS.map((type) => (
-          <button key={type} type="button" onClick={() => onCommand({ type })} disabled={disabled}>
-            {type}
-          </button>
-        ))}
-      </div>
+      {visiblePrimaryCommands.length > 0 ? (
+        <div className="button-grid">
+          {visiblePrimaryCommands.map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => onCommand({ type })}
+              disabled={disabled}
+            >
+              {type}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <div className="command-form-grid">
-        <label>
-          goToStepById step
-          <div className="form-row">
-            <input
-              value={formState.goToStep}
-              onChange={(event) => updateField("goToStep", event.target.value)}
-              placeholder="review"
-              disabled={disabled}
-            />
+        {availableCommandSet.has("goToStepById") ? (
+          <label>
+            goToStepById step
+            <div className="form-row">
+              <input
+                value={formState.goToStep}
+                onChange={(event) => updateField("goToStep", event.target.value)}
+                placeholder="review"
+                disabled={disabled}
+              />
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => runCommand(buildGoToCommand(formState.goToStep))}
+              >
+                Send goToStepById
+              </button>
+            </div>
+          </label>
+        ) : null}
+
+        {availableCommandSet.has("goToPreviousStep") ? (
+          <label>
+            goToPreviousStep steps (optional)
+            <div className="form-row">
+              <input
+                value={formState.previousSteps}
+                onChange={(event) => updateField("previousSteps", event.target.value)}
+                placeholder="1"
+                disabled={disabled}
+              />
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => runCommand(buildGoToPreviousStepCommand(formState.previousSteps))}
+              >
+                Send previous
+              </button>
+            </div>
+          </label>
+        ) : null}
+
+        {availableCommandSet.has("send") ? (
+          <>
+            <label>
+              Custom event type
+              <input
+                value={formState.customType}
+                onChange={(event) => updateField("customType", event.target.value)}
+                placeholder="retry"
+                disabled={disabled}
+              />
+            </label>
+            <label>
+              Custom payload JSON
+              <textarea
+                value={formState.customPayload}
+                onChange={(event) => updateField("customPayload", event.target.value)}
+                placeholder='{"attempt": 2}'
+                disabled={disabled}
+              />
+            </label>
             <button
               type="button"
               disabled={disabled}
-              onClick={() => runCommand(buildGoToCommand(formState.goToStep))}
+              onClick={() =>
+                runCommand(buildCustomSendCommand(formState.customType, formState.customPayload))
+              }
             >
-              Send goToStepById
+              Send custom event
             </button>
-          </div>
-        </label>
+          </>
+        ) : null}
 
-        <label>
-          goToPreviousStep steps (optional)
-          <div className="form-row">
-            <input
-              value={formState.previousSteps}
-              onChange={(event) => updateField("previousSteps", event.target.value)}
-              placeholder="1"
-              disabled={disabled}
-            />
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() => runCommand(buildGoToPreviousStepCommand(formState.previousSteps))}
-            >
-              Send previous
-            </button>
-          </div>
-        </label>
+        {availableCommandSet.has("clearStepError") ? (
+          <label>
+            clearStepError stepId (optional)
+            <div className="form-row">
+              <input
+                value={formState.stepErrorId}
+                onChange={(event) => updateField("stepErrorId", event.target.value)}
+                placeholder="details"
+                disabled={disabled}
+              />
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => runCommand(buildClearStepErrorCommand(formState.stepErrorId))}
+              >
+                Clear error
+              </button>
+            </div>
+          </label>
+        ) : null}
 
-        <label>
-          Custom event type
-          <input
-            value={formState.customType}
-            onChange={(event) => updateField("customType", event.target.value)}
-            placeholder="retry"
-            disabled={disabled}
-          />
-        </label>
-        <label>
-          Custom payload JSON
-          <textarea
-            value={formState.customPayload}
-            onChange={(event) => updateField("customPayload", event.target.value)}
-            placeholder='{"attempt": 2}'
-            disabled={disabled}
-          />
-        </label>
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() =>
-            runCommand(buildCustomSendCommand(formState.customType, formState.customPayload))
-          }
-        >
-          Send custom event
-        </button>
-
-        <label>
-          clearStepError stepId (optional)
-          <div className="form-row">
-            <input
-              value={formState.stepErrorId}
-              onChange={(event) => updateField("stepErrorId", event.target.value)}
-              placeholder="details"
-              disabled={disabled}
-            />
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() => runCommand(buildClearStepErrorCommand(formState.stepErrorId))}
-            >
-              Clear error
-            </button>
-          </div>
-        </label>
-
-        <label>
-          updateStepMetadata
-          <div className="form-row">
-            <input
-              value={formState.metadataStepId}
-              onChange={(event) => updateField("metadataStepId", event.target.value)}
-              placeholder="step-id"
-              disabled={disabled}
-            />
+        {availableCommandSet.has("getExecutionPaths") ? (
+          <label>
+            getExecutionPaths (optional limits)
+            <div className="form-row">
+              <input
+                value={formState.executionMaxDepth}
+                onChange={(event) => updateField("executionMaxDepth", event.target.value)}
+                placeholder="maxDepth"
+                disabled={disabled}
+              />
+              <input
+                value={formState.executionMaxPaths}
+                onChange={(event) => updateField("executionMaxPaths", event.target.value)}
+                placeholder="maxPaths"
+                disabled={disabled}
+              />
+            </div>
             <button
               type="button"
               disabled={disabled}
               onClick={() =>
                 runCommand(
-                  buildUpdateStepMetadataCommand(
-                    formState.metadataStepId,
-                    formState.metadataPayload
+                  buildExecutionPathsCommand(
+                    formState.executionMaxDepth,
+                    formState.executionMaxPaths
                   )
                 )
               }
             >
-              Update metadata
+              Query execution paths
             </button>
-          </div>
-          <textarea
-            value={formState.metadataPayload}
-            onChange={(event) => updateField("metadataPayload", event.target.value)}
-            placeholder='{"title":"Details updated"}'
-            disabled={disabled}
-          />
-        </label>
+          </label>
+        ) : null}
       </div>
 
+      {availableCommands.length === 0 ? (
+        <p className="muted">No remote actions are exposed for this machine.</p>
+      ) : null}
       {formState.formError ? <p className="form-error">{formState.formError}</p> : null}
       {disabled && disabledReason ? <p className="muted">{disabledReason}</p> : null}
     </section>

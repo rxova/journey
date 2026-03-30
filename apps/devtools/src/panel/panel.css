@@ -9,6 +9,8 @@
   --fallback-kind-init: #5b8def;
   --fallback-kind-snapshot: #1a73e8;
   --fallback-kind-command: #0b57d0;
+  --fallback-kind-event: #0f9d58;
+  --fallback-kind-query: #8e24aa;
 
   --fallback-ink: #202124;
   --fallback-muted: #5f6368;
@@ -33,6 +35,8 @@
   --kind-init: var(--sys-color-primary-bright, var(--fallback-kind-init));
   --kind-snapshot: var(--sys-color-blue-bright, var(--fallback-kind-snapshot));
   --kind-command: var(--sys-color-green-bright, var(--fallback-kind-command));
+  --kind-event: var(--sys-color-green-bright, var(--fallback-kind-event));
+  --kind-query: var(--sys-color-purple-bright, var(--fallback-kind-query));
 
   --bg-top: var(--sys-color-base-container-elevated, var(--fallback-bg-top));
   --bg-bottom: var(--sys-color-cdt-base-container, var(--fallback-bg-bottom));
@@ -54,6 +58,8 @@
     --fallback-kind-init: #a1c2fa;
     --fallback-kind-snapshot: #8ab4f8;
     --fallback-kind-command: #6ea8ff;
+    --fallback-kind-event: #7bdcb5;
+    --fallback-kind-query: #d7a7ff;
 
     --fallback-ink: #e8eaed;
     --fallback-muted: #9aa0a6;
@@ -77,6 +83,8 @@
   --fallback-kind-init: #a1c2fa;
   --fallback-kind-snapshot: #8ab4f8;
   --fallback-kind-command: #6ea8ff;
+  --fallback-kind-event: #7bdcb5;
+  --fallback-kind-query: #d7a7ff;
 
   --fallback-ink: #e8eaed;
   --fallback-muted: #9aa0a6;
@@ -321,6 +329,14 @@ button:disabled {
   color: var(--kind-command);
 }
 
+.timeline-kind.kind-event {
+  color: var(--kind-event);
+}
+
+.timeline-kind.kind-query {
+  color: var(--kind-query);
+}
+
 .timeline-kind.kind-error {
   color: var(--warn);
 }
@@ -378,6 +394,36 @@ button:disabled {
   margin: 8px 0 0;
   color: var(--warn);
   font-weight: 600;
+}
+
+.capability-card {
+  display: grid;
+  gap: 8px;
+}
+
+.capability-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.capability-badge {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  background: var(--surface);
+}
+
+.capability-badge.is-active {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.capability-details {
+  margin: 0;
 }
 
 .log-header {

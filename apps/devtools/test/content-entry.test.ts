@@ -65,7 +65,12 @@ describe("content script bridge", () => {
       meta: {
         machineId: "machine-1",
         label: "Checkout",
-        appName: "Storefront"
+        appName: "Storefront",
+        capabilities: {
+          commands: ["goToNextStep"],
+          observe: true,
+          executionPaths: false
+        }
       },
       snapshot: { currentStepId: "start" },
       timestamp: Date.now()
@@ -261,7 +266,16 @@ describe("content script bridge", () => {
       source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
       kind: "register",
       machineId: "machine-evict",
-      meta: { machineId: "machine-evict", label: "Flow", appName: "App" },
+      meta: {
+        machineId: "machine-evict",
+        label: "Flow",
+        appName: "App",
+        capabilities: {
+          commands: ["goToNextStep"],
+          observe: true,
+          executionPaths: false
+        }
+      },
       snapshot: { currentStepId: "start" },
       timestamp: Date.now()
     } as const;

@@ -111,4 +111,43 @@ describe("panel main entrypoint", () => {
     themeChangeHandler?.("default");
     expect(document.documentElement.dataset.theme).toBe("light");
   });
+
+  it("falls back to the system theme when DevTools theme APIs are unavailable", () => {
+    document.body.innerHTML = '<div id="root"></div>';
+
+    stubMatchMedia(true);
+
+    bootstrapPanel();
+
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
+  it("uses legacy matchMedia listeners when addEventListener is unavailable", () => {
+    document.body.innerHTML = '<div id="root"></div>';
+
+    let changeHandler: (() => void) | undefined;
+    const mediaQuery = {
+      matches: false,
+      addEventListener: undefined,
+      addListener: vi.fn((listener: () => void) => {
+        changeHandler = listener;
+      })
+    } as unknown as MediaQueryList;
+
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      writable: true,
+      value: vi.fn().mockReturnValue(mediaQuery)
+    });
+
+    bootstrapPanel();
+
+    expect(document.documentElement.dataset.theme).toBe("light");
+    expect(mediaQuery.addListener as unknown as ReturnType<typeof vi.fn>).toHaveBeenCalledTimes(1);
+
+    (mediaQuery as { matches: boolean }).matches = true;
+    changeHandler?.();
+
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
 });

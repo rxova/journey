@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildCustomSendCommand,
+  buildExecutionPathsCommand,
   buildGoToCommand,
   buildGoToPreviousStepCommand,
-  buildUpdateStepMetadataCommand,
   parseOptionalJsonPayload
 } from "../src/panel/command-utils";
 
@@ -65,29 +65,46 @@ describe("command utils", () => {
     });
   });
 
-  it("builds updateStepMetadata command with validation", () => {
-    expect(buildUpdateStepMetadataCommand(" ", "{}")).toEqual({
-      ok: false,
-      error: "Step id is required."
+  it("builds getExecutionPaths command with optional limits", () => {
+    expect(buildExecutionPathsCommand("", "")).toEqual({
+      ok: true,
+      command: { type: "getExecutionPaths" }
     });
 
-    expect(buildUpdateStepMetadataCommand("details", " ")).toEqual({
+    expect(buildExecutionPathsCommand("0", "")).toEqual({
       ok: false,
-      error: "Metadata JSON is required."
+      error: "Max depth must be a positive integer."
     });
 
-    expect(buildUpdateStepMetadataCommand("details", "{")).toEqual({
+    expect(buildExecutionPathsCommand("", "-1")).toEqual({
       ok: false,
-      error: "Metadata must be valid JSON."
+      error: "Max paths must be a positive integer."
     });
 
-    expect(buildUpdateStepMetadataCommand("details", '{"title":"Details updated"}')).toEqual({
+    expect(buildExecutionPathsCommand("4", "12")).toEqual({
       ok: true,
       command: {
-        type: "updateStepMetadata",
-        stepId: "details",
-        metadata: { title: "Details updated" }
+        type: "getExecutionPaths",
+        options: { maxDepth: 4, maxPaths: 12 }
       }
+    });
+
+    expect(buildExecutionPathsCommand("10000", "10000")).toEqual({
+      ok: true,
+      command: {
+        type: "getExecutionPaths",
+        options: { maxDepth: 10000, maxPaths: 10000 }
+      }
+    });
+
+    expect(buildExecutionPathsCommand("10001", "")).toEqual({
+      ok: false,
+      error: "Max depth must be at most 10000."
+    });
+
+    expect(buildExecutionPathsCommand("", "10001")).toEqual({
+      ok: false,
+      error: "Max paths must be at most 10000."
     });
   });
 });

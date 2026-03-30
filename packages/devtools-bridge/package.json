@@ -44,8 +44,13 @@
     "LICENSE"
   ],
   "sideEffects": false,
-  "dependencies": {
+  "peerDependencies": {
     "@rxova/journey-core": "workspace:^"
+  },
+  "peerDependenciesMeta": {
+    "@rxova/journey-core": {
+      "optional": false
+    }
   },
   "scripts": {
     "build": "pnpm run clean && node --import tsx ./scripts/build.ts && tsc -p tsconfig.build.json && node --import tsx ../../scripts/copy-types.ts dist",
@@ -62,7 +67,7 @@
       "name": "devtools-bridge/attachJourneyDevtools",
       "path": "dist/index.js",
       "import": "{ attachJourneyDevtools }",
-      "limit": "4 kB"
+      "limit": "3.5 kB"
     }
   ]
 }
