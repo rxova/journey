@@ -1,19 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { createJourneyMachine } from "@rxova/journey-core";
-import type { JourneyDefinition } from "@rxova/journey-core";
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
+import { getExecutionPaths } from "@rxova/journey-core/execution-paths";
+import type { JourneyTransitionGraph } from "../src/types";
 
 type StepId = "start" | "details" | "extra" | "review" | "confirmExit";
-type Event = "goToNextStep" | "requestClose" | "terminateJourney";
+type EventMap = { requestClose: unknown };
 type Context = { includeDetails: boolean; dirty: boolean };
-type TransitionList = Extract<
-  JourneyDefinition<Context, StepId, Event>["transitions"],
-  readonly unknown[]
->;
 
-const createJourney = (): JourneyDefinition<Context, StepId, Event> & {
-  transitions: TransitionList;
-} => ({
+const createJourney = (): JourneyDefinition<Context, StepId, EventMap> => ({
   initial: "start",
   context: { includeDetails: false, dirty: false },
   steps: {
@@ -23,43 +18,39 @@ const createJourney = (): JourneyDefinition<Context, StepId, Event> & {
     review: {},
     confirmExit: {}
   },
-  transitions: [
-    { id: "start-next", from: "start", event: "goToNextStep", to: "details" },
-    {
-      id: "details-next-extra",
-      from: "details",
-      event: "goToNextStep",
-      to: "extra",
-      when: ({ context }) => context.includeDetails
+  transitions: {
+    start: { goToNextStep: [{ id: "start-next", to: "details" }] },
+    details: {
+      goToNextStep: [
+        {
+          id: "details-next-extra",
+          to: "extra",
+          when: ({ context }) => context.includeDetails
+        },
+        {
+          id: "details-next-review",
+          to: "review",
+          when: ({ context }) => !context.includeDetails
+        }
+      ]
     },
-    {
-      id: "details-next-review",
-      from: "details",
-      event: "goToNextStep",
-      to: "review",
-      when: ({ context }) => !context.includeDetails
-    },
-    { id: "extra-next-review", from: "extra", event: "goToNextStep", to: "review" },
-    {
-      id: "close-dirty",
-      from: "*",
-      event: "requestClose",
-      to: "confirmExit",
-      when: ({ context }) => context.dirty
-    },
-    { id: "close-clean", from: "*", event: "terminateJourney" }
-  ] as TransitionList
+    extra: { goToNextStep: [{ id: "extra-next-review", to: "review" }] },
+    global: {
+      requestClose: [
+        {
+          id: "close-dirty",
+          to: "confirmExit",
+          when: ({ context }: { context: Context }) => context.dirty
+        }
+      ],
+      terminateJourney: [{ id: "close-clean" }]
+    }
+  }
 });
 
 describe("flow behavior", () => {
-  it("tx + createTransitions flatten branch declarations", () => {
-    let transitions!: ReturnType<
-      Extract<
-        JourneyDefinition<Context, StepId, Event>["transitions"],
-        (...args: never[]) => unknown
-      >
-    >;
-    const journey: JourneyDefinition<Context, StepId, Event> = {
+  it("enumerates structural execution paths from step-local transitions", () => {
+    const journey = {
       initial: "start",
       context: { includeDetails: false, dirty: false },
       steps: {
@@ -69,45 +60,42 @@ describe("flow behavior", () => {
         review: {},
         confirmExit: {}
       },
-      transitions: ({ tx, createTransitions }) => {
-        transitions = createTransitions(
-          tx.from("start").on("goToNextStep").to("start", { id: "start-next" }),
-          tx.any().on("requestClose").to("confirmExit", { id: "wildcard-close" }),
-          tx
-            .from("start")
-            .on("goToNextStep")
-            .choose(({ when, otherwise }) => [
-              when(() => true).to("start", { id: "branch-1" }),
-              otherwise().to("start", { id: "branch-2" })
-            ])
-        );
-        return transitions;
+      transitions: {
+        start: { goToNextStep: [{ to: "details" }] },
+        details: { goToNextStep: [{ to: "extra" }, { to: "review" }] },
+        extra: { goToNextStep: [{ to: "review" }] }
       }
-    };
+    } satisfies JourneyDefinition<Context, StepId>;
+    const result = getExecutionPaths(journey);
 
-    const machine = createJourneyMachine(journey);
-
-    expect(transitions).toHaveLength(4);
-    expect(transitions.map((transition) => transition.id)).toEqual([
-      "start-next",
-      "wildcard-close",
-      "branch-1",
-      "branch-2"
+    expect(result.paths).toEqual([
+      {
+        steps: ["start", "details", "extra", "review"],
+        events: ["goToNextStep", "goToNextStep", "goToNextStep"],
+        terminated: "final"
+      },
+      {
+        steps: ["start", "details", "review"],
+        events: ["goToNextStep", "goToNextStep"],
+        terminated: "final"
+      }
     ]);
-    expect(transitions[1]?.from).toBe("*");
-    expect(machine.getSnapshot().currentStepId).toBe("start");
+    expect(result.truncated).toBe(false);
+    expect(result.cyclesDetected).toBe(false);
   });
 
   it("supports branch-like behavior via first-match transitions", async () => {
     const machine = createJourneyMachine(createJourney());
+    machine.start();
 
     await machine.send({ type: "goToNextStep" });
     await machine.send({ type: "goToNextStep" });
 
     expect(machine.getSnapshot().currentStepId).toBe("review");
 
-    machine.resetMachine();
+    machine.resetJourney();
     machine.updateContext((context) => ({ ...context, includeDetails: true }));
+    machine.start();
 
     await machine.send({ type: "goToNextStep" });
     await machine.send({ type: "goToNextStep" });
@@ -117,17 +105,23 @@ describe("flow behavior", () => {
 
   it("preserves first-match-wins semantics", async () => {
     const journey = createJourney();
-    journey.transitions = [
-      {
-        id: "early",
-        from: "start",
-        event: "goToNextStep",
-        to: "review"
-      },
-      ...journey.transitions
-    ] as TransitionList;
+    const transitions = journey.transitions as JourneyTransitionGraph<Context, StepId, EventMap>;
+    journey.transitions = {
+      ...transitions,
+      start: {
+        ...transitions.start,
+        goToNextStep: [
+          {
+            id: "early",
+            to: "review"
+          },
+          ...(transitions.start?.goToNextStep ?? [])
+        ]
+      }
+    };
 
     const machine = createJourneyMachine(journey);
+    machine.start();
     const result = await machine.send({ type: "goToNextStep" });
 
     expect(result.transitioned).toBe(true);
@@ -137,6 +131,7 @@ describe("flow behavior", () => {
 
   it("supports wildcard close transitions", async () => {
     const machine = createJourneyMachine(createJourney());
+    machine.start();
 
     machine.updateContext((context) => ({ ...context, dirty: true }));
     await machine.send({ type: "requestClose" });

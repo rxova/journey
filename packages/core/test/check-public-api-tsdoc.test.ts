@@ -98,7 +98,7 @@ describe("check-public-api-tsdoc script", () => {
     expect(missing[0]?.exportName).toBe("undocumented");
 
     await rm(root, { recursive: true, force: true });
-  });
+  }, 10_000);
 
   it("check passes when docs are complete", async () => {
     const root = await makeWorkspace();

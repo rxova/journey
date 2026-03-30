@@ -1,167 +1,134 @@
 import type React from "react";
 
 import type {
-  JourneyDefinition,
+  JourneyCompleteObservationEvent,
+  JourneyComputed,
+  JourneyDefaultEventType,
   JourneyEqualityFn,
-  JourneyEventPayloadMap as JourneyCoreEventPayloadMap,
-  JourneyMachine,
+  JourneyJsonObject,
+  JourneyMachinePlugin,
+  JourneyMachineWithPlugins,
   JourneyObservationEvent,
   JourneyPayloadFor,
-  JourneyPersistenceOptions,
   JourneySelector,
   JourneySendEvent,
   JourneySendResult,
-  JourneySnapshot,
-  JourneyStepDefinition
+  JourneyStartObservationEvent,
+  JourneyTerminateObservationEvent,
+  JourneySnapshot
 } from "@rxova/journey-core";
 
-export type JourneyDefaultEvent =
-  | "goToNextStep"
-  | "goToPreviousStep"
-  | "terminateJourney"
-  | "completeJourney";
+export type JourneyDefaultEvent = JourneyDefaultEventType;
 
-export type JourneyEventType<TCustomEvent extends string = never> =
-  | JourneyDefaultEvent
-  | TCustomEvent;
-export type JourneyReactEventPayloadMap<TCustomEvent extends string = never> =
-  JourneyCoreEventPayloadMap<JourneyEventType<TCustomEvent>>;
+export type JourneyViews<TStepId extends string> = Record<TStepId, React.ComponentType>;
 
-export type JourneyReactStep<TStepMeta = unknown> = JourneyStepDefinition<TStepMeta> & {
-  component: React.ComponentType;
-};
+type JourneyTypeParam<TValue> = TValue extends unknown ? unknown : never;
 
-export type JourneyReactDefinition<
-  TContext,
-  TStepId extends string,
-  TCustomEvent extends string = never,
-  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>,
+type JourneyCompatEventAliasContext<
+  TEventMap extends Record<string, unknown>,
   TStepMeta = unknown
-> = Omit<
-  JourneyDefinition<TContext, TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap, TStepMeta>,
-  "steps"
-> & {
-  steps: Record<TStepId, JourneyReactStep<TStepMeta>>;
-};
+> = (JourneyObservationEvent<string, TEventMap> extends never ? never : unknown) &
+  JourneyTypeParam<TStepMeta>;
 
 export type JourneyApi<
-  TContext,
+  TContext extends JourneyJsonObject,
   TStepId extends string,
-  TCustomEvent extends string = never,
-  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = Record<never, never>,
   TStepMeta = unknown
 > = {
+  start: () => Promise<JourneySnapshot<TContext, TStepId>>;
   send: (
-    event: JourneySendEvent<TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap>
-  ) => Promise<JourneySendResult<TContext, TStepId, TStepMeta>>;
-  goToNextStep: () => Promise<JourneySendResult<TContext, TStepId, TStepMeta>>;
+    event: JourneySendEvent<TStepId, TEventMap>
+  ) => Promise<JourneySendResult<TContext, TStepId>>;
+  goToNextStep: () => Promise<JourneySendResult<TContext, TStepId>>;
+  goToStepById: (stepId: TStepId) => Promise<JourneySendResult<TContext, TStepId>>;
   terminateJourney: (
-    payload?: JourneyPayloadFor<
-      JourneyEventType<TCustomEvent>,
-      TEventPayloadMap,
-      "terminateJourney"
-    >
-  ) => Promise<JourneySendResult<TContext, TStepId, TStepMeta>>;
+    payload?: JourneyPayloadFor<TEventMap, "terminateJourney">
+  ) => Promise<JourneySendResult<TContext, TStepId>>;
   completeJourney: (
-    payload?: JourneyPayloadFor<JourneyEventType<TCustomEvent>, TEventPayloadMap, "completeJourney">
-  ) => Promise<JourneySendResult<TContext, TStepId, TStepMeta>>;
-  goToPreviousStep: (steps?: number) => Promise<JourneySendResult<TContext, TStepId, TStepMeta>>;
-  goToLastVisitedStep: () => Promise<JourneySendResult<TContext, TStepId, TStepMeta>>;
-  clearStepError: (stepId?: TStepId) => void;
-  updateContext: (updater: (context: TContext) => TContext) => void;
-  updateStepMetadata: (stepId: TStepId, updater: (metadata: TStepMeta) => TStepMeta) => void;
-  resetJourney: () => void;
+    payload?: JourneyPayloadFor<TEventMap, "completeJourney">
+  ) => Promise<JourneySendResult<TContext, TStepId>>;
+  goToPreviousStep: (steps?: number) => Promise<JourneySendResult<TContext, TStepId>>;
+  goToLastVisitedStep: () => Promise<JourneySendResult<TContext, TStepId>>;
+  clearStepError: (stepId?: TStepId) => Promise<JourneySnapshot<TContext, TStepId>>;
+  updateContext: (
+    updater: (context: TContext) => TContext
+  ) => Promise<JourneySnapshot<TContext, TStepId>>;
+  getStepMeta: (stepId: TStepId) => TStepMeta | undefined;
+  resetJourney: () => Promise<JourneySnapshot<TContext, TStepId>>;
 };
 
-export type JourneyStoreValue<
-  TContext,
+export type JourneyStartEvent<
   TStepId extends string,
-  TCustomEvent extends string = never,
-  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = Record<never, never>,
   TStepMeta = unknown
-> = {
-  machine: JourneyMachine<
-    TContext,
-    TStepId,
-    JourneyEventType<TCustomEvent>,
-    TEventPayloadMap,
-    TStepMeta
-  >;
-  journey: JourneyReactDefinition<TContext, TStepId, TCustomEvent, TEventPayloadMap, TStepMeta>;
+> = JourneyStartObservationEvent<TStepId> & JourneyCompatEventAliasContext<TEventMap, TStepMeta>;
+
+export type JourneyCompleteEvent<
+  TStepId extends string,
+  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TStepMeta = unknown
+> = JourneyCompleteObservationEvent<TStepId> & JourneyCompatEventAliasContext<TEventMap, TStepMeta>;
+
+export type JourneyTerminateEvent<
+  TStepId extends string,
+  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TStepMeta = unknown
+> = JourneyTerminateObservationEvent<TStepId> &
+  JourneyCompatEventAliasContext<TEventMap, TStepMeta>;
+
+export type JourneyProviderErrorContext = {
+  phase: "start";
 };
 
-export type JourneyBindingsProviderProps<
-  TContext,
+export type JourneyProviderProps<
   TStepId extends string,
-  TCustomEvent extends string = never,
-  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = Record<never, never>,
   TStepMeta = unknown
 > = {
-  journey?: JourneyReactDefinition<TContext, TStepId, TCustomEvent, TEventPayloadMap, TStepMeta>;
-  machine?: JourneyMachine<
-    TContext,
-    TStepId,
-    JourneyEventType<TCustomEvent>,
-    TEventPayloadMap,
-    TStepMeta
-  >;
-  persistence?: JourneyPersistenceOptions<TContext, TStepId, TStepMeta>;
-  completeOnNoNextStep?: boolean;
-  resetOnJourneyChange?: boolean;
-  resetOnPersistenceChange?: boolean;
-  onStart?: (
-    event: Extract<
-      JourneyObservationEvent<TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap, TStepMeta>,
-      { type: "journey.start" }
-    >
-  ) => void;
-  onComplete?: (
-    event: Extract<
-      JourneyObservationEvent<TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap, TStepMeta>,
-      { type: "journey.complete" }
-    >
-  ) => void;
-  onTerminate?: (
-    event: Extract<
-      JourneyObservationEvent<TStepId, JourneyEventType<TCustomEvent>, TEventPayloadMap, TStepMeta>,
-      { type: "journey.close" }
-    >
-  ) => void;
+  views: JourneyViews<TStepId>;
+  onStart?: (event: JourneyStartEvent<TStepId, TEventMap, TStepMeta>) => void;
+  onComplete?: (event: JourneyCompleteEvent<TStepId, TEventMap, TStepMeta>) => void;
+  onTerminate?: (event: JourneyTerminateEvent<TStepId, TEventMap, TStepMeta>) => void;
+  onError?: (error: unknown, context: JourneyProviderErrorContext) => void;
+  disposeOnUnmount?: boolean;
   children: React.ReactNode;
 };
 
-export type JourneyBindings<
-  TContext,
+export type JourneyRuntime<
+  TContext extends JourneyJsonObject,
   TStepId extends string,
-  TCustomEvent extends string = never,
-  TEventPayloadMap extends JourneyReactEventPayloadMap<TCustomEvent> = Record<never, never>,
-  TStepMeta = unknown
+  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TStepMeta = unknown,
+  TPlugins extends readonly JourneyMachinePlugin[] = [],
+  THandlers extends Record<string, unknown> = Record<never, never>
 > = {
-  Provider: React.ComponentType<
-    JourneyBindingsProviderProps<TContext, TStepId, TCustomEvent, TEventPayloadMap, TStepMeta>
-  >;
-  StepRenderer: React.ComponentType<{ fallback?: React.ReactNode }>;
-  useJourneyApi: () => JourneyApi<TContext, TStepId, TCustomEvent, TEventPayloadMap, TStepMeta>;
-  useJourneyMachine: () => JourneyMachine<
-    TContext,
-    TStepId,
-    JourneyEventType<TCustomEvent>,
-    TEventPayloadMap,
-    TStepMeta
-  >;
-  useJourneyEvent: (
-    listener: (
-      event: JourneyObservationEvent<
-        TStepId,
-        JourneyEventType<TCustomEvent>,
-        TEventPayloadMap,
-        TStepMeta
-      >
-    ) => void
-  ) => void;
+  machine: JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins>;
+  dispose: () => void;
+  useJourneySnapshot: () => JourneySnapshot<TContext, TStepId>;
+  useJourneyComputed: () => JourneyComputed<TStepId>;
   useJourneySelector: <TSelected>(
-    selector: JourneySelector<TContext, TStepId, TStepMeta, TSelected>,
+    selector: JourneySelector<TContext, TStepId, TSelected>,
     equalityFn?: JourneyEqualityFn<TSelected>
   ) => TSelected;
-  useJourneySnapshot: () => JourneySnapshot<TContext, TStepId, TStepMeta>;
+  useJourneyApi: () => JourneyApi<TContext, TStepId, TEventMap, TStepMeta>;
+  useJourneyEvent: (listener: (event: JourneyObservationEvent<TStepId, TEventMap>) => void) => void;
+  useJourneyStepLifecycle: (
+    stepId: TStepId,
+    callbacks: {
+      onEnter?: (args: { context: TContext }) => void;
+      onLeave?: (args: { context: TContext }) => void;
+    }
+  ) => void;
+  JourneyProvider: React.ComponentType<JourneyProviderProps<TStepId, TEventMap, TStepMeta>>;
+  StepRenderer: React.ComponentType<{ fallback?: React.ReactNode }>;
 };
+
+export type JourneyRuntimeFactory<
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TStepMeta = unknown,
+  TPlugins extends readonly JourneyMachinePlugin[] = [],
+  THandlers extends Record<string, unknown> = Record<never, never>
+> = () => JourneyRuntime<TContext, TStepId, TEventMap, TStepMeta, TPlugins, THandlers>;

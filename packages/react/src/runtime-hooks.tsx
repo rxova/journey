@@ -1,0 +1,184 @@
+import React from "react";
+
+import type {
+  JourneyComputed,
+  JourneyEqualityFn,
+  JourneyJsonObject,
+  JourneyMachinePlugin,
+  JourneyMachineWithPlugins,
+  JourneyObservationEvent,
+  JourneySelector,
+  JourneySnapshot
+} from "@rxova/journey-core";
+import type { JourneyApi } from "./types";
+
+type SelectorCache<TContext extends JourneyJsonObject, TStepId extends string, TSelected> = {
+  machine: unknown;
+  snapshot: JourneySnapshot<TContext, TStepId>;
+  selected: TSelected;
+  selector: unknown;
+  isEqual: JourneyEqualityFn<TSelected>;
+};
+
+const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
+
+export const createJourneyHooks = <
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TStepMeta = unknown,
+  THandlers extends Record<string, unknown> = Record<never, never>,
+  TPlugins extends readonly JourneyMachinePlugin[] = []
+>(
+  machine: JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins>
+) => {
+  const useJourneySnapshot = (): JourneySnapshot<TContext, TStepId> => {
+    const runtimeMachine = machine;
+    const getSnapshot = React.useCallback(() => runtimeMachine.getSnapshot(), [runtimeMachine]);
+    const subscribe = React.useCallback(
+      (onStoreChange: () => void) => runtimeMachine.subscribe(onStoreChange),
+      [runtimeMachine]
+    );
+
+    return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  };
+
+  const useJourneyComputed = (): JourneyComputed<TStepId> => {
+    const snapshot = useJourneySnapshot();
+    const runtimeMachine = machine;
+    return React.useMemo(() => {
+      void snapshot;
+      return runtimeMachine.getComputed();
+    }, [runtimeMachine, snapshot]);
+  };
+
+  const useJourneySelector = <TSelected,>(
+    selector: JourneySelector<TContext, TStepId, TSelected>,
+    equalityFn?: JourneyEqualityFn<TSelected>
+  ): TSelected => {
+    const runtimeMachine = machine;
+    const isEqual = equalityFn ?? Object.is;
+    const cacheRef = React.useRef<SelectorCache<TContext, TStepId, TSelected> | null>(null);
+
+    const getSelectedSnapshot = React.useCallback(() => {
+      const nextSnapshot = runtimeMachine.getSnapshot();
+      const cached = cacheRef.current;
+
+      if (
+        cached &&
+        Object.is(cached.machine, runtimeMachine) &&
+        Object.is(cached.selector, selector) &&
+        Object.is(cached.isEqual, isEqual) &&
+        Object.is(cached.snapshot, nextSnapshot)
+      ) {
+        return cached.selected;
+      }
+
+      const nextSelected = selector(nextSnapshot);
+
+      if (
+        cached &&
+        Object.is(cached.machine, runtimeMachine) &&
+        Object.is(cached.selector, selector) &&
+        Object.is(cached.isEqual, isEqual) &&
+        isEqual(cached.selected, nextSelected)
+      ) {
+        cacheRef.current = {
+          machine: runtimeMachine,
+          snapshot: nextSnapshot,
+          selected: cached.selected,
+          selector,
+          isEqual
+        };
+        return cached.selected;
+      }
+
+      cacheRef.current = {
+        machine: runtimeMachine,
+        snapshot: nextSnapshot,
+        selected: nextSelected,
+        selector,
+        isEqual
+      };
+      return nextSelected;
+    }, [runtimeMachine, isEqual, selector]);
+
+    const subscribeToSelectedSnapshot = React.useCallback(
+      (onStoreChange: () => void) =>
+        runtimeMachine.subscribeSelector(
+          selector,
+          () => {
+            onStoreChange();
+          },
+          isEqual
+        ),
+      [runtimeMachine, isEqual, selector]
+    );
+
+    return React.useSyncExternalStore(
+      subscribeToSelectedSnapshot,
+      getSelectedSnapshot,
+      getSelectedSnapshot
+    );
+  };
+
+  const useJourneyEvent = (
+    listener: (event: JourneyObservationEvent<TStepId, TEventMap>) => void
+  ): void => {
+    const runtimeMachine = machine;
+    const listenerRef = React.useRef(listener);
+    listenerRef.current = listener;
+
+    useSafeLayoutEffect(() => {
+      return runtimeMachine.subscribeEvent((event) => {
+        listenerRef.current(event);
+      });
+    }, [runtimeMachine]);
+  };
+
+  const useJourneyStepLifecycle = (
+    stepId: TStepId,
+    callbacks: {
+      onEnter?: (args: { context: TContext }) => void;
+      onLeave?: (args: { context: TContext }) => void;
+    }
+  ): void => {
+    useJourneyEvent((event) => {
+      if (event.type === "step.enter" && event.stepId === stepId) {
+        callbacks.onEnter?.({ context: machine.getSnapshot().context });
+      } else if (event.type === "step.exit" && event.stepId === stepId) {
+        callbacks.onLeave?.({ context: machine.getSnapshot().context });
+      }
+    });
+  };
+
+  const useJourneyApi = (): JourneyApi<TContext, TStepId, TEventMap, TStepMeta> => {
+    const runtimeMachine = machine;
+    return React.useMemo(
+      () => ({
+        start: runtimeMachine.start,
+        send: runtimeMachine.send,
+        goToNextStep: runtimeMachine.goToNextStep,
+        goToStepById: runtimeMachine.goToStepById,
+        terminateJourney: runtimeMachine.terminateJourney,
+        completeJourney: runtimeMachine.completeJourney,
+        goToPreviousStep: runtimeMachine.goToPreviousStep,
+        goToLastVisitedStep: runtimeMachine.goToLastVisitedStep,
+        clearStepError: runtimeMachine.clearStepError,
+        updateContext: runtimeMachine.updateContext,
+        getStepMeta: runtimeMachine.getStepMeta,
+        resetJourney: () => runtimeMachine.resetJourney()
+      }),
+      [runtimeMachine]
+    );
+  };
+
+  return {
+    useJourneySnapshot,
+    useJourneyComputed,
+    useJourneySelector,
+    useJourneyApi,
+    useJourneyEvent,
+    useJourneyStepLifecycle
+  };
+};

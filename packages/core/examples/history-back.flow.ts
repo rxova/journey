@@ -1,10 +1,9 @@
 import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "branchA" | "branchB" | "review";
-type Event = "goToNextStep" | "back";
 type Ctx = { branch: "A" | "B" };
 
-export const historyBackJourney: JourneyDefinition<Ctx, StepId, Event> = {
+export const historyBackJourney: JourneyDefinition<Ctx, StepId> = {
   initial: "start",
   context: { branch: "A" },
   steps: {
@@ -13,23 +12,16 @@ export const historyBackJourney: JourneyDefinition<Ctx, StepId, Event> = {
     branchB: {},
     review: {}
   },
-  transitions: [
-    {
-      from: "start",
-      event: "goToNextStep",
-      to: "branchA",
-      when: ({ context }) => context.branch === "A"
+  transitions: {
+    start: {
+      goToNextStep: [
+        { to: "branchA", when: ({ context }) => context.branch === "A" },
+        { to: "branchB", when: ({ context }) => context.branch === "B" }
+      ]
     },
-    {
-      from: "start",
-      event: "goToNextStep",
-      to: "branchB",
-      when: ({ context }) => context.branch === "B"
-    },
-    { from: "branchA", event: "goToNextStep", to: "review" },
-    { from: "branchB", event: "goToNextStep", to: "review" }
-  ]
+    branchA: { goToNextStep: [{ to: "review" }] },
+    branchB: { goToNextStep: [{ to: "review" }] }
+  }
 };
 
-export const createHistoryBackMachine = () =>
-  createJourneyMachine<Ctx, StepId, Event>(historyBackJourney);
+export const createHistoryBackMachine = () => createJourneyMachine(historyBackJourney);

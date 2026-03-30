@@ -1,50 +1,49 @@
 import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "verify" | "review";
-type Event = "goToNextStep";
 type Ctx = {
   token: string;
-  draftId: string | null;
+  verified: boolean;
 };
 
 const validateToken = async (token: string) => token.startsWith("ok-");
-const persistDraft = async () => "draft-123";
 
-export const asyncTimeoutJourney: JourneyDefinition<Ctx, StepId, Event> = {
+export const asyncTimeoutJourney: JourneyDefinition<Ctx, StepId> = {
   initial: "verify",
   context: {
     token: "ok-123",
-    draftId: null
+    verified: false
   },
   steps: {
     verify: {},
     review: {}
   },
-  transitions: [
-    {
-      id: "verify-and-save",
-      from: "verify",
-      event: "goToNextStep",
-      to: "review",
-      timeoutMs: 1_500,
-      when: async ({ context }) => validateToken(context.token),
-      effect: async ({ context }) => ({
-        ...context,
-        draftId: await persistDraft()
-      })
+  transitions: {
+    verify: {
+      goToNextStep: [
+        {
+          id: "verify-and-save",
+          to: "review",
+          timeoutMs: 1_500,
+          when: async ({ context }) => validateToken(context.token),
+          updateContext: ({ context }) => ({
+            ...context,
+            verified: true
+          })
+        }
+      ]
     }
-  ]
+  }
 };
 
-export const createAsyncTimeoutMachine = () =>
-  createJourneyMachine<Ctx, StepId, Event>(asyncTimeoutJourney);
+export const createAsyncTimeoutMachine = () => createJourneyMachine(asyncTimeoutJourney);
 
 export const submitWithTimeoutRecovery = async () => {
   const machine = createAsyncTimeoutMachine();
   const result = await machine.goToNextStep();
 
   if (result.error instanceof Error && result.error.name === "JourneyTimeoutError") {
-    machine.clearStepError("verify");
+    await machine.clearStepError("verify");
   }
 
   return { machine, result };

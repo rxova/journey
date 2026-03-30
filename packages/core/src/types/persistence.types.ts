@@ -1,20 +1,8 @@
-import type { JourneyStatus } from "./journey.types";
+import type { JourneyJsonObject, JourneySnapshotStateBase } from "./journey.types";
 
-export type JourneyPersistedSnapshot<TContext, TStepId extends string, TStepMeta = unknown> = {
-  currentStepId: TStepId;
-  history: {
-    timeline: readonly TStepId[];
-    index: number;
-  };
-  context: TContext;
-  status: JourneyStatus;
-  visited: Record<TStepId, boolean>;
-  stepMeta: Record<TStepId, TStepMeta>;
-};
-
-export type JourneyPersistedState<TContext, TStepId extends string, TStepMeta = unknown> = {
+export type JourneyPersistedState<TContext extends JourneyJsonObject, TStepId extends string> = {
   version: number;
-  snapshot: JourneyPersistedSnapshot<TContext, TStepId, TStepMeta>;
+  snapshot: JourneySnapshotStateBase<TContext, TStepId>;
 };
 
 export type JourneyStorage = {
@@ -23,30 +11,37 @@ export type JourneyStorage = {
   removeItem: (key: string) => void;
 };
 
-export type JourneyPersistenceOptions<TContext, TStepId extends string, TStepMeta = unknown> = {
+export type JourneyPersistenceOptions<
+  TContext extends JourneyJsonObject,
+  TStepId extends string
+> = {
   key: string;
   storage?: JourneyStorage;
   version?: number;
   clearOnReset?: boolean;
-  serialize?: (value: JourneyPersistedState<TContext, TStepId, TStepMeta>) => string;
+  allowList?: readonly string[];
+  blockList?: readonly string[];
+  serialize?: (value: JourneyPersistedState<TContext, TStepId>) => string;
   deserialize?: (value: string) => unknown;
   migrate?: (
     value: unknown,
     persistedVersion: number
-  ) => JourneyPersistedSnapshot<TContext, TStepId, TStepMeta>;
+  ) => JourneySnapshotStateBase<TContext, TStepId>;
   onError?: (error: unknown) => void;
 };
 
-export type ResolvedPersistence<TContext, TStepId extends string, TStepMeta> = {
+export type ResolvedPersistence<TContext extends JourneyJsonObject, TStepId extends string> = {
   key: string;
   storage: JourneyStorage;
   version: number;
   clearOnReset: boolean;
-  serialize: (value: JourneyPersistedState<TContext, TStepId, TStepMeta>) => string;
+  allowList?: readonly string[];
+  blockList: readonly string[];
+  serialize: (value: JourneyPersistedState<TContext, TStepId>) => string;
   deserialize: (value: string) => unknown;
   migrate?: (
     value: unknown,
     persistedVersion: number
-  ) => JourneyPersistedSnapshot<TContext, TStepId, TStepMeta>;
+  ) => JourneySnapshotStateBase<TContext, TStepId>;
   onError?: (error: unknown) => void;
 };

@@ -3,42 +3,61 @@ import { describe, expect, it } from "vitest";
 import React from "react";
 import { renderToString } from "react-dom/server";
 
-import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
+import { createJourney, type JourneyViews } from "@rxova/journey-react";
+import type { JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "review";
-type Event = "goToNextStep" | "back" | "terminateJourney" | "completeJourney";
 type Ctx = { count: number };
 
-const journey: JourneyReactDefinition<Ctx, StepId, Event> = {
+const journeyDefinition: JourneyDefinition<Ctx, StepId> = {
   initial: "start",
   context: { count: 0 },
   steps: {
-    start: { component: () => <div>start-ssr</div> },
-    review: { component: () => <div>review-ssr</div> }
+    start: { meta: { label: "Start" } },
+    review: { meta: { label: "Review" } }
   },
-  transitions: [{ from: "start", event: "goToNextStep", to: "review" }]
+  transitions: {
+    start: { goToNextStep: [{ to: "review" }] }
+  }
 };
 
-const bindings = createJourneyBindings(journey);
+const journey = createJourney(journeyDefinition);
+const views: JourneyViews<StepId> = {
+  start: () => <div>start-ssr</div>,
+  review: () => <div>review-ssr</div>
+};
 
 describe("SSR/RSC compatibility", () => {
-  it("renders Provider + StepRenderer on the server", () => {
+  it("renders provider-free hooks on the server", () => {
+    const CurrentStep = () => {
+      const snapshot = journey.useJourneySnapshot();
+      return <div>{snapshot.currentStepId}</div>;
+    };
+
+    const html = renderToString(<CurrentStep />);
+
+    expect(html).toContain("start");
+  });
+
+  it("renders JourneyProvider and StepRenderer on the server", () => {
     const html = renderToString(
-      <bindings.Provider>
-        <bindings.StepRenderer />
-      </bindings.Provider>
+      <journey.JourneyProvider views={views}>
+        <journey.StepRenderer />
+      </journey.JourneyProvider>
     );
 
     expect(html).toContain("start-ssr");
   });
 
-  it("does not crash when persistence is provided during server render", () => {
+  it("does not auto-start the machine during server rendering", () => {
+    const ssrJourney = createJourney(journeyDefinition);
     const html = renderToString(
-      <bindings.Provider persistence={{ key: "server-journey" }}>
-        <bindings.StepRenderer />
-      </bindings.Provider>
+      <ssrJourney.JourneyProvider views={views}>
+        <ssrJourney.StepRenderer />
+      </ssrJourney.JourneyProvider>
     );
 
     expect(html).toContain("start-ssr");
+    expect(ssrJourney.machine.getSnapshot().status).toBe("idled");
   });
 });

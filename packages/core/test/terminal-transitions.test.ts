@@ -6,48 +6,54 @@ type StepId = "start" | "confirm";
 
 type Context = { count: number };
 
-const baseJourney = <TEvent extends string>(): JourneyDefinition<Context, StepId, TEvent> => ({
+const baseJourney = (): JourneyDefinition<Context, StepId> => ({
   initial: "start",
   context: { count: 0 },
   steps: {
     start: {},
     confirm: {}
   },
-  transitions: []
+  transitions: {}
 });
 
 describe("terminal transitions", () => {
   it("applies effect context and marks complete", async () => {
-    const journey = baseJourney<"completeJourney">();
-    journey.transitions = [
-      {
-        id: "complete",
-        from: "start",
-        event: "completeJourney",
-        effect: ({ context }) => ({ ...context, count: 7 })
+    const journey = baseJourney();
+    journey.transitions = {
+      start: {
+        completeJourney: [
+          {
+            id: "complete",
+            updateContext: ({ context }) => ({ ...context, count: 7 })
+          }
+        ]
       }
-    ];
+    };
 
     const machine = createJourneyMachine(journey);
+    machine.start();
 
     await machine.send({ type: "completeJourney" });
 
-    expect(machine.getSnapshot().status).toBe("complete");
+    expect(machine.getSnapshot().status).toBe("completed");
     expect(machine.getSnapshot().context.count).toBe(7);
   });
 
   it("applies effect context and marks terminated", async () => {
-    const journey = baseJourney<"terminateJourney">();
-    journey.transitions = [
-      {
-        id: "terminateJourney",
-        from: "start",
-        event: "terminateJourney",
-        effect: ({ context }) => ({ ...context, count: 2 })
+    const journey = baseJourney();
+    journey.transitions = {
+      start: {
+        terminateJourney: [
+          {
+            id: "terminateJourney",
+            updateContext: ({ context }) => ({ ...context, count: 2 })
+          }
+        ]
       }
-    ];
+    };
 
     const machine = createJourneyMachine(journey);
+    machine.start();
 
     await machine.send({ type: "terminateJourney" });
 
@@ -55,33 +61,20 @@ describe("terminal transitions", () => {
     expect(machine.getSnapshot().context.count).toBe(2);
   });
 
-  it("supports tx.from(...).toComplete()", async () => {
-    const journey = baseJourney<"completeJourney">();
-    journey.transitions = ({ createTransitions, tx }) =>
-      createTransitions(
-        tx.from("start").toComplete({
-          effect: ({ context }) => ({ ...context, count: 5 })
-        })
-      );
+  it("supports root wildcard terminate transitions", async () => {
+    const journey = baseJourney();
+    journey.transitions = {
+      global: {
+        terminateJourney: [
+          {
+            updateContext: ({ context }) => ({ ...context, count: 9 })
+          }
+        ]
+      }
+    };
 
     const machine = createJourneyMachine(journey);
-
-    await machine.send({ type: "completeJourney" });
-
-    expect(machine.getSnapshot().status).toBe("complete");
-    expect(machine.getSnapshot().context.count).toBe(5);
-  });
-
-  it("supports tx.any().toTerminate()", async () => {
-    const journey = baseJourney<"terminateJourney">();
-    journey.transitions = ({ createTransitions, tx }) =>
-      createTransitions(
-        tx.any().toTerminate({
-          effect: ({ context }) => ({ ...context, count: 9 })
-        })
-      );
-
-    const machine = createJourneyMachine(journey);
+    machine.start();
 
     await machine.send({ type: "terminateJourney" });
 
@@ -89,57 +82,147 @@ describe("terminal transitions", () => {
     expect(machine.getSnapshot().context.count).toBe(9);
   });
 
-  it("supports tx.from(...).toTerminate()", async () => {
-    const journey = baseJourney<"terminateJourney">();
-    journey.transitions = ({ createTransitions, tx }) =>
-      createTransitions(
-        tx.from("start").toTerminate({
-          effect: ({ context }) => ({ ...context, count: 3 })
-        })
-      );
+  it("completeJourney resolves without an explicit transition", async () => {
+    const journey = baseJourney();
+    journey.transitions = {};
 
     const machine = createJourneyMachine(journey);
+    machine.start();
 
-    await machine.send({ type: "terminateJourney" });
+    const result = await machine.completeJourney();
+
+    expect(result.transitioned).toBe(true);
+    expect(machine.getSnapshot().status).toBe("completed");
+  });
+
+  it("terminateJourney resolves without an explicit transition", async () => {
+    const journey = baseJourney();
+    journey.transitions = {};
+
+    const machine = createJourneyMachine(journey);
+    machine.start();
+
+    const result = await machine.terminateJourney();
+
+    expect(result.transitioned).toBe(true);
+    expect(machine.getSnapshot().status).toBe("terminated");
+  });
+
+  it("completeJourney prefers an explicit transition with effect over fallback", async () => {
+    const journey = baseJourney();
+    journey.transitions = {
+      start: {
+        completeJourney: [
+          {
+            updateContext: ({ context }) => ({ ...context, count: 42 })
+          }
+        ]
+      }
+    };
+
+    const machine = createJourneyMachine(journey);
+    machine.start();
+
+    await machine.completeJourney();
+
+    expect(machine.getSnapshot().status).toBe("completed");
+    expect(machine.getSnapshot().context.count).toBe(42);
+  });
+
+  it("terminateJourney prefers an explicit transition with effect over fallback", async () => {
+    const journey = baseJourney();
+    journey.transitions = {
+      start: {
+        terminateJourney: [
+          {
+            updateContext: ({ context }) => ({ ...context, count: 99 })
+          }
+        ]
+      }
+    };
+
+    const machine = createJourneyMachine(journey);
+    machine.start();
+
+    await machine.terminateJourney();
+
+    expect(machine.getSnapshot().status).toBe("terminated");
+    expect(machine.getSnapshot().context.count).toBe(99);
+  });
+
+  it("completeJourney fallback emits journey.completed event", async () => {
+    const journey = baseJourney();
+    journey.transitions = {};
+
+    const machine = createJourneyMachine(journey);
+    machine.start();
+
+    const events: string[] = [];
+    machine.subscribeEvent((event) => events.push(event.type));
+
+    await machine.completeJourney();
+
+    expect(events).toContain("transition.success");
+    expect(events).toContain("journey.completed");
+  });
+
+  it("terminateJourney fallback emits journey.terminated event", async () => {
+    const journey = baseJourney();
+    journey.transitions = {};
+
+    const machine = createJourneyMachine(journey);
+    machine.start();
+
+    const events: string[] = [];
+    machine.subscribeEvent((event) => events.push(event.type));
+
+    await machine.terminateJourney();
+
+    expect(events).toContain("transition.success");
+    expect(events).toContain("journey.terminated");
+  });
+
+  it("completeJourney guarded transition can block, then fallback does not apply", async () => {
+    const journey = baseJourney();
+    journey.transitions = {
+      start: {
+        completeJourney: [
+          {
+            when: () => false
+          }
+        ]
+      }
+    };
+
+    const machine = createJourneyMachine(journey);
+    machine.start();
+
+    const result = await machine.completeJourney();
+
+    // Explicit transition was declared but guard rejected — no fallback
+    expect(result.transitioned).toBe(false);
+    expect(machine.getSnapshot().status).toBe("running");
+  });
+
+  it("supports goToNextStep terminal targets", async () => {
+    const journey = baseJourney();
+    journey.transitions = {
+      start: {
+        goToNextStep: [
+          {
+            to: "TERMINATED",
+            updateContext: ({ context }) => ({ ...context, count: 3 })
+          }
+        ]
+      }
+    };
+
+    const machine = createJourneyMachine(journey);
+    machine.start();
+
+    await machine.send({ type: "goToNextStep" });
 
     expect(machine.getSnapshot().status).toBe("terminated");
     expect(machine.getSnapshot().context.count).toBe(3);
-  });
-
-  it("supports tx.any().toComplete()", async () => {
-    const journey = baseJourney<"completeJourney">();
-    journey.transitions = ({ createTransitions, tx }) =>
-      createTransitions(
-        tx.any().toComplete({
-          effect: ({ context }) => ({ ...context, count: 4 })
-        })
-      );
-
-    const machine = createJourneyMachine(journey);
-
-    await machine.send({ type: "completeJourney" });
-
-    expect(machine.getSnapshot().status).toBe("complete");
-    expect(machine.getSnapshot().context.count).toBe(4);
-  });
-
-  it("supports tx.from(...).on('terminateJourney').terminate()", async () => {
-    const journey = baseJourney<"terminateJourney">();
-    journey.transitions = ({ createTransitions, tx }) =>
-      createTransitions(
-        tx
-          .from("start")
-          .on("terminateJourney")
-          .terminate({
-            effect: ({ context }) => ({ ...context, count: 6 })
-          })
-      );
-
-    const machine = createJourneyMachine(journey);
-
-    await machine.send({ type: "terminateJourney" });
-
-    expect(machine.getSnapshot().status).toBe("terminated");
-    expect(machine.getSnapshot().context.count).toBe(6);
   });
 });

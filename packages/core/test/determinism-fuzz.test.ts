@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
 
-import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
+import {
+  createJourneyMachine,
+  type JourneyDefinition,
+  type JourneyFullEventType
+} from "@rxova/journey-core";
 
 type StepId = "start" | "details" | "review" | "confirmExit";
-type Event = "goToNextStep" | "requestClose" | "terminateJourney" | "completeJourney" | "back";
+type EventMap = { requestClose: unknown; back: unknown };
 type Context = { dirty: boolean; count: number };
 
-const createJourney = (): JourneyDefinition<Context, StepId, Event> => ({
+const createJourney = (): JourneyDefinition<Context, StepId, EventMap> => ({
   initial: "start",
   context: { dirty: false, count: 0 },
   steps: {
@@ -16,36 +20,34 @@ const createJourney = (): JourneyDefinition<Context, StepId, Event> => ({
     review: {},
     confirmExit: {}
   },
-  transitions: [
-    { from: "start", event: "goToNextStep", to: "details" },
-    { from: "details", event: "goToNextStep", to: "review" },
-    { from: "review", event: "completeJourney" },
-    {
-      from: "*",
-      event: "requestClose",
-      to: "confirmExit",
-      when: ({ context }) => context.dirty
+  transitions: {
+    start: { goToNextStep: [{ to: "details" }] },
+    details: { goToNextStep: [{ to: "review" }] },
+    review: { completeJourney: [{}] },
+    global: {
+      requestClose: [
+        {
+          to: "confirmExit",
+          when: ({ context }) => context.dirty
+        }
+      ]
     }
-  ]
+  }
 });
 
 type Action =
-  | { type: "send"; event: Event }
+  | { type: "send"; event: Exclude<JourneyFullEventType<EventMap>, "goToStepById"> }
   | { type: "goToStepById"; stepId: StepId }
   | { type: "goToPreviousStep"; steps: number }
   | { type: "goToLastVisitedStep" }
   | { type: "updateContext"; add: number; toggleDirty: boolean }
-  | { type: "resetMachine" };
+  | { type: "resetJourney" };
 
 const actionArb: fc.Arbitrary<Action> = fc.oneof(
   fc
-    .constantFrom<Event>(
-      "goToNextStep",
-      "requestClose",
-      "terminateJourney",
-      "completeJourney",
-      "back"
-    )
+    .constantFrom<
+      Exclude<JourneyFullEventType<EventMap>, "goToStepById">
+    >("goToNextStep", "requestClose", "terminateJourney", "completeJourney", "back")
     .map((event) => ({ type: "send", event }) as const),
   fc
     .constantFrom<StepId>("start", "details", "review", "confirmExit")
@@ -55,7 +57,7 @@ const actionArb: fc.Arbitrary<Action> = fc.oneof(
   fc
     .record({ add: fc.integer({ min: 0, max: 3 }), toggleDirty: fc.boolean() })
     .map(({ add, toggleDirty }) => ({ type: "updateContext", add, toggleDirty }) as const),
-  fc.constant({ type: "resetMachine" } as const)
+  fc.constant({ type: "resetJourney" } as const)
 );
 
 describe("determinism fuzz", () => {
@@ -92,16 +94,16 @@ describe("determinism fuzz", () => {
               machineB.updateContext(updater);
               break;
             }
-            case "resetMachine":
-              machineA.resetMachine();
-              machineB.resetMachine();
+            case "resetJourney":
+              machineA.resetJourney();
+              machineB.resetJourney();
               break;
           }
 
           expect(machineA.getSnapshot()).toEqual(machineB.getSnapshot());
         }
       }),
-      { numRuns: 30 }
+      { numRuns: 200 }
     );
   });
 });

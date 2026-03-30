@@ -1,13 +1,12 @@
 import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "cart" | "address" | "giftWrap" | "payment" | "review";
-type Event = "goToNextStep" | "back" | "terminateJourney" | "completeJourney";
 type Ctx = {
   needsShipping: boolean;
   wantsGiftWrap: boolean;
 };
 
-export const checkoutJourney: JourneyDefinition<Ctx, StepId, Event> = {
+export const checkoutJourney: JourneyDefinition<Ctx, StepId> = {
   initial: "cart",
   context: {
     needsShipping: true,
@@ -20,37 +19,24 @@ export const checkoutJourney: JourneyDefinition<Ctx, StepId, Event> = {
     payment: {},
     review: {}
   },
-  transitions: [
-    {
-      from: "cart",
-      event: "goToNextStep",
-      to: "address",
-      when: ({ context }) => context.needsShipping
+  transitions: {
+    cart: {
+      goToNextStep: [
+        { to: "address", when: ({ context }) => context.needsShipping },
+        { to: "payment", when: ({ context }) => !context.needsShipping }
+      ]
     },
-    {
-      from: "cart",
-      event: "goToNextStep",
-      to: "payment",
-      when: ({ context }) => !context.needsShipping
+    address: {
+      goToNextStep: [
+        { to: "giftWrap", when: ({ context }) => context.wantsGiftWrap },
+        { to: "payment", when: ({ context }) => !context.wantsGiftWrap }
+      ]
     },
-    {
-      from: "address",
-      event: "goToNextStep",
-      to: "giftWrap",
-      when: ({ context }) => context.wantsGiftWrap
-    },
-    {
-      from: "address",
-      event: "goToNextStep",
-      to: "payment",
-      when: ({ context }) => !context.wantsGiftWrap
-    },
-    { from: "giftWrap", event: "goToNextStep", to: "payment" },
-    { from: "payment", event: "goToNextStep", to: "review" },
-    { from: "review", event: "completeJourney" },
-    { from: "*", event: "terminateJourney" }
-  ]
+    giftWrap: { goToNextStep: [{ to: "payment" }] },
+    payment: { goToNextStep: [{ to: "review" }] },
+    review: { completeJourney: [{}] },
+    global: { terminateJourney: [{}] }
+  }
 };
 
-export const createCheckoutMachine = () =>
-  createJourneyMachine<Ctx, StepId, Event>(checkoutJourney);
+export const createCheckoutMachine = () => createJourneyMachine(checkoutJourney);

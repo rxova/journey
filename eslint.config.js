@@ -18,9 +18,11 @@ export default [
       "**/dist/**",
       "coverage/**",
       "node_modules/**",
+      "worktrees/**",
       "flow/**",
       "apps/docs/.docusaurus/**",
       "apps/docs/build/**",
+      "**/.next/**",
       "**/*.d.ts",
       "**/*.d.ts.map"
     ]

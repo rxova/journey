@@ -1,54 +1,37 @@
 import React from "react";
 
-import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
+import { createJourney } from "@rxova/journey-react";
+import { subscribeJourney } from "../../core/examples/subscribe-vs-subscribe-event.flow";
 
-type StepId = "start" | "review" | "done";
-type Ctx = { submitted: boolean };
+export { subscribeJourney } from "../../core/examples/subscribe-vs-subscribe-event.flow";
 
-let bindings: ReturnType<typeof createJourneyBindings<Ctx, StepId>>;
+const journey = createJourney(subscribeJourney);
 
 const Start = () => {
-  const api = bindings.useJourneyApi();
+  const api = journey.useJourneyApi();
   return <button onClick={() => void api.goToNextStep()}>Next</button>;
 };
 
 const Review = () => {
-  const api = bindings.useJourneyApi();
+  const api = journey.useJourneyApi();
   return <button onClick={() => void api.goToNextStep()}>Next</button>;
 };
 
 const Done = () => {
-  const api = bindings.useJourneyApi();
+  const api = journey.useJourneyApi();
   return <button onClick={() => void api.completeJourney()}>Submit</button>;
 };
-
-const subscribeJourney: JourneyReactDefinition<Ctx, StepId> = {
-  initial: "start",
-  context: { submitted: false },
-  steps: {
-    start: { component: Start },
-    review: { component: Review },
-    done: { component: Done }
-  },
-  transitions: [
-    { from: "start", event: "goToNextStep", to: "review" },
-    {
-      from: "review",
-      event: "goToNextStep",
-      to: "done",
-      effect: ({ context }) => ({ ...context, submitted: true })
-    },
-    { from: "done", event: "completeJourney" }
-  ]
+const views = {
+  start: Start,
+  review: Review,
+  done: Done
 };
 
-bindings = createJourneyBindings(subscribeJourney);
-
 const SubscriptionsPanel = () => {
-  const snapshot = bindings.useJourneySnapshot();
+  const snapshot = journey.useJourneySnapshot();
   const [eventTypes, setEventTypes] = React.useState<string[]>([]);
 
-  bindings.useJourneyEvent((event) => {
+  journey.useJourneyEvent((event) => {
     setEventTypes((current) => [...current, event.type]);
   });
 
@@ -63,13 +46,10 @@ const SubscriptionsPanel = () => {
 };
 
 export const SubscribeVsSubscribeEventExample = () => {
-  const Provider = bindings.Provider;
-  const StepRenderer = bindings.StepRenderer;
-
   return (
-    <Provider>
+    <journey.JourneyProvider views={views}>
       <SubscriptionsPanel />
-      <StepRenderer />
-    </Provider>
+      <journey.StepRenderer />
+    </journey.JourneyProvider>
   );
 };

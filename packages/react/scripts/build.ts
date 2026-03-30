@@ -9,18 +9,26 @@ const common = {
   minify: true,
   sourcemap: true,
   legalComments: "none",
-  entryPoints: ["src/index.ts"],
-  outfile: "dist/index.js",
   platform: "neutral",
   format: "esm",
   external: ["react", "react/jsx-runtime", "react/jsx-dev-runtime", "@rxova/journey-core"]
 };
 
-await build(common);
+for (const [entryPoint, outfile] of [
+  ["src/index.ts", "dist/index.js"],
+  ["src/client.ts", "dist/client.js"]
+] as const) {
+  await build({
+    ...common,
+    entryPoints: [entryPoint],
+    outfile
+  });
 
-await build({
-  ...common,
-  outfile: "dist/index.cjs",
-  platform: "node",
-  format: "cjs"
-});
+  await build({
+    ...common,
+    entryPoints: [entryPoint],
+    outfile: outfile.replace(/\.js$/, ".cjs"),
+    platform: "node",
+    format: "cjs"
+  });
+}

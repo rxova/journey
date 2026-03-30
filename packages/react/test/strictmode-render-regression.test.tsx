@@ -1,117 +1,68 @@
 import { describe, expect, it, vi } from "vitest";
 
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 
-import {
-  createJourneyMachine,
-  type JourneyMachine,
-  type JourneySnapshot
-} from "@rxova/journey-core";
-import {
-  createJourneyBindings,
-  type JourneyEventType,
-  type JourneyReactDefinition
-} from "@rxova/journey-react";
+import { createJourney } from "@rxova/journey-react";
+import type { JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "details";
 type Context = { count: number };
-type MachineEvent = JourneyEventType<never>;
 
-const journey: JourneyReactDefinition<Context, StepId> = {
+const journeyDefinition: JourneyDefinition<Context, StepId> = {
   initial: "start",
   context: { count: 0 },
   steps: {
-    start: { component: () => <div>start</div> },
-    details: { component: () => <div>details</div> }
+    start: { meta: { label: "Start" } },
+    details: { meta: { label: "Details" } }
   },
-  transitions: [{ from: "start", event: "goToNextStep", to: "details" }]
+  transitions: {
+    start: { goToNextStep: [{ to: "details" }] }
+  }
 };
 
-const bindings = createJourneyBindings(journey);
-
-const createSnapshot = (): JourneySnapshot<Context, StepId> => ({
-  currentStepId: "start",
-  history: {
-    timeline: ["start"],
-    index: 0
-  },
-  context: { count: 0 },
-  visited: { start: true, details: false },
-  stepMeta: {
-    start: undefined,
-    details: undefined
-  },
-  status: "running",
-  async: {
-    isLoading: false,
-    byStep: {
-      start: { phase: "idle", eventType: null, transitionId: null, error: null },
-      details: { phase: "idle", eventType: null, transitionId: null, error: null }
-    }
-  }
-});
-
-const createInstrumentedMachine = () => {
-  const listeners = new Set<() => void>();
+const createInstrumentedJourney = () => {
+  const journey = createJourney(journeyDefinition);
+  const originalSubscribe = journey.machine.subscribe.bind(journey.machine);
   let adds = 0;
   let removes = 0;
   let active = 0;
 
-  const snapshot = createSnapshot();
-  const machine: JourneyMachine<Context, StepId, MachineEvent> = {
-    getSnapshot: () => snapshot,
-    send: async () => ({ transitioned: false, snapshot }),
-    goToNextStep: async () => ({ transitioned: false, snapshot }),
-    terminateJourney: async () => ({ transitioned: false, snapshot }),
-    completeJourney: async () => ({ transitioned: false, snapshot }),
-    goToPreviousStep: async () => ({ transitioned: false, snapshot }),
-    goToLastVisitedStep: async () => ({ transitioned: false, snapshot }),
-    updateContext: () => snapshot,
-    updateStepMetadata: () => snapshot,
-    clearStepError: () => snapshot,
-    resetMachine: () => snapshot,
-    dispose: () => undefined,
-    subscribe: (
-      listener: Parameters<JourneyMachine<Context, StepId, MachineEvent>["subscribe"]>[0]
-    ) => {
-      adds += 1;
-      active += 1;
-      listeners.add(listener);
-      return () => {
-        if (listeners.delete(listener)) {
-          active -= 1;
-          removes += 1;
-        }
-      };
-    },
-    subscribeSelector: () => () => undefined,
-    subscribeEvent: () => () => undefined,
-    subscribeStart: () => () => undefined,
-    subscribeComplete: () => () => undefined,
-    subscribeTerminate: () => () => undefined
-  };
+  journey.machine.subscribe = ((listener: Parameters<typeof journey.machine.subscribe>[0]) => {
+    adds += 1;
+    active += 1;
+    const unsubscribe = originalSubscribe(listener);
+    return () => {
+      active -= 1;
+      removes += 1;
+      unsubscribe();
+    };
+  }) as typeof journey.machine.subscribe;
 
   return {
-    machine,
+    journey,
     counts: () => ({ adds, removes, active })
   };
 };
 
+const flushQueuedEffects = async (cycles = 2) => {
+  for (let index = 0; index < cycles; index += 1) {
+    await Promise.resolve();
+  }
+};
+
 describe("StrictMode and render regressions", () => {
   it("does not leak subscriptions under StrictMode double-mount", () => {
-    const { machine, counts } = createInstrumentedMachine();
+    const { journey, counts } = createInstrumentedJourney();
 
     const ReadStep = () => {
-      const snapshot = bindings.useJourneySnapshot();
+      const snapshot = journey.useJourneySnapshot();
       return <div data-testid="step">{snapshot.currentStepId}</div>;
     };
 
     const { unmount } = render(
       <React.StrictMode>
-        <bindings.Provider machine={machine}>
-          <ReadStep />
-        </bindings.Provider>
+        <ReadStep />
       </React.StrictMode>
     );
 
@@ -125,15 +76,51 @@ describe("StrictMode and render regressions", () => {
     expect(counts().removes).toBe(counts().adds);
   });
 
+  it("uses selector subscriptions for provider status tracking", async () => {
+    const journey = createJourney(journeyDefinition);
+    const views = {
+      start: () => <div data-testid="step-view">start</div>,
+      details: () => <div data-testid="step-view">details</div>
+    };
+    const originalSubscribe = journey.machine.subscribe.bind(journey.machine);
+    const originalSubscribeSelector = journey.machine.subscribeSelector.bind(journey.machine);
+    let snapshotSubscriptions = 0;
+    let selectorSubscriptions = 0;
+
+    journey.machine.subscribe = ((listener: Parameters<typeof journey.machine.subscribe>[0]) => {
+      snapshotSubscriptions += 1;
+      return originalSubscribe(listener);
+    }) as typeof journey.machine.subscribe;
+    journey.machine.subscribeSelector = ((selector, listener, equalityFn) => {
+      selectorSubscriptions += 1;
+      return originalSubscribeSelector(selector, listener, equalityFn);
+    }) as typeof journey.machine.subscribeSelector;
+
+    render(
+      <journey.JourneyProvider views={views}>
+        <div data-testid="mounted">mounted</div>
+      </journey.JourneyProvider>
+    );
+
+    await act(async () => {
+      await flushQueuedEffects();
+    });
+
+    expect(screen.getByTestId("mounted").textContent).toBe("mounted");
+    expect(selectorSubscriptions).toBeGreaterThanOrEqual(1);
+    expect(snapshotSubscriptions).toBe(0);
+    expect(journey.machine.getSnapshot().status).toBe("running");
+  });
+
   it("does not rerender memoized context consumers on unrelated parent updates", () => {
-    const machine = createJourneyMachine(journey);
+    const journey = createJourney(journeyDefinition);
     const reportRender = vi.fn();
 
     const MemoConsumer = React.memo(() => {
-      bindings.useJourneyMachine();
+      const snapshot = journey.useJourneySnapshot();
 
       React.useLayoutEffect(() => {
-        reportRender();
+        reportRender(snapshot.currentStepId);
       });
 
       return <div data-testid="consumer">consumer</div>;
@@ -148,9 +135,7 @@ describe("StrictMode and render regressions", () => {
             rerender
           </button>
           <div data-testid="tick">{tick}</div>
-          <bindings.Provider machine={machine}>
-            <MemoConsumer />
-          </bindings.Provider>
+          <MemoConsumer />
         </div>
       );
     };
@@ -167,5 +152,226 @@ describe("StrictMode and render regressions", () => {
     fireEvent.click(screen.getByTestId("rerender"));
     expect(screen.getByTestId("tick").textContent).toBe("2");
     expect(reportRender).toHaveBeenCalledTimes(1);
+  });
+
+  it("useJourneyEvent receives journey.start inside JourneyProvider under StrictMode", async () => {
+    const journey = createJourney(journeyDefinition);
+    const views = {
+      start: () => <div data-testid="step-view">start</div>,
+      details: () => <div data-testid="step-view">details</div>
+    };
+    const observed: string[] = [];
+
+    const Observer = () => {
+      journey.useJourneyEvent((event) => {
+        observed.push(event.type);
+      });
+      return null;
+    };
+
+    render(
+      <React.StrictMode>
+        <journey.JourneyProvider views={views}>
+          <Observer />
+          <journey.StepRenderer />
+        </journey.JourneyProvider>
+      </React.StrictMode>
+    );
+
+    await act(async () => {
+      await flushQueuedEffects();
+    });
+
+    expect(screen.getByTestId("step-view").textContent).toBe("start");
+    expect(observed).toContain("journey.start");
+  });
+
+  it("does not dispose the machine when JourneyProvider unmounts by default", async () => {
+    const journey = createJourney(journeyDefinition);
+    const views = {
+      start: () => <div data-testid="step-view">start</div>,
+      details: () => <div data-testid="step-view">details</div>
+    };
+    const disposeSpy = vi.spyOn(journey.machine, "dispose");
+
+    const { unmount } = render(
+      <journey.JourneyProvider views={views}>
+        <journey.StepRenderer />
+      </journey.JourneyProvider>
+    );
+
+    await act(async () => {
+      await flushQueuedEffects();
+    });
+
+    expect(journey.machine.getSnapshot().status).toBe("running");
+    expect(disposeSpy).not.toHaveBeenCalled();
+
+    unmount();
+
+    expect(disposeSpy).not.toHaveBeenCalled();
+  });
+
+  it("disposes the machine when JourneyProvider unmounts with disposeOnUnmount", async () => {
+    vi.useFakeTimers();
+    try {
+      const journey = createJourney(journeyDefinition);
+      const views = {
+        start: () => <div data-testid="step-view">start</div>,
+        details: () => <div data-testid="step-view">details</div>
+      };
+      const disposeSpy = vi.spyOn(journey.machine, "dispose");
+
+      const { unmount } = render(
+        <journey.JourneyProvider views={views} disposeOnUnmount>
+          <journey.StepRenderer />
+        </journey.JourneyProvider>
+      );
+
+      await act(async () => {
+        await flushQueuedEffects();
+      });
+
+      expect(journey.machine.getSnapshot().status).toBe("running");
+      expect(disposeSpy).not.toHaveBeenCalled();
+
+      unmount();
+
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+
+      expect(disposeSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps disposeOnUnmount StrictMode-safe during the development remount cycle", async () => {
+    vi.useFakeTimers();
+    try {
+      const journey = createJourney(journeyDefinition);
+      const views = {
+        start: () => <div data-testid="step-view">start</div>,
+        details: () => <div data-testid="step-view">details</div>
+      };
+      const disposeSpy = vi.spyOn(journey.machine, "dispose");
+
+      const { unmount } = render(
+        <React.StrictMode>
+          <journey.JourneyProvider views={views} disposeOnUnmount>
+            <journey.StepRenderer />
+          </journey.JourneyProvider>
+        </React.StrictMode>
+      );
+
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+
+      expect(screen.getByTestId("step-view").textContent).toBe("start");
+      expect(journey.machine.getSnapshot().status).toBe("running");
+      expect(disposeSpy).not.toHaveBeenCalled();
+
+      await act(async () => {
+        const result = await journey.machine.goToNextStep();
+        expect(result.transitioned).toBe(true);
+      });
+
+      expect(screen.getByTestId("step-view").textContent).toBe("details");
+
+      unmount();
+
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+
+      expect(disposeSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not duplicate provider-owned startup under StrictMode", async () => {
+    const journey = createJourney(journeyDefinition);
+    const views = {
+      start: () => <div data-testid="step-view">start</div>,
+      details: () => <div data-testid="step-view">details</div>
+    };
+    const startEvents: Array<{ type: "journey.start"; stepId: StepId; timestamp: number }> = [];
+
+    journey.machine.subscribeEvent((event) => {
+      if (event.type === "journey.start") {
+        startEvents.push(event);
+      }
+    });
+
+    render(
+      <React.StrictMode>
+        <journey.JourneyProvider views={views}>
+          <journey.StepRenderer />
+        </journey.JourneyProvider>
+      </React.StrictMode>
+    );
+
+    await act(async () => {
+      await flushQueuedEffects();
+    });
+
+    expect(screen.getByTestId("step-view").textContent).toBe("start");
+    expect(journey.machine.getSnapshot().status).toBe("running");
+    expect(startEvents).toHaveLength(1);
+  });
+
+  it("keeps snapshot and selector reads aligned during startTransition rerenders", async () => {
+    const journey = createJourney(journeyDefinition);
+    const observedReads: Array<{ snapshot: StepId; selected: StepId; tick: number }> = [];
+    let triggerTransition: (() => Promise<void>) | null = null;
+    let latestApi: ReturnType<typeof journey.useJourneyApi> | null = null;
+
+    const Probe = () => {
+      const [tick, setTick] = React.useState(0);
+      const snapshot = journey.useJourneySnapshot();
+      const selectedStep = journey.useJourneySelector((nextSnapshot) => nextSnapshot.currentStepId);
+      const api = journey.useJourneyApi();
+
+      React.useLayoutEffect(() => {
+        latestApi = api;
+        triggerTransition = async () => {
+          React.startTransition(() => {
+            setTick((value) => value + 1);
+          });
+          await api.goToNextStep();
+        };
+        observedReads.push({
+          snapshot: snapshot.currentStepId,
+          selected: selectedStep,
+          tick
+        });
+      });
+
+      return (
+        <div>
+          <span data-testid="snapshot-step">{snapshot.currentStepId}</span>
+          <span data-testid="selected-step">{selectedStep}</span>
+          <span data-testid="tick">{tick}</span>
+        </div>
+      );
+    };
+
+    render(<Probe />);
+
+    await act(async () => {
+      await latestApi?.start();
+    });
+
+    await act(async () => {
+      await triggerTransition?.();
+    });
+
+    expect(screen.getByTestId("snapshot-step").textContent).toBe("details");
+    expect(screen.getByTestId("selected-step").textContent).toBe("details");
+    expect(screen.getByTestId("tick").textContent).toBe("1");
+    expect(observedReads.every((entry) => entry.snapshot === entry.selected)).toBe(true);
   });
 });

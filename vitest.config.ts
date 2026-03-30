@@ -5,6 +5,42 @@ export default defineConfig({
   resolve: {
     alias: [
       {
+        find: "@rxova/journey-core/analytics",
+        replacement: fileURLToPath(
+          new URL("./packages/core/src/plugins/analytics/index.ts", import.meta.url)
+        )
+      },
+      {
+        find: "@rxova/journey-core/autosave",
+        replacement: fileURLToPath(
+          new URL("./packages/core/src/plugins/autosave/index.ts", import.meta.url)
+        )
+      },
+      {
+        find: "@rxova/journey-core/diagnostics",
+        replacement: fileURLToPath(
+          new URL("./packages/core/src/plugins/diagnostics/index.ts", import.meta.url)
+        )
+      },
+      {
+        find: "@rxova/journey-core/execution-paths",
+        replacement: fileURLToPath(
+          new URL("./packages/core/src/plugins/execution-paths/index.ts", import.meta.url)
+        )
+      },
+      {
+        find: "@rxova/journey-core/persistence",
+        replacement: fileURLToPath(
+          new URL("./packages/core/src/plugins/persistence/index.ts", import.meta.url)
+        )
+      },
+      {
+        find: "@rxova/journey-core/replay",
+        replacement: fileURLToPath(
+          new URL("./packages/core/src/plugins/replay/index.ts", import.meta.url)
+        )
+      },
+      {
         find: "@rxova/journey-core",
         replacement: fileURLToPath(new URL("./packages/core/src/index.ts", import.meta.url))
       },

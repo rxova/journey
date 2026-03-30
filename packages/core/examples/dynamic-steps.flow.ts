@@ -1,12 +1,9 @@
 import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = string;
-type Event = "goToNextStep" | "completeJourney";
 type Ctx = { includeSurvey: boolean };
 
-export const buildDynamicStepsJourney = (
-  includeSurvey: boolean
-): JourneyDefinition<Ctx, StepId, Event> =>
+export const buildDynamicStepsJourney = (includeSurvey: boolean): JourneyDefinition<Ctx, StepId> =>
   includeSurvey
     ? {
         initial: "start",
@@ -17,12 +14,12 @@ export const buildDynamicStepsJourney = (
           survey: {},
           review: {}
         },
-        transitions: [
-          { from: "start", event: "goToNextStep", to: "details" },
-          { from: "details", event: "goToNextStep", to: "survey" },
-          { from: "survey", event: "goToNextStep", to: "review" },
-          { from: "review", event: "completeJourney" }
-        ]
+        transitions: {
+          start: { goToNextStep: [{ to: "details" }] },
+          details: { goToNextStep: [{ to: "survey" }] },
+          survey: { goToNextStep: [{ to: "review" }] },
+          review: { completeJourney: [{}] }
+        }
       }
     : {
         initial: "start",
@@ -32,12 +29,12 @@ export const buildDynamicStepsJourney = (
           details: {},
           review: {}
         },
-        transitions: [
-          { from: "start", event: "goToNextStep", to: "details" },
-          { from: "details", event: "goToNextStep", to: "review" },
-          { from: "review", event: "completeJourney" }
-        ]
+        transitions: {
+          start: { goToNextStep: [{ to: "details" }] },
+          details: { goToNextStep: [{ to: "review" }] },
+          review: { completeJourney: [{}] }
+        }
       };
 
 export const createDynamicStepsMachine = (includeSurvey: boolean) =>
-  createJourneyMachine<Ctx, StepId, Event>(buildDynamicStepsJourney(includeSurvey));
+  createJourneyMachine(buildDynamicStepsJourney(includeSurvey));
