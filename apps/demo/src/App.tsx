@@ -1,11 +1,7 @@
 import React from "react";
 import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
-import {
-  createJourneyBindings,
-  type JourneyBindings,
-  type JourneyReactDefinition
-} from "@rxova/journey-react";
+import { createJourney, type JourneyViews } from "@rxova/journey-react";
 import "./styles.css";
 
 type ReactStepId = "start" | "details" | "review" | "confirmExit";
@@ -15,26 +11,67 @@ type ReactContext = {
   dirty: boolean;
 };
 
-type ReactEvent = "requestClose";
+type ReactEventMap = { requestClose: unknown };
 
-let reactBindings: JourneyBindings<ReactContext, ReactStepId, ReactEvent>;
+const reactJourneyDefinition: JourneyDefinition<ReactContext, ReactStepId, ReactEventMap> = {
+  initial: "start",
+  context: {
+    name: "",
+    includeDetails: true,
+    dirty: false
+  },
+  steps: {
+    start: { meta: { label: "Start" } },
+    details: { meta: { label: "Details" } },
+    review: { meta: { label: "Review" } },
+    confirmExit: { meta: { label: "Confirm Exit" } }
+  },
+  transitions: {
+    start: {
+      goToNextStep: [
+        {
+          to: "details",
+          when: ({ context }) => context.includeDetails
+        },
+        {
+          to: "review",
+          when: ({ context }) => !context.includeDetails
+        }
+      ]
+    },
+    details: {
+      goToNextStep: [{ to: "review" }]
+    },
+    review: {
+      completeJourney: [{}]
+    },
+    global: {
+      requestClose: [
+        {
+          to: "confirmExit",
+          when: ({ context }) => context.dirty
+        }
+      ],
+      terminateJourney: [{}]
+    }
+  }
+};
 
-const useReactJourneyApi = () => reactBindings.useJourneyApi();
-const useReactJourneySnapshot = () => reactBindings.useJourneySnapshot();
-const useReactJourneyMachine = () => reactBindings.useJourneyMachine();
+const reactJourney = createJourney(reactJourneyDefinition);
+
+const useReactJourneyApi = () => reactJourney.useJourneyApi();
+const useReactJourneySnapshot = () => reactJourney.useJourneySnapshot();
 
 const ReactBridge = () => {
-  const machine = useReactJourneyMachine();
-
   React.useEffect(() => {
-    return attachJourneyDevtools(machine, {
+    return attachJourneyDevtools(reactJourney.machine, {
       machineId: "react-flow",
       label: "React Flow",
       appName: "Journey Demo",
       enabled: true,
       commandsEnabled: true
     });
-  }, [machine]);
+  }, []);
 
   return null;
 };
@@ -155,50 +192,17 @@ const ReactConfirmExit = () => {
   );
 };
 
-const reactJourney: JourneyReactDefinition<ReactContext, ReactStepId, ReactEvent> = {
-  initial: "start",
-  context: {
-    name: "",
-    includeDetails: true,
-    dirty: false
-  },
-  steps: {
-    start: { component: ReactStart, meta: { label: "Start" } },
-    details: { component: ReactDetails, meta: { label: "Details" } },
-    review: { component: ReactReview, meta: { label: "Review" } },
-    confirmExit: { component: ReactConfirmExit, meta: { label: "Confirm Exit" } }
-  },
-  transitions: [
-    {
-      from: "start",
-      event: "goToNextStep",
-      to: "details",
-      when: ({ context }) => context.includeDetails
-    },
-    {
-      from: "start",
-      event: "goToNextStep",
-      to: "review",
-      when: ({ context }) => !context.includeDetails
-    },
-    { from: "details", event: "goToNextStep", to: "review" },
-    {
-      from: "*",
-      event: "requestClose",
-      to: "confirmExit",
-      when: ({ context }) => context.dirty
-    },
-    { from: "*", event: "terminateJourney" },
-    { from: "review", event: "completeJourney" }
-  ]
+const reactViews: JourneyViews<ReactStepId> = {
+  start: ReactStart,
+  details: ReactDetails,
+  review: ReactReview,
+  confirmExit: ReactConfirmExit
 };
-
-reactBindings = createJourneyBindings(reactJourney);
 
 const ReactMachinePanel = () => {
   const snapshot = useReactJourneySnapshot();
   const api = useReactJourneyApi();
-  const StepRenderer = reactBindings.StepRenderer;
+  const StepRenderer = reactJourney.StepRenderer;
 
   return (
     <section className="card">
@@ -224,13 +228,13 @@ const ReactMachinePanel = () => {
 };
 
 type CoreStepId = "one" | "two" | "three";
-type CoreEvent = "goToNextStep" | "back" | "completeJourney" | "terminateJourney";
+type CoreEvent = "goToNextStep" | "completeJourney" | "terminateJourney";
 type CoreContext = {
   owner: string;
   dirty: boolean;
 };
 
-const coreJourney: JourneyDefinition<CoreContext, CoreStepId, CoreEvent> = {
+const coreJourney: JourneyDefinition<CoreContext, CoreStepId> = {
   initial: "one",
   context: {
     owner: "Core Tester",
@@ -241,12 +245,20 @@ const coreJourney: JourneyDefinition<CoreContext, CoreStepId, CoreEvent> = {
     two: { meta: { label: "Two" } },
     three: { meta: { label: "Three" } }
   },
-  transitions: [
-    { from: "one", event: "goToNextStep", to: "two" },
-    { from: "two", event: "goToNextStep", to: "three" },
-    { from: "three", event: "completeJourney" },
-    { from: "*", event: "terminateJourney" }
-  ]
+  transitions: {
+    one: {
+      goToNextStep: [{ to: "two" }]
+    },
+    two: {
+      goToNextStep: [{ to: "three" }]
+    },
+    three: {
+      completeJourney: [{}]
+    },
+    global: {
+      terminateJourney: [{}]
+    }
+  }
 };
 
 const coreMachine = createJourneyMachine(coreJourney);
@@ -256,6 +268,13 @@ const useCoreSnapshot = () =>
     coreMachine.subscribe,
     coreMachine.getSnapshot,
     coreMachine.getSnapshot
+  );
+
+const useCoreStatus = () =>
+  React.useSyncExternalStore(
+    coreMachine.subscribe,
+    () => coreMachine.getSnapshot().status,
+    () => coreMachine.getSnapshot().status
   );
 
 const CoreMachinePanel = () => {
@@ -307,7 +326,7 @@ const CoreMachinePanel = () => {
         <button className="secondary" onClick={randomizeOwner}>
           Update context
         </button>
-        <button className="secondary" onClick={() => coreMachine.resetMachine()}>
+        <button className="secondary" onClick={() => coreMachine.resetJourney()}>
           Reset
         </button>
         <button className="secondary" onClick={() => void coreMachine.goToLastVisitedStep()}>
@@ -320,7 +339,8 @@ const CoreMachinePanel = () => {
 };
 
 export const App = () => {
-  const Provider = reactBindings.Provider;
+  const JourneyProvider = reactJourney.JourneyProvider;
+  const coreStatus = useCoreStatus();
 
   React.useEffect(() => {
     return attachJourneyDevtools(coreMachine, {
@@ -331,6 +351,25 @@ export const App = () => {
       commandsEnabled: true
     });
   }, []);
+
+  React.useEffect(() => {
+    if (coreStatus !== "idled") {
+      return;
+    }
+
+    let canceled = false;
+    queueMicrotask(() => {
+      if (canceled || coreMachine.getSnapshot().status !== "idled") {
+        return;
+      }
+
+      coreMachine.start();
+    });
+
+    return () => {
+      canceled = true;
+    };
+  }, [coreStatus]);
 
   return (
     <main className="layout">
@@ -345,10 +384,10 @@ export const App = () => {
         </p>
       </header>
 
-      <Provider>
+      <JourneyProvider views={reactViews}>
         <ReactBridge />
         <ReactMachinePanel />
-      </Provider>
+      </JourneyProvider>
 
       <CoreMachinePanel />
 

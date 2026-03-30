@@ -6,6 +6,12 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
+      "@rxova/journey-core/execution-paths": fileURLToPath(
+        new URL("../../packages/core/src/plugins/execution-paths/index.ts", import.meta.url)
+      ),
+      "@rxova/journey-core/persistence": fileURLToPath(
+        new URL("../../packages/core/src/plugins/persistence/index.ts", import.meta.url)
+      ),
       "@rxova/journey-core": fileURLToPath(
         new URL("../../packages/core/src/index.ts", import.meta.url)
       ),
