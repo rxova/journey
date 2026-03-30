@@ -11,6 +11,8 @@
 - [ ] Tests not needed
 - [ ] `pnpm test`
 - [ ] `pnpm typecheck`
+- [ ] `pnpm run docs:check`
+- [ ] `pnpm run release:verify` when touching release-critical surfaces
 - [ ] `pnpm lint`
 
 ## Docs

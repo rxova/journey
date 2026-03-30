@@ -55,27 +55,32 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm run version:major:check
+      - name: Typecheck packages and apps
+        run: pnpm run packages:typecheck
+      - name: Run test suite
+        run: pnpm run test
+
+  release-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: corepack enable
+      - run: corepack prepare pnpm@10.32.0+sha512.9b2634bb3fed5601c33633f2d92593f506270a3963b8c51d2b2d6a828da615ce4e9deebef9614ccebbc13ac8d3c0f9c9ccceb583c69c8578436fa477dbb20d70 --activate
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Audit dependencies
-        if: matrix.node-version == 24
         run: pnpm audit --audit-level=high
-      - run: pnpm run format:check
-      - run: pnpm run lint
-      - run: pnpm run docs:api:check
-      - name: Check release-note docs sync
-        if: matrix.node-version == 24
-        run: pnpm run docs:release-notes:check
-      - run: pnpm run typecheck
-      - run: pnpm run test
-      - run: pnpm run packaging:check
-      - run: pnpm run pack:smoke
+      - name: Run release verification
+        run: pnpm run release:verify
       - name: Add coverage summary
-        if: always() && matrix.node-version == 24
+        if: always()
         run: node --import tsx ./scripts/coverage-summary.ts
       - name: Upload coverage report
-        if: always() && matrix.node-version == 24
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: coverage
-      - run: pnpm run size:check

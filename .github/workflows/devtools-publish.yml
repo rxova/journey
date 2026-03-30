@@ -3,17 +3,16 @@ name: Publish Devtools To Chrome Web Store
 on:
   workflow_dispatch:
     inputs:
-      extension_id:
-        description: "Chrome Web Store extension ID"
-        required: true
-        type: string
-      publisher_id:
-        description: "Chrome Web Store publisher ID"
-        required: true
-        type: string
       publish:
         description: "Publish after upload"
         required: true
+        default: true
+        type: boolean
+  workflow_call:
+    inputs:
+      publish:
+        description: "Publish after upload"
+        required: false
         default: true
         type: boolean
 
@@ -27,8 +26,8 @@ jobs:
     permissions:
       contents: read
     env:
-      CWS_EXTENSION_ID: ${{ inputs.extension_id }}
-      CWS_PUBLISHER_ID: ${{ inputs.publisher_id }}
+      CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+      CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
       CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
       CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
       CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}

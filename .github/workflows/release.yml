@@ -27,6 +27,8 @@ jobs:
       - name: Upgrade npm for Trusted Publishing
         run: npm install -g npm@^11.5.1
       - run: pnpm install --frozen-lockfile
+      - name: Verify release surfaces
+        run: pnpm run release:verify
       - name: Create Release PR or Publish
         uses: changesets/action@v1
         with:
@@ -35,3 +37,31 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
+
+  check-devtools:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+      - name: Check if devtools version changed
+        id: check
+        run: |
+          if git diff HEAD~1 HEAD -- apps/devtools/package.json | grep -q '"version"'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  publish-devtools:
+    needs: check-devtools
+    if: needs.check-devtools.outputs.changed == 'true'
+    uses: ./.github/workflows/devtools-publish.yml
+    with:
+      publish: true
+    secrets: inherit
