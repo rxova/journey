@@ -28,9 +28,11 @@
     "docs:release-notes:sync": "node --import tsx ./scripts/sync-doc-release-notes.ts",
     "docs:release-notes:check": "node --import tsx ./scripts/sync-doc-release-notes.ts --check",
     "docs:api:check": "pnpm exec tsc ./scripts/check-public-api-tsdoc.ts --outDir ./node_modules/.tmp-tsdoc-check --module NodeNext --moduleResolution NodeNext --target ES2020 --skipLibCheck && node ./node_modules/.tmp-tsdoc-check/check-public-api-tsdoc.js",
+    "packages:typecheck": "pnpm -r --filter \"./packages/*\" --filter apps-devtools typecheck && tsc --noEmit -p tsconfig.test.json",
     "release": "pnpm -r build && changeset publish",
     "releases": "pnpm run changeset:version && pnpm run release",
-    "typecheck": "pnpm -r typecheck && tsc --noEmit -p tsconfig.test.json",
+    "typecheck": "pnpm run packages:typecheck",
+    "docs:check": "pnpm -C apps/docs build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint-staged": "lint-staged",
@@ -41,11 +43,12 @@
     "test": "vitest run --coverage",
     "test:precommit": "vitest run --coverage --coverage.reporter=text-summary",
     "test:watch": "vitest",
-    "size": "pnpm -r size",
-    "size:check": "pnpm -r size:check",
+    "size": "pnpm -r --reporter=append-only --workspace-concurrency=1 size",
+    "size:check": "pnpm -r --reporter=append-only --workspace-concurrency=1 size:check",
     "publint": "pnpm -r --filter \"./packages/*\" publint",
     "packaging:check": "pnpm -r --filter \"./packages/*\" build && pnpm run publint",
-    "pack:smoke": "node --import tsx ./scripts/pack-smoke.ts"
+    "pack:smoke": "node --import tsx ./scripts/pack-smoke.ts",
+    "release:verify": "pnpm run version:major:check && pnpm run format:check && pnpm run lint && pnpm run docs:api:check && pnpm run docs:release-notes:check && pnpm run docs:check && pnpm run packages:typecheck && pnpm run test && pnpm run packaging:check && pnpm run pack:smoke && pnpm run size:check"
   },
   "devDependencies": {
     "@changesets/cli": "^2.30.0",

@@ -55,4 +55,56 @@ describe("copy-types script", () => {
 
     await rm(tempRoot, { recursive: true, force: true });
   });
+
+  it("creates .d.cts for .d.ts files in nested subdirectories", async () => {
+    const tempRoot = await mkdtemp(join(tmpdir(), "copy-types-nested-"));
+    const distDir = join(tempRoot, "dist");
+    const nestedDir = join(distDir, "plugins", "persistence");
+    await mkdir(nestedDir, { recursive: true });
+
+    const rootDts = "export type Root = {};\n//# sourceMappingURL=index.d.ts.map";
+    const nestedDts = "export type Nested = {};\n//# sourceMappingURL=index.d.ts.map";
+
+    await writeFile(join(distDir, "index.d.ts"), rootDts, "utf8");
+    await writeFile(join(nestedDir, "index.d.ts"), nestedDts, "utf8");
+
+    await execNode([scriptPath, distDir]);
+
+    expect(existsSync(join(distDir, "index.d.cts"))).toBe(true);
+    expect(existsSync(join(nestedDir, "index.d.cts"))).toBe(true);
+
+    const nestedDcts = await readFile(join(nestedDir, "index.d.cts"), "utf8");
+    expect(nestedDcts).toContain("sourceMappingURL=index.d.cts.map");
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("replaces source map comments for file names containing regex metacharacters", async () => {
+    const tempRoot = await mkdtemp(join(tmpdir(), "copy-types-regex-name-"));
+    const distDir = join(tempRoot, "dist");
+    await mkdir(distDir, { recursive: true });
+
+    const fileBaseName = "index[prod](1)+test";
+    const dts = `export type Weird = {};\n//# sourceMappingURL=${fileBaseName}.d.ts.map`;
+    const dtsMap = JSON.stringify({
+      version: 3,
+      file: `${fileBaseName}.d.ts`,
+      sources: [],
+      names: [],
+      mappings: ""
+    });
+
+    await writeFile(join(distDir, `${fileBaseName}.d.ts`), dts, "utf8");
+    await writeFile(join(distDir, `${fileBaseName}.d.ts.map`), dtsMap, "utf8");
+
+    await execNode([scriptPath, distDir]);
+
+    const dcts = await readFile(join(distDir, `${fileBaseName}.d.cts`), "utf8");
+    expect(dcts).toContain(`sourceMappingURL=${fileBaseName}.d.cts.map`);
+
+    const map = JSON.parse(await readFile(join(distDir, `${fileBaseName}.d.cts.map`), "utf8"));
+    expect(map.file).toBe(`${fileBaseName}.d.cts`);
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
 });

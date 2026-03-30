@@ -3,21 +3,56 @@ import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { assertIncludes, getExportEntries } from "./pack-smoke-helpers.ts";
+import { assertIncludes, getExportEntries } from "./pack-smoke-helpers";
 
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const packagesDir = join(repoRoot, "packages");
 const packDir = mkdtempSync(join(tmpdir(), "rxova-journey-pack-"));
 
-const listTarFiles = (tarballPath) =>
-  execFileSync("tar", ["-tf", tarballPath], { encoding: "utf8" }).split("\n").filter(Boolean);
-
-const readTarJson = (tarballPath, entryPath) => {
-  const raw = execFileSync("tar", ["-xOf", tarballPath, entryPath], { encoding: "utf8" });
-  return JSON.parse(raw);
+type PackResultEntry = {
+  filepath?: string;
+  filename?: string;
 };
 
-const run = () => {
+const listTarFiles = (tarballPath: string): string[] =>
+  execFileSync("tar", ["-tf", tarballPath], { encoding: "utf8" }).split("\n").filter(Boolean);
+
+const readTarJson = (tarballPath: string, entryPath: string): unknown => {
+  const raw = execFileSync("tar", ["-xOf", tarballPath, entryPath], { encoding: "utf8" });
+  return JSON.parse(raw) as unknown;
+};
+
+const parsePackResult = (raw: string): PackResultEntry | PackResultEntry[] | null => {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return null;
+  }
+  try {
+    return JSON.parse(trimmed) as PackResultEntry | PackResultEntry[];
+  } catch {
+    const lines = trimmed.split("\n").filter(Boolean);
+    for (let i = lines.length - 1; i >= 0; i -= 1) {
+      const line = lines[i];
+      if (line === undefined) {
+        continue;
+      }
+      try {
+        return JSON.parse(line) as PackResultEntry | PackResultEntry[];
+      } catch {
+        continue;
+      }
+    }
+  }
+  return null;
+};
+
+type PackedPackageJson = {
+  exports?: {
+    ".": unknown;
+  };
+};
+
+const run = (): void => {
   const packages = readdirSync(packagesDir, { withFileTypes: true })
     .filter((dirent) => dirent.isDirectory())
     .map((dirent) => dirent.name)
@@ -31,25 +66,6 @@ const run = () => {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "inherit"]
       });
-      const parsePackResult = (raw) => {
-        const trimmed = raw.trim();
-        if (!trimmed) {
-          return null;
-        }
-        try {
-          return JSON.parse(trimmed);
-        } catch {
-          const lines = trimmed.split("\n").filter(Boolean);
-          for (let i = lines.length - 1; i >= 0; i -= 1) {
-            try {
-              return JSON.parse(lines[i]);
-            } catch {
-              continue;
-            }
-          }
-        }
-        return null;
-      };
       const result = parsePackResult(packOutput);
       const tarballEntry = Array.isArray(result) ? result?.[0] : result;
       const tarballName = tarballEntry?.filepath ?? tarballEntry?.filename;
@@ -71,7 +87,10 @@ const run = () => {
       ];
       assertIncludes(files, requiredFiles, `${pkg} tarball`);
 
-      const packedPackageJson = readTarJson(tarballPath, "package/package.json");
+      const packedPackageJson = readTarJson(
+        tarballPath,
+        "package/package.json"
+      ) as PackedPackageJson;
       const exportRoot = packedPackageJson?.exports?.["."];
       if (!exportRoot) {
         throw new Error(`[pack-smoke] ${pkg} tarball missing package.json exports["."]`);
@@ -85,6 +104,6 @@ const run = () => {
   }
 };
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   run();
 }
