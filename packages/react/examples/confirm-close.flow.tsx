@@ -1,14 +1,13 @@
-import React from "react";
+import { createJourney } from "@rxova/journey-react";
+import { confirmExitJourney } from "../../core/examples/confirm-close.flow";
 
-import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
+export { confirmExitJourney } from "../../core/examples/confirm-close.flow";
 
-type StepId = "edit" | "confirmExit";
-type Event = "requestClose";
-type Ctx = { dirty: boolean };
+const journey = createJourney(confirmExitJourney);
 
 const Edit = () => {
-  const snapshot = bindings.useJourneySnapshot();
-  const api = bindings.useJourneyApi();
+  const snapshot = journey.useJourneySnapshot();
+  const api = journey.useJourneyApi();
   return (
     <div>
       <button onClick={() => api.updateContext((ctx) => ({ ...ctx, dirty: true }))}>
@@ -26,37 +25,18 @@ const Edit = () => {
 };
 
 const ConfirmExit = () => {
-  const api = bindings.useJourneyApi();
+  const api = journey.useJourneyApi();
   return <button onClick={() => api.terminateJourney()}>Confirm close</button>;
 };
-
-export const confirmExitJourney: JourneyReactDefinition<Ctx, StepId, Event> = {
-  initial: "edit",
-  context: { dirty: false },
-  steps: {
-    edit: { component: Edit },
-    confirmExit: { component: ConfirmExit }
-  },
-  transitions: [
-    {
-      from: "*",
-      event: "requestClose",
-      to: "confirmExit",
-      when: ({ context }) => context.dirty
-    },
-    { from: "*", event: "terminateJourney" }
-  ]
+const views = {
+  edit: Edit,
+  confirmExit: ConfirmExit
 };
 
-const bindings = createJourneyBindings(confirmExitJourney);
-
 export const ConfirmExitExample = () => {
-  const Provider = bindings.Provider;
-  const StepRenderer = bindings.StepRenderer;
-
   return (
-    <Provider>
-      <StepRenderer />
-    </Provider>
+    <journey.JourneyProvider views={views}>
+      <journey.StepRenderer />
+    </journey.JourneyProvider>
   );
 };

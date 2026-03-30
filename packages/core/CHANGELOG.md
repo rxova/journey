@@ -7,17 +7,17 @@
 - 239f7c5: ## What changed
   - Async lifecycle handling is much safer. Resetting or disposing a machine now cancels stale guards and effects, so older async work cannot commit after the machine has already moved on.
   - `send()` and the convenience helpers no longer reject when a guard or effect fails. They resolve with `transitioned: false`, the current `snapshot`, and an `error` field, while still emitting `transition.error` and leaving the source step in async `error`.
-  - `goToStepById` is now lifecycle-aware. If a matching `goToStepById` transition is declared, its guards and effects run first; the old unconditional direct jump remains only as a fallback when no matching transition exists.
+  - `goToStepById` is now mode-aware and lifecycle-aware. In graph and linear definitions it follows only declared `goToStepById` transitions, including guards and effects. In headless definitions, omitting `transitions` restores caller-driven direct navigation.
   - Observability is broader and easier to use. The core machine now exposes `subscribeSelector`, exported `JourneySelector` / `JourneyEqualityFn`, and focused lifecycle helpers `subscribeStart`, `subscribeComplete`, and `subscribeTerminate`.
-  - A new `journey.start` lifecycle event is emitted and replayed immediately to each `subscribeEvent` subscriber. That makes startup observable even when logging or analytics subscriptions are attached after machine creation.
+  - A new `journey.start` lifecycle event is emitted on startup, and focused helpers (`subscribeStart`, `subscribeComplete`, `subscribeTerminate`) make lifecycle observation easier without broad event filtering.
   - Persistence was hardened for hostile browser environments. If default storage access throws, machine creation no longer fails, and hydrated machines now preserve `visited` state inferred from timeline history instead of losing it during restore.
   - The reserved wildcard step id `*` is now rejected as a real step name, preventing ambiguous behavior between step identifiers and wildcard transition matching.
   - Transition typing was improved substantially. Builders now support fluent `.when(...).to(...)` and `.otherwise().to(...)` branches, payload inference is sharper, and terminal/helper transitions are typed more precisely.
-  - The existing "auto-complete when there is no next-step transition" behavior is now configurable through `completeOnNoNextStep`, rather than being effectively fixed at the runtime level.
+  - The existing "auto-complete when there is no next-step transition" behavior is now configurable through `requireExplicitCompletion`, rather than being effectively fixed at the runtime level.
   - Docs and tests were expanded around async timing, terminal helpers, persistence hydration, selector subscriptions, and the caveat that `updateContext()` is immediate on the current snapshot but does not retroactively rebase an already-running async transition.
 
   ## Breaking changes
-  - `goToStepById` no longer always behaves like an unconditional direct jump. If you declare matching `goToStepById` transitions, their guards and effects now run first.
+  - `goToStepById` is no longer one unconditional behavior across every mode. Omitted-transition definitions stay caller-driven, while graph and linear definitions require declared `goToStepById` transitions.
   - TypeScript transition definitions are stricter. Consumers with loosely typed transition builders or payload assumptions may need source updates.
 
 ## 0.6.4
@@ -114,7 +114,7 @@
   - Built-in fallback semantics for `back`/`goToPreviousStep` event sends when no explicit transition matches.
   - Strongly typed transition builder ergonomics via `createTransitions` and `tx` helpers (`toComplete`, `toTerminate`, branching builders).
   - First-match-wins transition execution preserved and clarified for reliability.
-  - Typed async transition phases exposed in snapshot: `idle`, `evaluating-when`, `running-effect`, `error`.
+  - Typed async transition phases exposed in snapshot: `idle`, `evaluating-when`, `error`.
   - Metadata is now first-class at runtime via `snapshot.stepMeta` and `updateStepMetadata(stepId, updater)`.
   - Typed observability stream via `subscribeEvent(...)` with lifecycle/navigation/metadata events.
   - Expanded persistence model with versioning/migration support and safer hydration of invalid data.
@@ -144,7 +144,7 @@
 
   ### New and improved
   - Protocol remains version `3` (no protocol version bump in this release).
-  - Richer command set for runtime control: `goToNextStep`, `terminateMachine`, `completeJourney`, `goToStepById`, `goToPreviousStep`, `goToLastVisitedStep`, `updateStepMetadata`, `send`, `resetMachine`, `clearStepError`.
+  - Richer command set for runtime control: `goToNextStep`, `terminateJourney`, `completeJourney`, `goToStepById`, `goToPreviousStep`, `goToLastVisitedStep`, `updateStepMetadata`, `send`, `resetJourney`, `clearStepError`.
   - Snapshot payloads now include full v2 runtime state: `currentStepId`, `history.timeline`, `history.index`, `context`, `visited`, `stepMeta`, `status`, `async`.
   - Safer runtime defaults: bridge enabled by default in non-production; disabled by default in production unless explicitly enabled; commands disabled by default in production unless explicitly enabled.
 

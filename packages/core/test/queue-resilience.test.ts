@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "mid" | "end";
-type Event = "goToNextStep" | "back";
+type EventMap = { back: unknown };
 type Context = { count: number };
 
 const deferred = <T>() => {
@@ -15,46 +15,55 @@ const deferred = <T>() => {
 };
 
 const createJourney = (
-  midEffect?: (context: Context) => Promise<Context>
-): JourneyDefinition<Context, StepId, Event> => ({
-  initial: "start",
-  context: { count: 0 },
-  steps: {
-    start: {},
-    mid: {},
-    end: {}
-  },
-  transitions: [
-    { from: "start", event: "goToNextStep", to: "mid" },
-    {
-      from: "mid",
-      event: "goToNextStep",
-      to: "end",
-      ...(midEffect
-        ? {
-            effect: ({ context }: { context: Context }) => midEffect(context)
+  midGuard?: () => Promise<number>
+): JourneyDefinition<Context, StepId, EventMap> => {
+  let resolvedCount = 0;
+
+  return {
+    initial: "start",
+    context: { count: 0 },
+    steps: {
+      start: {},
+      mid: {},
+      end: {}
+    },
+    transitions: {
+      start: { goToNextStep: [{ to: "mid" }] },
+      mid: {
+        goToNextStep: [
+          {
+            to: "end",
+            ...(midGuard
+              ? {
+                  when: async () => {
+                    resolvedCount = await midGuard();
+                    return true;
+                  },
+                  updateContext: ({ context }: { context: Context }) => ({
+                    ...context,
+                    count: resolvedCount
+                  })
+                }
+              : {})
           }
-        : {})
+        ]
+      }
     }
-  ]
-});
+  };
+};
 
 describe("action queue resilience", () => {
   it("serializes overlapping sends and keeps timeline consistent", async () => {
-    const block = deferred<Context>();
-    const machine = createJourneyMachine(
-      createJourney(async (context) => {
-        const next = await block.promise;
-        return { ...context, count: next.count };
-      })
-    );
+    const block = deferred<number>();
+    const machine = createJourneyMachine(createJourney(async () => await block.promise));
+    await machine.start();
 
     await machine.send({ type: "goToNextStep" });
 
     const inFlight = machine.send({ type: "goToNextStep" });
-    const queuedBack = machine.send({ type: "back" });
+    const queuedBack = machine.goToPreviousStep();
 
-    block.resolve({ count: 9 });
+    block.resolve(9);
 
     await inFlight;
     await queuedBack;
@@ -68,6 +77,7 @@ describe("action queue resilience", () => {
 
   it("queues goToPreviousStep after transition send", async () => {
     const machine = createJourneyMachine(createJourney());
+    await machine.start();
 
     const nextA = machine.send({ type: "goToNextStep" });
     const nextB = machine.send({ type: "goToNextStep" });

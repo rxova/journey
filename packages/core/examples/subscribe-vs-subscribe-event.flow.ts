@@ -11,16 +11,18 @@ export const subscribeJourney: JourneyDefinition<Ctx, StepId> = {
     review: {},
     done: {}
   },
-  transitions: [
-    { from: "start", event: "goToNextStep", to: "review" },
-    {
-      from: "review",
-      event: "goToNextStep",
-      to: "done",
-      effect: ({ context }) => ({ ...context, submitted: true })
+  transitions: {
+    start: { goToNextStep: [{ to: "review" }] },
+    review: {
+      goToNextStep: [
+        {
+          to: "done",
+          updateContext: ({ context }) => ({ ...context, submitted: true })
+        }
+      ]
     },
-    { from: "done", event: "completeJourney" }
-  ]
+    done: { completeJourney: [{}] }
+  }
 };
 
 export const createSubscribeExampleMachine = () =>

@@ -1,10 +1,9 @@
 import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "optional" | "review";
-type Event = "goToNextStep" | "completeJourney";
 type Ctx = { includeOptional: boolean };
 
-export const conditionalSkipJourney: JourneyDefinition<Ctx, StepId, Event> = {
+export const conditionalSkipJourney: JourneyDefinition<Ctx, StepId> = {
   initial: "start",
   context: { includeOptional: false },
   steps: {
@@ -12,23 +11,16 @@ export const conditionalSkipJourney: JourneyDefinition<Ctx, StepId, Event> = {
     optional: {},
     review: {}
   },
-  transitions: [
-    {
-      from: "start",
-      event: "goToNextStep",
-      to: "optional",
-      when: ({ context }) => context.includeOptional
+  transitions: {
+    start: {
+      goToNextStep: [
+        { to: "optional", when: ({ context }) => context.includeOptional },
+        { to: "review", when: ({ context }) => !context.includeOptional }
+      ]
     },
-    {
-      from: "start",
-      event: "goToNextStep",
-      to: "review",
-      when: ({ context }) => !context.includeOptional
-    },
-    { from: "optional", event: "goToNextStep", to: "review" },
-    { from: "review", event: "completeJourney" }
-  ]
+    optional: { goToNextStep: [{ to: "review" }] },
+    review: { completeJourney: [{}] }
+  }
 };
 
-export const createConditionalSkipMachine = () =>
-  createJourneyMachine<Ctx, StepId, Event>(conditionalSkipJourney);
+export const createConditionalSkipMachine = () => createJourneyMachine(conditionalSkipJourney);

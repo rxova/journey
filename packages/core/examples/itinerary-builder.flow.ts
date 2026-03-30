@@ -1,7 +1,7 @@
 import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "destination" | "dates" | "lodging" | "itinerary" | "confirmExit";
-type Event = "goToNextStep" | "back" | "requestClose" | "terminateJourney" | "completeJourney";
+type EventMap = { back: unknown; requestClose: unknown };
 
 type ItineraryContext = {
   flexibleDates: boolean;
@@ -9,7 +9,7 @@ type ItineraryContext = {
   dirty: boolean;
 };
 
-export const itineraryBuilderJourney: JourneyDefinition<ItineraryContext, StepId, Event> = {
+export const itineraryBuilderJourney: JourneyDefinition<ItineraryContext, StepId, EventMap> = {
   initial: "destination",
   context: {
     flexibleDates: false,
@@ -23,48 +23,38 @@ export const itineraryBuilderJourney: JourneyDefinition<ItineraryContext, StepId
     itinerary: {},
     confirmExit: {}
   },
-  transitions: [
-    {
-      from: "destination",
-      event: "goToNextStep",
-      to: "dates",
-      when: ({ context }) => context.flexibleDates
+  transitions: {
+    destination: {
+      goToNextStep: [
+        { to: "dates", when: ({ context }) => context.flexibleDates },
+        {
+          to: "lodging",
+          when: ({ context }) => !context.flexibleDates && context.needsLodging
+        },
+        {
+          to: "itinerary",
+          when: ({ context }) => !context.flexibleDates && !context.needsLodging
+        }
+      ]
     },
-    {
-      from: "destination",
-      event: "goToNextStep",
-      to: "lodging",
-      when: ({ context }) => !context.flexibleDates && context.needsLodging
+    dates: {
+      goToNextStep: [
+        { to: "lodging", when: ({ context }) => context.needsLodging },
+        { to: "itinerary", when: ({ context }) => !context.needsLodging }
+      ]
     },
-    {
-      from: "destination",
-      event: "goToNextStep",
-      to: "itinerary",
-      when: ({ context }) => !context.flexibleDates && !context.needsLodging
-    },
-    {
-      from: "dates",
-      event: "goToNextStep",
-      to: "lodging",
-      when: ({ context }) => context.needsLodging
-    },
-    {
-      from: "dates",
-      event: "goToNextStep",
-      to: "itinerary",
-      when: ({ context }) => !context.needsLodging
-    },
-    { from: "lodging", event: "goToNextStep", to: "itinerary" },
-    {
-      from: "*",
-      event: "requestClose",
-      to: "confirmExit",
-      when: ({ context }) => context.dirty
-    },
-    { from: "*", event: "terminateJourney" },
-    { from: "itinerary", event: "completeJourney" }
-  ]
+    lodging: { goToNextStep: [{ to: "itinerary" }] },
+    itinerary: { completeJourney: [{}] },
+    global: {
+      requestClose: [
+        {
+          to: "confirmExit",
+          when: ({ context }) => context.dirty
+        }
+      ],
+      terminateJourney: [{}]
+    }
+  }
 };
 
-export const createItineraryBuilderMachine = () =>
-  createJourneyMachine<ItineraryContext, StepId, Event>(itineraryBuilderJourney);
+export const createItineraryBuilderMachine = () => createJourneyMachine(itineraryBuilderJourney);

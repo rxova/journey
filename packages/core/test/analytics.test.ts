@@ -1,0 +1,275 @@
+import { describe, expect, it, vi } from "vitest";
+
+import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
+import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
+
+type StepId = "start" | "review";
+type Context = {
+  count: number;
+  account: {
+    id: string;
+    secret: string;
+  };
+};
+type Meta = {
+  title: string;
+};
+
+const createJourney = (
+  options: {
+    failOnNextStep?: boolean;
+    reviewMeta?: Meta | undefined;
+  } = {}
+): JourneyDefinition<Context, StepId, Record<never, never>, Meta> => {
+  const failOnNextStep = options.failOnNextStep ?? false;
+  const reviewMeta =
+    "reviewMeta" in options ? options.reviewMeta : ({ title: "Review" } satisfies Meta);
+
+  return {
+    initial: "start",
+    context: {
+      count: 0,
+      account: {
+        id: "user-1",
+        secret: "do-not-track"
+      }
+    },
+    steps: {
+      start: { meta: { title: "Start" } },
+      review: reviewMeta === undefined ? {} : { meta: reviewMeta }
+    },
+    transitions: {
+      start: {
+        goToNextStep: [
+          {
+            id: "start-review",
+            to: "review",
+            ...(failOnNextStep
+              ? {
+                  updateContext: () => {
+                    throw new Error("transition failed");
+                  }
+                }
+              : {})
+          }
+        ]
+      },
+      review: {
+        completeJourney: true
+      }
+    }
+  };
+};
+
+const findTracked = (track: ReturnType<typeof vi.fn>, name: string) =>
+  track.mock.calls.find(([event]) => event.name === name)?.[0];
+
+describe("analytics plugin", () => {
+  it("tracks normalized journey events with projected context and step metadata", async () => {
+    const track = vi.fn();
+    const machine = createJourneyMachine(createJourney(), {
+      plugins: [
+        createAnalyticsPlugin({
+          track,
+          machineId: "checkout",
+          includeStepMeta: true
+        })
+      ] as const
+    });
+
+    await machine.start();
+    await machine.goToNextStep();
+    await machine.completeJourney();
+
+    const names = track.mock.calls.map(([event]) => event.name);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "journey_started",
+        "step_viewed",
+        "transition_started",
+        "transition_succeeded",
+        "journey_completed"
+      ])
+    );
+
+    const started = track.mock.calls.find(([event]) => event.name === "journey_started")?.[0];
+    expect(started?.machineId).toBe("checkout");
+    expect(started?.payload.context).toEqual({
+      count: 0,
+      account: {
+        id: "user-1",
+        secret: "do-not-track"
+      }
+    });
+    expect(started?.payload.stepMeta).toEqual({ title: "Start" });
+
+    const transitionSucceeded = track.mock.calls.find(
+      ([event]) => event.name === "transition_succeeded"
+    )?.[0];
+    expect(transitionSucceeded?.payload.transitionId).toBe("start-review");
+    expect(transitionSucceeded?.payload.toStepMeta).toEqual({ title: "Review" });
+  });
+
+  it("supports custom analytics events through the machine extension", () => {
+    const track = vi.fn();
+    const machine = createJourneyMachine(createJourney(), {
+      plugins: [
+        createAnalyticsPlugin({
+          track,
+          machineId: "checkout"
+        })
+      ] as const
+    });
+
+    const tracked = machine.trackAnalyticsEvent("checkout_abandoned");
+
+    expect(tracked.name).toBe("checkout_abandoned");
+    expect(tracked.machineId).toBe("checkout");
+    expect(tracked.payload).toEqual({});
+    expect(track).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "checkout_abandoned",
+        machineId: "checkout",
+        payload: {}
+      })
+    );
+  });
+
+  it("routes tracker failures to onError without breaking the machine", async () => {
+    const onError = vi.fn();
+    const machine = createJourneyMachine(createJourney(), {
+      plugins: [
+        createAnalyticsPlugin({
+          track: () => {
+            throw new Error("tracker failed");
+          },
+          onError
+        })
+      ] as const
+    });
+
+    await machine.start();
+    await machine.goToNextStep();
+
+    expect(onError).toHaveBeenCalled();
+    expect(machine.getSnapshot().currentStepId).toBe("review");
+  });
+
+  it("tracks navigation and termination events when step metadata is missing", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-29T00:00:00.000Z"));
+
+    try {
+      const track = vi.fn();
+      const machine = createJourneyMachine(createJourney({ reviewMeta: undefined }), {
+        plugins: [
+          createAnalyticsPlugin({
+            track,
+            includeStepMeta: true
+          })
+        ] as const
+      });
+
+      await machine.start();
+
+      vi.setSystemTime(new Date("2026-03-29T00:00:02.000Z"));
+      await machine.goToNextStep();
+
+      vi.setSystemTime(new Date("2026-03-29T00:00:05.000Z"));
+      await machine.goToPreviousStep();
+
+      vi.setSystemTime(new Date("2026-03-29T00:00:09.000Z"));
+      await machine.goToLastVisitedStep();
+
+      vi.setSystemTime(new Date("2026-03-29T00:00:12.000Z"));
+      await machine.terminateJourney();
+
+      const eventNames = track.mock.calls.map(([event]) => event.name);
+      expect(eventNames).toEqual(
+        expect.arrayContaining([
+          "step_exited",
+          "navigation_previous",
+          "navigation_last_visited",
+          "journey_terminated"
+        ])
+      );
+
+      const transitionSucceeded = findTracked(track, "transition_succeeded");
+      expect(transitionSucceeded?.machineId).toBeUndefined();
+      expect(transitionSucceeded?.payload.fromStepMeta).toEqual({ title: "Start" });
+      expect(transitionSucceeded?.payload).not.toHaveProperty("toStepMeta");
+
+      const reviewViewed = track.mock.calls.find(
+        ([event]) => event.name === "step_viewed" && event.payload.stepId === "review"
+      )?.[0];
+      expect(reviewViewed?.payload).not.toHaveProperty("stepMeta");
+
+      const exitedStart = track.mock.calls.find(
+        ([event]) => event.name === "step_exited" && event.payload.stepId === "start"
+      )?.[0];
+      expect(exitedStart?.payload.stepMeta).toEqual({ title: "Start" });
+      expect(exitedStart?.payload.dwellMs).toBe(2000);
+
+      const navigationPrevious = findTracked(track, "navigation_previous");
+      expect(navigationPrevious?.payload).toMatchObject({
+        from: "review",
+        to: "start",
+        requestedSteps: 1,
+        appliedSteps: 1,
+        toStepMeta: { title: "Start" }
+      });
+      expect(navigationPrevious?.payload).not.toHaveProperty("fromStepMeta");
+
+      const navigationLastVisited = findTracked(track, "navigation_last_visited");
+      expect(navigationLastVisited?.payload).toMatchObject({
+        from: "start",
+        to: "review",
+        fromStepMeta: { title: "Start" }
+      });
+      expect(navigationLastVisited?.payload).not.toHaveProperty("toStepMeta");
+
+      const terminated = findTracked(track, "journey_terminated");
+      expect(terminated?.payload.stepId).toBe("review");
+      expect(terminated?.payload.durationMs).toBe(12000);
+      expect(terminated?.payload).not.toHaveProperty("stepMeta");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("tracks transition failures and warns in development when track throws without onError", async () => {
+    vi.stubGlobal("__DEV__", true);
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const track = vi.fn(() => {
+      throw new Error("tracker failed");
+    });
+    const machine = createJourneyMachine(createJourney({ failOnNextStep: true }), {
+      plugins: [
+        createAnalyticsPlugin({
+          track
+        })
+      ] as const
+    });
+
+    try {
+      await machine.start();
+      await machine.goToNextStep();
+
+      const failed = findTracked(track, "transition_failed");
+      expect(failed?.payload).toMatchObject({
+        from: "start",
+        eventType: "goToNextStep",
+        transitionId: "start-review"
+      });
+      expect(failed?.payload.error).toBeInstanceOf(Error);
+      expect(machine.getSnapshot().currentStepId).toBe("start");
+      expect(warnSpy).toHaveBeenCalledWith(
+        "Journey analytics track() threw without an onError handler.",
+        expect.any(Error)
+      );
+    } finally {
+      warnSpy.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+});

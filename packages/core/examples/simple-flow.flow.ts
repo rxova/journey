@@ -1,23 +1,16 @@
 import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "one" | "two" | "three";
-type Event = "goToNextStep" | "completeJourney";
 type Ctx = { name: string };
 
-export const simpleJourney: JourneyDefinition<Ctx, StepId, Event> = {
-  initial: "one",
+export const simpleJourney: JourneyDefinition<Ctx, StepId> = {
   context: { name: "" },
   steps: {
     one: {},
     two: {},
     three: {}
   },
-  transitions: [
-    { from: "one", event: "goToNextStep", to: "two" },
-    { from: "two", event: "goToNextStep", to: "three" },
-    { from: "three", event: "completeJourney" }
-  ]
+  transitions: ["one", "two", "three"]
 };
 
-export const createSimpleJourneyMachine = () =>
-  createJourneyMachine<Ctx, StepId, Event>(simpleJourney);
+export const createSimpleJourneyMachine = () => createJourneyMachine(simpleJourney);

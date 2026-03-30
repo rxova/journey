@@ -1,0 +1,186 @@
+import type {
+  JourneyJsonObject,
+  JourneyMachine,
+  JourneyMachinePlugin,
+  JourneyObservationEvent,
+  JourneyReplayEntry,
+  JourneyReplayExportOptions,
+  JourneyReplayPluginOptions,
+  JourneyReplaySession,
+  JourneySnapshot
+} from "../../types";
+
+const normalizeMaxEntries = (value: number | undefined) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 500;
+  }
+
+  return Math.max(1, Math.trunc(value));
+};
+
+const toSerializable = (value: unknown, seen = new WeakSet<object>()): unknown => {
+  if (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return value;
+  }
+
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
+
+  if (typeof value === "undefined") {
+    return null;
+  }
+
+  if (typeof value === "function" || typeof value === "symbol") {
+    return `[unsupported:${typeof value}]`;
+  }
+
+  if (value instanceof Error) {
+    return {
+      name: value.name,
+      message: value.message,
+      ...(value.stack ? { stack: value.stack } : {})
+    };
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => toSerializable(item, seen));
+  }
+
+  if (typeof value === "object") {
+    if (seen.has(value)) {
+      return "[circular]";
+    }
+
+    seen.add(value);
+    const output: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value)) {
+      output[key] = toSerializable(item, seen);
+    }
+    seen.delete(value);
+    return output;
+  }
+
+  return String(value);
+};
+
+/** Serializes a replay session into a JSON string safe for logging or export. */
+export const serializeReplaySession = <
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TEventMap extends Record<string, unknown> = Record<never, never>
+>(
+  session: JourneyReplaySession<TContext, TStepId, TEventMap>,
+  options?: JourneyReplayExportOptions
+) => JSON.stringify(toSerializable(session), null, options?.pretty ? 2 : undefined);
+
+export type JourneyReplayMachineExtension<
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TEventMap extends Record<string, unknown> = Record<never, never>
+> = {
+  getReplaySession: () => JourneyReplaySession<TContext, TStepId, TEventMap>;
+  clearReplaySession: () => void;
+  exportReplaySession: (options?: JourneyReplayExportOptions) => string;
+};
+
+export type JourneyReplayMachine<
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TStepMeta = unknown,
+  THandlers extends Record<string, unknown> = Record<never, never>
+> = JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers> &
+  JourneyReplayMachineExtension<TContext, TStepId, TEventMap>;
+
+/** Creates a plugin that records snapshot and lifecycle activity into a replay session. */
+export const createReplayPlugin = (options: JourneyReplayPluginOptions = {}) => {
+  const captureEvents = options.captureEvents ?? true;
+  const captureSnapshots = options.captureSnapshots ?? true;
+  const maxEntries = normalizeMaxEntries(options.maxEntries);
+
+  let initialSnapshot: JourneySnapshot<JourneyJsonObject, string> | null = null;
+  const entries: JourneyReplayEntry<JourneyJsonObject, string, Record<string, unknown>>[] = [];
+  let truncated = false;
+  let unsubscribeEvents: (() => void) | undefined;
+
+  const pushEntry = (
+    entry: JourneyReplayEntry<JourneyJsonObject, string, Record<string, unknown>>
+  ) => {
+    if (entries.length >= maxEntries) {
+      entries.shift();
+      truncated = true;
+    }
+
+    entries.push(entry);
+  };
+
+  const buildSession = () =>
+    ({
+      version: 1 as const,
+      initialSnapshot,
+      entries: [...entries],
+      truncated
+    }) satisfies JourneyReplaySession<JourneyJsonObject, string, Record<string, unknown>>;
+
+  return {
+    name: "replay",
+    setup: () => ({
+      hydrateSnapshot: (snapshot) => {
+        initialSnapshot = snapshot as JourneySnapshot<JourneyJsonObject, string>;
+        return snapshot;
+      },
+      onSnapshotChange: ({ snapshot, reason }) => {
+        if (!captureSnapshots) {
+          return;
+        }
+
+        pushEntry({
+          kind: "snapshot",
+          timestamp: Date.now(),
+          reason,
+          snapshot: snapshot as JourneySnapshot<JourneyJsonObject, string>
+        });
+      },
+      augmentMachine: ({ machine }) => {
+        if (captureEvents) {
+          unsubscribeEvents = machine.subscribeEvent((event) => {
+            pushEntry({
+              kind: "event",
+              timestamp: event.timestamp,
+              event: event as JourneyObservationEvent<string, Record<string, unknown>>
+            });
+          });
+        }
+
+        return {
+          getReplaySession: () =>
+            buildSession() as JourneyReplaySession<
+              JourneyJsonObject,
+              string,
+              Record<string, unknown>
+            >,
+          clearReplaySession: () => {
+            initialSnapshot = machine.getSnapshot() as JourneySnapshot<JourneyJsonObject, string>;
+            entries.length = 0;
+            truncated = false;
+          },
+          exportReplaySession: (exportOptions?: JourneyReplayExportOptions) =>
+            serializeReplaySession(buildSession(), exportOptions)
+        };
+      },
+      dispose: () => {
+        unsubscribeEvents?.();
+      }
+    })
+  } satisfies JourneyMachinePlugin;
+};

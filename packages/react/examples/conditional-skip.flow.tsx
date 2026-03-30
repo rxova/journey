@@ -1,58 +1,32 @@
-import React from "react";
+import { createJourney } from "@rxova/journey-react";
+import { conditionalSkipJourney } from "../../core/examples/conditional-skip.flow";
 
-import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
+export { conditionalSkipJourney } from "../../core/examples/conditional-skip.flow";
 
-type StepId = "start" | "optional" | "review";
-type Ctx = { includeOptional: boolean };
+const journey = createJourney(conditionalSkipJourney);
 
 const Start = () => {
-  const api = bindings.useJourneyApi();
+  const api = journey.useJourneyApi();
   return <button onClick={() => api.goToNextStep()}>Next</button>;
 };
 const Optional = () => {
-  const api = bindings.useJourneyApi();
+  const api = journey.useJourneyApi();
   return <button onClick={() => api.goToNextStep()}>Next</button>;
 };
 const Review = () => {
-  const api = bindings.useJourneyApi();
+  const api = journey.useJourneyApi();
   return <button onClick={() => api.completeJourney()}>Submit</button>;
 };
-
-export const conditionalSkipJourney: JourneyReactDefinition<Ctx, StepId> = {
-  initial: "start",
-  context: { includeOptional: false },
-  steps: {
-    start: { component: Start },
-    optional: { component: Optional },
-    review: { component: Review }
-  },
-  transitions: [
-    {
-      from: "start",
-      event: "goToNextStep",
-      to: "optional",
-      when: ({ context }) => context.includeOptional
-    },
-    {
-      from: "start",
-      event: "goToNextStep",
-      to: "review",
-      when: ({ context }) => !context.includeOptional
-    },
-    { from: "optional", event: "goToNextStep", to: "review" },
-    { from: "review", event: "completeJourney" }
-  ]
+const views = {
+  start: Start,
+  optional: Optional,
+  review: Review
 };
 
-const bindings = createJourneyBindings(conditionalSkipJourney);
-
 export const ConditionalSkipExample = () => {
-  const Provider = bindings.Provider;
-  const StepRenderer = bindings.StepRenderer;
-
   return (
-    <Provider>
-      <StepRenderer />
-    </Provider>
+    <journey.JourneyProvider views={views}>
+      <journey.StepRenderer />
+    </journey.JourneyProvider>
   );
 };

@@ -1,17 +1,17 @@
-import React from "react";
+import { createJourney } from "@rxova/journey-react";
+import { simpleBackJourney } from "../../core/examples/simple-back.flow";
 
-import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
+export { simpleBackJourney } from "../../core/examples/simple-back.flow";
 
-type StepId = "one" | "two" | "three";
-type Ctx = Record<string, never>;
+const journey = createJourney(simpleBackJourney);
 
 const One = () => {
-  const api = bindings.useJourneyApi();
+  const api = journey.useJourneyApi();
   return <button onClick={() => api.goToNextStep()}>Go</button>;
 };
 
 const Two = () => {
-  const api = bindings.useJourneyApi();
+  const api = journey.useJourneyApi();
   return (
     <div>
       <button onClick={() => api.goToPreviousStep()}>Back</button>
@@ -21,33 +21,19 @@ const Two = () => {
 };
 
 const Three = () => {
-  const api = bindings.useJourneyApi();
+  const api = journey.useJourneyApi();
   return <button onClick={() => api.goToPreviousStep()}>Back</button>;
 };
-
-export const simpleBackJourney: JourneyReactDefinition<Ctx, StepId> = {
-  initial: "one",
-  context: {},
-  steps: {
-    one: { component: One },
-    two: { component: Two },
-    three: { component: Three }
-  },
-  transitions: [
-    { from: "one", event: "goToNextStep", to: "two" },
-    { from: "two", event: "goToNextStep", to: "three" }
-  ]
+const views = {
+  one: One,
+  two: Two,
+  three: Three
 };
 
-const bindings = createJourneyBindings(simpleBackJourney);
-
 export const SimpleBackJourneyExample = () => {
-  const Provider = bindings.Provider;
-  const StepRenderer = bindings.StepRenderer;
-
   return (
-    <Provider>
-      <StepRenderer />
-    </Provider>
+    <journey.JourneyProvider views={views}>
+      <journey.StepRenderer />
+    </journey.JourneyProvider>
   );
 };

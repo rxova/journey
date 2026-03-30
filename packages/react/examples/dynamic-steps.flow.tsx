@@ -1,67 +1,47 @@
 import React from "react";
 
-import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
-
-type StepId = string;
-type Ctx = { includeSurvey: boolean };
-
-const Start = () => {
-  const api = bindings.useJourneyApi();
-  return <button onClick={() => api.goToNextStep()}>Start</button>;
-};
-
-const Details = () => {
-  const api = bindings.useJourneyApi();
-  return <button onClick={() => api.goToNextStep()}>Continue</button>;
-};
-
-const Survey = () => {
-  const api = bindings.useJourneyApi();
-  return <button onClick={() => api.goToNextStep()}>Finish survey</button>;
-};
-
-const Review = () => {
-  const api = bindings.useJourneyApi();
-  return <button onClick={() => api.completeJourney()}>Submit</button>;
-};
-
-const buildJourney = (includeSurvey: boolean): JourneyReactDefinition<Ctx, StepId> => ({
-  initial: "start",
-  context: { includeSurvey },
-  steps: includeSurvey
-    ? {
-        start: { component: Start },
-        details: { component: Details },
-        survey: { component: Survey },
-        review: { component: Review }
-      }
-    : {
-        start: { component: Start },
-        details: { component: Details },
-        review: { component: Review }
-      },
-  transitions: includeSurvey
-    ? [
-        { from: "start", event: "goToNextStep", to: "details" },
-        { from: "details", event: "goToNextStep", to: "survey" },
-        { from: "survey", event: "goToNextStep", to: "review" },
-        { from: "review", event: "completeJourney" }
-      ]
-    : [
-        { from: "start", event: "goToNextStep", to: "details" },
-        { from: "details", event: "goToNextStep", to: "review" },
-        { from: "review", event: "completeJourney" }
-      ]
-});
-
-const bindings = createJourneyBindings(buildJourney(false));
+import { createJourney } from "@rxova/journey-react";
+import { buildDynamicStepsJourney } from "../../core/examples/dynamic-steps.flow";
 
 export const DynamicStepsExample = () => {
-  const Provider = bindings.Provider;
-  const StepRenderer = bindings.StepRenderer;
   const [includeSurvey, setIncludeSurvey] = React.useState(false);
+  const journey = React.useMemo(
+    () => createJourney(buildDynamicStepsJourney(includeSurvey)),
+    [includeSurvey]
+  );
 
-  const journey = React.useMemo(() => buildJourney(includeSurvey), [includeSurvey]);
+  React.useEffect(() => {
+    return () => {
+      journey.dispose();
+    };
+  }, [journey]);
+
+  const Start = () => {
+    const api = journey.useJourneyApi();
+    return <button onClick={() => api.goToNextStep()}>Start</button>;
+  };
+
+  const Details = () => {
+    const api = journey.useJourneyApi();
+    return <button onClick={() => api.goToNextStep()}>Continue</button>;
+  };
+
+  const Survey = () => {
+    const api = journey.useJourneyApi();
+    return <button onClick={() => api.goToNextStep()}>Finish survey</button>;
+  };
+
+  const Review = () => {
+    const api = journey.useJourneyApi();
+    return <button onClick={() => api.completeJourney()}>Submit</button>;
+  };
+
+  const views = {
+    start: Start,
+    details: Details,
+    survey: Survey,
+    review: Review
+  };
 
   return (
     <div>
@@ -69,12 +49,12 @@ export const DynamicStepsExample = () => {
         {includeSurvey ? "Remove survey step" : "Add survey step"}
       </button>
       <p>
-        Dynamic step is {includeSurvey ? "enabled" : "disabled"}. Toggling rebuilds the journey
-        graph; if you want a reset, pass resetOnJourneyChange or remount the provider.
+        Dynamic step is {includeSurvey ? "enabled" : "disabled"}. Toggling swaps in a rebuilt
+        machine with a different graph, so state resets with the new definition.
       </p>
-      <Provider journey={journey}>
-        <StepRenderer />
-      </Provider>
+      <journey.JourneyProvider views={views}>
+        <journey.StepRenderer />
+      </journey.JourneyProvider>
     </div>
   );
 };

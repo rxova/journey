@@ -1,42 +1,28 @@
-import React from "react";
+import { createJourney } from "@rxova/journey-react";
+import { simpleSequenceJourney } from "../../core/examples/simple-sequence.flow";
 
-import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
+export { simpleSequenceJourney } from "../../core/examples/simple-sequence.flow";
 
-type StepId = "s1" | "s2";
-type Ctx = Record<string, never>;
+const journey = createJourney(simpleSequenceJourney);
 
 const S1 = () => {
-  const api = bindings.useJourneyApi();
+  const api = journey.useJourneyApi();
   return <button onClick={() => api.goToNextStep()}>Continue</button>;
 };
 
 const S2 = () => {
-  const api = bindings.useJourneyApi();
+  const api = journey.useJourneyApi();
   return <button onClick={() => api.completeJourney()}>Done</button>;
 };
-
-export const simpleSequenceJourney: JourneyReactDefinition<Ctx, StepId> = {
-  initial: "s1",
-  context: {},
-  steps: {
-    s1: { component: S1 },
-    s2: { component: S2 }
-  },
-  transitions: [
-    { from: "s1", event: "goToNextStep", to: "s2" },
-    { from: "s2", event: "completeJourney" }
-  ]
+const views = {
+  s1: S1,
+  s2: S2
 };
 
-const bindings = createJourneyBindings(simpleSequenceJourney);
-
 export const SimpleSequenceJourneyExample = () => {
-  const Provider = bindings.Provider;
-  const StepRenderer = bindings.StepRenderer;
-
   return (
-    <Provider>
-      <StepRenderer />
-    </Provider>
+    <journey.JourneyProvider views={views}>
+      <journey.StepRenderer />
+    </journey.JourneyProvider>
   );
 };

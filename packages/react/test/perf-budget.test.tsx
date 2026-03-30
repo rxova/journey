@@ -5,39 +5,34 @@ import React from "react";
 import { act } from "react";
 import { render } from "@testing-library/react";
 
-import {
-  createJourneyBindings,
-  type JourneyApi,
-  type JourneyReactDefinition
-} from "@rxova/journey-react";
+import { createJourney, type JourneyApi } from "@rxova/journey-react";
+import type { JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "details" | "review";
-type Event = "goToNextStep" | "back";
+type EventMap = { back: unknown };
 type Ctx = { count: number };
 
-const Step = () => <div />;
-
-const journey: JourneyReactDefinition<Ctx, StepId, Event> = {
+const journeyDefinition: JourneyDefinition<Ctx, StepId, EventMap> = {
   initial: "start",
   context: { count: 0 },
   steps: {
-    start: { component: Step },
-    details: { component: Step },
-    review: { component: Step }
+    start: { meta: { label: "Start" } },
+    details: { meta: { label: "Details" } },
+    review: { meta: { label: "Review" } }
   },
-  transitions: [
-    { from: "start", event: "goToNextStep", to: "details" },
-    { from: "details", event: "goToNextStep", to: "review" },
-    { from: "review", event: "goToNextStep", to: "start" }
-  ]
+  transitions: {
+    start: { goToNextStep: [{ to: "details" }] },
+    details: { goToNextStep: [{ to: "review" }] },
+    review: { goToNextStep: [{ to: "start" }] }
+  }
 };
 
-const bindings = createJourneyBindings(journey);
+const journey = createJourney(journeyDefinition);
 
-let latestApi: JourneyApi<Ctx, StepId, Event> | null = null;
+let latestApi: JourneyApi<Ctx, StepId, EventMap> | null = null;
 
 const Harness = () => {
-  const api = bindings.useJourneyApi();
+  const api = journey.useJourneyApi();
 
   React.useLayoutEffect(() => {
     latestApi = api;
@@ -50,11 +45,7 @@ describe("react performance budget", () => {
   it("runs bindings-driven transitions within budget", async () => {
     latestApi = null;
 
-    const { unmount } = render(
-      <bindings.Provider>
-        <Harness />
-      </bindings.Provider>
-    );
+    const { unmount } = render(<Harness />);
 
     expect(latestApi).not.toBeNull();
 
@@ -78,5 +69,6 @@ describe("react performance budget", () => {
     expect(duration).toBeLessThan(budgetMs);
 
     unmount();
+    journey.dispose();
   });
 });

@@ -38,6 +38,14 @@
       },
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./client": {
+      "types": {
+        "import": "./dist/client.d.ts",
+        "require": "./dist/client.d.cts"
+      },
+      "import": "./dist/client.js",
+      "require": "./dist/client.cjs"
     }
   },
   "files": [
@@ -46,13 +54,14 @@
     "LICENSE"
   ],
   "sideEffects": false,
-  "dependencies": {
-    "@rxova/journey-core": "workspace:^"
-  },
   "peerDependencies": {
+    "@rxova/journey-core": "workspace:^",
     "react": ">=18.2.0"
   },
   "peerDependenciesMeta": {
+    "@rxova/journey-core": {
+      "optional": false
+    },
     "react": {
       "optional": false
     }
@@ -69,10 +78,10 @@
   },
   "size-limit": [
     {
-      "name": "react/createJourneyBindings",
+      "name": "react/createJourney",
       "path": "dist/index.js",
-      "import": "{ createJourneyBindings }",
-      "limit": "7 kB"
+      "import": "{ createJourney }",
+      "limit": "2 kB"
     }
   ],
   "devDependencies": {

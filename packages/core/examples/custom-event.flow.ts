@@ -1,10 +1,10 @@
 import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "idle" | "failed" | "done";
-type Event = "retry";
+type EventMap = { retry: unknown };
 type Ctx = { tries: number };
 
-export const customEventJourney: JourneyDefinition<Ctx, StepId, Event> = {
+export const customEventJourney: JourneyDefinition<Ctx, StepId, EventMap> = {
   initial: "idle",
   context: { tries: 0 },
   steps: {
@@ -12,21 +12,20 @@ export const customEventJourney: JourneyDefinition<Ctx, StepId, Event> = {
     failed: {},
     done: {}
   },
-  transitions: [
-    {
-      from: "idle",
-      event: "retry",
-      to: "failed",
-      effect: ({ context }) => ({ ...context, tries: context.tries + 1 })
+  transitions: {
+    idle: {
+      retry: [
+        {
+          to: "failed",
+          updateContext: ({ context }) => ({ ...context, tries: context.tries + 1 })
+        }
+      ]
     },
-    {
-      from: "failed",
-      event: "retry",
-      to: "done",
-      when: ({ context }) => context.tries > 0
+    failed: {
+      retry: [{ to: "done", when: ({ context }) => context.tries > 0 }]
     }
-  ]
+  }
 };
 
 export const createCustomEventMachine = () =>
-  createJourneyMachine<Ctx, StepId, Event>(customEventJourney);
+  createJourneyMachine<Ctx, StepId, EventMap>(customEventJourney);

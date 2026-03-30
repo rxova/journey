@@ -1,63 +1,37 @@
-import React from "react";
+import { createJourney } from "@rxova/journey-react";
+import { historyBackJourney } from "../../core/examples/history-back.flow";
 
-import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
+export { historyBackJourney } from "../../core/examples/history-back.flow";
 
-type StepId = "start" | "branchA" | "branchB" | "review";
-type Ctx = { branch: "A" | "B" };
+const journey = createJourney(historyBackJourney);
 
 const Start = () => {
-  const api = bindings.useJourneyApi();
+  const api = journey.useJourneyApi();
   return <button onClick={() => api.goToNextStep()}>Next</button>;
 };
 const BranchA = () => {
-  const api = bindings.useJourneyApi();
+  const api = journey.useJourneyApi();
   return <button onClick={() => api.goToNextStep()}>To review</button>;
 };
 const BranchB = () => {
-  const api = bindings.useJourneyApi();
+  const api = journey.useJourneyApi();
   return <button onClick={() => api.goToNextStep()}>To review</button>;
 };
 const Review = () => {
-  const api = bindings.useJourneyApi();
+  const api = journey.useJourneyApi();
   return <button onClick={() => api.goToPreviousStep()}>Back by history</button>;
 };
-
-export const historyBackJourney: JourneyReactDefinition<Ctx, StepId> = {
-  initial: "start",
-  context: { branch: "A" },
-  steps: {
-    start: { component: Start },
-    branchA: { component: BranchA },
-    branchB: { component: BranchB },
-    review: { component: Review }
-  },
-  transitions: [
-    {
-      from: "start",
-      event: "goToNextStep",
-      to: "branchA",
-      when: ({ context }) => context.branch === "A"
-    },
-    {
-      from: "start",
-      event: "goToNextStep",
-      to: "branchB",
-      when: ({ context }) => context.branch === "B"
-    },
-    { from: "branchA", event: "goToNextStep", to: "review" },
-    { from: "branchB", event: "goToNextStep", to: "review" }
-  ]
+const views = {
+  start: Start,
+  branchA: BranchA,
+  branchB: BranchB,
+  review: Review
 };
 
-const bindings = createJourneyBindings(historyBackJourney);
-
 export const HistoryBackExample = () => {
-  const Provider = bindings.Provider;
-  const StepRenderer = bindings.StepRenderer;
-
   return (
-    <Provider>
-      <StepRenderer />
-    </Provider>
+    <journey.JourneyProvider views={views}>
+      <journey.StepRenderer />
+    </journey.JourneyProvider>
   );
 };

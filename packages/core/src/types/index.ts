@@ -1,27 +1,60 @@
 export type {
+  JourneyAnalyticsEventName,
+  JourneyAnalyticsEventPayload,
+  JourneyAnalyticsPluginOptions,
+  JourneyAnalyticsTrackedEvent
+} from "./analytics.types";
+
+export type {
+  JourneyAutosavePluginOptions,
+  JourneyAutosaveState,
+  JourneyAutosaveStatus
+} from "./autosave.types";
+
+export type {
+  JourneyDiagnosticsIssue,
+  JourneyDiagnosticsIssueCode,
+  JourneyDiagnosticsIssueSeverity,
+  JourneyDiagnosticsOptions,
+  JourneyDiagnosticsResult,
+  JourneyDiagnosticsSummary
+} from "./diagnostics.types";
+
+export type {
   JourneyAsyncPhase,
   JourneyAsyncState,
   JourneyBaseEvent,
-  JourneyBuiltInEvent,
   JourneyBuiltInFrom,
+  JourneyBuiltInSendEvent,
+  JourneyCustomSendEvent,
+  JourneyComputed,
+  JourneyComputedBase,
   JourneyDefaultEventType,
   JourneyDefinition,
-  JourneyResolvedDefinition,
-  JourneyEvent,
-  JourneyEventPayloadMap,
-  JourneyGoToEvent,
-  JourneyGoToStepByIdEventType,
-  JourneyMachine,
-  JourneyMachineEventType,
-  JourneyMachinePayloadMap,
-  JourneyMachineOptions,
-  JourneyObservationEvent,
-  JourneySelector,
+  JourneyDefinitionBase,
   JourneyEqualityFn,
+  JourneyEvent,
+  JourneyJsonObject,
+  JourneyJsonPrimitive,
+  JourneyJsonValue,
+  JourneyExecutionPath,
+  JourneyExecutionPathEventType,
+  JourneyExecutionPathOptions,
+  JourneyExecutionPathsResult,
+  JourneyFullEventType,
+  JourneyGoToEvent,
+  JourneyGraphComputed,
+  JourneyHeadlessComputed,
+  JourneyHistory,
+  JourneyLinearComputed,
+  JourneyMode,
   JourneyPayloadFor,
+  JourneyResolvedDefinition,
+  JourneySelector,
   JourneySendEvent,
   JourneySendResult,
   JourneySnapshot,
+  JourneySnapshotStateBase,
   JourneyStatus,
   JourneyStepAsyncState,
   JourneyStepDefinition,
@@ -29,23 +62,69 @@ export type {
 } from "./journey.types";
 
 export type {
-  JourneyCreateTransitions,
-  JourneyEventTransition,
+  JourneyCompleteObservationEvent,
+  JourneyLifecycleErrorObservationEvent,
+  JourneyLifecycleErrorPhase,
+  JourneyLastVisitedNavigationObservationEvent,
+  JourneyObservationEvent,
+  JourneyPreviousNavigationObservationEvent,
+  JourneyStartObservationEvent,
+  JourneyStepEnterObservationEvent,
+  JourneyStepExitObservationEvent,
+  JourneyTerminateObservationEvent,
+  JourneyTransitionErrorObservationEvent,
+  JourneyTransitionStartObservationEvent,
+  JourneyTransitionSuccessObservationEvent
+} from "./observation.types";
+
+export type {
+  JourneyLifecycleErrorContext,
+  JourneyMachine,
+  JourneyMachineOptions,
+  JourneyMachinePlugin,
+  JourneyMachinePluginHooks,
+  JourneyMachinePluginSetupContext,
+  JourneyMachinePluginSnapshotChange,
+  JourneyMachineSnapshotReason,
+  JourneyMachineWithPlugins
+} from "./machine.types";
+
+export type {
+  JourneyDispatch,
+  JourneyGlobalKey,
+  JourneyLifecycleArgs,
+  JourneyGlobalTransition,
+  JourneyGoToStepGraphEdge,
+  JourneyTransitionArgsForEvent,
+  JourneyTransitionUpdateContextArgsForEvent,
   JourneyGoToStepTransition,
+  JourneyGraphEdge,
+  JourneyLinearStep,
+  JourneyLinearTransitions,
+  JourneyStepEventGraphEdge,
+  JourneyStepEventTransition,
+  JourneyStepLifecycleCallback,
+  JourneyStepTransitions,
+  JourneyTerminalGraphEdge,
+  JourneyTerminalTransition,
   JourneyTransition,
-  JourneyTransitionHelpers,
-  JourneyTransitionItem,
-  JourneyTransitionsFactory,
-  JourneyTransitionsInput,
-  JourneyTransitionPayloadMap,
   JourneyTransitionArgs,
+  JourneyTransitionGraph,
   JourneyTransitionTarget,
-  JourneyTypedTx
+  JourneyTransitionsDefinition
 } from "./transitions.types";
 
 export type {
-  JourneyPersistedSnapshot,
   JourneyPersistedState,
   JourneyPersistenceOptions,
   JourneyStorage
 } from "./persistence.types";
+
+export type {
+  JourneyReplayEntry,
+  JourneyReplayEventEntry,
+  JourneyReplayExportOptions,
+  JourneyReplayPluginOptions,
+  JourneyReplaySession,
+  JourneyReplaySnapshotEntry
+} from "./replay.types";
