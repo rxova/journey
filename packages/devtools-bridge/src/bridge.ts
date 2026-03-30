@@ -1,6 +1,9 @@
 import type {
-  JourneyEventPayloadMap,
+  JourneyExecutionPathOptions,
+  JourneyExecutionPathsResult,
+  JourneyJsonObject,
   JourneyMachine,
+  JourneyObservationEvent,
   JourneySendResult,
   JourneySnapshot
 } from "@rxova/journey-core";
@@ -13,17 +16,26 @@ import {
   type JourneyDevtoolsBridgeCommandErrorEnvelope,
   type JourneyDevtoolsBridgeCommandResultEnvelope,
   type JourneyDevtoolsBridgeEnvelope,
+  type JourneyDevtoolsBridgeExecutionPathsResultEnvelope,
+  type JourneyDevtoolsBridgeObservationEnvelope,
   type JourneyDevtoolsBridgeRegisterEnvelope,
   type JourneyDevtoolsBridgeSnapshotEnvelope,
   type JourneyDevtoolsBridgeUnregisterEnvelope,
   type JourneyDevtoolsCommand,
   type JourneyDevtoolsExtensionCommandEnvelope,
   type JourneyDevtoolsMachineMeta,
+  type JourneyDevtoolsSerializableExecutionPathsResult,
+  type JourneyDevtoolsSerializableObservationEvent,
   type JourneyDevtoolsSerializableSnapshot,
   type JourneyDevtoolsSerializedError
 } from "./protocol";
 
 declare const process: { env?: { NODE_ENV?: string } } | undefined;
+
+type JourneyDevtoolsPersistencePluginMetadata = {
+  key?: string;
+  clearOnReset?: boolean;
+};
 
 export type JourneyDevtoolsBridgeOptions = {
   machineId?: string;
@@ -31,18 +43,62 @@ export type JourneyDevtoolsBridgeOptions = {
   enabled?: boolean;
   appName?: string;
   commandsEnabled?: boolean;
+  pluginMetadata?: {
+    persistence?: JourneyDevtoolsPersistencePluginMetadata;
+  };
 };
 
-type SendOutcome<TContext, TStepId extends string, TStepMeta> = {
-  snapshot: JourneySnapshot<TContext, TStepId, TStepMeta>;
+type SnapshotCommandOutcome<TContext extends JourneyJsonObject, TStepId extends string> = {
+  kind: "snapshot";
+  snapshot: JourneySnapshot<TContext, TStepId>;
   transitioned?: boolean;
   transitionId?: string;
   error?: JourneyDevtoolsSerializedError;
 };
 
+type ExecutionPathsCommandOutcome<TStepId extends string, TEventType extends string> = {
+  kind: "executionPaths";
+  result: JourneyExecutionPathsResult<TStepId, TEventType>;
+};
+
+type CommandOutcome<
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TEventType extends string
+> = SnapshotCommandOutcome<TContext, TStepId> | ExecutionPathsCommandOutcome<TStepId, TEventType>;
+
 type SnapshotScheduleKind = "raf" | "timeout";
 
+type JourneyImportMetaEnv = {
+  DEV?: unknown;
+  PROD?: unknown;
+};
+
+type ExecutionPathsJourneyMachine<
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TEventMap extends Record<string, unknown>,
+  TStepMeta,
+  THandlers extends Record<string, unknown>
+> = JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers> & {
+  getExecutionPaths: (
+    options?: JourneyExecutionPathOptions
+  ) => JourneyExecutionPathsResult<TStepId, string>;
+};
+
 const DEFAULT_MACHINE_LABEL = "Journey Machine";
+const MUTATING_COMMAND_TYPES = [
+  "startJourney",
+  "goToNextStep",
+  "terminateJourney",
+  "completeJourney",
+  "goToStepById",
+  "goToPreviousStep",
+  "goToLastVisitedStep",
+  "send",
+  "resetJourney",
+  "clearStepError"
+] as const satisfies readonly Exclude<JourneyDevtoolsCommand["type"], "getExecutionPaths">[];
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
@@ -50,15 +106,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const isJourneyAsyncPhase = (
   value: unknown
 ): value is JourneyDevtoolsSerializableSnapshot["async"]["byStep"][string]["phase"] =>
-  value === "idle" ||
-  value === "evaluating-when" ||
-  value === "running-effect" ||
-  value === "error";
-
-type JourneyImportMetaEnv = {
-  DEV?: unknown;
-  PROD?: unknown;
-};
+  value === "idle" || value === "evaluating-when" || value === "error";
 
 const resolveImportMetaEnvironment = (
   bundlerEnv: JourneyImportMetaEnv | null | undefined
@@ -118,15 +166,6 @@ const resolveWindowTargetOrigin = (): string => {
   return window.location.origin === "null" ? "*" : window.location.origin;
 };
 
-// No session token infrastructure needed
-
-/**
- * Validates that the message origin matches the current window origin.
- * This prevents messages from other origins from being processed.
- *
- * Note: This is part of defense-in-depth but not a hard security boundary.
- * Code running in the same origin can still send messages.
- */
 const isExpectedWindowOrigin = (origin: string): boolean => {
   if (origin.length === 0) {
     return false;
@@ -138,21 +177,15 @@ const isExpectedWindowOrigin = (origin: string): boolean => {
 
   const expected = window.location.origin;
   if (expected === "null") {
-    // For file:// or sandboxed contexts where origin is "null"
     return origin === "null";
   }
 
-  // Strict equality check - no wildcard matching
   return origin === expected;
 };
 
-const createMachineId = (): string =>
+const createJourneyMachineId = (): string =>
   `journey-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
-/**
- * Simple rate limiter to prevent command abuse.
- * Tracks command timestamps and enforces a maximum rate.
- */
 class CommandRateLimiter {
   private commandTimestamps: number[] = [];
   private readonly maxCommandsPerWindow: number;
@@ -163,16 +196,11 @@ class CommandRateLimiter {
     this.windowMs = windowMs;
   }
 
-  /**
-   * Checks if a command is allowed based on rate limits.
-   * Returns true if allowed, false if rate limit exceeded.
-   */
   isAllowed(): boolean {
     const now = Date.now();
     const windowStart = now - this.windowMs;
 
-    // Remove old timestamps outside the window
-    this.commandTimestamps = this.commandTimestamps.filter((ts) => ts > windowStart);
+    this.commandTimestamps = this.commandTimestamps.filter((timestamp) => timestamp > windowStart);
 
     if (this.commandTimestamps.length >= this.maxCommandsPerWindow) {
       return false;
@@ -252,8 +280,8 @@ const serializeError = (error: unknown): JourneyDevtoolsSerializedError => {
   };
 };
 
-const serializeSnapshot = <TContext, TStepId extends string, TStepMeta>(
-  snapshot: JourneySnapshot<TContext, TStepId, TStepMeta>
+const serializeSnapshot = <TContext extends JourneyJsonObject, TStepId extends string>(
+  snapshot: JourneySnapshot<TContext, TStepId>
 ): JourneyDevtoolsSerializableSnapshot => {
   const byStep: Record<string, JourneyDevtoolsSerializableSnapshot["async"]["byStep"][string]> = {};
 
@@ -274,7 +302,7 @@ const serializeSnapshot = <TContext, TStepId extends string, TStepMeta>(
 
   return {
     currentStepId: String(snapshot.currentStepId),
-    context: cloneForTransport(snapshot.context),
+    context: cloneForTransport(snapshot.context) as JourneyJsonObject,
     history: {
       timeline: snapshot.history.timeline.map((stepId) => String(stepId)),
       index: snapshot.history.index
@@ -285,7 +313,6 @@ const serializeSnapshot = <TContext, TStepId extends string, TStepMeta>(
         isVisited === true
       ])
     ),
-    stepMeta: cloneForTransport(snapshot.stepMeta) as Record<string, unknown>,
     status: snapshot.status,
     async: {
       isLoading: snapshot.async.isLoading,
@@ -294,13 +321,33 @@ const serializeSnapshot = <TContext, TStepId extends string, TStepMeta>(
   };
 };
 
-const isKnownStepId = <TContext, TStepId extends string, TStepMeta>(
-  snapshot: JourneySnapshot<TContext, TStepId, TStepMeta>,
-  stepId: string
-): stepId is TStepId => stepId in snapshot.stepMeta;
+const serializeObservationEvent = <
+  TStepId extends string,
+  TEventMap extends Record<string, unknown>
+>(
+  event: JourneyObservationEvent<TStepId, TEventMap>
+): JourneyDevtoolsSerializableObservationEvent => {
+  if (event.type === "transition.error") {
+    return cloneForTransport({
+      ...event,
+      error: serializeError(event.error)
+    }) as JourneyDevtoolsSerializableObservationEvent;
+  }
+  return cloneForTransport(event) as JourneyDevtoolsSerializableObservationEvent;
+};
 
-const assertKnownStepId = <TContext, TStepId extends string, TStepMeta>(
-  machine: JourneyMachine<TContext, TStepId, string, Record<never, never>, TStepMeta>,
+const serializeExecutionPathsResult = <TStepId extends string, TEventType extends string>(
+  result: JourneyExecutionPathsResult<TStepId, TEventType>
+): JourneyDevtoolsSerializableExecutionPathsResult =>
+  cloneForTransport(result) as JourneyDevtoolsSerializableExecutionPathsResult;
+
+const isKnownStepId = <TContext extends JourneyJsonObject, TStepId extends string>(
+  snapshot: JourneySnapshot<TContext, TStepId>,
+  stepId: string
+): stepId is TStepId => stepId in (snapshot.async.byStep as Record<string, unknown>);
+
+const assertKnownStepId = <TContext extends JourneyJsonObject, TStepId extends string>(
+  machine: { getSnapshot: () => JourneySnapshot<TContext, TStepId> },
   stepId: string,
   commandType: JourneyDevtoolsCommand["type"]
 ): TStepId => {
@@ -310,28 +357,93 @@ const assertKnownStepId = <TContext, TStepId extends string, TStepMeta>(
   return stepId;
 };
 
-const toSendOutcome = <TContext, TStepId extends string, TStepMeta>(
-  result: JourneySendResult<TContext, TStepId, TStepMeta>
-): SendOutcome<TContext, TStepId, TStepMeta> => ({
+const toSnapshotCommandOutcome = <TContext extends JourneyJsonObject, TStepId extends string>(
+  result: JourneySendResult<TContext, TStepId>
+): SnapshotCommandOutcome<TContext, TStepId> => ({
+  kind: "snapshot",
   snapshot: result.snapshot,
   transitioned: result.transitioned,
   ...(result.transitionId ? { transitionId: result.transitionId } : {}),
   ...("error" in result ? { error: serializeError(result.error) } : {})
 });
 
-const runCommand = async <TContext, TStepId extends string, TStepMeta>(
-  machine: JourneyMachine<TContext, TStepId, string, Record<never, never>, TStepMeta>,
+const hasExecutionPathsSupport = <
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TEventMap extends Record<string, unknown>,
+  TStepMeta,
+  THandlers extends Record<string, unknown>
+>(
+  machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>
+): machine is ExecutionPathsJourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers> =>
+  typeof (machine as Record<string, unknown>).getExecutionPaths === "function";
+
+const isReadOnlyCommand = (command: JourneyDevtoolsCommand): boolean =>
+  command.type === "getExecutionPaths";
+
+const createCapabilities = <
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TEventMap extends Record<string, unknown>,
+  TStepMeta,
+  THandlers extends Record<string, unknown>
+>(
+  machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
+  options: JourneyDevtoolsBridgeOptions,
+  commandsEnabled: boolean
+) => {
+  const executionPaths = hasExecutionPathsSupport(machine);
+  const commands: JourneyDevtoolsCommand["type"][] = [];
+
+  if (commandsEnabled) {
+    commands.push(...MUTATING_COMMAND_TYPES);
+  }
+
+  if (executionPaths) {
+    commands.push("getExecutionPaths");
+  }
+
+  return {
+    commands,
+    observe: true as const,
+    executionPaths,
+    ...(options.pluginMetadata?.persistence
+      ? {
+          persistence: {
+            key: options.pluginMetadata.persistence.key?.trim() || null,
+            clearOnReset:
+              typeof options.pluginMetadata.persistence.clearOnReset === "boolean"
+                ? options.pluginMetadata.persistence.clearOnReset
+                : null
+          }
+        }
+      : {})
+  };
+};
+
+const runCommand = async <
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TStepMeta,
+  THandlers extends Record<string, unknown>
+>(
+  machine: JourneyMachine<TContext, TStepId, Record<never, never>, TStepMeta, THandlers>,
   command: JourneyDevtoolsCommand
-): Promise<SendOutcome<TContext, TStepId, TStepMeta>> => {
+): Promise<CommandOutcome<TContext, TStepId, string>> => {
   switch (command.type) {
+    case "startJourney":
+      return {
+        kind: "snapshot",
+        snapshot: await machine.start()
+      };
     case "goToNextStep":
     case "completeJourney": {
       const result = await machine.send({ type: command.type });
-      return toSendOutcome(result);
+      return toSnapshotCommandOutcome(result);
     }
-    case "terminateMachine": {
+    case "terminateJourney": {
       const result = await machine.send({ type: "terminateJourney" });
-      return toSendOutcome(result);
+      return toSnapshotCommandOutcome(result);
     }
     case "goToStepById": {
       const stepId = assertKnownStepId(machine, command.stepId, command.type);
@@ -339,33 +451,30 @@ const runCommand = async <TContext, TStepId extends string, TStepMeta>(
         type: "goToStepById",
         stepId
       });
-      return toSendOutcome(result);
+      return toSnapshotCommandOutcome(result);
     }
     case "goToPreviousStep": {
       const result = await machine.goToPreviousStep(command.steps);
-      return toSendOutcome(result);
+      return toSnapshotCommandOutcome(result);
     }
     case "goToLastVisitedStep": {
       const result = await machine.goToLastVisitedStep();
-      return toSendOutcome(result);
+      return toSnapshotCommandOutcome(result);
     }
     case "send": {
       const sendEvent =
         command.event.payload === undefined
           ? { type: command.event.type }
           : { type: command.event.type, payload: command.event.payload };
-      const result: JourneySendResult<TContext, TStepId, TStepMeta> = await machine.send(sendEvent);
-      return toSendOutcome(result);
+      const result: JourneySendResult<TContext, TStepId> = await machine.send(
+        sendEvent as Parameters<typeof machine.send>[0]
+      );
+      return toSnapshotCommandOutcome(result);
     }
-    case "updateStepMetadata": {
-      const stepId = assertKnownStepId(machine, command.stepId, command.type);
+    case "resetJourney":
       return {
-        snapshot: machine.updateStepMetadata(stepId, () => command.metadata as TStepMeta)
-      };
-    }
-    case "resetMachine":
-      return {
-        snapshot: machine.resetMachine()
+        kind: "snapshot",
+        snapshot: await machine.resetJourney()
       };
     case "clearStepError": {
       const stepId =
@@ -373,7 +482,18 @@ const runCommand = async <TContext, TStepId extends string, TStepMeta>(
           ? undefined
           : assertKnownStepId(machine, command.stepId, command.type);
       return {
-        snapshot: machine.clearStepError(stepId)
+        kind: "snapshot",
+        snapshot: await machine.clearStepError(stepId)
+      };
+    }
+    case "getExecutionPaths": {
+      if (!hasExecutionPathsSupport(machine)) {
+        throw new Error('Machine does not support "getExecutionPaths".');
+      }
+
+      return {
+        kind: "executionPaths",
+        result: machine.getExecutionPaths(command.options)
       };
     }
   }
@@ -384,30 +504,33 @@ const runCommand = async <TContext, TStepId extends string, TStepMeta>(
  * a detach function that unsubscribes listeners and unregisters the machine.
  */
 export const attachJourneyDevtools = <
-  TContext,
+  TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventType extends string,
-  TPayloadMap extends JourneyEventPayloadMap<TEventType>,
-  TStepMeta
+  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TStepMeta = unknown,
+  THandlers extends Record<string, unknown> = Record<never, never>
 >(
-  machine: JourneyMachine<TContext, TStepId, TEventType, TPayloadMap, TStepMeta>,
+  machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
   options: JourneyDevtoolsBridgeOptions = {}
 ): (() => void) => {
   const enabled = options.enabled ?? resolveNonProductionEnvironment();
   if (!enabled || typeof window === "undefined") {
     return () => {};
   }
-  const commandsEnabled = options.commandsEnabled ?? resolveNonProductionEnvironment();
 
-  const machineId = options.machineId?.trim() || createMachineId();
+  const commandsEnabled = options.commandsEnabled ?? resolveNonProductionEnvironment();
+  const machineId = options.machineId?.trim() || createJourneyMachineId();
+  const targetOrigin = resolveWindowTargetOrigin();
+  const capabilities = createCapabilities(machine, options, commandsEnabled);
+
   const meta: JourneyDevtoolsMachineMeta = {
     machineId,
     label: options.label?.trim() || DEFAULT_MACHINE_LABEL,
     appName:
       options.appName?.trim() || (typeof document !== "undefined" ? document.title : "") || null,
-    commandsEnabled
+    commandsEnabled,
+    capabilities
   };
-  const targetOrigin = resolveWindowTargetOrigin();
 
   const createBaseEnvelope = <TKind extends JourneyDevtoolsBridgeEnvelope["kind"]>(
     kind: TKind
@@ -428,7 +551,7 @@ export const attachJourneyDevtools = <
     }
   };
 
-  const postSnapshot = (snapshot: JourneySnapshot<TContext, TStepId, TStepMeta>) => {
+  const postSnapshot = (snapshot: JourneySnapshot<TContext, TStepId>) => {
     const envelope: JourneyDevtoolsBridgeSnapshotEnvelope = {
       ...createBaseEnvelope("snapshot"),
       snapshot: serializeSnapshot(snapshot)
@@ -436,9 +559,29 @@ export const attachJourneyDevtools = <
     post(envelope);
   };
 
+  const postObservation = (event: JourneyObservationEvent<TStepId, TEventMap>) => {
+    const envelope: JourneyDevtoolsBridgeObservationEnvelope = {
+      ...createBaseEnvelope("observation"),
+      event: serializeObservationEvent(event)
+    };
+    post(envelope);
+  };
+
+  const postExecutionPathsResult = (
+    requestId: string,
+    result: JourneyExecutionPathsResult<TStepId, string>
+  ) => {
+    const envelope: JourneyDevtoolsBridgeExecutionPathsResultEnvelope = {
+      ...createBaseEnvelope("executionPathsResult"),
+      requestId,
+      result: serializeExecutionPathsResult(result)
+    };
+    post(envelope);
+  };
+
   let isDetached = false;
   const rateLimiter = new CommandRateLimiter();
-  let pendingSnapshot: JourneySnapshot<TContext, TStepId, TStepMeta> | null = null;
+  let pendingSnapshot: JourneySnapshot<TContext, TStepId> | null = null;
   let scheduledSnapshotHandle: number | ReturnType<typeof globalThis.setTimeout> | null = null;
   let scheduledSnapshotKind: SnapshotScheduleKind | null = null;
 
@@ -459,7 +602,7 @@ export const attachJourneyDevtools = <
     postSnapshot(snapshot);
   };
 
-  const scheduleSnapshotPost = (snapshot: JourneySnapshot<TContext, TStepId, TStepMeta>) => {
+  const scheduleSnapshotPost = (snapshot: JourneySnapshot<TContext, TStepId>) => {
     pendingSnapshot = snapshot;
     if (scheduledSnapshotHandle !== null) {
       return;
@@ -513,7 +656,6 @@ export const attachJourneyDevtools = <
       return;
     }
 
-    // Rate limiting to prevent command abuse
     if (!rateLimiter.isAllowed()) {
       const errorEnvelope: JourneyDevtoolsBridgeCommandErrorEnvelope = {
         ...createBaseEnvelope("commandError"),
@@ -526,7 +668,7 @@ export const attachJourneyDevtools = <
       return;
     }
 
-    if (!commandsEnabled) {
+    if (!commandsEnabled && !isReadOnlyCommand(commandEnvelope.command)) {
       const errorEnvelope: JourneyDevtoolsBridgeCommandErrorEnvelope = {
         ...createBaseEnvelope("commandError"),
         requestId: commandEnvelope.requestId,
@@ -539,10 +681,22 @@ export const attachJourneyDevtools = <
     const run = async () => {
       try {
         const outcome = await runCommand(
-          machine as JourneyMachine<TContext, TStepId, string, Record<never, never>, TStepMeta>,
+          machine as unknown as JourneyMachine<
+            TContext,
+            TStepId,
+            Record<never, never>,
+            TStepMeta,
+            THandlers
+          >,
           commandEnvelope.command
         );
+
         if (isDetached) {
+          return;
+        }
+
+        if (outcome.kind === "executionPaths") {
+          postExecutionPathsResult(commandEnvelope.requestId, outcome.result);
           return;
         }
 
@@ -574,10 +728,11 @@ export const attachJourneyDevtools = <
 
   window.addEventListener("message", onMessage);
 
-  const unsubscribe = machine.subscribe(() => {
+  const unsubscribeSnapshot = machine.subscribe(() => {
     if (isDetached) {
       return;
     }
+
     scheduleSnapshotPost(machine.getSnapshot());
   });
 
@@ -588,6 +743,14 @@ export const attachJourneyDevtools = <
   };
   post(registerEnvelope);
 
+  const unsubscribeObservation = machine.subscribeEvent((event) => {
+    if (isDetached) {
+      return;
+    }
+
+    postObservation(event);
+  });
+
   return () => {
     if (isDetached) {
       return;
@@ -595,7 +758,8 @@ export const attachJourneyDevtools = <
 
     isDetached = true;
     rateLimiter.reset();
-    unsubscribe();
+    unsubscribeObservation();
+    unsubscribeSnapshot();
     window.removeEventListener("message", onMessage);
     cancelScheduledSnapshot();
 

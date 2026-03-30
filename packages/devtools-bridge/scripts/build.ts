@@ -22,5 +22,8 @@ await build({
   ...common,
   outfile: "dist/index.cjs",
   platform: "node",
-  format: "cjs"
+  format: "cjs",
+  // import.meta is intentionally used for bundler env detection and falls back
+  // gracefully to undefined (→ process.env) in CJS environments.
+  logOverride: { "empty-import-meta": "silent" }
 });

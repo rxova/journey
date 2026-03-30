@@ -1,9 +1,14 @@
 import React from "react";
 
-import type { JourneyDevtoolsCommand } from "@rxova/journey-devtools-bridge";
+import {
+  JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
+  JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+  type JourneyDevtoolsCommand,
+  type JourneyDevtoolsProtocolVersion
+} from "@rxova/journey-devtools-bridge";
 import { CommandControls } from "./components/CommandControls";
 import { ConnectionStatus } from "./components/ConnectionStatus";
-import { MachineSelector } from "./components/MachineSelector";
+import { JourneyMachineSelector } from "./components/JourneyMachineSelector";
 import { SectionErrorBoundary } from "./components/SectionErrorBoundary";
 import { TimelineInspector } from "./components/TimelineInspector";
 import {
@@ -32,6 +37,17 @@ const createRequestId = (): string =>
 const PANEL_RECONNECT_DELAY_MS = 600;
 const PANEL_STATUS_DISCONNECT_DELAY_MS = 250;
 const PANEL_CLEAR_MACHINES_DELAY_MS = 1200;
+const QUERY_COMMAND_TYPE = "getExecutionPaths";
+
+const getProtocolMismatchReason = (
+  protocolVersion: JourneyDevtoolsProtocolVersion | undefined
+): string | null => {
+  if (protocolVersion === undefined || protocolVersion === JOURNEY_DEVTOOLS_PROTOCOL_VERSION) {
+    return null;
+  }
+
+  return `This devtools panel uses protocol v${JOURNEY_DEVTOOLS_PROTOCOL_VERSION}, but the selected machine is still using protocol v${protocolVersion}. Update the inspected app and extension together.`;
+};
 
 export const App = () => {
   const [state, dispatch] = React.useReducer(panelReducer, undefined, createInitialPanelState);
@@ -184,30 +200,43 @@ export const App = () => {
     };
   }, []);
 
-  const sendCommand = React.useCallback((machineId: string, command: JourneyDevtoolsCommand) => {
-    const port = portRef.current;
-    if (!port) {
-      return;
-    }
+  const sendCommand = React.useCallback(
+    (machineId: string, command: JourneyDevtoolsCommand) => {
+      const port = portRef.current;
+      if (!port) {
+        return;
+      }
 
-    const requestId = createRequestId();
-    dispatch({
-      type: "queue-command",
-      machineId,
-      requestId,
-      command,
-      timestamp: Date.now()
-    });
+      const protocolVersion = state.machines[machineId]?.protocolVersion;
+      if (getProtocolMismatchReason(protocolVersion) !== null) {
+        return;
+      }
 
-    const envelope = createCommandEnvelope(machineId, requestId, command);
-    const message: PanelCommandMessage = {
-      type: "panel-command",
-      tabId: chrome.devtools.inspectedWindow.tabId,
-      envelope
-    };
+      const requestId = createRequestId();
+      dispatch({
+        type: "queue-command",
+        machineId,
+        requestId,
+        command,
+        timestamp: Date.now()
+      });
 
-    port.postMessage(message);
-  }, []);
+      const envelope = createCommandEnvelope(
+        machineId,
+        requestId,
+        command,
+        protocolVersion ?? JOURNEY_DEVTOOLS_PROTOCOL_VERSION
+      );
+      const message: PanelCommandMessage = {
+        type: "panel-command",
+        tabId: chrome.devtools.inspectedWindow.tabId,
+        envelope
+      };
+
+      port.postMessage(message);
+    },
+    [state.machines]
+  );
 
   const activeMachine = React.useMemo(() => selectActiveMachine(state), [state]);
   const displayedSnapshot = React.useMemo(
@@ -219,8 +248,15 @@ export const App = () => {
     [activeMachine]
   );
   const selectedDiff = React.useMemo(() => selectSelectedDiff(activeMachine), [activeMachine]);
-  const areMachineCommandsEnabled = activeMachine?.meta.commandsEnabled !== false;
   const isCommandChannelReady = state.connected && portRef.current !== null;
+  const availableCommands = activeMachine?.meta.capabilities.commands ?? [];
+  const mutatingCommands = availableCommands.filter((command) => command !== QUERY_COMMAND_TYPE);
+  const persistenceCapability = activeMachine?.meta.capabilities.persistence ?? null;
+  const protocolMismatchReason = getProtocolMismatchReason(activeMachine?.protocolVersion);
+  const areCommandsDisabled = !isCommandChannelReady || protocolMismatchReason !== null;
+  const commandDisabledReason = !isCommandChannelReady
+    ? "Bridge is disconnected from the inspected tab."
+    : protocolMismatchReason;
 
   return (
     <main className="app-shell">
@@ -233,8 +269,22 @@ export const App = () => {
         <ConnectionStatus connected={displayConnected} warning={connectionWarning} />
       </SectionErrorBoundary>
 
+      {activeMachine && protocolMismatchReason ? (
+        <SectionErrorBoundary section="Compatibility">
+          <section className="panel-card status-card">
+            <h2>Compatibility</h2>
+            <p className="status-warning">{protocolMismatchReason}</p>
+            {activeMachine.protocolVersion === JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION ? (
+              <p className="muted status-guidance">
+                Legacy protocol v3 machines are read-only in this devtools build.
+              </p>
+            ) : null}
+          </section>
+        </SectionErrorBoundary>
+      ) : null}
+
       <SectionErrorBoundary section="Machine Selector">
-        <MachineSelector
+        <JourneyMachineSelector
           machineOrder={state.machineOrder}
           machines={state.machines}
           selectedMachineId={state.selectedMachineId}
@@ -244,6 +294,59 @@ export const App = () => {
 
       {activeMachine ? (
         <>
+          <SectionErrorBoundary section="Capabilities">
+            <section className="panel-card capability-card">
+              <h2>Capabilities</h2>
+              <div className="capability-badges">
+                <span
+                  className={
+                    activeMachine.meta.capabilities.observe
+                      ? "capability-badge is-active"
+                      : "capability-badge"
+                  }
+                >
+                  {activeMachine.meta.capabilities.observe ? "Observe" : "No Events"}
+                </span>
+                <span
+                  className={
+                    mutatingCommands.length > 0 ? "capability-badge is-active" : "capability-badge"
+                  }
+                >
+                  {mutatingCommands.length > 0
+                    ? `Commands ${mutatingCommands.length}`
+                    : "Commands Off"}
+                </span>
+                <span
+                  className={
+                    activeMachine.meta.capabilities.executionPaths
+                      ? "capability-badge is-active"
+                      : "capability-badge"
+                  }
+                >
+                  {activeMachine.meta.capabilities.executionPaths
+                    ? "Execution Paths"
+                    : "No Execution Paths"}
+                </span>
+                <span
+                  className={
+                    persistenceCapability ? "capability-badge is-active" : "capability-badge"
+                  }
+                >
+                  {persistenceCapability ? "Persistence" : "No Persistence Meta"}
+                </span>
+              </div>
+              <p className="muted capability-details">
+                {persistenceCapability
+                  ? `Persistence key: ${persistenceCapability.key ?? "unspecified"} · clearOnReset: ${
+                      persistenceCapability.clearOnReset === null
+                        ? "unspecified"
+                        : String(persistenceCapability.clearOnReset)
+                    }`
+                  : "The bridge did not receive persistence plugin metadata for this machine."}
+              </p>
+            </section>
+          </SectionErrorBoundary>
+
           <SectionErrorBoundary section="Timeline">
             <TimelineInspector
               entries={activeMachine.timelineEntries}
@@ -281,14 +384,9 @@ export const App = () => {
 
           <SectionErrorBoundary section="Commands">
             <CommandControls
-              disabled={!isCommandChannelReady || !areMachineCommandsEnabled}
-              disabledReason={
-                !isCommandChannelReady
-                  ? "Bridge is disconnected from the inspected tab."
-                  : !areMachineCommandsEnabled
-                    ? "Commands are disabled for this machine."
-                    : null
-              }
+              availableCommands={availableCommands}
+              disabled={areCommandsDisabled}
+              disabledReason={commandDisabledReason}
               onCommand={(command) => sendCommand(activeMachine.meta.machineId, command)}
             />
           </SectionErrorBoundary>

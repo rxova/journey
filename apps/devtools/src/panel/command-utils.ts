@@ -109,6 +109,48 @@ export const buildGoToLastVisitedStepCommand = (): CommandBuildResult => ({
   command: { type: "goToLastVisitedStep" }
 });
 
+const parseOptionalPositiveInteger = (
+  raw: string,
+  label: string,
+  max?: number
+):
+  | {
+      ok: true;
+      value: number | undefined;
+    }
+  | {
+      ok: false;
+      error: string;
+    } => {
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) {
+    return {
+      ok: true,
+      value: undefined
+    };
+  }
+
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed) || Math.trunc(parsed) < 1) {
+    return {
+      ok: false,
+      error: `${label} must be a positive integer.`
+    };
+  }
+
+  if (max !== undefined && Math.trunc(parsed) > max) {
+    return {
+      ok: false,
+      error: `${label} must be at most ${max}.`
+    };
+  }
+
+  return {
+    ok: true,
+    value: Math.trunc(parsed)
+  };
+};
+
 export const buildClearStepErrorCommand = (stepIdRaw: string): CommandBuildResult => {
   const stepId = stepIdRaw.trim();
   return {
@@ -117,39 +159,30 @@ export const buildClearStepErrorCommand = (stepIdRaw: string): CommandBuildResul
   };
 };
 
-export const buildUpdateStepMetadataCommand = (
-  stepIdRaw: string,
-  metadataRaw: string
+export const buildExecutionPathsCommand = (
+  maxDepthRaw: string,
+  maxPathsRaw: string
 ): CommandBuildResult => {
-  const stepId = stepIdRaw.trim();
-  if (stepId.length === 0) {
-    return {
-      ok: false,
-      error: "Step id is required."
-    };
+  const parsedMaxDepth = parseOptionalPositiveInteger(maxDepthRaw, "Max depth", 10000);
+  if (!parsedMaxDepth.ok) {
+    return parsedMaxDepth;
   }
 
-  const trimmedMetadata = metadataRaw.trim();
-  if (trimmedMetadata.length === 0) {
-    return {
-      ok: false,
-      error: "Metadata JSON is required."
-    };
+  const parsedMaxPaths = parseOptionalPositiveInteger(maxPathsRaw, "Max paths", 10000);
+  if (!parsedMaxPaths.ok) {
+    return parsedMaxPaths;
   }
 
-  try {
-    return {
-      ok: true,
-      command: {
-        type: "updateStepMetadata",
-        stepId,
-        metadata: JSON.parse(trimmedMetadata) as unknown
-      }
-    };
-  } catch {
-    return {
-      ok: false,
-      error: "Metadata must be valid JSON."
-    };
-  }
+  const options = {
+    ...(parsedMaxDepth.value === undefined ? {} : { maxDepth: parsedMaxDepth.value }),
+    ...(parsedMaxPaths.value === undefined ? {} : { maxPaths: parsedMaxPaths.value })
+  };
+
+  return {
+    ok: true,
+    command:
+      Object.keys(options).length === 0
+        ? { type: "getExecutionPaths" }
+        : { type: "getExecutionPaths", options }
+  };
 };

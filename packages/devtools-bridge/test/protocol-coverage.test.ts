@@ -4,6 +4,7 @@ import {
   JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
   JOURNEY_DEVTOOLS_CHANNEL,
   JOURNEY_DEVTOOLS_EXTENSION_SOURCE,
+  JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
   isJourneyDevtoolsBridgeEnvelope,
   isJourneyDevtoolsCommand,
@@ -12,6 +13,12 @@ import {
 } from "@rxova/journey-devtools-bridge";
 
 describe("protocol guard edge coverage", () => {
+  const capabilities = {
+    commands: ["goToNextStep", "getExecutionPaths"] as const,
+    observe: true as const,
+    executionPaths: true
+  };
+
   it("rejects non-record command and envelope shapes", () => {
     expect(isJourneyDevtoolsCommand(null)).toBe(false);
     expect(isJourneyDevtoolsCommand({ type: 1 })).toBe(false);
@@ -34,9 +41,8 @@ describe("protocol guard edge coverage", () => {
     expect(isJourneyDevtoolsCommand({ type: "clearStepError", stepId: 123 })).toBe(false);
     expect(
       isJourneyDevtoolsCommand({
-        type: "updateStepMetadata",
-        stepId: "review",
-        metadata: { bad: () => undefined }
+        type: "send",
+        event: { type: "custom", payload: { bad: () => undefined } }
       })
     ).toBe(false);
     expect(isJourneyDevtoolsCommand({ type: "unknown" })).toBe(false);
@@ -52,7 +58,46 @@ describe("protocol guard edge coverage", () => {
     };
 
     expect(
-      isJourneyDevtoolsBridgeEnvelope({ ...base, kind: "register", meta: {}, snapshot: {} })
+      isJourneyDevtoolsBridgeEnvelope({
+        ...base,
+        version: JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
+        kind: "register",
+        meta: {
+          machineId: "m1",
+          label: "Flow",
+          appName: "App"
+        },
+        snapshot: {}
+      })
+    ).toBe(true);
+    expect(
+      isJourneyDevtoolsBridgeEnvelope({
+        ...base,
+        kind: "register",
+        meta: {
+          machineId: "m1",
+          label: "Flow",
+          appName: "App"
+        },
+        snapshot: {}
+      })
+    ).toBe(false);
+    expect(
+      isJourneyDevtoolsBridgeEnvelope({
+        ...base,
+        kind: "register",
+        meta: {
+          machineId: "m1",
+          label: "Flow",
+          appName: "App",
+          capabilities: {
+            commands: [...capabilities.commands],
+            observe: capabilities.observe,
+            executionPaths: capabilities.executionPaths
+          }
+        },
+        snapshot: {}
+      })
     ).toBe(true);
     expect(isJourneyDevtoolsBridgeEnvelope({ ...base, kind: "register", snapshot: {} })).toBe(
       false

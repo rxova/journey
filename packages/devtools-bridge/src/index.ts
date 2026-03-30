@@ -2,6 +2,7 @@ export { attachJourneyDevtools, type JourneyDevtoolsBridgeOptions } from "./brid
 
 export {
   JOURNEY_DEVTOOLS_CHANNEL,
+  JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
   JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
   JOURNEY_DEVTOOLS_EXTENSION_SOURCE,
@@ -11,7 +12,9 @@ export {
   isJourneyDevtoolsExtensionEnvelope,
   type JourneyDevtoolsBridgeCommandErrorEnvelope,
   type JourneyDevtoolsBridgeCommandResultEnvelope,
+  type JourneyDevtoolsBridgeExecutionPathsResultEnvelope,
   type JourneyDevtoolsBridgeEnvelope,
+  type JourneyDevtoolsBridgeObservationEnvelope,
   type JourneyDevtoolsBridgeRegisterEnvelope,
   type JourneyDevtoolsBridgeSnapshotEnvelope,
   type JourneyDevtoolsBridgeUnregisterEnvelope,
@@ -19,7 +22,11 @@ export {
   type JourneyDevtoolsEnvelope,
   type JourneyDevtoolsExtensionEnvelope,
   type JourneyDevtoolsExtensionCommandEnvelope,
+  type JourneyDevtoolsMachineCapabilities,
   type JourneyDevtoolsMachineMeta,
+  type JourneyDevtoolsProtocolVersion,
+  type JourneyDevtoolsSerializableExecutionPathsResult,
+  type JourneyDevtoolsSerializableObservationEvent,
   type JourneyDevtoolsSerializableSnapshot,
   type JourneyDevtoolsSerializedError
 } from "./protocol";

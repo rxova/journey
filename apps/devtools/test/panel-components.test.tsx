@@ -3,12 +3,15 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { JourneyDevtoolsSerializableSnapshot } from "@rxova/journey-devtools-bridge";
+import type {
+  JourneyDevtoolsMachineCapabilities,
+  JourneyDevtoolsSerializableSnapshot
+} from "@rxova/journey-devtools-bridge";
 import type { JourneyPanelStructuredDiff } from "../src/panel/diff";
 import { CommandControls } from "../src/panel/components/CommandControls";
 import { ConnectionStatus } from "../src/panel/components/ConnectionStatus";
 import { JsonBlock } from "../src/panel/components/JsonBlock";
-import { MachineSelector } from "../src/panel/components/MachineSelector";
+import { JourneyMachineSelector } from "../src/panel/components/JourneyMachineSelector";
 import { SectionErrorBoundary } from "../src/panel/components/SectionErrorBoundary";
 import { TimelineInspector } from "../src/panel/components/TimelineInspector";
 
@@ -97,7 +100,6 @@ const snapshot: JourneyDevtoolsSerializableSnapshot = {
   },
   context: { attempts: 1 },
   visited: { start: true, review: true },
-  stepMeta: {},
   status: "running",
   async: {
     isLoading: false,
@@ -116,6 +118,25 @@ const diff: JourneyPanelStructuredDiff = {
       after: 2
     }
   }
+};
+
+const allAvailableCommands: JourneyDevtoolsMachineCapabilities["commands"] = [
+  "goToNextStep",
+  "terminateJourney",
+  "completeJourney",
+  "goToStepById",
+  "goToPreviousStep",
+  "goToLastVisitedStep",
+  "send",
+  "resetJourney",
+  "clearStepError",
+  "getExecutionPaths"
+];
+
+const defaultCapabilities: JourneyDevtoolsMachineCapabilities = {
+  commands: [...allAvailableCommands],
+  observe: true as const,
+  executionPaths: true
 };
 
 const createTimelineEntry = (index: number) => {
@@ -246,7 +267,7 @@ describe("panel components", () => {
   it("renders machine selector empty and populated states", async () => {
     const onSelect = vi.fn();
     const view = await mount(
-      <MachineSelector
+      <JourneyMachineSelector
         machineOrder={[]}
         machines={{}}
         selectedMachineId={null}
@@ -254,14 +275,20 @@ describe("panel components", () => {
       />
     );
 
-    expect(view.container.textContent).toContain("No machines registered yet.");
+    expect(view.container.textContent).toContain("No journey machines registered yet.");
 
     await view.rerender(
-      <MachineSelector
+      <JourneyMachineSelector
         machineOrder={["m1", "missing", "m2"]}
         machines={{
           m1: {
-            meta: { machineId: "m1", label: "Checkout", appName: "Store", commandsEnabled: true },
+            meta: {
+              machineId: "m1",
+              label: "Checkout",
+              appName: "Store",
+              commandsEnabled: true,
+              capabilities: defaultCapabilities
+            },
             snapshot,
             timelineEntries: [],
             selectedTimelineIndex: 0,
@@ -269,7 +296,13 @@ describe("panel components", () => {
             pendingCommandsByRequestId: {}
           },
           m2: {
-            meta: { machineId: "m2", label: "Billing", appName: null, commandsEnabled: true },
+            meta: {
+              machineId: "m2",
+              label: "Billing",
+              appName: null,
+              commandsEnabled: true,
+              capabilities: defaultCapabilities
+            },
             snapshot,
             timelineEntries: [],
             selectedTimelineIndex: 0,
@@ -291,11 +324,17 @@ describe("panel components", () => {
     expect(view.container.textContent).toContain("Billing");
 
     await view.rerender(
-      <MachineSelector
+      <JourneyMachineSelector
         machineOrder={["m1", "m2"]}
         machines={{
           m1: {
-            meta: { machineId: "m1", label: "Checkout", appName: "Store", commandsEnabled: true },
+            meta: {
+              machineId: "m1",
+              label: "Checkout",
+              appName: "Store",
+              commandsEnabled: true,
+              capabilities: defaultCapabilities
+            },
             snapshot,
             timelineEntries: [],
             selectedTimelineIndex: 0,
@@ -303,7 +342,13 @@ describe("panel components", () => {
             pendingCommandsByRequestId: {}
           },
           m2: {
-            meta: { machineId: "m2", label: "Billing", appName: null, commandsEnabled: true },
+            meta: {
+              machineId: "m2",
+              label: "Billing",
+              appName: null,
+              commandsEnabled: true,
+              capabilities: defaultCapabilities
+            },
             snapshot,
             timelineEntries: [],
             selectedTimelineIndex: 0,
@@ -792,12 +837,18 @@ describe("panel components", () => {
 
   it("dispatches command controls commands and validation errors", async () => {
     const onCommand = vi.fn();
-    const view = await mount(<CommandControls onCommand={onCommand} disabled={false} />);
+    const view = await mount(
+      <CommandControls
+        availableCommands={allAvailableCommands}
+        onCommand={onCommand}
+        disabled={false}
+      />
+    );
 
     await clickAndFlush(getButton(view.container, "goToNextStep"));
-    await clickAndFlush(getButton(view.container, "terminateMachine"));
+    await clickAndFlush(getButton(view.container, "terminateJourney"));
     await clickAndFlush(getButton(view.container, "completeJourney"));
-    await clickAndFlush(getButton(view.container, "resetMachine"));
+    await clickAndFlush(getButton(view.container, "resetJourney"));
     const lastVisitedButton = getButton(view.container, "goToLastVisitedStep");
     expect(lastVisitedButton.closest(".button-grid")).not.toBeNull();
     await clickAndFlush(lastVisitedButton);
@@ -833,26 +884,6 @@ describe("panel components", () => {
     );
     await clickAndFlush(getButton(view.container, "Clear error"));
 
-    await clickAndFlush(getButton(view.container, "Update metadata"));
-    expect(view.container.textContent).toContain("Step id is required.");
-    await setInputValue(
-      view.container.querySelector('input[placeholder="step-id"]') as HTMLInputElement,
-      "details"
-    );
-    await clickAndFlush(getButton(view.container, "Update metadata"));
-    expect(view.container.textContent).toContain("Metadata JSON is required.");
-    const metadataField = Array.from(view.container.querySelectorAll("textarea")).find((entry) =>
-      entry.placeholder.includes("Details updated")
-    ) as HTMLTextAreaElement | undefined;
-    if (!metadataField) {
-      throw new Error("metadata textarea not found");
-    }
-    await setInputValue(metadataField, "{");
-    await clickAndFlush(getButton(view.container, "Update metadata"));
-    expect(view.container.textContent).toContain("Metadata must be valid JSON.");
-    await setInputValue(metadataField, '{"title":"Details updated"}');
-    await clickAndFlush(getButton(view.container, "Update metadata"));
-
     await clickAndFlush(getButton(view.container, "Send previous"));
     await setInputValue(
       view.container.querySelector('input[placeholder="1"]') as HTMLInputElement,
@@ -867,10 +898,27 @@ describe("panel components", () => {
     );
     await clickAndFlush(getButton(view.container, "Send previous"));
 
+    await setInputValue(
+      view.container.querySelector('input[placeholder="maxDepth"]') as HTMLInputElement,
+      "0"
+    );
+    await clickAndFlush(getButton(view.container, "Query execution paths"));
+    expect(view.container.textContent).toContain("Max depth must be a positive integer.");
+
+    await setInputValue(
+      view.container.querySelector('input[placeholder="maxDepth"]') as HTMLInputElement,
+      "4"
+    );
+    await setInputValue(
+      view.container.querySelector('input[placeholder="maxPaths"]') as HTMLInputElement,
+      "12"
+    );
+    await clickAndFlush(getButton(view.container, "Query execution paths"));
+
     expect(onCommand).toHaveBeenCalledWith({ type: "goToNextStep" });
-    expect(onCommand).toHaveBeenCalledWith({ type: "terminateMachine" });
+    expect(onCommand).toHaveBeenCalledWith({ type: "terminateJourney" });
     expect(onCommand).toHaveBeenCalledWith({ type: "completeJourney" });
-    expect(onCommand).toHaveBeenCalledWith({ type: "resetMachine" });
+    expect(onCommand).toHaveBeenCalledWith({ type: "resetJourney" });
     expect(onCommand).toHaveBeenCalledWith({ type: "goToLastVisitedStep" });
     expect(onCommand).toHaveBeenCalledWith({ type: "goToStepById", stepId: "review" });
     expect(onCommand).toHaveBeenCalledWith({
@@ -879,16 +927,29 @@ describe("panel components", () => {
     });
     expect(onCommand).toHaveBeenCalledWith({ type: "clearStepError" });
     expect(onCommand).toHaveBeenCalledWith({ type: "clearStepError", stepId: "details" });
-    expect(onCommand).toHaveBeenCalledWith({
-      type: "updateStepMetadata",
-      stepId: "details",
-      metadata: { title: "Details updated" }
-    });
     expect(onCommand).toHaveBeenCalledWith({ type: "goToPreviousStep" });
     expect(onCommand).toHaveBeenCalledWith({ type: "goToPreviousStep", steps: 10 });
+    expect(onCommand).toHaveBeenCalledWith({
+      type: "getExecutionPaths",
+      options: { maxDepth: 4, maxPaths: 12 }
+    });
 
-    await view.rerender(<CommandControls onCommand={onCommand} disabled />);
+    await view.rerender(
+      <CommandControls availableCommands={allAvailableCommands} onCommand={onCommand} disabled />
+    );
     expect(getButton(view.container, "goToNextStep").disabled).toBe(true);
+
+    await view.unmount();
+  });
+
+  it("renders empty command controls state when no commands are exposed", async () => {
+    const onCommand = vi.fn();
+    const view = await mount(
+      <CommandControls availableCommands={[]} onCommand={onCommand} disabled={false} />
+    );
+
+    expect(view.container.textContent).toContain("No remote actions are exposed for this machine.");
+    expect(view.container.textContent).not.toContain("Query execution paths");
 
     await view.unmount();
   });

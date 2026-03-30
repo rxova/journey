@@ -8,6 +8,7 @@ import {
   type JourneyDevtoolsBridgeEnvelope,
   type JourneyDevtoolsCommand,
   type JourneyDevtoolsExtensionEnvelope,
+  type JourneyDevtoolsProtocolVersion,
   type JourneyDevtoolsSerializedError
 } from "@rxova/journey-devtools-bridge";
 
@@ -153,10 +154,11 @@ export const isBackgroundToPanelMessage = (value: unknown): value is BackgroundT
 export const createCommandEnvelope = (
   machineId: string,
   requestId: string,
-  command: JourneyDevtoolsCommand
+  command: JourneyDevtoolsCommand,
+  version: JourneyDevtoolsProtocolVersion = JOURNEY_DEVTOOLS_PROTOCOL_VERSION
 ): JourneyDevtoolsExtensionEnvelope => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
-  version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+  version,
   source: "rxova-journey-extension",
   kind: "command",
   machineId,
@@ -168,10 +170,11 @@ export const createCommandEnvelope = (
 export const createTransportErrorEnvelope = (
   machineId: string,
   requestId: string,
-  error: JourneyDevtoolsSerializedError
+  error: JourneyDevtoolsSerializedError,
+  version: JourneyDevtoolsProtocolVersion = JOURNEY_DEVTOOLS_PROTOCOL_VERSION
 ): JourneyDevtoolsBridgeCommandErrorEnvelope => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
-  version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+  version,
   source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
   kind: "commandError",
   machineId,

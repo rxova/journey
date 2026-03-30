@@ -2,20 +2,20 @@ import React from "react";
 
 import type { JourneyPanelMachineState } from "../store";
 
-type MachineSelectorProps = {
+type JourneyMachineSelectorProps = {
   machineOrder: readonly string[];
   machines: Record<string, JourneyPanelMachineState>;
   selectedMachineId: string | null;
   onSelect: (machineId: string) => void;
 };
 
-export const MachineSelector = React.memo(
-  ({ machineOrder, machines, selectedMachineId, onSelect }: MachineSelectorProps) => {
+export const JourneyMachineSelector = React.memo(
+  ({ machineOrder, machines, selectedMachineId, onSelect }: JourneyMachineSelectorProps) => {
     return (
       <section className="panel-card">
-        <h2>Machines</h2>
+        <h2>Journey Machines</h2>
         {machineOrder.length === 0 ? (
-          <p className="muted">No machines registered yet.</p>
+          <p className="muted">No journey machines registered yet.</p>
         ) : (
           <select
             value={selectedMachineId ?? ""}
@@ -23,14 +23,14 @@ export const MachineSelector = React.memo(
             className="machine-select"
           >
             {machineOrder.map((machineId) => {
-              const machine = machines[machineId];
-              if (!machine) {
+              const journeyMachine = machines[machineId];
+              if (!journeyMachine) {
                 return null;
               }
-              const suffix = machine.meta.appName ? ` (${machine.meta.appName})` : "";
+              const suffix = journeyMachine.meta.appName ? ` (${journeyMachine.meta.appName})` : "";
               return (
                 <option key={machineId} value={machineId}>
-                  {`${machine.meta.label}${suffix}`}
+                  {`${journeyMachine.meta.label}${suffix}`}
                 </option>
               );
             })}

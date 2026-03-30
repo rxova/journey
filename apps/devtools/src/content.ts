@@ -9,7 +9,7 @@ const CONTENT_BRIDGE_FLAG = "__RXOVA_JOURNEY_DEVTOOLS_CONTENT_BRIDGE_INSTALLED__
 type WindowWithBridgeFlag = Window & {
   [CONTENT_BRIDGE_FLAG]?: boolean;
 };
-type CachedMachine = {
+type CachedJourneyMachine = {
   register: Extract<ContentToBackgroundMessage["envelope"], { kind: "register" }> | null;
   snapshot: Extract<ContentToBackgroundMessage["envelope"], { kind: "snapshot" }> | null;
 };
@@ -32,46 +32,54 @@ const isExpectedWindowOrigin = (origin: string): boolean => {
 
 const WINDOW_TARGET_ORIGIN = resolveWindowTargetOrigin();
 const maybeWindow = window as WindowWithBridgeFlag;
-const machineCache = new Map<string, CachedMachine>();
+const journeyMachineCache = new Map<string, CachedJourneyMachine>();
 
 const cacheEnvelope = (envelope: ContentToBackgroundMessage["envelope"]) => {
-  if (envelope.kind === "commandResult" || envelope.kind === "commandError") {
+  if (
+    envelope.kind === "commandResult" ||
+    envelope.kind === "commandError" ||
+    envelope.kind === "observation" ||
+    envelope.kind === "executionPathsResult"
+  ) {
     return;
   }
 
-  const cachedMachine = machineCache.get(envelope.machineId) ?? { register: null, snapshot: null };
+  const cachedJourneyMachine = journeyMachineCache.get(envelope.machineId) ?? {
+    register: null,
+    snapshot: null
+  };
 
   if (envelope.kind === "register") {
-    cachedMachine.register = envelope;
-    cachedMachine.snapshot = {
+    cachedJourneyMachine.register = envelope;
+    cachedJourneyMachine.snapshot = {
       ...envelope,
       kind: "snapshot"
     };
   }
 
   if (envelope.kind === "snapshot") {
-    cachedMachine.snapshot = envelope;
+    cachedJourneyMachine.snapshot = envelope;
   }
 
   if (envelope.kind === "unregister") {
-    machineCache.delete(envelope.machineId);
+    journeyMachineCache.delete(envelope.machineId);
   } else {
-    machineCache.set(envelope.machineId, cachedMachine);
+    journeyMachineCache.set(envelope.machineId, cachedJourneyMachine);
   }
 };
 
 const replayCacheToBackground = () => {
-  for (const cachedMachine of machineCache.values()) {
-    if (cachedMachine.register) {
+  for (const cachedJourneyMachine of journeyMachineCache.values()) {
+    if (cachedJourneyMachine.register) {
       chrome.runtime.sendMessage({
         type: "bridge-envelope",
-        envelope: cachedMachine.register
+        envelope: cachedJourneyMachine.register
       } satisfies ContentToBackgroundMessage);
     }
     // Cached machines are only retained after register/snapshot envelopes, both of which seed snapshot state.
     chrome.runtime.sendMessage({
       type: "bridge-envelope",
-      envelope: cachedMachine.snapshot!
+      envelope: cachedJourneyMachine.snapshot!
     } satisfies ContentToBackgroundMessage);
   }
 };
