@@ -14,100 +14,126 @@ See the Core motivation: [Core Motivation](/docs/core/overview#motivation).
 
 React bindings are a wrapper layer, not a second runtime.
 
-The bindings capture journey typing once (`createJourneyBindings`) and expose React-friendly APIs (`Provider`, `StepRenderer`, hooks). Under the hood, transition selection, history pointer behavior, lifecycle events, async phases, and persistence all come from Core.
+`createJourney(definition, options?)` creates the core machine immediately in `status: "idled"` and returns a `JourneyRuntime` bundle:
 
-For the runtime architecture model, read [Core Architecture](/docs/core/architecture).
+- `machine`
+- `dispose()`
+- `useJourneySnapshot()`
+- `useJourneySelector(selector, equalityFn?)`
+- `useJourneyApi()`
+- `useJourneyEvent(listener)`
+- `JourneyProvider`
+- `StepRenderer`
 
-## TypeScript in React Bindings
+Hooks work without a provider for reads and manual control. `useJourneyApi()` includes `start()` for provider-free flows, and `JourneyProvider` supplies the `views` map, lifecycle callbacks, and client-side auto-start for an `idled` machine.
 
-TypeScript is first-class here too.
+`createJourneyBindings(...)` and the older root-level React exports are not part of this package surface anymore. `createJourney(...)` is the supported runtime entrypoint.
 
-`createJourneyBindings` captures journey types once, then `useJourneyApi`, `useJourneySnapshot`, `useJourneySelector`, `useJourneyEvent`, and `useJourneyMachine` stay typed without repeating generics at each hook call.
+## Runtime Ownership
 
-For deeper type modeling (events, payload maps, snapshots), see [Core TypeScript](/docs/core/typescript).
+`createJourney(...)` is stateful.
 
-## What React Package Gives You
+- One call creates one machine instance immediately.
+- The returned hooks and components stay bound to that specific machine instance.
+- Reusing that returned runtime across multiple providers reuses the same journey state.
+- Creating a second independent journey means calling `createJourney(...)` again.
 
-- `createJourneyBindings(journey)` to capture journey typing once.
-- `Provider` to wire machine state into React context.
-- `StepRenderer` to render the current step component.
-- Hooks for control and state:
-  - `useJourneyApi()`
-  - `useJourneyEvent(listener)`
-  - `useJourneySnapshot()`
-  - `useJourneySelector(selector, equalityFn?)`
-  - `useJourneyMachine()`
+This is also what keeps the API strongly typed. Once the journey is created, the returned React API already knows the valid step ids, event names, and payload shapes.
 
-This keeps React code ergonomic without moving core runtime logic into components.
+The compatibility promises for that model are documented in the shared [Stability Contract](/docs/core/stability).
+
+For the runtime architecture model, read [Core Machine Architecture](/docs/core/architecture), especially the
+file-level pages in that section.
+
+## TypeScript In React
+
+TypeScript stays first-class here too.
+
+`createJourney(...)` captures journey types once, then the returned hooks and components stay typed without repeating generics at each callsite.
+
+For deeper type modeling such as events, payload maps, and snapshots, see [Core TypeScript](/docs/core/typescript).
+
+## What The React Package Gives You
+
+- `createJourney(definition, options?)`
+- hooks bound to the created machine
+- a `JourneyProvider` for `views` and lifecycle callbacks
+- a `StepRenderer` that renders the current step view
+
+This keeps React ergonomic without moving runtime logic into components.
+
+Create the runtime outside render when possible. If a component must own it, memoize it and either set `disposeOnUnmount` on `JourneyProvider` or call `dispose()` manually so you do not recreate journey state on every render.
+
+If you need isolated state per request, per card, or per mounted route boundary, create a separate runtime in each owned boundary instead of reusing one module singleton.
 
 ## React Example
 
-Here is the same graph style wired with React bindings:
-
 ```tsx
 import React from "react";
-import { createJourneyBindings, type JourneyReactDefinition } from "@rxova/journey-react";
+import { createJourney, type JourneyViews } from "@rxova/journey-react";
+import type { JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "details" | "payment" | "review";
-type CustomEvent = "applyCoupon";
 type Context = { isVip: boolean };
+type EventMap = { applyCoupon: unknown };
 
-let bindings: ReturnType<typeof createJourneyBindings<Context, StepId, CustomEvent>>;
+const definition: JourneyDefinition<Context, StepId, EventMap> = {
+  initial: "details",
+  context: { isVip: false },
+  steps: {
+    details: { meta: { title: "Details" } },
+    payment: { meta: { title: "Payment" } },
+    review: { meta: { title: "Review" } }
+  },
+  transitions: {
+    details: {
+      goToNextStep: [
+        { to: "review", when: ({ context }) => context.isVip },
+        { to: "payment", when: ({ context }) => !context.isVip }
+      ]
+    },
+    payment: {
+      applyCoupon: [{ to: "review" }]
+    },
+    review: {
+      completeJourney: true
+    }
+  }
+};
+
+const checkoutJourney = createJourney(definition);
 
 const Details = () => {
-  const api = bindings.useJourneyApi();
+  const api = checkoutJourney.useJourneyApi();
   return <button onClick={() => void api.goToNextStep()}>Next</button>;
 };
 
 const Payment = () => {
-  const api = bindings.useJourneyApi();
+  const api = checkoutJourney.useJourneyApi();
   return <button onClick={() => void api.send({ type: "applyCoupon" })}>Apply coupon</button>;
 };
 
 const Review = () => {
-  const api = bindings.useJourneyApi();
+  const api = checkoutJourney.useJourneyApi();
   return <button onClick={() => void api.completeJourney()}>Finish</button>;
 };
 
-const journey: JourneyReactDefinition<Context, StepId, CustomEvent> = {
-  initial: "details",
-  context: { isVip: false },
-  steps: {
-    details: { component: Details },
-    payment: { component: Payment },
-    review: { component: Review }
-  },
-  transitions: ({ tx, createTransitions }) =>
-    createTransitions(
-      tx
-        .from("details")
-        .on("goToNextStep")
-        .choose(({ when, otherwise }) => [
-          when(({ context }) => context.isVip).to("review"),
-          otherwise().to("payment")
-        ]),
-      tx.from("payment").on("applyCoupon").to("review"),
-      tx.from("review").toComplete()
-    )
+const views: JourneyViews<StepId> = {
+  details: Details,
+  payment: Payment,
+  review: Review
 };
 
-bindings = createJourneyBindings(journey);
-
-export const App = () => {
-  const Provider = bindings.Provider;
-  const StepRenderer = bindings.StepRenderer;
-
-  return (
-    <Provider>
-      <StepRenderer />
-    </Provider>
-  );
-};
+export const App = () => (
+  <checkoutJourney.JourneyProvider views={views}>
+    <checkoutJourney.StepRenderer />
+  </checkoutJourney.JourneyProvider>
+);
 ```
 
-Guard/effect failures resolve through `result.error` instead of rejecting, so fire-and-forget button handlers like `void api.goToNextStep()` do not surface as unhandled promise rejections.
+Guard and `updateContext` failures resolve through `result.error` instead of rejecting, so fire-and-forget button handlers like `void api.goToNextStep()` do not surface as unhandled promise rejections.
 
-## What Still Lives in Core
+## What Still Lives In Core
 
 React bindings do not redefine runtime behavior.
 
@@ -116,22 +142,18 @@ Core docs remain the source of truth for:
 - architecture and transition model: [Core Architecture](/docs/core/architecture)
 - snapshot shape and invariants: [Core Snapshot](/docs/core/snapshot)
 - lifecycle events and ordering: [Core Lifecycle](/docs/core/lifecycle)
-- async guards/effects semantics: [Core Async Behavior](/docs/core/async)
+- async guard behavior: [Core Async Behavior](/docs/core/async)
 - timeline navigation model: [Core Timeline Navigation](/docs/core/history)
 - persistence and migration: [Core Persistence](/docs/core/persistence)
 - full machine API semantics: [Core API](/docs/core/api)
 
-If you want to understand observability, persistence, or transition internals, go to Core first.
-
 ## Why This Split Is Useful
-
-The split lets you keep one stable flow model while writing normal React components.
 
 - Core stays deterministic and framework-agnostic.
 - React stays focused on rendering and hook ergonomics.
-- Teams can debug runtime behavior using Core mental models, then implement UI with React bindings.
+- Teams debug runtime behavior with Core mental models, then implement UI with React bindings.
 
 ## One-Line Mental Model
 
-Use React docs for _how to wire Journey into React_.
-Use Core docs for _how Journey actually works under the hood_.
+Use React docs for how to wire Journey into React.
+Use Core docs for how Journey works under the hood.

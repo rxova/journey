@@ -16,14 +16,13 @@ In `0.6.x`, prefer additive and bug-fix changes, and avoid breaking API changes 
 ```ts
 import {
   createJourneyMachine,
-  type JOURNEY_STATUS,
-  type JOURNEY_EVENT,
-  type JOURNEY_ASYNC_PHASE,
-  type JOURNEY_WILDCARD
+  type JourneyDefinition,
+  type JourneyObservationEvent,
+  type JourneySnapshot
 } from "@rxova/journey-core";
 ```
 
-Most teams use `createJourneyMachine` plus the typed transition helpers available inside `journey.transitions`.
+Most teams use `createJourneyMachine` with either a linear transition array or an event-keyed transition graph.
 
 ## TypeScript-First API Surface
 
@@ -34,6 +33,7 @@ Common type imports:
 ```ts
 import type {
   JourneyDefinition,
+  JourneyComputed,
   JourneySnapshot,
   JourneyMachine,
   JourneyEvent,
@@ -56,21 +56,24 @@ const journey = {
     payment: {},
     review: {}
   },
-  transitions: ({ tx, createTransitions }) =>
-    createTransitions(
-      tx
-        .from("start")
-        .on("goToNextStep")
-        .choose(({ when, otherwise }) => [
-          when(({ context }) => context.isVip).to("review"),
-          otherwise().to("payment")
-        ]),
-      tx.from("payment").on("goToNextStep").to("review"),
-      tx.from("review").toComplete()
-    )
+  transitions: {
+    start: {
+      goToNextStep: [
+        { to: "review", when: ({ context }) => context.isVip },
+        { to: "payment", when: ({ context }) => !context.isVip }
+      ]
+    },
+    payment: {
+      goToNextStep: [{ to: "review" }]
+    },
+    review: {
+      completeJourney: true
+    }
+  }
 };
 
-const machine = createJourneyMachine(journey);
+const journeyMachine = createJourneyMachine(journey);
+journeyMachine.start();
 ```
 
 This pattern scales well: the flow map stays readable even when behavior gets richer.
@@ -79,57 +82,107 @@ This pattern scales well: the flow map stays readable even when behavior gets ri
 
 You can drive the machine with events (`send`) or convenience helpers.
 
+Start it first:
+
+```ts
+journeyMachine.start();
+```
+
 Use `send` when you want explicit event control:
 
 ```ts
-const result = await machine.send({ type: "goToNextStep" });
+const result = await journeyMachine.send({ type: "goToNextStep" });
 if (result.error) {
   console.error("transition failed", result.error);
 }
 
-await machine.send({ type: "myCustomEvent" });
+await journeyMachine.send({ type: "myCustomEvent" });
 ```
 
 Use helpers for common actions:
 
 ```ts
-await machine.goToNextStep();
-await machine.goToPreviousStep();
-await machine.goToLastVisitedStep();
-await machine.completeJourney();
-await machine.terminateJourney();
+await journeyMachine.goToNextStep();
+await journeyMachine.goToPreviousStep();
+await journeyMachine.goToLastVisitedStep();
+await journeyMachine.goToStepById("review");
+await journeyMachine.completeJourney();
+await journeyMachine.terminateJourney();
 ```
+
+`goToStepById(...)` is mode-aware: it performs direct caller-driven navigation when `transitions` is omitted, and follows only declared `goToStepById` transitions in graph or linear definitions.
+
+After `dispose()`, send-style APIs such as `send(...)`, `goToNextStep()`, and `completeJourney()` resolve with `transitioned: false` and `error: JourneyDisposedError`. Sync control APIs such as `start()`, `updateContext()`, and `clearStepError()` remain no-op and emit a development warning.
 
 You can also update runtime state safely through explicit APIs:
 
 - `updateContext(updater)`
-- `updateStepMetadata(stepId, updater)`
+- `getStepMeta(stepId)`
 - `clearStepError(stepId?)`
-- `resetMachine()`
+- `start()`
+- `resetJourney()`
 
 `updateContext(updater)` is immediate, but it is not retroactive to an async transition already in progress. If a context change must affect the current `send(...)`, apply it before sending; if it should happen after the transition, await the transition first. See [Core Async Behavior](/docs/core/async).
 
+`updateContext(updater)` is ordered. It waits behind any in-flight queued transition work and applies the updater to the latest committed snapshot when it executes.
+
 ## Snapshot: Your Runtime Truth
 
-`machine.getSnapshot()` gives you the full current state:
+`journeyMachine.getSnapshot()` gives you the full current state:
 
 - `currentStepId`: where the user is now.
 - `history.timeline`: the path they have taken.
 - `history.index`: the current pointer in that path.
-- `context`: shared state used by guards/effects/UI.
+- `context`: shared state used by guards, transition updates, and UI.
 - `visited`: whether each step has ever been entered.
-- `stepMeta`: per-step runtime metadata.
-- `status`: lifecycle state (`running`, `complete`, `terminated`).
+- `status`: lifecycle state (`idled`, `running`, `completed`, `terminated`).
 - `async`: per-step async phase and errors.
 
 Key invariant: `currentStepId` is always `history.timeline[history.index]`.
 
 This invariant is why navigation stays explainable and test-friendly.
 
+## Computed State
+
+`journeyMachine.getComputed()` gives you a read-only derived view over the current snapshot.
+
+Always available:
+
+- `mode`
+- `activeStepId`
+- `activeStepIndex`
+- `visitedStepCount`
+- `isLoading`
+- `isIdle`
+- `isRunning`
+- `isComplete`
+- `isTerminated`
+- `isInitialStep`
+
+Linear journeys also expose wizard-style fields:
+
+- `stepCount`
+- `journeyLength`
+- `isFirstStep`
+- `isLastStep`
+- `stepOrder`
+
+Example:
+
+```ts
+const computed = journeyMachine.getComputed();
+
+if (computed.mode === "linear") {
+  console.log(computed.activeStepIndex, computed.stepCount, computed.isLastStep);
+}
+```
+
+`activeStepIndex` reflects the current history position. In linear mode that lines up with the fixed sequence. In graph and headless modes it reflects the user's current position in the recorded journey timeline.
+
 Example snapshot:
 
 ```ts
-const snapshot = machine.getSnapshot();
+const snapshot = journeyMachine.getSnapshot();
 
 const exampleSnapshot = {
   currentStepId: "payment",
@@ -145,12 +198,6 @@ const exampleSnapshot = {
     details: true,
     payment: true,
     review: false
-  },
-  stepMeta: {
-    start: {},
-    details: {},
-    payment: {},
-    review: {}
   },
   status: "running",
   async: {
@@ -169,13 +216,17 @@ const exampleSnapshot = {
 
 `goToNextStep()` is shorthand for sending `goToNextStep`.
 
-By default, `goToNextStep()` completes the machine when the current step declares no `goToNextStep` transition. Set `completeOnNoNextStep: false` to opt out. It does not auto-complete when a declared next transition is merely blocked by guards.
+By default, `goToNextStep()` completes the machine when the current step declares no `goToNextStep` transition. Set `requireExplicitCompletion: true` to opt out. It does not auto-complete when a declared next transition is merely blocked by guards.
 
 `completeJourney()` and `terminateJourney()` are shorthands for their event forms.
 
 `goToPreviousStep(steps?)` and `goToLastVisitedStep()` move the history pointer.
 
-`send({ type: "back" })` first tries explicit `back` transitions, then falls back to `goToPreviousStep(1)` when none match.
+`send({ type: "goToPreviousStep" })` first tries explicit `goToPreviousStep` transitions, then falls back to
+pointer navigation when none match.
+
+`send({ type: "back" })` is only meaningful if `back` is one of your custom events and your journey declares
+matching `back` transitions.
 
 ## Transition Syntax
 
@@ -183,7 +234,7 @@ Transition syntax has its own page:
 
 - [Transition Syntax](/docs/core/api/transitions-syntax)
 
-It covers plain transition objects, callback-scoped `tx` helpers, and when to use each style.
+It covers the linear shorthand and the graph-object syntax used by current journey definitions.
 
 ## Observability
 
@@ -199,15 +250,14 @@ Use `subscribeEvent` when you need typed lifecycle telemetry, such as:
 - `transition.error`
 - `step.enter`
 - `step.exit`
-- `journey.complete`
-- `journey.close`
+- `journey.completed`
+- `journey.terminated`
 - `navigation.previous`
 - `navigation.lastVisited`
-- `metadata.updated`
 
 Use `subscribeStart`, `subscribeComplete`, or `subscribeTerminate` when you only want a specific lifecycle event without manually filtering `subscribeEvent`.
 
-`journey.start` is replayed immediately to each `subscribeEvent` listener so late subscribers can still observe machine startup.
+`journey.start` is emitted when `journeyMachine.start()` runs. Late subscribers only observe future lifecycle events.
 
 For teams, this usually means better logs, easier debugging, and cleaner analytics hooks.
 
@@ -238,32 +288,12 @@ const unsubscribeStepObject = machine.subscribeSelector(
 
 ## Type Helpers You May Use
 
-- `JOURNEY_STATUS`: type-only lifecycle status map.
-- `JOURNEY_EVENT`: type-only built-in event map.
-- `JOURNEY_ASYNC_PHASE`: type-only async transition phase map.
-- `JOURNEY_WILDCARD`: type-only wildcard source literal.
+The most common exported types are:
 
-Definitions:
-
-```ts
-type JOURNEY_STATUS = {
-  RUNNING: "running";
-  COMPLETE: "complete";
-  TERMINATED: "terminated";
-};
-
-type JOURNEY_EVENT = {
-  GO_TO_STEP_BY_ID: "goToStepById";
-};
-
-type JOURNEY_ASYNC_PHASE = {
-  IDLE: "idle";
-  EVALUATING_WHEN: "evaluating-when";
-  RUNNING_EFFECT: "running-effect";
-  ERROR: "error";
-};
-
-type JOURNEY_WILDCARD = "*";
-```
-
-These are type-only helpers for readability and consistency.
+- `JourneyDefinition`
+- `JourneyMachine`
+- `JourneySnapshot`
+- `JourneySendEvent`
+- `JourneySendResult`
+- `JourneyObservationEvent`
+- `JourneyPayloadFor`

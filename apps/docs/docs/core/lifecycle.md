@@ -4,19 +4,38 @@ title: Lifecycle
 sidebar_label: Lifecycle
 ---
 
-Journey lifecycle is designed to be explicit and predictable.
+Journey lifecycle is split into two things:
 
-When teams can clearly see how a transition starts, succeeds, fails, or terminates, flow bugs become easier to diagnose.
+- machine status
+- observation events
+
+That split matters because status tells you what the machine is allowed to do, while events tell you what just
+happened.
 
 ## Machine Status
 
-A machine is always in one of three states:
+A machine is always in one of four states:
 
-- `running`: normal operation.
-- `complete`: finished flow.
-- `terminated`: intentionally closed early.
+- `idled`: created, hydrated, or reset, but not started yet
+- `running`: normal operation
+- `completed`: finished flow
+- `terminated`: intentionally closed early
 
-When status is terminal (`complete` or `terminated`), transitions and pointer navigation are blocked until `resetMachine()`.
+When status is `idled`, transitions and pointer navigation are blocked until `start()`.
+When status is terminal (`completed` or `terminated`), transitions and pointer navigation are blocked until `resetJourney()` and a later `start()`.
+
+```text
+idled
+  └─ start() -> running
+
+running
+  ├─ completeJourney / COMPLETE target -> completed
+  ├─ terminateJourney / TERMINATED target -> terminated
+  └─ resetJourney() -> idled
+
+completed or terminated
+  └─ resetJourney() -> idled
+```
 
 ## Startup State
 
@@ -26,51 +45,154 @@ A new machine starts from a known snapshot:
 - `history.index = 0`
 - `currentStepId = initial`
 - `visited[initial] = true`
-- `status = "running"`
+- `status = "idled"`
 
-This consistent start is why behavior is reproducible across environments.
+This consistent idle snapshot is why behavior is reproducible across environments.
 
-`subscribeEvent(...)` listeners receive `journey.start` immediately on subscribe, using the machine's startup step and startup timestamp, so startup is still observable even though subscriptions are usually attached after machine creation.
+Call `machine.start()` to move the machine into `running`. That call emits `journey.start` with the current step and timestamp. Late subscribers do not receive a replayed startup event.
 
-## Transition Event Lifecycle
+## Event Catalog
 
-Use `subscribeEvent` to observe lifecycle events:
+Use `subscribeEvent(...)` to observe lifecycle events.
 
-- `journey.start`
-- `transition.start`
-- `transition.success`
-- `transition.error`
-- `step.exit`
-- `step.enter`
-- `journey.complete`
-- `journey.close`
-- `navigation.previous`
-- `navigation.lastVisited`
-- `metadata.updated`
+| Event                    | When it appears                                      | Key payload                                    |
+| ------------------------ | ---------------------------------------------------- | ---------------------------------------------- |
+| `journey.start`          | `machine.start()` changes `idled -> running`         | `stepId`                                       |
+| `transition.start`       | an event begins running through the send pipeline    | `from`, `event`                                |
+| `transition.success`     | a transition commits or fallback send succeeds       | `from`, `to`, `eventType`, `transitionId`      |
+| `transition.error`       | selected guard or `updateContext` fails or times out | `from`, `eventType`, `transitionId`, `error`   |
+| `step.exit`              | machine leaves the current step                      | `stepId`                                       |
+| `step.enter`             | machine enters a different step                      | `stepId`                                       |
+| `journey.completed`      | machine reaches completed status                     | `stepId`                                       |
+| `journey.terminated`     | machine reaches terminated status                    | `stepId`                                       |
+| `navigation.previous`    | pointer moves backward                               | `from`, `to`, `requestedSteps`, `appliedSteps` |
+| `navigation.lastVisited` | pointer jumps back to the realized tail              | `from`, `to`                                   |
 
-## Event Order (Successful Step Change)
+## Event Order
 
-For a normal step-to-step transition, emitted order is:
+### Successful Step Change
+
+For a normal step-to-step transition, the emitted order is:
 
 1. `transition.start`
 2. `step.exit` (if target differs)
 3. `transition.success`
 4. `step.enter` (if target differs)
 
+```text
+send(goToNextStep)
+  -> transition.start
+  -> step.exit
+  -> transition.success
+  -> step.enter
+```
+
 Same-step transitions do not re-enter. If a transition resolves from `a` to `a`, Journey still emits `transition.start` and `transition.success`, but it intentionally skips `step.exit` and `step.enter`.
 
-If a transition defines `effect`, it runs after `transition.start` and before commit events.
+### Failed Guard Or Context Update
 
-If a guard or effect throws/rejects, Journey emits `transition.error`, does not commit navigation, and resolves the `send(...)` result with `error`.
+If a selected guard throws, rejects, times out, or the selected `updateContext` throws, Journey emits `transition.error`, does not commit
+navigation, and resolves the `send(...)` result with `error`.
 
-## Terminal Events
+```text
+send(event)
+  -> transition.start
+  -> async guard work / sync context update
+  -> transition.error
+  -> no step commit
+```
 
-When a terminal transition occurs:
+### Terminal Transition
 
-- Journey emits `transition.success` with terminal target.
-- Then emits either `journey.complete` or `journey.close`.
+When a terminal transition occurs, the order is:
 
-This makes completion and termination easy to observe separately in analytics and logs.
+1. `transition.start`
+2. `transition.success` with `to: "COMPLETE"` or `to: "TERMINATED"`
+3. `journey.completed` or `journey.terminated`
+
+```text
+send(completeJourney)
+  -> transition.start
+  -> transition.success (to COMPLETE)
+  -> journey.completed
+```
+
+### Pointer Navigation Helpers
+
+Direct pointer helpers do not go through transition matching, so their event stream is navigation-focused:
+
+```text
+goToPreviousStep(2)
+  -> step.exit
+  -> navigation.previous
+  -> step.enter
+```
+
+If previous-step navigation happens as a fallback from `send({ type: "goToPreviousStep" })`, that send still emits
+`transition.start` before the navigation sequence and `transition.success` after it succeeds.
+
+## Step Lifecycle Callbacks
+
+For simple enter/leave side effects, attach `onEnter` and `onLeave` directly to a step definition instead of subscribing to events manually. Both callbacks receive `{ context }` at the moment the step is entered or left.
+
+```ts
+const machine = createJourneyMachine({
+  context: { username: "" },
+  steps: {
+    login: {
+      onLeave: ({ context }) => analytics.track("login_left", { user: context.username })
+    },
+    dashboard: {
+      onEnter: ({ context }) => analytics.track("dashboard_entered"),
+      onLeave: ({ context }) => console.log("leaving dashboard")
+    }
+  },
+  transitions: ["login", "dashboard"]
+});
+```
+
+With the graph builder, callbacks sit alongside transitions on the step:
+
+```ts
+const dashboardStep = createStep("dashboard", {
+  onEnter: ({ context }) => analytics.track("dashboard_entered"),
+  onLeave: ({ context }) => console.log("leaving dashboard"),
+  on: { submit: [to("review")] }
+});
+```
+
+Callbacks are **observational** — they run after the transition commit and cannot block or roll back it. Use transition `updateContext` when the transition itself must derive new context.
+
+If `onEnter` or `onLeave` throws or rejects, Journey logs a development diagnostic and leaves the committed transition result unchanged. Lifecycle callback failures do not emit `transition.error`.
+
+### React: `useJourneyStepLifecycle`
+
+In React, use `useJourneyStepLifecycle` when the callback needs access to component state or React context. It is a thin wrapper over `useJourneyEvent` filtered to a single step:
+
+```tsx
+const { useJourneyStepLifecycle } = createJourney(definition);
+
+function Dashboard() {
+  useJourneyStepLifecycle("dashboard", {
+    onEnter: ({ context }) => analytics.track("dashboard_entered"),
+    onLeave: ({ context }) => console.log("leaving dashboard")
+  });
+  // ...
+}
+```
+
+The hook always calls the latest version of your callbacks without re-subscribing.
+
+:::note
+`onEnter` / `onLeave` fire on the same tick as `step.enter` / `step.exit` events, in the order they were registered. The step definition callbacks fire first (registered at machine creation), then any `useJourneyStepLifecycle` hooks (registered at component mount).
+:::
+
+## How To Think About It
+
+- Use snapshot subscriptions when you care about current truth.
+- Use lifecycle subscriptions when you care about causality and ordering.
+- Use machine status when you need a coarse control gate.
+- Use event types and payloads when you need analytics, logs, or debugging detail.
 
 ## Example: Observe Lifecycle
 
@@ -84,8 +206,16 @@ const unsubscribe = machine.subscribeEvent((event) => {
     console.log("transition", event.from, "->", event.to, event.eventType);
   }
 
-  if (event.type === "journey.complete") {
+  if (event.type === "journey.completed") {
     console.log("journey completed at", event.stepId);
   }
 });
 ```
+
+## Recommended Reading
+
+- Read [Snapshot](/docs/core/snapshot) for the state object these events explain.
+- Read [Async Behavior](/docs/core/async) for failure and timeout semantics.
+- Read [Timeline Navigation](/docs/core/history) for `navigation.previous` and `navigation.lastVisited`.
+- Read [Runtime Queue](/docs/core/architecture/runtime), [Send Pipeline](/docs/core/architecture/send), and
+  [Navigation Commits](/docs/core/architecture/navigation) if you want the implementation side.

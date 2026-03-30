@@ -51,34 +51,36 @@ bun add @rxova/journey-devtools-bridge
 import { createJourneyMachine } from "@rxova/journey-core";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 
-const machine = createJourneyMachine(journey);
+const journeyMachine = createJourneyMachine(journey);
 
-const detachDevtools = attachJourneyDevtools(machine, {
+const detachDevtools = attachJourneyDevtools(journeyMachine, {
   machineId: "checkout-main",
   label: "Checkout Flow",
   appName: "Storefront"
 });
 
+journeyMachine.start();
+
 // optional cleanup
 // detachDevtools();
 ```
+
+The bridge does not auto-start the machine. Call `journeyMachine.start()` when your app is ready to process navigation and transition commands.
 
 ### React Example
 
 ```tsx
 import { useEffect } from "react";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
-import { checkoutBindings } from "./checkout-bindings";
+import { checkoutJourney } from "./checkout-journey";
 
 export const JourneyDebugBridge = () => {
-  const machine = checkoutBindings.useJourneyMachine();
-
   useEffect(() => {
-    return attachJourneyDevtools(machine, {
+    return attachJourneyDevtools(checkoutJourney.machine, {
       machineId: "onboarding",
       label: "Onboarding Journey"
     });
-  }, [machine]);
+  }, []);
 
   return null;
 };
@@ -132,7 +134,7 @@ If you do nothing else:
 To force production enablement:
 
 ```ts
-attachJourneyDevtools(machine, { enabled: true });
+attachJourneyDevtools(journeyMachine, { enabled: true });
 ```
 
 ## Common Setup Pitfalls

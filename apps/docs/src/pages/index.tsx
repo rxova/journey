@@ -4,6 +4,7 @@ import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import Layout from "@theme/Layout";
 import { HomeFeatureCarousel, type HomeFeatureSlide } from "../components/HomeFeatureCarousel";
 import { HomeInstallTypewriter } from "../components/HomeInstallTypewriter";
+import { HomeReleaseHero } from "../components/HomeReleaseHero";
 
 const ctaClasses =
   "inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2";
@@ -33,7 +34,11 @@ const featureSlides: HomeFeatureSlide[] = [
     body: "95%+ coverage baseline across critical runtime paths, React bindings, and integration behavior that ships in every release."
   },
   {
-    title: "Tiny, Zero Dependency",
+    title: "Plugins",
+    body: "Compose persistence, analytics, autosave, execution paths, diagnostics, and replay without bloating the base runtime."
+  },
+  {
+    title: "Zero dependency",
     body: "Core runtime stays compact with zero runtime dependencies, keeping installs lean and bundle behavior predictable across environments."
   },
   {
@@ -131,41 +136,11 @@ export default function Home(): ReactNode {
 
           <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-20 sm:px-10">
             <div className="flex flex-col gap-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-ink-500 dark:text-ink-300">
-                Rxova Journey Docs
-              </p>
-              <h1 className="text-4xl font-semibold text-ink-900 sm:text-5xl lg:text-6xl dark:text-white">
-                Declarative journey graphs for <span className="whitespace-nowrap">non-linear</span>{" "}
-                UI flows.
-              </h1>
-              <p className="max-w-2xl text-base text-ink-600 sm:text-lg dark:text-ink-200">
-                Model complex flows as a graph of steps and transitions, then render them in React
-                or run headless in tests and services.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <Link
-                  className={`${ctaClasses} bg-ink-900 text-white hover:bg-ink-800 dark:bg-white dark:text-ink-900 dark:hover:bg-ink-100`}
-                  to="/docs/core/getting-started"
-                >
-                  Start with Core
-                </Link>
-                <Link
-                  className={`${ctaClasses} bg-ink-900 text-white hover:bg-ink-800 dark:bg-white dark:text-ink-900 dark:hover:bg-ink-100`}
-                  to="/docs/react/overview"
-                >
-                  Explore React
-                </Link>
-                <Link
-                  className={`${ctaClasses} pl-4 border border-brand-400 bg-brand-100 text-brand-900 hover:border-brand-500 hover:bg-brand-200 dark:border-brand-300 dark:bg-brand-300/20 dark:text-brand-100 dark:hover:border-brand-200 dark:hover:bg-brand-300/30`}
-                  to="/docs/devtool/overview"
-                >
-                  <span className="mr-2 rounded-full bg-brand-700 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-white dark:bg-brand-200 dark:text-ink-900">
-                    New!
-                  </span>
-                  Chrome Developer DevTools
-                </Link>
-              </div>
-              <HomeInstallTypewriter commands={installCommands} className="mt-2" />
+              <HomeReleaseHero ctaClasses={ctaClasses} />
+              <HomeInstallTypewriter
+                commands={installCommands}
+                className="mx-auto mt-2 self-center"
+              />
 
               <HomeFeatureCarousel
                 title="Why Teams Pick Journey"
@@ -186,15 +161,15 @@ export default function Home(): ReactNode {
                 <div className="home-surface rounded-2xl border border-ink-300/80 bg-white/90 p-6 shadow-[0_20px_44px_-28px_rgba(20,35,60,0.38)] transition hover:-translate-y-1 hover:border-ink-400/80 hover:shadow-[0_24px_52px_-30px_rgba(20,35,60,0.45)] dark:hover:border-[#5f6d95]">
                   <div className="flex items-center gap-2">
                     <span className="rounded-full bg-brand-700 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-white dark:bg-brand-200 dark:text-ink-900">
-                      New!
+                      1.0.0rc
                     </span>
                     <span className="text-sm font-extrabold uppercase tracking-[0.14em] text-ink-900 dark:text-ink-50">
                       Status
                     </span>
                   </div>
                   <p className="mt-3 text-sm text-ink-700 dark:text-ink-100">
-                    Since version 0.6.1, docs are versioned per package so you can switch between
-                    released versions in each docs section.
+                    Journey just hit release-candidate status. Start with Core or React, exercise
+                    the flow edges, and help close the gap to the final 1.0 release.
                   </p>
                 </div>
                 <div className="home-surface rounded-2xl border border-ink-300/80 bg-white/90 p-6 shadow-[0_20px_44px_-28px_rgba(20,35,60,0.38)] transition hover:-translate-y-1 hover:border-ink-400/80 hover:shadow-[0_24px_52px_-30px_rgba(20,35,60,0.45)] dark:hover:border-[#5f6d95]">

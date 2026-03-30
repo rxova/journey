@@ -1,221 +1,68 @@
+import DocAccordion, { DocAccordionItem } from "@site/src/components/DocAccordion";
+
 # Overview
+
+Journey is a flow runtime for products that need more than “next” and “previous”.
+
+It works well when your UI still looks like a wizard, but the behavior underneath is already a graph: branches, skips, retries, async checks, recovery paths, explicit close behavior, and stable history. The goal is not to force one shape. The goal is to let you model the flow you actually have while keeping the API simple.
 
 ## Motivation
 
-Most wizard/stepper implementations start as a linear list of steps plus a pointer (`currentIndex`). That works well for simple next/previous navigation in a fixed order.
+The usual stepper model starts with a list and a pointer. That is fine for small flows.
 
-The problem starts when the product grows. You add conditions, branching, step skipping, revisits, async checks, and context-dependent rules. Logic spreads across components, and one pointer no longer explains the real path a user took.
+The problem appears when decisions move inside components. One step skips another. A validation call decides where the user goes next. A “close” action opens a confirmation branch. A pointer can still tell you where the user is, but it cannot explain why they got there or which path was taken.
 
-At that point, behavior gets hard to reason about and easy to break. Logic spreads inside the steps, and there is no longer a single source of truth.
-
-Journey solves this by making the journey graph explicit in one place. Rules stay centralized, so behavior is easier to read, test, and debug. It also includes first-class TypeScript support, built-in history, and optional versioned `localStorage` persistence.
-
-### Important Difference: Index vs ID Navigation
-
-Most steppers move by index (`goToStepByIndex(2)`). That is fragile: add, remove, or reorder a step, and index-based jumps can point to the wrong place.
-
-Journey moves by stable step ids (`"details"`, `"payment"`, `"review"`). Transition rules target ids, and direct jumps use `goToStepById`.
-
-That means flow intent survives refactors and branching.
-
-## Proof of concept
-
-Let's take a look at an example.
-A simple React wizard may start like this:
-
-```tsx
-const App = () => (
-  <Wizard>
-    <Step1 />
-    <Step2 />
-    <Step3 />
-  </Wizard>
-);
-```
-
-Each step then calls helpers like `goToPreviousStep`, `goToNextStep`, and `goToStepByIndex`.
-
-That feels easy at first, but as rules grow, each step starts making its own decisions:
-
-```tsx
-const Step2 = () => {
-  const { goToNextStep, goToStepByIndex } = useWizard();
-
-  const onNext = async () => {
-    if (!formIsValid()) return;
-    const isVip = await checkVip();
-
-    if (isVip) return goToStepByIndex(2); // manually skipping a step
-    return goToNextStep();
-  };
-
-  return <button onClick={() => void onNext()}>Next</button>;
-};
-```
-
-Now imagine many steps doing this. The flow rules are spread out, so it is hard to see the full map. Add to that confirmations to close a flow for example, that usually sit outisde the wizard layer because stacking isn't easy to reproduce.
-
-Now let's take a look at an example with Journey Core, and let's make it more complicated just to see the point.
-In Journey you define the `journey` once and then just trigger events:
-
-```ts
-import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
-
-type Context = { isVip: boolean; couponCode: string | null };
-type StepIds = "details" | "payment" | "review";
-type CustomEvents = "applyCoupon";
-type CustomEventPayloadMap = {
-  applyCoupon: {
-    couponCode: string;
-  };
-};
-
-const journey: JourneyDefinition<Context, StepIds, CustomEvents, CustomEventPayloadMap> = {
-  initial: "details",
-  context: { isVip: false, couponCode: null },
-  steps: {
-    details: {},
-    payment: {},
-    review: {}
-  },
-  transitions: [
-    {
-      from: "details",
-      event: "goToNextStep",
-      to: "review",
-      when: ({ context }) => context.isVip
-    },
-    {
-      from: "details",
-      event: "goToNextStep",
-      to: "payment",
-      when: ({ context }) => !context.isVip
-    },
-    {
-      from: "payment",
-      event: "applyCoupon",
-      to: "review",
-      effect: ({ context, event }) => ({
-        ...context,
-        couponCode: event.payload?.couponCode ?? context.couponCode
-      })
-    }
-  ]
-};
-
-const machine = createJourneyMachine(journey); // current step 'details';
-console.log(machine.getSnapshot().status); // "running"
-await machine.goToNextStep(); // since VIP is false, it navigates to 'payment'
-await machine.send({
-  type: "applyCoupon",
-  payload: { couponCode: "VIP20" }
-}); // Moved to the next step 'review' and also updated the context thanks to the `effect` defined before
-await machine.goToNextStep(); // since we are in the last step (review), going to the next step finishes the machine.
-console.log(machine.getSnapshot().status); // "complete"
-console.log(machine.getSnapshot().currentStepId); // "review"
-```
-
-This is the key idea: instead of scattering flow logic across many components, Journey keeps it in one place.
-All changes are event-driven, which means you can log, debug, and inspect them consistently.
-
-## Framework Agnostic
-
-`createJourneyMachine` is framework agnostic. It runs the journey runtime without any UI framework dependency.
-
-Today we provide official bindings for React in `@rxova/journey-react`, but the same core machine can be connected to any other framework by reading snapshots and subscribing to machine updates.
-
-## Snapshot At A Glance
-
-Following the previous example, after all those events our final snapshot would look like:
-
-```ts
-const snapshot = machine.getSnapshot();
-
-const exampleSnapshot = {
-  currentStepId: "review",
-  history: {
-    timeline: ["details", "payment", "review"],
-    index: 2
-  },
-  context: {
-    isVip: false,
-    couponCode: "VIP20"
-  },
-  visited: {
-    details: true,
-    payment: true,
-    review: true
-  },
-  stepMeta: {
-    details: undefined,
-    payment: undefined,
-    review: undefined
-  },
-  status: "complete",
-  async: {
-    isLoading: false,
-    byStep: {
-      details: { phase: "idle", eventType: null, transitionId: null, error: null },
-      payment: { phase: "idle", eventType: null, transitionId: null, error: null },
-      review: { phase: "idle", eventType: null, transitionId: null, error: null }
-    }
-  }
-};
-```
-
-Where `stepMeta`, `status`, and `async` are part of every Core snapshot (they are not optional fields).
-
-`steps` are not part of the snapshot payload. This is intentional. Step definitions live in the journey config, while snapshot only contains runtime state. If you need the known step ids at runtime, they are reflected by keys in `visited`, `stepMeta`, and `async.byStep`.
-
-Three invariants to keep in mind:
-
-- `history.timeline.length >= 1`
-- `0 <= history.index < history.timeline.length`
-- `currentStepId === history.timeline[history.index]`
-
-For full field-by-field meaning and examples, see [Core Snapshot](/docs/core/snapshot).
-
-## TypeScript
-
-Journey is TypeScript-first.
-
-Step ids, events, payloads, context, and metadata can all be typed end-to-end, so invalid transitions and wrong payload shapes are caught at compile time.
-
-For full typing patterns, see [Core TypeScript](/docs/core/typescript).
-
-## Principles
-
-- Model flows as graphs, not fixed lists.
-- Keep runtime state in one snapshot.
-- Declare transitions explicitly (`from`, `event`, `to`, `when`, `effect`).
-- Keep core semantics independent from UI framework code.
-- Keep runtime behavior deterministic (first valid transition wins).
-
-## Core Model
-
-A journey definition is small and stable:
-
-- `steps`: where users can be
-- `transitions`: how users move
-- `context`: shared flow state
-- `initial`: entry step
-
-At runtime, the snapshot is the source of truth:
-
-- `currentStepId`
-- `history.timeline` + `history.index`
-- `context`
-- `visited`
-- `stepMeta`
-- `status`
-- `async`
-
-Reference details: [Core Snapshot](/docs/core/snapshot)
+Journey keeps that logic in one place by making transitions explicit and event-driven. That gives teams freedom to model both wizard and graph behavior, simplicity in the runtime shape, and versatility when flows grow beyond a fixed sequence.
 
 ## Practical Advantages
 
-- Faster debugging: one snapshot + lifecycle events explains what happened.
-- Safer refactors: typed steps/events/payloads catch breakage early.
-- Predictable navigation: timeline + pointer makes back/forward behavior reproducible.
-- Clear async handling: `when`/`effect` phases are explicit and observable.
-- Optional durability: persistence is versioned and migration-friendly.
+- **Graph-Based**: model real branching, retries, skips, and recovery paths without hiding them in UI code.
+- **Transition-First**: put movement rules where they belong instead of scattering them across click handlers.
+- **Snapshot-Persisted**: keep the runtime truth in one snapshot with history, context, status, and async state.
+- **Pluggable**: add runtime capabilities such as persistence or structural path analysis without bloating the base machine.
+- **Observable**: subscribe to state or lifecycle events depending on whether you care about “what is true now” or “what just happened”.
+- **Async-Safe**: make async guards part of the model, with explicit phases and timeout support.
+
+## Under The Hood
+
+Journey processes events through an internal queue. That matters because it gives the runtime a stable order of operations: one event starts, its matching transition is resolved, async work settles, the next snapshot commits, and only then does the next event continue. You do not get overlapping flow mutations fighting each other.
+
+The runtime is snapshot-first. A journey definition describes the static model, but the snapshot describes the live state. That split is deliberate. Definitions stay small and readable, while the snapshot becomes the single place to inspect current step, realized history, context, visited state, status, and async phase.
+
+Transitions are the center of the system. Guards decide whether a move is allowed. `updateContext` derives the next context synchronously once a transition is selected. Ordered matching keeps behavior deterministic, which is one of the reasons the runtime stays easy to test and easier to explain during refactors.
+
+The event stream is just as important as the snapshot. Snapshot subscriptions are useful when you want to render. Lifecycle events are useful when you want to debug, log, or analyze behavior. That event-driven architecture keeps UI concerns and runtime telemetry separate without losing visibility into either.
+
+## Overview Guide
+
+<DocAccordion>
+  <DocAccordionItem
+    title="Architecture"
+    summary="A file-by-file walkthrough of how the machine is assembled, queued, and committed."
+    defaultOpen
+  >
+    Journey is built around a small runtime model: steps, transitions, snapshot, and event processing. Read
+    [Machine Architecture](/docs/core/architecture) when you want the technical picture, including a file-level
+    breakdown of `packages/core/src/journey-machine`, without dropping straight into the API reference.
+  </DocAccordionItem>
+  <DocAccordionItem
+    title="Recipes"
+    summary="Short, practical patterns for the things product teams run into first."
+  >
+    Use [Recipes](/docs/core/recipes) when you need a proven pattern such as explicit back overrides, context
+    updates, close-confirmation flows, timeout-aware transitions, or branch-heavy transition builders.
+  </DocAccordionItem>
+  <DocAccordionItem
+    title="Examples"
+    summary="Longer scenarios that show how Journey feels in real flows."
+  >
+    Use [Examples](/docs/core/examples) when you want to compare list-shaped wizards, graph flows, observable
+    runtimes, or plugin-assisted setups instead of reading features one by one.
+  </DocAccordionItem>
+</DocAccordion>
+
+## Where To Go Next
+
+- Read [About](/docs/core/about) for the product model and design intent.
+- Read [Quickstart](/docs/core/getting-started) if you want a typed example immediately.
+- Read [Usage](/docs/core/usage) if you are choosing between wizard, graph, and headless runtime usage.

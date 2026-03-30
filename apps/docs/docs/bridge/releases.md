@@ -136,7 +136,7 @@ Source: [`packages/devtools-bridge/CHANGELOG.md`](https://github.com/rxova/journ
   - Built-in fallback semantics for `back`/`goToPreviousStep` event sends when no explicit transition matches.
   - Strongly typed transition builder ergonomics via `createTransitions` and `tx` helpers (`toComplete`, `toTerminate`, branching builders).
   - First-match-wins transition execution preserved and clarified for reliability.
-  - Typed async transition phases exposed in snapshot: `idle`, `evaluating-when`, `running-effect`, `error`.
+  - Typed async transition phases exposed in snapshot: `idle`, `evaluating-when`, `error`.
   - Metadata is now first-class at runtime via `snapshot.stepMeta` and `updateStepMetadata(stepId, updater)`.
   - Typed observability stream via `subscribeEvent(...)` with lifecycle/navigation/metadata events.
   - Expanded persistence model with versioning/migration support and safer hydration of invalid data.
@@ -166,7 +166,7 @@ Source: [`packages/devtools-bridge/CHANGELOG.md`](https://github.com/rxova/journ
 
   ### New and improved
   - Protocol remains version `3` (no protocol version bump in this release).
-  - Richer command set for runtime control: `goToNextStep`, `terminateMachine`, `completeJourney`, `goToStepById`, `goToPreviousStep`, `goToLastVisitedStep`, `updateStepMetadata`, `send`, `resetMachine`, `clearStepError`.
+  - Richer command set for runtime control: `goToNextStep`, `terminateJourney`, `completeJourney`, `goToStepById`, `goToPreviousStep`, `goToLastVisitedStep`, `updateStepMetadata`, `send`, `resetJourney`, `clearStepError`.
   - Snapshot payloads now include full v2 runtime state: `currentStepId`, `history.timeline`, `history.index`, `context`, `visited`, `stepMeta`, `status`, `async`.
   - Safer runtime defaults: bridge enabled by default in non-production; disabled by default in production unless explicitly enabled; commands disabled by default in production unless explicitly enabled.
 

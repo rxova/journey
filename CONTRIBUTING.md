@@ -95,8 +95,10 @@ Releases are automated with Changesets and GitHub Actions.
 - Private app workspaces `apps-docs` and `apps-devtools` are also versioned with Changesets for docs/version tracking, but they are not published to npm.
 - `apps-demo` remains ignored by Changesets.
 - Docs history is tracked with Docusaurus docs version snapshots (`pnpm -C apps/docs run version:cut <version>`).
-- Starting at `0.6.0`, treat the public API surface as stabilization baseline: `0.6.x` releases should be backward compatible by default.
-- If a breaking change is unavoidable before `1.0.0`, call it out explicitly in the changeset and changelog so consumers can plan migrations.
+- The upcoming `1.0.0-rc` line is the contract-freeze point for the current runtime model.
+- After `1.0.0-rc.1`, only bug fixes, docs fixes, and release-blocking contract fixes should land.
+- If a public contract change is unavoidable during the RC line, call it out explicitly in the changeset, changelog, and migration docs before cutting the next RC.
+- After `1.0.0`, documented public APIs follow semver.
 
 ## Browser Compatibility
 

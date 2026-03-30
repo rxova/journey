@@ -228,20 +228,6 @@ body,
   opacity: 0.95;
 }
 
-/* Prism tokenization marks `console` differently in JS vs TS; normalize dark-mode color. */
-[data-theme="dark"] :is(.language-js, .language-javascript, .language-jsx) .token.console {
-  color: rgb(189, 147, 249);
-}
-
-/* Prism misclassifies dotted property names like `event.from` as JS keywords. */
-[data-theme="dark"]
-  :is(.language-js, .language-javascript, .language-jsx)
-  .token.punctuation
-  + .token.keyword.module {
-  color: inherit;
-  font-style: normal;
-}
-
 /* Keep external-link icons inline and visually centered with adjacent text. */
 a svg[aria-label="(opens in new tab)"] {
   display: inline-block;

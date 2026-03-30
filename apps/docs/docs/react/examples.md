@@ -11,58 +11,70 @@ For runtime internals, pair them with Core docs.
 
 ## Example Scenarios
 
-### 1) Basic Bindings Setup
+### 1. Basic `createJourney` Setup
 
 What it shows:
 
-- `createJourneyBindings`
-- `Provider`
+- `createJourney(definition, options?)`
+- separate `views`
+- `JourneyProvider`
 - `StepRenderer`
 
 Start from: `/docs/react/quickstart`
 
-### 2) Controlled Navigation
+### 2. Provider-Free Hooks
 
 What it shows:
 
-- `goToNextStep`, `goToPreviousStep`, `goToLastVisitedStep`
+- `useJourneySnapshot()`
+- `useJourneyApi()`
+- `useJourneySelector()`
+- `useJourneyEvent()`
+
+Use this when components need machine state or actions but are not part of step rendering.
+
+### 3. Controlled Navigation
+
+What it shows:
+
+- `goToNextStep`
+- `goToPreviousStep`
+- `goToLastVisitedStep`
 - explicit event sending via `api.send(...)`
 
 Runtime semantics live in: `/docs/core/api` and `/docs/core/history`
 
-### 3) Async UI
+### 4. Async UI
 
 What it shows:
 
 - reading `snapshot.async`
-- loading/error rendering
+- loading and error rendering
 - `clearStepError`
 
 Runtime async rules live in: `/docs/core/async`
 
-### 4) Metadata Updates
+### 5. Step Metadata Reads
 
 What it shows:
 
-- `updateStepMetadata` from React actions
+- `getStepMeta(stepId)` from React actions or selectors
 
-Runtime metadata events live in: `/docs/core/lifecycle`
+Step metadata semantics live in: `/docs/core/api`
 
-### 5) External Machine Ownership
-
-What it shows:
-
-- passing `machine` into `Provider`
-- integrating React with externally managed runtime
-
-### 6) Journey Switching
+### 6. Devtools Bridge Integration
 
 What it shows:
 
-- `resetOnJourneyChange`
-- `resetOnPersistenceChange`
-- state preservation vs full reset behavior
+- passing `journey.machine` to `attachJourneyDevtools(...)`
+
+### 7. Inside-Component Journey Creation
+
+What it shows:
+
+- `useMemo(() => createJourney(...), [])`
+- `disposeOnUnmount` for provider-owned cleanup
 
 ## Full Integration Reference
 
-For an end-to-end setup (core + react + bridge), see the demo app in this repository.
+For an end-to-end setup across core, react, and the devtools bridge, see the demo app in this repository.

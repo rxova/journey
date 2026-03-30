@@ -5,7 +5,7 @@ sidebar_position: 3
 
 `attachJourneyDevtools(machine, options?)` connects a Journey machine to the devtools channel.
 
-Use it when you want live snapshot streaming and optional remote command control from the Journey Devtools panel.
+Use it when you want live snapshot streaming, core observation-event streaming, and optional remote command/query control from the Journey Devtools panel.
 
 ## Basic Usage
 
@@ -15,12 +15,20 @@ import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 const detach = attachJourneyDevtools(machine, {
   machineId: "checkout-main",
   label: "Checkout Flow",
-  appName: "Storefront"
+  appName: "Storefront",
+  pluginMetadata: {
+    persistence: {
+      key: "checkout-journey",
+      clearOnReset: true
+    }
+  }
 });
 
 // later
 // detach();
 ```
+
+The bridge is observational by default. It does not call `machine.start()` for you, so fresh machines remain `idled` until your app starts them.
 
 ## Options
 
@@ -59,6 +67,14 @@ Controls whether the panel can send mutating commands back to the machine.
 - Production default: disabled
 - Useful when you want read-only inspection in production-like environments.
 
+### `pluginMetadata?: { persistence?: { key?: string; clearOnReset?: boolean } }`
+
+Optional metadata surfaced in the devtools registration payload for plugin-backed machine features that are not structurally discoverable from the machine object.
+
+- Current use: persistence plugin metadata
+- Displayed in the panel capability summary
+- Does not change machine behavior; this is devtools-facing metadata only
+
 ## Local vs Production Behavior
 
 Default behavior is safety-first:
@@ -91,13 +107,17 @@ The bridge can execute these commands from the panel:
 ### Lifecycle / Control
 
 - `completeJourney`
-- `terminateMachine` (mapped internally to core `terminateJourney`)
-- `resetMachine`
+- `terminateJourney` (mapped internally to core `terminateJourney`)
+- `startJourney`
+- `resetJourney`
 
 ### State Updates
 
-- `updateStepMetadata`
 - `clearStepError`
+
+### Read-only Queries
+
+- `getExecutionPaths`
 
 ### Custom Event Dispatch
 
@@ -105,12 +125,14 @@ The bridge can execute these commands from the panel:
 
 This command model allows both high-level controls and lower-level event testing.
 
+When `commandsEnabled` is `false`, mutating commands are blocked, but read-only `getExecutionPaths` remains available when the machine exposes `getExecutionPaths()`.
+
 ## Snapshot Payload
 
 Bridge serializes and sends a transport-safe snapshot payload with:
 
 - navigation: `currentStepId`, `history.timeline`, `history.index`
-- runtime data: `context`, `visited`, `stepMeta`
+- runtime data: `context`, `visited`
 - lifecycle/async: `status`, `async`
 
 Example payload:
@@ -129,12 +151,6 @@ Example payload:
     payment: true,
     review: false
   },
-  stepMeta: {
-    start: {},
-    details: {},
-    payment: {},
-    review: {}
-  },
   status: "running",
   async: {
     isLoading: false,
@@ -151,3 +167,12 @@ Example payload:
 ```
 
 For exact command and envelope types, see [Protocol](/docs/bridge/protocol).
+
+## Additional Streams
+
+In protocol v4 the bridge also emits:
+
+- `observation` envelopes mirroring core `JourneyObservationEvent`
+- `executionPathsResult` envelopes for read-only execution-path queries
+
+The Journey Devtools panel uses these to render event rows in the timeline and inspect structural execution paths without mutating the machine.
