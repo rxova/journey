@@ -1,5 +1,15 @@
 # apps-docs
 
+## 0.8.0
+
+### Minor Changes
+
+- 679cf46: Update apps-docs for the new @rxova/journey-core transition-builder syntax. The docs now present choose(({ when, otherwise }) => [...]) as the preferred inline branching style and align examples with the callback-scoped helpers inside journey.transitions. See the @rxova/journey-core release notes in this release for the underlying API changes.
+
+### Patch Changes
+
+- 80b4cb8: Improved the docs experience for TypeScript examples by generating matching JavaScript tabs automatically. This includes better formatting preservation during TS-to-JS conversion, more consistent dark-theme syntax highlighting between TS and JS tabs, and updated Core overview examples that show more realistic event-driven journey flows.
+
 ## 0.7.1
 
 ### Patch Changes
