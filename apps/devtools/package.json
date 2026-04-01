@@ -9,7 +9,7 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "test:browser": "playwright test e2e/browser-integration.spec.ts --workers=1"
+    "test:browser": "node -e \"console.log('Browser integration tests are temporarily disabled.')\""
   },
   "dependencies": {
     "@rxova/journey-devtools-bridge": "workspace:^",

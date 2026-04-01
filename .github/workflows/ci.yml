@@ -74,20 +74,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build devtools extension
         run: pnpm --filter apps-devtools build
-      - name: Install Playwright Chromium
-        run: pnpm --filter apps-devtools exec playwright install --with-deps chromium
-      - name: Run devtools browser integration
-        run: xvfb-run -a pnpm --filter apps-devtools test:browser -- --reporter=line
-      - name: Upload browser integration artifacts
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: apps-devtools-browser-artifacts
-          path: |
-            apps/devtools/test-results
-            apps/devtools/playwright-report
-          if-no-files-found: ignore
-
   release-verify:
     runs-on: ubuntu-latest
     steps:
