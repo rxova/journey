@@ -102,10 +102,4 @@ Required submission assets to replace:
 pnpm test -- --run apps/devtools/test
 ```
 
-Browser integration smoke (extension runtime):
-
-```bash
-pnpm --filter apps-devtools build
-pnpm --filter apps-devtools exec playwright install chromium
-pnpm --filter apps-devtools test:browser
-```
+Browser integration smoke is temporarily disabled in CI.

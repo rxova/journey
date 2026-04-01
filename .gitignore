@@ -10,3 +10,4 @@ test-results
 *.zip
 .next
 .claude/
+coverage/
