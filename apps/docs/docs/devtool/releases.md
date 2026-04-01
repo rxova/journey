@@ -9,6 +9,35 @@ Release notes sourced from the Chrome DevTools app changelog (outside package Ch
 
 Source: [`apps/devtools/CHANGELOG.md`](https://github.com/rxova/journey/blob/main/apps/devtools/CHANGELOG.md)
 
+## 1.0.0-rc.1
+
+### Major Changes
+
+- 1cdde02: Upgrade the devtools app for the 1.0 RC release and bridge protocol v4 rollout.
+
+  ### Added
+  - Capability-aware controls that adapt to the inspected machine's registered plugins
+  - Execution-path query support when the inspected machine has the plugin registered
+  - Observation timeline events for transition tracing and async-state inspection
+  - OS / DevTools theme following
+
+  ### Changed
+  - Accepts legacy protocol v3 bridge envelopes during extension-first rollouts
+  - Keeps package versions aligned with the updated core and bridge releases
+  - Replaced store ternary lookup with kind-based envelope lookup
+
+  ### Fixed
+  - Protocol version mismatch handling
+
+### Minor Changes
+
+- 679cf46: Bump apps-devtools to stay in sync with the new @rxova/journey-core and @rxova/journey-devtools-bridge minor releases. There are no app-specific feature changes in this branch beyond version alignment with the updated core transition-definition API. See the @rxova/journey-core release notes in this release for the detailed API changes.
+
+### Patch Changes
+
+- Updated dependencies [1cdde02]
+  - @rxova/journey-devtools-bridge@1.0.0-rc.1
+
 ## 0.7.0
 
 ### Minor Changes

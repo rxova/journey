@@ -1,8 +1,14 @@
 import path from "node:path";
+import { existsSync } from "node:fs";
+import { createServer } from "node:http";
 import { writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { chromium, expect, test } from "@playwright/test";
 
-const EXTENSION_PATH = path.join(process.cwd(), "apps/devtools/dist");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const EXTENSION_PATH = path.resolve(__dirname, "../dist");
+const HARNESS_PATH = "src/integration-harness.html";
 const PANEL_PORT_NAME = "rxova-journey-devtools-panel";
 
 test.setTimeout(90_000);
@@ -11,22 +17,30 @@ test("surfaces restricted-tab injection warning and clears for follow-up tab ses
   browserName
 }, testInfo) => {
   const isCi = process.env.CI === "true";
+  const isLinux = process.platform === "linux";
   void browserName;
   const diagnosticsLogs = [];
   let context;
   let harnessPage = null;
+  let allowedPage = null;
+  let server = null;
+  let allowedUrl: string;
   let tracingStarted = false;
 
   const launchWith = async (headless) =>
     await chromium.launchPersistentContext("", {
       channel: "chromium",
       headless,
-      timeout: 15_000,
+      timeout: isCi ? 60_000 : 20_000,
       recordVideo: {
         dir: testInfo.outputPath("videos"),
         size: { width: 1280, height: 720 }
       },
-      args: [`--disable-extensions-except=${EXTENSION_PATH}`, `--load-extension=${EXTENSION_PATH}`]
+      args: [
+        ...(isLinux ? ["--disable-gpu"] : []),
+        `--disable-extensions-except=${EXTENSION_PATH}`,
+        `--load-extension=${EXTENSION_PATH}`
+      ]
     });
 
   const stopTracing = async (failed) => {
@@ -63,10 +77,11 @@ test("surfaces restricted-tab injection warning and clears for follow-up tab ses
   };
 
   const attachVideo = async (failed) => {
-    if (!failed || !harnessPage) {
+    const videoPage = harnessPage ?? allowedPage;
+    if (!failed || !videoPage) {
       return;
     }
-    const video = harnessPage.video();
+    const video = videoPage.video();
     if (!video) {
       return;
     }
@@ -82,13 +97,48 @@ test("surfaces restricted-tab injection warning and clears for follow-up tab ses
     }
   };
 
-  try {
-    context = await launchWith(false);
-  } catch {
-    context = await launchWith(true);
+  if (!existsSync(EXTENSION_PATH)) {
+    throw new Error(`Built extension directory not found: ${EXTENSION_PATH}`);
+  }
+  if (!existsSync(path.join(EXTENSION_PATH, HARNESS_PATH))) {
+    throw new Error(
+      `Built integration harness not found: ${path.join(EXTENSION_PATH, HARNESS_PATH)}`
+    );
   }
 
   try {
+    context = await launchWith(false);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    diagnosticsLogs.push(`[launch] Headed Chromium launch failed: ${message}`);
+
+    if (isCi) {
+      throw new Error(`Headed Chromium launch failed in CI: ${message}`, { cause: error });
+    }
+
+    test.skip(
+      true,
+      "Browser integration requires a headed Chromium session with extension support. Run it from a desktop session or under xvfb-run."
+    );
+    return;
+  }
+
+  try {
+    server = await new Promise((resolve, reject) => {
+      const httpServer = createServer((_request, response) => {
+        response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+        response.end("<!doctype html><html><body><main>allowed</main></body></html>");
+      });
+
+      httpServer.once("error", reject);
+      httpServer.listen(0, "127.0.0.1", () => resolve(httpServer));
+    });
+    const address = server.address();
+    if (!address || typeof address === "string") {
+      throw new Error("Failed to resolve localhost server address for browser integration test.");
+    }
+    allowedUrl = `http://127.0.0.1:${address.port}/allowed`;
+
     await context.tracing.start({
       screenshots: true,
       snapshots: true,
@@ -119,6 +169,13 @@ test("surfaces restricted-tab injection warning and clears for follow-up tab ses
       return;
     }
     const extensionId = serviceWorker.url().split("/")[2];
+    allowedPage = await context.newPage();
+    allowedPage.on("console", (message) => {
+      diagnosticsLogs.push(`[allowed-page:${message.type()}] ${message.text()}`);
+    });
+    await allowedPage.goto(allowedUrl);
+    await allowedPage.bringToFront();
+
     harnessPage = await context.newPage();
     harnessPage.on("console", (message) => {
       diagnosticsLogs.push(`[console:${message.type()}] ${message.text()}`);
@@ -126,10 +183,10 @@ test("surfaces restricted-tab injection warning and clears for follow-up tab ses
     harnessPage.on("pageerror", (error) => {
       diagnosticsLogs.push(`[pageerror] ${String(error)}`);
     });
-    await harnessPage.goto(`chrome-extension://${extensionId}/integration-harness.html`);
+    await harnessPage.goto(`chrome-extension://${extensionId}/${HARNESS_PATH}`);
 
     const result = await harnessPage.evaluate(
-      async ({ panelPortName }) => {
+      async ({ panelPortName, allowedTabUrl }) => {
         const chromeApi = globalThis.chrome;
         if (!chromeApi) {
           throw new Error("Chrome extension APIs are unavailable in harness page.");
@@ -181,10 +238,10 @@ test("surfaces restricted-tab injection warning and clears for follow-up tab ses
 
         const currentTabId = await new Promise((resolve, reject) => {
           const timeoutId = window.setTimeout(() => {
-            reject(new Error("Timed out resolving active tab"));
+            reject(new Error(`Timed out resolving allowed tab for ${allowedTabUrl}`));
           }, 8_000);
 
-          chromeApi.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          chromeApi.tabs.query({ url: [allowedTabUrl] }, (tabs) => {
             window.clearTimeout(timeoutId);
             const runtimeError = chromeApi.runtime.lastError;
             if (runtimeError) {
@@ -209,7 +266,7 @@ test("surfaces restricted-tab injection warning and clears for follow-up tab ses
           allowedWarning
         };
       },
-      { panelPortName: PANEL_PORT_NAME }
+      { panelPortName: PANEL_PORT_NAME, allowedTabUrl: allowedUrl }
     );
 
     expect(result.restrictedWarning).not.toBeNull();
@@ -220,6 +277,17 @@ test("surfaces restricted-tab injection warning and clears for follow-up tab ses
     await attachConsoleLogs(failed);
     await stopTracing(failed);
     await context.close();
+    if (server) {
+      await new Promise((resolve, reject) => {
+        server.close((error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve(undefined);
+        });
+      });
+    }
     await attachVideo(failed);
   }
 });

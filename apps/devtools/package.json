@@ -1,6 +1,6 @@
 {
   "name": "apps-devtools",
-  "version": "0.7.0",
+  "version": "1.0.0-rc.1",
   "private": true,
   "description": "Chrome DevTools extension for debugging Rxova Journey machines.",
   "type": "module",

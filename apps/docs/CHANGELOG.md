@@ -1,5 +1,44 @@
 # apps-docs
 
+## 1.0.0-rc.1
+
+### Major Changes
+
+- 1cdde02: Align the docs app with the 1.0 RC core and React APIs.
+
+  ### Added
+  - Graph Builder API reference page
+  - Plugin architecture docs for analytics, autosave, execution-paths, and authoring
+  - Release verification and stability contract pages
+
+  ### Changed
+  - Aligned examples with the simplified 4-parameter `JourneyDefinition` generics
+  - Clarified React provider startup timing around layout-phase `start()`
+  - Migrated React examples from `createJourneyBindings()` to the `createJourney()` runtime API
+  - Rewrote examples to use declarative graph and linear transition syntax
+  - Updated Core overview and quickstarts to show explicit `machine.start()` lifecycle
+  - Updated examples to use `true` terminal transition shorthand where applicable
+  - Updated Transitions Syntax with the Graph Builder / Option C coverage
+  - Overhauled Core docs, architecture docs, and package READMEs
+
+  ### Fixed
+  - Cards cut off on mobile viewports
+  - Image flicker on hydration
+  - Search crash
+  - Releases placement in the sidebar
+
+  ### Removed
+  - Auto-generated JavaScript snippet tabs in favor of TypeScript-only examples
+
+### Minor Changes
+
+- 679cf46: Update apps-docs for the new @rxova/journey-core transition-builder syntax. The docs now present choose(({ when, otherwise }) => [...]) as the preferred inline branching style and align examples with the callback-scoped helpers inside journey.transitions. See the @rxova/journey-core release notes in this release for the underlying API changes.
+
+### Patch Changes
+
+- 80b4cb8: Improved the docs experience for TypeScript examples by generating matching JavaScript tabs automatically. This includes better formatting preservation during TS-to-JS conversion, more consistent dark-theme syntax highlighting between TS and JS tabs, and updated Core overview examples that show more realistic event-driven journey flows.
+- c096d11: Improve the release celebration modal with a proper version-title spacing fix and a canvas-confetti backdrop animation that performs better than the previous DOM-based effect.
+
 ## 0.7.1
 
 ### Patch Changes
