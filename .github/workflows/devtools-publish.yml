@@ -92,6 +92,13 @@ jobs:
 
           echo "$RESPONSE"
 
+          ERROR_MESSAGE=$(echo "$RESPONSE" | jq -r '.error.message // empty')
+          if [ -n "$ERROR_MESSAGE" ]; then
+            echo "Upload failed: $ERROR_MESSAGE"
+            echo "$RESPONSE" | jq -r '.error.details[]?.fieldViolations[]? | "\(.field): \(.description)"'
+            exit 1
+          fi
+
           ITEM_ERROR=$(echo "$RESPONSE" | jq -r '.itemError[]?.errorCode // empty')
           if [ -n "$ITEM_ERROR" ]; then
             echo "Upload failed"
@@ -106,6 +113,12 @@ jobs:
             "https://chromewebstore.googleapis.com/v2/publishers/${CWS_PUBLISHER_ID}/items/${CWS_EXTENSION_ID}:publish")
 
           echo "$RESPONSE"
+
+          ERROR_MESSAGE=$(echo "$RESPONSE" | jq -r '.error.message // empty')
+          if [ -n "$ERROR_MESSAGE" ]; then
+            echo "Publish failed: $ERROR_MESSAGE"
+            exit 1
+          fi
 
           STATUS=$(echo "$RESPONSE" | jq -r '.status[]? // empty')
           if [ -z "$STATUS" ]; then

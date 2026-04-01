@@ -1,5 +1,6 @@
 import { defineManifest } from "@crxjs/vite-plugin";
 import packageJson from "./package.json";
+import { toChromeManifestVersion } from "./chrome-manifest-version";
 
 const DYNAMIC_CONTENT_ENTRY_MATCH = ["http://*/*", "https://*/*"] as const;
 const DEFAULT_HOST_PERMISSIONS = [
@@ -9,10 +10,13 @@ const DEFAULT_HOST_PERMISSIONS = [
   "https://127.0.0.1/*"
 ] as const;
 
+const manifestVersion = toChromeManifestVersion(packageJson.version);
+
 export default defineManifest({
   manifest_version: 3,
   name: "Rxova Journey Devtools",
-  version: packageJson.version,
+  version: manifestVersion.version,
+  version_name: manifestVersion.versionName,
   description: "Inspect and control Rxova Journey machines from Chrome DevTools.",
   devtools_page: "src/devtools.html",
   background: {
