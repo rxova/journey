@@ -32,7 +32,7 @@ const oneSource = [
   }
 ];
 
-async function makeWorkspace(changelogBody = "# Core\n\n## 1.0.0\n\n- Added thing\n") {
+async function makeWorkspace(changelogBody = "# Core\n\n## 1.0.0-rc.1\n\n- Added thing\n") {
   const root = await mkdtemp(join(tmpdir(), "sync-doc-release-notes-"));
   await mkdir(join(root, "changelogs"), { recursive: true });
   await writeFile(join(root, "changelogs/core.md"), changelogBody, "utf8");
@@ -41,18 +41,18 @@ async function makeWorkspace(changelogBody = "# Core\n\n## 1.0.0\n\n- Added thin
 
 describe("sync-doc-release-notes script", () => {
   it("normalizes changelog with heading and leading blank lines", () => {
-    const normalized = normalizeChangelog("# Title\n\n## 1.0.0\n\n- x\n");
-    expect(normalized).toBe("## 1.0.0\n\n- x\n");
+    const normalized = normalizeChangelog("# Title\n\n## 1.0.0-rc.1\n\n- x\n");
+    expect(normalized).toBe("## 1.0.0-rc.1\n\n- x\n");
   });
 
   it("normalizes changelog without top heading", () => {
-    const normalized = normalizeChangelog("## 1.0.0\n\n- x\n");
-    expect(normalized).toBe("## 1.0.0\n\n- x\n");
+    const normalized = normalizeChangelog("## 1.0.0-rc.1\n\n- x\n");
+    expect(normalized).toBe("## 1.0.0-rc.1\n\n- x\n");
   });
 
   it("normalizes changelog and escapes inline generics for MDX", () => {
     const normalized = normalizeChangelog(
-      "# Title\n\n## 1.0.0\n\n- Uses Record<string, unknown>\n- Keeps `Map<string, number>` untouched\n"
+      "# Title\n\n## 1.0.0-rc.1\n\n- Uses Record<string, unknown>\n- Keeps `Map<string, number>` untouched\n"
     );
 
     expect(normalized).toContain("- Uses `Record<string, unknown>`");
@@ -69,12 +69,12 @@ describe("sync-doc-release-notes script", () => {
   });
 
   it("renders release markdown with frontmatter and source", () => {
-    const rendered = renderReleaseDoc(oneSource[0], "## 1.0.0\n\n- Added\n");
+    const rendered = renderReleaseDoc(oneSource[0], "## 1.0.0-rc.1\n\n- Added\n");
     expect(rendered).toContain("title: Core Releases");
     expect(rendered).toContain(
       "Source: [`changelogs/core.md`](https://github.com/rxova/journey/blob/main/changelogs/core.md)"
     );
-    expect(rendered).toContain("## 1.0.0");
+    expect(rendered).toContain("## 1.0.0-rc.1");
   });
 
   it("builds repo paths", () => {
@@ -128,7 +128,7 @@ describe("sync-doc-release-notes script", () => {
 
     expect(result.updated).toEqual(["docs/core/releases.md"]);
     expect(logs).toEqual(["Updated docs/core/releases.md"]);
-    expect(await readFile(join(root, "docs/core/releases.md"), "utf8")).toContain("## 1.0.0");
+    expect(await readFile(join(root, "docs/core/releases.md"), "utf8")).toContain("## 1.0.0-rc.1");
 
     await rm(root, { recursive: true, force: true });
   });
