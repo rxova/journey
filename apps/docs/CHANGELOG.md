@@ -1,5 +1,11 @@
 # apps-docs
 
+## 1.0.2
+
+### Patch Changes
+
+- c2c3323: Update docs and package readmes to match the current core size messaging.
+
 ## 1.0.1
 
 ### Patch Changes
