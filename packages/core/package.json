@@ -125,9 +125,33 @@
       "limit": "3 kB"
     },
     {
+      "name": "core/createAnalyticsPlugin",
+      "path": "dist/plugins/analytics/index.js",
+      "import": "{ createAnalyticsPlugin }",
+      "limit": "2 kB"
+    },
+    {
+      "name": "core/createAutosavePlugin",
+      "path": "dist/plugins/autosave/index.js",
+      "import": "{ createAutosavePlugin }",
+      "limit": "3.5 kB"
+    },
+    {
+      "name": "core/createDiagnosticsPlugin",
+      "path": "dist/plugins/diagnostics/index.js",
+      "import": "{ createDiagnosticsPlugin }",
+      "limit": "2.5 kB"
+    },
+    {
       "name": "core/createExecutionPathsPlugin",
       "path": "dist/plugins/execution-paths/index.js",
       "import": "{ createExecutionPathsPlugin }",
+      "limit": "2 kB"
+    },
+    {
+      "name": "core/createReplayPlugin",
+      "path": "dist/plugins/replay/index.js",
+      "import": "{ createReplayPlugin }",
       "limit": "2 kB"
     }
   ]
