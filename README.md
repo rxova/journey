@@ -153,7 +153,7 @@ await machine.goToStepById("step3");
 - **Typed step IDs** — invalid step names are compile errors, not runtime bugs
 - **Async guards and transition updates** — async checks via `when`, declarative context changes via `updateContext`
 - **Timeline history** — deterministic back/forward navigation with `goToPreviousStep()` and `goToLastVisitedStep()`
-- **Persistence plugin** — versioned snapshot storage with migrations, context filtering, and reset semantics
+- **Plugin system** — opt into persistence, autosave, analytics, replay, diagnostics, and execution-path tooling
 - **Chrome DevTools** — inspect timeline, state diffs, and send commands in real time
 - **Observable** — subscribe to snapshots or lifecycle events for analytics and debugging
 - **Zero dependencies** — 5.4 kB brotlied core, tree-shakeable
@@ -457,3 +457,10 @@ const paths = createExecutionPathsPlugin({ maxDepth: 10, maxPaths: 50 });
 const machine = createJourneyMachine(definition, { plugins: [paths] });
 machine.getExecutionPaths(); // { paths, truncated, cyclesDetected }
 ```
+
+#### Other built-in plugins
+
+- `@rxova/journey-core/autosave` for debounced draft persistence and save-status APIs
+- `@rxova/journey-core/analytics` for normalized lifecycle analytics envelopes
+- `@rxova/journey-core/replay` for in-memory replay capture and export
+- `@rxova/journey-core/diagnostics` for structural journey analysis

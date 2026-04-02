@@ -44,6 +44,8 @@ const sidebars: SidebarsConfig = {
         "persistence",
         "autosave",
         "plugins/analytics-plugin",
+        "plugins/replay-plugin",
+        "plugins/diagnostics-plugin",
         "plugins/execution-paths-plugin"
       ]
     },

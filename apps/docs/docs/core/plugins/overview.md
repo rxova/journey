@@ -38,7 +38,9 @@ That is enough to support both “react to runtime changes” plugins and “ext
 import { createJourneyMachine } from "@rxova/journey-core";
 import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
 import { createAutosavePlugin } from "@rxova/journey-core/autosave";
+import { createDiagnosticsPlugin } from "@rxova/journey-core/diagnostics";
 import { createPersistencePlugin } from "@rxova/journey-core/persistence";
+import { createReplayPlugin } from "@rxova/journey-core/replay";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
 
 const machine = createJourneyMachine(journey, {
@@ -53,6 +55,8 @@ const machine = createJourneyMachine(journey, {
     createAnalyticsPlugin({
       track: (event) => analytics.track(event.name, event.payload)
     }),
+    createReplayPlugin(),
+    createDiagnosticsPlugin(),
     createExecutionPathsPlugin()
   ]
 });
@@ -77,6 +81,18 @@ Read [Autosave Plugin](/docs/core/autosave).
 Use the analytics plugin when you want normalized lifecycle events sent to your analytics client without polluting transition logic.
 
 Read [Analytics Plugin](/docs/core/plugins/analytics-plugin).
+
+### Replay Plugin
+
+Use the replay plugin when you want an in-memory capture of snapshots and lifecycle events for debugging, export, or bug reports.
+
+Read [Replay Plugin](/docs/core/plugins/replay-plugin).
+
+### Diagnostics Plugin
+
+Use the diagnostics plugin when you want structural checks such as unreachable steps, dead ends, duplicate transition ids, or cycles exposed through the machine API.
+
+Read [Diagnostics Plugin](/docs/core/plugins/diagnostics-plugin).
 
 ### Execution Paths Plugin
 
