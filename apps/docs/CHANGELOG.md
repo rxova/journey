@@ -1,5 +1,11 @@
 # apps-docs
 
+## 1.0.1
+
+### Patch Changes
+
+- 563054b: Add the missing plugin docs (diagnostics, replay) pages and navigation entries.
+
 ## 1.0.0-rc.1
 
 ### Major Changes
