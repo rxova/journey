@@ -6,7 +6,7 @@ Typed state machine for multi-step UI flows.
   <a href="https://www.npmjs.com/package/@rxova/journey-core">
     <img src="https://img.shields.io/npm/v/@rxova/journey-core?color=0f8f6a" alt="npm" />
   </a>
-  <img src="https://img.shields.io/badge/7.13%20kB-brotli-0f8f6a" alt="size" />
+  <img src="https://img.shields.io/badge/7.1%20kB-brotli-0f8f6a" alt="size" />
   <img src="https://img.shields.io/badge/zero%20dependencies-black" alt="zero deps" />
   <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
 </p>
