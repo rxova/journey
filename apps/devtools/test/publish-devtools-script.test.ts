@@ -26,6 +26,7 @@ describe("publish-devtools script", () => {
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ access_token: "access-token" }), { status: 200 })
       )
+      .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }))
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ uploadState: "SUCCESS" }), { status: 200 })
       )
@@ -43,7 +44,7 @@ describe("publish-devtools script", () => {
     });
 
     expect(readFileSyncMock).toHaveBeenCalledWith("apps-devtools.zip");
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
       "https://oauth2.googleapis.com/token",
@@ -54,6 +55,16 @@ describe("publish-devtools script", () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
+      "https://chromewebstore.googleapis.com/v2/publishers/publisher-id/items/extension-id:fetchStatus",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({
+          Authorization: "Bearer access-token"
+        })
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
       "https://chromewebstore.googleapis.com/upload/v2/publishers/publisher-id/items/extension-id:upload",
       expect.objectContaining({
         method: "POST",
@@ -68,7 +79,7 @@ describe("publish-devtools script", () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      3,
+      4,
       "https://chromewebstore.googleapis.com/v2/publishers/publisher-id/items/extension-id:publish",
       expect.objectContaining({
         method: "POST",
@@ -102,6 +113,7 @@ describe("publish-devtools script", () => {
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ access_token: "access-token" }), { status: 200 })
       )
+      .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }))
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ uploadState: "FAILURE", itemError: ["bad"] }), {
           status: 200
@@ -129,6 +141,7 @@ describe("publish-devtools script", () => {
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ access_token: "access-token" }), { status: 200 })
       )
+      .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }))
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ uploadState: "SUCCESS" }), { status: 200 })
       )
@@ -160,5 +173,62 @@ describe("publish-devtools script", () => {
         CWS_REFRESH_TOKEN: "refresh-token"
       })
     ).rejects.toThrow("Missing required env: CWS_PUBLISHER_ID");
+  });
+
+  it("skips upload and publish when the submitted revision is already pending review", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: "access-token" }), { status: 200 })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ submittedItemRevisionStatus: { state: "PENDING_REVIEW" } }), {
+          status: 200
+        })
+      );
+
+    const { main } = await import("../../../scripts/publish-devtools");
+
+    await main({
+      CWS_PUBLISHER_ID: "publisher-id",
+      CWS_EXTENSION_ID: "extension-id",
+      CWS_CLIENT_ID: "client-id",
+      CWS_CLIENT_SECRET: "client-secret",
+      CWS_REFRESH_TOKEN: "refresh-token"
+    });
+
+    expect(readFileSyncMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("treats the in-review upload error as a clean skip", async () => {
+    readFileSyncMock.mockReturnValue(Buffer.from("zip-bytes"));
+
+    const fetchMock = vi.mocked(fetch);
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: "access-token" }), { status: 200 })
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: { message: "You may not edit or publish an item that is in review." }
+          }),
+          { status: 400 }
+        )
+      );
+
+    const { main } = await import("../../../scripts/publish-devtools");
+
+    await main({
+      CWS_PUBLISHER_ID: "publisher-id",
+      CWS_EXTENSION_ID: "extension-id",
+      CWS_CLIENT_ID: "client-id",
+      CWS_CLIENT_SECRET: "client-secret",
+      CWS_REFRESH_TOKEN: "refresh-token"
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });
