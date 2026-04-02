@@ -11,7 +11,7 @@ sidebar_label: Comparison Table
 | **Architecture**   | TypeScript-first (strict generics throughout)                        | ✅        | ⚠️                |
 | **Architecture**   | Zero dependencies                                                    | ✅        | ⚠️                |
 | **Architecture**   | 95%+ test coverage, enforced in CI                                   | ✅        | ❓                |
-| **Architecture**   | Under 6 kB (core, brotli)                                            | ✅        | ⚠️                |
+| **Architecture**   | 7.13 kB (core, brotli)                                               | ✅        | ⚠️                |
 | **Navigation**     | Linear (sequential) flow                                             | ✅        | ✅                |
 | **Navigation**     | `goToNextStep()`                                                     | ✅        | ✅                |
 | **Navigation**     | `goToPreviousStep()`                                                 | ✅        | ✅                |
