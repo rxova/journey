@@ -26,12 +26,11 @@ jobs:
     permissions:
       contents: read
     env:
-      CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
       CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
+      CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
       CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
       CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
       CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
-      SHOULD_PUBLISH: ${{ inputs.publish }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -52,8 +51,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Validate secrets
+      - name: Validate publish secrets
+        if: inputs.publish == true
         run: |
+          test -n "$CWS_PUBLISHER_ID"
+          test -n "$CWS_EXTENSION_ID"
           test -n "$CWS_CLIENT_ID"
           test -n "$CWS_CLIENT_SECRET"
           test -n "$CWS_REFRESH_TOKEN"
@@ -66,65 +68,11 @@ jobs:
           cd apps/devtools/dist
           zip -r ../../../apps-devtools.zip .
 
-      - name: Exchange refresh token for access token
-        run: |
-          TOKEN_RESPONSE=$(curl -sS -X POST https://oauth2.googleapis.com/token \
-            -d "client_id=${CWS_CLIENT_ID}" \
-            -d "client_secret=${CWS_CLIENT_SECRET}" \
-            -d "refresh_token=${CWS_REFRESH_TOKEN}" \
-            -d "grant_type=refresh_token")
-
-          ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token')
-          if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" = "null" ]; then
-            echo "Failed to get access token"
-            echo "$TOKEN_RESPONSE"
-            exit 1
-          fi
-
-          echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> "$GITHUB_ENV"
-
-      - name: Upload package to Chrome Web Store
-        run: |
-          RESPONSE=$(curl -sS -X POST \
-            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-            -T apps-devtools.zip \
-            "https://chromewebstore.googleapis.com/upload/v2/publishers/${CWS_PUBLISHER_ID}/items/${CWS_EXTENSION_ID}:upload")
-
-          echo "$RESPONSE"
-
-          ERROR_MESSAGE=$(echo "$RESPONSE" | jq -r '.error.message // empty')
-          if [ -n "$ERROR_MESSAGE" ]; then
-            echo "Upload failed: $ERROR_MESSAGE"
-            echo "$RESPONSE" | jq -r '.error.details[]?.fieldViolations[]? | "\(.field): \(.description)"'
-            exit 1
-          fi
-
-          ITEM_ERROR=$(echo "$RESPONSE" | jq -r '.itemError[]?.errorCode // empty')
-          if [ -n "$ITEM_ERROR" ]; then
-            echo "Upload failed"
-            exit 1
-          fi
-
-      - name: Publish item
-        if: env.SHOULD_PUBLISH == 'true'
-        run: |
-          RESPONSE=$(curl -sS -X POST \
-            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-            "https://chromewebstore.googleapis.com/v2/publishers/${CWS_PUBLISHER_ID}/items/${CWS_EXTENSION_ID}:publish")
-
-          echo "$RESPONSE"
-
-          ERROR_MESSAGE=$(echo "$RESPONSE" | jq -r '.error.message // empty')
-          if [ -n "$ERROR_MESSAGE" ]; then
-            echo "Publish failed: $ERROR_MESSAGE"
-            exit 1
-          fi
-
-          STATUS=$(echo "$RESPONSE" | jq -r '.status[]? // empty')
-          if [ -z "$STATUS" ]; then
-            echo "Publish did not return a status"
-            exit 1
-          fi
+      - name: Publish to Chrome Web Store
+        if: inputs.publish == true
+        env:
+          ZIP_FILE_PATH: apps-devtools.zip
+        run: node --import tsx ./scripts/publish-devtools.ts
 
       - name: Upload packaged zip artifact
         uses: actions/upload-artifact@v7
