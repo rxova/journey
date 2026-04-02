@@ -19,6 +19,13 @@ type PublishResponse = {
   [key: string]: unknown;
 };
 
+type ReviewStatusResponse = {
+  submittedItemRevisionStatus?: {
+    state?: string;
+  };
+  [key: string]: unknown;
+};
+
 type RequestOptions = NonNullable<Parameters<typeof fetch>[1]>;
 type EnvShape = Record<string, string | undefined>;
 
@@ -137,6 +144,36 @@ const createHeaders = (token: string, fileName: string): Record<string, string> 
   };
 };
 
+const fetchReviewStatus = async (
+  publisherId: string,
+  extensionId: string,
+  accessToken: string
+): Promise<string | undefined> => {
+  const response = await requestJson<ReviewStatusResponse>(
+    "Failed to fetch item status",
+    `https://chromewebstore.googleapis.com/v2/publishers/${publisherId}/items/${extensionId}:fetchStatus`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    }
+  );
+
+  return response.submittedItemRevisionStatus?.state;
+};
+
+const isPendingReviewState = (state: string | undefined): boolean => {
+  return state === "PENDING_REVIEW";
+};
+
+const isInReviewUploadError = (error: unknown): boolean => {
+  return (
+    error instanceof Error &&
+    error.message.includes("You may not edit or publish an item that is in review.")
+  );
+};
+
 const pushBundle = async (input: {
   publisherId: string;
   extensionId: string;
@@ -219,8 +256,25 @@ export const main = async (env: EnvShape = process.env): Promise<void> => {
     refreshToken
   });
 
+  console.log("Checking Chrome Web Store review state...");
+  const submittedState = await fetchReviewStatus(publisherId, extensionId, accessToken);
+  if (isPendingReviewState(submittedState)) {
+    console.log("Chrome Web Store item is already pending review. Skipping upload and publish.");
+    return;
+  }
+
   console.log("Uploading extension zip...");
-  await pushBundle({ publisherId, extensionId, accessToken, zipFilePath });
+  try {
+    await pushBundle({ publisherId, extensionId, accessToken, zipFilePath });
+  } catch (error) {
+    if (isInReviewUploadError(error)) {
+      console.log(
+        "Chrome Web Store item entered review before upload completed. Skipping publish."
+      );
+      return;
+    }
+    throw error;
+  }
 
   console.log("Publishing extension...");
   await finalizeListing(publisherId, extensionId, accessToken);
