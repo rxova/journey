@@ -84,12 +84,8 @@
     "*.{json,md,mdx,yaml,yml,css,scss,html}": "prettier --write"
   },
   "pnpm": {
-    "auditConfig": {
-      "ignoreGhsas": [
-        "GHSA-r5fr-rjxr-66jc"
-      ]
-    },
     "overrides": {
+      "lodash": "4.18.1",
       "svgo": "3.3.3",
       "jsdom>undici": "7.24.2",
       "cheerio>undici": "7.24.2",
