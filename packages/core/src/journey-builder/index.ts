@@ -8,13 +8,18 @@ import type {
 import type {
   JourneyBuilder,
   JourneyBuilderCandidate,
+  JourneyBuilderGuard,
+  JourneyBuilderLifecycle,
   JourneyBuilderOnEntry,
   JourneyBuilderTerminalCandidate,
   JourneyBuilderTerminalEntry,
   JourneyBuilderTerminalEventKey,
+  JourneyBuilderUpdateContext,
   JourneyBuilderStepEventKey,
   JourneyStepBuilder,
-  JourneyToBuilder
+  JourneyToBuilder,
+  JourneyToBuilderUnused,
+  JourneyToBuilderUsage
 } from "./types";
 
 export type {
@@ -53,31 +58,74 @@ function makeToBuilder<
   TStepId extends string,
   TEventMap extends Record<string, unknown>,
   THandlers extends Record<string, unknown>,
-  TEventType extends JourneyFullEventType<TEventMap>
+  TEventType extends JourneyFullEventType<TEventMap>,
+  TUsed extends JourneyToBuilderUsage = JourneyToBuilderUnused
 >(
   candidate: JourneyBuilderCandidate<TContext, TStepId, TEventMap, THandlers, TEventType>
-): JourneyToBuilder<TContext, TStepId, TEventMap, THandlers, TEventType> {
+): JourneyToBuilder<TContext, TStepId, TEventMap, THandlers, TEventType, TUsed> {
   return {
     _candidate: candidate,
-    when(guard) {
-      return makeToBuilder({ ...candidate, _when: guard });
+    when(guard: JourneyBuilderGuard<TContext, TStepId, TEventMap, THandlers, TEventType>) {
+      return makeToBuilder<
+        TContext,
+        TStepId,
+        TEventMap,
+        THandlers,
+        TEventType,
+        Omit<TUsed, "when"> & { readonly when: true }
+      >({ ...candidate, _when: guard });
     },
-    updateContext(fn) {
-      return makeToBuilder({ ...candidate, _updateContext: fn });
+    updateContext(fn: JourneyBuilderUpdateContext<TContext, TStepId, TEventMap, TEventType>) {
+      return makeToBuilder<
+        TContext,
+        TStepId,
+        TEventMap,
+        THandlers,
+        TEventType,
+        Omit<TUsed, "updateContext"> & { readonly updateContext: true }
+      >({ ...candidate, _updateContext: fn });
     },
-    onEnter(fn) {
-      return makeToBuilder({ ...candidate, _onEnter: fn });
+    onEnter(fn: JourneyBuilderLifecycle<TContext, TStepId, TEventMap, THandlers>) {
+      return makeToBuilder<
+        TContext,
+        TStepId,
+        TEventMap,
+        THandlers,
+        TEventType,
+        Omit<TUsed, "onEnter"> & { readonly onEnter: true }
+      >({ ...candidate, _onEnter: fn });
     },
-    onLeave(fn) {
-      return makeToBuilder({ ...candidate, _onLeave: fn });
+    onLeave(fn: JourneyBuilderLifecycle<TContext, TStepId, TEventMap, THandlers>) {
+      return makeToBuilder<
+        TContext,
+        TStepId,
+        TEventMap,
+        THandlers,
+        TEventType,
+        Omit<TUsed, "onLeave"> & { readonly onLeave: true }
+      >({ ...candidate, _onLeave: fn });
     },
-    id(id) {
-      return makeToBuilder({ ...candidate, _id: id });
+    id(id: string) {
+      return makeToBuilder<
+        TContext,
+        TStepId,
+        TEventMap,
+        THandlers,
+        TEventType,
+        Omit<TUsed, "id"> & { readonly id: true }
+      >({ ...candidate, _id: id });
     },
-    timeoutMs(ms) {
-      return makeToBuilder({ ...candidate, _timeoutMs: ms });
+    timeoutMs(ms: number) {
+      return makeToBuilder<
+        TContext,
+        TStepId,
+        TEventMap,
+        THandlers,
+        TEventType,
+        Omit<TUsed, "timeoutMs"> & { readonly timeoutMs: true }
+      >({ ...candidate, _timeoutMs: ms });
     }
-  };
+  } as JourneyToBuilder<TContext, TStepId, TEventMap, THandlers, TEventType, TUsed>;
 }
 
 function candidateToEdge(c: RawCandidate): Record<string, unknown> {

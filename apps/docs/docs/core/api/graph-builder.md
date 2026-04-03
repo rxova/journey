@@ -64,6 +64,9 @@ Step files can live anywhere and are just values — import them wherever you as
 | `.timeoutMs(number)` | Per-transition timeout. Throws `JourneyTimeoutError` if exceeded.                             |
 
 Each method is immutable — it returns a new builder without modifying the original.
+Each modifier is also single-use at the type level: calling `.when()`, `.updateContext()`,
+`.onEnter()`, `.onLeave()`, `.id()`, or `.timeoutMs()` twice on the same transition is a
+TypeScript error. If you bypass the type system, runtime behavior stays last-call-wins.
 
 ```ts
 to("dashboard")

@@ -133,6 +133,10 @@ Use the **factory form** when you need `event.payload` narrowed to the specific 
 submit: ({ to }) => [to("admin").when(({ context, event }) => event.payload?.username !== "")];
 ```
 
+Each transition modifier is single-use at the type level. Calling `.when()`, `.updateContext()`,
+`.onEnter()`, `.onLeave()`, `.id()`, or `.timeoutMs()` twice on the same builder is a TypeScript
+error. If you bypass the type system, runtime keeps the existing last-call-wins behavior.
+
 ### Headless
 
 No transitions defined. Full manual control with `goToStepById`.

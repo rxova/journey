@@ -61,7 +61,114 @@ export type JourneyBuilderCandidate<
   readonly _timeoutMs: number | undefined;
 };
 
+export type JourneyToBuilderUsage = {
+  readonly when: boolean;
+  readonly updateContext: boolean;
+  readonly onEnter: boolean;
+  readonly onLeave: boolean;
+  readonly id: boolean;
+  readonly timeoutMs: boolean;
+};
+
+export type JourneyToBuilderUnused = {
+  readonly when: false;
+  readonly updateContext: false;
+  readonly onEnter: false;
+  readonly onLeave: false;
+  readonly id: false;
+  readonly timeoutMs: false;
+};
+
+type JourneyDuplicateModifierCall<TName extends string> = (
+  ...args: [
+    `Duplicate transition modifier ${TName}() is invalid. If several are present, the last one wins at runtime.`
+  ]
+) => never;
+
 export type JourneyToBuilder<
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TEventMap extends Record<string, unknown>,
+  THandlers extends Record<string, unknown>,
+  TEventType extends JourneyFullEventType<TEventMap> = JourneyFullEventType<TEventMap>,
+  TUsed extends JourneyToBuilderUsage = JourneyToBuilderUnused
+> = {
+  readonly _candidate: JourneyBuilderCandidate<TContext, TStepId, TEventMap, THandlers, TEventType>;
+  when: TUsed["when"] extends true
+    ? JourneyDuplicateModifierCall<"when">
+    : (
+        guard: JourneyBuilderGuard<TContext, TStepId, TEventMap, THandlers, TEventType>
+      ) => JourneyToBuilder<
+        TContext,
+        TStepId,
+        TEventMap,
+        THandlers,
+        TEventType,
+        Omit<TUsed, "when"> & { readonly when: true }
+      >;
+  updateContext: TUsed["updateContext"] extends true
+    ? JourneyDuplicateModifierCall<"updateContext">
+    : (
+        fn: JourneyBuilderUpdateContext<TContext, TStepId, TEventMap, TEventType>
+      ) => JourneyToBuilder<
+        TContext,
+        TStepId,
+        TEventMap,
+        THandlers,
+        TEventType,
+        Omit<TUsed, "updateContext"> & { readonly updateContext: true }
+      >;
+  onEnter: TUsed["onEnter"] extends true
+    ? JourneyDuplicateModifierCall<"onEnter">
+    : (
+        fn: JourneyBuilderLifecycle<TContext, TStepId, TEventMap, THandlers>
+      ) => JourneyToBuilder<
+        TContext,
+        TStepId,
+        TEventMap,
+        THandlers,
+        TEventType,
+        Omit<TUsed, "onEnter"> & { readonly onEnter: true }
+      >;
+  onLeave: TUsed["onLeave"] extends true
+    ? JourneyDuplicateModifierCall<"onLeave">
+    : (
+        fn: JourneyBuilderLifecycle<TContext, TStepId, TEventMap, THandlers>
+      ) => JourneyToBuilder<
+        TContext,
+        TStepId,
+        TEventMap,
+        THandlers,
+        TEventType,
+        Omit<TUsed, "onLeave"> & { readonly onLeave: true }
+      >;
+  id: TUsed["id"] extends true
+    ? JourneyDuplicateModifierCall<"id">
+    : (
+        id: string
+      ) => JourneyToBuilder<
+        TContext,
+        TStepId,
+        TEventMap,
+        THandlers,
+        TEventType,
+        Omit<TUsed, "id"> & { readonly id: true }
+      >;
+  timeoutMs: TUsed["timeoutMs"] extends true
+    ? JourneyDuplicateModifierCall<"timeoutMs">
+    : (
+        ms: number
+      ) => JourneyToBuilder<
+        TContext,
+        TStepId,
+        TEventMap,
+        THandlers,
+        TEventType,
+        Omit<TUsed, "timeoutMs"> & { readonly timeoutMs: true }
+      >;
+};
+
+type JourneyBuiltTransitionCandidate<
   TContext extends JourneyJsonObject,
   TStepId extends string,
   TEventMap extends Record<string, unknown>,
@@ -69,20 +176,6 @@ export type JourneyToBuilder<
   TEventType extends JourneyFullEventType<TEventMap> = JourneyFullEventType<TEventMap>
 > = {
   readonly _candidate: JourneyBuilderCandidate<TContext, TStepId, TEventMap, THandlers, TEventType>;
-  when(
-    guard: JourneyBuilderGuard<TContext, TStepId, TEventMap, THandlers, TEventType>
-  ): JourneyToBuilder<TContext, TStepId, TEventMap, THandlers, TEventType>;
-  updateContext(
-    fn: JourneyBuilderUpdateContext<TContext, TStepId, TEventMap, TEventType>
-  ): JourneyToBuilder<TContext, TStepId, TEventMap, THandlers, TEventType>;
-  onEnter(
-    fn: JourneyBuilderLifecycle<TContext, TStepId, TEventMap, THandlers>
-  ): JourneyToBuilder<TContext, TStepId, TEventMap, THandlers, TEventType>;
-  onLeave(
-    fn: JourneyBuilderLifecycle<TContext, TStepId, TEventMap, THandlers>
-  ): JourneyToBuilder<TContext, TStepId, TEventMap, THandlers, TEventType>;
-  id(id: string): JourneyToBuilder<TContext, TStepId, TEventMap, THandlers, TEventType>;
-  timeoutMs(ms: number): JourneyToBuilder<TContext, TStepId, TEventMap, THandlers, TEventType>;
 };
 
 export type JourneyBuilderOnEntry<
@@ -92,12 +185,18 @@ export type JourneyBuilderOnEntry<
   THandlers extends Record<string, unknown>,
   TEventType extends JourneyBuilderStepEventKey<TEventMap>
 > =
-  | readonly JourneyToBuilder<TContext, TStepId, TEventMap, THandlers>[]
+  | readonly JourneyBuiltTransitionCandidate<TContext, TStepId, TEventMap, THandlers>[]
   | ((helpers: {
       to: (
         stepId: TStepId
       ) => JourneyToBuilder<TContext, TStepId, TEventMap, THandlers, TEventType>;
-    }) => readonly JourneyToBuilder<TContext, TStepId, TEventMap, THandlers, TEventType>[]);
+    }) => readonly JourneyBuiltTransitionCandidate<
+      TContext,
+      TStepId,
+      TEventMap,
+      THandlers,
+      TEventType
+    >[]);
 
 export type JourneyBuilderTerminalCandidate<
   TContext extends JourneyJsonObject,
@@ -201,7 +300,7 @@ type JourneyBuilderGlobalConfig<
 > = Partial<{
   [TEventType in JourneyFullEventType<TEventMap>]: TEventType extends JourneyBuilderTerminalEventKey<TEventMap>
     ? JourneyBuilderTerminalEntry<TContext, TStepId, TEventMap, THandlers, TEventType>
-    : readonly JourneyToBuilder<TContext, TStepId, TEventMap, THandlers>[];
+    : readonly JourneyBuiltTransitionCandidate<TContext, TStepId, TEventMap, THandlers>[];
 }>;
 
 type JourneyBuilderBuildInput<

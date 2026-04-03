@@ -471,6 +471,32 @@ builder.to("review").updateContext(({ context }) => {
   return { ...context, count: context.count + 1 };
 });
 
+// duplicate transition modifiers are rejected at the type level
+builder
+  .to("review")
+  .when(() => true)
+  // @ts-expect-error duplicate .when() calls are not allowed
+  .when(() => false);
+builder
+  .to("review")
+  .updateContext(({ context }) => context)
+  // @ts-expect-error duplicate .updateContext() calls are not allowed
+  .updateContext(({ context }) => context);
+builder
+  .to("review")
+  .onEnter(() => undefined)
+  // @ts-expect-error duplicate .onEnter() calls are not allowed
+  .onEnter(() => undefined);
+builder
+  .to("review")
+  .onLeave(() => undefined)
+  // @ts-expect-error duplicate .onLeave() calls are not allowed
+  .onLeave(() => undefined);
+// @ts-expect-error duplicate .id() calls are not allowed
+builder.to("review").id("first").id("second");
+// @ts-expect-error duplicate .timeoutMs() calls are not allowed
+builder.to("review").timeoutMs(100).timeoutMs(200);
+
 // ─── Factory form: event.payload is narrowed per event type ─────────────────
 
 builder.createStep("start", {
