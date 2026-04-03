@@ -113,6 +113,40 @@ describe("createJourneyBuilder", () => {
         _timeoutMs: 3000
       });
     });
+
+    it("keeps runtime overwrite semantics if duplicate modifiers are forced through", () => {
+      const { to } = createJourneyBuilder<Context, StepId, EventMap>();
+      const firstGuard = () => true;
+      const secondGuard = () => false;
+      const firstUpdate = ({ context }: { context: Context }) => ({ ...context, count: 1 });
+      const secondUpdate = ({ context }: { context: Context }) => ({ ...context, count: 2 });
+
+      const builder = (
+        to("review")
+          .when(firstGuard)
+          .updateContext(firstUpdate)
+          .id("first")
+          .timeoutMs(100) as unknown as {
+          when: (guard: typeof secondGuard) => {
+            updateContext: (fn: typeof secondUpdate) => {
+              id: (id: string) => { timeoutMs: (ms: number) => { _candidate: unknown } };
+            };
+          };
+        }
+      )
+        .when(secondGuard)
+        .updateContext(secondUpdate)
+        .id("second")
+        .timeoutMs(200) as { _candidate: Record<string, unknown> };
+
+      expect(builder._candidate).toMatchObject({
+        _to: "review",
+        _when: secondGuard,
+        _updateContext: secondUpdate,
+        _id: "second",
+        _timeoutMs: 200
+      });
+    });
   });
 
   describe("build()", () => {
