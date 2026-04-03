@@ -69,7 +69,7 @@ const stepTransitions = {
       updateContext: ({ event, context }) => {
         expectTypeOf(event.type).toEqualTypeOf<"custom">();
         expectTypeOf(event.payload).toEqualTypeOf<{ amount: number } | undefined>();
-        expectTypeOf(context).toEqualTypeOf<Context>();
+        expectTypeOf(context).toEqualTypeOf<Readonly<Context>>();
         return { count: event.payload?.amount ?? 0 };
       }
     }
@@ -84,7 +84,7 @@ const linearStep = {
   updateContext: ({ event, context }) => {
     expectTypeOf(event.type).toEqualTypeOf<"goToNextStep">();
     expectTypeOf(event.payload).toEqualTypeOf<{ origin: "ui" } | undefined>();
-    expectTypeOf(context).toEqualTypeOf<Context>();
+    expectTypeOf(context).toEqualTypeOf<Readonly<Context>>();
     return { count: context.count + 1 };
   }
 } satisfies JourneyLinearStep<Context, StepId, EventMap>;
@@ -461,13 +461,25 @@ expectTypeOf(builtDef).toMatchTypeOf<JourneyDefinition<Context, StepId, EventMap
 
 // guard args: context is TContext (simple/wide form)
 builder.to("review").when(({ context }) => {
-  expectTypeOf(context).toEqualTypeOf<Context>();
+  expectTypeOf(context).toEqualTypeOf<Readonly<Context>>();
   return context.count > 0;
 });
 
 // effect args: context is TContext, return is TContext | void (simple/wide form)
 builder.to("review").updateContext(({ context }) => {
-  expectTypeOf(context).toEqualTypeOf<Context>();
+  expectTypeOf(context).toEqualTypeOf<Readonly<Context>>();
+  return { ...context, count: context.count + 1 };
+});
+
+builder.to("review").when(({ context }) => {
+  // @ts-expect-error transition callback context is readonly
+  context.count = 1;
+  return true;
+});
+
+builder.to("review").updateContext(({ context }) => {
+  // @ts-expect-error updateContext callback context is readonly
+  context.count = 1;
   return { ...context, count: context.count + 1 };
 });
 

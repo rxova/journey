@@ -18,7 +18,7 @@ type JourneyTransitionArgsBase<
   THandlers extends Record<string, unknown>
 > = {
   snapshot: JourneySnapshot<TContext, TStepId>;
-  context: TContext;
+  context: Readonly<TContext>;
   from: TStepId;
   timeline: JourneyHistory<TStepId>["timeline"];
   index: number;
@@ -50,7 +50,7 @@ export type JourneyLifecycleArgs<
   THandlers extends Record<string, unknown>
 > = {
   snapshot: JourneySnapshot<TContext, TStepId>;
-  context: TContext;
+  context: Readonly<TContext>;
   from: TStepId;
   to: TStepId | JourneyTerminal;
   event: { type: string; payload?: unknown };
@@ -104,7 +104,7 @@ export type JourneyTransitionUpdateContextArgsForEvent<
   TEventType extends JourneyFullEventType<TEventMap>
 > = {
   snapshot: JourneySnapshot<TContext, TStepId>;
-  context: TContext;
+  context: Readonly<TContext>;
   from: TStepId;
   timeline: JourneyHistory<TStepId>["timeline"];
   index: number;
