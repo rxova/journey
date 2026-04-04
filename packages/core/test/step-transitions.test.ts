@@ -129,7 +129,7 @@ describe("graph transitions", () => {
     expect(machine.getSnapshot().currentStepId).toBe("dashboard");
   });
 
-  it("applies wildcard globals as cross-cutting transitions", async () => {
+  it("prefers step-local transitions over wildcard globals for the same event", async () => {
     const machine = startJourney(
       createJourneyMachine<Context, StepId, EventMap>({
         initial: "welcome",
@@ -148,7 +148,7 @@ describe("graph transitions", () => {
     );
 
     await machine.send({ type: "goToNextStep" });
-    expect(machine.getSnapshot().currentStepId).toBe("blocked");
+    expect(machine.getSnapshot().currentStepId).toBe("dashboard");
   });
 
   it("falls through to wildcard globals when a step declares no matching edge", async () => {
