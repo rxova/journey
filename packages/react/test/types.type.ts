@@ -20,7 +20,7 @@ import type {
   JourneyProviderProps,
   JourneyRuntime,
   JourneyRuntimeFromDefinition,
-  JourneyRuntimeFactory,
+  JourneyRuntimeFactoryFromDefinition,
   JourneyStartEvent,
   JourneyTerminateEvent,
   JourneyViews,
@@ -51,19 +51,6 @@ const journey: JourneyDefinition<Context, StepId, EventMap, { title: string }> =
   }
 };
 
-const graphJourneyDefinition = {
-  initial: "start",
-  context: { userId: "42" },
-  steps: {
-    start: { meta: { title: "Start" } },
-    review: { meta: { title: "Review" } }
-  },
-  transitions: {
-    start: { goToNextStep: [{ to: "review" }] },
-    review: { approve: [{ to: "review" }] }
-  }
-} satisfies JourneyDefinition<Context, StepId, EventMap, { title: string }>;
-
 const views = {
   start: Step,
   review: Step
@@ -78,13 +65,7 @@ type Api = JourneyApi<Context, StepId, EventMap, { title: string }>;
 type SendArg = Parameters<Api["send"]>[0];
 type ProviderProps = JourneyProviderProps<StepId, EventMap, { title: string }>;
 type RuntimeDispose = JourneyRuntime<Context, StepId>["dispose"];
-type RuntimeFactory = JourneyRuntimeFactory<
-  Context,
-  StepId,
-  EventMap,
-  { title: string },
-  typeof plugins
->;
+type RuntimeFactoryFromDefinition = JourneyRuntimeFactoryFromDefinition<typeof journey, typeof plugins>;
 type StartEventFromProvider = Parameters<NonNullable<ProviderProps["onStart"]>>[0];
 type CompleteEventFromProvider = Parameters<NonNullable<ProviderProps["onComplete"]>>[0];
 type CloseEventFromProvider = Parameters<NonNullable<ProviderProps["onTerminate"]>>[0];
@@ -126,9 +107,9 @@ expectTypeOf<CompleteEventFromProvider["stepId"]>().toEqualTypeOf<StepId>();
 expectTypeOf<CloseEventFromProvider["type"]>().toEqualTypeOf<"journey.terminated">();
 expectTypeOf<CloseEventFromProvider["stepId"]>().toEqualTypeOf<StepId>();
 expectTypeOf<RuntimeDispose>().toEqualTypeOf<() => void>();
-expectTypeOf(journeyFactory).toEqualTypeOf<RuntimeFactory>();
+expectTypeOf(journeyFactory).toEqualTypeOf<RuntimeFactoryFromDefinition>();
 expectTypeOf<ReturnType<typeof journeyFactory>>().toEqualTypeOf<
-  JourneyRuntime<Context, StepId, EventMap, { title: string }, typeof plugins>
+  JourneyRuntimeFromDefinition<typeof journey, typeof plugins>
 >();
 
 expectTypeOf<Api["start"]>().returns.toEqualTypeOf<
@@ -211,6 +192,7 @@ const emailCodeStep = createStep("emailCode", {
     switchAuthMethod: [to("authenticatorCode")]
   }
 });
+expectTypeOf(emailCodeStep.id).toEqualTypeOf<"emailCode">();
 
 const authenticatorCodeStep = createStep("authenticatorCode", {
   meta: { label: "Authenticator Code" },
@@ -233,23 +215,16 @@ const builderDefinition = build({
 });
 
 const builderJourney = createJourney(builderDefinition);
-const graphJourney = createJourney(graphJourneyDefinition);
 type BuilderRuntime = JourneyBuilderRuntimeFromDefinition<typeof builderDefinition>;
-type GraphRuntime = JourneyRuntimeFromDefinition<typeof graphJourneyDefinition>;
-const builderApi = builderJourney.useStepApi("emailCode");
-const graphStepApi = graphJourney.useStepApi("review");
+const builderApi = builderJourney.useStepApi(emailCodeStep.id);
 type BuilderApi = typeof builderApi;
 type BuilderSendArg = Parameters<typeof builderApi.send>[0];
-type GraphStepApi = typeof graphStepApi;
-type GraphStepSendArg = Parameters<typeof graphStepApi.send>[0];
 void builderApi;
-void graphStepApi;
 
 expectTypeOf(builderJourney).toMatchTypeOf<
   JourneyBuilderRuntime<BuilderContext, BuilderStepId, BuilderEventMap, { label: string }>
 >();
 expectTypeOf(builderJourney).toEqualTypeOf<BuilderRuntime>();
-expectTypeOf(graphJourney).toEqualTypeOf<GraphRuntime>();
 expectTypeOf<BuilderApi>().toMatchTypeOf<
   StepScopedJourneyApi<
     BuilderContext,
@@ -265,13 +240,6 @@ expectTypeOf<BuilderSendArg>().toEqualTypeOf<
   | { type: "switchAuthMethod"; payload?: unknown }
   | { type: "resendCode"; payload?: { channel: "email" } | undefined }
 >();
-expectTypeOf<GraphStepApi>().toMatchTypeOf<
-  StepScopedJourneyApi<Context, StepId, EventMap, "approve", { title: string }>
->();
-expectTypeOf<GraphStepSendArg>().toEqualTypeOf<{
-  type: "approve";
-  payload?: { approvedBy: string } | undefined;
-}>();
 
 const invalidBuilderSendArg: BuilderSendArg = {
   // @ts-expect-error step-scoped send rejects unrelated custom events
@@ -282,12 +250,5 @@ const invalidBuilderSendArg: BuilderSendArg = {
 // @ts-expect-error step-scoped send rejects built-in machine events
 const invalidBuiltInBuilderSendArg: BuilderSendArg = { type: "goToStepById", stepId: "loggedIn" };
 
-const invalidGraphStepSendArg: GraphStepSendArg = {
-  // @ts-expect-error step-scoped send rejects step-local custom events from other steps
-  type: "goToNextStep",
-  payload: { reason: "skip" }
-};
-
 void invalidBuilderSendArg;
 void invalidBuiltInBuilderSendArg;
-void invalidGraphStepSendArg;

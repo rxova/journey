@@ -296,7 +296,7 @@ export type JourneyStepBuilder<
   THandlers extends Record<string, unknown>,
   THandledCustomEventType extends JourneyBuilderCustomEventKey<TEventMap> = never
 > = {
-  readonly _id: TStepKey;
+  readonly id: TStepKey;
   readonly _meta: TStepMeta | undefined;
   readonly _onEnter:
     | JourneyStepLifecycleCallback<TContext, TStepId, TEventMap, THandlers>
@@ -323,12 +323,12 @@ type JourneyStepBuilderHandledCustomEventMap<
   TStepId extends string,
   TEventMap extends Record<string, unknown>,
   TSteps extends readonly {
-    readonly _id: TStepId;
+    readonly id: TStepId;
     readonly _handledCustomEventType?: JourneyBuilderCustomEventKey<TEventMap>;
   }[]
 > = {
   [TCurrentStepId in TStepId]: Extract<
-    Extract<TSteps[number], { readonly _id: TCurrentStepId }> extends {
+    Extract<TSteps[number], { readonly id: TCurrentStepId }> extends {
       readonly _handledCustomEventType?: infer THandledCustomEventType;
     }
       ? THandledCustomEventType
