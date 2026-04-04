@@ -41,6 +41,18 @@ describe("protocol guard edge coverage", () => {
     expect(isJourneyDevtoolsCommand({ type: "clearStepError", stepId: 123 })).toBe(false);
     expect(
       isJourneyDevtoolsCommand({
+        type: "getExecutionPaths",
+        options: { maxDepth: 0 }
+      })
+    ).toBe(false);
+    expect(
+      isJourneyDevtoolsCommand({
+        type: "getExecutionPaths",
+        options: { maxDepth: 2, maxPaths: 2, unexpected: true }
+      })
+    ).toBe(false);
+    expect(
+      isJourneyDevtoolsCommand({
         type: "send",
         event: { type: "custom", payload: { bad: () => undefined } }
       })
@@ -91,6 +103,40 @@ describe("protocol guard edge coverage", () => {
           label: "Flow",
           appName: "App",
           capabilities: {
+            commands: "goToNextStep",
+            observe: capabilities.observe,
+            executionPaths: capabilities.executionPaths
+          }
+        },
+        snapshot: {}
+      })
+    ).toBe(false);
+    expect(
+      isJourneyDevtoolsBridgeEnvelope({
+        ...base,
+        kind: "register",
+        meta: {
+          machineId: "m1",
+          label: "Flow",
+          appName: "App",
+          capabilities: {
+            commands: ["goToNextStep", "notARealCommand"],
+            observe: capabilities.observe,
+            executionPaths: capabilities.executionPaths
+          }
+        },
+        snapshot: {}
+      })
+    ).toBe(false);
+    expect(
+      isJourneyDevtoolsBridgeEnvelope({
+        ...base,
+        kind: "register",
+        meta: {
+          machineId: "m1",
+          label: "Flow",
+          appName: "App",
+          capabilities: {
             commands: [...capabilities.commands],
             observe: capabilities.observe,
             executionPaths: capabilities.executionPaths
@@ -99,6 +145,66 @@ describe("protocol guard edge coverage", () => {
         snapshot: {}
       })
     ).toBe(true);
+    expect(
+      isJourneyDevtoolsBridgeEnvelope({
+        ...base,
+        kind: "register",
+        meta: {
+          machineId: "m1",
+          label: "Flow",
+          appName: "App",
+          capabilities: {
+            commands: [...capabilities.commands],
+            observe: capabilities.observe,
+            executionPaths: capabilities.executionPaths,
+            persistence: null
+          }
+        },
+        snapshot: {}
+      })
+    ).toBe(false);
+    expect(
+      isJourneyDevtoolsBridgeEnvelope({
+        ...base,
+        kind: "register",
+        meta: {
+          machineId: "m1",
+          label: "Flow",
+          appName: "App",
+          capabilities: {
+            commands: [...capabilities.commands],
+            observe: capabilities.observe,
+            executionPaths: capabilities.executionPaths,
+            persistence: {
+              key: 123,
+              clearOnReset: false
+            }
+          }
+        },
+        snapshot: {}
+      })
+    ).toBe(false);
+    expect(
+      isJourneyDevtoolsBridgeEnvelope({
+        ...base,
+        kind: "register",
+        meta: {
+          machineId: "m1",
+          label: "Flow",
+          appName: "App",
+          capabilities: {
+            commands: [...capabilities.commands],
+            observe: capabilities.observe,
+            executionPaths: capabilities.executionPaths,
+            persistence: {
+              key: "journey-cache",
+              clearOnReset: "sometimes"
+            }
+          }
+        },
+        snapshot: {}
+      })
+    ).toBe(false);
     expect(isJourneyDevtoolsBridgeEnvelope({ ...base, kind: "register", snapshot: {} })).toBe(
       false
     );
@@ -124,6 +230,53 @@ describe("protocol guard edge coverage", () => {
     ).toBe(true);
     expect(
       isJourneyDevtoolsBridgeEnvelope({ ...base, kind: "commandError", requestId: 1, error: {} })
+    ).toBe(false);
+    expect(
+      isJourneyDevtoolsBridgeEnvelope({
+        ...base,
+        kind: "observation",
+        event: {
+          type: "",
+          stepId: "start",
+          timestamp: Date.now()
+        }
+      })
+    ).toBe(false);
+    expect(
+      isJourneyDevtoolsBridgeEnvelope({
+        ...base,
+        kind: "executionPathsResult",
+        requestId: "req-paths",
+        result: {
+          paths: [
+            {
+              steps: ["start", "review"],
+              events: ["goToNextStep"],
+              terminated: "mystery"
+            }
+          ],
+          truncated: false,
+          cyclesDetected: false
+        }
+      })
+    ).toBe(false);
+    expect(
+      isJourneyDevtoolsBridgeEnvelope({
+        ...base,
+        kind: "executionPathsResult",
+        requestId: "req-paths",
+        result: {
+          paths: [
+            {
+              steps: "start",
+              events: ["goToNextStep"],
+              terminated: "final"
+            }
+          ],
+          truncated: false,
+          cyclesDetected: false
+        }
+      })
     ).toBe(false);
     expect(isJourneyDevtoolsBridgeEnvelope({ ...base, kind: "unknown" })).toBe(false);
   });

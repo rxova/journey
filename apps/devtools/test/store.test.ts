@@ -780,6 +780,54 @@ describe("panelReducer", () => {
     );
   });
 
+  it("uses request-id fallback labels when command envelopes arrive without a queued command", () => {
+    let state = panelReducer(createInitialPanelState(), {
+      type: "bridge-envelope",
+      envelope: registerEnvelope("a", "Flow A")
+    });
+
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: executionPathsResultEnvelope("a", "req-query-orphan")
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: commandResultEnvelopeWithoutTransitionMeta("a", "req-command-orphan", "details")
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: commandErrorEnvelope("a", "req-error-orphan")
+    });
+
+    const labels = (state.machines.a?.timelineEntries ?? []).map((entry) => entry.label);
+    expect(labels).toContain("QUERY/req-query-orphan");
+    expect(labels).toContain("COMMAND_RESULT/req-command-orphan");
+    expect(labels).toContain("ERROR/req-error-orphan");
+  });
+
+  it("uses the query label when execution paths results match a queued command", () => {
+    let state = panelReducer(createInitialPanelState(), {
+      type: "bridge-envelope",
+      envelope: registerEnvelope("a", "Flow A")
+    });
+
+    state = panelReducer(state, {
+      type: "queue-command",
+      machineId: "a",
+      requestId: "req-query",
+      command: { type: "getExecutionPaths" },
+      timestamp: nextTs()
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: executionPathsResultEnvelope("a", "req-query")
+    });
+
+    expect(
+      state.machines.a?.timelineEntries[state.machines.a.timelineEntries.length - 1]?.label
+    ).toBe("QUERY/getExecutionPaths");
+  });
+
   it("set-follow-latest no-ops when machine is missing", () => {
     const state = createInitialPanelState();
     const next = panelReducer(state, {

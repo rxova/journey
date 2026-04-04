@@ -272,4 +272,57 @@ describe("analytics plugin", () => {
       vi.unstubAllGlobals();
     }
   });
+
+  it("omits step metadata when includeStepMeta is false", async () => {
+    const track = vi.fn();
+    const machine = createJourneyMachine(createJourney(), {
+      plugins: [
+        createAnalyticsPlugin({
+          track,
+          includeStepMeta: false
+        })
+      ] as const
+    });
+
+    await machine.startJourney();
+    await machine.goToNextStep();
+    await machine.goToPreviousStep();
+    await machine.completeJourney();
+
+    const started = findTracked(track, "journey_started");
+    const viewed = findTracked(track, "step_viewed");
+    const succeeded = findTracked(track, "transition_succeeded");
+    const previous = findTracked(track, "navigation_previous");
+    const completed = findTracked(track, "journey_completed");
+
+    expect(started?.payload).not.toHaveProperty("stepMeta");
+    expect(viewed?.payload).not.toHaveProperty("stepMeta");
+    expect(succeeded?.payload).not.toHaveProperty("fromStepMeta");
+    expect(succeeded?.payload).not.toHaveProperty("toStepMeta");
+    expect(previous?.payload).not.toHaveProperty("fromStepMeta");
+    expect(previous?.payload).not.toHaveProperty("toStepMeta");
+    expect(completed?.payload).not.toHaveProperty("stepMeta");
+  });
+
+  it("unsubscribes analytics listeners when the machine is disposed", async () => {
+    const track = vi.fn();
+    const machine = createJourneyMachine(createJourney(), {
+      plugins: [
+        createAnalyticsPlugin({
+          track
+        })
+      ] as const
+    });
+
+    await machine.startJourney();
+    expect(track).toHaveBeenCalled();
+
+    track.mockClear();
+    machine.dispose();
+
+    const result = await machine.goToNextStep();
+    expect(result.transitioned).toBe(false);
+    expect(result.error).toBeInstanceOf(Error);
+    expect(track).not.toHaveBeenCalled();
+  });
 });
