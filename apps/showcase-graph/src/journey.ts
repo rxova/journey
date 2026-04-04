@@ -34,8 +34,40 @@ const definition = build({
     blockedStep
   ],
   global: {
-    completeJourney: true,
-    terminateJourney: true
+    completeJourney: [
+      {
+        onLeave: ({ context, from }) => {
+          console.log("[graph] global completeJourney onLeave", {
+            from,
+            attempts: context.attempts
+          });
+        },
+        onEnter: ({ context, from, to }) => {
+          console.log("[graph] global completeJourney onEnter", {
+            from,
+            to,
+            attempts: context.attempts
+          });
+        }
+      }
+    ],
+    terminateJourney: [
+      {
+        onLeave: ({ context, from }) => {
+          console.log("[graph] global terminateJourney onLeave", {
+            from,
+            attempts: context.attempts
+          });
+        },
+        onEnter: ({ context, from, to }) => {
+          console.log("[graph] global terminateJourney onEnter", {
+            from,
+            to,
+            attempts: context.attempts
+          });
+        }
+      }
+    ]
   }
 });
 

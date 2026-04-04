@@ -226,6 +226,27 @@ describe("resolveJourneyDefinition", () => {
     });
   });
 
+  it("resolves step branches before global branches", () => {
+    const resolved = resolveJourneyDefinition({
+      ...createJourney(),
+      transitions: {
+        start: { submit: [{ to: "details" }] },
+        global: { submit: [{ to: "review" }] }
+      }
+    });
+
+    expect(resolved.transitions[0]).toMatchObject({
+      from: "start",
+      event: "submit",
+      to: "details"
+    });
+    expect(resolved.transitions[1]).toMatchObject({
+      from: "*",
+      event: "submit",
+      to: "review"
+    });
+  });
+
   it("rejects invalid transition graph definitions", () => {
     expect(() =>
       resolveJourneyDefinition({

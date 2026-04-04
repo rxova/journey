@@ -16,7 +16,7 @@ array of transitions.
    into implicit `goToNextStep` edges.
 3. If transitions were authored as an object graph, the file validates each `from -> event -> edges[]` layer and
    flattens it into ordered transition objects.
-4. The `global` branch is resolved first and rewritten to `from: "*"`. Every other branch keeps its step id.
+4. Every named step branch is resolved first and keeps its step id. The `global` branch is resolved last and rewritten to `from: "*"`, so it behaves as a fallback bucket after step-local transitions for the same event.
 5. The original journey object is returned with `transitions` replaced by that normalized array.
 
 The important guarantee is ordering. `send.ts` scans transitions in order, so the resolver preserves author intent

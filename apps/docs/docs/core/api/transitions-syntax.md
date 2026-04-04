@@ -119,7 +119,7 @@ const journey = {
 - Top-level keys are source step ids.
 - Event names under each step map to ordered arrays of candidate edges.
 - Each edge is an object containing `to` plus optional `id`, `when`, `updateContext`, `onEnter`, `onLeave`, and `timeoutMs`.
-- `global` is the reserved wildcard bucket for cross-cutting transitions.
+- `global` is the reserved wildcard bucket for fallback cross-cutting transitions.
 - `COMPLETE` and `TERMINATED` are reserved terminal outcomes, not regular step ids.
 
 Order matters inside each event array. Journey evaluates the candidates in order and picks the first valid match.

@@ -174,8 +174,8 @@ export const resolveJourneyDefinition = <
   >;
 
   const orderedGraphEntries = [
-    ...(transitionGraph.global ? ([["global", transitionGraph.global]] as const) : []),
-    ...Object.entries(transitionGraph).filter(([fromKey]) => fromKey !== "global")
+    ...Object.entries(transitionGraph).filter(([fromKey]) => fromKey !== "global"),
+    ...(transitionGraph.global ? ([["global", transitionGraph.global]] as const) : [])
   ];
 
   for (const [fromKey, eventMap] of orderedGraphEntries) {
