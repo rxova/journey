@@ -3,10 +3,11 @@
 import React from "react";
 import { journey } from "../journey";
 import { mockApi } from "../api";
+import { emailCodeStep } from "./emailCode.step";
 
 export const EmailCode = () => {
   const snapshot = journey.useJourneySnapshot();
-  const api = journey.useStepApi("emailCode");
+  const api = journey.useStepApi(emailCodeStep.id);
   const [code, setCode] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const isLoading = snapshot.async.isLoading;

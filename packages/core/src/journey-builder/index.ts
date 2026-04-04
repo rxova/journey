@@ -233,7 +233,7 @@ export function createJourneyBuilder<
     }
   ) {
     return {
-      _id: id,
+      id,
       _meta: config?.meta,
       _onEnter: config?.onEnter,
       _onLeave: config?.onLeave,
@@ -273,7 +273,7 @@ export function createJourneyBuilder<
     const transitionGraph = {} as Record<string, unknown>;
 
     for (const stepBuilder of input.steps) {
-      stepsRecord[stepBuilder._id] = {
+      stepsRecord[stepBuilder.id] = {
         ...(stepBuilder._meta !== undefined ? { meta: stepBuilder._meta } : {}),
         ...(stepBuilder._onEnter !== undefined ? { onEnter: stepBuilder._onEnter } : {}),
         ...(stepBuilder._onLeave !== undefined ? { onLeave: stepBuilder._onLeave } : {})
@@ -296,7 +296,7 @@ export function createJourneyBuilder<
           );
         }
 
-        transitionGraph[stepBuilder._id] = stepTransitions;
+        transitionGraph[stepBuilder.id] = stepTransitions;
       }
     }
 

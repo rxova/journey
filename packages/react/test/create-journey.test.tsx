@@ -418,7 +418,7 @@ describe("createJourney", () => {
   });
 
   it("useJourneyApi exposes updateContext as an ordered async context write", async () => {
-    const journey = createJourney<Context, StepId, EventMap, Meta>({
+    const definition = {
       initial: "start",
       context: { name: "", includeDetails: true, dirty: false },
       steps: {
@@ -445,7 +445,8 @@ describe("createJourney", () => {
           ]
         }
       }
-    });
+    } satisfies JourneyDefinition<Context, StepId, EventMap, Meta>;
+    const journey = createJourney(definition);
 
     let latestApi: ReturnType<typeof journey.useJourneyApi> | null = null;
     const ApiProbe = () => {
@@ -950,7 +951,7 @@ describe("createJourney", () => {
     const onError = vi.fn();
     const unhandledRejections: PromiseRejectionEvent[] = [];
     const startupError = new Error("start rejected");
-    const journey = createJourney<Context, StepId, EventMap, Meta>(createDefinition(), {
+    const journey = createJourney(createDefinition(), {
       plugins: [
         {
           name: "start-guard",
@@ -1364,7 +1365,7 @@ describe("createJourney", () => {
 
 describe("useJourneyStepLifecycle", () => {
   const createSimpleJourney = () =>
-    createJourney<Context, StepId, EventMap, Meta>(createDefinition({ includeDetails: true }));
+    createJourney(createDefinition({ includeDetails: true }));
 
   it("calls onEnter when the machine transitions into the watched step", async () => {
     const journey = createSimpleJourney();
