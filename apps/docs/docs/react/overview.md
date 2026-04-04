@@ -26,7 +26,7 @@ React bindings are a wrapper layer, not a second runtime.
 - `JourneyProvider`
 - `StepRenderer`
 
-Hooks work without a provider for reads and manual control. `useJourneyApi()` includes `start()` for provider-free flows, and `JourneyProvider` supplies the `views` map, lifecycle callbacks, and client-side auto-start for an `idled` machine.
+Hooks work without a provider for reads and manual control. `useJourneyApi()` includes `startJourney()` for provider-free flows, and `JourneyProvider` supplies the `views` map, lifecycle callbacks, and client-side auto-start for an `idled` machine.
 
 `createJourneyBindings(...)` and the older root-level React exports are not part of this package surface anymore. `createJourney(...)` is the supported runtime entrypoint.
 

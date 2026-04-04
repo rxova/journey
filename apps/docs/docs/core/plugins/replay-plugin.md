@@ -23,7 +23,7 @@ const machine = createJourneyMachine(journey, {
   ]
 });
 
-await machine.start();
+await machine.startJourney();
 
 const session = machine.getReplaySession();
 const exported = machine.exportReplaySession({ pretty: true });

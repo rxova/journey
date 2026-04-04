@@ -37,7 +37,7 @@ describe("core public entrypoint", () => {
 
   it("creates a machine directly from the authored journey definition", async () => {
     const machine = createJourneyMachine(createJourney());
-    await machine.start();
+    await machine.startJourney();
 
     const result = await machine.goToNextStep();
 
@@ -72,7 +72,7 @@ describe("core public entrypoint", () => {
 
   it("rejects non-serializable updateContext results through the public factory", async () => {
     const machine = createJourneyMachine(createJourney());
-    await machine.start();
+    await machine.startJourney();
 
     await expect(
       machine.updateContext(

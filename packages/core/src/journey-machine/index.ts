@@ -338,7 +338,7 @@ export function createJourneyMachine<
     getSnapshot: runtime.getSnapshot,
     getStepMeta: (stepId) => cloneMetaValue(stepMeta[stepId]),
     getComputed,
-    start: controls.start,
+    startJourney: controls.startJourney,
     subscribe: runtime.subscribe,
     subscribeSelector: runtime.subscribeSelector,
     subscribeEvent: runtime.subscribeEvent,

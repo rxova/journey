@@ -434,7 +434,7 @@ const runCommand = async <
     case "startJourney":
       return {
         kind: "snapshot",
-        snapshot: await machine.start()
+        snapshot: await machine.startJourney()
       };
     case "goToNextStep":
     case "completeJourney": {

@@ -84,7 +84,7 @@ const checkout: JourneyDefinition<Context, StepId, Record<never, never>, StepMet
 };
 
 const machine = createJourneyMachine(checkout);
-machine.start();
+machine.startJourney();
 ```
 
 ### Graph
@@ -122,7 +122,7 @@ const auth: JourneyDefinition<Context, StepId> = {
 };
 
 const machine = createJourneyMachine(auth);
-machine.start();
+machine.startJourney();
 ```
 
 ### Headless
@@ -141,7 +141,7 @@ const flow: JourneyDefinition<Record<string, never>, StepId> = {
 };
 
 const machine = createJourneyMachine(flow);
-machine.start();
+machine.startJourney();
 
 await machine.goToStepById("configure");
 await machine.goToStepById("confirm");
@@ -167,7 +167,7 @@ await machine.send({ type: "terminateJourney" });
 - Use `goToStepById` in headless flows.
 - `goToPreviousStep`, `goToLastVisitedStep`, `completeJourney`, and `terminateJourney` work in all modes.
 
-After `dispose()`, send-style APIs resolve with `transitioned: false` and `error: JourneyDisposedError`. Sync control APIs such as `start()` and `updateContext()` stay no-op and emit a development warning.
+After `dispose()`, send-style APIs resolve with `transitioned: false` and `error: JourneyDisposedError`. Sync control APIs such as `startJourney()` and `updateContext()` stay no-op and emit a development warning.
 
 Convenience helpers are also available:
 

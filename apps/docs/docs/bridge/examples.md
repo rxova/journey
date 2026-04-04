@@ -16,7 +16,7 @@ const detach = attachJourneyDevtools(journeyMachine, {
   label: "Checkout Journey",
   enabled: true
 });
-journeyMachine.start();
+journeyMachine.startJourney();
 ```
 
 ## Attach Bridge to React Flow

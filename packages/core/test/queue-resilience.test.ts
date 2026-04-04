@@ -56,7 +56,7 @@ describe("action queue resilience", () => {
   it("serializes overlapping sends and keeps timeline consistent", async () => {
     const block = deferred<number>();
     const machine = createJourneyMachine(createJourney(async () => await block.promise));
-    await machine.start();
+    await machine.startJourney();
 
     await machine.send({ type: "goToNextStep" });
 
@@ -77,7 +77,7 @@ describe("action queue resilience", () => {
 
   it("queues goToPreviousStep after transition send", async () => {
     const machine = createJourneyMachine(createJourney());
-    await machine.start();
+    await machine.startJourney();
 
     const nextA = machine.send({ type: "goToNextStep" });
     const nextB = machine.send({ type: "goToNextStep" });

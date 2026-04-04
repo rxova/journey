@@ -16,7 +16,7 @@
   `tx()`, `createTransitions()`, and `createTypedTransitionHelpers()` are gone from the public API.
   Transitions now use declarative graph syntax or linear syntax.
 
-  ### Explicit machine lifecycle with `machine.start()`
+  ### Explicit machine lifecycle with `machine.startJourney()`
 
   Machines are created in the `"idled"` state and must be started explicitly. `resetJourney()`
   returns the machine to `"idled"`.

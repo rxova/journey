@@ -31,7 +31,7 @@ describe("terminal transitions", () => {
     };
 
     const machine = createJourneyMachine(journey);
-    machine.start();
+    machine.startJourney();
 
     await machine.send({ type: "completeJourney" });
 
@@ -53,7 +53,7 @@ describe("terminal transitions", () => {
     };
 
     const machine = createJourneyMachine(journey);
-    machine.start();
+    machine.startJourney();
 
     await machine.send({ type: "terminateJourney" });
 
@@ -74,7 +74,7 @@ describe("terminal transitions", () => {
     };
 
     const machine = createJourneyMachine(journey);
-    machine.start();
+    machine.startJourney();
 
     await machine.send({ type: "terminateJourney" });
 
@@ -87,7 +87,7 @@ describe("terminal transitions", () => {
     journey.transitions = {};
 
     const machine = createJourneyMachine(journey);
-    machine.start();
+    machine.startJourney();
 
     const result = await machine.completeJourney();
 
@@ -100,7 +100,7 @@ describe("terminal transitions", () => {
     journey.transitions = {};
 
     const machine = createJourneyMachine(journey);
-    machine.start();
+    machine.startJourney();
 
     const result = await machine.terminateJourney();
 
@@ -121,7 +121,7 @@ describe("terminal transitions", () => {
     };
 
     const machine = createJourneyMachine(journey);
-    machine.start();
+    machine.startJourney();
 
     await machine.completeJourney();
 
@@ -142,7 +142,7 @@ describe("terminal transitions", () => {
     };
 
     const machine = createJourneyMachine(journey);
-    machine.start();
+    machine.startJourney();
 
     await machine.terminateJourney();
 
@@ -155,7 +155,7 @@ describe("terminal transitions", () => {
     journey.transitions = {};
 
     const machine = createJourneyMachine(journey);
-    machine.start();
+    machine.startJourney();
 
     const events: string[] = [];
     machine.subscribeEvent((event) => events.push(event.type));
@@ -171,7 +171,7 @@ describe("terminal transitions", () => {
     journey.transitions = {};
 
     const machine = createJourneyMachine(journey);
-    machine.start();
+    machine.startJourney();
 
     const events: string[] = [];
     machine.subscribeEvent((event) => events.push(event.type));
@@ -195,7 +195,7 @@ describe("terminal transitions", () => {
     };
 
     const machine = createJourneyMachine(journey);
-    machine.start();
+    machine.startJourney();
 
     const result = await machine.completeJourney();
 
@@ -218,7 +218,7 @@ describe("terminal transitions", () => {
     };
 
     const machine = createJourneyMachine(journey);
-    machine.start();
+    machine.startJourney();
 
     await machine.send({ type: "goToNextStep" });
 

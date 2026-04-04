@@ -363,7 +363,7 @@ export const App = () => {
         return;
       }
 
-      coreMachine.start();
+      coreMachine.startJourney();
     });
 
     return () => {

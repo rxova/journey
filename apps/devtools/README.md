@@ -35,7 +35,7 @@ import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 
 const machine = createJourneyMachine(journey);
 attachJourneyDevtools(machine, { label: "Checkout" });
-machine.start();
+machine.startJourney();
 ```
 
 ## App Integration (React)

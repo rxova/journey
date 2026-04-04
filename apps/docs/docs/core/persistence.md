@@ -25,7 +25,7 @@ const machine = createJourneyMachine(journey, {
 });
 ```
 
-Hydrated machines still start as `idled`. If persisted data said the flow was previously `running`, Journey restores the snapshot shape and current step but waits for an explicit `start()` before accepting transition/navigation commands.
+Hydrated machines still start as `idled`. If persisted data said the flow was previously `running`, Journey restores the snapshot shape and current step but waits for an explicit `startJourney()` before accepting transition/navigation commands.
 
 ## What It Persists
 

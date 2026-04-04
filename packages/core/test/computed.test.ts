@@ -47,7 +47,7 @@ describe("journey computed state", () => {
       stepOrder: ["start", "details", "review"]
     });
 
-    await machine.start();
+    await machine.startJourney();
     expect(machine.getComputed().isRunning).toBe(true);
 
     await machine.goToNextStep();
@@ -95,7 +95,7 @@ describe("journey computed state", () => {
       transitions: ["start", "details", "review"]
     };
     const machine = createJourneyMachine(journey);
-    await machine.start();
+    await machine.startJourney();
 
     await machine.goToNextStep(); // start → details
     await machine.goToNextStep(); // details → review
@@ -120,7 +120,7 @@ describe("journey computed state", () => {
       transitions: ["start", "details", "review"]
     };
     const machine = createJourneyMachine(journey);
-    await machine.start();
+    await machine.startJourney();
 
     await machine.goToNextStep(); // start → details
 
@@ -180,7 +180,7 @@ describe("journey computed state", () => {
       isInitialStep: true
     });
 
-    await machine.start();
+    await machine.startJourney();
     await machine.send({ type: "goToStepById", stepId: "review" });
 
     expect(machine.getComputed()).toEqual({
@@ -221,7 +221,7 @@ describe("journey computed state", () => {
       isInitialStep: true
     });
 
-    await machine.start();
+    await machine.startJourney();
     expect(machine.getComputed().isRunning).toBe(true);
     expect(machine.getComputed().isInitialStep).toBe(true);
   });

@@ -107,7 +107,7 @@ Different runtime actions update the snapshot for different reasons:
 | `navigation` | `goToPreviousStep(...)`, `goToLastVisitedStep()`                                                 | [Navigation Commits](/docs/core/architecture/navigation)                                                |
 | `async`      | guard loading, idle, or error updates                                                            | [Async State](/docs/core/architecture/async-state)                                                      |
 | `context`    | `updateContext(...)`                                                                             | [Controls](/docs/core/architecture/controls)                                                            |
-| `start`      | `start()`                                                                                        | [Controls](/docs/core/architecture/controls)                                                            |
+| `start`      | `startJourney()`                                                                                 | [Controls](/docs/core/architecture/controls)                                                            |
 | `reset`      | `resetJourney()`                                                                                 | [Controls](/docs/core/architecture/controls)                                                            |
 
 This is mainly visible to plugins and advanced instrumentation, but it is also a useful debugging frame: not every
@@ -116,7 +116,7 @@ snapshot write means "a transition happened".
 ## Practical Notes
 
 - `history.timeline` is realized history, not authored step order.
-- A fresh machine snapshot is `idled` until `start()` is called.
+- A fresh machine snapshot is `idled` until `startJourney()` is called.
 - Pointer moves such as `goToPreviousStep(...)` and `goToLastVisitedStep()` do not rewrite `visited`.
 - `context` and `async` are immutable read branches in the returned snapshot. Change runtime state through
   `updateContext(...)`, transition updates, or reset/start APIs instead of mutating the

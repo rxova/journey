@@ -362,7 +362,7 @@ describe("StrictMode and render regressions", () => {
     render(<Probe />);
 
     await act(async () => {
-      await latestApi?.start();
+      await latestApi?.startJourney();
     });
 
     await act(async () => {

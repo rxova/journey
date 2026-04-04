@@ -22,7 +22,7 @@ import { createJourneyMachine } from "@rxova/journey-core";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 
 const machine = createJourneyMachine(definition);
-machine.start();
+machine.startJourney();
 
 const detach = attachJourneyDevtools(machine, { label: "Checkout" });
 ```

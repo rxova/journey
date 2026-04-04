@@ -21,12 +21,12 @@ A machine is always in one of four states:
 - `completed`: finished flow
 - `terminated`: intentionally closed early
 
-When status is `idled`, transitions and pointer navigation are blocked until `start()`.
-When status is terminal (`completed` or `terminated`), transitions and pointer navigation are blocked until `resetJourney()` and a later `start()`.
+When status is `idled`, transitions and pointer navigation are blocked until `startJourney()`.
+When status is terminal (`completed` or `terminated`), transitions and pointer navigation are blocked until `resetJourney()` and a later `startJourney()`.
 
 ```text
 idled
-  └─ start() -> running
+  └─ startJourney() -> running
 
 running
   ├─ completeJourney / COMPLETE target -> completed
@@ -49,7 +49,7 @@ A new machine starts from a known snapshot:
 
 This consistent idle snapshot is why behavior is reproducible across environments.
 
-Call `machine.start()` to move the machine into `running`. That call emits `journey.start` with the current step and timestamp. Late subscribers do not receive a replayed startup event.
+Call `machine.startJourney()` to move the machine into `running`. That call emits `journey.start` with the current step and timestamp. Late subscribers do not receive a replayed startup event.
 
 ## Event Catalog
 
@@ -57,7 +57,7 @@ Use `subscribeEvent(...)` to observe lifecycle events.
 
 | Event                    | When it appears                                      | Key payload                                    |
 | ------------------------ | ---------------------------------------------------- | ---------------------------------------------- |
-| `journey.start`          | `machine.start()` changes `idled -> running`         | `stepId`                                       |
+| `journey.start`          | `machine.startJourney()` changes `idled -> running`  | `stepId`                                       |
 | `transition.start`       | an event begins running through the send pipeline    | `from`, `event`                                |
 | `transition.success`     | a transition commits or fallback send succeeds       | `from`, `to`, `eventType`, `transitionId`      |
 | `transition.error`       | selected guard or `updateContext` fails or times out | `from`, `eventType`, `transitionId`, `error`   |

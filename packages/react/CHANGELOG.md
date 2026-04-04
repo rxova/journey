@@ -13,7 +13,7 @@
 
   ### Provider-owned journeys start in layout phase
 
-  `JourneyProvider` now calls `machine.start()` in a layout effect so the journey is running before
+  `JourneyProvider` now calls `machine.startJourney()` in a layout effect so the journey is running before
   first paint.
 
   ### Re-exported runtime constants removed
@@ -57,7 +57,7 @@
 
   ## Changed
   - `JourneyProvider` disposal is now opt-in via `disposeOnUnmount`
-  - `JourneyProvider` reports provider-owned startup failures through `onError(error, { phase: "start" })`
+  - `JourneyProvider` reports provider-owned startup failures through `onError(error, { phase: "startJourney" })`
   - `updateContextQueued()` has been removed; use `updateContext()` from `useJourneyApi()` instead
   - React stays aligned with the core timeout support and runtime refactors
 
@@ -71,7 +71,7 @@
 ### Patch Changes
 
 - `StepRenderer` and `JourneyProvider` status tracking now subscribe through selectors so unrelated snapshot updates no longer rerender those paths.
-- `useJourneyApi()` now includes `start()` to match the core machine control surface.
+- `useJourneyApi()` now includes `startJourney()` to match the core machine control surface.
 - React tests now cover inline selector usage, `startTransition` read consistency, and hook behavior after runtime disposal.
 
 ## 0.7.0

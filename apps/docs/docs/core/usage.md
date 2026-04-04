@@ -113,7 +113,7 @@ Good fit:
 
 ```ts
 const journeyMachine = createJourneyMachine(journey);
-journeyMachine.start();
+journeyMachine.startJourney();
 
 journeyMachine.subscribe(() => {
   renderFromSnapshot(journeyMachine.getSnapshot());

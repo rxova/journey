@@ -28,20 +28,20 @@ const createJourney = (): JourneyDefinition<Context, StepId, EventMap, Meta> => 
     confirmExit: { meta: { title: "Confirm exit" } }
   },
   transitions: {
-    start: { goToNextStep: [{ id: "start-next", to: "details" }] },
-    details: { goToNextStep: [{ id: "details-next", to: "review" }] },
-    review: { completeJourney: [{ id: "submit-review" }] },
+    start: { goToNextStep: [{ label: "start-next", to: "details" }] },
+    details: { goToNextStep: [{ label: "details-next", to: "review" }] },
+    review: { completeJourney: [{ label: "submit-review" }] },
     global: {
       requestClose: [
         {
-          id: "close-dirty",
+          label: "close-dirty",
           to: "confirmExit",
           when: ({ context }) => context.dirty
         }
       ],
       terminateJourney: [
         {
-          id: "close-clean",
+          label: "close-clean",
           when: ({ context }) => !context.dirty
         }
       ]
@@ -53,7 +53,7 @@ const createMachine = () => createJourneyMachine<Context, StepId, EventMap, Meta
 
 const createStartedMachine = async () => {
   const machine = createMachine();
-  await machine.start();
+  await machine.startJourney();
   return machine;
 };
 
@@ -116,7 +116,7 @@ describe("createJourneyMachine", () => {
       ] as const
     });
 
-    await expect(machine.start()).rejects.toThrow("start rejected");
+    await expect(machine.startJourney()).rejects.toThrow("start rejected");
     expect(machine.getSnapshot()).toMatchObject({
       status: "idled",
       currentStepId: "start",
@@ -139,7 +139,7 @@ describe("createJourneyMachine", () => {
         }
       ] as const
     });
-    await machine.start();
+    await machine.startJourney();
 
     await expect(
       machine.updateContext((context) => ({
@@ -213,7 +213,8 @@ describe("createJourneyMachine", () => {
     const result = await machine.goToNextStep();
 
     expect(result.transitioned).toBe(true);
-    expect(result.transitionId).toBe("start-next");
+    expect(result.transitionId).toEqual(expect.any(String));
+    expect(result.label).toBe("start-next");
     expect(machine.getSnapshot().currentStepId).toBe("details");
   });
 
@@ -225,7 +226,8 @@ describe("createJourneyMachine", () => {
     const result = await machine.completeJourney();
 
     expect(result.transitioned).toBe(true);
-    expect(result.transitionId).toBe("submit-review");
+    expect(result.transitionId).toEqual(expect.any(String));
+    expect(result.label).toBe("submit-review");
     expect(machine.getSnapshot().status).toBe("completed");
   });
 
@@ -235,7 +237,8 @@ describe("createJourneyMachine", () => {
     const result = await machine.terminateJourney();
 
     expect(result.transitioned).toBe(true);
-    expect(result.transitionId).toBe("close-clean");
+    expect(result.transitionId).toEqual(expect.any(String));
+    expect(result.label).toBe("close-clean");
     expect(machine.getSnapshot().status).toBe("terminated");
   });
 
@@ -282,9 +285,9 @@ describe("createJourneyMachine", () => {
         confirmExit: { meta: { title: "Confirm exit" } }
       },
       transitions: {
-        start: { goToNextStep: [{ id: "start-next", to: "details" }] },
-        details: { goToNextStep: [{ id: "details-next", to: "review" }] },
-        review: { completeJourney: [{ id: "submit-review" }] }
+        start: { goToNextStep: [{ label: "start-next", to: "details" }] },
+        details: { goToNextStep: [{ label: "details-next", to: "review" }] },
+        review: { completeJourney: [{ label: "submit-review" }] }
       }
     };
     const machine = createJourneyMachine(executionPathJourney, {
@@ -378,7 +381,7 @@ describe("createJourneyMachine", () => {
       events.push(event);
     });
 
-    await machine.start();
+    await machine.startJourney();
     await machine.send({ type: "goToNextStep" });
     unsubscribe();
 
@@ -395,7 +398,8 @@ describe("createJourneyMachine", () => {
       type: "transition.success",
       from: "start",
       to: "details",
-      transitionId: "start-next"
+      transitionId: expect.any(String),
+      label: "start-next"
     });
   });
 
@@ -409,7 +413,7 @@ describe("createJourneyMachine", () => {
 
     expect(events).toEqual([]);
 
-    await machine.start();
+    await machine.startJourney();
 
     expect(events).toEqual([
       {
@@ -428,7 +432,7 @@ describe("createJourneyMachine", () => {
       events.push({ stepId: event.stepId, timestamp: event.timestamp });
     });
 
-    await machine.start();
+    await machine.startJourney();
     await machine.goToNextStep();
 
     expect(events).toEqual([
@@ -437,6 +441,29 @@ describe("createJourneyMachine", () => {
         timestamp: expect.any(Number)
       }
     ]);
+  });
+
+  it("subscribeReset filters to reset events and respects unsubscribe", async () => {
+    const machine = await createStartedMachine();
+    const events: Array<{ stepId: StepId; timestamp: number }> = [];
+    const unsubscribe = machine.subscribeReset((event) => {
+      events.push({ stepId: event.stepId, timestamp: event.timestamp });
+    });
+
+    await machine.resetJourney();
+
+    expect(events).toEqual([
+      {
+        stepId: "start",
+        timestamp: expect.any(Number)
+      }
+    ]);
+
+    unsubscribe();
+    await machine.startJourney();
+    await machine.resetJourney();
+
+    expect(events).toHaveLength(1);
   });
 
   it("emits lifecycle.error events and calls onLifecycleError when lifecycle handlers throw", async () => {
@@ -462,7 +489,7 @@ describe("createJourneyMachine", () => {
       events.push(event);
     });
 
-    await machine.start();
+    await machine.startJourney();
     await machine.goToNextStep();
     await Promise.resolve();
     await Promise.resolve();
@@ -471,13 +498,14 @@ describe("createJourneyMachine", () => {
     expect(onLifecycleError).toHaveBeenCalledTimes(1);
     expect(onLifecycleError).toHaveBeenCalledWith(
       expect.objectContaining({ message: "details enter failed" }),
-      {
+      expect.objectContaining({
         phase: "step.onEnter",
         from: "start",
         to: "details",
         eventType: "goToNextStep",
-        transitionId: "start-next"
-      }
+        transitionId: expect.any(String),
+        label: "start-next"
+      })
     );
     expect(events).toContainEqual(
       expect.objectContaining({
@@ -486,8 +514,149 @@ describe("createJourneyMachine", () => {
         from: "start",
         to: "details",
         eventType: "goToNextStep",
-        transitionId: "start-next",
+        transitionId: expect.any(String),
+        label: "start-next",
         error: expect.objectContaining({ message: "details enter failed" })
+      })
+    );
+  });
+
+  it("reports step.onLeave lifecycle failures", async () => {
+    const onLifecycleError = vi.fn();
+    const machine = createJourneyMachine<Context, StepId, EventMap, Meta>(
+      {
+        ...createJourney(),
+        steps: {
+          ...createJourney().steps,
+          start: {
+            meta: { title: "Start" },
+            onLeave: async () => {
+              throw new Error("start leave failed");
+            }
+          }
+        }
+      },
+      { onLifecycleError }
+    );
+    const events: JourneyObservationEvent<StepId, EventMap>[] = [];
+
+    machine.subscribeEvent((event) => {
+      events.push(event);
+    });
+
+    await machine.startJourney();
+    await machine.goToNextStep();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(onLifecycleError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "start leave failed" }),
+      expect.objectContaining({
+        phase: "step.onLeave",
+        from: "start",
+        to: "details",
+        eventType: "goToNextStep",
+        transitionId: expect.any(String),
+        label: "start-next"
+      })
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "lifecycle.error",
+        phase: "step.onLeave",
+        from: "start",
+        to: "details",
+        eventType: "goToNextStep",
+        transitionId: expect.any(String),
+        label: "start-next",
+        error: expect.objectContaining({ message: "start leave failed" })
+      })
+    );
+  });
+
+  it("reports transition lifecycle failures for onLeave and onEnter", async () => {
+    const onLifecycleError = vi.fn();
+    const machine = createJourneyMachine<Context, StepId, EventMap, Meta>(
+      {
+        ...createJourney(),
+        transitions: {
+          ...createJourney().transitions,
+          start: {
+            goToNextStep: [
+              {
+                label: "start-next",
+                to: "details",
+                onLeave: async () => {
+                  throw new Error("transition leave failed");
+                }
+              }
+            ]
+          },
+          details: {
+            goToNextStep: [
+              {
+                label: "details-next",
+                to: "review",
+                onEnter: async () => {
+                  throw new Error("transition enter failed");
+                }
+              }
+            ]
+          }
+        }
+      },
+      { onLifecycleError }
+    );
+    const events: JourneyObservationEvent<StepId, EventMap>[] = [];
+
+    machine.subscribeEvent((event) => {
+      events.push(event);
+    });
+
+    await machine.startJourney();
+    await machine.goToNextStep();
+    await Promise.resolve();
+    await Promise.resolve();
+    await machine.goToNextStep();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(onLifecycleError).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ message: "transition leave failed" }),
+      expect.objectContaining({
+        phase: "transition.onLeave",
+        from: "start",
+        to: "details",
+        eventType: "goToNextStep",
+        transitionId: expect.any(String),
+        label: "start-next"
+      })
+    );
+    expect(onLifecycleError).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ message: "transition enter failed" }),
+      expect.objectContaining({
+        phase: "transition.onEnter",
+        from: "details",
+        to: "review",
+        eventType: "goToNextStep",
+        transitionId: expect.any(String),
+        label: "details-next"
+      })
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "lifecycle.error",
+        phase: "transition.onLeave",
+        error: expect.objectContaining({ message: "transition leave failed" })
+      })
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "lifecycle.error",
+        phase: "transition.onEnter",
+        error: expect.objectContaining({ message: "transition enter failed" })
       })
     );
   });

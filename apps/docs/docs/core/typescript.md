@@ -83,7 +83,7 @@ const journey: JourneyDefinition<Context, StepId, EventMap, StepMeta> = {
 };
 
 const machine = createJourneyMachine(journey);
-machine.start();
+machine.startJourney();
 ```
 
 ## Important Types To Know

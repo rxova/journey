@@ -197,7 +197,7 @@ export type JourneyMachine<
   getSnapshot: () => JourneySnapshot<TContext, TStepId>;
   getStepMeta: (stepId: TStepId) => TStepMeta | undefined;
   getComputed: () => JourneyComputed<TStepId>;
-  start: () => Promise<JourneySnapshot<TContext, TStepId>>;
+  startJourney: () => Promise<JourneySnapshot<TContext, TStepId>>;
   send: (
     event: JourneySendEvent<TStepId, TEventMap>
   ) => Promise<JourneySendResult<TContext, TStepId>>;

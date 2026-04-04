@@ -86,7 +86,7 @@ describe("flow behavior", () => {
 
   it("supports branch-like behavior via first-match transitions", async () => {
     const machine = createJourneyMachine(createJourney());
-    machine.start();
+    machine.startJourney();
 
     await machine.send({ type: "goToNextStep" });
     await machine.send({ type: "goToNextStep" });
@@ -95,7 +95,7 @@ describe("flow behavior", () => {
 
     machine.resetJourney();
     machine.updateContext((context) => ({ ...context, includeDetails: true }));
-    machine.start();
+    machine.startJourney();
 
     await machine.send({ type: "goToNextStep" });
     await machine.send({ type: "goToNextStep" });
@@ -121,7 +121,7 @@ describe("flow behavior", () => {
     };
 
     const machine = createJourneyMachine(journey);
-    machine.start();
+    machine.startJourney();
     const result = await machine.send({ type: "goToNextStep" });
 
     expect(result.transitioned).toBe(true);
@@ -131,7 +131,7 @@ describe("flow behavior", () => {
 
   it("supports wildcard close transitions", async () => {
     const machine = createJourneyMachine(createJourney());
-    machine.start();
+    machine.startJourney();
 
     machine.updateContext((context) => ({ ...context, dirty: true }));
     await machine.send({ type: "requestClose" });

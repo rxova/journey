@@ -36,7 +36,7 @@ describe("replay plugin", () => {
       plugins: [createReplayPlugin()] as const
     });
 
-    await machine.start();
+    await machine.startJourney();
     await machine.send({ type: "goToNextStep" });
 
     const session = machine.getReplaySession();
@@ -61,7 +61,7 @@ describe("replay plugin", () => {
       plugins: [createReplayPlugin()] as const
     });
 
-    await machine.start();
+    await machine.startJourney();
     await machine.send({ type: "fail", payload: { reason: "test" } });
 
     const exported = machine.exportReplaySession({ pretty: true });
@@ -87,7 +87,7 @@ describe("replay plugin", () => {
       plugins: [createReplayPlugin({ maxEntries: 2 })] as const
     });
 
-    await machine.start();
+    await machine.startJourney();
     await machine.send({ type: "goToNextStep" });
 
     const beforeClear = machine.getReplaySession();
@@ -107,7 +107,7 @@ describe("replay plugin", () => {
       plugins: [createReplayPlugin({ captureEvents: false, maxEntries: 0.25 })] as const
     });
 
-    await snapshotsOnly.start();
+    await snapshotsOnly.startJourney();
     await snapshotsOnly.send({ type: "goToNextStep" });
 
     const snapshotSession = snapshotsOnly.getReplaySession();
@@ -120,7 +120,7 @@ describe("replay plugin", () => {
       plugins: [createReplayPlugin({ captureSnapshots: false })] as const
     });
 
-    await eventsOnly.start();
+    await eventsOnly.startJourney();
     await eventsOnly.send({ type: "goToNextStep" });
 
     const eventSession = eventsOnly.getReplaySession();
@@ -139,7 +139,7 @@ describe("replay plugin", () => {
       ] as const
     });
 
-    await machine.start();
+    await machine.startJourney();
 
     for (let index = 0; index < 505; index += 1) {
       await machine.updateContext((context) => ({
