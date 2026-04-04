@@ -57,7 +57,7 @@ const machine = createJourneyMachine({
   transitions: ["account", "review"] // linear — initial defaults to first element
 });
 
-machine.start();
+machine.startJourney();
 await machine.send({ type: "goToNextStep" });
 ```
 
@@ -148,7 +148,7 @@ const machine = createJourneyMachine({
   steps: { step1: {}, step2: {}, step3: {} }
 });
 
-machine.start();
+machine.startJourney();
 await machine.goToStepById("step3");
 ```
 
@@ -269,7 +269,7 @@ const machine = createJourneyMachine(definition, {
 | `defaultTimeoutMs`          | —       | Global timeout for async guards. Per-transition `timeoutMs` overrides this. Throws `JourneyTimeoutError` if exceeded.                      |
 | `plugins`                   | `[]`    | Array of plugins to register (persistence, execution paths, etc.)                                                                          |
 
-> **Important:** You must call `machine.start()` before sending any events. The machine initializes in `"idled"` status and won't accept navigation until started.
+> **Important:** You must call `machine.startJourney()` before sending any events. The machine initializes in `"idled"` status and won't accept navigation until started.
 
 ### API
 
@@ -288,7 +288,7 @@ All navigation methods return `Promise<JourneySendResult>`:
 
 | Method                       | Description                                                      |
 | ---------------------------- | ---------------------------------------------------------------- |
-| `start()`                    | Transition from `"idled"` to `"running"`. Must be called first.  |
+| `startJourney()`             | Transition from `"idled"` to `"running"`. Must be called first.  |
 | `goToNextStep()`             | Advance to the next step (linear) or evaluate graph transitions. |
 | `goToPreviousStep(steps?)`   | Go back N steps in the timeline (default 1).                     |
 | `goToLastVisitedStep()`      | Jump forward to the end of the timeline.                         |

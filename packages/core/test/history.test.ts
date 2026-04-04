@@ -28,7 +28,7 @@ const createJourney = (): JourneyDefinition<Context, StepId, EventMap> => ({
 
 const createStartedMachine = () => {
   const machine = createJourneyMachine(createJourney());
-  machine.start();
+  machine.startJourney();
   return machine;
 };
 
@@ -137,7 +137,7 @@ describe("timeline navigation", () => {
     };
 
     const machine = createJourneyMachine(journey);
-    machine.start();
+    machine.startJourney();
 
     await machine.send({ type: "goToNextStep" });
     await machine.send({ type: "goToNextStep" });

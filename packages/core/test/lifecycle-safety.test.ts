@@ -63,7 +63,7 @@ describe("lifecycle safety", () => {
       })
     );
 
-    await machine.start();
+    await machine.startJourney();
     await machine.goToNextStep();
     await started;
     expect(signalRef).not.toBeNull();
@@ -98,7 +98,7 @@ describe("lifecycle safety", () => {
       })
     );
 
-    await machine.start();
+    await machine.startJourney();
     await machine.goToNextStep();
     await started;
     expect(signalRef).not.toBeNull();

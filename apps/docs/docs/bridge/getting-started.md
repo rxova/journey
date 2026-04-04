@@ -59,13 +59,13 @@ const detachDevtools = attachJourneyDevtools(journeyMachine, {
   appName: "Storefront"
 });
 
-journeyMachine.start();
+journeyMachine.startJourney();
 
 // optional cleanup
 // detachDevtools();
 ```
 
-The bridge does not auto-start the machine. Call `journeyMachine.start()` when your app is ready to process navigation and transition commands.
+The bridge does not auto-start the machine. Call `journeyMachine.startJourney()` when your app is ready to process navigation and transition commands.
 
 ### React Example
 

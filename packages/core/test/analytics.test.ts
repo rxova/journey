@@ -77,7 +77,7 @@ describe("analytics plugin", () => {
       ] as const
     });
 
-    await machine.start();
+    await machine.startJourney();
     await machine.goToNextStep();
     await machine.completeJourney();
 
@@ -148,7 +148,7 @@ describe("analytics plugin", () => {
       ] as const
     });
 
-    await machine.start();
+    await machine.startJourney();
     await machine.goToNextStep();
 
     expect(onError).toHaveBeenCalled();
@@ -170,7 +170,7 @@ describe("analytics plugin", () => {
         ] as const
       });
 
-      await machine.start();
+      await machine.startJourney();
 
       vi.setSystemTime(new Date("2026-03-29T00:00:02.000Z"));
       await machine.goToNextStep();
@@ -252,7 +252,7 @@ describe("analytics plugin", () => {
     });
 
     try {
-      await machine.start();
+      await machine.startJourney();
       await machine.goToNextStep();
 
       const failed = findTracked(track, "transition_failed");

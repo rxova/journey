@@ -28,7 +28,7 @@ const detach = attachJourneyDevtools(machine, {
 // detach();
 ```
 
-The bridge is observational by default. It does not call `machine.start()` for you, so fresh machines remain `idled` until your app starts them.
+The bridge is observational by default. It does not call `machine.startJourney()` for you, so fresh machines remain `idled` until your app starts them.
 
 ## Options
 

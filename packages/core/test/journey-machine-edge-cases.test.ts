@@ -65,7 +65,7 @@ const createStartedMachine = async <
   journey: JourneyDefinition<TContext, TStepId, TEventMap>
 ) => {
   const machine = createJourneyMachine(journey);
-  await machine.start();
+  await machine.startJourney();
   return machine;
 };
 

@@ -104,7 +104,7 @@ const machine = createJourneyMachine(journey, {
   ]
 });
 
-await machine.start();
+await machine.startJourney();
 await machine.updateContext((context) => ({ ...context, email: "user@example.com" }));
 
 const autosave = machine.getAutosaveState();

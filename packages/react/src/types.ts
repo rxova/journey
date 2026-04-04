@@ -130,7 +130,7 @@ export type JourneyApi<
   TEventMap extends Record<string, unknown> = Record<never, never>,
   TStepMeta = unknown
 > = {
-  start: () => Promise<JourneySnapshot<TContext, TStepId>>;
+  startJourney: () => Promise<JourneySnapshot<TContext, TStepId>>;
   send: (
     event: JourneySendEvent<TStepId, TEventMap>
   ) => Promise<JourneySendResult<TContext, TStepId>>;

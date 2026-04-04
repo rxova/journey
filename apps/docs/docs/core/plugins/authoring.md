@@ -24,7 +24,7 @@ const myPlugin = {
 } satisfies JourneyMachinePlugin;
 ```
 
-`setup` is called once per machine at construction time, before `machine.start()`. It receives a setup context and returns a hooks object. All hooks are optional.
+`setup` is called once per machine at construction time, before `machine.startJourney()`. It receives a setup context and returns a hooks object. All hooks are optional.
 
 ## The Type Cast Pattern
 

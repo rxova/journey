@@ -36,7 +36,7 @@ const machine = createJourneyMachine({
   transitions: ["account", "details", "review"]
 });
 
-machine.start();
+machine.startJourney();
 
 await machine.send({ type: "goToNextStep" }); // account → details
 await machine.send({ type: "goToNextStep" }); // details → review
@@ -132,7 +132,7 @@ const machine = createJourneyMachine({
   // no transitions — the caller drives the flow
 });
 
-machine.start();
+machine.startJourney();
 await machine.goToStepById("configure");
 await machine.goToStepById("confirm");
 await machine.goToPreviousStep(); // back to configure
@@ -141,7 +141,7 @@ await machine.completeJourney();
 
 In headless mode, `goToStepById(...)` is the navigation primitive. `goToNextStep()` and custom events are explicit no-ops until you define transitions and move into linear or graph mode.
 
-After `dispose()`, send-style APIs resolve with `transitioned: false` and `error: JourneyDisposedError`. Control APIs such as `start()` and `updateContext()` stay no-op and emit a development warning.
+After `dispose()`, send-style APIs resolve with `transitioned: false` and `error: JourneyDisposedError`. Control APIs such as `startJourney()` and `updateContext()` stay no-op and emit a development warning.
 
 `updateContext()` is the ordered context-write API. It runs through the same queue as `send()`, so it applies against the latest committed snapshot when it executes.
 

@@ -70,7 +70,7 @@ describe("autosave plugin", () => {
       ] as const
     });
 
-    await machineA.start();
+    await machineA.startJourney();
     await machineA.updateContext((context) => ({ ...context, count: 2 }));
     await machineA.goToNextStep();
 
@@ -188,7 +188,7 @@ describe("autosave plugin", () => {
       ] as const
     });
 
-    await machine.start();
+    await machine.startJourney();
     await machine.updateContext((context) => ({ ...context, count: 4 }));
 
     expect(machine.getAutosaveState().status).toBe("pending");
@@ -233,7 +233,7 @@ describe("autosave plugin", () => {
       }
     );
 
-    await machine.start();
+    await machine.startJourney();
     await machine.updateContext((context) => ({
       ...context,
       count: 7,
@@ -324,7 +324,7 @@ describe("autosave plugin", () => {
       context: { count: 0, injected: true }
     });
 
-    await machine.start();
+    await machine.startJourney();
     await machine.updateContext((context) => ({ ...context, count: 5 }));
 
     expect(
@@ -461,7 +461,7 @@ describe("autosave plugin", () => {
       ] as const
     });
 
-    await machine.start();
+    await machine.startJourney();
     await machine.updateContext((context) => ({ ...context, count: 2 }));
     expect(machine.getAutosaveState()).toMatchObject({
       status: "saved",
@@ -525,7 +525,7 @@ describe("autosave plugin", () => {
     });
 
     await machine.flushAutosave();
-    await machine.start();
+    await machine.startJourney();
     await machine.updateContext((context) => ({ ...context, count: 6 }));
     expect(machine.getAutosaveState().status).toBe("pending");
 

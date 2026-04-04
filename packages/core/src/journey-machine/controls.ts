@@ -12,7 +12,7 @@ import type { JourneyMachineAsyncStateController } from "./async-state";
 import type { JourneyMachineRuntime } from "./runtime";
 
 export type JourneyMachineControls<TContext extends JourneyJsonObject, TStepId extends string> = {
-  start: () => Promise<JourneySnapshot<TContext, TStepId>>;
+  startJourney: () => Promise<JourneySnapshot<TContext, TStepId>>;
   resetJourney: () => Promise<JourneySnapshot<TContext, TStepId>>;
   updateContext: (
     updater: (context: TContext) => TContext
@@ -52,9 +52,9 @@ export const createJourneyMachineControls = <
     );
 
   return {
-    start: () => {
+    startJourney: () => {
       if (runtime.isDisposed()) {
-        warnDisposedNoop("start");
+        warnDisposedNoop("startJourney");
         return Promise.resolve(runtime.getSnapshot());
       }
 

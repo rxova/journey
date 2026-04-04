@@ -160,7 +160,7 @@ export const createJourneyHooks = <
     const runtimeMachine = machine;
     return React.useMemo(
       () => ({
-        start: runtimeMachine.start,
+        startJourney: runtimeMachine.startJourney,
         send: runtimeMachine.send,
         goToNextStep: runtimeMachine.goToNextStep,
         goToStepById: runtimeMachine.goToStepById,
@@ -193,7 +193,7 @@ export const createJourneyHooks = <
     void stepId;
     return React.useMemo(
       () => ({
-        start: runtimeMachine.start,
+        startJourney: runtimeMachine.startJourney,
         send: runtimeMachine.send,
         goToNextStep: runtimeMachine.goToNextStep,
         goToStepById: runtimeMachine.goToStepById,

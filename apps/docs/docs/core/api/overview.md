@@ -73,7 +73,7 @@ const journey = {
 };
 
 const journeyMachine = createJourneyMachine(journey);
-journeyMachine.start();
+journeyMachine.startJourney();
 ```
 
 This pattern scales well: the flow map stays readable even when behavior gets richer.
@@ -85,7 +85,7 @@ You can drive the machine with events (`send`) or convenience helpers.
 Start it first:
 
 ```ts
-journeyMachine.start();
+journeyMachine.startJourney();
 ```
 
 Use `send` when you want explicit event control:
@@ -112,14 +112,14 @@ await journeyMachine.terminateJourney();
 
 `goToStepById(...)` is mode-aware: it performs direct caller-driven navigation when `transitions` is omitted, and follows only declared `goToStepById` transitions in graph or linear definitions.
 
-After `dispose()`, send-style APIs such as `send(...)`, `goToNextStep()`, and `completeJourney()` resolve with `transitioned: false` and `error: JourneyDisposedError`. Sync control APIs such as `start()`, `updateContext()`, and `clearStepError()` remain no-op and emit a development warning.
+After `dispose()`, send-style APIs such as `send(...)`, `goToNextStep()`, and `completeJourney()` resolve with `transitioned: false` and `error: JourneyDisposedError`. Sync control APIs such as `startJourney()`, `updateContext()`, and `clearStepError()` remain no-op and emit a development warning.
 
 You can also update runtime state safely through explicit APIs:
 
 - `updateContext(updater)`
 - `getStepMeta(stepId)`
 - `clearStepError(stepId?)`
-- `start()`
+- `startJourney()`
 - `resetJourney()`
 
 `updateContext(updater)` is immediate, but it is not retroactive to an async transition already in progress. If a context change must affect the current `send(...)`, apply it before sending; if it should happen after the transition, await the transition first. See [Core Async Behavior](/docs/core/async).
@@ -257,7 +257,7 @@ Use `subscribeEvent` when you need typed lifecycle telemetry, such as:
 
 Use `subscribeStart`, `subscribeComplete`, or `subscribeTerminate` when you only want a specific lifecycle event without manually filtering `subscribeEvent`.
 
-`journey.start` is emitted when `journeyMachine.start()` runs. Late subscribers only observe future lifecycle events.
+`journey.start` is emitted when `journeyMachine.startJourney()` runs. Late subscribers only observe future lifecycle events.
 
 For teams, this usually means better logs, easier debugging, and cleaner analytics hooks.
 

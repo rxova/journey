@@ -85,7 +85,7 @@ export const App = () => (
 ```ts
 const api = signup.useJourneyApi();
 
-await api.start();
+await api.startJourney();
 await api.goToNextStep();
 await api.goToPreviousStep();
 await api.goToLastVisitedStep();
@@ -136,7 +136,7 @@ Each `createJourney()` call creates one machine instance. The returned hooks are
 
 - Rendering multiple providers from the same runtime shares one journey state
 - `JourneyProvider` auto-starts an `idled` runtime, but does not dispose it by default
-- Provider-free flows can start manually through `useJourneyApi().start()` or `machine.start()`
+- Provider-free flows can start manually through `useJourneyApi().startJourney()` or `machine.startJourney()`
 - Provider-owned startup failures are reported through `onError(error, { phase: "start" })`
 - Set `disposeOnUnmount` when a provider fully owns a component-scoped runtime
 - Independent instances require separate `createJourney()` calls

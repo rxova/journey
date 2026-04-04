@@ -66,7 +66,7 @@ describe("controls extra coverage", () => {
       steps: { start: {}, review: {} }
     });
 
-    await expect(controls.start()).resolves.toEqual(runtime.getSnapshot());
+    await expect(controls.startJourney()).resolves.toEqual(runtime.getSnapshot());
     await expect(controls.resetJourney()).resolves.toEqual(runtime.getSnapshot());
     await expect(controls.updateContext((context) => context)).resolves.toEqual(
       runtime.getSnapshot()
@@ -90,7 +90,7 @@ describe("controls extra coverage", () => {
       steps: { start: {}, review: {} }
     });
 
-    const started = await controls.start();
+    const started = await controls.startJourney();
 
     expect(started.status).toBe("running");
     expect(runtime.setSnapshot).toHaveBeenCalledWith(
@@ -104,7 +104,7 @@ describe("controls extra coverage", () => {
     (runtime.peekSnapshot as ReturnType<typeof vi.fn>).mockReturnValue(createSnapshot("running"));
     (runtime.getSnapshot as ReturnType<typeof vi.fn>).mockReturnValue(createSnapshot("running"));
 
-    const alreadyRunning = await controls.start();
+    const alreadyRunning = await controls.startJourney();
 
     expect(alreadyRunning.status).toBe("running");
   });

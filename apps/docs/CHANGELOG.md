@@ -25,10 +25,10 @@
 
   ### Changed
   - Aligned examples with the simplified 4-parameter `JourneyDefinition` generics
-  - Clarified React provider startup timing around layout-phase `start()`
+  - Clarified React provider startup timing around layout-phase `startJourney()`
   - Migrated React examples from `createJourneyBindings()` to the `createJourney()` runtime API
   - Rewrote examples to use declarative graph and linear transition syntax
-  - Updated Core overview and quickstarts to show explicit `machine.start()` lifecycle
+  - Updated Core overview and quickstarts to show explicit `machine.startJourney()` lifecycle
   - Updated examples to use `true` terminal transition shorthand where applicable
   - Updated Transitions Syntax with the Graph Builder / Option C coverage
   - Overhauled Core docs, architecture docs, and package READMEs

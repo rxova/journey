@@ -65,7 +65,10 @@ type Api = JourneyApi<Context, StepId, EventMap, { title: string }>;
 type SendArg = Parameters<Api["send"]>[0];
 type ProviderProps = JourneyProviderProps<StepId, EventMap, { title: string }>;
 type RuntimeDispose = JourneyRuntime<Context, StepId>["dispose"];
-type RuntimeFactoryFromDefinition = JourneyRuntimeFactoryFromDefinition<typeof journey, typeof plugins>;
+type RuntimeFactoryFromDefinition = JourneyRuntimeFactoryFromDefinition<
+  typeof journey,
+  typeof plugins
+>;
 type StartEventFromProvider = Parameters<NonNullable<ProviderProps["onStart"]>>[0];
 type CompleteEventFromProvider = Parameters<NonNullable<ProviderProps["onComplete"]>>[0];
 type CloseEventFromProvider = Parameters<NonNullable<ProviderProps["onTerminate"]>>[0];
@@ -112,7 +115,7 @@ expectTypeOf<ReturnType<typeof journeyFactory>>().toEqualTypeOf<
   JourneyRuntimeFromDefinition<typeof journey, typeof plugins>
 >();
 
-expectTypeOf<Api["start"]>().returns.toEqualTypeOf<
+expectTypeOf<Api["startJourney"]>().returns.toEqualTypeOf<
   Promise<ReturnType<typeof journeyRuntime.useJourneySnapshot>>
 >();
 expectTypeOf<Api["goToNextStep"]>().parameters.toEqualTypeOf<[]>();

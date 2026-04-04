@@ -182,7 +182,7 @@ export const createTestMachine = ({
     getSnapshot: () => snapshot,
     getStepMeta: (stepId) => stepMeta[stepId],
     getComputed: () => createComputed(snapshot),
-    start: async () => snapshot,
+    startJourney: async () => snapshot,
     send:
       sendImpl ??
       (async (event) => {

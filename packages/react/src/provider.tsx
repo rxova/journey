@@ -135,7 +135,7 @@ export const createJourneyProviderArtifacts = <
 
     useSafeLayoutEffect(() => {
       if (status === "idled") {
-        void runtimeMachine.start().catch((error) => {
+        void runtimeMachine.startJourney().catch((error) => {
           reportProviderError(error, { phase: "start" }, onErrorRef.current);
         });
       }

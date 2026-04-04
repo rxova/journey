@@ -171,7 +171,7 @@ describe("createJourney", () => {
     expect(latestApi).not.toBeNull();
 
     await act(async () => {
-      await latestApi?.start();
+      await latestApi?.startJourney();
       await latestApi?.send({ type: "verifyCodeSuccess", payload: { code: "123456" } });
     });
 
@@ -232,7 +232,7 @@ describe("createJourney", () => {
     expect(latestApi).not.toBeNull();
 
     await act(async () => {
-      await latestApi?.start();
+      await latestApi?.startJourney();
       await latestApi?.send({ type: "requestClose" });
     });
 
@@ -266,8 +266,8 @@ describe("createJourney", () => {
     expect(screen.getByTestId("second-step").textContent).toBe("start");
 
     act(() => {
-      firstJourney.machine.start();
-      secondJourney.machine.start();
+      firstJourney.machine.startJourney();
+      secondJourney.machine.startJourney();
     });
 
     await act(async () => {
@@ -291,8 +291,8 @@ describe("createJourney", () => {
     expect(firstJourney.machine).not.toBe(secondJourney.machine);
 
     act(() => {
-      firstJourney.machine.start();
-      secondJourney.machine.start();
+      firstJourney.machine.startJourney();
+      secondJourney.machine.startJourney();
     });
 
     await act(async () => {
@@ -386,7 +386,7 @@ describe("createJourney", () => {
     expect(selectorRender).toHaveBeenCalledTimes(1);
 
     await act(async () => {
-      await latestApi?.start();
+      await latestApi?.startJourney();
     });
 
     expect(observedEventTypes).toContain("journey.start");
@@ -457,7 +457,7 @@ describe("createJourney", () => {
     render(<ApiProbe />);
 
     act(() => {
-      journey.machine.start();
+      journey.machine.startJourney();
     });
 
     await act(async () => {
@@ -515,7 +515,7 @@ describe("createJourney", () => {
     expect(screen.getByTestId("linear-last").textContent).toBe("false");
 
     act(() => {
-      journey.machine.start();
+      journey.machine.startJourney();
     });
 
     await act(async () => {
@@ -644,7 +644,7 @@ describe("createJourney", () => {
     expect(selectedValues[selectedValues.length - 1]).toBe(initialSelection);
 
     await act(async () => {
-      await journey.machine.start();
+      await journey.machine.startJourney();
       await journey.machine.goToNextStep();
     });
 
@@ -928,9 +928,9 @@ describe("createJourney", () => {
 
   it("does not auto-start again when the provider mounts an already running machine", async () => {
     const { journey, views } = createJourneyHarness();
-    const startSpy = vi.spyOn(journey.machine, "start");
+    const startSpy = vi.spyOn(journey.machine, "startJourney");
 
-    await journey.machine.start();
+    await journey.machine.startJourney();
 
     render(
       <journey.JourneyProvider views={views}>
@@ -1127,7 +1127,7 @@ describe("createJourney", () => {
     const { rerender } = render(<Probe journey={journeyA} />);
 
     await act(async () => {
-      await journeyA.machine.start();
+      await journeyA.machine.startJourney();
     });
 
     await act(async () => {
@@ -1147,7 +1147,7 @@ describe("createJourney", () => {
     observedStepEntries.length = 0;
 
     await act(async () => {
-      await journeyB.machine.start();
+      await journeyB.machine.startJourney();
     });
 
     await act(async () => {
@@ -1262,7 +1262,7 @@ describe("createJourney", () => {
     expect(journey.machine.getSnapshot().status).toBe("idled");
 
     await act(async () => {
-      const snapshot = await latestApi?.start();
+      const snapshot = await latestApi?.startJourney();
       expect(snapshot?.currentStepId).toBe("start");
       expect(snapshot?.status).toBe("idled");
     });
@@ -1347,7 +1347,7 @@ describe("createJourney", () => {
     const rendersAfterMount = renderCount.mock.calls.length;
 
     await act(async () => {
-      await journey.machine.start();
+      await journey.machine.startJourney();
     });
 
     await act(async () => {
@@ -1364,8 +1364,7 @@ describe("createJourney", () => {
 });
 
 describe("useJourneyStepLifecycle", () => {
-  const createSimpleJourney = () =>
-    createJourney(createDefinition({ includeDetails: true }));
+  const createSimpleJourney = () => createJourney(createDefinition({ includeDetails: true }));
 
   it("calls onEnter when the machine transitions into the watched step", async () => {
     const journey = createSimpleJourney();
@@ -1379,7 +1378,7 @@ describe("useJourneyStepLifecycle", () => {
     render(<Probe />);
 
     act(() => {
-      journey.machine.start();
+      journey.machine.startJourney();
     });
     await act(async () => {
       await journey.machine.goToNextStep(); // start → details
@@ -1401,7 +1400,7 @@ describe("useJourneyStepLifecycle", () => {
     render(<Probe />);
 
     act(() => {
-      journey.machine.start();
+      journey.machine.startJourney();
     });
     await act(async () => {
       await journey.machine.goToNextStep(); // start → details
@@ -1428,7 +1427,7 @@ describe("useJourneyStepLifecycle", () => {
     render(<Probe />);
 
     act(() => {
-      journey.machine.start();
+      journey.machine.startJourney();
     });
     await act(async () => {
       await journey.machine.goToNextStep(); // start → details
@@ -1451,7 +1450,7 @@ describe("useJourneyStepLifecycle", () => {
     render(<Probe />);
 
     act(() => {
-      journey.machine.start();
+      journey.machine.startJourney();
       journey.machine.updateContext((ctx) => ({ ...ctx, name: "Ada" }));
     });
     await act(async () => {
@@ -1476,7 +1475,7 @@ describe("useJourneyStepLifecycle", () => {
     render(<Probe />);
 
     act(() => {
-      journey.machine.start();
+      journey.machine.startJourney();
     });
     await act(async () => {
       await journey.machine.goToNextStep(); // start → details
@@ -1507,7 +1506,7 @@ describe("useJourneyStepLifecycle", () => {
     render(<Probe />);
 
     act(() => {
-      journey.machine.start();
+      journey.machine.startJourney();
     });
     await act(async () => {
       await journey.machine.goToNextStep(); // start → details: fires step.exit for "start"
@@ -1529,7 +1528,7 @@ describe("useJourneyStepLifecycle", () => {
     render(<Probe />);
 
     act(() => {
-      journey.machine.start();
+      journey.machine.startJourney();
     });
     await act(async () => {
       await journey.machine.goToNextStep(); // start → details
