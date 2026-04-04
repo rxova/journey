@@ -33,6 +33,38 @@ const createStartedMachine = () => {
 };
 
 describe("timeline navigation", () => {
+  it("goToPreviousStep no-ops before the machine has started", async () => {
+    const machine = createJourneyMachine(createJourney());
+    const events: string[] = [];
+
+    machine.subscribeEvent((event) => {
+      events.push(event.type);
+    });
+
+    const result = await machine.goToPreviousStep(2);
+
+    expect(result.transitioned).toBe(false);
+    expect(machine.getSnapshot().currentStepId).toBe("a");
+    expect(machine.getSnapshot().history.index).toBe(0);
+    expect(events).toEqual([]);
+  });
+
+  it("goToLastVisitedStep no-ops before the machine has started", async () => {
+    const machine = createJourneyMachine(createJourney());
+    const events: string[] = [];
+
+    machine.subscribeEvent((event) => {
+      events.push(event.type);
+    });
+
+    const result = await machine.goToLastVisitedStep();
+
+    expect(result.transitioned).toBe(false);
+    expect(machine.getSnapshot().currentStepId).toBe("a");
+    expect(machine.getSnapshot().history.index).toBe(0);
+    expect(events).toEqual([]);
+  });
+
   it("keeps current as timeline[index]", async () => {
     const machine = createStartedMachine();
 
@@ -123,6 +155,52 @@ describe("timeline navigation", () => {
     expect(result.transitioned).toBe(false);
     expect(machine.getSnapshot().currentStepId).toBe("a");
     expect(machine.getSnapshot().history.index).toBe(0);
+  });
+
+  it("navigation APIs no-op after completion", async () => {
+    const machine = createStartedMachine();
+    const events: string[] = [];
+
+    machine.subscribeEvent((event) => {
+      events.push(event.type);
+    });
+
+    await machine.send({ type: "goToNextStep" });
+    await machine.send({ type: "goToNextStep" });
+    await machine.send({ type: "goToNextStep" });
+    await machine.completeJourney();
+
+    const previous = await machine.goToPreviousStep();
+    const lastVisited = await machine.goToLastVisitedStep();
+
+    expect(previous.transitioned).toBe(false);
+    expect(lastVisited.transitioned).toBe(false);
+    expect(machine.getSnapshot().status).toBe("completed");
+    expect(machine.getSnapshot().currentStepId).toBe("d");
+    expect(events).not.toContain("navigation.previous");
+    expect(events).not.toContain("navigation.lastVisited");
+  });
+
+  it("navigation APIs no-op after termination", async () => {
+    const machine = createStartedMachine();
+    const events: string[] = [];
+
+    machine.subscribeEvent((event) => {
+      events.push(event.type);
+    });
+
+    await machine.send({ type: "goToNextStep" });
+    await machine.terminateJourney();
+
+    const previous = await machine.goToPreviousStep();
+    const lastVisited = await machine.goToLastVisitedStep();
+
+    expect(previous.transitioned).toBe(false);
+    expect(lastVisited.transitioned).toBe(false);
+    expect(machine.getSnapshot().status).toBe("terminated");
+    expect(machine.getSnapshot().currentStepId).toBe("b");
+    expect(events).not.toContain("navigation.previous");
+    expect(events).not.toContain("navigation.lastVisited");
   });
 
   it("explicit custom back transition still works when declared", async () => {

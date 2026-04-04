@@ -240,6 +240,51 @@ describe("createJourney", () => {
     graphJourney.dispose();
   });
 
+  it("useStepApi exposes resetJourney for provider-owned runtimes", async () => {
+    const { journey, views } = createJourneyHarness({ includeDetails: true });
+    let latestApi: ReturnType<typeof journey.useStepApi> | null = null;
+
+    const StartView = () => {
+      const api = journey.useStepApi("start");
+
+      React.useEffect(() => {
+        latestApi = api;
+      }, [api]);
+
+      return <div data-testid="step-view">Start</div>;
+    };
+
+    const resetViews: JourneyViews<StepId> = {
+      ...views,
+      start: StartView
+    };
+
+    render(
+      <journey.JourneyProvider views={resetViews}>
+        <journey.StepRenderer />
+      </journey.JourneyProvider>
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      await latestApi?.goToNextStep();
+    });
+
+    expect(journey.machine.getSnapshot().currentStepId).toBe("details");
+
+    await act(async () => {
+      await latestApi?.resetJourney();
+      await flushQueuedEffects();
+    });
+
+    expect(journey.machine.getSnapshot().status).toBe("running");
+    expect(journey.machine.getSnapshot().currentStepId).toBe("start");
+    expect(screen.getByTestId("step-view").textContent).toBe("Start");
+  });
+
   it("creates an independent machine instance for each createJourney call", async () => {
     const firstJourney = createJourney(createDefinition());
     const secondJourney = createJourney(createDefinition());
@@ -652,6 +697,45 @@ describe("createJourney", () => {
     expect(selectorRender).toHaveBeenCalledTimes(2);
   });
 
+  it("reuses the cached selector result across unrelated async snapshot updates", async () => {
+    const { journey } = createJourneyHarness();
+    const selectedValues: Array<{ stepId: StepId }> = [];
+    let latestApi: ReturnType<typeof journey.useJourneyApi> | null = null;
+
+    const Probe = () => {
+      const api = journey.useJourneyApi();
+      const selected = journey.useJourneySelector(
+        (snapshot) => ({ stepId: snapshot.currentStepId }),
+        (previous, next) => previous.stepId === next.stepId
+      );
+
+      React.useEffect(() => {
+        latestApi = api;
+      }, [api]);
+      selectedValues.push(selected);
+
+      return <span data-testid="selected-step">{selected.stepId}</span>;
+    };
+
+    render(<Probe />);
+
+    const initialSelection = selectedValues[selectedValues.length - 1];
+    if (!initialSelection) {
+      throw new Error("expected an initial selector value");
+    }
+
+    await act(async () => {
+      await latestApi?.startJourney();
+      await latestApi?.updateContext((context) => ({
+        ...context,
+        name: "Grace Hopper"
+      }));
+    });
+
+    expect(screen.getByTestId("selected-step").textContent).toBe("start");
+    expect(selectedValues[selectedValues.length - 1]).toBe(initialSelection);
+  });
+
   it("keeps StepRenderer stable across context-only updates when the current step does not change", async () => {
     const { journey } = createJourneyHarness();
     const startRender = vi.fn();
@@ -994,6 +1078,99 @@ describe("createJourney", () => {
       expect(journey.machine.getSnapshot().status).toBe("idled");
       expect(screen.getByTestId("step-view").textContent).toBe("Start");
     } finally {
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+      journey.dispose();
+    }
+  });
+
+  it("falls back to console.error when provider auto-start fails without onError", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const unhandledRejections: PromiseRejectionEvent[] = [];
+    const startupError = new Error("start rejected");
+    const journey = createJourney(createDefinition());
+    const views = {
+      start: () => <div data-testid="step-view">Start</div>,
+      details: () => <div data-testid="step-view">Details</div>,
+      review: () => <div data-testid="step-view">Review</div>,
+      confirmExit: () => <div data-testid="step-view">Confirm Exit</div>
+    } satisfies JourneyViews<StepId>;
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      unhandledRejections.push(event);
+    };
+    const startSpy = vi.spyOn(journey.machine, "startJourney").mockRejectedValueOnce(startupError);
+
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+
+    try {
+      render(
+        <journey.JourneyProvider views={views}>
+          <journey.StepRenderer />
+        </journey.JourneyProvider>
+      );
+
+      await act(async () => {
+        await flushQueuedEffects();
+      });
+
+      expect(startSpy).toHaveBeenCalledTimes(1);
+      expect(consoleError).toHaveBeenCalledWith("JourneyProvider start failed.", startupError);
+      expect(unhandledRejections).toEqual([]);
+      expect(journey.machine.getSnapshot().status).toBe("idled");
+      expect(screen.getByTestId("step-view").textContent).toBe("Start");
+    } finally {
+      consoleError.mockRestore();
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+      journey.dispose();
+    }
+  });
+
+  it("falls back to console.error when provider auto-start fails without onError", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const unhandledRejections: PromiseRejectionEvent[] = [];
+    const startupError = new Error("start rejected");
+    const journey = createJourney(createDefinition(), {
+      plugins: [
+        {
+          name: "start-guard",
+          setup: () => ({
+            onSnapshotChange: ({ reason }: { reason: string }) => {
+              if (reason === "start") {
+                throw startupError;
+              }
+            }
+          })
+        }
+      ] as const
+    });
+    const views = {
+      start: () => <div data-testid="step-view">Start</div>,
+      details: () => <div data-testid="step-view">Details</div>,
+      review: () => <div data-testid="step-view">Review</div>,
+      confirmExit: () => <div data-testid="step-view">Confirm Exit</div>
+    } satisfies JourneyViews<StepId>;
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      unhandledRejections.push(event);
+    };
+
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+
+    try {
+      render(
+        <journey.JourneyProvider views={views}>
+          <journey.StepRenderer />
+        </journey.JourneyProvider>
+      );
+
+      await act(async () => {
+        await flushQueuedEffects();
+      });
+
+      expect(consoleError).toHaveBeenCalledWith("JourneyProvider start failed.", startupError);
+      expect(unhandledRejections).toEqual([]);
+      expect(journey.machine.getSnapshot().status).toBe("idled");
+      expect(screen.getByTestId("step-view").textContent).toBe("Start");
+    } finally {
+      consoleError.mockRestore();
       window.removeEventListener("unhandledrejection", handleUnhandledRejection);
       journey.dispose();
     }

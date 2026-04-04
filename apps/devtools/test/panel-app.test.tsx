@@ -10,6 +10,7 @@ import {
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
   type JourneyDevtoolsBridgeEnvelope,
   type JourneyDevtoolsMachineCapabilities,
+  type JourneyDevtoolsProtocolVersion,
   type JourneyDevtoolsSerializableSnapshot
 } from "@rxova/journey-devtools-bridge";
 import { JOURNEY_DEVTOOLS_PANEL_PORT } from "../src/shared";
@@ -598,6 +599,101 @@ describe("panel App", () => {
 
     expect(panelCommand).toBeUndefined();
     expect(container.textContent).not.toContain("COMMAND/goToNextStep");
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("shows a compatibility warning without legacy guidance for newer protocol mismatches", async () => {
+    const postedMessages: unknown[] = [];
+    const port = {
+      postMessage: (message: unknown) => {
+        postedMessages.push(message);
+      },
+      disconnect: vi.fn(),
+      onMessage: {
+        addListener: vi.fn(),
+        removeListener: vi.fn()
+      },
+      onDisconnect: {
+        addListener: vi.fn(),
+        removeListener: vi.fn()
+      }
+    } as unknown as chrome.runtime.Port;
+
+    const dispatch = vi.fn();
+    vi.spyOn(React, "useReducer").mockReturnValue([
+      {
+        connected: true,
+        machines: {
+          "machine-future": {
+            meta: {
+              machineId: "machine-future",
+              label: "Future Checkout",
+              appName: "Store",
+              commandsEnabled: true,
+              capabilities: buildCapabilities()
+            },
+            protocolVersion: 5 as unknown as JourneyDevtoolsProtocolVersion,
+            snapshot: createSnapshot("start"),
+            timelineEntries: [],
+            selectedTimelineIndex: 0,
+            followLatest: true,
+            timelineSequence: 0,
+            pendingCommandsByRequestId: {}
+          }
+        },
+        machineOrder: ["machine-future"],
+        selectedMachineId: "machine-future",
+        displayLimit: null
+      },
+      dispatch
+    ]);
+
+    vi.stubGlobal("chrome", {
+      runtime: {
+        connect: vi.fn(() => port)
+      },
+      devtools: {
+        inspectedWindow: {
+          tabId: 92
+        }
+      }
+    } as unknown as typeof chrome);
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<App />);
+    });
+
+    const nextButton = Array.from(container.querySelectorAll("button")).find(
+      (entry) => entry.textContent?.trim() === "goToNextStep"
+    );
+    if (!nextButton) {
+      throw new Error("next button not found");
+    }
+
+    expect(container.textContent).toContain("Compatibility");
+    expect(container.textContent).toContain(
+      `This devtools panel uses protocol v${JOURNEY_DEVTOOLS_PROTOCOL_VERSION}, but the selected machine is still using protocol v5.`
+    );
+    expect(container.textContent).not.toContain(
+      "Legacy protocol v3 machines are read-only in this devtools build."
+    );
+    expect((nextButton as HTMLButtonElement).disabled).toBe(true);
+
+    expect(
+      postedMessages.some(
+        (entry) =>
+          typeof entry === "object" &&
+          entry !== null &&
+          (entry as { type?: string }).type === "panel-command"
+      )
+    ).toBe(false);
 
     await act(async () => {
       root.unmount();
