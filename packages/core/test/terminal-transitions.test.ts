@@ -182,6 +182,33 @@ describe("terminal transitions", () => {
     expect(events).toContain("journey.terminated");
   });
 
+  it("runs lifecycle callbacks for declared global terminateJourney transitions", async () => {
+    const calls: string[] = [];
+    const journey = baseJourney();
+    journey.transitions = {
+      global: {
+        terminateJourney: [
+          {
+            onLeave: ({ from, to }) => {
+              calls.push(`leave:${from}->${to}`);
+            },
+            onEnter: ({ from, to }) => {
+              calls.push(`enter:${from}->${to}`);
+            }
+          }
+        ]
+      }
+    };
+
+    const machine = createJourneyMachine(journey);
+    machine.startJourney();
+
+    await machine.terminateJourney();
+
+    expect(machine.getSnapshot().status).toBe("terminated");
+    expect(calls).toEqual(["leave:start->TERMINATED", "enter:start->TERMINATED"]);
+  });
+
   it("completeJourney guarded transition can block, then fallback does not apply", async () => {
     const journey = baseJourney();
     journey.transitions = {

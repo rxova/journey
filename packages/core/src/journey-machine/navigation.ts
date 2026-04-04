@@ -57,6 +57,7 @@ export type JourneyMachineNavigationController<
     target: JourneyTerminal,
     transitionEvent: { type: string },
     transitionId: string | null,
+    transition: JourneyTransition<TContext, TStepId, TEventMap, THandlers> | undefined,
     nextContext: TContext,
     runVersion?: number
   ) => JourneySendResult<TContext, TStepId>;
@@ -202,6 +203,7 @@ export const createJourneyMachineNavigationController = <
     target: JourneyTerminal,
     transitionEvent: { type: string },
     transitionId: string | null,
+    transition: JourneyTransition<TContext, TStepId, TEventMap, THandlers> | undefined,
     nextContext: TContext,
     runVersion = 0
   ) => {
@@ -243,7 +245,8 @@ export const createJourneyMachineNavigationController = <
       to: target,
       event: transitionEvent as JourneyEvent<TStepId, TEventMap>,
       transitionId,
-      runVersion
+      runVersion,
+      ...(transition !== undefined ? { transition } : {})
     });
 
     return buildSendResult(committedSnapshot, true, {
