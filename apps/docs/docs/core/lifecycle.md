@@ -163,6 +163,8 @@ const dashboardStep = createStep("dashboard", {
 
 Callbacks are **observational** — they run after the transition commit and cannot block or roll back it. Use transition `updateContext` when the transition itself must derive new context.
 
+Terminal transitions follow the same lifecycle path as step-to-step transitions. If `completeJourney` or `terminateJourney` is backed by a declared transition with `onLeave` / `onEnter`, those callbacks run before the machine settles in `completed` or `terminated`.
+
 If `onEnter` or `onLeave` throws or rejects, Journey logs a development diagnostic and leaves the committed transition result unchanged. Lifecycle callback failures do not emit `transition.error`.
 
 ### React: `useJourneyStepLifecycle`

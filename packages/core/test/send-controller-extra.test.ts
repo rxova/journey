@@ -181,6 +181,7 @@ describe("send controller extra coverage", () => {
       "COMPLETE",
       expect.objectContaining({ type: "completeJourney" }),
       null,
+      undefined,
       { count: 0 },
       13
     );
@@ -230,6 +231,7 @@ describe("send controller extra coverage", () => {
       "COMPLETE",
       expect.objectContaining({ type: "goToNextStep" }),
       null,
+      undefined,
       { count: 0 },
       3
     );
@@ -238,6 +240,7 @@ describe("send controller extra coverage", () => {
       "COMPLETE",
       expect.objectContaining({ type: "completeJourney" }),
       null,
+      undefined,
       { count: 0 },
       3
     );
@@ -246,6 +249,7 @@ describe("send controller extra coverage", () => {
       "TERMINATED",
       expect.objectContaining({ type: "terminateJourney" }),
       null,
+      undefined,
       { count: 0 },
       3
     );

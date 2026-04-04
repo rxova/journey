@@ -238,6 +238,7 @@ export const createJourneyMachineSendController = <
         "COMPLETE",
         event,
         null,
+        undefined,
         runtime.peekSnapshot().context,
         runVersion
       );
@@ -252,6 +253,7 @@ export const createJourneyMachineSendController = <
         "COMPLETE",
         event,
         null,
+        undefined,
         runtime.peekSnapshot().context,
         runVersion
       );
@@ -266,6 +268,7 @@ export const createJourneyMachineSendController = <
         "TERMINATED",
         event,
         null,
+        undefined,
         runtime.peekSnapshot().context,
         runVersion
       );
@@ -418,6 +421,7 @@ export const createJourneyMachineSendController = <
           target,
           transitionEvent,
           transition.id ?? null,
+          transition,
           contextResolution.nextContext,
           runVersion
         );
