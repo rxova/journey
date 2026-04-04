@@ -1,6 +1,7 @@
 import { expectTypeOf } from "expect-type";
 import type * as React from "react";
 
+import { createJourneyBuilder } from "@rxova/journey-core";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
 import type {
   JourneyCompleteObservationEvent,
@@ -13,13 +14,17 @@ import type {
   JourneyApi,
   JourneyComputed,
   JourneyCompleteEvent,
+  JourneyBuilderRuntime,
+  JourneyBuilderRuntimeFromDefinition,
   JourneyProviderErrorContext,
   JourneyProviderProps,
   JourneyRuntime,
+  JourneyRuntimeFromDefinition,
   JourneyRuntimeFactory,
   JourneyStartEvent,
   JourneyTerminateEvent,
-  JourneyViews
+  JourneyViews,
+  StepScopedJourneyApi
 } from "@rxova/journey-react";
 import { createJourney, createJourneyFactory } from "@rxova/journey-react";
 
@@ -45,6 +50,19 @@ const journey: JourneyDefinition<Context, StepId, EventMap, { title: string }> =
     review: { approve: [{ to: "review" }] }
   }
 };
+
+const graphJourneyDefinition = {
+  initial: "start",
+  context: { userId: "42" },
+  steps: {
+    start: { meta: { title: "Start" } },
+    review: { meta: { title: "Review" } }
+  },
+  transitions: {
+    start: { goToNextStep: [{ to: "review" }] },
+    review: { approve: [{ to: "review" }] }
+  }
+} satisfies JourneyDefinition<Context, StepId, EventMap, { title: string }>;
 
 const views = {
   start: Step,
@@ -167,3 +185,109 @@ const extraView: JourneyViews<StepId> = {
 void badPayload;
 void missingView;
 void extraView;
+
+type BuilderStepId = "emailCode" | "authenticatorCode" | "loggedIn";
+type BuilderEventMap = {
+  verifyCodeSuccess: { code: string };
+  verifyCodeFailure: { code: string };
+  switchAuthMethod: unknown;
+  resendCode: { channel: "email" };
+  submitLogin: { username: string; password: string };
+};
+type BuilderContext = { attempts: number };
+
+const { createStep, to, build } = createJourneyBuilder<
+  BuilderContext,
+  BuilderStepId,
+  BuilderEventMap,
+  { label: string }
+>();
+
+const emailCodeStep = createStep("emailCode", {
+  meta: { label: "Email Code" },
+  on: {
+    verifyCodeSuccess: [to("loggedIn")],
+    verifyCodeFailure: [to("emailCode")],
+    switchAuthMethod: [to("authenticatorCode")]
+  }
+});
+
+const authenticatorCodeStep = createStep("authenticatorCode", {
+  meta: { label: "Authenticator Code" },
+  on: {
+    verifyCodeSuccess: [to("loggedIn")]
+  }
+});
+
+const loggedInStep = createStep("loggedIn", {
+  meta: { label: "Logged In" }
+});
+
+const builderDefinition = build({
+  initial: "emailCode",
+  context: { attempts: 0 },
+  steps: [emailCodeStep, authenticatorCodeStep, loggedInStep],
+  global: {
+    resendCode: [to("emailCode")]
+  }
+});
+
+const builderJourney = createJourney(builderDefinition);
+const graphJourney = createJourney(graphJourneyDefinition);
+type BuilderRuntime = JourneyBuilderRuntimeFromDefinition<typeof builderDefinition>;
+type GraphRuntime = JourneyRuntimeFromDefinition<typeof graphJourneyDefinition>;
+const builderApi = builderJourney.useStepApi("emailCode");
+const graphStepApi = graphJourney.useStepApi("review");
+type BuilderApi = typeof builderApi;
+type BuilderSendArg = Parameters<typeof builderApi.send>[0];
+type GraphStepApi = typeof graphStepApi;
+type GraphStepSendArg = Parameters<typeof graphStepApi.send>[0];
+void builderApi;
+void graphStepApi;
+
+expectTypeOf(builderJourney).toMatchTypeOf<
+  JourneyBuilderRuntime<BuilderContext, BuilderStepId, BuilderEventMap, { label: string }>
+>();
+expectTypeOf(builderJourney).toEqualTypeOf<BuilderRuntime>();
+expectTypeOf(graphJourney).toEqualTypeOf<GraphRuntime>();
+expectTypeOf<BuilderApi>().toMatchTypeOf<
+  StepScopedJourneyApi<
+    BuilderContext,
+    BuilderStepId,
+    BuilderEventMap,
+    "verifyCodeSuccess" | "verifyCodeFailure" | "switchAuthMethod" | "resendCode",
+    { label: string }
+  >
+>();
+expectTypeOf<BuilderSendArg>().toEqualTypeOf<
+  | { type: "verifyCodeSuccess"; payload?: { code: string } | undefined }
+  | { type: "verifyCodeFailure"; payload?: { code: string } | undefined }
+  | { type: "switchAuthMethod"; payload?: unknown }
+  | { type: "resendCode"; payload?: { channel: "email" } | undefined }
+>();
+expectTypeOf<GraphStepApi>().toMatchTypeOf<
+  StepScopedJourneyApi<Context, StepId, EventMap, "approve", { title: string }>
+>();
+expectTypeOf<GraphStepSendArg>().toEqualTypeOf<{
+  type: "approve";
+  payload?: { approvedBy: string } | undefined;
+}>();
+
+const invalidBuilderSendArg: BuilderSendArg = {
+  // @ts-expect-error step-scoped send rejects unrelated custom events
+  type: "submitLogin",
+  payload: { username: "demo", password: "secret" }
+};
+
+// @ts-expect-error step-scoped send rejects built-in machine events
+const invalidBuiltInBuilderSendArg: BuilderSendArg = { type: "goToStepById", stepId: "loggedIn" };
+
+const invalidGraphStepSendArg: GraphStepSendArg = {
+  // @ts-expect-error step-scoped send rejects step-local custom events from other steps
+  type: "goToNextStep",
+  payload: { reason: "skip" }
+};
+
+void invalidBuilderSendArg;
+void invalidBuiltInBuilderSendArg;
+void invalidGraphStepSendArg;

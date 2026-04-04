@@ -56,7 +56,10 @@ const checkout = createJourney(definition);
 - `checkout.useJourneyApi()`
   Safe action surface for UI controls.
 
-Hooks do not need a provider because they are closed over the created machine. Without a provider, startup is manual through `checkout.useJourneyApi().start()` or `checkout.machine.start()`.
+- `checkout.useStepApi(stepId)`
+  Same action surface as `useJourneyApi()`, but with `send(...)` narrowed to custom events handled by that step or `global`.
+
+Hooks do not need a provider because they are closed over the created machine. Without a provider, startup is manual through `checkout.useJourneyApi().startJourney()` or `checkout.machine.startJourney()`.
 Server rendering still reads the initial `idled` snapshot. Provider-owned startup happens after hydration on the client.
 Use `@rxova/journey-react` for server-safe imports and `@rxova/journey-react/client` when a Next.js App Router client boundary should be explicit.
 
@@ -178,7 +181,7 @@ This hook is read-only. Keep commands in `useJourneyApi()`.
 
 Common methods:
 
-- `start()`
+- `startJourney()`
 - `goToNextStep`
 - `goToPreviousStep(steps?)`
 - `goToLastVisitedStep()`
@@ -201,19 +204,27 @@ Guard and `updateContext` failures resolve through `result.error` instead of rej
 
 `updateContext` follows core timing semantics. It updates the visible snapshot immediately, but it does not re-run an async transition already in `evaluating-when`. If the change must affect the current transition, apply it before `send(...)` or await the transition first. See [Core Async Behavior](/docs/core/async).
 
-## Provider Callbacks
+## `useStepApi(stepId)`
+
+Use `useStepApi(stepId)` inside step components when you want TypeScript to narrow `send(...)` to events that the current step can actually handle:
+
+```tsx
+const EmailCode = () => {
+  const api = checkout.useStepApi("emailCode");
+
+  return <button onClick={() => void api.send({ type: "verifyCode" })}>Verify</button>;
+};
+```
+
+The narrowed event set includes custom events declared on that step plus custom events declared in `global`. Built-in methods such as `goToNextStep()`, `goToPreviousStep()`, `startJourney()`, and `resetJourney()` stay available.
+
+## Provider Errors
 
 `JourneyProvider` accepts:
 
-- `onStart(event)`
-- `onComplete(event)`
-- `onTerminate(event)`
 - `onError(error, { phase: "start" })`
 
-They are thin wrappers over the machine lifecycle subscriptions.
-
-- `onStart` fires when the provider transitions an `idled` machine to `running` on the client, including restarts after `resetJourney()`.
-- `onComplete` and `onTerminate` only fire for emitted terminal lifecycle events.
+Use `useJourneyEvent(...)` or the underlying machine subscriptions for lifecycle observation.
 
 ## Direct Machine Access
 
@@ -226,7 +237,11 @@ checkout.machine.subscribe(() => {
   console.log(checkout.machine.getSnapshot());
 });
 
-checkout.machine.start();
+checkout.machine.subscribeReset((event) => {
+  console.log("reset", event.stepId);
+});
+
+checkout.machine.startJourney();
 ```
 
 `dispose()` is also returned as a convenience alias for `machine.dispose()`. `JourneyProvider` only disposes automatically when `disposeOnUnmount` is enabled, so shared or module-level runtimes can survive provider unmounts safely.

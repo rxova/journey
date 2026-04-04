@@ -21,6 +21,7 @@ React bindings are a wrapper layer, not a second runtime.
 - `useJourneySnapshot()`
 - `useJourneySelector(selector, equalityFn?)`
 - `useJourneyApi()`
+- `useStepApi(stepId)`
 - `useJourneyEvent(listener)`
 - `JourneyProvider`
 - `StepRenderer`
@@ -57,6 +58,7 @@ For deeper type modeling such as events, payload maps, and snapshots, see [Core 
 
 - `createJourney(definition, options?)`
 - hooks bound to the created machine
+- `useStepApi(stepId)` for step-scoped custom event typing
 - a `JourneyProvider` for `views` and lifecycle callbacks
 - a `StepRenderer` that renders the current step view
 

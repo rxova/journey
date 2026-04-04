@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import React from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 
+import { createJourneyBuilder } from "@rxova/journey-core";
 import { createJourney, createJourneyFactory, type JourneyViews } from "@rxova/journey-react";
 import type { JourneyDefinition } from "@rxova/journey-core";
 
@@ -110,6 +111,135 @@ const flushQueuedEffects = async (cycles = 2) => {
 };
 
 describe("createJourney", () => {
+  it("provides step-scoped api for builder-authored journeys", async () => {
+    type BuilderStepId = "emailCode" | "loggedIn";
+    type BuilderEventMap = {
+      verifyCodeSuccess: { code: string };
+      submitLogin: { username: string; password: string };
+    };
+    type BuilderContext = { attempts: number };
+
+    const { createStep, to, build } = createJourneyBuilder<
+      BuilderContext,
+      BuilderStepId,
+      BuilderEventMap
+    >();
+    const emailCodeStep = createStep("emailCode", {
+      on: {
+        verifyCodeSuccess: [to("loggedIn")]
+      }
+    });
+    const loggedInStep = createStep("loggedIn");
+    const builderJourney = createJourney(
+      build({
+        initial: "emailCode",
+        context: { attempts: 0 },
+        steps: [emailCodeStep, loggedInStep]
+      })
+    );
+
+    type BuilderStepApi = typeof builderJourney extends {
+      useStepApi: (stepId: "emailCode") => infer TApi;
+    }
+      ? TApi
+      : never;
+
+    let latestApi: BuilderStepApi | null = null;
+
+    const EmailCodeView = () => {
+      const api = builderJourney.useStepApi("emailCode");
+
+      React.useEffect(() => {
+        latestApi = api;
+      }, [api]);
+
+      return <div data-testid="builder-step">Email Code</div>;
+    };
+
+    const views: JourneyViews<BuilderStepId> = {
+      emailCode: EmailCodeView,
+      loggedIn: () => <div data-testid="builder-step">Logged In</div>
+    };
+
+    render(
+      <builderJourney.JourneyProvider views={views}>
+        <builderJourney.StepRenderer />
+      </builderJourney.JourneyProvider>
+    );
+
+    expect(screen.getByTestId("builder-step").textContent).toBe("Email Code");
+    expect(latestApi).not.toBeNull();
+
+    await act(async () => {
+      await latestApi?.start();
+      await latestApi?.send({ type: "verifyCodeSuccess", payload: { code: "123456" } });
+    });
+
+    expect(screen.getByTestId("builder-step").textContent).toBe("Logged In");
+    builderJourney.dispose();
+  });
+
+  it("provides step-scoped api for graph definitions keyed by step id", async () => {
+    const graphJourney = createJourney({
+      initial: "start",
+      context: {
+        name: "",
+        includeDetails: true,
+        dirty: false
+      },
+      steps: {
+        start: { meta: { label: "Start" } },
+        details: { meta: { label: "Details" } },
+        review: { meta: { label: "Review" } },
+        confirmExit: { meta: { label: "Confirm Exit" } }
+      },
+      transitions: {
+        start: {
+          requestClose: [{ to: "confirmExit" }]
+        },
+        review: {
+          requestClose: [{ to: "confirmExit" }]
+        }
+      }
+    } satisfies JourneyDefinition<Context, StepId, EventMap, Meta>);
+
+    let latestApi: ReturnType<typeof graphJourney.useStepApi> | null = null;
+
+    const StartView = () => {
+      const api = graphJourney.useStepApi("start");
+
+      React.useEffect(() => {
+        latestApi = api;
+      }, [api]);
+
+      return <div data-testid="graph-step">Start</div>;
+    };
+
+    const views: JourneyViews<StepId> = {
+      start: StartView,
+      details: () => <div data-testid="graph-step">Details</div>,
+      review: () => <div data-testid="graph-step">Review</div>,
+      confirmExit: () => <div data-testid="graph-step">Confirm Exit</div>
+    };
+
+    render(
+      <graphJourney.JourneyProvider views={views}>
+        <graphJourney.StepRenderer />
+      </graphJourney.JourneyProvider>
+    );
+
+    expect(screen.getByTestId("graph-step").textContent).toBe("Start");
+    expect(latestApi).not.toBeNull();
+
+    await act(async () => {
+      await latestApi?.start();
+      await latestApi?.send({ type: "requestClose" });
+    });
+
+    expect(screen.getByTestId("graph-step").textContent).toBe("Confirm Exit");
+    graphJourney.dispose();
+  });
+
   it("creates an independent machine instance for each createJourney call", async () => {
     const firstJourney = createJourney(createDefinition());
     const secondJourney = createJourney(createDefinition());

@@ -6,7 +6,7 @@ import { mockApi } from "../api";
 
 export const EmailCode = () => {
   const snapshot = journey.useJourneySnapshot();
-  const api = journey.useJourneyApi();
+  const api = journey.useStepApi("emailCode");
   const [code, setCode] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const isLoading = snapshot.async.isLoading;

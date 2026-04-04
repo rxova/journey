@@ -1,6 +1,7 @@
 import React from "react";
 
 import type {
+  JourneyBuilderCustomEventKey,
   JourneyComputed,
   JourneyEqualityFn,
   JourneyJsonObject,
@@ -10,7 +11,7 @@ import type {
   JourneySelector,
   JourneySnapshot
 } from "@rxova/journey-core";
-import type { JourneyApi } from "./types";
+import type { JourneyApi, StepScopedJourneyApi } from "./types";
 
 type SelectorCache<TContext extends JourneyJsonObject, TStepId extends string, TSelected> = {
   machine: unknown;
@@ -28,7 +29,10 @@ export const createJourneyHooks = <
   TEventMap extends Record<string, unknown> = Record<never, never>,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = Record<never, never>,
-  TPlugins extends readonly JourneyMachinePlugin[] = []
+  TPlugins extends readonly JourneyMachinePlugin[] = [],
+  TStepHandledCustomEventMap extends Record<TStepId, JourneyBuilderCustomEventKey<TEventMap>> =
+    Record<TStepId, never>,
+  TGlobalHandledCustomEventType extends JourneyBuilderCustomEventKey<TEventMap> = never
 >(
   machine: JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins>
 ) => {
@@ -173,11 +177,54 @@ export const createJourneyHooks = <
     );
   };
 
+  const useStepApi = <TStepKey extends TStepId>(
+    stepId: TStepKey
+  ): StepScopedJourneyApi<
+    TContext,
+    TStepId,
+    TEventMap,
+    Extract<
+      TStepHandledCustomEventMap[TStepKey] | TGlobalHandledCustomEventType,
+      keyof TEventMap & string
+    >,
+    TStepMeta
+  > => {
+    const runtimeMachine = machine;
+    void stepId;
+    return React.useMemo(
+      () => ({
+        start: runtimeMachine.start,
+        send: runtimeMachine.send,
+        goToNextStep: runtimeMachine.goToNextStep,
+        goToStepById: runtimeMachine.goToStepById,
+        terminateJourney: runtimeMachine.terminateJourney,
+        completeJourney: runtimeMachine.completeJourney,
+        goToPreviousStep: runtimeMachine.goToPreviousStep,
+        goToLastVisitedStep: runtimeMachine.goToLastVisitedStep,
+        clearStepError: runtimeMachine.clearStepError,
+        updateContext: runtimeMachine.updateContext,
+        getStepMeta: runtimeMachine.getStepMeta,
+        resetJourney: () => runtimeMachine.resetJourney()
+      }),
+      [runtimeMachine]
+    ) as StepScopedJourneyApi<
+      TContext,
+      TStepId,
+      TEventMap,
+      Extract<
+        TStepHandledCustomEventMap[TStepKey] | TGlobalHandledCustomEventType,
+        keyof TEventMap & string
+      >,
+      TStepMeta
+    >;
+  };
+
   return {
     useJourneySnapshot,
     useJourneyComputed,
     useJourneySelector,
     useJourneyApi,
+    useStepApi,
     useJourneyEvent,
     useJourneyStepLifecycle
   };

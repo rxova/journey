@@ -1,5 +1,4 @@
 import type {
-  JourneyDefinition,
   JourneyFullEventType,
   JourneyJsonObject,
   JourneyStepDefinition,
@@ -7,6 +6,8 @@ import type {
 } from "../types";
 import type {
   JourneyBuilder,
+  JourneyBuilderCustomEventKey,
+  JourneyBuilderDefinition,
   JourneyBuilderCandidate,
   JourneyBuilderGuard,
   JourneyBuilderLifecycle,
@@ -24,6 +25,9 @@ import type {
 
 export type {
   JourneyBuilder,
+  JourneyBuilderCustomEventKey,
+  JourneyBuilderDefinition,
+  JourneyBuilderDefinitionMetadata,
   JourneyBuilderGuard,
   JourneyBuilderLifecycle,
   JourneyBuilderOnEntry,
@@ -234,7 +238,15 @@ export function createJourneyBuilder<
       _onEnter: config?.onEnter,
       _onLeave: config?.onLeave,
       _on: config?.on
-    } as JourneyStepBuilder<TContext, TStepId, TStepKey, TEventMap, TStepMeta, THandlers>;
+    } as JourneyStepBuilder<
+      TContext,
+      TStepId,
+      TStepKey,
+      TEventMap,
+      TStepMeta,
+      THandlers,
+      JourneyBuilderCustomEventKey<TEventMap>
+    >;
   }
 
   function build(input: {
@@ -247,12 +259,13 @@ export function createJourneyBuilder<
       TStepId,
       TEventMap,
       TStepMeta,
-      THandlers
+      THandlers,
+      JourneyBuilderCustomEventKey<TEventMap>
     >[];
     global?: {
       [key: string]: unknown;
     };
-  }): JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers> {
+  }): JourneyBuilderDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers> {
     const stepsRecord = {} as Record<
       TStepId,
       JourneyStepDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>
@@ -316,12 +329,12 @@ export function createJourneyBuilder<
         TEventMap,
         THandlers
       >
-    };
+    } as JourneyBuilderDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
   }
 
   return {
     createStep,
     to,
     build
-  } as JourneyBuilder<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
+  } as unknown as JourneyBuilder<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
 }

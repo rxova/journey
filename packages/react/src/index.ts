@@ -17,13 +17,21 @@ export type {
 } from "@rxova/journey-core";
 export type {
   JourneyApi,
+  JourneyBuilderRuntime,
+  JourneyBuilderRuntimeFactory,
+  JourneyBuilderRuntimeFactoryFromDefinition,
+  JourneyBuilderRuntimeFromDefinition,
   JourneyCompleteEvent,
   JourneyDefaultEvent,
   JourneyProviderErrorContext,
   JourneyProviderProps,
   JourneyRuntime,
   JourneyRuntimeFactory,
+  JourneyRuntimeFactoryFromDefinition,
+  JourneyRuntimeFromDefinition,
   JourneyStartEvent,
+  StepScopedJourneyApi,
   JourneyTerminateEvent,
+  JourneyRuntimeWithStepApi,
   JourneyViews
 } from "./types";

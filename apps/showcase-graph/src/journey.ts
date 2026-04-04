@@ -1,4 +1,5 @@
 import { createJourney } from "@rxova/journey-react";
+import type { JourneyBuilderRuntimeFromDefinition } from "@rxova/journey-react";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
 import { build } from "./builder";
 import { loginStep } from "./steps/login.step";
@@ -38,7 +39,10 @@ const definition = build({
   }
 });
 
-export const journey = createJourney(definition, {
-  defaultTimeoutMs: 15000,
-  plugins: [createExecutionPathsPlugin()] as const
-});
+const plugins = [createExecutionPathsPlugin()] as const;
+
+export const journey: JourneyBuilderRuntimeFromDefinition<typeof definition, typeof plugins> =
+  createJourney(definition, {
+    defaultTimeoutMs: 15000,
+    plugins
+  });
