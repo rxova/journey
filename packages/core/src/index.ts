@@ -3,6 +3,9 @@ export { createJourneyBuilder } from "./journey-builder";
 export { JourneyDisposedError } from "./journey-machine/helpers";
 export type {
   JourneyBuilder,
+  JourneyBuilderCustomEventKey,
+  JourneyBuilderDefinition,
+  JourneyBuilderDefinitionMetadata,
   JourneyBuilderGuard,
   JourneyBuilderOnEntry,
   JourneyBuilderTerminalCandidate,

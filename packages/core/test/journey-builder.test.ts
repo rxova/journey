@@ -359,11 +359,14 @@ describe("createJourneyBuilder", () => {
             on: {
               completeJourney: [
                 {
-                  when: ({ context }) => context.role === "admin",
-                  updateContext: ({ context }) => ({ ...context, count: context.count + 4 }),
+                  when: ({ context }: { context: Context }) => context.role === "admin",
+                  updateContext: ({ context }: { context: Context }) => ({
+                    ...context,
+                    count: context.count + 4
+                  }),
                   id: "review-complete"
                 }
-              ]
+              ] as const
             }
           })
         ]

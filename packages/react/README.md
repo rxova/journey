@@ -6,7 +6,7 @@ Typed React bindings for multi-step UI flows.
   <a href="https://www.npmjs.com/package/@rxova/journey-react">
     <img src="https://img.shields.io/npm/v/@rxova/journey-react?color=0f8f6a" alt="npm" />
   </a>
-  <img src="https://img.shields.io/badge/6.3%20kB-brotli-0f8f6a" alt="size" />
+  <img src="https://img.shields.io/badge/1.33%20kB-brotli-0f8f6a" alt="size" />
   <img src="https://img.shields.io/badge/React%2018+-black" alt="React 18+" />
   <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
 </p>
@@ -74,7 +74,8 @@ export const App = () => (
 `createJourney()` returns a runtime with bound hooks:
 
 - **`useJourneySnapshot()`** — full snapshot: `currentStepId`, `context`, `history`, `status`, `async`
-- **`useJourneyApi()`** — runtime commands: `start`, `goToNextStep`, `goToPreviousStep`, `completeJourney`, `send`, etc.
+- **`useJourneyApi()`** — runtime commands: `startJourney`, `goToNextStep`, `goToPreviousStep`, `completeJourney`, `send`, etc.
+- **`useStepApi(stepId)`** — step-scoped command surface with `send(...)` narrowed to custom events handled by that step or `global`
 - **`useJourneyComputed()`** — derived state: `mode`, `activeStepId`, `isLoading`, `isFirstStep`, `isLastStep`
 - **`useJourneySelector(selector, eq?)`** — subscribe to a slice of the snapshot
 - **`useJourneyEvent(listener)`** — stream lifecycle events for analytics
@@ -97,6 +98,13 @@ api.resetJourney();
 ```
 
 Transition failures resolve through `result.error` instead of rejecting, so `void api.goToNextStep()` is safe from unhandled promise rejections.
+
+For step components, `useStepApi(stepId)` returns the same commands but narrows `send(...)` to custom events handled by that step or by `global` transitions:
+
+```tsx
+const api = signup.useStepApi("start");
+void api.send({ type: "submit" });
+```
 
 ## Custom Step Renderer
 
