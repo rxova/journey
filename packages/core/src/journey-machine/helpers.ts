@@ -5,6 +5,7 @@ import type {
   JourneyJsonObject,
   JourneyJsonValue,
   JourneyPayloadFor,
+  JourneyResolvedTransition,
   JourneySendEvent,
   JourneySendResult,
   JourneySnapshot,
@@ -438,7 +439,7 @@ export const validateJourneyTransitions = <
   TEventMap extends Record<string, unknown>,
   THandlers extends Record<string, unknown>
 >(
-  transitions: readonly JourneyTransition<TContext, TStepId, TEventMap, THandlers>[],
+  transitions: readonly JourneyResolvedTransition<TContext, TStepId, TEventMap, THandlers>[],
   steps: Record<TStepId, unknown>
 ) => {
   const stepRegistry = steps as Record<string, unknown>;
@@ -451,6 +452,7 @@ export const validateJourneyTransitions = <
     "onEnter",
     "onLeave",
     "id",
+    "label",
     "timeoutMs"
   ]);
 
@@ -511,6 +513,12 @@ export const validateJourneyTransitions = <
       );
     }
 
+    if (transition.label !== undefined && typeof transition.label !== "string") {
+      throw new Error(
+        `Journey transition at index ${index} must define "label" as a string when provided.`
+      );
+    }
+
     if (transition.event === "completeJourney" || transition.event === "terminateJourney") {
       if ("to" in transition && transition.to !== undefined) {
         throw new Error(
@@ -539,11 +547,13 @@ export const buildSendResult = <TContext extends JourneyJsonObject, TStepId exte
   transitioned: boolean,
   options: {
     transitionId?: string;
+    label?: string;
     error?: unknown;
   } = {}
 ): JourneySendResult<TContext, TStepId> => ({
   transitioned,
   ...(options.transitionId !== undefined ? { transitionId: options.transitionId } : {}),
+  ...(options.label !== undefined ? { label: options.label } : {}),
   ...("error" in options ? { error: options.error } : {}),
   snapshot
 });
@@ -607,27 +617,30 @@ export const selectTransition = async <
   TContext extends JourneyJsonObject,
   TStepId extends string,
   TEventMap extends Record<string, unknown>,
-  THandlers extends Record<string, unknown>
+  THandlers extends Record<string, unknown>,
+  TTransition extends {
+    from: TStepId | "*";
+    event: string;
+    when?: (
+      args: JourneyTransitionArgs<TContext, TStepId, TEventMap, THandlers>
+    ) => boolean | Promise<boolean>;
+    timeoutMs?: number;
+    id?: string;
+    label?: string;
+  }
 >(
-  transitions: readonly JourneyTransition<TContext, TStepId, TEventMap, THandlers>[],
+  transitions: readonly TTransition[],
   snapshot: JourneySnapshot<TContext, TStepId>,
   event: JourneyEvent<TStepId, TEventMap>,
   signal: AbortSignal,
   handlers: THandlers,
   hooks?: {
-    onAsyncGuardStart?: (
-      transition: JourneyTransition<TContext, TStepId, TEventMap, THandlers>
-    ) => void;
-    onAsyncGuardSuccess?: (
-      transition: JourneyTransition<TContext, TStepId, TEventMap, THandlers>
-    ) => void;
-    onAsyncGuardError?: (
-      transition: JourneyTransition<TContext, TStepId, TEventMap, THandlers>,
-      error: unknown
-    ) => void;
+    onAsyncGuardStart?: (transition: TTransition) => void;
+    onAsyncGuardSuccess?: (transition: TTransition) => void;
+    onAsyncGuardError?: (transition: TTransition, error: unknown) => void;
   },
   defaultTimeoutMs?: number
-): Promise<JourneyTransition<TContext, TStepId, TEventMap, THandlers> | null> => {
+): Promise<TTransition | null> => {
   for (const transition of transitions) {
     const fromMatches = transition.from === "*" || transition.from === snapshot.currentStepId;
     const eventMatches = transition.event === event.type;

@@ -19,31 +19,31 @@ const createJourney = (): JourneyDefinition<Context, StepId, EventMap> => ({
     confirmExit: {}
   },
   transitions: {
-    start: { goToNextStep: [{ id: "start-next", to: "details" }] },
+    start: { goToNextStep: [{ label: "start-next", to: "details" }] },
     details: {
       goToNextStep: [
         {
-          id: "details-next-extra",
+          label: "details-next-extra",
           to: "extra",
           when: ({ context }) => context.includeDetails
         },
         {
-          id: "details-next-review",
+          label: "details-next-review",
           to: "review",
           when: ({ context }) => !context.includeDetails
         }
       ]
     },
-    extra: { goToNextStep: [{ id: "extra-next-review", to: "review" }] },
+    extra: { goToNextStep: [{ label: "extra-next-review", to: "review" }] },
     global: {
       requestClose: [
         {
-          id: "close-dirty",
+          label: "close-dirty",
           to: "confirmExit",
           when: ({ context }: { context: Context }) => context.dirty
         }
       ],
-      terminateJourney: [{ id: "close-clean" }]
+      terminateJourney: [{ label: "close-clean" }]
     }
   }
 });
@@ -112,7 +112,7 @@ describe("flow behavior", () => {
         ...transitions.start,
         goToNextStep: [
           {
-            id: "early",
+            label: "early",
             to: "review"
           },
           ...(transitions.start?.goToNextStep ?? [])
@@ -125,7 +125,8 @@ describe("flow behavior", () => {
     const result = await machine.send({ type: "goToNextStep" });
 
     expect(result.transitioned).toBe(true);
-    expect(result.transitionId).toBe("early");
+    expect(result.transitionId).toEqual(expect.any(String));
+    expect(result.label).toBe("early");
     expect(machine.getSnapshot().currentStepId).toBe("review");
   });
 

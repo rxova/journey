@@ -67,7 +67,7 @@ export type JourneyBuilderCandidate<
     | undefined;
   readonly _onEnter: JourneyBuilderLifecycle<TContext, TStepId, TEventMap, THandlers> | undefined;
   readonly _onLeave: JourneyBuilderLifecycle<TContext, TStepId, TEventMap, THandlers> | undefined;
-  readonly _id: string | undefined;
+  readonly _label: string | undefined;
   readonly _timeoutMs: number | undefined;
 };
 
@@ -76,7 +76,7 @@ export type JourneyToBuilderUsage = {
   readonly updateContext: boolean;
   readonly onEnter: boolean;
   readonly onLeave: boolean;
-  readonly id: boolean;
+  readonly label: boolean;
   readonly timeoutMs: boolean;
 };
 
@@ -85,7 +85,7 @@ export type JourneyToBuilderUnused = {
   readonly updateContext: false;
   readonly onEnter: false;
   readonly onLeave: false;
-  readonly id: false;
+  readonly label: false;
   readonly timeoutMs: false;
 };
 
@@ -152,17 +152,17 @@ export type JourneyToBuilder<
         TEventType,
         Omit<TUsed, "onLeave"> & { readonly onLeave: true }
       >;
-  id: TUsed["id"] extends true
-    ? JourneyDuplicateModifierCall<"id">
+  label: TUsed["label"] extends true
+    ? JourneyDuplicateModifierCall<"label">
     : (
-        id: string
+        label: string
       ) => JourneyToBuilder<
         TContext,
         TStepId,
         TEventMap,
         THandlers,
         TEventType,
-        Omit<TUsed, "id"> & { readonly id: true }
+        Omit<TUsed, "label"> & { readonly label: true }
       >;
   timeoutMs: TUsed["timeoutMs"] extends true
     ? JourneyDuplicateModifierCall<"timeoutMs">
@@ -219,7 +219,7 @@ export type JourneyBuilderTerminalCandidate<
   updateContext?: JourneyBuilderUpdateContext<TContext, TStepId, TEventMap, TEventType>;
   onEnter?: JourneyBuilderLifecycle<TContext, TStepId, TEventMap, THandlers>;
   onLeave?: JourneyBuilderLifecycle<TContext, TStepId, TEventMap, THandlers>;
-  id?: string;
+  label?: string;
   timeoutMs?: number;
 };
 

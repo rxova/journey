@@ -1,6 +1,6 @@
 import type {
+  JourneyResolvedTransition,
   JourneyStepLifecycleCallback,
-  JourneyTransition,
   JourneyTransitionsDefinition
 } from "./transitions.types";
 
@@ -260,7 +260,7 @@ export type JourneyResolvedDefinition<
   THandlers extends Record<string, unknown> = Record<never, never>
 > = Required<Pick<JourneyDefinitionBase<TContext, TStepId, TStepMeta, THandlers>, "initial">> &
   Omit<JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>, "transitions"> & {
-    transitions: readonly JourneyTransition<TContext, TStepId, TEventMap, THandlers>[];
+    transitions: readonly JourneyResolvedTransition<TContext, TStepId, TEventMap, THandlers>[];
   };
 
 export type JourneyExecutionPathEventType<TEventType extends string> =
@@ -291,6 +291,7 @@ export type JourneyExecutionPathOptions = {
 export type JourneySendResult<TContext extends JourneyJsonObject, TStepId extends string> = {
   transitioned: boolean;
   transitionId?: string;
+  label?: string;
   error?: unknown;
   snapshot: JourneySnapshot<TContext, TStepId>;
 };

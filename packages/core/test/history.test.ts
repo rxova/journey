@@ -17,12 +17,12 @@ const createJourney = (): JourneyDefinition<Context, StepId, EventMap> => ({
     d: {}
   },
   transitions: {
-    a: { goToNextStep: [{ id: "a-b", to: "b" }] },
+    a: { goToNextStep: [{ label: "a-b", to: "b" }] },
     b: {
-      goToNextStep: [{ id: "b-c", to: "c" }],
-      jump: [{ id: "b-d", to: "d" }]
+      goToNextStep: [{ label: "b-c", to: "c" }],
+      jump: [{ label: "b-d", to: "d" }]
     },
-    c: { goToNextStep: [{ id: "c-d", to: "d" }] }
+    c: { goToNextStep: [{ label: "c-d", to: "d" }] }
   }
 });
 
@@ -210,7 +210,7 @@ describe("timeline navigation", () => {
       ...transitions,
       c: {
         ...transitions.c,
-        back: [{ id: "explicit-back", to: "d" }]
+        back: [{ label: "explicit-back", to: "d" }]
       }
     };
 
@@ -222,7 +222,8 @@ describe("timeline navigation", () => {
     const result = await machine.send({ type: "back" });
 
     expect(result.transitioned).toBe(true);
-    expect(result.transitionId).toBe("explicit-back");
+    expect(result.transitionId).toEqual(expect.any(String));
+    expect(result.label).toBe("explicit-back");
     expect(machine.getSnapshot().currentStepId).toBe("d");
   });
 

@@ -41,7 +41,7 @@ describe("execution paths", () => {
         "start",
         {
           step: "details",
-          id: "start-next"
+          label: "start-next"
         },
         "review"
       ] as const
@@ -318,8 +318,18 @@ describe("execution paths", () => {
         b: {}
       },
       transitions: [
-        { from: "a", event: "goToNextStep", to: "b" },
-        { from: "b", event: "goToNextStep", to: "COMPLETE" }
+        {
+          id: "a-to-b",
+          from: "a",
+          event: "goToNextStep",
+          to: "b"
+        },
+        {
+          id: "b-to-complete",
+          from: "b",
+          event: "goToNextStep",
+          to: "COMPLETE"
+        }
       ]
     } satisfies JourneyResolvedDefinition<Record<string, never>, "a" | "b">;
 

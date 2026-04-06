@@ -14,9 +14,9 @@ import {
 import type {
   JourneyEvent,
   JourneyJsonObject,
+  JourneyResolvedTransition,
   JourneySendEvent,
   JourneySendResult,
-  JourneyTransition,
   JourneyTransitionArgsForEvent,
   JourneyTransitionUpdateContextArgsForEvent
 } from "../types";
@@ -39,7 +39,7 @@ type RuntimeTransition<
   TStepId extends string,
   TEventMap extends Record<string, unknown>,
   THandlers extends Record<string, unknown>
-> = JourneyTransition<TContext, TStepId, TEventMap, THandlers>;
+> = JourneyResolvedTransition<TContext, TStepId, TEventMap, THandlers>;
 
 export type JourneyMachineSendController<
   TContext extends JourneyJsonObject,
@@ -65,7 +65,7 @@ export const createJourneyMachineSendController = <
   navigation: JourneyMachineNavigationController<TContext, TStepId, TEventMap, THandlers>,
   headless: boolean,
   steps: Record<TStepId, unknown>,
-  transitions: readonly JourneyTransition<TContext, TStepId, TEventMap, THandlers>[],
+  transitions: readonly JourneyResolvedTransition<TContext, TStepId, TEventMap, THandlers>[],
   handlers: THandlers,
   requireExplicitCompletion: boolean,
   defaultTimeoutMs: number | undefined
@@ -77,10 +77,12 @@ export const createJourneyMachineSendController = <
 
   const buildErroredSendResult = (
     error: unknown,
-    transitionId?: string
+    transitionId?: string,
+    label?: string
   ): JourneySendResult<TContext, TStepId> =>
     buildSendResult(runtime.getSnapshot(), false, {
       ...(transitionId !== undefined ? { transitionId } : {}),
+      ...(label !== undefined ? { label } : {}),
       error
     });
 
@@ -89,6 +91,7 @@ export const createJourneyMachineSendController = <
     eventType: string,
     error: unknown,
     transitionId: string | null,
+    label: string | undefined,
     runVersion: number,
     skipAsyncStateUpdate = false
   ): JourneySendResult<TContext, TStepId> => {
@@ -100,10 +103,11 @@ export const createJourneyMachineSendController = <
       from: fromStep,
       eventType,
       transitionId,
+      ...(label !== undefined ? { label } : {}),
       error,
       timestamp: now()
     });
-    return buildErroredSendResult(error, transitionId ?? undefined);
+    return buildErroredSendResult(error, transitionId ?? undefined, label);
   };
 
   const resolveTransitionsForSend = (
@@ -148,10 +152,11 @@ export const createJourneyMachineSendController = <
   > => {
     let transition;
     let asyncGuardErrorTransitionId: string | null = null;
+    let asyncGuardErrorLabel: string | undefined;
     let asyncGuardErrorHandled = false;
     try {
-      transition = await selectTransition(
-        transitionsToEvaluate,
+      transition = (await selectTransition(
+        transitionsToEvaluate as unknown as never,
         stabilizeSnapshot(runtime.peekSnapshot()),
         transitionEvent,
         signal,
@@ -171,6 +176,7 @@ export const createJourneyMachineSendController = <
           },
           onAsyncGuardError: (currentTransition, error) => {
             asyncGuardErrorTransitionId = currentTransition.id ?? null;
+            asyncGuardErrorLabel = currentTransition.label;
             asyncGuardErrorHandled = true;
             asyncState.setStepError(
               fromStep,
@@ -182,7 +188,7 @@ export const createJourneyMachineSendController = <
           }
         },
         defaultTimeoutMs
-      );
+      )) as RuntimeTransition<TContext, TStepId, TEventMap, THandlers> | null;
     } catch (error) {
       if (!runtime.isRunActive(runVersion)) {
         return { transition: null, earlyResult: buildCanceledSendResult(transitionEvent.type) };
@@ -195,6 +201,7 @@ export const createJourneyMachineSendController = <
           transitionEvent.type,
           error,
           asyncGuardErrorTransitionId,
+          asyncGuardErrorLabel,
           runVersion,
           asyncGuardErrorHandled
         )
@@ -330,7 +337,8 @@ export const createJourneyMachineSendController = <
           fromStep,
           transitionEvent.type,
           error,
-          transition.id ?? null,
+          transition.id,
+          transition.label,
           runVersion
         )
       };

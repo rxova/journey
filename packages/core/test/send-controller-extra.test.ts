@@ -273,7 +273,7 @@ describe("send controller extra coverage", () => {
       { start: {}, review: {} },
       [
         {
-          id: "guarded",
+          label: "guarded",
           from: "start",
           event: "goToNextStep",
           to: "review",
@@ -367,7 +367,7 @@ describe("send controller extra coverage", () => {
       { start: {}, review: {} },
       [
         {
-          id: "bad-update",
+          label: "bad-update",
           from: "start",
           event: "goToNextStep",
           to: "review",
@@ -395,7 +395,7 @@ describe("send controller extra coverage", () => {
       "start",
       "goToNextStep",
       expect.any(Error),
-      "bad-update",
+      undefined,
       5
     );
   });
@@ -515,7 +515,7 @@ describe("send controller extra coverage", () => {
       { start: {}, review: {} },
       [
         {
-          id: "late-guard",
+          label: "late-guard",
           from: "start",
           event: "goToNextStep",
           to: "review",
@@ -560,7 +560,7 @@ describe("send controller extra coverage", () => {
       { start: {}, review: {} },
       [
         {
-          id: "late-update",
+          label: "late-update",
           from: "start",
           event: "goToNextStep",
           to: "review",
@@ -605,7 +605,7 @@ describe("send controller extra coverage", () => {
       { start: {}, review: {} },
       [
         {
-          id: "late-selection",
+          label: "late-selection",
           from: "start",
           event: "goToNextStep",
           to: "review",

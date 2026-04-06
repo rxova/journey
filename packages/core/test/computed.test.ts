@@ -22,7 +22,7 @@ describe("journey computed state", () => {
         "start",
         {
           step: "details",
-          id: "start-next"
+          label: "start-next"
         },
         "review"
       ]

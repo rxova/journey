@@ -4,7 +4,6 @@ import type { JourneyBuiltInFrom, JourneyMode } from "./journey.types";
 export type JourneyDiagnosticsIssueCode =
   | "cycle-detected"
   | "dead-end-step"
-  | "duplicate-transition-id"
   | "no-terminal-path"
   | "shadowed-transition"
   | "unreachable-step";
@@ -26,6 +25,7 @@ export type JourneyDiagnosticsIssue<TStepId extends string, TEventType extends s
   from?: TStepId | JourneyBuiltInFrom;
   eventType?: TEventType;
   transitionId?: string;
+  label?: string;
   steps?: readonly TStepId[];
 };
 
@@ -37,7 +37,6 @@ export type JourneyDiagnosticsSummary = {
   unreachableStepCount: number;
   deadEndCount: number;
   cycleCount: number;
-  duplicateTransitionIdCount: number;
   shadowedTransitionCount: number;
   graphChecksSkipped: boolean;
   terminalPathExists: boolean;

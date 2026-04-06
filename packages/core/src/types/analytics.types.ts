@@ -35,6 +35,7 @@ export type JourneyAnalyticsEventPayload<
   dwellMs?: number;
   eventType?: string;
   transitionId?: JourneyTransitionSuccessObservationEvent<TStepId>["transitionId"];
+  label?: JourneyTransitionSuccessObservationEvent<TStepId>["label"];
 };
 
 /** Event envelope passed to analytics trackers. */

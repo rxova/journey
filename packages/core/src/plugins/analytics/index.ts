@@ -190,6 +190,7 @@ export const createAnalyticsPlugin = <
                   to: typedEvent.to,
                   eventType: typedEvent.eventType,
                   transitionId: typedEvent.transitionId,
+                  ...(typedEvent.label !== undefined ? { label: typedEvent.label } : {}),
                   ...buildTransitionMetaPayload({
                     from: typedEvent.from,
                     to: typedEvent.to as TStepId | JourneyTerminal
@@ -207,6 +208,7 @@ export const createAnalyticsPlugin = <
                   from: typedEvent.from,
                   eventType: typedEvent.eventType,
                   transitionId: typedEvent.transitionId,
+                  ...(typedEvent.label !== undefined ? { label: typedEvent.label } : {}),
                   error: typedEvent.error,
                   ...basePayload
                 }

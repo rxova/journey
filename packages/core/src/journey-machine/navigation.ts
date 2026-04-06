@@ -10,10 +10,10 @@ import {
 import type {
   JourneyEvent,
   JourneyJsonObject,
+  JourneyResolvedTransition,
   JourneySendResult,
   JourneySnapshot,
-  JourneyTerminal,
-  JourneyTransition
+  JourneyTerminal
 } from "../types";
 import type { JourneyMachineRuntime } from "./runtime";
 
@@ -32,8 +32,9 @@ export type JourneyLifecycleScheduler<
     | { type: "goToLastVisitedStep" }
     | { type: "goToPreviousStep" };
   transitionId: string | null;
+  label?: string;
   runVersion: number;
-  transition?: JourneyTransition<TContext, TStepId, TEventMap, THandlers>;
+  transition?: JourneyResolvedTransition<TContext, TStepId, TEventMap, THandlers>;
 }) => void;
 
 export type JourneyMachineNavigationController<
@@ -57,7 +58,7 @@ export type JourneyMachineNavigationController<
     target: JourneyTerminal,
     transitionEvent: { type: string },
     transitionId: string | null,
-    transition: JourneyTransition<TContext, TStepId, TEventMap, THandlers> | undefined,
+    transition: JourneyResolvedTransition<TContext, TStepId, TEventMap, THandlers> | undefined,
     nextContext: TContext,
     runVersion?: number
   ) => JourneySendResult<TContext, TStepId>;
@@ -65,7 +66,7 @@ export type JourneyMachineNavigationController<
     fromStep: TStepId,
     target: TStepId,
     transitionEvent: JourneyEvent<TStepId, TEventMap>,
-    transition: JourneyTransition<TContext, TStepId, TEventMap, THandlers>,
+    transition: JourneyResolvedTransition<TContext, TStepId, TEventMap, THandlers>,
     nextContext: TContext,
     runVersion?: number
   ) => JourneySendResult<TContext, TStepId>;
@@ -84,7 +85,7 @@ export const createJourneyMachineNavigationController = <
 }: {
   runtime: JourneyMachineRuntime<TContext, TStepId, TEventMap>;
   steps: Record<TStepId, unknown>;
-  transitions: readonly JourneyTransition<TContext, TStepId, TEventMap, THandlers>[];
+  transitions: readonly JourneyResolvedTransition<TContext, TStepId, TEventMap, THandlers>[];
   scheduleLifecycle: JourneyLifecycleScheduler<TContext, TStepId, TEventMap, THandlers>;
 }): JourneyMachineNavigationController<TContext, TStepId, TEventMap, THandlers> => ({
   applyPreviousNavigation: (requestedSteps?: number, transitionId?: string, runVersion = 0) => {
@@ -203,7 +204,7 @@ export const createJourneyMachineNavigationController = <
     target: JourneyTerminal,
     transitionEvent: { type: string },
     transitionId: string | null,
-    transition: JourneyTransition<TContext, TStepId, TEventMap, THandlers> | undefined,
+    transition: JourneyResolvedTransition<TContext, TStepId, TEventMap, THandlers> | undefined,
     nextContext: TContext,
     runVersion = 0
   ) => {
@@ -231,6 +232,7 @@ export const createJourneyMachineNavigationController = <
       to: target,
       eventType: transitionEvent.type,
       transitionId,
+      ...(transition?.label !== undefined ? { label: transition.label } : {}),
       timestamp: now()
     });
     runtime.emit({
@@ -245,19 +247,21 @@ export const createJourneyMachineNavigationController = <
       to: target,
       event: transitionEvent as JourneyEvent<TStepId, TEventMap>,
       transitionId,
+      ...(transition?.label !== undefined ? { label: transition.label } : {}),
       runVersion,
       ...(transition !== undefined ? { transition } : {})
     });
 
     return buildSendResult(committedSnapshot, true, {
-      ...(transitionId !== null ? { transitionId } : {})
+      ...(transitionId !== null ? { transitionId } : {}),
+      ...(transition?.label !== undefined ? { label: transition.label } : {})
     });
   },
   commitStepTransition: (
     fromStep: TStepId,
     target: TStepId,
     transitionEvent: JourneyEvent<TStepId, TEventMap>,
-    transition: JourneyTransition<TContext, TStepId, TEventMap, THandlers>,
+    transition: JourneyResolvedTransition<TContext, TStepId, TEventMap, THandlers>,
     nextContext: TContext,
     runVersion = 0
   ) => {
@@ -282,7 +286,8 @@ export const createJourneyMachineNavigationController = <
       from: fromStep,
       to: committedSnapshot.currentStepId,
       eventType: transitionEvent.type,
-      transitionId: transition.id ?? null,
+      transitionId: transition.id,
+      ...(transition.label !== undefined ? { label: transition.label } : {}),
       timestamp: now()
     });
     if (beforeCurrent !== committedSnapshot.currentStepId) {
@@ -298,13 +303,15 @@ export const createJourneyMachineNavigationController = <
       from: fromStep,
       to: committedSnapshot.currentStepId,
       event: transitionEvent,
-      transitionId: transition.id ?? null,
+      transitionId: transition.id,
+      ...(transition.label !== undefined ? { label: transition.label } : {}),
       runVersion,
       transition
     });
 
     return buildSendResult(committedSnapshot, true, {
-      ...(transition.id !== undefined ? { transitionId: transition.id } : {})
+      transitionId: transition.id,
+      ...(transition.label !== undefined ? { label: transition.label } : {})
     });
   }
 });

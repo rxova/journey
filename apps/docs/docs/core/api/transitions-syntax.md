@@ -65,7 +65,7 @@ In linear mode:
 
 - strings are shorthand for the next step id
 - object entries use `step`, not `to`
-- object entries support `id`, `updateContext`, `onEnter`, `onLeave`, and `timeoutMs`
+- object entries support `label`, `updateContext`, `onEnter`, `onLeave`, and `timeoutMs`
 - `when` is not supported
 
 It is best when the flow really is linear and you do not need branching, custom events, guards, or explicit terminal transitions.
@@ -108,7 +108,7 @@ const journey = {
       completeJourney: true
     },
     global: {
-      terminateJourney: [{ id: "cancel-anywhere" }]
+      terminateJourney: [{ label: "cancel-anywhere" }]
     }
   }
 };
@@ -118,7 +118,7 @@ const journey = {
 
 - Top-level keys are source step ids.
 - Event names under each step map to ordered arrays of candidate edges.
-- Each edge is an object containing `to` plus optional `id`, `when`, `updateContext`, `onEnter`, `onLeave`, and `timeoutMs`.
+- Each edge is an object containing `to` plus optional `label`, `when`, `updateContext`, `onEnter`, `onLeave`, and `timeoutMs`.
 - `global` is the reserved wildcard bucket for fallback cross-cutting transitions.
 - `COMPLETE` and `TERMINATED` are reserved terminal outcomes, not regular step ids.
 
@@ -153,7 +153,7 @@ Use the **factory form** when you need `event.payload` narrowed to the specific 
 submit: ({ to }) => [to("admin").when(({ context, event }) => event.payload?.username !== "")];
 ```
 
-See the [Graph Builder API reference](./graph-builder.md) for the full API including `.id()`, `.timeoutMs()`, `.updateContext()`, typed event payloads, and file organization patterns.
+See the [Graph Builder API reference](./graph-builder.md) for the full API including `.label()`, `.timeoutMs()`, `.updateContext()`, typed event payloads, and file organization patterns.
 
 ## Which Style Should You Use?
 
@@ -174,6 +174,6 @@ Core fields you can use in transition records and graph edges:
 - `onEnter`: optional observational callback after commit on the target side
 - `onLeave`: optional observational callback after commit on the source side
 - `timeoutMs`: optional finite millisecond limit for async `when`
-- `id`: optional stable identifier for observability/debugging
+- `label`: optional human-readable identifier included in observability/debugging events
 
 For runtime semantics of guards and context updates, see [Async Behavior](/docs/core/async).

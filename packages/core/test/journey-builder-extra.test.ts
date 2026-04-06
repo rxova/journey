@@ -19,7 +19,7 @@ describe("createJourneyBuilder extra coverage", () => {
       .updateContext(updateContext)
       .onEnter(onEnter)
       .onLeave(onLeave)
-      .id("submit-review")
+      .label("submit-review")
       .timeoutMs(500);
 
     expect(builder._candidate).toMatchObject({
@@ -28,7 +28,7 @@ describe("createJourneyBuilder extra coverage", () => {
       _updateContext: updateContext,
       _onEnter: onEnter,
       _onLeave: onLeave,
-      _id: "submit-review",
+      _label: "submit-review",
       _timeoutMs: 500
     });
   });
@@ -49,7 +49,10 @@ describe("createJourneyBuilder extra coverage", () => {
           onLeave: stepOnLeave,
           on: {
             submit: ({ to }) => [
-              to("review").onEnter(transitionOnEnter).onLeave(transitionOnLeave).id("submit-review")
+              to("review")
+                .onEnter(transitionOnEnter)
+                .onLeave(transitionOnLeave)
+                .label("submit-review")
             ]
           }
         }),
@@ -68,7 +71,7 @@ describe("createJourneyBuilder extra coverage", () => {
         to: "review",
         onEnter: transitionOnEnter,
         onLeave: transitionOnLeave,
-        id: "submit-review"
+        label: "submit-review"
       }
     ]);
   });
@@ -91,23 +94,23 @@ describe("createJourneyBuilder extra coverage", () => {
         createStep("review", {
           on: {
             completeJourney: [
-              { when, updateContext, onEnter, onLeave, id: "finish", timeoutMs: 250 }
+              { when, updateContext, onEnter, onLeave, label: "finish", timeoutMs: 250 }
             ]
           }
         }),
         createStep("done")
       ],
       global: {
-        terminateJourney: [{ onEnter, onLeave, id: "terminate", timeoutMs: 125 }]
+        terminateJourney: [{ onEnter, onLeave, label: "terminate", timeoutMs: 125 }]
       }
     });
 
     const transitions = definition.transitions as Record<string, Record<string, unknown>>;
     expect(transitions.review?.completeJourney).toEqual([
-      { when, updateContext, onEnter, onLeave, id: "finish", timeoutMs: 250 }
+      { when, updateContext, onEnter, onLeave, label: "finish", timeoutMs: 250 }
     ]);
     expect(transitions.global?.terminateJourney).toEqual([
-      { onEnter, onLeave, id: "terminate", timeoutMs: 125 }
+      { onEnter, onLeave, label: "terminate", timeoutMs: 125 }
     ]);
   });
 

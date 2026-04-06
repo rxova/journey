@@ -54,7 +54,7 @@ The current diagnostics codes are:
 
 Issue severities are either `warning` or `error`.
 
-Depending on the finding, an issue may include `stepId`, `from`, `eventType`, `transitionId`, or `steps`.
+Depending on the finding, an issue may include `stepId`, `from`, `eventType`, `transitionId`, `label`, or `steps`.
 
 ## Summary Fields
 
@@ -66,7 +66,6 @@ The diagnostics summary reports:
 - `unreachableStepCount`
 - `deadEndCount`
 - `cycleCount`
-- `duplicateTransitionIdCount`
 - `shadowedTransitionCount`
 - `graphChecksSkipped`
 - `terminalPathExists`
@@ -81,7 +80,6 @@ That option matters for teams that require explicit terminal transitions instead
 
 - unreachable declared steps
 - reachable dead ends with no outgoing transition or terminal exit
-- duplicate transition ids
 - unconditional transitions that shadow later transitions for the same `from + event`
 - cycles in the declared graph
 - whether any terminal path is reachable from the initial step

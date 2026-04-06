@@ -16,10 +16,10 @@ const createJourney = (): JourneyDefinition<Context, StepId, EventMap> => ({
   },
   transitions: {
     start: {
-      goToNextStep: [{ id: "start-review", to: "review" }],
+      goToNextStep: [{ label: "start-review", to: "review" }],
       fail: [
         {
-          id: "fail-start",
+          label: "fail-start",
           to: "review",
           when: () => {
             throw new Error("boom");
@@ -51,7 +51,8 @@ describe("replay plugin", () => {
         (entry) =>
           entry.kind === "event" &&
           entry.event.type === "transition.success" &&
-          entry.event.transitionId === "start-review"
+          entry.event.label === "start-review" &&
+          typeof entry.event.transitionId === "string"
       )
     ).toBe(true);
   });

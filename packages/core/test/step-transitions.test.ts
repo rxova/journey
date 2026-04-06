@@ -187,7 +187,7 @@ describe("graph transitions", () => {
           welcome: {
             goToNextStep: [
               {
-                id: "welcome-to-dashboard",
+                label: "welcome-to-dashboard",
                 to: "dashboard",
                 updateContext: ({ context }) => ({ ...context, count: context.count + 10 })
               }
@@ -199,7 +199,8 @@ describe("graph transitions", () => {
 
     const result = await machine.send({ type: "goToNextStep" });
 
-    expect(result.transitionId).toBe("welcome-to-dashboard");
+    expect(result.transitionId).toEqual(expect.any(String));
+    expect(result.label).toBe("welcome-to-dashboard");
     expect(machine.getSnapshot().context.count).toBe(10);
   });
 

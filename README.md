@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
 </p>
 
-Most flow libraries give you a linear array and basic APIs. That is fine. Journey gives you much more: three modes — linear, branching graph, or fully headless — with async guards, declarative context updates, timeline history, a plugin system, and a native [Chrome DevTools Debugger](https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm). All in a zero-dependency, ≥95% tested coverage, framework-agnostic 7.13 kB core. [→ Documentation](https://rxova.org/)
+Most flow libraries give you a linear array and basic APIs. That is fine. Journey gives you much more: three modes — linear, branching graph, or fully headless — with async guards, declarative context updates, timeline history, a plugin system, and a native [Chrome DevTools Debugger](https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm). All in a zero-dependency, ≥95% tested coverage, framework-agnostic 7.58 kB core. [→ Documentation](https://rxova.org/)
 
 Journey is a state machine built for multi-step UI flows that actually get complicated. Start with a simple `["step1", "step2", "step3"]` array. Graduate to a branching graph when you need conditional routing. Go fully headless when you need total control. Navigation isn't just forward — Journey tracks a full timeline so users can step back through history and time-travel forward to the last visited step at any point. Add persistence with one plugin, or write your own. The core is vanilla JS — drop it into React, Vue, Svelte, or plain TypeScript without a shim.
 
@@ -36,8 +36,8 @@ The current runtime contract being frozen for the upcoming `1.0.0-rc` line is:
 
 | Package                                                                                             | Version                                                                                     | Size                                                      | Description                |
 | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------- | -------------------------- |
-| 🤖 [`@rxova/journey-core`](https://www.npmjs.com/package/@rxova/journey-core)                       | ![version](https://img.shields.io/npm/v/@rxova/journey-core?color=0f8f6a&label=)            | ![7.13 kB](https://img.shields.io/badge/7.13%20kB-0f8f6a) | Framework-agnostic runtime |
-| ⚛️ [`@rxova/journey-react`](https://www.npmjs.com/package/@rxova/journey-react)                     | ![version](https://img.shields.io/npm/v/@rxova/journey-react?color=0f8f6a&label=)           | ![1.43 kB](https://img.shields.io/badge/1.43%20kB-0f8f6a) | Typed React bindings       |
+| 🤖 [`@rxova/journey-core`](https://www.npmjs.com/package/@rxova/journey-core)                       | ![version](https://img.shields.io/npm/v/@rxova/journey-core?color=0f8f6a&label=)            | ![7.58 kB](https://img.shields.io/badge/7.58%20kB-0f8f6a) | Framework-agnostic runtime |
+| ⚛️ [`@rxova/journey-react`](https://www.npmjs.com/package/@rxova/journey-react)                     | ![version](https://img.shields.io/npm/v/@rxova/journey-react?color=0f8f6a&label=)           | ![1.33 kB](https://img.shields.io/badge/1.33%20kB-0f8f6a) | Typed React bindings       |
 | 🔍 [`@rxova/journey-devtools-bridge`](https://www.npmjs.com/package/@rxova/journey-devtools-bridge) | ![version](https://img.shields.io/npm/v/@rxova/journey-devtools-bridge?color=0f8f6a&label=) | ![3.2 kB](https://img.shields.io/badge/3.2%20kB-0f8f6a)   | Chrome DevTools bridge     |
 
 Sizes are brotli-compressed with all dependencies.
@@ -134,7 +134,7 @@ submit: ({ to }) => [to("admin").when(({ context, event }) => event.payload?.use
 ```
 
 Each transition modifier is single-use at the type level. Calling `.when()`, `.updateContext()`,
-`.onEnter()`, `.onLeave()`, `.id()`, or `.timeoutMs()` twice on the same builder is a TypeScript
+`.onEnter()`, `.onLeave()`, `.label()`, or `.timeoutMs()` twice on the same builder is a TypeScript
 error. If you bypass the type system, runtime keeps the existing last-call-wins behavior.
 
 ### Headless
@@ -160,7 +160,7 @@ await machine.goToStepById("step3");
 - **Plugin system** — opt into persistence, autosave, analytics, replay, diagnostics, and execution-path tooling
 - **Chrome DevTools** — inspect timeline, state diffs, and send commands in real time
 - **Observable** — subscribe to snapshots or lifecycle events for analytics and debugging
-- **Zero dependencies** — 7.13 kB brotlied core, tree-shakeable
+- **Zero dependencies** — 7.58 kB brotlied core, tree-shakeable
 
 ## React
 
@@ -278,7 +278,7 @@ All navigation methods return `Promise<JourneySendResult>`:
 ```ts
 {
   transitioned: boolean;    // did the transition succeed?
-  transitionId?: string;    // id of the matched transition
+  transitionId?: string;    // internal id of the matched transition
   error?: unknown;          // error from a guard or transition updater
   snapshot: JourneySnapshot;
 }

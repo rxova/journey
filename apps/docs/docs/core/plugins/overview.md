@@ -90,7 +90,7 @@ Read [Replay Plugin](/docs/core/plugins/replay-plugin).
 
 ### Diagnostics Plugin
 
-Use the diagnostics plugin when you want structural checks such as unreachable steps, dead ends, duplicate transition ids, or cycles exposed through the machine API.
+Use the diagnostics plugin when you want structural checks such as unreachable steps, dead ends, shadowed transitions, or cycles exposed through the machine API.
 
 Read [Diagnostics Plugin](/docs/core/plugins/diagnostics-plugin).
 

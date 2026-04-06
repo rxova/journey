@@ -110,7 +110,7 @@
       "name": "core/createJourneyMachine",
       "path": "dist/index.js",
       "import": "{ createJourneyMachine }",
-      "limit": "7.5 kB"
+      "limit": "7.9 kB"
     },
     {
       "name": "core/createJourneyBuilder",
@@ -140,7 +140,7 @@
       "name": "core/createDiagnosticsPlugin",
       "path": "dist/plugins/diagnostics/index.js",
       "import": "{ createDiagnosticsPlugin }",
-      "limit": "2.5 kB"
+      "limit": "2.6 kB"
     },
     {
       "name": "core/createExecutionPathsPlugin",

@@ -23,7 +23,7 @@ const createBaseJourney = (): JourneyDefinition<Context, StepId> => ({
   },
   transitions: {
     start: {
-      goToNextStep: [{ id: "start-next", to: "middle" }]
+      goToNextStep: [{ label: "start-next", to: "middle" }]
     }
   }
 });
@@ -78,7 +78,7 @@ describe("journey machine edge cases", () => {
     const guard = deferred<boolean>();
     const machine = await createStartedMachine(
       withStartNextTransition({
-        id: "guarded-next",
+        label: "guarded-next",
         to: "middle",
         when: async () => guard.promise
       })
@@ -104,7 +104,7 @@ describe("journey machine edge cases", () => {
 
     const machine = await createStartedMachine(
       withStartNextTransition({
-        id: "guard-timeout",
+        label: "guard-timeout",
         to: "middle",
         timeoutMs: 25,
         when: async () => new Promise<boolean>(() => undefined)
@@ -116,7 +116,8 @@ describe("journey machine edge cases", () => {
     const result = await sendPromise;
 
     expect(result.transitioned).toBe(false);
-    expect(result.transitionId).toBe("guard-timeout");
+    expect(result.transitionId).toEqual(expect.any(String));
+    expect(result.label).toBe("guard-timeout");
     expect((result.error as Error).message).toContain("Transition guard timed out after 25ms");
     expect(machine.getSnapshot().async.byStep.start?.phase).toBe("error");
     expect(machine.getSnapshot().async.isLoading).toBe(false);
@@ -126,7 +127,7 @@ describe("journey machine edge cases", () => {
     const guard = deferred<boolean>();
     const machine = await createStartedMachine(
       withStartNextTransition({
-        id: "guarded-update",
+        label: "guarded-update",
         to: "middle",
         when: async () => guard.promise,
         updateContext: ({ context }) => ({ value: context.value + 1 })
@@ -154,7 +155,7 @@ describe("journey machine edge cases", () => {
 
     const machine = await createStartedMachine(
       withStartNextTransition({
-        id: "guard-timeout",
+        label: "guard-timeout",
         to: "middle",
         timeoutMs: 25,
         when: async () => new Promise<boolean>(() => undefined)

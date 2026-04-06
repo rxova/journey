@@ -6,7 +6,7 @@ Typed state machine for multi-step UI flows.
   <a href="https://www.npmjs.com/package/@rxova/journey-core">
     <img src="https://img.shields.io/npm/v/@rxova/journey-core?color=0f8f6a" alt="npm" />
   </a>
-  <img src="https://img.shields.io/badge/7.1%20kB-brotli-0f8f6a" alt="size" />
+  <img src="https://img.shields.io/badge/7.58%20kB-brotli-0f8f6a" alt="size" />
   <img src="https://img.shields.io/badge/zero%20dependencies-black" alt="zero deps" />
   <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
 </p>
@@ -116,7 +116,7 @@ submit: ({ to }) => [to("admin").when(({ context, event }) => event.payload?.use
 ```
 
 Each transition modifier is single-use at the type level. Calling `.when()`, `.updateContext()`,
-`.onEnter()`, `.onLeave()`, `.id()`, or `.timeoutMs()` twice on the same builder is a TypeScript error. If you bypass the type system, runtime keeps the existing last-call-wins behavior.
+`.onEnter()`, `.onLeave()`, `.label()`, or `.timeoutMs()` twice on the same builder is a TypeScript error. If you bypass the type system, runtime keeps the existing last-call-wins behavior.
 
 ### Headless
 

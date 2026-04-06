@@ -45,10 +45,18 @@ describe("createJourneyMachine extra coverage", () => {
     await machine.goToNextStep();
 
     expect(onLeave).toHaveBeenCalledWith(
-      expect.objectContaining({ from: "start", to: "review", transitionId: null })
+      expect.objectContaining({
+        from: "start",
+        to: "review",
+        transitionId: expect.any(String)
+      })
     );
     expect(onEnter).toHaveBeenCalledWith(
-      expect.objectContaining({ from: "start", to: "review", transitionId: null })
+      expect.objectContaining({
+        from: "start",
+        to: "review",
+        transitionId: expect.any(String)
+      })
     );
   });
 

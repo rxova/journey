@@ -34,6 +34,7 @@ export type JourneyTransitionSuccessObservationEvent<TStepId extends string> = {
   to: TStepId | JourneyTerminal;
   eventType: string;
   transitionId: string | null;
+  label?: string;
   timestamp: number;
 };
 
@@ -42,6 +43,7 @@ export type JourneyTransitionErrorObservationEvent<TStepId extends string> = {
   from: TStepId;
   eventType: string;
   transitionId: string | null;
+  label?: string;
   error: unknown;
   timestamp: number;
 };
@@ -53,6 +55,7 @@ export type JourneyLifecycleErrorObservationEvent<TStepId extends string> = {
   to: TStepId | JourneyTerminal;
   eventType: string;
   transitionId: string | null;
+  label?: string;
   error: unknown;
   timestamp: number;
 };

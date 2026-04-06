@@ -147,6 +147,7 @@ export function createJourneyMachine<
     to,
     event,
     transitionId,
+    label,
     runVersion,
     transition
   }) => {
@@ -173,7 +174,8 @@ export function createJourneyMachine<
         from,
         to,
         eventType: event.type,
-        transitionId
+        transitionId,
+        ...(label !== undefined ? { label } : {})
       } as const;
       runtime.emit({
         type: "lifecycle.error",
@@ -195,6 +197,7 @@ export function createJourneyMachine<
               to,
               event,
               transitionId,
+              ...(label !== undefined ? { label } : {}),
               handlers,
               signal,
               dispatch
@@ -221,6 +224,7 @@ export function createJourneyMachine<
               to,
               event,
               transitionId,
+              ...(transition.label !== undefined ? { label: transition.label } : {}),
               handlers,
               signal,
               dispatch
@@ -247,6 +251,7 @@ export function createJourneyMachine<
               to,
               event,
               transitionId,
+              ...(label !== undefined ? { label } : {}),
               handlers,
               signal,
               dispatch
@@ -273,6 +278,7 @@ export function createJourneyMachine<
               to,
               event,
               transitionId,
+              ...(transition.label !== undefined ? { label: transition.label } : {}),
               handlers,
               signal,
               dispatch
