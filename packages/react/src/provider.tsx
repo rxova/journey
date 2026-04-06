@@ -50,31 +50,15 @@ export const createJourneyProviderArtifacts = <
 
   const ProviderController = ({
     runtimeMachine,
-    onStart,
-    onComplete,
-    onTerminate,
     onError,
     disposeOnUnmount
   }: {
     runtimeMachine: typeof machine;
-    onStart: JourneyProviderProps<TStepId, TEventMap, TStepMeta>["onStart"] | undefined;
-    onComplete: JourneyProviderProps<TStepId, TEventMap, TStepMeta>["onComplete"] | undefined;
-    onTerminate: JourneyProviderProps<TStepId, TEventMap, TStepMeta>["onTerminate"] | undefined;
-    onError: JourneyProviderProps<TStepId, TEventMap, TStepMeta>["onError"] | undefined;
+    onError: JourneyProviderProps<TStepId>["onError"] | undefined;
     disposeOnUnmount: boolean;
   }) => {
-    const onStartRef = React.useRef(onStart);
-    const onCompleteRef = React.useRef(onComplete);
-    const onTerminateRef = React.useRef(onTerminate);
     const onErrorRef = React.useRef(onError);
     const scheduledDisposeRef = React.useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
-    const hasOnStart = onStart !== undefined;
-    const hasOnComplete = onComplete !== undefined;
-    const hasOnTerminate = onTerminate !== undefined;
-
-    onStartRef.current = onStart;
-    onCompleteRef.current = onComplete;
-    onTerminateRef.current = onTerminate;
     onErrorRef.current = onError;
 
     useSafeLayoutEffect(() => {
@@ -104,36 +88,6 @@ export const createJourneyProviderArtifacts = <
     const status = React.useSyncExternalStore(subscribeToStatus, getStatus, getStatus);
 
     useSafeLayoutEffect(() => {
-      if (!hasOnStart && !hasOnComplete && !hasOnTerminate) {
-        return;
-      }
-
-      const unsubStart = hasOnStart
-        ? runtimeMachine.subscribeStart((event) => {
-            onStartRef.current?.(event);
-          })
-        : undefined;
-
-      const unsubComplete = hasOnComplete
-        ? runtimeMachine.subscribeComplete((event) => {
-            onCompleteRef.current?.(event);
-          })
-        : undefined;
-
-      const unsubTerminate = hasOnTerminate
-        ? runtimeMachine.subscribeTerminate((event) => {
-            onTerminateRef.current?.(event);
-          })
-        : undefined;
-
-      return () => {
-        unsubStart?.();
-        unsubComplete?.();
-        unsubTerminate?.();
-      };
-    }, [runtimeMachine, hasOnComplete, hasOnStart, hasOnTerminate]);
-
-    useSafeLayoutEffect(() => {
       if (status === "idled") {
         void runtimeMachine.startJourney().catch((error) => {
           reportProviderError(error, { phase: "start" }, onErrorRef.current);
@@ -159,13 +113,10 @@ export const createJourneyProviderArtifacts = <
 
   const JourneyProvider = ({
     views,
-    onStart,
-    onComplete,
-    onTerminate,
     onError,
     disposeOnUnmount = false,
     children
-  }: JourneyProviderProps<TStepId, TEventMap, TStepMeta>) => {
+  }: JourneyProviderProps<TStepId>) => {
     const runtimeMachine = machine;
 
     return (
@@ -173,9 +124,6 @@ export const createJourneyProviderArtifacts = <
         {children}
         <ProviderController
           runtimeMachine={runtimeMachine}
-          onStart={onStart}
-          onComplete={onComplete}
-          onTerminate={onTerminate}
           onError={onError}
           disposeOnUnmount={disposeOnUnmount}
         />

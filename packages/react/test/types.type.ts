@@ -3,17 +3,10 @@ import type * as React from "react";
 
 import { createJourneyBuilder } from "@rxova/journey-core";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
-import type {
-  JourneyCompleteObservationEvent,
-  JourneyDefinition,
-  JourneyObservationEvent,
-  JourneyStartObservationEvent,
-  JourneyTerminateObservationEvent
-} from "@rxova/journey-core";
+import type { JourneyDefinition, JourneyObservationEvent } from "@rxova/journey-core";
 import type {
   JourneyApi,
   JourneyComputed,
-  JourneyCompleteEvent,
   JourneyBuilderRuntime,
   JourneyBuilderRuntimeFromDefinition,
   JourneyProviderErrorContext,
@@ -21,8 +14,6 @@ import type {
   JourneyRuntime,
   JourneyRuntimeFromDefinition,
   JourneyRuntimeFactoryFromDefinition,
-  JourneyStartEvent,
-  JourneyTerminateEvent,
   JourneyViews,
   StepScopedJourneyApi
 } from "@rxova/journey-react";
@@ -63,21 +54,15 @@ void journeyFactory;
 
 type Api = JourneyApi<Context, StepId, EventMap, { title: string }>;
 type SendArg = Parameters<Api["send"]>[0];
-type ProviderProps = JourneyProviderProps<StepId, EventMap, { title: string }>;
+type ProviderProps = JourneyProviderProps<StepId>;
 type RuntimeDispose = JourneyRuntime<Context, StepId>["dispose"];
 type RuntimeFactoryFromDefinition = JourneyRuntimeFactoryFromDefinition<
   typeof journey,
   typeof plugins
 >;
-type StartEventFromProvider = Parameters<NonNullable<ProviderProps["onStart"]>>[0];
-type CompleteEventFromProvider = Parameters<NonNullable<ProviderProps["onComplete"]>>[0];
-type CloseEventFromProvider = Parameters<NonNullable<ProviderProps["onTerminate"]>>[0];
 
 const providerProps: ProviderProps = {
   views,
-  onStart: () => undefined,
-  onComplete: () => undefined,
-  onTerminate: () => undefined,
   onError: () => undefined,
   disposeOnUnmount: true,
   children: null
@@ -87,28 +72,6 @@ expectTypeOf<ProviderProps["disposeOnUnmount"]>().toEqualTypeOf<boolean | undefi
 expectTypeOf<ProviderProps["onError"]>().toEqualTypeOf<
   ((error: unknown, context: JourneyProviderErrorContext) => void) | undefined
 >();
-expectTypeOf<StartEventFromProvider>().toEqualTypeOf<
-  JourneyStartEvent<StepId, EventMap, { title: string }>
->();
-expectTypeOf<CompleteEventFromProvider>().toEqualTypeOf<
-  JourneyCompleteEvent<StepId, EventMap, { title: string }>
->();
-expectTypeOf<CloseEventFromProvider>().toEqualTypeOf<
-  JourneyTerminateEvent<StepId, EventMap, { title: string }>
->();
-expectTypeOf<JourneyStartEvent<StepId>>().toEqualTypeOf<JourneyStartObservationEvent<StepId>>();
-expectTypeOf<JourneyCompleteEvent<StepId>>().toEqualTypeOf<
-  JourneyCompleteObservationEvent<StepId>
->();
-expectTypeOf<JourneyTerminateEvent<StepId>>().toEqualTypeOf<
-  JourneyTerminateObservationEvent<StepId>
->();
-expectTypeOf<StartEventFromProvider["type"]>().toEqualTypeOf<"journey.start">();
-expectTypeOf<StartEventFromProvider["stepId"]>().toEqualTypeOf<StepId>();
-expectTypeOf<CompleteEventFromProvider["type"]>().toEqualTypeOf<"journey.completed">();
-expectTypeOf<CompleteEventFromProvider["stepId"]>().toEqualTypeOf<StepId>();
-expectTypeOf<CloseEventFromProvider["type"]>().toEqualTypeOf<"journey.terminated">();
-expectTypeOf<CloseEventFromProvider["stepId"]>().toEqualTypeOf<StepId>();
 expectTypeOf<RuntimeDispose>().toEqualTypeOf<() => void>();
 expectTypeOf(journeyFactory).toEqualTypeOf<RuntimeFactoryFromDefinition>();
 expectTypeOf<ReturnType<typeof journeyFactory>>().toEqualTypeOf<
@@ -166,9 +129,17 @@ const extraView: JourneyViews<StepId> = {
   extra: Step
 };
 
+const badProviderProps: ProviderProps = {
+  views,
+  // @ts-expect-error JourneyProvider no longer accepts lifecycle callback props
+  onStart: () => undefined,
+  children: null
+};
+
 void badPayload;
 void missingView;
 void extraView;
+void badProviderProps;
 
 type BuilderStepId = "emailCode" | "authenticatorCode" | "loggedIn";
 type BuilderEventMap = {

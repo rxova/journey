@@ -152,8 +152,7 @@ import { adminStep } from "./steps/admin.step";
 const definition = build({
   initial: "login",
   context: { role: "user", name: "" },
-  steps: [loginStep, dashboardStep, adminStep],
-  global: { completeJourney: true, terminateJourney: true }
+  steps: [loginStep, dashboardStep, adminStep]
 });
 
 export const journey = createJourney(definition);

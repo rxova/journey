@@ -906,20 +906,28 @@ describe("createJourney", () => {
     expect(screen.getByTestId("step-view").textContent).toBe("Details");
   });
 
-  it("replays start and forwards complete and terminate lifecycle callbacks", async () => {
+  it("useJourneyEvent observes start, reset, complete, and terminate lifecycle events", async () => {
     const { journey, views, ApiCapture, getApi } = createJourneyHarness({ includeDetails: false });
-    const onStart = vi.fn();
-    const onComplete = vi.fn();
-    const onTerminate = vi.fn();
+    const observed: Array<{ type: string; stepId: StepId }> = [];
+
+    const EventCapture = () => {
+      journey.useJourneyEvent((event) => {
+        if (
+          event.type === "journey.start" ||
+          event.type === "journey.reset" ||
+          event.type === "journey.completed" ||
+          event.type === "journey.terminated"
+        ) {
+          observed.push({ type: event.type, stepId: event.stepId });
+        }
+      });
+      return null;
+    };
 
     render(
-      <journey.JourneyProvider
-        views={views}
-        onStart={onStart}
-        onComplete={onComplete}
-        onTerminate={onTerminate}
-      >
+      <journey.JourneyProvider views={views}>
         <ApiCapture />
+        <EventCapture />
         <journey.StepRenderer />
       </journey.JourneyProvider>
     );
@@ -928,86 +936,28 @@ describe("createJourney", () => {
       await Promise.resolve();
     });
 
-    expect(onStart).toHaveBeenCalledTimes(1);
-    expect(onStart.mock.calls[0]?.[0]).toMatchObject({
-      type: "journey.start",
-      stepId: "start"
-    });
+    expect(observed).toEqual([{ type: "journey.start", stepId: "start" }]);
 
     await act(async () => {
       await getApi()?.goToNextStep();
       await getApi()?.completeJourney();
     });
 
-    expect(onComplete).toHaveBeenCalledTimes(1);
-    expect(onComplete.mock.calls[0]?.[0]).toMatchObject({
-      type: "journey.completed",
-      stepId: "review"
-    });
+    expect(observed).toContainEqual({ type: "journey.completed", stepId: "review" });
 
     await act(async () => {
       await getApi()?.resetJourney();
       await flushQueuedEffects();
     });
 
-    expect(onStart).toHaveBeenCalledTimes(2);
-    expect(onStart.mock.calls[1]?.[0]).toMatchObject({
-      type: "journey.start",
-      stepId: "start"
-    });
+    expect(observed).toContainEqual({ type: "journey.reset", stepId: "start" });
+    expect(observed.filter((event) => event.type === "journey.start")).toHaveLength(2);
 
     await act(async () => {
       await getApi()?.terminateJourney();
     });
 
-    expect(onTerminate).toHaveBeenCalledTimes(1);
-    expect(onTerminate.mock.calls[0]?.[0]).toMatchObject({
-      type: "journey.terminated",
-      stepId: "start"
-    });
-  });
-
-  it("supports partial lifecycle callback subscriptions", async () => {
-    const { journey, views, ApiCapture, getApi } = createJourneyHarness({ includeDetails: false });
-    const onStart = vi.fn();
-    const onComplete = vi.fn();
-
-    const { rerender } = render(
-      <journey.JourneyProvider views={views} onStart={onStart}>
-        <ApiCapture />
-        <journey.StepRenderer />
-      </journey.JourneyProvider>
-    );
-
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    expect(onStart).toHaveBeenCalledTimes(1);
-    expect(onComplete).not.toHaveBeenCalled();
-
-    rerender(
-      <journey.JourneyProvider views={views} onComplete={onComplete}>
-        <ApiCapture />
-        <journey.StepRenderer />
-      </journey.JourneyProvider>
-    );
-
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    await act(async () => {
-      await getApi()?.goToNextStep();
-      await getApi()?.completeJourney();
-    });
-
-    expect(onStart).toHaveBeenCalledTimes(1);
-    expect(onComplete).toHaveBeenCalledTimes(1);
-    expect(onComplete.mock.calls[0]?.[0]).toMatchObject({
-      type: "journey.completed",
-      stepId: "review"
-    });
+    expect(observed).toContainEqual({ type: "journey.terminated", stepId: "start" });
   });
 
   it("does not auto-start again when the provider mounts an already running machine", async () => {

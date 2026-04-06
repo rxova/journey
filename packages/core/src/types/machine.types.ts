@@ -16,6 +16,7 @@ import type {
   JourneyCompleteObservationEvent,
   JourneyLifecycleErrorPhase,
   JourneyObservationEvent,
+  JourneyResetObservationEvent,
   JourneyStartObservationEvent,
   JourneyTerminateObservationEvent
 } from "./observation.types";
@@ -227,6 +228,7 @@ export type JourneyMachine<
     listener: (event: JourneyObservationEvent<TStepId, TEventMap>) => void
   ) => () => void;
   subscribeStart: (listener: (event: JourneyStartObservationEvent<TStepId>) => void) => () => void;
+  subscribeReset: (listener: (event: JourneyResetObservationEvent<TStepId>) => void) => () => void;
   subscribeComplete: (
     listener: (event: JourneyCompleteObservationEvent<TStepId>) => void
   ) => () => void;

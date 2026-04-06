@@ -143,8 +143,7 @@ export const loginStep = createStep("login", {
 const definition = build({
   initial: "login",
   context: { role: "user" },
-  steps: [loginStep, adminStep, dashboardStep],
-  global: { completeJourney: true, terminateJourney: true }
+  steps: [loginStep, adminStep, dashboardStep]
 });
 ```
 

@@ -20,6 +20,7 @@ import {
   type JourneyMachineOptions,
   type JourneyObservationEvent,
   type JourneyPayloadFor,
+  type JourneyResetObservationEvent,
   type JourneySendEvent,
   type JourneySendResult,
   type JourneySnapshot,
@@ -198,6 +199,7 @@ type SendArg = Parameters<typeof machine.send>[0];
 type ObsEvent = JourneyObservationEvent<StepId, EventMap>;
 type DefaultedSendArg = Parameters<typeof defaultedMachine.send>[0];
 type StartObservationFromMachine = Parameters<Parameters<typeof machine.subscribeStart>[0]>[0];
+type ResetObservationFromMachine = Parameters<Parameters<typeof machine.subscribeReset>[0]>[0];
 type CompleteObservationFromMachine = Parameters<
   Parameters<typeof machine.subscribeComplete>[0]
 >[0];
@@ -265,11 +267,14 @@ expectTypeOf<Extract<SendArg, { type: "completeJourney" }>>().toEqualTypeOf<{
   payload?: unknown;
 }>();
 expectTypeOf<JourneyStartObservationEvent<StepId>>().toMatchTypeOf<ObsEvent>();
+expectTypeOf<JourneyResetObservationEvent<StepId>>().toMatchTypeOf<ObsEvent>();
 expectTypeOf<JourneyCompleteObservationEvent<StepId>>().toMatchTypeOf<ObsEvent>();
 expectTypeOf<JourneyTerminateObservationEvent<StepId>>().toMatchTypeOf<ObsEvent>();
 expectTypeOf<JourneyLifecycleErrorObservationEvent<StepId>>().toMatchTypeOf<ObsEvent>();
 expectTypeOf<StartObservationFromMachine["type"]>().toEqualTypeOf<"journey.start">();
 expectTypeOf<StartObservationFromMachine["stepId"]>().toEqualTypeOf<StepId>();
+expectTypeOf<ResetObservationFromMachine["type"]>().toEqualTypeOf<"journey.reset">();
+expectTypeOf<ResetObservationFromMachine["stepId"]>().toEqualTypeOf<StepId>();
 expectTypeOf<CompleteObservationFromMachine["type"]>().toEqualTypeOf<"journey.completed">();
 expectTypeOf<CompleteObservationFromMachine["stepId"]>().toEqualTypeOf<StepId>();
 expectTypeOf<CloseObservationFromMachine["type"]>().toEqualTypeOf<"journey.terminated">();

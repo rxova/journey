@@ -9,6 +9,7 @@ export type {
   JourneyMachinePlugin,
   JourneyMachineWithPlugins,
   JourneyObservationEvent,
+  JourneyResetObservationEvent,
   JourneySelector,
   JourneySendResult,
   JourneyStartObservationEvent,
@@ -21,7 +22,6 @@ export type {
   JourneyBuilderRuntimeFactory,
   JourneyBuilderRuntimeFactoryFromDefinition,
   JourneyBuilderRuntimeFromDefinition,
-  JourneyCompleteEvent,
   JourneyDefaultEvent,
   JourneyProviderErrorContext,
   JourneyProviderProps,
@@ -29,9 +29,7 @@ export type {
   JourneyRuntimeFactory,
   JourneyRuntimeFactoryFromDefinition,
   JourneyRuntimeFromDefinition,
-  JourneyStartEvent,
   StepScopedJourneyApi,
-  JourneyTerminateEvent,
   JourneyRuntimeWithStepApi,
   JourneyViews
 } from "./types";

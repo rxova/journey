@@ -116,8 +116,7 @@ const auth: JourneyDefinition<Context, StepId> = {
     },
     admin: { completeJourney: true },
     dashboard: { completeJourney: true },
-    blocked: { terminateJourney: true },
-    global: { terminateJourney: true }
+    blocked: { terminateJourney: true }
   }
 };
 

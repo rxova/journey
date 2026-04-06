@@ -12,4 +12,5 @@ export const simpleSequenceJourney: JourneyDefinition<Ctx, StepId> = {
   transitions: ["s1", "s2"]
 };
 
-export const createSimpleSequenceMachine = () => createJourneyMachine(simpleSequenceJourney);
+export const createSimpleSequenceMachine = () =>
+  createJourneyMachine(simpleSequenceJourney, { requireExplicitCompletion: true });
