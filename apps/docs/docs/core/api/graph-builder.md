@@ -60,17 +60,17 @@ Step files can live anywhere and are just values — import them wherever you as
 | -------------------- | --------------------------------------------------------------------------------------------- |
 | `.when(guard)`       | Guard function. Receives `{ context, from, timeline, index, event }`. Return `true` to allow. |
 | `.updateContext(fn)` | Sync context updater. Return the next context object for the committed transition.            |
-| `.id(string)`        | Stable identifier for observability and debugging.                                            |
+| `.label(string)`     | Human-readable identifier included in observability and debugging events.                     |
 | `.timeoutMs(number)` | Per-transition timeout. Throws `JourneyTimeoutError` if exceeded.                             |
 
 Each method is immutable — it returns a new builder without modifying the original.
 Each modifier is also single-use at the type level: calling `.when()`, `.updateContext()`,
-`.onEnter()`, `.onLeave()`, `.id()`, or `.timeoutMs()` twice on the same transition is a
+`.onEnter()`, `.onLeave()`, `.label()`, or `.timeoutMs()` twice on the same transition is a
 TypeScript error. If you bypass the type system, runtime behavior stays last-call-wins.
 
 ```ts
 to("dashboard")
-  .id("login-to-dashboard")
+  .label("login-to-dashboard")
   .when(({ context }) => context.name !== "")
   .updateContext(({ context }) => {
     return { ...context, profileRequested: true };

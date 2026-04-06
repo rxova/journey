@@ -36,6 +36,7 @@ export type JourneyLifecycleErrorContext<TStepId extends string> = {
   to: TStepId | JourneyTerminal;
   eventType: string;
   transitionId: string | null;
+  label?: string;
 };
 
 /** Setup context passed to journey plugins when a machine is created. */

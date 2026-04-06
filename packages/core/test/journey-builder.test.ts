@@ -80,10 +80,10 @@ describe("createJourneyBuilder", () => {
       expect(builder._candidate._updateContext).toBe(effect);
     });
 
-    it(".id() stores the id", () => {
+    it(".label() stores the label", () => {
       const { to } = createJourneyBuilder<Context, StepId, EventMap>();
-      const builder = to("review").id("my-transition");
-      expect(builder._candidate._id).toBe("my-transition");
+      const builder = to("review").label("my-transition");
+      expect(builder._candidate._label).toBe("my-transition");
     });
 
     it(".timeoutMs() stores the timeout", () => {
@@ -104,12 +104,12 @@ describe("createJourneyBuilder", () => {
       const { to } = createJourneyBuilder<Context, StepId, EventMap>();
       const guard = () => true;
       const effect = ({ context }: { context: Context }) => context;
-      const builder = to("review").when(guard).updateContext(effect).id("t1").timeoutMs(3000);
+      const builder = to("review").when(guard).updateContext(effect).label("t1").timeoutMs(3000);
       expect(builder._candidate).toMatchObject({
         _to: "review",
         _when: guard,
         _updateContext: effect,
-        _id: "t1",
+        _label: "t1",
         _timeoutMs: 3000
       });
     });
@@ -125,25 +125,25 @@ describe("createJourneyBuilder", () => {
         to("review")
           .when(firstGuard)
           .updateContext(firstUpdate)
-          .id("first")
+          .label("first")
           .timeoutMs(100) as unknown as {
           when: (guard: typeof secondGuard) => {
             updateContext: (fn: typeof secondUpdate) => {
-              id: (id: string) => { timeoutMs: (ms: number) => { _candidate: unknown } };
+              label: (label: string) => { timeoutMs: (ms: number) => { _candidate: unknown } };
             };
           };
         }
       )
         .when(secondGuard)
         .updateContext(secondUpdate)
-        .id("second")
+        .label("second")
         .timeoutMs(200) as { _candidate: Record<string, unknown> };
 
       expect(builder._candidate).toMatchObject({
         _to: "review",
         _when: secondGuard,
         _updateContext: secondUpdate,
-        _id: "second",
+        _label: "second",
         _timeoutMs: 200
       });
     });
@@ -162,11 +162,11 @@ describe("createJourneyBuilder", () => {
       expect(definition.context).toBe(context);
     });
 
-    it("includes id and timeoutMs in edge when set", () => {
+    it("includes label and timeoutMs in edge when set", () => {
       const { createStep, to, build } = createJourneyBuilder<Context, StepId, EventMap>();
 
       const startStep = createStep("start", {
-        on: { submit: [to("review").id("start-submit").timeoutMs(1000)] }
+        on: { submit: [to("review").label("start-submit").timeoutMs(1000)] }
       });
 
       const definition = build({
@@ -178,7 +178,7 @@ describe("createJourneyBuilder", () => {
       const transitions = definition.transitions as Record<string, Record<string, unknown[]>>;
       expect(transitions["start"]!["submit"]![0]).toMatchObject({
         to: "review",
-        id: "start-submit",
+        label: "start-submit",
         timeoutMs: 1000
       });
     });
@@ -198,7 +198,7 @@ describe("createJourneyBuilder", () => {
       expect(transitions.global?.terminateJourney).toBe(true);
     });
 
-    it("serializes step terminal candidates with guards, effects, ids, and timeouts", () => {
+    it("serializes step terminal candidates with guards, effects, labels, and timeouts", () => {
       const { createStep, build } = createJourneyBuilder<Context, StepId, EventMap>();
       const when = ({ context }: { context: Context }) => context.role === "admin";
       const effect = ({ context }: { context: Context }) => ({
@@ -212,7 +212,9 @@ describe("createJourneyBuilder", () => {
         steps: [
           createStep("start", {
             on: {
-              completeJourney: [{ when, updateContext: effect, id: "finish-start", timeoutMs: 250 }]
+              completeJourney: [
+                { when, updateContext: effect, label: "finish-start", timeoutMs: 250 }
+              ]
             }
           })
         ]
@@ -220,7 +222,7 @@ describe("createJourneyBuilder", () => {
 
       const transitions = definition.transitions as Record<string, Record<string, unknown[]>>;
       expect(transitions["start"]!["completeJourney"]).toEqual([
-        { when, updateContext: effect, id: "finish-start", timeoutMs: 250 }
+        { when, updateContext: effect, label: "finish-start", timeoutMs: 250 }
       ]);
     });
 
@@ -237,14 +239,16 @@ describe("createJourneyBuilder", () => {
         context: { count: 0, role: "user" },
         steps: [],
         global: {
-          completeJourney: [{ when, updateContext: effect, id: "global-complete", timeoutMs: 500 }],
+          completeJourney: [
+            { when, updateContext: effect, label: "global-complete", timeoutMs: 500 }
+          ],
           terminateJourney: []
         }
       });
 
       const transitions = definition.transitions as Record<string, Record<string, unknown>>;
       expect(transitions.global?.completeJourney).toEqual([
-        { when, updateContext: effect, id: "global-complete", timeoutMs: 500 }
+        { when, updateContext: effect, label: "global-complete", timeoutMs: 500 }
       ]);
       expect(transitions.global?.terminateJourney).toEqual([]);
     });
@@ -364,7 +368,7 @@ describe("createJourneyBuilder", () => {
                     ...context,
                     count: context.count + 4
                   }),
-                  id: "review-complete"
+                  label: "review-complete"
                 }
               ] as const
             }
@@ -378,7 +382,8 @@ describe("createJourneyBuilder", () => {
       const result = await machine.completeJourney();
 
       expect(result.transitioned).toBe(true);
-      expect(result.transitionId).toBe("review-complete");
+      expect(result.transitionId).toEqual(expect.any(String));
+      expect(result.label).toBe("review-complete");
       expect(result.snapshot.status).toBe("completed");
       expect(result.snapshot.context.count).toBe(5);
     });

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { JourneyEvent, JourneyTransition } from "../src/types";
+import type { JourneyEvent } from "../src/types";
 import {
   assertSerializableContext,
   buildInitialAsyncState,
@@ -15,7 +15,6 @@ import {
 } from "../src/journey-machine/helpers";
 
 type TestEventMap = Record<never, never>;
-type TestTransition = JourneyTransition<{ count: number }, string, TestEventMap>;
 type TestEvent = JourneyEvent<string, TestEventMap>;
 
 describe("machine helpers", () => {
@@ -108,18 +107,19 @@ describe("machine helpers", () => {
     const abortController = new AbortController();
     const event: TestEvent = { type: "goToNextStep" };
 
-    const guardOkTransitions: TestTransition[] = [
+    const guardOkTransitions = [
       {
         id: "guard-ok",
+        label: "guard-ok",
         from: "a",
         event: "goToNextStep",
         to: "b",
         when: async () => true
       }
-    ];
+    ] as const;
 
     const resolved = await selectTransition(
-      guardOkTransitions,
+      guardOkTransitions as never,
       snapshot,
       event,
       abortController.signal,
@@ -137,9 +137,10 @@ describe("machine helpers", () => {
     expect(resolved?.id).toBe("guard-ok");
     expect(hookEvents).toEqual(["start:guard-ok", "success:guard-ok"]);
 
-    const guardFailTransitions: TestTransition[] = [
+    const guardFailTransitions = [
       {
         id: "guard-fail",
+        label: "guard-fail",
         from: "a",
         event: "goToNextStep",
         to: "b",
@@ -147,11 +148,11 @@ describe("machine helpers", () => {
           throw new Error("boom");
         }
       }
-    ];
+    ] as const;
 
     await expect(
       selectTransition(
-        guardFailTransitions,
+        guardFailTransitions as never,
         snapshot,
         event,
         abortController.signal,
@@ -196,12 +197,13 @@ describe("machine helpers", () => {
       validateJourneyTransitions(
         [
           {
+            id: "a-to-b",
             from: "a",
             event: "goToNextStep",
             to: "b",
             updateContext: "nope" as never
           }
-        ],
+        ] as never,
         { a: {}, b: {} }
       )
     ).toThrow(/"updateContext" as a function/i);

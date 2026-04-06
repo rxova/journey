@@ -4,9 +4,71 @@ import type {
   JourneyDefinition,
   JourneyJsonObject,
   JourneyResolvedDefinition,
+  JourneyResolvedTransition,
   JourneyTransition,
   JourneyTransitionGraph
 } from "../types";
+
+const hashTransitionDescriptor = (value: string) => {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+};
+
+const buildResolvedTransitions = <
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TEventMap extends Record<string, unknown>,
+  THandlers extends Record<string, unknown>
+>(
+  transitions: readonly JourneyTransition<TContext, TStepId, TEventMap, THandlers>[]
+): JourneyResolvedTransition<TContext, TStepId, TEventMap, THandlers>[] => {
+  const transitionRouteCounts = new Map<string, number>();
+  const usedIds = new Set<string>();
+
+  return transitions.map((transition) => {
+    const target =
+      transition.event === "completeJourney"
+        ? "COMPLETE"
+        : transition.event === "terminateJourney"
+          ? "TERMINATED"
+          : String(transition.to);
+    const routeKey = JSON.stringify({
+      from: transition.from,
+      event: transition.event,
+      target
+    });
+    const ordinal = (transitionRouteCounts.get(routeKey) ?? 0) + 1;
+    transitionRouteCounts.set(routeKey, ordinal);
+
+    const descriptor = JSON.stringify({
+      from: transition.from,
+      event: transition.event,
+      target,
+      ordinal
+    });
+
+    let suffix = 0;
+    const id = (() => {
+      let candidate = hashTransitionDescriptor(descriptor);
+      while (usedIds.has(candidate)) {
+        suffix += 1;
+        candidate = hashTransitionDescriptor(`${descriptor}:${suffix}`);
+      }
+      return candidate;
+    })();
+    usedIds.add(id);
+
+    return {
+      ...transition,
+      id,
+      ...(transition.label !== undefined ? { label: transition.label } : {})
+    } as JourneyResolvedTransition<TContext, TStepId, TEventMap, THandlers>;
+  });
+};
 
 export const resolveJourneyDefinition = <
   TContext extends JourneyJsonObject,
@@ -24,7 +86,7 @@ export const resolveJourneyDefinition = <
   if (transitions === undefined) {
     return {
       ...journey,
-      transitions: resolvedTransitions
+      transitions: buildResolvedTransitions(resolvedTransitions)
     } as JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
   }
 
@@ -91,7 +153,7 @@ export const resolveJourneyDefinition = <
 
       const allowedKeys = new Set([
         "step",
-        "id",
+        "label",
         "updateContext",
         "onEnter",
         "onLeave",
@@ -100,7 +162,7 @@ export const resolveJourneyDefinition = <
       for (const key of Object.keys(entry)) {
         if (!allowedKeys.has(key)) {
           throw new Error(
-            `Journey linear transition object at index ${index} contains unsupported field "${key}". Allowed fields are "step", "id", "updateContext", "onEnter", "onLeave", and "timeoutMs".`
+            `Journey linear transition object at index ${index} contains unsupported field "${key}". Allowed fields are "step", "label", "updateContext", "onEnter", "onLeave", and "timeoutMs".`
           );
         }
       }
@@ -143,7 +205,7 @@ export const resolveJourneyDefinition = <
       validateFiniteTimeout(entry.timeoutMs, `Journey linear transition object at index ${index}`);
 
       resolvedTransitions.push({
-        ...(entry.id !== undefined ? { id: entry.id } : {}),
+        ...(entry.label !== undefined ? { label: entry.label } : {}),
         ...(entry.timeoutMs !== undefined ? { timeoutMs: entry.timeoutMs } : {}),
         ...(entry.updateContext !== undefined ? { updateContext: entry.updateContext } : {}),
         ...(entry.onEnter !== undefined ? { onEnter: entry.onEnter } : {}),
@@ -158,7 +220,7 @@ export const resolveJourneyDefinition = <
     return {
       ...journey,
       initial: resolvedInitial,
-      transitions: resolvedTransitions
+      transitions: buildResolvedTransitions(resolvedTransitions)
     };
   }
 
@@ -207,6 +269,69 @@ export const resolveJourneyDefinition = <
           );
         }
 
+        const allowedKeys = new Set(
+          isTerminal
+            ? ["when", "updateContext", "onEnter", "onLeave", "label", "timeoutMs"]
+            : ["to", "when", "updateContext", "onEnter", "onLeave", "label", "timeoutMs"]
+        );
+        for (const key of Object.keys(edge)) {
+          if (!allowedKeys.has(key)) {
+            throw new Error(
+              `Journey transition at "${fromKey}.${event}[${index}]" contains unsupported field "${key}".`
+            );
+          }
+        }
+
+        if (!isTerminal && typeof (edge as { to?: unknown }).to !== "string") {
+          throw new Error(
+            `Journey transition at "${fromKey}.${event}[${index}]" must define string "to".`
+          );
+        }
+
+        if ((edge as { when?: unknown }).when !== undefined && typeof edge.when !== "function") {
+          throw new Error(
+            `Journey transition at "${fromKey}.${event}[${index}]" must define "when" as a function when provided.`
+          );
+        }
+
+        if (
+          (edge as { updateContext?: unknown }).updateContext !== undefined &&
+          typeof edge.updateContext !== "function"
+        ) {
+          throw new Error(
+            `Journey transition at "${fromKey}.${event}[${index}]" must define "updateContext" as a function when provided.`
+          );
+        }
+
+        if (
+          (edge as { onEnter?: unknown }).onEnter !== undefined &&
+          typeof edge.onEnter !== "function"
+        ) {
+          throw new Error(
+            `Journey transition at "${fromKey}.${event}[${index}]" must define "onEnter" as a function when provided.`
+          );
+        }
+
+        if (
+          (edge as { onLeave?: unknown }).onLeave !== undefined &&
+          typeof edge.onLeave !== "function"
+        ) {
+          throw new Error(
+            `Journey transition at "${fromKey}.${event}[${index}]" must define "onLeave" as a function when provided.`
+          );
+        }
+
+        if ((edge as { label?: unknown }).label !== undefined && typeof edge.label !== "string") {
+          throw new Error(
+            `Journey transition at "${fromKey}.${event}[${index}]" must define "label" as a string when provided.`
+          );
+        }
+
+        validateFiniteTimeout(
+          (edge as { timeoutMs?: unknown }).timeoutMs,
+          `Journey transition at "${fromKey}.${event}[${index}]"`
+        );
+
         resolvedTransitions.push({
           ...edge,
           from: (fromKey === "global" ? "*" : fromKey) as TStepId | "*",
@@ -218,6 +343,6 @@ export const resolveJourneyDefinition = <
 
   return {
     ...journey,
-    transitions: resolvedTransitions
+    transitions: buildResolvedTransitions(resolvedTransitions)
   } as JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
 };

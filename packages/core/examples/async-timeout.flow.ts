@@ -22,7 +22,7 @@ export const asyncTimeoutJourney: JourneyDefinition<Ctx, StepId> = {
     verify: {
       goToNextStep: [
         {
-          id: "verify-and-save",
+          label: "verify-and-save",
           to: "review",
           timeoutMs: 1_500,
           when: async ({ context }) => validateToken(context.token),

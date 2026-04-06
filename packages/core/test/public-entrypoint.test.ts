@@ -18,7 +18,7 @@ const createJourney = (): JourneyDefinition<Context, StepId> => ({
   },
   transitions: {
     account: {
-      goToNextStep: [{ id: "account-next", to: "review" }]
+      goToNextStep: [{ label: "account-next", to: "review" }]
     },
     review: {
       completeJourney: true
@@ -42,7 +42,8 @@ describe("core public entrypoint", () => {
     const result = await machine.goToNextStep();
 
     expect(result.transitioned).toBe(true);
-    expect(result.transitionId).toBe("account-next");
+    expect(result.transitionId).toEqual(expect.any(String));
+    expect(result.label).toBe("account-next");
     expect(result.snapshot.currentStepId).toBe("review");
     expect(machine.getStepMeta("review")).toEqual({ title: "Review" });
   });

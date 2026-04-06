@@ -108,6 +108,7 @@ export type {
   JourneyStepTransitions,
   JourneyTerminalGraphEdge,
   JourneyTerminalTransition,
+  JourneyResolvedTransition,
   JourneyTransition,
   JourneyTransitionArgs,
   JourneyTransitionGraph,

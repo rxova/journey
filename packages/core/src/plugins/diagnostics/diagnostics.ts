@@ -58,7 +58,6 @@ export function getJourneyDiagnostics<
         unreachableStepCount: 0,
         deadEndCount: 0,
         cycleCount: 0,
-        duplicateTransitionIdCount: 0,
         shadowedTransitionCount: 0,
         graphChecksSkipped: true,
         terminalPathExists: false
@@ -80,7 +79,8 @@ export function getJourneyDiagnostics<
         severity: "warning",
         from: transition.from,
         eventType: transition.event as TEventType,
-        ...(transition.id !== undefined ? { transitionId: transition.id } : {}),
+        transitionId: transition.id,
+        ...(transition.label !== undefined ? { label: transition.label } : {}),
         message:
           blocker.transitionId === null
             ? `Transition "${transition.from}.${transition.event}" is shadowed by an earlier unconditional transition.`
@@ -95,28 +95,6 @@ export function getJourneyDiagnostics<
       });
     }
   });
-
-  const transitionIdCounts = new Map<string, number>();
-  for (const transition of resolvedJourney.transitions) {
-    if (transition.id === undefined) {
-      continue;
-    }
-
-    transitionIdCounts.set(transition.id, (transitionIdCounts.get(transition.id) ?? 0) + 1);
-  }
-
-  for (const [transitionId, count] of transitionIdCounts) {
-    if (count < 2) {
-      continue;
-    }
-
-    issues.push({
-      code: "duplicate-transition-id",
-      severity: "error",
-      transitionId,
-      message: `Transition id "${transitionId}" is declared ${count} times.`
-    });
-  }
 
   const activeTransitions = resolvedJourney.transitions.filter(
     (_, index) => !shadowedTransitionIndexes.has(index)
@@ -205,7 +183,8 @@ export function getJourneyDiagnostics<
             severity: "warning",
             from: transition.from,
             eventType: transition.event as TEventType,
-            ...(transition.id !== undefined ? { transitionId: transition.id } : {}),
+            transitionId: transition.id,
+            ...(transition.label !== undefined ? { label: transition.label } : {}),
             steps: cycleSteps,
             message: `Cycle detected: ${cycleSteps.join(" -> ")}.`
           });
@@ -271,8 +250,6 @@ export function getJourneyDiagnostics<
       unreachableStepCount: stepIds.length - reachable.size,
       deadEndCount: issues.filter((issue) => issue.code === "dead-end-step").length,
       cycleCount: issues.filter((issue) => issue.code === "cycle-detected").length,
-      duplicateTransitionIdCount: issues.filter((issue) => issue.code === "duplicate-transition-id")
-        .length,
       shadowedTransitionCount: issues.filter((issue) => issue.code === "shadowed-transition")
         .length,
       graphChecksSkipped: false,

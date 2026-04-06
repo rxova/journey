@@ -80,7 +80,7 @@ void stepTransitions;
 
 const linearStep = {
   step: "review",
-  id: "start-next",
+  label: "start-next",
   timeoutMs: 250,
   updateContext: ({ event, context }) => {
     expectTypeOf(event.type).toEqualTypeOf<"goToNextStep">();
@@ -509,8 +509,8 @@ builder
   .onLeave(() => undefined)
   // @ts-expect-error duplicate .onLeave() calls are not allowed
   .onLeave(() => undefined);
-// @ts-expect-error duplicate .id() calls are not allowed
-builder.to("review").id("first").id("second");
+// @ts-expect-error duplicate .label() calls are not allowed
+builder.to("review").label("first").label("second");
 // @ts-expect-error duplicate .timeoutMs() calls are not allowed
 builder.to("review").timeoutMs(100).timeoutMs(200);
 
@@ -564,7 +564,7 @@ const _typedTerminalEntry: JourneyBuilderTerminalEntry<
       return true;
     },
     updateContext: ({ context }) => context,
-    id: "complete-review",
+    label: "complete-review",
     timeoutMs: 250
   }
 ];

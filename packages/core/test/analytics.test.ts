@@ -42,7 +42,7 @@ const createJourney = (
       start: {
         goToNextStep: [
           {
-            id: "start-review",
+            label: "start-review",
             to: "review",
             ...(failOnNextStep
               ? {
@@ -106,7 +106,8 @@ describe("analytics plugin", () => {
     const transitionSucceeded = track.mock.calls.find(
       ([event]) => event.name === "transition_succeeded"
     )?.[0];
-    expect(transitionSucceeded?.payload.transitionId).toBe("start-review");
+    expect(transitionSucceeded?.payload.transitionId).toEqual(expect.any(String));
+    expect(transitionSucceeded?.payload.label).toBe("start-review");
     expect(transitionSucceeded?.payload.toStepMeta).toEqual({ title: "Review" });
   });
 
@@ -259,7 +260,8 @@ describe("analytics plugin", () => {
       expect(failed?.payload).toMatchObject({
         from: "start",
         eventType: "goToNextStep",
-        transitionId: "start-review"
+        transitionId: expect.any(String),
+        label: "start-review"
       });
       expect(failed?.payload.error).toBeInstanceOf(Error);
       expect(machine.getSnapshot().currentStepId).toBe("start");

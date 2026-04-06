@@ -32,8 +32,18 @@ describe("resolveJourneyDefinition", () => {
     });
 
     expect(resolved.transitions).toEqual([
-      { from: "start", event: "goToNextStep", to: "details" },
-      { from: "details", event: "goToNextStep", to: "review" }
+      expect.objectContaining({
+        from: "start",
+        event: "goToNextStep",
+        to: "details",
+        id: expect.any(String)
+      }),
+      expect.objectContaining({
+        from: "details",
+        event: "goToNextStep",
+        to: "review",
+        id: expect.any(String)
+      })
     ]);
   });
 
@@ -48,7 +58,7 @@ describe("resolveJourneyDefinition", () => {
         "start",
         {
           step: "details",
-          id: "start-next",
+          label: "start-next",
           updateContext,
           timeoutMs: 100
         },
@@ -57,15 +67,21 @@ describe("resolveJourneyDefinition", () => {
     });
 
     expect(resolved.transitions).toEqual([
-      {
+      expect.objectContaining({
         from: "start",
         event: "goToNextStep",
         to: "details",
-        id: "start-next",
+        label: "start-next",
         updateContext,
-        timeoutMs: 100
-      },
-      { from: "details", event: "goToNextStep", to: "review" }
+        timeoutMs: 100,
+        id: expect.any(String)
+      }),
+      expect.objectContaining({
+        from: "details",
+        event: "goToNextStep",
+        to: "review",
+        id: expect.any(String)
+      })
     ]);
   });
 
@@ -106,7 +122,7 @@ describe("resolveJourneyDefinition", () => {
         transitions: ["start", { step: "details", when: () => true }] as never
       })
     ).toThrow(
-      'Journey linear transition object at index 1 contains unsupported field "when". Allowed fields are "step", "id", "updateContext", "onEnter", "onLeave", and "timeoutMs".'
+      'Journey linear transition object at index 1 contains unsupported field "when". Allowed fields are "step", "label", "updateContext", "onEnter", "onLeave", and "timeoutMs".'
     );
 
     expect(() =>
@@ -115,7 +131,7 @@ describe("resolveJourneyDefinition", () => {
         transitions: ["start", { step: "details", to: "review" }] as never
       })
     ).toThrow(
-      'Journey linear transition object at index 1 contains unsupported field "to". Allowed fields are "step", "id", "updateContext", "onEnter", "onLeave", and "timeoutMs".'
+      'Journey linear transition object at index 1 contains unsupported field "to". Allowed fields are "step", "label", "updateContext", "onEnter", "onLeave", and "timeoutMs".'
     );
   });
 
@@ -191,10 +207,13 @@ describe("resolveJourneyDefinition", () => {
       }
     });
 
-    expect(resolved.transitions).toContainEqual({
-      from: "review",
-      event: "completeJourney"
-    });
+    expect(resolved.transitions).toContainEqual(
+      expect.objectContaining({
+        from: "review",
+        event: "completeJourney",
+        id: expect.any(String)
+      })
+    );
   });
 
   it("desugars terminateJourney: [] into a terminal transition", () => {
@@ -206,10 +225,13 @@ describe("resolveJourneyDefinition", () => {
       }
     });
 
-    expect(resolved.transitions).toContainEqual({
-      from: "review",
-      event: "terminateJourney"
-    });
+    expect(resolved.transitions).toContainEqual(
+      expect.objectContaining({
+        from: "review",
+        event: "terminateJourney",
+        id: expect.any(String)
+      })
+    );
   });
 
   it("desugars completeJourney: [] in global transitions", () => {
@@ -220,10 +242,13 @@ describe("resolveJourneyDefinition", () => {
       }
     });
 
-    expect(resolved.transitions).toContainEqual({
-      from: "*",
-      event: "completeJourney"
-    });
+    expect(resolved.transitions).toContainEqual(
+      expect.objectContaining({
+        from: "*",
+        event: "completeJourney",
+        id: expect.any(String)
+      })
+    );
   });
 
   it("resolves step branches before global branches", () => {

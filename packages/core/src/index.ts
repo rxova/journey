@@ -48,6 +48,7 @@ export {
   type JourneyMachineWithPlugins,
   type JourneyObservationEvent,
   type JourneyPayloadFor,
+  type JourneyResolvedTransition,
   type JourneyResetObservationEvent,
   type JourneyReplayEntry,
   type JourneyReplayEventEntry,

@@ -21,12 +21,12 @@ describe("diagnostics plugin", () => {
       transitions: {
         start: {
           goToNextStep: [
-            { id: "dup", to: "review" },
-            { id: "shadowed", to: "dead" }
+            { label: "dup", to: "review" },
+            { label: "shadowed", to: "dead" }
           ]
         },
         review: {
-          retry: [{ id: "dup", to: "loop" }]
+          retry: [{ label: "dup", to: "loop" }]
         },
         loop: {
           goToNextStep: [{ to: "loop" }]
@@ -38,18 +38,14 @@ describe("diagnostics plugin", () => {
 
     expect(diagnostics.summary.unreachableStepCount).toBe(1);
     expect(diagnostics.summary.shadowedTransitionCount).toBe(1);
-    expect(diagnostics.summary.duplicateTransitionIdCount).toBe(1);
     expect(diagnostics.summary.cycleCount).toBe(1);
     expect(diagnostics.summary.terminalPathExists).toBe(false);
     expect(diagnostics.issues).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           code: "shadowed-transition",
-          transitionId: "shadowed"
-        }),
-        expect.objectContaining({
-          code: "duplicate-transition-id",
-          transitionId: "dup"
+          transitionId: expect.any(String),
+          label: "shadowed"
         }),
         expect.objectContaining({
           code: "unreachable-step",
@@ -100,7 +96,7 @@ describe("diagnostics plugin", () => {
         start: {},
         review: {}
       },
-      transitions: ["start", { step: "review", id: "start-review" }] as const
+      transitions: ["start", { step: "review", label: "start-review" }] as const
     } satisfies JourneyDefinition<Context, "start" | "review">;
 
     const diagnostics = getJourneyDiagnostics(journey);
@@ -139,7 +135,7 @@ describe("diagnostics plugin", () => {
       },
       transitions: {
         start: {
-          goToNextStep: [{ to: "review" }, { id: "shadowed", to: "dead" }],
+          goToNextStep: [{ to: "review" }, { label: "shadowed", to: "dead" }],
           retry: [{ to: "dead" }]
         },
         review: {
@@ -159,8 +155,9 @@ describe("diagnostics plugin", () => {
     expect(diagnostics.issues).toContainEqual(
       expect.objectContaining({
         code: "shadowed-transition",
-        transitionId: "shadowed",
-        message: expect.stringContaining("earlier unconditional transition")
+        transitionId: expect.any(String),
+        label: "shadowed",
+        message: expect.stringContaining("shadowed by unconditional transition")
       })
     );
     expect(diagnostics.issues.some((issue) => issue.code === "no-terminal-path")).toBe(false);
@@ -227,7 +224,7 @@ describe("diagnostics plugin", () => {
           retry: [{ to: "loop" }]
         },
         loop: {
-          goToNextStep: [{ id: "loop-left", to: "left" }],
+          goToNextStep: [{ label: "loop-left", to: "left" }],
           retry: [{ to: "left" }]
         }
       }
@@ -240,11 +237,12 @@ describe("diagnostics plugin", () => {
     expect(diagnostics.summary.shadowedTransitionCount).toBe(1);
     expect(diagnostics.summary.cycleCount).toBe(1);
     expect(shadowedIssue).toBeDefined();
-    expect(shadowedIssue?.transitionId).toBeUndefined();
-    expect(shadowedIssue?.message).toContain("earlier unconditional transition");
+    expect(shadowedIssue?.transitionId).toEqual(expect.any(String));
+    expect(shadowedIssue?.message).toContain("shadowed by unconditional transition");
     expect(cycleIssues).toContainEqual(
       expect.objectContaining({
-        transitionId: "loop-left",
+        transitionId: expect.any(String),
+        label: "loop-left",
         steps: ["left", "loop", "left"]
       })
     );

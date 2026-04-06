@@ -15,12 +15,12 @@ export const firstMatchWinsJourney: JourneyDefinition<Ctx, StepId> = {
     start: {
       goToNextStep: [
         {
-          id: "first",
+          label: "first",
           to: "first",
           when: ({ context }) => context.chooseFirst
         },
         {
-          id: "second",
+          label: "second",
           to: "second",
           when: ({ context }) => context.chooseFirst
         }

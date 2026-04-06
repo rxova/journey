@@ -55,6 +55,7 @@ export type JourneyLifecycleArgs<
   to: TStepId | JourneyTerminal;
   event: { type: string; payload?: unknown };
   transitionId: string | null;
+  label?: string;
   handlers: THandlers;
   signal: AbortSignal;
   dispatch: JourneyDispatch<TContext, TStepId, TEventMap>;
@@ -130,7 +131,7 @@ type JourneyTransitionBehavior<
   THandlers extends Record<string, unknown>,
   TEventType extends JourneyFullEventType<TEventMap>
 > = {
-  id?: string;
+  label?: string;
   timeoutMs?: number;
   when?: JourneyBivariantCallback<
     JourneyTransitionArgsForEvent<TContext, TStepId, TEventMap, THandlers, TEventType>,
@@ -213,6 +214,16 @@ export type JourneyTransition<
   | JourneyStepEventTransition<TContext, TStepId, TEventMap, THandlers>
   | JourneyTerminalTransition<TContext, TStepId, TEventMap, THandlers>
   | JourneyGoToStepTransition<TContext, TStepId, TEventMap, THandlers>;
+
+export type JourneyResolvedTransition<
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TEventMap extends Record<string, unknown> = Record<never, never>,
+  THandlers extends Record<string, unknown> = Record<never, never>
+> = JourneyTransition<TContext, TStepId, TEventMap, THandlers> & {
+  id: string;
+  label?: string;
+};
 
 export type JourneyGlobalTransition<
   TContext extends JourneyJsonObject,

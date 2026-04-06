@@ -114,7 +114,7 @@ Journey is not competing with XState — they solve overlapping but different pr
 - Realized history — not just "current state" but "how did the user get here" with timeline and pointer navigation
 - First-class async phases observable in the UI — `evaluating-when` and errors tracked per-step in the snapshot, not bolted on
 - Two definition syntaxes: a linear array for simple sequences (`["start", "details", "review"]`) or a graph object for branching flows — XState only offers the graph
-- A small bundle: core is under **6 kB**, with optional plugins like [persistence](/docs/core/persistence) and [getExecutionPaths](/docs/core/plugins/execution-paths-plugin)
+- A small bundle: core is **7.58 kB** brotlied, with optional plugins like [persistence](/docs/core/persistence) and [getExecutionPaths](/docs/core/plugins/execution-paths-plugin)
 - A React-first integration with `useSyncExternalStore`, SSR/RSC support, and bound hooks — not a framework-agnostic adapter layer
 - Deterministic ordered matching: first matching transition wins, no priority tables
 - A snapshot-first model: one serializable object tells you current step, full timeline, context, visited map, async phase, and status

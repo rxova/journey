@@ -34,7 +34,7 @@ describe("resolveJourneyDefinition extra coverage", () => {
         "start",
         {
           step: "details",
-          id: "start-next",
+          label: "start-next",
           updateContext,
           onEnter,
           onLeave,
@@ -46,17 +46,23 @@ describe("resolveJourneyDefinition extra coverage", () => {
 
     expect(resolved.initial).toBe("details");
     expect(resolved.transitions).toEqual([
-      {
+      expect.objectContaining({
         from: "start",
         event: "goToNextStep",
         to: "details",
-        id: "start-next",
+        label: "start-next",
         updateContext,
         onEnter,
         onLeave,
-        timeoutMs: 100
-      },
-      { from: "details", event: "goToNextStep", to: "review" }
+        timeoutMs: 100,
+        id: expect.any(String)
+      }),
+      expect.objectContaining({
+        from: "details",
+        event: "goToNextStep",
+        to: "review",
+        id: expect.any(String)
+      })
     ]);
   });
 

@@ -56,19 +56,19 @@ Calling `machine.resetJourney()` emits `journey.reset` after the idle snapshot i
 
 Use `subscribeEvent(...)` to observe lifecycle events.
 
-| Event                    | When it appears                                      | Key payload                                    |
-| ------------------------ | ---------------------------------------------------- | ---------------------------------------------- |
-| `journey.start`          | `machine.startJourney()` changes `idled -> running`  | `stepId`                                       |
-| `journey.reset`          | `machine.resetJourney()` commits the idle snapshot   | `stepId`                                       |
-| `transition.start`       | an event begins running through the send pipeline    | `from`, `event`                                |
-| `transition.success`     | a transition commits or fallback send succeeds       | `from`, `to`, `eventType`, `transitionId`      |
-| `transition.error`       | selected guard or `updateContext` fails or times out | `from`, `eventType`, `transitionId`, `error`   |
-| `step.exit`              | machine leaves the current step                      | `stepId`                                       |
-| `step.enter`             | machine enters a different step                      | `stepId`                                       |
-| `journey.completed`      | machine reaches completed status                     | `stepId`                                       |
-| `journey.terminated`     | machine reaches terminated status                    | `stepId`                                       |
-| `navigation.previous`    | pointer moves backward                               | `from`, `to`, `requestedSteps`, `appliedSteps` |
-| `navigation.lastVisited` | pointer jumps back to the realized tail              | `from`, `to`                                   |
+| Event                    | When it appears                                      | Key payload                                           |
+| ------------------------ | ---------------------------------------------------- | ----------------------------------------------------- |
+| `journey.start`          | `machine.startJourney()` changes `idled -> running`  | `stepId`                                              |
+| `journey.reset`          | `machine.resetJourney()` commits the idle snapshot   | `stepId`                                              |
+| `transition.start`       | an event begins running through the send pipeline    | `from`, `event`                                       |
+| `transition.success`     | a transition commits or fallback send succeeds       | `from`, `to`, `eventType`, `transitionId`, `label`    |
+| `transition.error`       | selected guard or `updateContext` fails or times out | `from`, `eventType`, `transitionId`, `label`, `error` |
+| `step.exit`              | machine leaves the current step                      | `stepId`                                              |
+| `step.enter`             | machine enters a different step                      | `stepId`                                              |
+| `journey.completed`      | machine reaches completed status                     | `stepId`                                              |
+| `journey.terminated`     | machine reaches terminated status                    | `stepId`                                              |
+| `navigation.previous`    | pointer moves backward                               | `from`, `to`, `requestedSteps`, `appliedSteps`        |
+| `navigation.lastVisited` | pointer jumps back to the realized tail              | `from`, `to`                                          |
 
 ## Event Order
 

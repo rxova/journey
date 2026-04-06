@@ -44,7 +44,7 @@ type RawCandidate = {
   readonly _updateContext?: unknown;
   readonly _onEnter?: unknown;
   readonly _onLeave?: unknown;
-  readonly _id?: string | undefined;
+  readonly _label?: string | undefined;
   readonly _timeoutMs?: number | undefined;
 };
 
@@ -53,7 +53,7 @@ type RawTerminalCandidate = {
   readonly updateContext?: unknown;
   readonly onEnter?: unknown;
   readonly onLeave?: unknown;
-  readonly id?: string | undefined;
+  readonly label?: string | undefined;
   readonly timeoutMs?: number | undefined;
 };
 
@@ -109,15 +109,15 @@ function makeToBuilder<
         Omit<TUsed, "onLeave"> & { readonly onLeave: true }
       >({ ...candidate, _onLeave: fn });
     },
-    id(id: string) {
+    label(label: string) {
       return makeToBuilder<
         TContext,
         TStepId,
         TEventMap,
         THandlers,
         TEventType,
-        Omit<TUsed, "id"> & { readonly id: true }
-      >({ ...candidate, _id: id });
+        Omit<TUsed, "label"> & { readonly label: true }
+      >({ ...candidate, _label: label });
     },
     timeoutMs(ms: number) {
       return makeToBuilder<
@@ -138,7 +138,7 @@ function candidateToEdge(c: RawCandidate): Record<string, unknown> {
   if (c._updateContext !== undefined) edge.updateContext = c._updateContext;
   if (c._onEnter !== undefined) edge.onEnter = c._onEnter;
   if (c._onLeave !== undefined) edge.onLeave = c._onLeave;
-  if (c._id !== undefined) edge.id = c._id;
+  if (c._label !== undefined) edge.label = c._label;
   if (c._timeoutMs !== undefined) edge.timeoutMs = c._timeoutMs;
   return edge;
 }
@@ -149,7 +149,7 @@ function terminalCandidateToEdge(c: RawTerminalCandidate): Record<string, unknow
   if (c.updateContext !== undefined) edge.updateContext = c.updateContext;
   if (c.onEnter !== undefined) edge.onEnter = c.onEnter;
   if (c.onLeave !== undefined) edge.onLeave = c.onLeave;
-  if (c.id !== undefined) edge.id = c.id;
+  if (c.label !== undefined) edge.label = c.label;
   if (c.timeoutMs !== undefined) edge.timeoutMs = c.timeoutMs;
   return edge;
 }
@@ -185,7 +185,7 @@ export function createJourneyBuilder<
       _updateContext: undefined,
       _onEnter: undefined,
       _onLeave: undefined,
-      _id: undefined,
+      _label: undefined,
       _timeoutMs: undefined
     });
   }

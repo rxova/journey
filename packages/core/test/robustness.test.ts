@@ -123,7 +123,9 @@ describe("robustness", () => {
       }
     };
 
-    expect(() => createJourneyMachine(journey)).toThrow(/completeJourney.*cannot define "to"/i);
+    expect(() => createJourneyMachine(journey)).toThrow(
+      /completeJourney\[0\]".*unsupported field "to"/i
+    );
   });
 
   it('throws when "when" is present but not a function', () => {
@@ -148,7 +150,7 @@ describe("robustness", () => {
     expect(() => createJourneyMachine(journey)).toThrow(/"updateContext" as a function/i);
   });
 
-  it('throws when "id" is present but not a string', () => {
+  it('throws on unsupported authored "id" fields', () => {
     const journey = baseJourney();
     journey.transitions = {
       s0: {
@@ -156,7 +158,7 @@ describe("robustness", () => {
       }
     };
 
-    expect(() => createJourneyMachine(journey)).toThrow(/"id" as a string/i);
+    expect(() => createJourneyMachine(journey)).toThrow(/unsupported field "id"/i);
   });
 
   it("throws on unsupported graph transition fields", () => {

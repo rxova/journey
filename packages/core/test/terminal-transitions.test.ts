@@ -23,7 +23,7 @@ describe("terminal transitions", () => {
       start: {
         completeJourney: [
           {
-            id: "complete",
+            label: "complete",
             updateContext: ({ context }) => ({ ...context, count: 7 })
           }
         ]
@@ -45,7 +45,7 @@ describe("terminal transitions", () => {
       start: {
         terminateJourney: [
           {
-            id: "terminateJourney",
+            label: "terminateJourney",
             updateContext: ({ context }) => ({ ...context, count: 2 })
           }
         ]

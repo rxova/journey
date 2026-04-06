@@ -211,7 +211,7 @@ describe("helpers extra coverage", () => {
 
     expect(() =>
       validateJourneyTransitions(
-        [{ from: "a", event: "goToNextStep", to: "missing" as never }],
+        [{ from: "a", event: "goToNextStep", to: "missing" as never }] as never,
         steps
       )
     ).toThrow(/points to unknown step "missing"/i);
