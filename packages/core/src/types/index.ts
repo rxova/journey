@@ -68,6 +68,7 @@ export type {
   JourneyLastVisitedNavigationObservationEvent,
   JourneyObservationEvent,
   JourneyPreviousNavigationObservationEvent,
+  JourneyResetObservationEvent,
   JourneyStartObservationEvent,
   JourneyStepEnterObservationEvent,
   JourneyStepExitObservationEvent,

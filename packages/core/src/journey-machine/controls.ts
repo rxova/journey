@@ -95,6 +95,11 @@ export const createJourneyMachineControls = <
             notify: true,
             reason: "reset"
           });
+          runtime.emit({
+            type: "journey.reset",
+            stepId: committedSnapshot.currentStepId,
+            timestamp: now()
+          });
           asyncState.syncState(committedSnapshot.async);
           return runtime.getSnapshot();
         },

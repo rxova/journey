@@ -3,7 +3,6 @@ import type React from "react";
 import type {
   JourneyBuilderDefinitionMetadata,
   JourneyBuilderCustomEventKey,
-  JourneyCompleteObservationEvent,
   JourneyComputed,
   JourneyDefaultEventType,
   JourneyDefinition,
@@ -16,8 +15,6 @@ import type {
   JourneySelector,
   JourneySendEvent,
   JourneySendResult,
-  JourneyStartObservationEvent,
-  JourneyTerminateObservationEvent,
   JourneySnapshot
 } from "@rxova/journey-core";
 
@@ -34,14 +31,6 @@ type JourneyCustomSendEventForKeys<
     payload?: JourneyPayloadFor<TEventMap, TCurrentEventType>;
   };
 }[TAllowedEventType];
-
-type JourneyTypeParam<TValue> = TValue extends unknown ? unknown : never;
-
-type JourneyCompatEventAliasContext<
-  TEventMap extends Record<string, unknown>,
-  TStepMeta = unknown
-> = (JourneyObservationEvent<string, TEventMap> extends never ? never : unknown) &
-  JourneyTypeParam<TStepMeta>;
 
 type JourneyTransitionsFromDefinition<TDefinition> = TDefinition extends {
   transitions?: infer TTransitions;
@@ -164,38 +153,12 @@ export type StepScopedJourneyApi<
   ) => Promise<JourneySendResult<TContext, TStepId>>;
 };
 
-export type JourneyStartEvent<
-  TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
-  TStepMeta = unknown
-> = JourneyStartObservationEvent<TStepId> & JourneyCompatEventAliasContext<TEventMap, TStepMeta>;
-
-export type JourneyCompleteEvent<
-  TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
-  TStepMeta = unknown
-> = JourneyCompleteObservationEvent<TStepId> & JourneyCompatEventAliasContext<TEventMap, TStepMeta>;
-
-export type JourneyTerminateEvent<
-  TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
-  TStepMeta = unknown
-> = JourneyTerminateObservationEvent<TStepId> &
-  JourneyCompatEventAliasContext<TEventMap, TStepMeta>;
-
 export type JourneyProviderErrorContext = {
   phase: "start";
 };
 
-export type JourneyProviderProps<
-  TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
-  TStepMeta = unknown
-> = {
+export type JourneyProviderProps<TStepId extends string> = {
   views: JourneyViews<TStepId>;
-  onStart?: (event: JourneyStartEvent<TStepId, TEventMap, TStepMeta>) => void;
-  onComplete?: (event: JourneyCompleteEvent<TStepId, TEventMap, TStepMeta>) => void;
-  onTerminate?: (event: JourneyTerminateEvent<TStepId, TEventMap, TStepMeta>) => void;
   onError?: (error: unknown, context: JourneyProviderErrorContext) => void;
   disposeOnUnmount?: boolean;
   children: React.ReactNode;
@@ -226,7 +189,7 @@ export type JourneyRuntime<
       onLeave?: (args: { context: TContext }) => void;
     }
   ) => void;
-  JourneyProvider: React.ComponentType<JourneyProviderProps<TStepId, TEventMap, TStepMeta>>;
+  JourneyProvider: React.ComponentType<JourneyProviderProps<TStepId>>;
   StepRenderer: React.ComponentType<{ fallback?: React.ReactNode }>;
 };
 

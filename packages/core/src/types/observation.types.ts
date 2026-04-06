@@ -12,6 +12,12 @@ export type JourneyStartObservationEvent<TStepId extends string> = {
   timestamp: number;
 };
 
+export type JourneyResetObservationEvent<TStepId extends string> = {
+  type: "journey.reset";
+  stepId: TStepId;
+  timestamp: number;
+};
+
 export type JourneyTransitionStartObservationEvent<
   TStepId extends string,
   TEventMap extends Record<string, unknown> = Record<never, never>
@@ -97,6 +103,7 @@ export type JourneyObservationEvent<
   TEventMap extends Record<string, unknown> = Record<never, never>
 > =
   | JourneyStartObservationEvent<TStepId>
+  | JourneyResetObservationEvent<TStepId>
   | JourneyTransitionStartObservationEvent<TStepId, TEventMap>
   | JourneyTransitionSuccessObservationEvent<TStepId>
   | JourneyTransitionErrorObservationEvent<TStepId>

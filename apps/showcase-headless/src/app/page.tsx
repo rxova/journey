@@ -1,6 +1,6 @@
 "use client";
 
-import { JourneyProvider, StepRenderer } from "../machine";
+import { JourneyProvider, StepRenderer, useJourneyEvent } from "../machine";
 import { Shell } from "../components/Shell";
 import { Login } from "../steps/Login";
 import { Setup2fa } from "../steps/Setup2fa";
@@ -20,14 +20,24 @@ const views = {
   blocked: Blocked
 };
 
+const EventLogger = () => {
+  useJourneyEvent((event) => {
+    if (
+      event.type === "journey.start" ||
+      event.type === "journey.reset" ||
+      event.type === "journey.completed" ||
+      event.type === "journey.terminated"
+    ) {
+      console.log(`[headless] ${event.type}`, event);
+    }
+  });
+  return null;
+};
+
 export default function Page() {
   return (
-    <JourneyProvider
-      views={views}
-      onStart={(e) => console.log("[headless] start", e)}
-      onComplete={(e) => console.log("[headless] complete", e)}
-      onTerminate={(e) => console.log("[headless] terminate", e)}
-    >
+    <JourneyProvider views={views}>
+      <EventLogger />
       <Shell>
         <StepRenderer fallback={<p>Unknown step</p>} />
       </Shell>

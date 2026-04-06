@@ -258,6 +258,12 @@ export const createTestMachine = ({
           listener(event);
         }
       }),
+    subscribeReset: (listener) =>
+      machine.subscribeEvent((event) => {
+        if (event.type === "journey.reset") {
+          listener(event);
+        }
+      }),
     subscribeComplete: (listener) =>
       machine.subscribeEvent((event) => {
         if (event.type === "journey.completed") {

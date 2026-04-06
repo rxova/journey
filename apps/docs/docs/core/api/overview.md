@@ -250,12 +250,13 @@ Use `subscribeEvent` when you need typed lifecycle telemetry, such as:
 - `transition.error`
 - `step.enter`
 - `step.exit`
+- `journey.reset`
 - `journey.completed`
 - `journey.terminated`
 - `navigation.previous`
 - `navigation.lastVisited`
 
-Use `subscribeStart`, `subscribeComplete`, or `subscribeTerminate` when you only want a specific lifecycle event without manually filtering `subscribeEvent`.
+Use `subscribeStart`, `subscribeReset`, `subscribeComplete`, or `subscribeTerminate` when you only want a specific lifecycle event without manually filtering `subscribeEvent`.
 
 `journey.start` is emitted when `journeyMachine.startJourney()` runs. Late subscribers only observe future lifecycle events.
 

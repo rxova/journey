@@ -348,6 +348,12 @@ export function createJourneyMachine<
           listener(event);
         }
       }),
+    subscribeReset: (listener) =>
+      runtime.subscribeEvent((event) => {
+        if (event.type === "journey.reset") {
+          listener(event);
+        }
+      }),
     subscribeComplete: (listener) =>
       runtime.subscribeEvent((event) => {
         if (event.type === "journey.completed") {

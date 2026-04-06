@@ -34,8 +34,7 @@ export const checkoutJourney: JourneyDefinition<Ctx, StepId> = {
     },
     giftWrap: { goToNextStep: [{ to: "payment" }] },
     payment: { goToNextStep: [{ to: "review" }] },
-    review: { completeJourney: [{}] },
-    global: { terminateJourney: [{}] }
+    review: { completeJourney: [{}] }
   }
 };
 

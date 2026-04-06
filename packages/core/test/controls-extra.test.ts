@@ -124,6 +124,9 @@ describe("controls extra coverage", () => {
     const resetSnapshot = await controls.resetJourney();
     expect(resetSnapshot.currentStepId).toBe("start");
     expect(runtime.cancelInFlight).toHaveBeenCalledTimes(1);
+    expect(runtime.emit).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "journey.reset", stepId: "start" })
+    );
     expect(asyncState.syncState).toHaveBeenCalledWith(resetSnapshot.async);
 
     await controls.clearStepError();

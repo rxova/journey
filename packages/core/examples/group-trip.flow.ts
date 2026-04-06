@@ -26,8 +26,7 @@ export const groupTripJourney: JourneyDefinition<GroupTripContext, StepId> = {
       ]
     },
     budget: { goToNextStep: [{ to: "confirmPlan" }] },
-    confirmPlan: { completeJourney: [{}] },
-    global: { terminateJourney: [{}] }
+    confirmPlan: { completeJourney: [{}] }
   }
 };
 

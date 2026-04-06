@@ -27,8 +27,7 @@ export const onboardingJourney: JourneyDefinition<Ctx, StepId> = {
       ]
     },
     teamInvite: { goToNextStep: [{ to: "recap" }] },
-    recap: { completeJourney: [{}] },
-    global: { terminateJourney: [{}] }
+    recap: { completeJourney: [{}] }
   }
 };
 

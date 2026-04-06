@@ -50,6 +50,7 @@ A new machine starts from a known snapshot:
 This consistent idle snapshot is why behavior is reproducible across environments.
 
 Call `machine.startJourney()` to move the machine into `running`. That call emits `journey.start` with the current step and timestamp. Late subscribers do not receive a replayed startup event.
+Calling `machine.resetJourney()` emits `journey.reset` after the idle snapshot is committed.
 
 ## Event Catalog
 
@@ -58,6 +59,7 @@ Use `subscribeEvent(...)` to observe lifecycle events.
 | Event                    | When it appears                                      | Key payload                                    |
 | ------------------------ | ---------------------------------------------------- | ---------------------------------------------- |
 | `journey.start`          | `machine.startJourney()` changes `idled -> running`  | `stepId`                                       |
+| `journey.reset`          | `machine.resetJourney()` commits the idle snapshot   | `stepId`                                       |
 | `transition.start`       | an event begins running through the send pipeline    | `from`, `event`                                |
 | `transition.success`     | a transition commits or fallback send succeeds       | `from`, `to`, `eventType`, `transitionId`      |
 | `transition.error`       | selected guard or `updateContext` fails or times out | `from`, `eventType`, `transitionId`, `error`   |
@@ -115,6 +117,15 @@ send(completeJourney)
   -> transition.start
   -> transition.success (to COMPLETE)
   -> journey.completed
+```
+
+### Reset
+
+Reset commits the fresh idle snapshot and then emits the reset event:
+
+```text
+resetJourney()
+  -> journey.reset
 ```
 
 ### Pointer Navigation Helpers

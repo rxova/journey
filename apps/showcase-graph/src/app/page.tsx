@@ -23,14 +23,24 @@ const views: JourneyViews<StepId> = {
   blocked: Blocked
 };
 
+const EventLogger = () => {
+  journey.useJourneyEvent((event) => {
+    if (
+      event.type === "journey.start" ||
+      event.type === "journey.reset" ||
+      event.type === "journey.completed" ||
+      event.type === "journey.terminated"
+    ) {
+      console.log(`[graph] ${event.type}`, event);
+    }
+  });
+  return null;
+};
+
 export default function Page() {
   return (
-    <journey.JourneyProvider
-      views={views}
-      onStart={(event) => console.log("[graph] journey.start", event)}
-      onComplete={(event) => console.log("[graph] journey.completed", event)}
-      onTerminate={(event) => console.log("[graph] journey.terminated", event)}
-    >
+    <journey.JourneyProvider views={views}>
+      <EventLogger />
       <Shell>
         <journey.StepRenderer fallback={<p>Unknown step</p>} />
       </Shell>

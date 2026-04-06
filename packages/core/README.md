@@ -82,8 +82,7 @@ transitions: {
     ]
   },
   admin: { completeJourney: true },
-  dashboard: { completeJourney: true },
-  global: { terminateJourney: true }
+  dashboard: { completeJourney: true }
 }
 ```
 
@@ -106,8 +105,7 @@ export const loginStep = createStep("login", {
 const definition = build({
   initial: "login",
   context: { role: "user" },
-  steps: [loginStep, adminStep, dashboardStep],
-  global: { completeJourney: true, terminateJourney: true }
+  steps: [loginStep, adminStep, dashboardStep]
 });
 ```
 
