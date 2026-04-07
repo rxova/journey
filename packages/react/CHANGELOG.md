@@ -1,5 +1,22 @@
 # @rxova/journey-react
 
+## 1.0.0-rc.2
+
+### Patch Changes
+
+- 5bc391a: Remove `JourneyProvider` lifecycle callback props in favor of event subscriptions and hooks.
+- 4a16dd2: Rename the React startup API from `start()` to `startJourney()`.
+- 882d5a5: Add useStepApi for step-scoped custom event sends.
+- Updated dependencies [5bc391a]
+- Updated dependencies [4a16dd2]
+- Updated dependencies [a558001]
+- Updated dependencies [87a83d7]
+- Updated dependencies [882d5a5]
+- Updated dependencies [b95191f]
+- Updated dependencies [ada8084]
+- Updated dependencies [29f008d]
+  - @rxova/journey-core@1.0.0-rc.2
+
 ## 1.0.0-rc.1
 
 ### Major Changes

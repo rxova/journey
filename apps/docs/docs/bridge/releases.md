@@ -9,6 +9,15 @@ Release notes sourced from the Devtools Bridge package changelog (Changesets).
 
 Source: [`packages/devtools-bridge/CHANGELOG.md`](https://github.com/rxova/journey/blob/main/packages/devtools-bridge/CHANGELOG.md)
 
+## 1.0.0-rc.2
+
+### Patch Changes
+
+- Align the DevTools bridge package with the `1.0.0-rc.2` release.
+
+- Updated dependencies
+  - @rxova/journey-core@1.0.0-rc.2
+
 ## 1.0.0-rc.1
 
 ### Major Changes

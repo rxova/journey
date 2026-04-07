@@ -9,6 +9,15 @@ Release notes sourced from the Chrome DevTools app changelog (outside package Ch
 
 Source: [`apps/devtools/CHANGELOG.md`](https://github.com/rxova/journey/blob/main/apps/devtools/CHANGELOG.md)
 
+## 1.0.0-rc.2
+
+### Patch Changes
+
+- Align the Chrome DevTools app with the `1.0.0-rc.2` release.
+
+- Updated dependencies
+  - @rxova/journey-devtools-bridge@1.0.0-rc.2
+
 ## 1.0.0-rc.1
 
 ### Major Changes

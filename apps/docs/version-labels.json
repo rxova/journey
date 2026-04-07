@@ -1,6 +1,6 @@
 {
-  "core": "1.0.0-rc.1",
-  "react": "1.0.0-rc.1",
-  "bridge": "1.0.0-rc.1",
-  "chrome-devtools": "1.0.0-rc.1"
+  "core": "1.0.0-rc.2",
+  "react": "1.0.0-rc.2",
+  "bridge": "1.0.0-rc.2",
+  "chrome-devtools": "1.0.0-rc.2"
 }

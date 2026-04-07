@@ -9,6 +9,19 @@ Release notes sourced from the Core package changelog (Changesets).
 
 Source: [`packages/core/CHANGELOG.md`](https://github.com/rxova/journey/blob/main/packages/core/CHANGELOG.md)
 
+## 1.0.0-rc.2
+
+### Patch Changes
+
+- 5bc391a: Add `journey.reset` / `subscribeReset`, and simplify examples and docs around machine-wide lifecycle observation.
+- 4a16dd2: Rename the machine startup API from `start()` to `startJourney()`.
+- a558001: Improve graph builder transition typing.
+- 87a83d7: Make transition callback context readonly.
+- 882d5a5: Expose builder event metadata for step-scoped sends.
+- b95191f: Run terminal transition lifecycle callbacks before completing or terminating.
+- ada8084: Treat global transitions as fallbacks after step-local transitions.
+- 29f008d: Replace user-authored transition ids with internal ids and labels.
+
 ## 1.0.0-rc.1
 
 ### Major Changes

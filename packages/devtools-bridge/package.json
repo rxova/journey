@@ -1,6 +1,6 @@
 {
   "name": "@rxova/journey-devtools-bridge",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "Bridge API to connect Journey machines to browser devtools.",
   "keywords": [
     "journey",
