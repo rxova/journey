@@ -96,7 +96,7 @@ Releases are automated with Changesets and GitHub Actions.
 - `apps-demo` remains ignored by Changesets.
 - Docs history is tracked with Docusaurus docs version snapshots (`pnpm -C apps/docs run version:cut <version>`).
 - The upcoming `1.0.0-rc` line is the contract-freeze point for the current runtime model.
-- After `1.0.0-rc.1`, only bug fixes, docs fixes, and release-blocking contract fixes should land.
+- During the `1.0.0-rc` line, only bug fixes, docs fixes, and release-blocking contract fixes should land.
 - If a public contract change is unavoidable during the RC line, call it out explicitly in the changeset, changelog, and migration docs before cutting the next RC.
 - After `1.0.0`, documented public APIs follow semver.
 

@@ -11,7 +11,7 @@ Journey is currently preparing for a `1.0.0-rc` line. That line is the contract 
 current runtime model:
 
 - RC builds are expected to be feature-complete and nearly final
-- after `1.0.0-rc.1`, only bug fixes, docs fixes, and release-blocking contract fixes should land
+- during the `1.0.0-rc` line, only bug fixes, docs fixes, and release-blocking contract fixes should land
 - if an RC-breaking change is unavoidable, it must come with explicit migration guidance before the next RC
 
 Once `1.0.0` is released, documented public APIs follow semver. Additive changes belong in minor releases.
