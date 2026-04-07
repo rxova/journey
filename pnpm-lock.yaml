@@ -237,11 +237,11 @@ importers:
   examples/showcase-graph:
     dependencies:
       '@rxova/journey-core':
-        specifier: 1.0.0-rc.1
-        version: 1.0.0-rc.1
+        specifier: workspace:1.0.0-rc.2
+        version: link:../../packages/core
       '@rxova/journey-react':
-        specifier: 1.0.0-rc.1
-        version: 1.0.0-rc.1(@rxova/journey-core@1.0.0-rc.1)(react@19.2.4)
+        specifier: workspace:1.0.0-rc.2
+        version: link:../../packages/react
       next:
         specifier: 16.2.2
         version: 16.2.2(@babel/core@7.29.0)(@playwright/test@1.58.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -268,11 +268,11 @@ importers:
   examples/showcase-headless:
     dependencies:
       '@rxova/journey-core':
-        specifier: 1.0.0-rc.1
-        version: 1.0.0-rc.1
+        specifier: workspace:1.0.0-rc.2
+        version: link:../../packages/core
       '@rxova/journey-react':
-        specifier: 1.0.0-rc.1
-        version: 1.0.0-rc.1(@rxova/journey-core@1.0.0-rc.1)(react@19.2.4)
+        specifier: workspace:1.0.0-rc.2
+        version: link:../../packages/react
       next:
         specifier: 16.2.2
         version: 16.2.2(@babel/core@7.29.0)(@playwright/test@1.58.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -299,11 +299,11 @@ importers:
   examples/showcase-linear:
     dependencies:
       '@rxova/journey-core':
-        specifier: 1.0.0-rc.1
-        version: 1.0.0-rc.1
+        specifier: workspace:1.0.0-rc.2
+        version: link:../../packages/core
       '@rxova/journey-react':
-        specifier: 1.0.0-rc.1
-        version: 1.0.0-rc.1(@rxova/journey-core@1.0.0-rc.1)(react@19.2.4)
+        specifier: workspace:1.0.0-rc.2
+        version: link:../../packages/react
       next:
         specifier: 16.2.2
         version: 16.2.2(@babel/core@7.29.0)(@playwright/test@1.58.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -2835,15 +2835,6 @@ packages:
     resolution: {integrity: sha512-lWMnixq/QzxyhTV6NjQJ4SFo1J6PvOX8vUx5Wb4bBPsEb+8xZ89Bz6kOXpfXj9ak9AHTQVQzlgzBEc1SyM27xQ==}
     cpu: [x64]
     os: [win32]
-
-  '@rxova/journey-core@1.0.0-rc.1':
-    resolution: {integrity: sha512-SMjrbj3Q1LzhzTVf5MjMI14Ky5J0zp/6E4EG4f/BSBFCDe2xTbpkzqMBuPHJe2sMrdCsStHiGZmprbRAbjka5A==}
-
-  '@rxova/journey-react@1.0.0-rc.1':
-    resolution: {integrity: sha512-shGL8x/V8KEBoke7nJ79K4r5qRbs0zeaHoQ/fKtSNWjKSOOX1r7yllFJveKTf39VQ5eadSIKGH9zmTspW7T7WQ==}
-    peerDependencies:
-      '@rxova/journey-core': ^1.0.0-rc.1
-      react: '>=18.2.0'
 
   '@sideway/address@4.1.5':
     resolution: {integrity: sha512-IqO/DUQHUkPeixNQ8n0JA6102hT9CmaljNTPmQ1u8MEhBo/R4Q8eKLN/vGZxuebwOroDB4cbpjheD4+/sKFK4Q==}
@@ -11013,13 +11004,6 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.60.1':
     optional: true
-
-  '@rxova/journey-core@1.0.0-rc.1': {}
-
-  '@rxova/journey-react@1.0.0-rc.1(@rxova/journey-core@1.0.0-rc.1)(react@19.2.4)':
-    dependencies:
-      '@rxova/journey-core': 1.0.0-rc.1
-      react: 19.2.4
 
   '@sideway/address@4.1.5':
     dependencies:
