@@ -16,7 +16,7 @@ type StepMeta = { label: string };
 
 const setup2faStep: JourneyLinearStep<LoginContext, StepId> = {
   step: "setup2fa",
-  id: "login-to-setup",
+  label: "login-to-setup",
   timeoutMs: 10000,
   updateContext: ({ context }) => ({
     ...context,
@@ -26,7 +26,7 @@ const setup2faStep: JourneyLinearStep<LoginContext, StepId> = {
 
 const verifyCodeStep: JourneyLinearStep<LoginContext, StepId> = {
   step: "verifyCode",
-  id: "setup-to-verify",
+  label: "setup-to-verify",
   timeoutMs: 5000
 };
 
