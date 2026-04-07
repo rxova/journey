@@ -4,7 +4,7 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "strict": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "noEmit": true,
     "skipLibCheck": true,
     "exactOptionalPropertyTypes": false,
@@ -23,6 +23,12 @@
       }
     ]
   },
-  "include": ["next-env.d.ts", "next.config.ts", "src", ".next/types/**/*.ts"],
+  "include": [
+    "next-env.d.ts",
+    "next.config.ts",
+    "src",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
   "exclude": ["node_modules"]
 }

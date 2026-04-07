@@ -20,14 +20,16 @@ const views = {
   blocked: Blocked
 };
 
+const loggedEventTypes = new Set<string>([
+  "journey.start",
+  "journey.reset",
+  "journey.completed",
+  "journey.terminated"
+]);
+
 const EventLogger = () => {
   useJourneyEvent((event) => {
-    if (
-      event.type === "journey.start" ||
-      event.type === "journey.reset" ||
-      event.type === "journey.completed" ||
-      event.type === "journey.terminated"
-    ) {
+    if (loggedEventTypes.has(event.type)) {
       console.log(`[headless] ${event.type}`, event);
     }
   });
