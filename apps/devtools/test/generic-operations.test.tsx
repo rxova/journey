@@ -19,6 +19,17 @@ import {
   isPanelToBackgroundMessage
 } from "../src/shared";
 
+const setNativeValue = (element: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+  const prototype = Object.getPrototypeOf(element) as
+    | typeof HTMLInputElement.prototype
+    | typeof HTMLTextAreaElement.prototype;
+  const descriptor = Object.getOwnPropertyDescriptor(prototype, "value");
+  if (!descriptor?.set) {
+    throw new Error("value setter not found");
+  }
+  descriptor.set.call(element, value);
+};
+
 const features: JourneyDevtoolsMachineFeatureDescriptor[] = [
   {
     id: "core",
@@ -50,6 +61,22 @@ const features: JourneyDevtoolsMachineFeatureDescriptor[] = [
         fields: []
       },
       {
+        id: "core.goToStepById",
+        label: "goToStepById",
+        description: null,
+        mutates: true,
+        output: "snapshot",
+        fields: [{ key: "stepId", label: "stepId", type: "text", required: true }]
+      },
+      {
+        id: "core.forceStepTransition",
+        label: "forceStepTransition",
+        description: null,
+        mutates: true,
+        output: "snapshot",
+        fields: [{ key: "stepId", label: "to", type: "text", required: true }]
+      },
+      {
         id: "core.sendEvent",
         label: "send",
         description: null,
@@ -58,6 +85,25 @@ const features: JourneyDevtoolsMachineFeatureDescriptor[] = [
         fields: [
           { key: "type", label: "type", type: "text", required: true },
           { key: "payload", label: "payload", type: "json" }
+        ]
+      },
+      {
+        id: "core.updateContext",
+        label: "replaceContext",
+        description: null,
+        mutates: true,
+        output: "snapshot",
+        fields: [{ key: "context", label: "context", type: "json", required: true }]
+      },
+      {
+        id: "core.patchContext",
+        label: "patchContext",
+        description: null,
+        mutates: true,
+        output: "snapshot",
+        fields: [
+          { key: "key", label: "key", type: "text", required: true },
+          { key: "value", label: "value", type: "json", required: true }
         ]
       },
       {
@@ -100,8 +146,19 @@ const registerEnvelope = (): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "reg
     label: "Checkout",
     appName: "Store",
     mutationsEnabled: true,
+    mode: "graph",
     stepIds: ["start", "review", "done"],
     eventTypes: ["journey.start", "review.submit"],
+    eventTypesBySource: {
+      start: ["journey.start"],
+      review: ["review.submit"],
+      "*": ["journey.start"]
+    },
+    goToStepTargetsBySource: {
+      start: ["review"],
+      review: ["done"],
+      "*": ["done"]
+    },
     features
   },
   snapshot: {
@@ -138,6 +195,30 @@ const operationResultEnvelope = (): Extract<
     },
     transitioned: true,
     transitionId: "goToNextStep"
+  }
+});
+
+const liveSnapshotEnvelope = (
+  timestamp = 1002,
+  currentStepId: "start" | "review" | "done" = "review",
+  status: "idled" | "running" | "completed" | "terminated" = "running"
+): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "snapshot" }> => ({
+  channel: JOURNEY_DEVTOOLS_CHANNEL,
+  version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+  source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
+  kind: "snapshot",
+  machineId: "machine-1",
+  timestamp,
+  snapshot: {
+    currentStepId,
+    history: {
+      timeline: currentStepId === "start" ? ["start"] : ["start", currentStepId],
+      index: currentStepId === "start" ? 0 : 1
+    },
+    context: {},
+    visited: currentStepId === "start" ? { start: true } : { start: true, [currentStepId]: true },
+    status,
+    async: { isLoading: false, byStep: {} }
   }
 });
 
@@ -203,10 +284,18 @@ describe("generic devtools operations", () => {
         <CommandControls
           features={features}
           snapshotStatus="running"
+          currentStepId="start"
           disabled={false}
           mutationsEnabled={true}
+          mode="graph"
           stepIds={["start", "review", "done"]}
           eventTypes={["journey.start", "review.submit"]}
+          eventTypesBySource={{
+            start: ["journey.start"],
+            review: ["review.submit"],
+            "*": ["journey.start"]
+          }}
+          goToStepTargetsBySource={{ start: ["review"], review: ["done"], "*": ["done"] }}
           onInvoke={onInvoke}
         />
       );
@@ -217,10 +306,13 @@ describe("generic devtools operations", () => {
     expect(container.textContent).toContain("Machine commands");
     expect(container.textContent).toContain("restartJourney");
 
-    const navigationSelect = [...container.querySelectorAll("select")].find((select) =>
-      [...select.querySelectorAll("option")].some((option) => option.textContent === "review")
+    const navigationSelect = [...container.querySelectorAll("select")].find(
+      (select) => select.querySelector('option[value="review"]') !== null
     );
     expect(navigationSelect).toBeTruthy();
+    expect(navigationSelect?.querySelector('option[value="review"]')).toBeTruthy();
+    expect(navigationSelect?.querySelector('option[value="done"]')).toBeTruthy();
+    expect(navigationSelect?.querySelector('option[value="start"]')).toBeNull();
 
     const eventTypeSelect = [...container.querySelectorAll("select")].find((select) =>
       [...select.querySelectorAll("option")].some(
@@ -228,6 +320,8 @@ describe("generic devtools operations", () => {
       )
     );
     expect(eventTypeSelect).toBeTruthy();
+    expect(eventTypeSelect?.querySelector('option[value="journey.start"]')).toBeTruthy();
+    expect(eventTypeSelect?.querySelector('option[value="review.submit"]')).toBeNull();
 
     const nextButton = [...container.querySelectorAll("button")].find((button) =>
       button.textContent?.includes("goToNextStep")
@@ -256,8 +350,18 @@ describe("generic devtools operations", () => {
         <CommandControls
           features={features}
           snapshotStatus="terminated"
+          currentStepId="start"
           disabled={false}
           mutationsEnabled={true}
+          mode="graph"
+          stepIds={["start", "review", "done"]}
+          eventTypes={["journey.start", "review.submit"]}
+          eventTypesBySource={{
+            start: ["journey.start"],
+            review: ["review.submit"],
+            "*": ["journey.start"]
+          }}
+          goToStepTargetsBySource={{ start: ["review"], review: ["done"], "*": ["done"] }}
           onInvoke={onInvoke}
         />
       );
@@ -275,5 +379,161 @@ describe("generic devtools operations", () => {
     expect(completeButton?.hasAttribute("disabled")).toBe(true);
 
     root.unmount();
+  });
+
+  it("keeps live running state when a later snapshot arrives after restart", () => {
+    let state: JourneyPanelState = createInitialPanelState();
+    state = panelReducer(state, { type: "bridge-envelope", envelope: registerEnvelope() });
+    state = panelReducer(state, {
+      type: "queue-command",
+      machineId: "machine-1",
+      requestId: "req-1",
+      invocation: { operationId: "core.resetJourney" },
+      timestamp: 1000
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: liveSnapshotEnvelope(1002, "start", "running")
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: {
+        ...operationResultEnvelope(),
+        timestamp: 1001,
+        operationId: "core.resetJourney",
+        result: {
+          kind: "snapshot",
+          snapshot: {
+            currentStepId: "start",
+            history: { timeline: ["start"], index: 0 },
+            context: {},
+            visited: { start: true },
+            status: "idled",
+            async: { isLoading: false, byStep: {} }
+          }
+        }
+      }
+    });
+
+    expect(state.machines["machine-1"].snapshot.status).toBe("running");
+  });
+
+  it("shows all step ids for headless goToStepById", async () => {
+    const onInvoke = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <CommandControls
+          features={features}
+          snapshotStatus="running"
+          currentStepId="start"
+          disabled={false}
+          mutationsEnabled={true}
+          mode="headless"
+          stepIds={["start", "review", "done"]}
+          eventTypes={["journey.start", "review.submit"]}
+          eventTypesBySource={{}}
+          goToStepTargetsBySource={{}}
+          onInvoke={onInvoke}
+        />
+      );
+    });
+
+    const navigationSelect = [...container.querySelectorAll("select")].find(
+      (select) => select.querySelector('option[value="start"]') !== null
+    );
+    expect(navigationSelect?.querySelector('option[value="start"]')).toBeTruthy();
+    expect(navigationSelect?.querySelector('option[value="review"]')).toBeTruthy();
+    expect(navigationSelect?.querySelector('option[value="done"]')).toBeTruthy();
+
+    root.unmount();
+  });
+
+  it("shows inline json validation and dispatches patchContext with parsed values", async () => {
+    const onInvoke = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <CommandControls
+          features={features}
+          snapshotStatus="running"
+          currentStepId="start"
+          disabled={false}
+          mutationsEnabled={true}
+          mode="graph"
+          stepIds={["start", "review", "done"]}
+          eventTypes={["journey.start", "review.submit"]}
+          eventTypesBySource={{
+            start: ["journey.start"],
+            review: ["review.submit"],
+            "*": ["journey.start"]
+          }}
+          goToStepTargetsBySource={{ start: ["review"], review: ["done"], "*": ["done"] }}
+          onInvoke={onInvoke}
+        />
+      );
+    });
+
+    const patchButton = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "patchContext"
+    );
+    if (!patchButton) {
+      throw new Error("patchContext button not found");
+    }
+
+    const patchForm = patchButton.closest("div");
+    if (!patchForm) {
+      throw new Error("patchContext form not found");
+    }
+
+    const keyInput = [...patchForm.querySelectorAll("input")].find((input) =>
+      input.parentElement?.textContent?.includes("key")
+    );
+    const valueTextarea = [...patchForm.querySelectorAll("textarea")].find((textarea) =>
+      textarea.parentElement?.textContent?.includes("value")
+    );
+
+    if (!keyInput || !valueTextarea) {
+      throw new Error("patchContext fields not found");
+    }
+
+    await act(async () => {
+      setNativeValue(keyInput, "attempts");
+      keyInput.dispatchEvent(new Event("input", { bubbles: true }));
+      setNativeValue(valueTextarea, "{oops");
+      valueTextarea.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    expect(valueTextarea.getAttribute("aria-invalid")).toBe("true");
+    expect(container.textContent).toContain("JSON fields must contain valid JSON.");
+    expect(patchButton.hasAttribute("disabled")).toBe(true);
+
+    await act(async () => {
+      setNativeValue(valueTextarea, "2");
+      valueTextarea.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    expect(valueTextarea.getAttribute("aria-invalid")).toBeNull();
+    expect(container.textContent).not.toContain("JSON fields must contain valid JSON.");
+    expect(patchButton.hasAttribute("disabled")).toBe(false);
+
+    await act(async () => {
+      patchButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onInvoke).toHaveBeenCalledWith({
+      operationId: "core.patchContext",
+      input: { key: "attempts", value: 2 }
+    });
+
+    await act(async () => {
+      root.unmount();
+    });
   });
 });

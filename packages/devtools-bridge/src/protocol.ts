@@ -9,6 +9,7 @@ import type {
 export const JOURNEY_DEVTOOLS_PROTOCOL_VERSION = 5 as const;
 export const JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION = 3 as const;
 export const JOURNEY_DEVTOOLS_CHANNEL = "__RXOVA_JOURNEY_DEVTOOLS__" as const;
+export const JOURNEY_DEVTOOLS_REPLAY_REQUEST = "__RXOVA_JOURNEY_DEVTOOLS_REPLAY_REQUEST__" as const;
 
 export const JOURNEY_DEVTOOLS_BRIDGE_SOURCE = "rxova-journey-bridge" as const;
 export const JOURNEY_DEVTOOLS_EXTENSION_SOURCE = "rxova-journey-extension" as const;
@@ -45,8 +46,11 @@ export type JourneyDevtoolsMachineMeta = {
   label: string;
   appName: string | null;
   mutationsEnabled?: boolean;
+  mode?: "linear" | "graph" | "headless";
   stepIds?: readonly string[];
   eventTypes?: readonly string[];
+  eventTypesBySource?: Record<string, readonly string[]>;
+  goToStepTargetsBySource?: Record<string, readonly string[]>;
   features: readonly JourneyDevtoolsMachineFeatureDescriptor[];
 };
 
@@ -294,8 +298,18 @@ const isMachineMeta = (
     (version === JOURNEY_DEVTOOLS_PROTOCOL_VERSION
       ? typeof value.mutationsEnabled === "boolean"
       : value.mutationsEnabled === undefined || typeof value.mutationsEnabled === "boolean") &&
+    (value.mode === undefined ||
+      value.mode === "linear" ||
+      value.mode === "graph" ||
+      value.mode === "headless") &&
     (value.stepIds === undefined || isStringArray(value.stepIds)) &&
     (value.eventTypes === undefined || isStringArray(value.eventTypes)) &&
+    (value.eventTypesBySource === undefined ||
+      (isRecord(value.eventTypesBySource) &&
+        Object.values(value.eventTypesBySource).every((targets) => isStringArray(targets)))) &&
+    (value.goToStepTargetsBySource === undefined ||
+      (isRecord(value.goToStepTargetsBySource) &&
+        Object.values(value.goToStepTargetsBySource).every((targets) => isStringArray(targets)))) &&
     value.features.every((feature) => isFeatureDescriptor(feature))
   );
 };
@@ -338,6 +352,7 @@ const isResultPayload = (value: unknown): value is JourneyDevtoolsOperationResul
   }
 };
 
+/** Returns true when a payload matches the bridge-to-extension devtools envelope shape. */
 export const isJourneyDevtoolsBridgeEnvelope = (
   value: unknown
 ): value is JourneyDevtoolsBridgeEnvelope => {
@@ -377,6 +392,7 @@ export const isJourneyDevtoolsBridgeEnvelope = (
   }
 };
 
+/** Returns true when a payload matches the extension-to-bridge devtools envelope shape. */
 export const isJourneyDevtoolsExtensionEnvelope = (
   value: unknown
 ): value is JourneyDevtoolsExtensionEnvelope => {
@@ -391,5 +407,6 @@ export const isJourneyDevtoolsExtensionEnvelope = (
   return typeof envelope.requestId === "string" && isOperationInvoke(envelope.invocation);
 };
 
+/** Returns true when a payload matches any supported journey devtools protocol envelope. */
 export const isJourneyDevtoolsEnvelope = (value: unknown): value is JourneyDevtoolsEnvelope =>
   isJourneyDevtoolsBridgeEnvelope(value) || isJourneyDevtoolsExtensionEnvelope(value);

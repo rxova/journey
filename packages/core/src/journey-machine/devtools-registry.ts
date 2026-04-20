@@ -3,7 +3,8 @@ import type {
   JourneyJsonObject,
   JourneyMachine,
   JourneyMachineDevtoolsFeatureSpec,
-  JourneyResolvedDefinition
+  JourneyResolvedDefinition,
+  JourneySendResult
 } from "../types";
 
 export const JOURNEY_MACHINE_DEVTOOLS_SYMBOL = Symbol.for("rxova.journey.devtools");
@@ -15,6 +16,9 @@ export type JourneyMachineDevtoolsRegistry<
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = Record<never, never>
 > = {
+  controls?: {
+    forceStepTransition?: (stepId: TStepId) => Promise<JourneySendResult<TContext, TStepId>>;
+  };
   features: readonly JourneyMachineDevtoolsFeatureSpec<
     TContext,
     TStepId,
@@ -44,6 +48,7 @@ export const attachJourneyMachineDevtoolsRegistry = <
   });
 };
 
+/** Returns the internal devtools registry attached to a journey machine, when present. */
 export const getJourneyMachineDevtoolsRegistry = <
   TContext extends JourneyJsonObject,
   TStepId extends string,

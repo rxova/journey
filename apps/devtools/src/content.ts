@@ -1,4 +1,7 @@
-import { isJourneyDevtoolsBridgeEnvelope } from "@rxova/journey-devtools-bridge";
+import {
+  JOURNEY_DEVTOOLS_REPLAY_REQUEST,
+  isJourneyDevtoolsBridgeEnvelope
+} from "@rxova/journey-devtools-bridge";
 import {
   isBackgroundToContentMessage,
   type BackgroundToContentMessage,
@@ -33,6 +36,15 @@ const isExpectedWindowOrigin = (origin: string): boolean => {
 const WINDOW_TARGET_ORIGIN = resolveWindowTargetOrigin();
 const maybeWindow = window as WindowWithBridgeFlag;
 const journeyMachineCache = new Map<string, CachedJourneyMachine>();
+
+const requestBridgeReplayFromPage = () => {
+  window.postMessage(
+    {
+      type: JOURNEY_DEVTOOLS_REPLAY_REQUEST
+    },
+    WINDOW_TARGET_ORIGIN
+  );
+};
 
 const cacheEnvelope = (envelope: ContentToBackgroundMessage["envelope"]) => {
   if (
@@ -112,10 +124,13 @@ if (!maybeWindow[CONTENT_BRIDGE_FLAG]) {
 
     const typedMessage: BackgroundToContentMessage = message;
     if (typedMessage.type === "bridge-replay-request") {
+      requestBridgeReplayFromPage();
       replayCacheToBackground();
       return;
     }
 
     window.postMessage(typedMessage.envelope, WINDOW_TARGET_ORIGIN);
   });
+
+  requestBridgeReplayFromPage();
 }

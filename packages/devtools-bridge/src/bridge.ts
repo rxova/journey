@@ -4,6 +4,7 @@ import {
   type JourneyMachine,
   type JourneyMachineDevtoolsFeatureSpec,
   type JourneyMachineDevtoolsOperationResult,
+  type JourneyMode,
   type JourneyObservationEvent,
   type JourneySendResult,
   type JourneySnapshot
@@ -13,6 +14,7 @@ import {
   JOURNEY_DEVTOOLS_CHANNEL,
   JOURNEY_DEVTOOLS_EXTENSION_SOURCE,
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+  JOURNEY_DEVTOOLS_REPLAY_REQUEST,
   isJourneyDevtoolsEnvelope,
   type JourneyDevtoolsBridgeEnvelope,
   type JourneyDevtoolsBridgeOperationErrorEnvelope,
@@ -63,6 +65,9 @@ const BUILT_IN_EVENT_TYPES = new Set([
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
+
+const isReplayRequestMessage = (value: unknown): value is { type: string } =>
+  isRecord(value) && value.type === JOURNEY_DEVTOOLS_REPLAY_REQUEST;
 
 const resolveImportMetaEnvironment = (
   bundlerEnv: JourneyImportMetaEnv | null | undefined
@@ -388,6 +393,30 @@ const createCoreFeature = <
         toSnapshotOperationResult(await machine.goToStepById(String(input?.stepId) as TStepId))
     },
     {
+      id: "core.forceStepTransition",
+      label: "forceStepTransition",
+      mutates: true,
+      output: "snapshot",
+      fields: [{ key: "stepId", label: "to", type: "text", required: true }],
+      run: async ({ input }: { input: Record<string, unknown> | undefined }) => {
+        const stepId = String(input?.stepId) as TStepId;
+        const registry = getJourneyMachineDevtoolsRegistry(machine) as
+          | {
+              controls?: {
+                forceStepTransition?: (
+                  stepId: TStepId
+                ) => Promise<JourneySendResult<TContext, TStepId>>;
+              };
+            }
+          | undefined;
+        if (registry?.controls?.forceStepTransition) {
+          return toSnapshotOperationResult(await registry.controls.forceStepTransition(stepId));
+        }
+
+        return toSnapshotOperationResult(await machine.goToStepById(stepId));
+      }
+    },
+    {
       id: "core.goToPreviousStep",
       label: "goToPreviousStep",
       mutates: true,
@@ -425,6 +454,45 @@ const createCoreFeature = <
         return toSnapshotOperationResult(
           await machine.send(event as Parameters<typeof machine.send>[0])
         );
+      }
+    },
+    {
+      id: "core.updateContext",
+      label: "replaceContext",
+      mutates: true,
+      output: "snapshot",
+      fields: [{ key: "context", label: "context", type: "json", required: true }],
+      run: async ({ input }: { input: Record<string, unknown> | undefined }) => {
+        const nextContext = (input?.context ?? {}) as TContext;
+        return {
+          kind: "snapshot",
+          snapshot: await machine.updateContext(() => nextContext)
+        };
+      }
+    },
+    {
+      id: "core.patchContext",
+      label: "patchContext",
+      mutates: true,
+      output: "snapshot",
+      fields: [
+        { key: "key", label: "key", type: "text", required: true },
+        { key: "value", label: "value", type: "json", required: true }
+      ],
+      run: async ({ input }: { input: Record<string, unknown> | undefined }) => {
+        const key = String(input?.key ?? "");
+        const value = input?.value;
+
+        return {
+          kind: "snapshot",
+          snapshot: await machine.updateContext(
+            (context) =>
+              ({
+                ...context,
+                [key]: value
+              }) as TContext
+          )
+        };
       }
     },
     {
@@ -476,6 +544,47 @@ const createOperationRegistry = <
         .filter((eventType) => !BUILT_IN_EVENT_TYPES.has(eventType))
     )
   );
+  const mode: JourneyMode =
+    registry.journey.transitions === undefined
+      ? "headless"
+      : Array.isArray(registry.journey.transitions)
+        ? "linear"
+        : "graph";
+  const eventTypesBySource = Object.fromEntries(
+    Array.from(
+      registry.resolvedJourney.transitions
+        .reduce((typesBySource, transition) => {
+          if (BUILT_IN_EVENT_TYPES.has(transition.event)) {
+            return typesBySource;
+          }
+
+          const source = String(transition.from);
+          const eventOptions = typesBySource.get(source) ?? new Set<string>();
+          eventOptions.add(String(transition.event));
+          typesBySource.set(source, eventOptions);
+          return typesBySource;
+        }, new Map<string, Set<string>>())
+        .entries()
+    ).map(([source, eventOptions]) => [source, Array.from(eventOptions)])
+  );
+
+  const goToStepTargetsBySource = Object.fromEntries(
+    Array.from(
+      registry.resolvedJourney.transitions
+        .reduce((targetsBySource, transition) => {
+          if (!("to" in transition) || transition.event !== "goToStepById") {
+            return targetsBySource;
+          }
+
+          const source = String(transition.from);
+          const targets = targetsBySource.get(source) ?? new Set<string>();
+          targets.add(String(transition.to));
+          targetsBySource.set(source, targets);
+          return targetsBySource;
+        }, new Map<string, Set<string>>())
+        .entries()
+    ).map(([source, targets]) => [source, Array.from(targets)])
+  );
 
   const operationMap = new Map<string, OperationRunner<TContext, TStepId>>();
 
@@ -502,13 +611,17 @@ const createOperationRegistry = <
   }
 
   return {
+    eventTypesBySource,
     eventTypes,
     features: normalizeDescriptorFeatures(features),
+    goToStepTargetsBySource,
+    mode,
     operations: operationMap,
     stepIds
   };
 };
 
+/** Attaches the browser devtools bridge to a journey machine and returns a detach cleanup. */
 export const attachJourneyDevtools = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
@@ -551,8 +664,11 @@ export const attachJourneyDevtools = <
         label,
         appName,
         mutationsEnabled,
+        mode: operationRegistry.mode,
         stepIds: operationRegistry.stepIds,
         eventTypes: operationRegistry.eventTypes,
+        eventTypesBySource: operationRegistry.eventTypesBySource,
+        goToStepTargetsBySource: operationRegistry.goToStepTargetsBySource,
         features: operationRegistry.features
       },
       snapshot: serializeSnapshot(machine.getSnapshot())
@@ -655,6 +771,16 @@ export const attachJourneyDevtools = <
   };
 
   const onMessage = (event: MessageEvent<unknown>) => {
+    if (
+      event.source === window &&
+      isExpectedWindowOrigin(event.origin) &&
+      isReplayRequestMessage(event.data)
+    ) {
+      emitRegister();
+      emitSnapshot();
+      return;
+    }
+
     if (
       event.source !== window ||
       !isExpectedWindowOrigin(event.origin) ||

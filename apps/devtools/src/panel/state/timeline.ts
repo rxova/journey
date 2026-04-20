@@ -47,7 +47,10 @@ export const normalizeMachineMeta = (
 
 export const applyMachineUpdateForEnvelope = (
   machine: JourneyPanelMachineState,
-  envelope: NonUnregisterBridgeEnvelope
+  envelope: NonUnregisterBridgeEnvelope,
+  options: {
+    applyOperationResultSnapshot?: boolean;
+  } = {}
 ): JourneyPanelMachineState => {
   switch (envelope.kind) {
     case "register":
@@ -63,7 +66,10 @@ export const applyMachineUpdateForEnvelope = (
       return {
         ...machine,
         protocolVersion: envelope.version,
-        snapshot: envelope.result.kind === "snapshot" ? envelope.result.snapshot : machine.snapshot
+        snapshot:
+          options.applyOperationResultSnapshot !== false && envelope.result.kind === "snapshot"
+            ? envelope.result.snapshot
+            : machine.snapshot
       };
     default:
       return machine;

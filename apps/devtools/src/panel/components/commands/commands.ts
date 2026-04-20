@@ -46,6 +46,7 @@ const CORE_OPERATION_SECTIONS: Record<
     operationIds: [
       "core.goToNextStep",
       "core.goToStepById",
+      "core.forceStepTransition",
       "core.goToPreviousStep",
       "core.goToLastVisitedStep"
     ]
@@ -55,8 +56,8 @@ const CORE_OPERATION_SECTIONS: Record<
     operationIds: ["core.sendEvent", "core.clearStepError"]
   },
   commands: {
-    label: "Commands",
-    operationIds: []
+    label: "Context",
+    operationIds: ["core.patchContext", "core.updateContext"]
   }
 };
 
@@ -166,4 +167,29 @@ export const hasMissingRequiredFields = (
 
     const stateKey = `${operation.id}:${field.key}`;
     return (fieldValues[stateKey] ?? "").trim().length === 0;
+  });
+
+export const getFieldValidationError = (
+  raw: string,
+  type: "text" | "integer" | "boolean" | "json"
+): string | null => {
+  if (type === "text" || type === "boolean") {
+    return null;
+  }
+
+  const parsed = buildInputValue(raw, type);
+  return parsed.ok ? null : parsed.error;
+};
+
+export const hasInvalidFieldValues = (
+  operation: JourneyDevtoolsMachineOperationDescriptor,
+  fieldValues: Record<string, string>
+): boolean =>
+  operation.fields.some((field) => {
+    if (field.type === "text" || field.type === "boolean") {
+      return false;
+    }
+
+    const stateKey = `${operation.id}:${field.key}`;
+    return getFieldValidationError(fieldValues[stateKey] ?? "", field.type) !== null;
   });

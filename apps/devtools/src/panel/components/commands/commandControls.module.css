@@ -88,6 +88,47 @@
   gap: 8px;
 }
 
+.fieldWrapper {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.fieldLabel {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.fieldHint,
+.fieldError {
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.fieldHint {
+  color: var(--muted);
+}
+
+.fieldError {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.fieldControlInvalid {
+  border-color: var(--warn);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--warn) 30%, transparent);
+}
+
+.textareaField {
+  width: 100%;
+  min-height: 110px;
+  resize: vertical;
+  font: inherit;
+  font-family: "JetBrains Mono", "Menlo", monospace;
+  line-height: 1.45;
+}
+
 .actionButton {
   width: 100%;
   min-height: 38px;
