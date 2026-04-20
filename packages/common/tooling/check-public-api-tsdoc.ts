@@ -258,14 +258,10 @@ export function checkPublicApiTSDoc({
   return { missing };
 }
 
-export function main({
-  repoRoot = defaultRepoRoot,
-  sources,
-  log = console.log,
-  error = console.error,
-  exit = (code) => process.exit(code)
-}: CheckPublicApiTSDocOptions = {}): { missing: MissingTSDocItem[] } {
-  return checkPublicApiTSDoc({ repoRoot, sources, log, error, exit });
+export function main(
+  options: CheckPublicApiTSDocOptions = {}
+): { missing: MissingTSDocItem[] } {
+  return checkPublicApiTSDoc(options);
 }
 
 export function isEntrypoint(

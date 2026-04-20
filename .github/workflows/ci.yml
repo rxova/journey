@@ -39,7 +39,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
-        run: node --import tsx ./scripts/check-changeset.ts
+        run: node --import tsx ./packages/common/tooling/check-changeset.ts
 
   test:
     runs-on: ubuntu-latest
@@ -91,7 +91,7 @@ jobs:
         run: pnpm run release:verify
       - name: Add coverage summary
         if: always()
-        run: node --import tsx ./scripts/coverage-summary.ts
+        run: node --import tsx ./packages/common/tooling/coverage-summary.ts
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v7

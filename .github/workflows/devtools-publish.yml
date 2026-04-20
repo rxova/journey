@@ -72,7 +72,7 @@ jobs:
         if: inputs.publish == true
         env:
           ZIP_FILE_PATH: apps-devtools.zip
-        run: node --import tsx ./scripts/publish-devtools.ts
+        run: node --import tsx ./packages/common/tooling/publish-devtools.ts
 
       - name: Upload packaged zip artifact
         uses: actions/upload-artifact@v7

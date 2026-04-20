@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { assertIncludes, getExportEntries } from "../../../scripts/pack-smoke-helpers";
+import { assertIncludes, getExportEntries } from "../tooling/pack-smoke-helpers";
 
 describe("pack-smoke helpers", () => {
   it("collects export entries from string exports", () => {
