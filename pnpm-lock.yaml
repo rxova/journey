@@ -161,6 +161,9 @@ importers:
       '@playwright/test':
         specifier: ^1.58.2
         version: 1.58.2
+      '@rxova/journey-common':
+        specifier: workspace:*
+        version: link:../../packages/common
       '@types/chrome':
         specifier: ^0.1.37
         version: 0.1.37
@@ -675,13 +678,21 @@ importers:
 
   packages/common: {}
 
-  packages/core: {}
+  packages/core:
+    devDependencies:
+      '@rxova/journey-common':
+        specifier: workspace:*
+        version: link:../common
 
   packages/devtools-bridge:
     dependencies:
       '@rxova/journey-core':
         specifier: workspace:^
         version: link:../core
+    devDependencies:
+      '@rxova/journey-common':
+        specifier: workspace:*
+        version: link:../common
 
   packages/react:
     dependencies:
@@ -689,6 +700,9 @@ importers:
         specifier: workspace:^
         version: link:../core
     devDependencies:
+      '@rxova/journey-common':
+        specifier: workspace:*
+        version: link:../common
       '@testing-library/react':
         specifier: ^16.3.2
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
