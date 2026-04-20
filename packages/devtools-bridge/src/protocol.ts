@@ -5,6 +5,7 @@ import type {
   JourneySnapshot,
   JourneyStepAsyncState
 } from "@rxova/journey-core";
+import { isRecord } from "@rxova/journey-common/predicates";
 
 export const JOURNEY_DEVTOOLS_PROTOCOL_VERSION = 5 as const;
 export const JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION = 3 as const;
@@ -155,9 +156,6 @@ export type JourneyDevtoolsExtensionEnvelope = JourneyDevtoolsExtensionInvokeEnv
 export type JourneyDevtoolsEnvelope =
   | JourneyDevtoolsBridgeEnvelope
   | JourneyDevtoolsExtensionEnvelope;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
 
 const isKnownSource = (value: unknown): value is JourneyDevtoolsSource =>
   value === JOURNEY_DEVTOOLS_BRIDGE_SOURCE || value === JOURNEY_DEVTOOLS_EXTENSION_SOURCE;

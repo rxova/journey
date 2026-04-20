@@ -10,6 +10,13 @@ import {
   type JourneySnapshot
 } from "@rxova/journey-core";
 import {
+  resolveNonProductionEnvironment as resolveNonProductionEnvironmentCommon,
+  type NonProductionBundlerEnv
+} from "@rxova/journey-common/dev";
+import { isExpectedWindowOrigin, resolveWindowTargetOrigin } from "@rxova/journey-common/origin";
+import { isRecord } from "@rxova/journey-common/predicates";
+import { cloneForTransport, serializeError } from "@rxova/journey-common/serialization";
+import {
   JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
   JOURNEY_DEVTOOLS_CHANNEL,
   JOURNEY_DEVTOOLS_EXTENSION_SOURCE,
@@ -26,11 +33,8 @@ import {
   type JourneyDevtoolsMachineFeatureDescriptor,
   type JourneyDevtoolsOperationInvoke,
   type JourneyDevtoolsOperationResultPayload,
-  type JourneyDevtoolsSerializableSnapshot,
-  type JourneyDevtoolsSerializedError
+  type JourneyDevtoolsSerializableSnapshot
 } from "./protocol";
-
-declare const process: { env?: { NODE_ENV?: string } } | undefined;
 
 export type JourneyDevtoolsBridgeOptions = {
   machineId?: string;
@@ -41,10 +45,7 @@ export type JourneyDevtoolsBridgeOptions = {
   commandsEnabled?: boolean;
 };
 
-type JourneyImportMetaEnv = {
-  DEV?: unknown;
-  PROD?: unknown;
-};
+type JourneyImportMetaEnv = NonProductionBundlerEnv;
 
 type OperationRunner<TContext extends JourneyJsonObject, TStepId extends string> = {
   descriptor: JourneyDevtoolsMachineFeatureDescriptor["operations"][number];
@@ -63,76 +64,22 @@ const BUILT_IN_EVENT_TYPES = new Set([
   "terminateJourney"
 ]);
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
-
 const isReplayRequestMessage = (value: unknown): value is { type: string } =>
   isRecord(value) && value.type === JOURNEY_DEVTOOLS_REPLAY_REQUEST;
-
-const resolveImportMetaEnvironment = (
-  bundlerEnv: JourneyImportMetaEnv | null | undefined
-): boolean | null => {
-  if (!isRecord(bundlerEnv)) {
-    return null;
-  }
-  if (bundlerEnv.PROD === true) {
-    return false;
-  }
-  if (bundlerEnv.DEV === true) {
-    return true;
-  }
-  return null;
-};
-
-const resolveNodeEnvironment = (nodeEnv: string | undefined): boolean | null => {
-  if (typeof nodeEnv !== "string") {
-    return null;
-  }
-  return nodeEnv !== "production";
-};
 
 export const resolveNonProductionEnvironment = (
   options: {
     bundlerEnv?: JourneyImportMetaEnv | null | undefined;
     nodeEnv?: string | undefined;
   } = {}
-): boolean => {
-  const resolvedBundlerEnv =
-    "bundlerEnv" in options
-      ? options.bundlerEnv
-      : (import.meta as ImportMeta & { env?: JourneyImportMetaEnv }).env;
-  const resolvedNodeEnv =
-    "nodeEnv" in options
-      ? options.nodeEnv
-      : typeof process !== "undefined"
-        ? process.env?.NODE_ENV
-        : undefined;
-
-  return (
-    resolveImportMetaEnvironment(resolvedBundlerEnv) ??
-    resolveNodeEnvironment(resolvedNodeEnv) ??
-    false
-  );
-};
-
-const resolveWindowTargetOrigin = (): string => {
-  /* v8 ignore next 3 -- attachJourneyDevtools is browser-only; SSR calls return before posting. */
-  if (typeof window === "undefined") {
-    return "*";
-  }
-  return window.location.origin === "null" ? "*" : window.location.origin;
-};
-
-const isExpectedWindowOrigin = (origin: string): boolean => {
-  if (origin.length === 0 || typeof window === "undefined") {
-    return false;
-  }
-  const expected = window.location.origin;
-  if (expected === "null") {
-    return origin === "null";
-  }
-  return origin === expected;
-};
+): boolean =>
+  resolveNonProductionEnvironmentCommon({
+    bundlerEnv:
+      "bundlerEnv" in options
+        ? options.bundlerEnv
+        : (import.meta as ImportMeta & { env?: JourneyImportMetaEnv }).env,
+    ...("nodeEnv" in options ? { nodeEnv: options.nodeEnv } : {})
+  });
 
 const createJourneyMachineId = (): string =>
   `journey-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -160,67 +107,6 @@ class OperationRateLimiter {
     this.timestamps = [];
   }
 }
-
-const cloneForTransport = (value: unknown): unknown => {
-  const transportValue =
-    typeof structuredClone === "function"
-      ? (() => {
-          try {
-            return structuredClone(value);
-          } catch {
-            return value;
-          }
-        })()
-      : value;
-  const seen = new WeakSet<object>();
-
-  try {
-    const serialized = JSON.stringify(transportValue, (_key, currentValue) => {
-      if (typeof currentValue === "bigint") {
-        return currentValue.toString();
-      }
-      if (typeof currentValue === "function") {
-        return `[Function ${currentValue.name || "anonymous"}]`;
-      }
-      if (typeof currentValue === "symbol") {
-        return currentValue.toString();
-      }
-      if (typeof currentValue === "object" && currentValue !== null) {
-        if (seen.has(currentValue)) {
-          return "[Circular]";
-        }
-        seen.add(currentValue);
-      }
-      return currentValue;
-    });
-
-    return serialized === undefined ? undefined : (JSON.parse(serialized) as unknown);
-  } catch {
-    return String(value);
-  }
-};
-
-const serializeError = (error: unknown): JourneyDevtoolsSerializedError => {
-  if (error instanceof Error) {
-    const cause =
-      "cause" in error && (error as { cause?: unknown }).cause !== undefined
-        ? (error as { cause?: unknown }).cause
-        : null;
-    return {
-      name: error.name,
-      message: error.message,
-      stack: typeof error.stack === "string" ? error.stack : null,
-      cause: cloneForTransport(cause)
-    };
-  }
-
-  return {
-    name: null,
-    message: typeof error === "string" ? error : "Unknown error",
-    stack: null,
-    cause: cloneForTransport(error)
-  };
-};
 
 const serializeSnapshot = <TContext extends JourneyJsonObject, TStepId extends string>(
   snapshot: JourneySnapshot<TContext, TStepId>

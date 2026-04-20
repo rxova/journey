@@ -1,3 +1,4 @@
+import { isExpectedWindowOrigin, resolveWindowTargetOrigin } from "@rxova/journey-common/origin";
 import {
   JOURNEY_DEVTOOLS_REPLAY_REQUEST,
   isJourneyDevtoolsBridgeEnvelope
@@ -15,22 +16,6 @@ type WindowWithBridgeFlag = Window & {
 type CachedJourneyMachine = {
   register: Extract<ContentToBackgroundMessage["envelope"], { kind: "register" }> | null;
   snapshot: Extract<ContentToBackgroundMessage["envelope"], { kind: "snapshot" }> | null;
-};
-
-const resolveWindowTargetOrigin = (): string =>
-  window.location.origin === "null" ? "*" : window.location.origin;
-
-const isExpectedWindowOrigin = (origin: string): boolean => {
-  if (origin.length === 0) {
-    return false;
-  }
-
-  const expected = window.location.origin;
-  if (expected === "null") {
-    return origin === "null";
-  }
-
-  return origin === expected;
 };
 
 const WINDOW_TARGET_ORIGIN = resolveWindowTargetOrigin();

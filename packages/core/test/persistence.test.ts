@@ -1691,6 +1691,9 @@ describe("persistence", () => {
       }
     });
 
-    expect(controller.inspectPersistedState().storedValue).toBe("[object Object]");
+    expect(controller.inspectPersistedState().storedValue).toEqual({
+      value: "stored",
+      self: "[Circular]"
+    });
   });
 });

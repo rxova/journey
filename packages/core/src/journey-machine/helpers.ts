@@ -1,3 +1,11 @@
+import { withAbortSignal, withTimeout } from "@rxova/journey-common/async";
+import {
+  errorInDevelopment,
+  isDevelopmentEnvironment,
+  warnInDevelopment
+} from "@rxova/journey-common/dev";
+import { isPlainObject, isPromiseLike } from "@rxova/journey-common/predicates";
+
 import type {
   JourneyAsyncState,
   JourneyEvent,
@@ -16,6 +24,16 @@ import type {
   JourneyTransitionArgs
 } from "../types";
 
+export {
+  errorInDevelopment,
+  isDevelopmentEnvironment,
+  isPlainObject,
+  isPromiseLike,
+  warnInDevelopment,
+  withAbortSignal,
+  withTimeout
+};
+
 export const assertStepExists = <TStepId extends string>(
   steps: Record<TStepId, unknown>,
   stepId: TStepId,
@@ -25,12 +43,6 @@ export const assertStepExists = <TStepId extends string>(
     throw new Error(message);
   }
 };
-
-export const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" &&
-  value !== null &&
-  !Array.isArray(value) &&
-  (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
 
 const cloneSerializableValue = <T extends JourneyJsonValue>(value: T): T => {
   if (Array.isArray(value)) {
@@ -256,12 +268,6 @@ export const appendVisited = <TStepId extends string>(
   [current]: true
 });
 
-export const isPromiseLike = <T>(value: T | PromiseLike<T>): value is PromiseLike<T> =>
-  typeof value === "object" &&
-  value !== null &&
-  "then" in value &&
-  typeof (value as { then: unknown }).then === "function";
-
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value);
 
@@ -288,106 +294,6 @@ export class JourneyDisposedError extends Error {
     this.operation = operation;
   }
 }
-
-type DiagnosticGlobal = typeof globalThis & {
-  __DEV__?: unknown;
-  process?: {
-    env?: {
-      NODE_ENV?: string;
-    };
-  };
-};
-
-export const isDevelopmentEnvironment = (): boolean => {
-  const diagnosticGlobal = globalThis as DiagnosticGlobal;
-  if (typeof diagnosticGlobal.__DEV__ === "boolean") {
-    return diagnosticGlobal.__DEV__;
-  }
-
-  const nodeEnv = diagnosticGlobal.process?.env?.NODE_ENV;
-  return nodeEnv === undefined || nodeEnv === "development";
-};
-
-export const warnInDevelopment = (message: string, detail?: unknown) => {
-  if (!isDevelopmentEnvironment() || typeof console === "undefined") {
-    return;
-  }
-
-  if (detail === undefined) {
-    console.warn(message);
-    return;
-  }
-
-  console.warn(message, detail);
-};
-
-export const errorInDevelopment = (message: string, detail?: unknown) => {
-  if (!isDevelopmentEnvironment() || typeof console === "undefined") {
-    return;
-  }
-
-  if (detail === undefined) {
-    console.error(message);
-    return;
-  }
-
-  console.error(message, detail);
-};
-
-export const withTimeout = async <T>(
-  promise: PromiseLike<T>,
-  timeoutMs: number | undefined,
-  buildError: () => Error
-): Promise<T> => {
-  if (!isFiniteNumber(timeoutMs) || timeoutMs <= 0) {
-    return await promise;
-  }
-
-  return await new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(buildError());
-    }, timeoutMs);
-
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error) => {
-        clearTimeout(timer);
-        reject(error);
-      }
-    );
-  });
-};
-
-export const withAbortSignal = async <T>(
-  promise: PromiseLike<T>,
-  signal: AbortSignal
-): Promise<T> => {
-  if (signal.aborted) {
-    throw signal.reason;
-  }
-
-  return await new Promise<T>((resolve, reject) => {
-    const onAbort = () => {
-      signal.removeEventListener("abort", onAbort);
-      reject(signal.reason);
-    };
-
-    signal.addEventListener("abort", onAbort, { once: true });
-    promise.then(
-      (value) => {
-        signal.removeEventListener("abort", onAbort);
-        resolve(value);
-      },
-      (error) => {
-        signal.removeEventListener("abort", onAbort);
-        reject(error);
-      }
-    );
-  });
-};
 
 export const buildIdleStepAsyncState = (): JourneyStepAsyncState => ({
   phase: "idle",

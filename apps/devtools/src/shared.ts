@@ -1,3 +1,5 @@
+import { isRecord } from "@rxova/journey-common/predicates";
+import { serializeTransportError as serializeTransportErrorCommon } from "@rxova/journey-common/serialization";
 import {
   JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
   JOURNEY_DEVTOOLS_CHANNEL,
@@ -66,9 +68,6 @@ export type BackgroundToPanelMessage =
       type: "panel-bridge-envelope";
       envelope: JourneyDevtoolsBridgeEnvelope;
     };
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
 
 const isPanelWarningCode = (value: unknown): value is PanelWarningCode =>
   value === "injection-missing-entry" ||
@@ -185,34 +184,5 @@ export const createTransportErrorEnvelope = (
     timestamp: Date.now()
   }) as JourneyDevtoolsBridgeOperationErrorEnvelope;
 
-export const serializeTransportError = (error: unknown): JourneyDevtoolsSerializedError => {
-  if (error instanceof Error) {
-    return {
-      name: error.name,
-      message: error.message,
-      stack: typeof error.stack === "string" ? error.stack : null,
-      cause: null
-    };
-  }
-
-  if (isRecord(error)) {
-    const message = typeof error.message === "string" ? error.message : null;
-    const name = typeof error.name === "string" ? error.name : null;
-    const stack = typeof error.stack === "string" ? error.stack : null;
-    const cause = "cause" in error ? (error.cause ?? null) : null;
-
-    return {
-      name,
-      message: message ?? "Unknown transport error",
-      stack,
-      cause
-    };
-  }
-
-  return {
-    name: null,
-    message: typeof error === "string" ? error : "Unknown transport error",
-    stack: null,
-    cause: null
-  };
-};
+export const serializeTransportError = (error: unknown): JourneyDevtoolsSerializedError =>
+  serializeTransportErrorCommon(error);

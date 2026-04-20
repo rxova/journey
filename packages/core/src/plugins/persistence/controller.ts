@@ -11,25 +11,16 @@ import type {
   JourneySnapshotStateBase,
   JourneyStatus
 } from "../../types/journey.types";
+import { isPlainObject, isRecord } from "@rxova/journey-common/predicates";
+import { cloneForTransport } from "@rxova/journey-common/serialization";
+
 import {
   assertSerializableContext,
   buildInitialAsyncState,
   buildSnapshot,
   buildVisitedFromTimeline,
-  isPlainObject,
   warnInDevelopment
 } from "../../journey-machine/helpers";
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
-
-const cloneForTransport = (value: unknown): unknown => {
-  try {
-    return JSON.parse(JSON.stringify(value)) as unknown;
-  } catch {
-    return String(value);
-  }
-};
 
 const isStatusValue = (value: unknown): value is JourneyStatus =>
   value === "idled" || value === "running" || value === "completed" || value === "terminated";
