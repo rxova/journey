@@ -39,7 +39,7 @@
     "format": "prettier . --write --cache --cache-location node_modules/.cache/prettier/.prettiercache",
     "format:check": "prettier . --check --cache --cache-location node_modules/.cache/prettier/.prettiercache",
     "prepare": "husky",
-    "test": "vitest run --coverage",
+    "test": "vitest run --coverage --pool=threads",
     "test:watch": "vitest",
     "size": "turbo run size",
     "check:exports": "turbo run check:exports --filter=\"./packages/*\"",

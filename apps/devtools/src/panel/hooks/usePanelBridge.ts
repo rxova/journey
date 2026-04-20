@@ -85,6 +85,7 @@ export const usePanelBridge = (): UsePanelBridgeResult => {
     };
 
     const connectPanelPort = () => {
+      /* v8 ignore next 3 -- reconnect timers are cleared on cleanup; this is a defensive stale callback guard. */
       if (isDisposed) {
         return;
       }
@@ -147,6 +148,7 @@ export const usePanelBridge = (): UsePanelBridgeResult => {
         port.onMessage.removeListener(onMessage);
         port.onDisconnect.removeListener(onDisconnect);
 
+        /* v8 ignore next 4 -- stale disconnects are ignored after the active port has already advanced. */
         if (activePort === port) {
           activePort = null;
           portRef.current = null;

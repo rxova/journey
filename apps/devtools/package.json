@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run",
+    "test": "pnpm --workspace-root vitest run apps/devtools/test",
+    "coverage": "JOURNEY_COVERAGE_INCLUDE=apps/devtools/src/**/*.ts,apps/devtools/src/**/*.tsx pnpm --workspace-root vitest run apps/devtools/test --coverage --coverage.reporter=text-summary",
     "test:browser": "node -e \"console.log('Browser integration tests are temporarily disabled.')\""
   },
   "dependencies": {

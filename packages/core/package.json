@@ -98,7 +98,7 @@
   "scripts": {
     "build": "pnpm run clean && node --import tsx ./scripts/build.ts && tsc -p tsconfig.build.json && node --import tsx ../../scripts/copy-types.ts dist",
     "clean": "node --import tsx ../../scripts/clean-paths.ts dist tsconfig.build.tsbuildinfo",
-    "coverage": "pnpm --workspace-root vitest run --coverage --coverage.include=packages/core/src/** --coverage.reporter=text-summary",
+    "coverage": "JOURNEY_COVERAGE_INCLUDE=packages/core/src/** pnpm --workspace-root vitest run packages/core/test --coverage --coverage.reporter=text-summary",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "check:exports": "publint --strict",
     "attw": "attw --pack .",

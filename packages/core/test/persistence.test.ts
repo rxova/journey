@@ -1628,4 +1628,69 @@ describe("persistence", () => {
       }
     });
   });
+
+  it("coerces legacy current fields and undefined persisted context values", () => {
+    const storage: JourneyStorage = {
+      getItem: vi.fn(() => "legacy"),
+      setItem: vi.fn(),
+      removeItem: vi.fn()
+    };
+
+    const controller = createPersistenceController({
+      initial: "start" as StepId,
+      context: { count: 7 },
+      steps: {
+        start: {},
+        details: {},
+        review: {}
+      },
+      options: {
+        key: "journey:legacy-current",
+        storage,
+        deserialize: () => ({
+          version: 1,
+          snapshot: {
+            current: "details",
+            timeline: ["start", "details"],
+            context: { count: undefined },
+            visited: ["start", "details"]
+          }
+        })
+      }
+    });
+
+    const hydrated = controller.hydrateSnapshot();
+    expect(hydrated.currentStepId).toBe("start");
+    expect(hydrated.context).toEqual({ count: 7 });
+    expect((controller.inspectPersistedState().lastError as Error).message).toContain(
+      "JSON-serializable"
+    );
+  });
+
+  it("inspects custom-deserialized circular persisted state safely", () => {
+    const circular: Record<string, unknown> = { value: "stored" };
+    circular.self = circular;
+    const storage: JourneyStorage = {
+      getItem: vi.fn(() => "circular"),
+      setItem: vi.fn(),
+      removeItem: vi.fn()
+    };
+
+    const controller = createPersistenceController({
+      initial: "start" as StepId,
+      context: { count: 0 },
+      steps: {
+        start: {},
+        details: {},
+        review: {}
+      },
+      options: {
+        key: "journey:circular-inspect",
+        storage,
+        deserialize: () => circular
+      }
+    });
+
+    expect(controller.inspectPersistedState().storedValue).toBe("[object Object]");
+  });
 });

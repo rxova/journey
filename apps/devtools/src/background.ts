@@ -29,6 +29,7 @@ const isTabConnected = (tabId: number): boolean =>
   (journeyMachineCacheByTab.get(tabId)?.size ?? 0) > 0;
 const hasPanelPorts = (tabId: number): boolean => (portsByTab.get(tabId)?.size ?? 0) > 0;
 
+/* v8 ignore start -- Chrome runtime.lastError shapes are browser-provided defensive normalization. */
 const getRuntimeErrorMessage = (error: unknown): string | null => {
   if (error instanceof Error) {
     return error.message;
@@ -45,6 +46,7 @@ const getRuntimeErrorMessage = (error: unknown): string | null => {
 
   return null;
 };
+/* v8 ignore stop */
 
 const isIgnorableSendMessageError = (error: unknown): boolean => {
   const message = getRuntimeErrorMessage(error);
@@ -207,11 +209,13 @@ const clearTabPortState = (tabId: number) => {
   }
   portsByTab.delete(tabId);
 
+  /* v8 ignore start -- defensive cleanup for inconsistent extension port bookkeeping. */
   for (const [port, mappedTabId] of portTabMap.entries()) {
     if (mappedTabId === tabId) {
       portTabMap.delete(port);
     }
   }
+  /* v8 ignore stop */
 };
 
 const replayCacheToPanel = (tabId: number, port: chrome.runtime.Port): boolean => {

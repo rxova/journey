@@ -311,6 +311,81 @@ describe("panel state reducer and selectors", () => {
     expect(selectDisplayedSnapshot(machine)?.currentStepId).toBe("review");
   });
 
+  it("leaves state unchanged for missing-machine reducer actions", () => {
+    const state = createInitialPanelState();
+
+    expect(panelReducer(state, { type: "select-machine", machineId: "missing" })).toBe(state);
+    expect(
+      panelReducer(state, {
+        type: "set-follow-latest",
+        machineId: "missing",
+        followLatest: false
+      })
+    ).toBe(state);
+    expect(
+      panelReducer(state, {
+        type: "select-timeline-entry",
+        machineId: "missing",
+        index: 1
+      })
+    ).toBe(state);
+    expect(
+      panelReducer(state, {
+        type: "prune-timeline",
+        machineId: "missing",
+        keep: 1
+      })
+    ).toBe(state);
+    expect(
+      panelReducer(state, {
+        type: "queue-command",
+        machineId: "missing",
+        requestId: "req-1",
+        invocation: { operationId: "core.goToNextStep" },
+        timestamp: 1
+      })
+    ).toBe(state);
+  });
+
+  it("handles reducer branches for display limit, follow latest, and pruning no-ops", () => {
+    let state = createInitialPanelState();
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: createRegisterEnvelope("machine-1", 1000, "start")
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: createSnapshotEnvelope("machine-1", 1001, "review")
+    });
+
+    state = panelReducer(state, { type: "set-display-limit", limit: 25 });
+    expect(state.displayLimit).toBe(25);
+
+    state = panelReducer(state, {
+      type: "select-timeline-entry",
+      machineId: "machine-1",
+      index: -10
+    });
+    expect(state.machines["machine-1"]?.selectedTimelineIndex).toBe(0);
+    expect(state.machines["machine-1"]?.followLatest).toBe(false);
+
+    state = panelReducer(state, {
+      type: "set-follow-latest",
+      machineId: "machine-1",
+      followLatest: true
+    });
+    expect(state.machines["machine-1"]?.selectedTimelineIndex).toBe(1);
+
+    const beforeNullPrune = state;
+    expect(
+      panelReducer(state, {
+        type: "prune-timeline",
+        machineId: "machine-1",
+        keep: null
+      })
+    ).toBe(beforeNullPrune);
+  });
+
   it("computes diff against the snapshot before an empty intermediate snapshot for operation results", () => {
     const start = createSnapshot("start", { count: 0 });
     const review = createSnapshot("review", { count: 1 });
@@ -389,6 +464,63 @@ describe("panel timeline helpers", () => {
       mutationsEnabled: true,
       features: []
     });
+
+    expect(
+      normalizeMachineMeta({
+        machineId: "machine-2",
+        label: "Machine 2",
+        appName: null,
+        features: undefined,
+        mutationsEnabled: false
+      } as never)
+    ).toMatchObject({
+      machineId: "machine-2",
+      mutationsEnabled: false,
+      features: []
+    });
+  });
+
+  it("covers timeline helper default sequence and optional result metadata branches", () => {
+    const machine = {
+      ...createMachine(),
+      timelineSequence: undefined
+    } as unknown as JourneyPanelMachineState;
+
+    const queued = buildQueuedTimelineEntry(
+      machine,
+      "machine-1",
+      "req-queued",
+      { operationId: "core.goToNextStep" },
+      1000
+    );
+    expect(queued.id).toBe("machine-1-timeline-queuedOperation-1000-1");
+
+    const snapshotResult = buildTimelineEntry(machine, {
+      channel: JOURNEY_DEVTOOLS_CHANNEL,
+      version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+      source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
+      kind: "operationResult",
+      machineId: "machine-1",
+      timestamp: 1001,
+      requestId: "req-result",
+      operationId: "core.goToNextStep",
+      result: {
+        kind: "snapshot",
+        snapshot: createSnapshot("review")
+      }
+    });
+    expect(snapshotResult.meta).toMatchObject({
+      machineId: "machine-1",
+      operationId: "core.goToNextStep"
+    });
+    expect(snapshotResult.meta).not.toHaveProperty("transitioned");
+    expect(snapshotResult.meta).not.toHaveProperty("transitionId");
+
+    const appended = appendTimelineEntry(machine, {
+      ...snapshotResult,
+      id: "appended"
+    });
+    expect(appended.selectedTimelineIndex).toBe(0);
   });
 
   it("applies register and snapshot envelopes and can suppress operation-result snapshot replacement", () => {
@@ -416,6 +548,25 @@ describe("panel timeline helpers", () => {
       { applyOperationResultSnapshot: false }
     );
     expect(suppressed.snapshot.currentStepId).toBe("review");
+
+    const dataResult = applyMachineUpdateForEnvelope(suppressed, {
+      channel: JOURNEY_DEVTOOLS_CHANNEL,
+      version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+      source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
+      kind: "operationResult",
+      machineId: "machine-1",
+      timestamp: 1003,
+      requestId: "req-data",
+      operationId: "custom.inspect",
+      result: { kind: "data", data: { ok: true } }
+    });
+    expect(dataResult.snapshot.currentStepId).toBe("review");
+
+    const observed = applyMachineUpdateForEnvelope(
+      dataResult,
+      createObservationEnvelope("machine-1", 1004, "journey.start")
+    );
+    expect(observed).toBe(dataResult);
   });
 
   it("builds queued, observation, and operation timeline entries with the expected metadata", () => {
@@ -434,6 +585,12 @@ describe("panel timeline helpers", () => {
     expect(observed.kind).toBe("event");
     expect(observed.label).toBe("EVENT/x");
 
+    const observedWithoutType = buildTimelineEntry(machine, {
+      ...createObservationEnvelope("machine-1", 1001, "x"),
+      event: {} as never
+    });
+    expect(observedWithoutType.label).toBe("EVENT/event");
+
     const pendingMachine = {
       ...machine,
       pendingCommandsByRequestId: {
@@ -451,6 +608,26 @@ describe("panel timeline helpers", () => {
     );
     expect(result.invocation).toEqual({ operationId: "core.goToNextStep" });
     expect(result.meta.transitioned).toBe(true);
+
+    const dataResult = buildTimelineEntry(pendingMachine, {
+      channel: JOURNEY_DEVTOOLS_CHANNEL,
+      version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+      source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
+      kind: "operationResult",
+      machineId: "machine-1",
+      timestamp: 1003,
+      requestId: "req-missing",
+      operationId: "custom.inspect",
+      result: { kind: "data", data: { ok: true } }
+    });
+    expect(dataResult.snapshot).toBeNull();
+    expect(dataResult.invocation).toBeNull();
+
+    const errorWithoutPending = buildTimelineEntry(
+      machine,
+      createOperationErrorEnvelope("machine-1", "missing", "core.goToNextStep", 1004)
+    );
+    expect(errorWithoutPending.invocation).toBeNull();
   });
 
   it("appends, replaces, and prunes timeline entries while maintaining selection", () => {
@@ -543,6 +720,21 @@ describe("panel timeline helpers", () => {
     );
     expect(pruned.timelineEntries).toHaveLength(3);
     expect(pruned.selectedTimelineIndex).toBe(0);
+
+    expect(pruneTimelineEntries(pruned, 99)).toBe(pruned);
+
+    const followLatestPruned = pruneTimelineEntries(
+      {
+        ...appendedOnMiss,
+        followLatest: true,
+        selectedTimelineIndex: 0
+      },
+      2
+    );
+    expect(followLatestPruned.selectedTimelineIndex).toBe(1);
+
+    const emptyPruned = pruneTimelineEntries(appendedOnMiss, -1);
+    expect(emptyPruned.timelineEntries).toHaveLength(0);
   });
 
   it("clears pending commands and resolves snapshots by walking backward", () => {
@@ -598,6 +790,8 @@ describe("panel timeline helpers", () => {
 
     expect(resolveSnapshotAtIndex(entries, 2)?.currentStepId).toBe("review");
     expect(resolveSnapshotAtIndex(entries, 0)).toBeNull();
+    expect(resolveSnapshotAtIndex(entries, -1)).toBeNull();
+    expect(resolveSnapshotAtIndex(entries, 99)?.currentStepId).toBe("review");
   });
 });
 

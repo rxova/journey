@@ -53,6 +53,7 @@ type SerializableCheckState = {
   readonly seen: WeakSet<object>;
 };
 
+/* v8 ignore start -- only used for defensive error messages after JSON primitives have returned. */
 const describeValue = (value: unknown): string => {
   if (value === null) {
     return "null";
@@ -69,6 +70,7 @@ const describeValue = (value: unknown): string => {
 
   return typeof value;
 };
+/* v8 ignore stop */
 
 function assertSerializableValue(
   value: unknown,

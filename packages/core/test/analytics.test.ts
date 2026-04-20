@@ -327,4 +327,122 @@ describe("analytics plugin", () => {
     expect(result.error).toBeInstanceOf(Error);
     expect(track).not.toHaveBeenCalled();
   });
+
+  it("covers optional analytics envelope branches across unlabeled events", async () => {
+    const trackWithoutMachineId = vi.fn();
+    const unlabeledJourney = createJourney();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (unlabeledJourney.transitions as any).start.goToNextStep = [{ to: "review" }];
+    const withoutMachineId = createJourneyMachine(unlabeledJourney, {
+      plugins: [
+        createAnalyticsPlugin({
+          track: trackWithoutMachineId
+        })
+      ] as const
+    });
+
+    await withoutMachineId.startJourney();
+    await withoutMachineId.goToNextStep();
+    await withoutMachineId.completeJourney({ reason: "done" });
+
+    const withoutMachineIdEvents = trackWithoutMachineId.mock.calls.map(([event]) => event);
+    expect(withoutMachineIdEvents.every((event) => event.machineId === undefined)).toBe(true);
+    expect(findTracked(trackWithoutMachineId, "transition_succeeded")?.payload).not.toHaveProperty(
+      "label"
+    );
+
+    const trackWithMachineId = vi.fn();
+    const withMachineId = createJourneyMachine(createJourney({ reviewMeta: undefined }), {
+      plugins: [
+        createAnalyticsPlugin({
+          track: trackWithMachineId,
+          machineId: "checkout"
+        })
+      ] as const
+    });
+
+    await withMachineId.startJourney();
+    await withMachineId.goToNextStep();
+    await withMachineId.goToPreviousStep();
+    await withMachineId.goToLastVisitedStep();
+    await withMachineId.terminateJourney({ reason: "abandoned" });
+
+    expect(findTracked(trackWithMachineId, "navigation_previous")?.machineId).toBe("checkout");
+    expect(findTracked(trackWithMachineId, "navigation_last_visited")?.machineId).toBe("checkout");
+    expect(findTracked(trackWithMachineId, "journey_terminated")?.machineId).toBe("checkout");
+  });
+
+  it("handles analytics lifecycle events when timing state has not been initialized", () => {
+    const track = vi.fn();
+    let listener:
+      | ((event: {
+          type: string;
+          timestamp: number;
+          stepId?: StepId;
+          from?: StepId;
+          eventType?: string;
+          transitionId?: string;
+          error?: unknown;
+        }) => void)
+      | undefined;
+    const plugin = createAnalyticsPlugin<Context, StepId>({
+      track,
+      machineId: "direct"
+    });
+    const hooks = plugin.setup();
+    const extension = hooks.augmentMachine?.({
+      machine: {
+        subscribeEvent: (nextListener: typeof listener) => {
+          listener = nextListener;
+          return () => undefined;
+        },
+        getSnapshot: () => ({
+          context: {
+            count: 0,
+            account: {
+              id: "user-1",
+              secret: "do-not-track"
+            }
+          }
+        }),
+        getStepMeta: () => undefined
+      },
+      journey: createJourney(),
+      resolvedJourney: {} as never
+    } as never) as {
+      trackAnalyticsEvent: (name: string, payload?: Record<string, unknown>) => unknown;
+    };
+
+    listener?.({
+      type: "step.exit",
+      timestamp: 1,
+      stepId: "start"
+    });
+    listener?.({
+      type: "journey.completed",
+      timestamp: 2,
+      stepId: "review"
+    });
+    listener?.({
+      type: "journey.terminated",
+      timestamp: 3,
+      stepId: "review"
+    });
+    listener?.({
+      type: "transition.error",
+      timestamp: 4,
+      from: "start",
+      eventType: "goToNextStep",
+      transitionId: "t-direct",
+      error: new Error("direct")
+    });
+
+    const custom = extension.trackAnalyticsEvent("direct_custom", { ok: true });
+
+    expect(custom).toMatchObject({ name: "direct_custom", machineId: "direct" });
+    expect(findTracked(track, "step_exited")?.payload).not.toHaveProperty("dwellMs");
+    expect(findTracked(track, "journey_completed")?.payload).not.toHaveProperty("durationMs");
+    expect(findTracked(track, "journey_terminated")?.payload).not.toHaveProperty("durationMs");
+    expect(findTracked(track, "transition_failed")?.payload).not.toHaveProperty("label");
+  });
 });
