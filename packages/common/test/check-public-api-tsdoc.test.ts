@@ -12,7 +12,7 @@ import {
   parseTsConfig,
   resolveApiTSDocSources,
   toRepoPath
-} from "../../../scripts/check-public-api-tsdoc";
+} from "../tooling/check-public-api-tsdoc";
 
 /**
  * Each case that calls into the checker builds a real TypeScript program, which

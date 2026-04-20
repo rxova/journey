@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { run } from "../../../scripts/create-package-changeset";
+import { run } from "../tooling/create-package-changeset";
 
 const setupRepo = async () => {
   const root = await mkdtemp(join(tmpdir(), "create-package-changeset-"));

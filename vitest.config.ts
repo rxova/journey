@@ -4,7 +4,6 @@ import { defineConfig } from "vitest/config";
 const coverageInclude = process.env.JOURNEY_COVERAGE_INCLUDE?.split(",") ?? [
   "packages/*/src/**/*.ts",
   "packages/*/src/**/*.tsx",
-  "packages/common/tooling/**/*.ts",
   "apps/devtools/src/**/*.ts",
   "apps/devtools/src/**/*.tsx"
 ];

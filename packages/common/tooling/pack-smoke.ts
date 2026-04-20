@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { assertIncludes, getExportEntries } from "./pack-smoke-helpers";
 
-const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
+const repoRoot = resolve(fileURLToPath(new URL("../../..", import.meta.url)));
 const packagesDir = join(repoRoot, "packages");
 const packDir = mkdtempSync(join(tmpdir(), "rxova-journey-pack-"));
 

@@ -19,13 +19,13 @@
   },
   "scripts": {
     "build": "turbo run build",
-    "clean": "turbo run clean && node --import tsx ./scripts/clean-paths.ts coverage",
-    "changeset:pkg": "node --import tsx ./scripts/create-package-changeset.ts",
-    "version:major:check": "node --import tsx ./scripts/check-package-major-versions.ts",
-    "changeset:version": "node --import tsx ./scripts/changeset-version.ts && pnpm run docs:release-notes:sync",
-    "docs:release-notes:sync": "node --import tsx ./scripts/sync-doc-release-notes.ts",
-    "docs:release-notes:check": "node --import tsx ./scripts/sync-doc-release-notes.ts --check",
-    "docs:api:check": "pnpm exec tsc ./scripts/check-public-api-tsdoc.ts --outDir ./node_modules/.tmp-tsdoc-check --module NodeNext --moduleResolution NodeNext --target ES2020 --skipLibCheck && node ./node_modules/.tmp-tsdoc-check/check-public-api-tsdoc.js",
+    "clean": "turbo run clean && node --import tsx ./packages/common/tooling/clean-paths.ts coverage",
+    "changeset:pkg": "node --import tsx ./packages/common/tooling/create-package-changeset.ts",
+    "version:major:check": "node --import tsx ./packages/common/tooling/check-package-major-versions.ts",
+    "changeset:version": "node --import tsx ./packages/common/tooling/changeset-version.ts && pnpm run docs:release-notes:sync",
+    "docs:release-notes:sync": "node --import tsx ./packages/common/tooling/sync-doc-release-notes.ts",
+    "docs:release-notes:check": "node --import tsx ./packages/common/tooling/sync-doc-release-notes.ts --check",
+    "docs:api:check": "node --import tsx ./packages/common/tooling/check-public-api-tsdoc.ts",
     "typecheck": "turbo run typecheck typecheck:tests",
     "typecheck:tests": "tsc --noEmit -p tsconfig.test.json",
     "docs": "turbo run dev --filter=@rxova/journey-docs",
@@ -46,8 +46,8 @@
     "attw": "turbo run attw --filter=\"./packages/*\"",
     "audit:check": "pnpm audit --audit-level=high",
     "dedupe:check": "pnpm dedupe --check",
-    "pack:smoke": "node --import tsx ./scripts/pack-smoke.ts",
-    "verify": "node --import tsx ./scripts/verify.ts"
+    "pack:smoke": "node --import tsx ./packages/common/tooling/pack-smoke.ts",
+    "verify": "node --import tsx ./packages/common/tooling/verify.ts"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",

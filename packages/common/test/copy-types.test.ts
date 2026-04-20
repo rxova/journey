@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const scriptPath = resolve(__dirname, "../../../scripts/copy-types.ts");
+const scriptPath = resolve(__dirname, "../tooling/copy-types.ts");
 
 const execNode = (args: string[]) =>
   new Promise<void>((resolvePromise, rejectPromise) => {

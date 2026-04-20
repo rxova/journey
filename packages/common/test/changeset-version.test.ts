@@ -11,10 +11,10 @@ import {
   parseVersion,
   runChangesetVersion,
   syncRootVersion
-} from "../../../scripts/changeset-version";
+} from "../tooling/changeset-version";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const scriptPath = resolve(__dirname, "../../../scripts/changeset-version.ts");
+const scriptPath = resolve(__dirname, "../tooling/changeset-version.ts");
 const tsxLoaderPath = resolve(__dirname, "../../../node_modules/tsx/dist/loader.mjs");
 
 async function writePackageJson(root: string, relativeDir: string, name: string, version: string) {
