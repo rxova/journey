@@ -1,3 +1,4 @@
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
@@ -20,23 +21,55 @@ export type MissingTSDocItem = {
 type LogFn = (message: string) => void;
 type ExitFn = (code: number) => void;
 
-export const apiTSDocSources: readonly ApiTSDocSource[] = [
-  {
-    packageName: "@rxova/journey-core",
-    entry: "packages/core/src/index.ts",
-    tsconfig: "packages/core/tsconfig.json"
-  },
-  {
-    packageName: "@rxova/journey-react",
-    entry: "packages/react/src/index.ts",
-    tsconfig: "packages/react/tsconfig.json"
-  },
-  {
-    packageName: "@rxova/journey-devtools-bridge",
-    entry: "packages/devtools-bridge/src/index.ts",
-    tsconfig: "packages/devtools-bridge/tsconfig.json"
+type PackageManifest = {
+  name?: unknown;
+  private?: unknown;
+};
+
+export function resolveApiTSDocSources(repoRoot: string = defaultRepoRoot): ApiTSDocSource[] {
+  const packagesDir = path.join(repoRoot, "packages");
+  if (!existsSync(packagesDir)) {
+    return [];
   }
-];
+
+  return readdirSync(packagesDir, { withFileTypes: true })
+    .filter((dirent) => dirent.isDirectory())
+    .map((dirent) => dirent.name)
+    .sort()
+    .map((dirName): ApiTSDocSource | null => {
+      const packageJsonPath = path.join(packagesDir, dirName, "package.json");
+      if (!existsSync(packageJsonPath)) {
+        return null;
+      }
+
+      let manifest: PackageManifest;
+      try {
+        manifest = JSON.parse(readFileSync(packageJsonPath, "utf8")) as PackageManifest;
+      } catch {
+        return null;
+      }
+
+      if (manifest.private === true || typeof manifest.name !== "string") {
+        return null;
+      }
+
+      const entryRelative = path.posix.join("packages", dirName, "src/index.ts");
+      const tsconfigRelative = path.posix.join("packages", dirName, "tsconfig.json");
+      if (!existsSync(path.join(repoRoot, entryRelative))) {
+        return null;
+      }
+      if (!existsSync(path.join(repoRoot, tsconfigRelative))) {
+        return null;
+      }
+
+      return {
+        packageName: manifest.name,
+        entry: entryRelative,
+        tsconfig: tsconfigRelative
+      };
+    })
+    .filter((entry): entry is ApiTSDocSource => entry !== null);
+}
 
 export function toRepoPath(repoRoot: string, ...parts: string[]): string {
   return path.join(repoRoot, ...parts);
@@ -204,12 +237,13 @@ type CheckPublicApiTSDocOptions = {
 
 export function checkPublicApiTSDoc({
   repoRoot = defaultRepoRoot,
-  sources = apiTSDocSources,
+  sources,
   log = console.log,
   error = console.error,
   exit = (code) => process.exit(code)
 }: CheckPublicApiTSDocOptions = {}): { missing: MissingTSDocItem[] } {
-  const missing = sources.flatMap((entry) => collectMissingTSDocForSource(entry, repoRoot));
+  const resolvedSources = sources ?? resolveApiTSDocSources(repoRoot);
+  const missing = resolvedSources.flatMap((entry) => collectMissingTSDocForSource(entry, repoRoot));
 
   if (missing.length > 0) {
     error("Public API TSDoc summaries are missing. Add JSDoc/TSDoc to these exports:");
@@ -226,7 +260,7 @@ export function checkPublicApiTSDoc({
 
 export function main({
   repoRoot = defaultRepoRoot,
-  sources = apiTSDocSources,
+  sources,
   log = console.log,
   error = console.error,
   exit = (code) => process.exit(code)

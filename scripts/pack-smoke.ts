@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -52,11 +52,23 @@ type PackedPackageJson = {
   };
 };
 
+const isPrivatePackage = (packageJsonPath: string): boolean => {
+  try {
+    const manifest = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
+      private?: unknown;
+    };
+    return manifest.private === true;
+  } catch {
+    return false;
+  }
+};
+
 const run = (): void => {
   const packages = readdirSync(packagesDir, { withFileTypes: true })
     .filter((dirent) => dirent.isDirectory())
     .map((dirent) => dirent.name)
-    .filter((name) => existsSync(join(packagesDir, name, "package.json")));
+    .filter((name) => existsSync(join(packagesDir, name, "package.json")))
+    .filter((name) => !isPrivatePackage(join(packagesDir, name, "package.json")));
 
   try {
     for (const pkg of packages) {
