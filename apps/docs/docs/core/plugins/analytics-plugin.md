@@ -31,12 +31,7 @@ const machine = createJourneyMachine(journey, {
 The plugin augments the machine with:
 
 ```ts
-type JourneyAnalyticsMachineExtension = {
-  trackAnalyticsEvent: (
-    name: string,
-    payload?: Record<string, unknown>
-  ) => JourneyAnalyticsTrackedEvent;
-};
+machine.trackAnalyticsEvent(name, payload);
 ```
 
 That lets you send custom analytics markers alongside the built-in lifecycle events.

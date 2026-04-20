@@ -30,11 +30,7 @@ const paths = machine.getExecutionPaths({
 The plugin augments the machine with:
 
 ```ts
-type JourneyExecutionPathsMachineExtension<TStepId extends string, TEventType extends string> = {
-  getExecutionPaths: (
-    options?: JourneyExecutionPathOptions
-  ) => JourneyExecutionPathsResult<TStepId, TEventType>;
-};
+machine.getExecutionPaths(options);
 ```
 
 That result includes:

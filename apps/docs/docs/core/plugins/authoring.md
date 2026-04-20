@@ -51,15 +51,15 @@ The cast is safe: the hooks you return are structurally compatible with the expe
 
 ## Setup Context
 
-`setup` receives a `JourneyMachinePluginSetupContext` with everything available at construction time:
+`setup` receives a typed setup context with everything available at construction time:
 
-| Field                               | Type                        | Description                                                      |
-| ----------------------------------- | --------------------------- | ---------------------------------------------------------------- |
-| `journey`                           | `JourneyDefinition`         | The original definition as passed by the caller                  |
-| `resolvedJourney`                   | `JourneyResolvedDefinition` | Normalized definition with all transitions flattened to an array |
-| `options.requireExplicitCompletion` | `boolean`                   | Whether the machine requires an explicit `completeJourney` call  |
-| `options.defaultTimeoutMs`          | `number \| undefined`       | Machine-level async timeout                                      |
-| `buildInitialSnapshot`              | `() => JourneySnapshot`     | Returns a fresh initial snapshot (useful for reset hydration)    |
+| Field                               | Type                    | Description                                                      |
+| ----------------------------------- | ----------------------- | ---------------------------------------------------------------- |
+| `journey`                           | `JourneyDefinition`     | The original definition as passed by the caller                  |
+| `resolvedJourney`                   | resolved definition     | Normalized definition with all transitions flattened to an array |
+| `options.requireExplicitCompletion` | `boolean`               | Whether the machine requires an explicit `completeJourney` call  |
+| `options.defaultTimeoutMs`          | `number \| undefined`   | Machine-level async timeout                                      |
+| `buildInitialSnapshot`              | `() => JourneySnapshot` | Returns a fresh initial snapshot (useful for reset hydration)    |
 
 ## Available Hooks
 

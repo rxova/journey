@@ -34,11 +34,9 @@ const exported = machine.exportReplaySession({ pretty: true });
 The plugin augments the machine with:
 
 ```ts
-type JourneyReplayMachineExtension = {
-  getReplaySession: () => JourneyReplaySession;
-  clearReplaySession: () => void;
-  exportReplaySession: (options?: JourneyReplayExportOptions) => string;
-};
+machine.getReplaySession();
+machine.clearReplaySession();
+machine.exportReplaySession(options);
 ```
 
 `getReplaySession()` returns:

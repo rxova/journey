@@ -178,21 +178,7 @@ const dashboardStep = createStep("dashboard", {
 });
 ```
 
-In React, use `useJourneyStepLifecycle` when the callback needs access to component state or React context:
-
-```tsx
-const { useJourneyStepLifecycle } = createJourney(definition);
-
-function Dashboard() {
-  useJourneyStepLifecycle("dashboard", {
-    onEnter: ({ context }) => analytics.track("dashboard_entered"),
-    onLeave: ({ context }) => console.log("leaving dashboard")
-  });
-  // ...
-}
-```
-
-The hook always calls the latest version of your callbacks without re-subscribing.
+React-specific lifecycle hooks live in `@rxova/journey-react`. `@rxova/journey-core` only exposes the runtime callbacks and observation events shown above.
 
 ## Features
 

@@ -28,14 +28,12 @@ const machine = createJourneyMachine(journey, {
 
 ## What You Get
 
-The plugin augments the machine with:
+The plugin augments the machine with three methods:
 
 ```ts
-type JourneyAutosaveMachineExtension = {
-  getAutosaveState: () => JourneyAutosaveState;
-  flushAutosave: () => Promise<void>;
-  clearAutosave: () => void;
-};
+machine.getAutosaveState();
+machine.flushAutosave();
+machine.clearAutosave();
 ```
 
 `getAutosaveState()` returns:

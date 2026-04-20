@@ -36,7 +36,6 @@ import type {
   JourneyComputed,
   JourneySnapshot,
   JourneyMachine,
-  JourneyEvent,
   JourneyPayloadFor
 } from "@rxova/journey-core";
 ```
