@@ -1,4 +1,4 @@
-import { isRecord } from "../predicates/index.ts";
+import { isRecord } from "../predicates/index";
 
 export type SerializedError = {
   name: string | null;
@@ -60,23 +60,42 @@ export const serializeError = (error: unknown): SerializedError => {
     };
   }
 
-  if (isRecord(error)) {
-    const message = typeof error.message === "string" ? error.message : null;
-    const name = typeof error.name === "string" ? error.name : null;
-    const stack = typeof error.stack === "string" ? error.stack : null;
-    const cause = "cause" in error ? (error.cause ?? null) : null;
-    return {
-      name,
-      message: message ?? "Unknown error",
-      stack,
-      cause: cloneForTransport(cause)
-    };
-  }
-
   return {
     name: null,
     message: typeof error === "string" ? error : "Unknown error",
     stack: null,
     cause: cloneForTransport(error)
+  };
+};
+
+export const serializeTransportError = (error: unknown): SerializedError => {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: typeof error.stack === "string" ? error.stack : null,
+      cause: null
+    };
+  }
+
+  if (isRecord(error)) {
+    const message = typeof error.message === "string" ? error.message : null;
+    const name = typeof error.name === "string" ? error.name : null;
+    const stack = typeof error.stack === "string" ? error.stack : null;
+    const cause = "cause" in error ? (error.cause ?? null) : null;
+
+    return {
+      name,
+      message: message ?? "Unknown transport error",
+      stack,
+      cause
+    };
+  }
+
+  return {
+    name: null,
+    message: typeof error === "string" ? error : "Unknown transport error",
+    stack: null,
+    cause: null
   };
 };
