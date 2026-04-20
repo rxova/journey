@@ -15,7 +15,10 @@ import {
   type JourneyPanelStructuredDiff
 } from "./diff";
 
-type TimelineEnvelopeKind = Exclude<JourneyDevtoolsBridgeEnvelope["kind"], "unregister">;
+type TimelineEnvelopeKind =
+  | Exclude<JourneyDevtoolsBridgeEnvelope["kind"], "unregister">
+  | "queuedCommand"
+  | "queuedQuery";
 type NonUnregisterBridgeEnvelope = Exclude<JourneyDevtoolsBridgeEnvelope, { kind: "unregister" }>;
 type JourneyMachineUpdatersByEnvelopeKind = {
   [TKind in NonUnregisterBridgeEnvelope["kind"]]: (
@@ -36,6 +39,7 @@ export type JourneyPanelPendingCommand = {
   requestId: string;
   command: JourneyDevtoolsCommand;
   timestamp: number;
+  timelineEntryId: string;
 };
 
 export type JourneyPanelTimelineEntry = {
@@ -235,6 +239,38 @@ const buildExecutionPathsLabel = (
     ? "QUERY/getExecutionPaths"
     : `QUERY/${requestId}`;
 
+const buildQueuedTimelineEntry = (
+  machine: JourneyPanelMachineState,
+  machineId: string,
+  requestId: string,
+  command: JourneyDevtoolsCommand,
+  timestamp: number
+): JourneyPanelTimelineEntry => {
+  const nextSequence = (machine.timelineSequence ?? machine.timelineEntries.length) + 1;
+  const isQuery = command.type === "getExecutionPaths";
+  const label = isQuery ? "QUERY/getExecutionPaths" : `COMMAND/${command.type}`;
+
+  return {
+    id: buildEntryId(machineId, isQuery ? "queuedQuery" : "queuedCommand", timestamp, nextSequence),
+    timestamp,
+    kind: isQuery ? "query" : "command",
+    label,
+    requestId,
+    command,
+    envelopeKind: isQuery ? "queuedQuery" : "queuedCommand",
+    snapshot: null,
+    actionPayload: {
+      type: label,
+      machineId,
+      requestId,
+      command
+    },
+    meta: {
+      machineId
+    }
+  };
+};
+
 const buildTimelineEntry = (
   machine: JourneyPanelMachineState,
   envelope: Exclude<JourneyDevtoolsBridgeEnvelope, { kind: "unregister" }>
@@ -411,6 +447,25 @@ const appendTimelineEntry = (
     selectedTimelineIndex: machine.followLatest
       ? lastIndex
       : Math.min(boundedSelectedIndex, lastIndex)
+  };
+};
+
+const replaceTimelineEntry = (
+  machine: JourneyPanelMachineState,
+  entryId: string,
+  nextEntry: JourneyPanelTimelineEntry
+): JourneyPanelMachineState => {
+  const index = machine.timelineEntries.findIndex((entry) => entry.id === entryId);
+  if (index === -1) {
+    return appendTimelineEntry(machine, nextEntry);
+  }
+
+  const nextEntries = [...machine.timelineEntries];
+  nextEntries[index] = nextEntry;
+
+  return {
+    ...machine,
+    timelineEntries: nextEntries
   };
 };
 
@@ -595,18 +650,28 @@ export const panelReducer = (
       return state;
     }
 
+    const queuedEntry = buildQueuedTimelineEntry(
+      machine,
+      action.machineId,
+      action.requestId,
+      action.command,
+      action.timestamp
+    );
+    const machineWithEntry = appendTimelineEntry(machine, queuedEntry);
+
     return {
       ...state,
       machines: {
         ...state.machines,
         [action.machineId]: {
-          ...machine,
+          ...machineWithEntry,
           pendingCommandsByRequestId: {
-            ...machine.pendingCommandsByRequestId,
+            ...machineWithEntry.pendingCommandsByRequestId,
             [action.requestId]: {
               requestId: action.requestId,
               command: action.command,
-              timestamp: action.timestamp
+              timestamp: action.timestamp,
+              timelineEntryId: queuedEntry.id
             }
           }
         }
@@ -638,7 +703,26 @@ export const panelReducer = (
   const machineWithSnapshot = applyMachineUpdateForEnvelope(existingMachine, envelope);
 
   const timelineEntry = buildTimelineEntry(machineWithSnapshot, envelope);
-  const machineWithEntry = appendTimelineEntry(machineWithSnapshot, timelineEntry);
+  const pendingCommand =
+    "requestId" in envelope
+      ? machineWithSnapshot.pendingCommandsByRequestId[envelope.requestId]
+      : null;
+  const machineWithEntry =
+    envelope.kind === "commandResult" ||
+    envelope.kind === "commandError" ||
+    envelope.kind === "executionPathsResult"
+      ? replaceTimelineEntry(
+          machineWithSnapshot,
+          pendingCommand?.timelineEntryId ?? "",
+          pendingCommand
+            ? {
+                ...timelineEntry,
+                id: pendingCommand.timelineEntryId,
+                timestamp: pendingCommand.timestamp
+              }
+            : timelineEntry
+        )
+      : appendTimelineEntry(machineWithSnapshot, timelineEntry);
   const machineWithPendingCleanup =
     envelope.kind === "commandResult" ||
     envelope.kind === "commandError" ||

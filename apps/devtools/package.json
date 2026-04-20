@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@rxova/journey-devtools-bridge": "workspace:^",
+    "@tanstack/react-virtual": "^3.13.23",
+    "lucide-react": "^1.8.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },

@@ -37,8 +37,6 @@ const createRequestId = (): string =>
 const PANEL_RECONNECT_DELAY_MS = 600;
 const PANEL_STATUS_DISCONNECT_DELAY_MS = 250;
 const PANEL_CLEAR_MACHINES_DELAY_MS = 1200;
-const QUERY_COMMAND_TYPE = "getExecutionPaths";
-
 const getProtocolMismatchReason = (
   protocolVersion: JourneyDevtoolsProtocolVersion | undefined
 ): string | null => {
@@ -250,8 +248,6 @@ export const App = () => {
   const selectedDiff = React.useMemo(() => selectSelectedDiff(activeMachine), [activeMachine]);
   const isCommandChannelReady = state.connected && portRef.current !== null;
   const availableCommands = activeMachine?.meta.capabilities.commands ?? [];
-  const mutatingCommands = availableCommands.filter((command) => command !== QUERY_COMMAND_TYPE);
-  const persistenceCapability = activeMachine?.meta.capabilities.persistence ?? null;
   const protocolMismatchReason = getProtocolMismatchReason(activeMachine?.protocolVersion);
   const areCommandsDisabled = !isCommandChannelReady || protocolMismatchReason !== null;
   const commandDisabledReason = !isCommandChannelReady
@@ -294,59 +290,6 @@ export const App = () => {
 
       {activeMachine ? (
         <>
-          <SectionErrorBoundary section="Capabilities">
-            <section className="panel-card capability-card">
-              <h2>Capabilities</h2>
-              <div className="capability-badges">
-                <span
-                  className={
-                    activeMachine.meta.capabilities.observe
-                      ? "capability-badge is-active"
-                      : "capability-badge"
-                  }
-                >
-                  {activeMachine.meta.capabilities.observe ? "Observe" : "No Events"}
-                </span>
-                <span
-                  className={
-                    mutatingCommands.length > 0 ? "capability-badge is-active" : "capability-badge"
-                  }
-                >
-                  {mutatingCommands.length > 0
-                    ? `Commands ${mutatingCommands.length}`
-                    : "Commands Off"}
-                </span>
-                <span
-                  className={
-                    activeMachine.meta.capabilities.executionPaths
-                      ? "capability-badge is-active"
-                      : "capability-badge"
-                  }
-                >
-                  {activeMachine.meta.capabilities.executionPaths
-                    ? "Execution Paths"
-                    : "No Execution Paths"}
-                </span>
-                <span
-                  className={
-                    persistenceCapability ? "capability-badge is-active" : "capability-badge"
-                  }
-                >
-                  {persistenceCapability ? "Persistence" : "No Persistence Meta"}
-                </span>
-              </div>
-              <p className="muted capability-details">
-                {persistenceCapability
-                  ? `Persistence key: ${persistenceCapability.key ?? "unspecified"} · clearOnReset: ${
-                      persistenceCapability.clearOnReset === null
-                        ? "unspecified"
-                        : String(persistenceCapability.clearOnReset)
-                    }`
-                  : "The bridge did not receive persistence plugin metadata for this machine."}
-              </p>
-            </section>
-          </SectionErrorBoundary>
-
           <SectionErrorBoundary section="Timeline">
             <TimelineInspector
               entries={activeMachine.timelineEntries}
@@ -382,9 +325,10 @@ export const App = () => {
             />
           </SectionErrorBoundary>
 
-          <SectionErrorBoundary section="Commands">
+          <SectionErrorBoundary section="Controls">
             <CommandControls
               availableCommands={availableCommands}
+              snapshotStatus={activeMachine.snapshot.status}
               disabled={areCommandsDisabled}
               disabledReason={commandDisabledReason}
               onCommand={(command) => sendCommand(activeMachine.meta.machineId, command)}
