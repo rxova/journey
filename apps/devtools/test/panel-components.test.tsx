@@ -495,7 +495,7 @@ describe("panel components", () => {
     await clickAndFlush(getButton(view.container, "Prune to limit"));
     expect(onPrune).toHaveBeenCalledTimes(1);
 
-    await clickAndFlush(getButton(view.container, "State"));
+    await clickAndFlush(getButton(view.container, "Snapshot"));
     expect(view.container.textContent).toContain('"currentStepId": "review"');
 
     await clickAndFlush(getButton(view.container, "Diff"));
@@ -506,21 +506,17 @@ describe("panel components", () => {
   });
 
   it("auto-scrolls to the newest row while follow-latest is enabled", async () => {
-    const firstEntry = createTimelineEntry(0);
-    const secondEntry = {
-      ...createTimelineEntry(2),
-      label: "SNAPSHOT/review",
-      snapshot: {
-        ...snapshot,
-        currentStepId: "review",
-        history: { ...snapshot.history, index: 1 }
-      },
-      actionPayload: { type: "SNAPSHOT/review" }
-    };
+    const initialEntries = Array.from({ length: 20 }, (_, index) => createTimelineEntry(index));
+    const nextEntries = Array.from({ length: 80 }, (_, index) => createTimelineEntry(index));
+    const firstEntry = initialEntries[0];
+    const selectedEntry = nextEntries[nextEntries.length - 1];
+    if (!firstEntry || !selectedEntry) {
+      throw new Error("expected timeline entries");
+    }
 
     const view = await mount(
       <TimelineInspector
-        entries={[firstEntry]}
+        entries={initialEntries}
         selectedIndex={0}
         selectedEntry={firstEntry}
         displayedSnapshot={firstEntry.snapshot}
@@ -534,7 +530,7 @@ describe("panel components", () => {
       />
     );
 
-    const timelineList = view.container.querySelector(".timeline-list") as HTMLOListElement | null;
+    const timelineList = view.container.querySelector(".timeline-list") as HTMLDivElement | null;
     if (!timelineList) {
       throw new Error("timeline list not found");
     }
@@ -550,10 +546,10 @@ describe("panel components", () => {
 
     await view.rerender(
       <TimelineInspector
-        entries={[firstEntry, secondEntry]}
-        selectedIndex={1}
-        selectedEntry={secondEntry}
-        displayedSnapshot={secondEntry.snapshot}
+        entries={nextEntries}
+        selectedIndex={nextEntries.length - 1}
+        selectedEntry={selectedEntry}
+        displayedSnapshot={selectedEntry.snapshot}
         selectedDiff={diff}
         followLatest={true}
         displayLimit={null}
@@ -564,7 +560,7 @@ describe("panel components", () => {
       />
     );
 
-    expect(timelineList.scrollTop).toBe(1200);
+    expect(timelineList.scrollTop).toBeGreaterThan(0);
 
     await view.unmount();
   });
@@ -592,7 +588,7 @@ describe("panel components", () => {
       />
     );
 
-    const timelineList = view.container.querySelector(".timeline-list") as HTMLOListElement | null;
+    const timelineList = view.container.querySelector(".timeline-list") as HTMLDivElement | null;
     if (!timelineList) {
       throw new Error("timeline list not found");
     }
@@ -601,7 +597,7 @@ describe("panel components", () => {
       value: 320
     });
 
-    expect(view.container.querySelectorAll(".timeline-list li").length).toBeLessThan(200);
+    expect(view.container.querySelectorAll(".timeline-item").length).toBeLessThan(200);
     expect(
       Array.from(view.container.querySelectorAll(".timeline-label")).some(
         (entry) => entry.textContent?.trim() === "SNAPSHOT/199"
@@ -622,11 +618,8 @@ describe("panel components", () => {
     await view.unmount();
   });
 
-  it("falls back to resize listeners when ResizeObserver is unavailable", async () => {
+  it("renders and virtualizes when ResizeObserver is unavailable", async () => {
     const originalResizeObserver = globalThis.ResizeObserver;
-    const addEventListener = vi.spyOn(window, "addEventListener");
-    const removeEventListener = vi.spyOn(window, "removeEventListener");
-    // Simulate older browser contexts that only expose resize events.
     delete (globalThis as { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
 
     const firstEntry = createTimelineEntry(0);
@@ -646,43 +639,25 @@ describe("panel components", () => {
       />
     );
 
-    const timelineList = view.container.querySelector(".timeline-list") as HTMLOListElement | null;
+    const timelineList = view.container.querySelector(".timeline-list") as HTMLDivElement | null;
     if (!timelineList) {
       throw new Error("timeline list not found");
     }
     Object.defineProperty(timelineList, "clientHeight", {
       configurable: true,
-      value: 0
+      value: 320
     });
-    const firstRow = view.container.querySelector(".timeline-list li");
-    if (!firstRow) {
-      throw new Error("timeline row not found");
-    }
-    vi.spyOn(firstRow, "getBoundingClientRect").mockReturnValue({
-      x: 0,
-      y: 0,
-      top: 0,
-      left: 0,
-      bottom: 0,
-      right: 0,
-      width: 0,
-      height: 0,
-      toJSON: () => ({})
-    } as DOMRect);
 
-    await view.unmount();
-
-    expect(addEventListener).toHaveBeenCalledWith("resize", expect.any(Function));
-    expect(removeEventListener).toHaveBeenCalledWith("resize", expect.any(Function));
+    expect(view.container.textContent).toContain("Showing 1 / 1");
+    expect(view.container.querySelectorAll(".timeline-item").length).toBeGreaterThan(0);
 
     if (originalResizeObserver) {
       globalThis.ResizeObserver = originalResizeObserver;
     }
+    await view.unmount();
   });
 
-  it("uses ResizeObserver measurement when it is available", async () => {
-    const observed: Element[] = [];
-    const disconnect = vi.fn();
+  it("renders and virtualizes when ResizeObserver is available", async () => {
     const originalResizeObserver = globalThis.ResizeObserver;
     const clientHeightDescriptor = Object.getOwnPropertyDescriptor(
       HTMLElement.prototype,
@@ -696,41 +671,14 @@ describe("panel components", () => {
       }
     });
 
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
-      this: HTMLElement
-    ) {
-      return {
-        x: 0,
-        y: 0,
-        top: 0,
-        left: 0,
-        bottom: 42,
-        right: 100,
-        width: 100,
-        height: this.tagName === "LI" ? 42 : 0,
-        toJSON: () => ({})
-      } as DOMRect;
-    });
-
     globalThis.ResizeObserver = class {
-      constructor(private readonly callback: (...args: unknown[]) => void) {}
+      constructor() {}
 
-      observe(target: Element) {
-        observed.push(target);
-        this.callback(
-          [
-            {
-              target,
-              contentRect: target.getBoundingClientRect()
-            } as ResizeObserverEntry
-          ],
-          this as unknown as ResizeObserver
-        );
-      }
+      observe() {}
 
-      disconnect() {
-        disconnect();
-      }
+      unobserve() {}
+
+      disconnect() {}
     } as unknown as typeof ResizeObserver;
 
     const firstEntry = createTimelineEntry(0);
@@ -751,13 +699,10 @@ describe("panel components", () => {
       />
     );
 
-    expect(
-      observed.some((entry) => (entry as HTMLElement).classList?.contains("timeline-list"))
-    ).toBe(true);
-    expect(observed.some((entry) => entry.tagName === "LI")).toBe(true);
+    expect(view.container.textContent).toContain("Showing 2 / 2");
+    expect(view.container.querySelectorAll(".timeline-item").length).toBeGreaterThan(0);
 
     await view.unmount();
-    expect(disconnect).toHaveBeenCalled();
 
     if (clientHeightDescriptor) {
       Object.defineProperty(HTMLElement.prototype, "clientHeight", clientHeightDescriptor);
@@ -829,7 +774,7 @@ describe("panel components", () => {
 
     expect(view.container.textContent).toContain("No action selected.");
 
-    await clickAndFlush(getButton(view.container, "State"));
+    await clickAndFlush(getButton(view.container, "Snapshot"));
     expect(view.container.textContent).toContain("No state available for this timeline entry.");
 
     await view.unmount();
@@ -840,6 +785,7 @@ describe("panel components", () => {
     const view = await mount(
       <CommandControls
         availableCommands={allAvailableCommands}
+        snapshotStatus="running"
         onCommand={onCommand}
         disabled={false}
       />
@@ -898,23 +844,13 @@ describe("panel components", () => {
     );
     await clickAndFlush(getButton(view.container, "Send previous"));
 
-    await setInputValue(
-      view.container.querySelector('input[placeholder="maxDepth"]') as HTMLInputElement,
-      "0"
+    const sectionTitles = Array.from(view.container.querySelectorAll("h2")).map((node) =>
+      node.textContent?.trim()
     );
-    await clickAndFlush(getButton(view.container, "Query execution paths"));
-    expect(view.container.textContent).toContain("Max depth must be a positive integer.");
-
-    await setInputValue(
-      view.container.querySelector('input[placeholder="maxDepth"]') as HTMLInputElement,
-      "4"
-    );
-    await setInputValue(
-      view.container.querySelector('input[placeholder="maxPaths"]') as HTMLInputElement,
-      "12"
-    );
-    await clickAndFlush(getButton(view.container, "Query execution paths"));
-
+    expect(sectionTitles).toContain("Machine Commands");
+    expect(sectionTitles).toContain("Navigation Commands");
+    expect(sectionTitles).toContain("Events");
+    expect(sectionTitles).not.toContain("Commands");
     expect(onCommand).toHaveBeenCalledWith({ type: "goToNextStep" });
     expect(onCommand).toHaveBeenCalledWith({ type: "terminateJourney" });
     expect(onCommand).toHaveBeenCalledWith({ type: "completeJourney" });
@@ -929,23 +865,135 @@ describe("panel components", () => {
     expect(onCommand).toHaveBeenCalledWith({ type: "clearStepError", stepId: "details" });
     expect(onCommand).toHaveBeenCalledWith({ type: "goToPreviousStep" });
     expect(onCommand).toHaveBeenCalledWith({ type: "goToPreviousStep", steps: 10 });
-    expect(onCommand).toHaveBeenCalledWith({
-      type: "getExecutionPaths",
-      options: { maxDepth: 4, maxPaths: 12 }
-    });
 
     await view.rerender(
-      <CommandControls availableCommands={allAvailableCommands} onCommand={onCommand} disabled />
+      <CommandControls
+        availableCommands={allAvailableCommands}
+        snapshotStatus="running"
+        onCommand={onCommand}
+        disabled
+      />
     );
     expect(getButton(view.container, "goToNextStep").disabled).toBe(true);
 
     await view.unmount();
   });
 
+  it("limits machine commands by journey status", async () => {
+    const onCommand = vi.fn();
+    const withStart: JourneyDevtoolsMachineCapabilities["commands"] = [
+      "startJourney",
+      ...allAvailableCommands
+    ];
+    const view = await mount(
+      <CommandControls
+        availableCommands={withStart}
+        snapshotStatus="running"
+        onCommand={onCommand}
+        disabled={false}
+      />
+    );
+
+    expect(getButton(view.container, "startJourney").disabled).toBe(true);
+    expect(getButton(view.container, "terminateJourney").disabled).toBe(false);
+    expect(getButton(view.container, "completeJourney").disabled).toBe(false);
+    expect(getButton(view.container, "resetJourney").disabled).toBe(false);
+
+    await view.rerender(
+      <CommandControls
+        availableCommands={withStart}
+        snapshotStatus="terminated"
+        onCommand={onCommand}
+        disabled={false}
+      />
+    );
+
+    expect(getButton(view.container, "startJourney").disabled).toBe(true);
+    expect(getButton(view.container, "terminateJourney").disabled).toBe(true);
+    expect(getButton(view.container, "completeJourney").disabled).toBe(true);
+    expect(getButton(view.container, "resetJourney").disabled).toBe(false);
+    expect(view.container.textContent).not.toContain("goToNextStep");
+
+    await view.unmount();
+  });
+
+  it("collapses machine commands, events, and timeline sections", async () => {
+    const onCommand = vi.fn();
+    const withStart: JourneyDevtoolsMachineCapabilities["commands"] = [
+      "startJourney",
+      ...allAvailableCommands
+    ];
+    const commandsView = await mount(
+      <CommandControls
+        availableCommands={withStart}
+        snapshotStatus="idled"
+        onCommand={onCommand}
+        disabled={false}
+      />
+    );
+
+    expect(commandsView.container.textContent).toContain("startJourney");
+    expect(commandsView.container.textContent).toContain("Send custom event");
+
+    const machineToggle = commandsView.container.querySelector(
+      'button[aria-label="Collapse Machine Commands"]'
+    ) as HTMLButtonElement | null;
+    const eventsToggle = commandsView.container.querySelector(
+      'button[aria-label="Collapse Events"]'
+    ) as HTMLButtonElement | null;
+    if (!machineToggle || !eventsToggle) {
+      throw new Error("expected command section toggles");
+    }
+
+    await clickAndFlush(machineToggle);
+    expect(commandsView.container.textContent).not.toContain("startJourney");
+
+    await clickAndFlush(eventsToggle);
+    expect(commandsView.container.textContent).not.toContain("Send custom event");
+
+    await commandsView.unmount();
+
+    const firstEntry = createTimelineEntry(0);
+    const timelineView = await mount(
+      <TimelineInspector
+        entries={[firstEntry]}
+        selectedIndex={0}
+        selectedEntry={firstEntry}
+        displayedSnapshot={firstEntry.snapshot}
+        selectedDiff={diff}
+        followLatest={false}
+        displayLimit={null}
+        onSelectEntry={vi.fn()}
+        onFollowLatestChange={vi.fn()}
+        onDisplayLimitChange={vi.fn()}
+        onPrune={vi.fn()}
+      />
+    );
+
+    expect(timelineView.container.textContent).toContain("Follow latest");
+    const timelineToggle = timelineView.container.querySelector(
+      'button[aria-label="Collapse Timeline"]'
+    ) as HTMLButtonElement | null;
+    if (!timelineToggle) {
+      throw new Error("expected timeline toggle");
+    }
+
+    await clickAndFlush(timelineToggle);
+    expect(timelineView.container.textContent).not.toContain("Follow latest");
+    expect(timelineView.container.textContent).not.toContain("Action");
+
+    await timelineView.unmount();
+  });
+
   it("renders empty command controls state when no commands are exposed", async () => {
     const onCommand = vi.fn();
     const view = await mount(
-      <CommandControls availableCommands={[]} onCommand={onCommand} disabled={false} />
+      <CommandControls
+        availableCommands={[]}
+        snapshotStatus="idled"
+        onCommand={onCommand}
+        disabled={false}
+      />
     );
 
     expect(view.container.textContent).toContain("No remote actions are exposed for this machine.");

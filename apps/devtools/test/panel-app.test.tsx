@@ -1190,8 +1190,8 @@ describe("panel App", () => {
       (entry) => entry.textContent?.trim() === "goToNextStep"
     ) as HTMLButtonElement | undefined;
     expect(nextButton).toBeUndefined();
-    expect(container.textContent).toContain("Commands Off");
-    expect(container.textContent).toContain("Query execution paths");
+    expect(container.textContent).not.toContain("Commands Off");
+    expect(container.textContent).not.toContain("Query execution paths");
     expect(
       postedMessages.some((entry) => {
         if (typeof entry !== "object" || entry === null) {
@@ -1200,89 +1200,6 @@ describe("panel App", () => {
         return (entry as { type?: string }).type === "panel-command";
       })
     ).toBe(false);
-
-    await act(async () => {
-      root.unmount();
-    });
-  });
-
-  it("renders capability metadata variants for execution paths and persistence", async () => {
-    const onMessage = createListenerSet<[unknown]>();
-
-    const port = {
-      postMessage: vi.fn(),
-      disconnect: vi.fn(),
-      onMessage: {
-        addListener: onMessage.addListener,
-        removeListener: onMessage.removeListener
-      },
-      onDisconnect: {
-        addListener: vi.fn(),
-        removeListener: vi.fn()
-      }
-    } as unknown as chrome.runtime.Port;
-
-    vi.stubGlobal("chrome", {
-      runtime: {
-        connect: vi.fn(() => port)
-      },
-      devtools: {
-        inspectedWindow: {
-          tabId: 57
-        }
-      }
-    } as unknown as typeof chrome);
-
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const root = createRoot(container);
-
-    await act(async () => {
-      root.render(<App />);
-    });
-
-    await act(async () => {
-      onMessage.emit({ type: "panel-connected", connected: true });
-      onMessage.emit({
-        type: "panel-bridge-envelope",
-        envelope: createRegisterEnvelope("machine-persistence-unspecified", {
-          executionPaths: false,
-          persistence: {
-            key: null,
-            clearOnReset: null
-          }
-        })
-      });
-      onMessage.emit({
-        type: "panel-bridge-envelope",
-        envelope: createRegisterEnvelope("machine-persistence-configured", {
-          executionPaths: false,
-          persistence: {
-            key: "journey-cache",
-            clearOnReset: false
-          }
-        })
-      });
-    });
-
-    expect(container.textContent).toContain("No Execution Paths");
-    expect(container.textContent).toContain("Persistence");
-    expect(container.textContent).toContain(
-      "Persistence key: unspecified · clearOnReset: unspecified"
-    );
-
-    const machineSelect = container.querySelector("select") as HTMLSelectElement | null;
-    if (!machineSelect) {
-      throw new Error("machine selector not found");
-    }
-
-    const selectSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
-    await act(async () => {
-      selectSetter?.call(machineSelect, "machine-persistence-configured");
-      machineSelect.dispatchEvent(new Event("change", { bubbles: true }));
-    });
-
-    expect(container.textContent).toContain("Persistence key: journey-cache · clearOnReset: false");
 
     await act(async () => {
       root.unmount();
