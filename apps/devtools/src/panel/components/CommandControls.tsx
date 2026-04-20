@@ -10,6 +10,7 @@ import styles from "./commands/commandControls.module.css";
 import {
   buildInputValue,
   groupFeatureSections,
+  hasInvalidFieldValues,
   hasMissingRequiredFields,
   isEventsSection,
   isLifecycleOperationDisabled,
@@ -21,15 +22,50 @@ import { OperationSectionCard } from "./commands/OperationSectionCard";
 
 const getOperationFieldOptions = (
   operationId: string,
+  currentStepId: string,
+  mode: "linear" | "graph" | "headless" | undefined,
   stepIds: readonly string[],
-  eventTypes: readonly string[]
+  eventTypes: readonly string[],
+  eventTypesBySource: Record<string, readonly string[]> | undefined,
+  goToStepTargetsBySource: Record<string, readonly string[]> | undefined
 ): Partial<Record<string, readonly string[]>> | undefined => {
   switch (operationId) {
     case "core.goToStepById":
+      if (mode === "headless") {
+        return stepIds.length > 0 ? { stepId: stepIds } : undefined;
+      }
+      return {
+        stepId: [
+          ...(goToStepTargetsBySource?.[currentStepId] ?? []),
+          ...(goToStepTargetsBySource?.["*"] ?? [])
+        ].filter((stepId, index, allStepIds) => allStepIds.indexOf(stepId) === index)
+      };
+    case "core.forceStepTransition":
+      return {
+        stepId: stepIds.filter((stepId) => stepId !== currentStepId)
+      };
     case "core.clearStepError":
       return stepIds.length > 0 ? { stepId: stepIds } : undefined;
     case "core.sendEvent":
-      return eventTypes.length > 0 ? { type: eventTypes } : undefined;
+      if (mode === "headless") {
+        return eventTypes.length > 0 ? { type: eventTypes } : undefined;
+      }
+      return {
+        type: [
+          ...(eventTypesBySource?.[currentStepId] ?? []),
+          ...(eventTypesBySource?.["*"] ?? [])
+        ].filter((eventType, index, allEventTypes) => allEventTypes.indexOf(eventType) === index)
+      };
+    default:
+      return undefined;
+  }
+};
+
+const getSelectOnlyFields = (operationId: string): readonly string[] | undefined => {
+  switch (operationId) {
+    case "core.goToStepById":
+    case "core.forceStepTransition":
+      return ["stepId"];
     default:
       return undefined;
   }
@@ -56,7 +92,8 @@ const getSubmitDisabled = (
   fieldValues: Record<string, string>
 ) =>
   getOperationDisabled(operation, sectionId, disabled, mutationsEnabled, snapshotStatus) ||
-  hasMissingRequiredFields(operation, fieldValues);
+  hasMissingRequiredFields(operation, fieldValues) ||
+  hasInvalidFieldValues(operation, fieldValues);
 
 const renderSectionOperations = (
   sectionId: string,
@@ -70,6 +107,7 @@ const renderSectionOperations = (
       <div className={styles.navigationGrid}>
         {[
           "core.goToStepById",
+          "core.forceStepTransition",
           "core.goToPreviousStep",
           "core.goToNextStep",
           "core.goToLastVisitedStep"
@@ -108,21 +146,29 @@ const renderSectionOperations = (
 export const CommandControls = ({
   features,
   snapshotStatus,
+  currentStepId,
   onInvoke,
   disabled,
   disabledReason,
   mutationsEnabled,
+  mode,
   stepIds = [],
-  eventTypes = []
+  eventTypes = [],
+  eventTypesBySource,
+  goToStepTargetsBySource
 }: {
   features: readonly JourneyDevtoolsMachineFeatureDescriptor[];
   snapshotStatus: JourneyDevtoolsSerializableSnapshot["status"];
+  currentStepId: string;
   onInvoke: (invocation: JourneyDevtoolsOperationInvoke) => void;
   disabled: boolean;
   disabledReason?: string | null;
   mutationsEnabled: boolean;
+  mode: "linear" | "graph" | "headless" | undefined;
   stepIds: readonly string[] | undefined;
   eventTypes: readonly string[] | undefined;
+  eventTypesBySource: Record<string, readonly string[]> | undefined;
+  goToStepTargetsBySource: Record<string, readonly string[]> | undefined;
 }) => {
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({});
   const [fieldValues, setFieldValues] = React.useState<Record<string, string>>({});
@@ -202,7 +248,9 @@ export const CommandControls = ({
                   operation={operation}
                   sectionId={section.id}
                   className={
-                    operation.id === "core.goToStepById" || operation.id === "core.goToPreviousStep"
+                    operation.id === "core.goToStepById" ||
+                    operation.id === "core.forceStepTransition" ||
+                    operation.id === "core.goToPreviousStep"
                       ? styles.navigationInlineForm
                       : operation.id === "core.sendEvent"
                         ? styles.eventSendForm
@@ -211,7 +259,9 @@ export const CommandControls = ({
                           : undefined
                   }
                   buttonClassName={
-                    operation.id === "core.goToStepById" || operation.id === "core.goToPreviousStep"
+                    operation.id === "core.goToStepById" ||
+                    operation.id === "core.forceStepTransition" ||
+                    operation.id === "core.goToPreviousStep"
                       ? styles.navigationInlineButton
                       : operation.id === "core.sendEvent"
                         ? styles.eventSendButton
@@ -235,7 +285,16 @@ export const CommandControls = ({
                     fieldValues
                   )}
                   fieldValues={fieldValues}
-                  fieldOptions={getOperationFieldOptions(operation.id, stepIds, eventTypes)}
+                  fieldOptions={getOperationFieldOptions(
+                    operation.id,
+                    currentStepId,
+                    mode,
+                    stepIds,
+                    eventTypes,
+                    eventTypesBySource,
+                    goToStepTargetsBySource
+                  )}
+                  selectOnlyFields={getSelectOnlyFields(operation.id)}
                   onFieldChange={setFieldValue}
                   onSubmit={submit}
                 />

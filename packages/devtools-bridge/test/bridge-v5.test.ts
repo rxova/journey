@@ -34,6 +34,9 @@ describe("attachJourneyDevtools v5", () => {
     expect(register?.kind).toBe("register");
     if (register?.kind === "register") {
       expect(register.meta.label).toBe("Checkout");
+      expect(register.meta.mode).toBe("graph");
+      expect(register.meta.eventTypesBySource).toEqual({});
+      expect(register.meta.goToStepTargetsBySource).toEqual({});
       expect(register.meta.features.map((feature) => feature.id)).toEqual([
         "core",
         "execution-paths"
@@ -140,6 +143,94 @@ describe("attachJourneyDevtools v5", () => {
     if (queryResult?.kind === "operationResult") {
       expect(queryResult.operationId).toBe("execution-paths.inspect");
       expect(queryResult.result.kind).toBe("data");
+    }
+
+    detach();
+    collector.stop();
+  });
+
+  it("supports context updates and forced transitions", async () => {
+    const collector = collectBridgeMessages();
+    const machine = await createTestMachine();
+
+    const detach = attachJourneyDevtools(machine, {
+      machineId: "m-3",
+      enabled: true
+    });
+
+    await waitForCollector(() =>
+      collector.messages.some(
+        (message) => message.kind === "register" && message.machineId === "m-3"
+      )
+    );
+
+    window.dispatchEvent(
+      buildInvokeEnvelope("m-3", "req-replace-context", {
+        operationId: "core.updateContext",
+        input: { context: { count: 5 } }
+      })
+    );
+    window.dispatchEvent(
+      buildInvokeEnvelope("m-3", "req-patch-context", {
+        operationId: "core.patchContext",
+        input: { key: "count", value: 9 }
+      })
+    );
+    window.dispatchEvent(
+      buildInvokeEnvelope("m-3", "req-force-step", {
+        operationId: "core.forceStepTransition",
+        input: { stepId: "review" }
+      })
+    );
+
+    await waitForCollector(
+      () =>
+        collector.messages.some(
+          (message) =>
+            message.kind === "operationResult" && message.requestId === "req-replace-context"
+        ) &&
+        collector.messages.some(
+          (message) =>
+            message.kind === "operationResult" && message.requestId === "req-patch-context"
+        ) &&
+        collector.messages.some(
+          (message) => message.kind === "operationResult" && message.requestId === "req-force-step"
+        )
+    );
+
+    const replaceContextResult = collector.messages.find(
+      (message) => message.kind === "operationResult" && message.requestId === "req-replace-context"
+    );
+    expect(replaceContextResult?.kind).toBe("operationResult");
+    if (
+      replaceContextResult?.kind === "operationResult" &&
+      replaceContextResult.result.kind === "snapshot"
+    ) {
+      expect(replaceContextResult.operationId).toBe("core.updateContext");
+      expect(replaceContextResult.result.snapshot.context).toEqual({ count: 5 });
+    }
+
+    const patchContextResult = collector.messages.find(
+      (message) => message.kind === "operationResult" && message.requestId === "req-patch-context"
+    );
+    expect(patchContextResult?.kind).toBe("operationResult");
+    if (
+      patchContextResult?.kind === "operationResult" &&
+      patchContextResult.result.kind === "snapshot"
+    ) {
+      expect(patchContextResult.operationId).toBe("core.patchContext");
+      expect(patchContextResult.result.snapshot.context).toEqual({ count: 9 });
+    }
+
+    const forceStepResult = collector.messages.find(
+      (message) => message.kind === "operationResult" && message.requestId === "req-force-step"
+    );
+    expect(forceStepResult?.kind).toBe("operationResult");
+    if (forceStepResult?.kind === "operationResult" && forceStepResult.result.kind === "snapshot") {
+      expect(forceStepResult.operationId).toBe("core.forceStepTransition");
+      expect(forceStepResult.result.snapshot.currentStepId).toBe("review");
+      expect(forceStepResult.result.transitioned).toBe(true);
+      expect(forceStepResult.result.transitionId).toBe("devtools.forceStep");
     }
 
     detach();

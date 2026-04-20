@@ -59,6 +59,12 @@ export const createExampleViteConfig = ({ reactApp = false }: { reactApp?: boole
           replacement: fileURLToPath(
             new URL("../../../../packages/react/src/index.ts", import.meta.url)
           )
+        },
+        {
+          find: /^@rxova\/journey-devtools-bridge$/,
+          replacement: fileURLToPath(
+            new URL("../../../../packages/devtools-bridge/src/index.ts", import.meta.url)
+          )
         }
       ],
       dedupe: ["react", "react-dom"]

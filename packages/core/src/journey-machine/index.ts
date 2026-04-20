@@ -35,6 +35,8 @@ import type {
   JourneySendResult
 } from "../types";
 
+const DEVTOOLS_FORCE_STEP_ID = "devtools.forceStep";
+
 /** Creates a journey machine from a definition and optional runtime/plugin options. */
 export function createJourneyMachine<
   TContext extends JourneyJsonObject,
@@ -418,6 +420,49 @@ export function createJourneyMachine<
 
   const extendedMachine = pluginController.extendMachine(machine);
   attachJourneyMachineDevtoolsRegistry(extendedMachine, {
+    controls: {
+      forceStepTransition: (stepId) => {
+        assertStepExists(resolvedJourney.steps, stepId, `Unknown step "${stepId}".`);
+
+        return runtime.queue(
+          async (runVersion) => {
+            const snapshot = runtime.peekSnapshot();
+            if (snapshot.status !== "running") {
+              return buildSendResult(runtime.getSnapshot(), false);
+            }
+
+            runtime.emit({
+              type: "transition.start",
+              from: snapshot.currentStepId,
+              event: {
+                type: DEVTOOLS_FORCE_STEP_ID,
+                stepId
+              } as unknown as JourneySendEvent<TStepId, TEventMap>,
+              timestamp: now()
+            });
+
+            return navigation.commitStepTransition(
+              snapshot.currentStepId,
+              stepId,
+              { type: DEVTOOLS_FORCE_STEP_ID, stepId } as unknown as JourneySendEvent<
+                TStepId,
+                TEventMap
+              >,
+              {
+                id: DEVTOOLS_FORCE_STEP_ID,
+                from: snapshot.currentStepId,
+                event: "goToStepById",
+                to: stepId,
+                label: "force-step"
+              } as never,
+              snapshot.context,
+              runVersion
+            );
+          },
+          () => buildSendResult(runtime.getSnapshot(), false)
+        );
+      }
+    },
     features: pluginController.getDevtoolsFeatures(extendedMachine),
     journey,
     resolvedJourney
