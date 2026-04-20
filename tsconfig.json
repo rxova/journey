@@ -2,6 +2,9 @@
   "extends": "./tsconfig.base.json",
   "references": [
     {
+      "path": "./packages/common/tsconfig.build.json"
+    },
+    {
       "path": "./packages/core/tsconfig.build.json"
     },
     {
@@ -11,5 +14,12 @@
       "path": "./packages/devtools-bridge/tsconfig.build.json"
     }
   ],
-  "include": ["packages/*/src", "packages/*/test", "examples", "scripts", "vitest.config.ts"]
+  "include": [
+    "packages/*/src",
+    "packages/*/test",
+    "packages/common/tooling",
+    "examples",
+    "scripts",
+    "vitest.config.ts"
+  ]
 }

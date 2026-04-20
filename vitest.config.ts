@@ -4,6 +4,7 @@ import { defineConfig } from "vitest/config";
 const coverageInclude = process.env.JOURNEY_COVERAGE_INCLUDE?.split(",") ?? [
   "packages/*/src/**/*.ts",
   "packages/*/src/**/*.tsx",
+  "packages/common/tooling/**/*.ts",
   "apps/devtools/src/**/*.ts",
   "apps/devtools/src/**/*.tsx"
 ];
@@ -60,6 +61,36 @@ export default defineConfig({
         replacement: fileURLToPath(
           new URL("./packages/devtools-bridge/src/index.ts", import.meta.url)
         )
+      },
+      {
+        find: "@rxova/journey-common/predicates",
+        replacement: fileURLToPath(
+          new URL("./packages/common/src/predicates/index.ts", import.meta.url)
+        )
+      },
+      {
+        find: "@rxova/journey-common/serialization",
+        replacement: fileURLToPath(
+          new URL("./packages/common/src/serialization/index.ts", import.meta.url)
+        )
+      },
+      {
+        find: "@rxova/journey-common/async",
+        replacement: fileURLToPath(new URL("./packages/common/src/async/index.ts", import.meta.url))
+      },
+      {
+        find: "@rxova/journey-common/dev",
+        replacement: fileURLToPath(new URL("./packages/common/src/dev/index.ts", import.meta.url))
+      },
+      {
+        find: "@rxova/journey-common/origin",
+        replacement: fileURLToPath(
+          new URL("./packages/common/src/origin/index.ts", import.meta.url)
+        )
+      },
+      {
+        find: "@rxova/journey-common",
+        replacement: fileURLToPath(new URL("./packages/common/src/index.ts", import.meta.url))
       }
     ]
   },
