@@ -1,0 +1,12 @@
+.block {
+  margin: 0;
+  max-height: 270px;
+  overflow: auto;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  padding: 10px;
+  background: var(--surface-2);
+  font-family: "JetBrains Mono", "Menlo", monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}

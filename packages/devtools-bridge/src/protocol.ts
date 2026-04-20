@@ -45,6 +45,8 @@ export type JourneyDevtoolsMachineMeta = {
   label: string;
   appName: string | null;
   mutationsEnabled?: boolean;
+  stepIds?: readonly string[];
+  eventTypes?: readonly string[];
   features: readonly JourneyDevtoolsMachineFeatureDescriptor[];
 };
 
@@ -215,6 +217,9 @@ const hasBaseEnvelopeShape = (value: unknown): value is JourneyDevtoolsEnvelopeB
 const isNullableString = (value: unknown): value is string | null =>
   value === null || typeof value === "string";
 
+const isStringArray = (value: unknown): value is readonly string[] =>
+  Array.isArray(value) && value.every((entry) => typeof entry === "string");
+
 const isFieldType = (value: unknown): value is JourneyMachineDevtoolsFieldSpec["type"] =>
   value === "text" || value === "integer" || value === "boolean" || value === "json";
 
@@ -289,6 +294,8 @@ const isMachineMeta = (
     (version === JOURNEY_DEVTOOLS_PROTOCOL_VERSION
       ? typeof value.mutationsEnabled === "boolean"
       : value.mutationsEnabled === undefined || typeof value.mutationsEnabled === "boolean") &&
+    (value.stepIds === undefined || isStringArray(value.stepIds)) &&
+    (value.eventTypes === undefined || isStringArray(value.eventTypes)) &&
     value.features.every((feature) => isFeatureDescriptor(feature))
   );
 };
