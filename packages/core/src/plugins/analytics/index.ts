@@ -45,9 +45,32 @@ export const createAnalyticsPlugin = <
 >(
   options: JourneyAnalyticsPluginOptions<TContext, TStepId, TEventMap, TStepMeta>
 ) => {
+  const recentEvents: {
+    source: "lifecycle" | "custom";
+    timestamp: number;
+    tracked: JourneyAnalyticsTrackedEvent<TContext, TStepId, TStepMeta>;
+    success: boolean;
+    error?: unknown;
+  }[] = [];
+  const pushRecentEvent = (entry: (typeof recentEvents)[number]) => {
+    if (recentEvents.length >= 100) {
+      recentEvents.shift();
+    }
+    recentEvents.push(entry);
+  };
   let unsubscribe: (() => void) | undefined;
   let startedAt: number | null = null;
   let activeStepEnteredAt: number | null = null;
+  let trackCustomEvent = (name: string, payload: Record<string, unknown> = {}) => {
+    const tracked = {
+      name,
+      timestamp: Date.now(),
+      ...(options.machineId ? { machineId: options.machineId } : {}),
+      payload
+    } satisfies JourneyAnalyticsTrackedEvent<TContext, TStepId, TStepMeta>;
+    trackSafely(tracked, tracked);
+    return tracked;
+  };
 
   const trackSafely = (
     event:
@@ -57,7 +80,20 @@ export const createAnalyticsPlugin = <
   ) => {
     try {
       options.track(tracked);
+      pushRecentEvent({
+        source: "name" in event ? "custom" : "lifecycle",
+        timestamp: tracked.timestamp,
+        tracked,
+        success: true
+      });
     } catch (error) {
+      pushRecentEvent({
+        source: "name" in event ? "custom" : "lifecycle",
+        timestamp: tracked.timestamp,
+        tracked,
+        success: false,
+        error
+      });
       if (options.onError) {
         options.onError(error, event);
         return;
@@ -69,6 +105,11 @@ export const createAnalyticsPlugin = <
 
   return {
     name: "analytics",
+    __extension__: undefined as unknown as JourneyAnalyticsMachineExtension<
+      TContext,
+      TStepId,
+      TStepMeta
+    >,
     setup: () => ({
       augmentMachine: ({ machine }) => {
         const typedMachine = machine as JourneyMachine<
@@ -281,19 +322,71 @@ export const createAnalyticsPlugin = <
           }
         });
 
+        trackCustomEvent = (name: string, payload: Record<string, unknown> = {}) => {
+          const tracked = {
+            name,
+            timestamp: Date.now(),
+            ...(options.machineId ? { machineId: options.machineId } : {}),
+            payload
+          } satisfies JourneyAnalyticsTrackedEvent<TContext, TStepId, TStepMeta>;
+          trackSafely(tracked, tracked);
+          return tracked;
+        };
+
         return {
-          trackAnalyticsEvent: (name: string, payload: Record<string, unknown> = {}) => {
-            const tracked = {
-              name,
-              timestamp: Date.now(),
-              ...(options.machineId ? { machineId: options.machineId } : {}),
-              payload
-            } satisfies JourneyAnalyticsTrackedEvent<TContext, TStepId, TStepMeta>;
-            trackSafely(tracked, tracked);
-            return tracked;
-          }
+          trackAnalyticsEvent: trackCustomEvent
         };
       },
+      getDevtoolsFeatures: () => [
+        {
+          id: "analytics",
+          label: "Analytics",
+          operations: [
+            {
+              id: "analytics.inspectRecentEvents",
+              label: "inspectRecentEvents",
+              mutates: false,
+              output: "data",
+              run: () => ({
+                kind: "data",
+                data: {
+                  machineId: options.machineId ?? null,
+                  includeStepMeta: options.includeStepMeta ?? false,
+                  bufferSize: 100,
+                  entries: [...recentEvents]
+                }
+              })
+            },
+            {
+              id: "analytics.trackCustomEvent",
+              label: "trackCustomEvent",
+              mutates: true,
+              output: "data",
+              fields: [
+                { key: "name", label: "name", type: "text", required: true },
+                { key: "payload", label: "payload", type: "json" }
+              ],
+              run: ({ input }) => ({
+                kind: "data",
+                data: trackCustomEvent(
+                  String(input?.name ?? ""),
+                  (input?.payload as Record<string, unknown> | undefined) ?? {}
+                )
+              })
+            },
+            {
+              id: "analytics.clearRecentEvents",
+              label: "clearRecentEvents",
+              mutates: true,
+              output: "void",
+              run: () => {
+                recentEvents.length = 0;
+                return { kind: "void" };
+              }
+            }
+          ]
+        }
+      ],
       dispose: () => {
         unsubscribe?.();
       }

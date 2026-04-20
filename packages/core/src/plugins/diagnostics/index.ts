@@ -31,6 +31,7 @@ export type JourneyDiagnosticsMachine<
 export const createDiagnosticsPlugin = () =>
   ({
     name: "diagnostics",
+    __extension__: undefined as unknown as JourneyDiagnosticsMachineExtension<string, string>,
     setup: ({ journey, options }) => ({
       augmentMachine: () => ({
         getDiagnostics: (diagnosticsOptions?: JourneyDiagnosticsOptions) =>
@@ -38,7 +39,37 @@ export const createDiagnosticsPlugin = () =>
             requireExplicitCompletion:
               diagnosticsOptions?.requireExplicitCompletion ?? options.requireExplicitCompletion
           })
-      })
+      }),
+      getDevtoolsFeatures: () => [
+        {
+          id: "diagnostics",
+          label: "Diagnostics",
+          operations: [
+            {
+              id: "diagnostics.inspect",
+              label: "inspect",
+              mutates: false,
+              output: "data",
+              fields: [
+                {
+                  key: "requireExplicitCompletion",
+                  label: "requireExplicitCompletion",
+                  type: "boolean"
+                }
+              ],
+              run: ({ input }) => ({
+                kind: "data",
+                data: getJourneyDiagnostics(journey, {
+                  requireExplicitCompletion:
+                    typeof input?.requireExplicitCompletion === "boolean"
+                      ? input.requireExplicitCompletion
+                      : options.requireExplicitCompletion
+                })
+              })
+            }
+          ]
+        }
+      ]
     })
   }) satisfies JourneyMachinePlugin;
 

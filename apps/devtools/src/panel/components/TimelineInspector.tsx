@@ -1,6 +1,6 @@
 import React from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy } from "lucide-react";
 
 import type { JourneyDevtoolsSerializableSnapshot } from "@rxova/journey-devtools-bridge";
 import type { JourneyPanelStructuredDiff } from "../diff";
@@ -23,11 +23,39 @@ const TIMELINE_FALLBACK_VIEWPORT_HEIGHT_PX = 320;
 
 const formatTime = (timestamp: number): string => new Date(timestamp).toLocaleTimeString();
 
+const serializeCopyPayload = (value: unknown): string => {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+};
+
+const copyText = async (text: string): Promise<void> => {
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  if (typeof document === "undefined") {
+    throw new Error("Clipboard is unavailable in this environment.");
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "true");
+  textarea.style.position = "absolute";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
+};
+
 const badgeLabelByKind: Record<JourneyPanelTimelineEntry["kind"], string> = {
   init: "INIT",
   snapshot: "SNAP",
-  command: "CMD",
-  query: "QRY",
+  operation: "OP",
   event: "EVT",
   error: "ERR"
 };
@@ -64,6 +92,7 @@ export const TimelineInspector = ({
   const [activeTab, setActiveTab] = React.useState<TimelineTabId>("action");
   const [isTimelineOpen, setIsTimelineOpen] = React.useState(true);
   const [timelineListElement, setTimelineListElement] = React.useState<HTMLDivElement | null>(null);
+  const [copyState, setCopyState] = React.useState<"idle" | "copied" | "error">("idle");
 
   const visibleEntries = React.useMemo(
     () => selectVisibleTimelineEntries(entries, displayLimit),
@@ -168,6 +197,25 @@ export const TimelineInspector = ({
     }
     return selectedDiff;
   }, [activeTab, displayedSnapshot, selectedDiff, selectedEntry]);
+
+  React.useEffect(() => {
+    setCopyState("idle");
+  }, [activeTab, detailsPayload]);
+
+  const handleCopy = React.useCallback(async () => {
+    try {
+      await copyText(serializeCopyPayload(detailsPayload));
+      setCopyState("copied");
+      window.setTimeout(() => {
+        setCopyState("idle");
+      }, 1200);
+    } catch {
+      setCopyState("error");
+      window.setTimeout(() => {
+        setCopyState("idle");
+      }, 1600);
+    }
+  }, [detailsPayload]);
 
   React.useEffect(() => {
     if (!followLatest || visibleEntries.length === 0) {
@@ -290,9 +338,29 @@ export const TimelineInspector = ({
                 ))}
               </div>
 
-              <React.Suspense fallback={<p className="muted">Loading inspector…</p>}>
-                <LazyJsonBlock value={detailsPayload} />
-              </React.Suspense>
+              <div className="timeline-json-view">
+                <button
+                  type="button"
+                  className="timeline-copy-button"
+                  aria-label="Copy current timeline payload"
+                  title={
+                    copyState === "copied"
+                      ? "Copied"
+                      : copyState === "error"
+                        ? "Copy failed"
+                        : "Copy current payload"
+                  }
+                  onClick={() => {
+                    void handleCopy();
+                  }}
+                >
+                  <Copy size={14} />
+                  <span>{copyState === "copied" ? "Copied" : "Copy"}</span>
+                </button>
+                <React.Suspense fallback={<p className="muted">Loading inspector…</p>}>
+                  <LazyJsonBlock value={detailsPayload} />
+                </React.Suspense>
+              </div>
             </section>
           </div>
         </>

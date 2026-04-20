@@ -36,10 +36,9 @@ const journeyMachineCache = new Map<string, CachedJourneyMachine>();
 
 const cacheEnvelope = (envelope: ContentToBackgroundMessage["envelope"]) => {
   if (
-    envelope.kind === "commandResult" ||
-    envelope.kind === "commandError" ||
-    envelope.kind === "observation" ||
-    envelope.kind === "executionPathsResult"
+    envelope.kind === "operationResult" ||
+    envelope.kind === "operationError" ||
+    envelope.kind === "observation"
   ) {
     return;
   }

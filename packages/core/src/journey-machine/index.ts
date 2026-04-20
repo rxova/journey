@@ -1,6 +1,7 @@
 import { createJourneyMachineAsyncStateController } from "./async-state";
 import { createJourneyMachineComputedGetter } from "./computed";
 import { createJourneyMachineControls } from "./controls";
+import { attachJourneyMachineDevtoolsRegistry } from "./devtools-registry";
 import {
   createJourneyMachineNavigationController,
   type JourneyLifecycleScheduler
@@ -415,7 +416,14 @@ export function createJourneyMachine<
 
   dispatchSend = machine.send;
 
-  return pluginController.extendMachine(machine) as JourneyMachineWithPlugins<
+  const extendedMachine = pluginController.extendMachine(machine);
+  attachJourneyMachineDevtoolsRegistry(extendedMachine, {
+    features: pluginController.getDevtoolsFeatures(extendedMachine),
+    journey,
+    resolvedJourney
+  });
+
+  return extendedMachine as JourneyMachineWithPlugins<
     TContext,
     TStepId,
     TEventMap,

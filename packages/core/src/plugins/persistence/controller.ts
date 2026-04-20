@@ -23,6 +23,14 @@ import {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
+const cloneForTransport = (value: unknown): unknown => {
+  try {
+    return JSON.parse(JSON.stringify(value)) as unknown;
+  } catch {
+    return String(value);
+  }
+};
+
 const isStatusValue = (value: unknown): value is JourneyStatus =>
   value === "idled" || value === "running" || value === "completed" || value === "terminated";
 
@@ -415,7 +423,10 @@ export const createPersistenceController = <
     : null;
   const blockList = persistence ? persistence.blockList.map((path) => path.split(".")) : [];
 
+  let lastError: unknown;
+
   const reportResolvedPersistenceError = (error: unknown) => {
+    lastError = error;
     reportPersistenceError(error, persistence?.onError);
   };
 
@@ -473,6 +484,51 @@ export const createPersistenceController = <
       persistence.storage.removeItem(persistence.key);
     } catch (error) {
       reportResolvedPersistenceError(error);
+    }
+  };
+
+  const inspectPersistedState = () => {
+    if (!persistence) {
+      return {
+        enabled: false as const,
+        key: null,
+        version: null,
+        clearOnReset: null,
+        allowList: [],
+        blockList: [],
+        hasStoredValue: false,
+        storedValue: null,
+        lastError
+      };
+    }
+
+    try {
+      const rawPersisted = persistence.storage.getItem(persistence.key);
+      return {
+        enabled: true as const,
+        key: persistence.key,
+        version: persistence.version,
+        clearOnReset: persistence.clearOnReset,
+        allowList: persistence.allowList ?? [],
+        blockList: persistence.blockList,
+        hasStoredValue: rawPersisted !== null,
+        storedValue:
+          rawPersisted === null ? null : cloneForTransport(persistence.deserialize(rawPersisted)),
+        lastError
+      };
+    } catch (error) {
+      reportResolvedPersistenceError(error);
+      return {
+        enabled: true as const,
+        key: persistence.key,
+        version: persistence.version,
+        clearOnReset: persistence.clearOnReset,
+        allowList: persistence.allowList ?? [],
+        blockList: persistence.blockList,
+        hasStoredValue: false,
+        storedValue: null,
+        lastError
+      };
     }
   };
 
@@ -565,6 +621,7 @@ export const createPersistenceController = <
     clearOnReset: persistence?.clearOnReset ?? true,
     hydrateSnapshot,
     persistSnapshot,
-    removePersistedSnapshot
+    removePersistedSnapshot,
+    inspectPersistedState
   };
 };

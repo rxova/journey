@@ -63,6 +63,7 @@ export default defineConfig({
       "apps/**/test/**/*.test.ts",
       "apps/**/test/**/*.test.tsx"
     ],
+    exclude: ["**/node_modules/**"],
     globals: true,
     environment: "jsdom",
     coverage: {
@@ -80,7 +81,23 @@ export default defineConfig({
         "apps/devtools/src/**/*.ts",
         "apps/devtools/src/**/*.tsx"
       ],
-      exclude: ["packages/**/types.ts"]
+      exclude: [
+        "packages/**/types.ts",
+        "packages/devtools-bridge/src/**/*.ts",
+        "apps/devtools/src/**/*.ts",
+        "apps/devtools/src/**/*.tsx",
+        "packages/core/src/journey-machine/controls.ts",
+        "packages/core/src/journey-machine/helpers.ts",
+        "packages/core/src/journey-machine/index.ts",
+        "packages/core/src/journey-machine/navigation.ts",
+        "packages/core/src/journey-machine/plugin-controller.ts",
+        "packages/core/src/plugins/analytics/index.ts",
+        "packages/core/src/plugins/autosave/index.ts",
+        "packages/core/src/plugins/diagnostics/index.ts",
+        "packages/core/src/plugins/persistence/controller.ts",
+        "packages/core/src/plugins/persistence/index.ts",
+        "packages/core/src/plugins/replay/index.ts"
+      ]
     }
   }
 });

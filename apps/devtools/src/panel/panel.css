@@ -402,6 +402,40 @@ button:disabled {
   gap: 8px;
 }
 
+.timeline-json-view {
+  position: relative;
+}
+
+.timeline-copy-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+
+.timeline-json-view:hover .timeline-copy-button,
+.timeline-json-view:focus-within .timeline-copy-button {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.timeline-copy-button:hover:enabled {
+  background: color-mix(in srgb, var(--accent-soft) 88%, transparent);
+}
+
 .button-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(124px, 1fr));
@@ -424,6 +458,68 @@ button:disabled {
 .command-form-grid {
   display: grid;
   gap: 8px;
+}
+
+.command-form-grid.is-machine-commands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.command-form-grid.is-machine-commands > label {
+  flex: 0 0 17ch;
+}
+
+.command-form-grid.is-machine-commands > label > button {
+  width: 100%;
+}
+
+.navigation-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.navigation-grid > label {
+  display: contents;
+}
+
+.navigation-grid > label > input,
+.navigation-grid > label > select {
+  min-width: 0;
+}
+
+.navigation-grid > label > button {
+  width: 100%;
+  min-width: 17ch;
+}
+
+.events-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 17ch;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.events-grid > label {
+  display: contents;
+}
+
+.events-grid > label > input,
+.events-grid > label > select {
+  min-width: 0;
+}
+
+.events-grid > label:first-child > button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: 100%;
+  height: 100%;
+}
+
+.events-grid > label:last-child > button {
+  width: 100%;
 }
 
 .form-row {
@@ -527,12 +623,33 @@ button:disabled {
   }
 
   .timeline-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
+    height: 42px;
+    grid-template-columns: 42px 48px minmax(0, 1fr);
+    grid-template-rows: 1fr auto;
+    gap: 2px 8px;
+    align-items: center;
+  }
+
+  .timeline-index {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .timeline-kind {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .timeline-label {
+    grid-column: 3;
+    grid-row: 1;
+    min-width: 0;
   }
 
   .timeline-time {
-    justify-self: start;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: end;
   }
 
   .log-item {

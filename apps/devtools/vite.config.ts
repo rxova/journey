@@ -7,6 +7,9 @@ import manifest from "./manifest.config";
 export default defineConfig({
   resolve: {
     alias: {
+      "@rxova/journey-core": fileURLToPath(
+        new URL("../../packages/core/src/index.ts", import.meta.url)
+      ),
       "@rxova/journey-devtools-bridge": fileURLToPath(
         new URL("../../packages/devtools-bridge/src/index.ts", import.meta.url)
       )

@@ -179,6 +179,53 @@ export const createAutosavePlugin = <TContext extends JourneyJsonObject, TStepId
           autosaveState = { status: "idle" };
         }
       }),
+      getDevtoolsFeatures: () => [
+        {
+          id: "autosave",
+          label: "Autosave",
+          operations: [
+            {
+              id: "autosave.inspect",
+              label: "inspect",
+              mutates: false,
+              output: "data",
+              run: () => ({
+                kind: "data",
+                data: {
+                  state: { ...autosaveState },
+                  debounceMs,
+                  hydrate,
+                  saveOn: [...saveReasons],
+                  persistence: controller.inspectPersistedState()
+                }
+              })
+            },
+            {
+              id: "autosave.flush",
+              label: "flush",
+              mutates: true,
+              output: "void",
+              run: async () => {
+                commitPending();
+                return { kind: "void" };
+              }
+            },
+            {
+              id: "autosave.clear",
+              label: "clear",
+              mutates: true,
+              output: "void",
+              run: () => {
+                clearTimer();
+                pending = null;
+                controller.removePersistedSnapshot();
+                autosaveState = { status: "idle" };
+                return { kind: "void" };
+              }
+            }
+          ]
+        }
+      ],
       dispose: () => {
         clearTimer();
       }
