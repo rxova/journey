@@ -258,9 +258,7 @@ export function checkPublicApiTSDoc({
   return { missing };
 }
 
-export function main(
-  options: CheckPublicApiTSDocOptions = {}
-): { missing: MissingTSDocItem[] } {
+export function main(options: CheckPublicApiTSDocOptions = {}): { missing: MissingTSDocItem[] } {
   return checkPublicApiTSDoc(options);
 }
 
