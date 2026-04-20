@@ -65,9 +65,6 @@ const journey = {
     },
     payment: {
       goToNextStep: [{ to: "review" }]
-    },
-    review: {
-      completeJourney: true
     }
   }
 };

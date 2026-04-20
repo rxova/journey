@@ -68,9 +68,7 @@ const journey: JourneyDefinition<Context, StepId, EventMap, StepMeta> = {
     details: {
       goToNextStep: [{ to: "review" }]
     },
-    review: {
-      completeJourney: true
-    },
+    review: {},
     global: {
       requestClose: [
         {

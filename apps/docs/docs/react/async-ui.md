@@ -11,7 +11,8 @@ Source of truth for async semantics: [Core Async Behavior](/docs/core/async).
 ## Read Async State in React
 
 ```tsx
-const snapshot = bindings.useJourneySnapshot();
+const checkout = createJourney(definition);
+const snapshot = checkout.useJourneySnapshot();
 
 const stepId = snapshot.currentStepId;
 const stepAsync = snapshot.async.byStep[stepId];
@@ -34,8 +35,8 @@ const phase = snapshot.async.byStep[snapshot.currentStepId].phase;
 
 ```tsx
 const StepView = () => {
-  const snapshot = bindings.useJourneySnapshot();
-  const api = bindings.useJourneyApi();
+  const snapshot = checkout.useJourneySnapshot();
+  const api = checkout.useJourneyApi();
 
   const stepId = snapshot.currentStepId;
   const state = snapshot.async.byStep[stepId];
@@ -55,7 +56,7 @@ const StepView = () => {
 ## Clearing Errors
 
 ```tsx
-const api = bindings.useJourneyApi();
+const api = checkout.useJourneyApi();
 
 api.clearStepError(); // current step
 api.clearStepError("payment"); // specific step

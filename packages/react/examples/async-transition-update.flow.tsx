@@ -1,7 +1,7 @@
 import { createJourney } from "@rxova/journey-react";
-import { asyncEffectJourney } from "../../core/examples/async-effect.flow";
+import { asyncEffectJourney } from "../../core/examples/async-transition-update.flow";
 
-export { asyncEffectJourney } from "../../core/examples/async-effect.flow";
+export { asyncEffectJourney } from "../../core/examples/async-transition-update.flow";
 
 const journey = createJourney(asyncEffectJourney);
 

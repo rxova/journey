@@ -91,7 +91,7 @@ export default function Home(): ReactNode {
     },
     {
       title: "Async",
-      body: "Async guards/effects and robust loading/error UI patterns around explicit phases.",
+      body: "Async guards, queued context updates, and robust loading/error UI patterns around explicit phases.",
       href: "/docs/core/async"
     },
     {

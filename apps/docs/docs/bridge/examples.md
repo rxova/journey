@@ -34,6 +34,8 @@ When using bindings, attach once to the shared machine (outside or before React 
 { type: "send", event: { type: "custom", payload: { source: "panel" } } }
 { type: "resetJourney" }
 { type: "clearStepError", stepId: "review" }
+{ type: "getExecutionPaths" }
+{ type: "getExecutionPaths", options: { maxDepth: 5, maxPaths: 20 } }
 ```
 
 ## Snapshot Fields Used by Panel

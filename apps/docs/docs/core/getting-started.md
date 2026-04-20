@@ -114,9 +114,12 @@ const auth: JourneyDefinition<Context, StepId> = {
         { to: "blocked" }
       ]
     },
-    admin: { completeJourney: true },
-    dashboard: { completeJourney: true },
-    blocked: { terminateJourney: true }
+    admin: {
+      goToNextStep: [{ to: "dashboard" }]
+    },
+    blocked: {
+      goToNextStep: [{ to: "login" }]
+    }
   }
 };
 

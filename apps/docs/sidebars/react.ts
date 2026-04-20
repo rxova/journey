@@ -9,6 +9,7 @@ const sidebars: SidebarsConfig = {
     "async-ui",
     "devtools",
     "examples",
+    "typescript",
     "releases"
   ]
 };

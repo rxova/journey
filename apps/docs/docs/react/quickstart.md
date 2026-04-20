@@ -38,9 +38,7 @@ const definition: JourneyDefinition<Context, StepId> = {
     start: {
       goToNextStep: [{ to: "review" }]
     },
-    review: {
-      completeJourney: true
-    }
+    review: {}
   }
 };
 

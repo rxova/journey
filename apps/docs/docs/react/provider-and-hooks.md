@@ -59,6 +59,9 @@ const checkout = createJourney(definition);
 - `checkout.useStepApi(stepId)`
   Same action surface as `useJourneyApi()`, but with `send(...)` narrowed to custom events handled by that step or `global`.
 
+- `checkout.useJourneyStepLifecycle(stepId, callbacks)`
+  Run stable side effects when a specific step is entered or left.
+
 Hooks do not need a provider because they are closed over the created machine. Without a provider, startup is manual through `checkout.useJourneyApi().startJourney()` or `checkout.machine.startJourney()`.
 Server rendering still reads the initial `idled` snapshot. Provider-owned startup happens after hydration on the client.
 Use `@rxova/journey-react` for server-safe imports and `@rxova/journey-react/client` when a Next.js App Router client boundary should be explicit.
@@ -177,6 +180,28 @@ return <p>Current step: {computed.activeStepId}</p>;
 
 This hook is read-only. Keep commands in `useJourneyApi()`.
 
+### Available fields
+
+| Field              | Type                                | Available when      |
+| ------------------ | ----------------------------------- | ------------------- |
+| `mode`             | `"linear" \| "graph" \| "headless"` | always              |
+| `activeStepId`     | `TStepId`                           | always              |
+| `activeStepIndex`  | `number`                            | always              |
+| `visitedStepCount` | `number`                            | always              |
+| `isLoading`        | `boolean`                           | always              |
+| `isIdle`           | `boolean`                           | always              |
+| `isRunning`        | `boolean`                           | always              |
+| `isComplete`       | `boolean`                           | always              |
+| `isTerminated`     | `boolean`                           | always              |
+| `isInitialStep`    | `boolean`                           | always              |
+| `stepCount`        | `number`                            | `mode === "linear"` |
+| `journeyLength`    | `number`                            | `mode === "linear"` |
+| `isFirstStep`      | `boolean`                           | `mode === "linear"` |
+| `isLastStep`       | `boolean`                           | `mode === "linear"` |
+| `stepOrder`        | `readonly TStepId[]`                | `mode === "linear"` |
+
+`stepCount`, `journeyLength`, `isFirstStep`, `isLastStep`, and `stepOrder` are `undefined` for `"graph"` and `"headless"` modes. Narrow on `computed.mode === "linear"` before accessing them.
+
 ## `useJourneyApi()` Surface
 
 Common methods:
@@ -217,6 +242,25 @@ const EmailCode = () => {
 ```
 
 The narrowed event set includes custom events declared on that step plus custom events declared in `global`. Built-in methods such as `goToNextStep()`, `goToPreviousStep()`, `startJourney()`, and `resetJourney()` stay available.
+
+## `useJourneyStepLifecycle(stepId, callbacks)`
+
+Use `useJourneyStepLifecycle(stepId, callbacks)` to run side effects when a specific step is entered or left. It is built on `useJourneyEvent` internally, so the latest callback is always used without re-subscribing.
+
+```tsx
+checkout.useJourneyStepLifecycle("payment", {
+  onEnter: ({ context }) => {
+    analytics.track("payment_step_entered", { userId: context.userId });
+  },
+  onLeave: ({ context }) => {
+    analytics.track("payment_step_left", { userId: context.userId });
+  }
+});
+```
+
+Both `onEnter` and `onLeave` are optional. Each receives `{ context }` with the current machine context at the time of the event.
+
+This hook does not need a provider — it is closed over the created machine and subscribes directly.
 
 ## Provider Errors
 

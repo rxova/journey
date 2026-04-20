@@ -19,16 +19,18 @@ React bindings are a wrapper layer, not a second runtime.
 - `machine`
 - `dispose()`
 - `useJourneySnapshot()`
+- `useJourneyComputed()`
 - `useJourneySelector(selector, equalityFn?)`
 - `useJourneyApi()`
 - `useStepApi(stepId)`
 - `useJourneyEvent(listener)`
+- `useJourneyStepLifecycle(stepId, callbacks)`
 - `JourneyProvider`
 - `StepRenderer`
 
 Hooks work without a provider for reads and manual control. `useJourneyApi()` includes `startJourney()` for provider-free flows, and `JourneyProvider` supplies the `views` map, lifecycle callbacks, and client-side auto-start for an `idled` machine.
 
-`createJourneyBindings(...)` and the older root-level React exports are not part of this package surface anymore. `createJourney(...)` is the supported runtime entrypoint.
+Older React entrypoints are not part of this package surface anymore. `createJourney(...)` is the supported runtime entrypoint.
 
 ## Runtime Ownership
 
@@ -58,7 +60,9 @@ For deeper type modeling such as events, payload maps, and snapshots, see [Core 
 
 - `createJourney(definition, options?)`
 - hooks bound to the created machine
+- `useJourneyComputed()` for derived progress state and lifecycle flags
 - `useStepApi(stepId)` for step-scoped custom event typing
+- `useJourneyStepLifecycle(stepId, callbacks)` for step enter/leave side effects
 - a `JourneyProvider` for `views` and lifecycle callbacks
 - a `StepRenderer` that renders the current step view
 
@@ -96,9 +100,6 @@ const definition: JourneyDefinition<Context, StepId, EventMap> = {
     },
     payment: {
       applyCoupon: [{ to: "review" }]
-    },
-    review: {
-      completeJourney: true
     }
   }
 };

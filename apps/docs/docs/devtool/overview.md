@@ -21,15 +21,15 @@ Preview:
 
 ## Why It Exists
 
-The devtools stack helps teams see journey behavior clearly: timeline movement, transition outcomes, async phases, and command effects.
+The devtools stack helps teams see journey behavior clearly: timeline movement, transition outcomes, async phases, and command outcomes.
 
 ## Protocol Version
 
-Bridge protocol uses a fixed internal compatibility version.
+Bridge protocol version is **4**. The panel shows a compatibility warning when the inspected app reports a different protocol version.
 
 ## Command Surface
 
-The panel can drive navigation, lifecycle controls, error clearing, and custom event sending through the bridge.
+The panel can drive navigation, lifecycle controls, error clearing, custom event sending, and read-only execution path queries through the bridge. The `getExecutionPaths` query remains available even when mutating commands are disabled.
 
 See full details in [Bridge API](/docs/bridge/bridge-api) and exact transport types in [Protocol](/docs/bridge/protocol).
 
