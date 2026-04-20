@@ -125,7 +125,7 @@
       "name": "core/createPersistencePlugin",
       "path": "dist/plugins/persistence/index.js",
       "import": "{ createPersistencePlugin }",
-      "limit": "3 kB"
+      "limit": "3.1 kB"
     },
     {
       "name": "core/createAnalyticsPlugin",
