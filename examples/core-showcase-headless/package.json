@@ -1,0 +1,20 @@
+{
+  "name": "examples-core-showcase-headless",
+  "version": "1.0.0-rc.2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rxova/journey-core": "workspace:1.0.0-rc.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.1.4",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.2"
+  }
+}
