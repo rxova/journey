@@ -52,6 +52,14 @@ type OperationRunner<TContext extends JourneyJsonObject, TStepId extends string>
 };
 
 const DEFAULT_MACHINE_LABEL = "Journey Machine";
+const BUILT_IN_EVENT_TYPES = new Set([
+  "goToNextStep",
+  "goToPreviousStep",
+  "goToStepById",
+  "goToLastVisitedStep",
+  "completeJourney",
+  "terminateJourney"
+]);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
@@ -460,6 +468,14 @@ const createOperationRegistry = <
   }
 
   const features = [createCoreFeature(machine), ...registry.features];
+  const stepIds = Object.keys(registry.resolvedJourney.steps);
+  const eventTypes = Array.from(
+    new Set(
+      registry.resolvedJourney.transitions
+        .map((transition) => transition.event)
+        .filter((eventType) => !BUILT_IN_EVENT_TYPES.has(eventType))
+    )
+  );
 
   const operationMap = new Map<string, OperationRunner<TContext, TStepId>>();
 
@@ -486,8 +502,10 @@ const createOperationRegistry = <
   }
 
   return {
+    eventTypes,
     features: normalizeDescriptorFeatures(features),
-    operations: operationMap
+    operations: operationMap,
+    stepIds
   };
 };
 
@@ -533,6 +551,8 @@ export const attachJourneyDevtools = <
         label,
         appName,
         mutationsEnabled,
+        stepIds: operationRegistry.stepIds,
+        eventTypes: operationRegistry.eventTypes,
         features: operationRegistry.features
       },
       snapshot: serializeSnapshot(machine.getSnapshot())

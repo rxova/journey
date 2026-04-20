@@ -1,0 +1,260 @@
+.card {
+  display: grid;
+  gap: 10px;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+}
+
+.toolbarLabel {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.followButtonActive {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 10px;
+  min-height: 250px;
+}
+
+.list {
+  margin: 0;
+  padding: 0 0 8px;
+  list-style: none;
+  position: relative;
+  max-height: 320px;
+  overflow: auto;
+  scroll-padding-bottom: 8px;
+}
+
+.virtualSpacer {
+  position: relative;
+  width: 100%;
+}
+
+.item {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 48px;
+  padding-bottom: 6px;
+  box-sizing: border-box;
+}
+
+.row {
+  width: 100%;
+  height: 42px;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 42px 48px 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  text-align: left;
+}
+
+.rowSelected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-ring);
+}
+
+.index {
+  font-family: "JetBrains Mono", "Menlo", monospace;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.kind {
+  justify-self: start;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 1px 7px;
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+
+.kindInit {
+  color: var(--kind-init);
+}
+
+.kindSnapshot {
+  color: var(--kind-snapshot);
+}
+
+.kindOperation {
+  color: var(--kind-command);
+}
+
+.kindEvent {
+  color: var(--kind-event);
+}
+
+.kindError {
+  color: var(--warn);
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+
+.time {
+  color: var(--muted);
+  font-size: 0.75rem;
+  justify-self: end;
+}
+
+.outcome {
+  justify-self: start;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 1px 7px;
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+
+.outcomeSuccess {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+}
+
+.outcomeNoop {
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn-soft, var(--surface-muted)) 75%, transparent);
+  border-color: color-mix(in srgb, var(--warn) 35%, var(--border));
+}
+
+.details {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 8px;
+}
+
+.tabRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.tabButton {
+  background: var(--card);
+  border-color: var(--border);
+  color: var(--ink);
+}
+
+.tabButtonActive {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.jsonView {
+  position: relative;
+}
+
+.copyButton {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+
+.jsonView:hover .copyButton,
+.jsonView:focus-within .copyButton {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.copyButton:hover:enabled {
+  background: color-mix(in srgb, var(--accent-soft) 88%, transparent);
+}
+
+@media (max-width: 640px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .row {
+    grid-template-columns: 42px 48px minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    gap: 4px 8px;
+    align-content: center;
+    min-height: 42px;
+  }
+
+  .index {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+  }
+
+  .kind {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+  }
+
+  .label {
+    grid-column: 3;
+    grid-row: 1;
+    min-width: 0;
+    align-self: center;
+  }
+
+  .time {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    align-self: center;
+    justify-self: end;
+    line-height: 1;
+  }
+
+  .outcome {
+    grid-column: 4;
+    grid-row: 1;
+    align-self: center;
+  }
+}

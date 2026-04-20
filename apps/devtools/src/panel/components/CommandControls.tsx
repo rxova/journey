@@ -1,171 +1,109 @@
 import React from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
-
 import type {
   JourneyDevtoolsMachineFeatureDescriptor,
   JourneyDevtoolsMachineOperationDescriptor,
   JourneyDevtoolsOperationInvoke,
   JourneyDevtoolsSerializableSnapshot
 } from "@rxova/journey-devtools-bridge";
+import panelStyles from "./panelPrimitives.module.css";
+import styles from "./commands/commandControls.module.css";
+import {
+  buildInputValue,
+  groupFeatureSections,
+  hasMissingRequiredFields,
+  isEventsSection,
+  isLifecycleOperationDisabled,
+  isMachineCommandsSection,
+  isNavigationSection
+} from "./commands/commands";
+import { OperationForm } from "./commands/OperationForm";
+import { OperationSectionCard } from "./commands/OperationSectionCard";
 
-type OperationSection = {
-  id: string;
-  label: string;
-  description?: string | null;
-  operations: readonly JourneyDevtoolsMachineOperationDescriptor[];
-};
-
-const isMachineCommandsSection = (sectionId: string): boolean =>
-  sectionId === "core:machine-commands";
-const isNavigationSection = (sectionId: string): boolean => sectionId === "core:navigation";
-const isEventsSection = (sectionId: string): boolean => sectionId === "core:events";
-
-const CORE_OPERATION_SECTION_ORDER = [
-  "machine-commands",
-  "navigation",
-  "events",
-  "commands"
-] as const;
-
-const CORE_OPERATION_SECTIONS: Record<
-  (typeof CORE_OPERATION_SECTION_ORDER)[number],
-  {
-    label: string;
-    operationIds: readonly string[];
-  }
-> = {
-  "machine-commands": {
-    label: "Machine commands",
-    operationIds: [
-      "core.startJourney",
-      "core.resetJourney",
-      "core.terminateJourney",
-      "core.completeJourney"
-    ]
-  },
-  navigation: {
-    label: "Navigation",
-    operationIds: [
-      "core.goToNextStep",
-      "core.goToStepById",
-      "core.goToPreviousStep",
-      "core.goToLastVisitedStep"
-    ]
-  },
-  events: {
-    label: "Events",
-    operationIds: ["core.sendEvent", "core.clearStepError"]
-  },
-  commands: {
-    label: "Commands",
-    operationIds: []
-  }
-};
-
-const groupFeatureSections = (
-  feature: JourneyDevtoolsMachineFeatureDescriptor
-): readonly OperationSection[] => {
-  if (feature.id !== "core") {
-    return [
-      {
-        id: feature.id,
-        label: feature.label,
-        description: feature.description,
-        operations: feature.operations
-      }
-    ];
-  }
-
-  const operationsById = new Map(feature.operations.map((operation) => [operation.id, operation]));
-  const groupedSections = CORE_OPERATION_SECTION_ORDER.map((sectionId) => ({
-    id: `core:${sectionId}`,
-    label: CORE_OPERATION_SECTIONS[sectionId].label,
-    operations: CORE_OPERATION_SECTIONS[sectionId].operationIds
-      .map((operationId) => operationsById.get(operationId))
-      .filter((operation): operation is JourneyDevtoolsMachineOperationDescriptor =>
-        Boolean(operation)
-      )
-  })).filter((section) => section.operations.length > 0);
-
-  const groupedOperationIds = new Set(
-    groupedSections.flatMap((section) => section.operations.map((operation) => operation.id))
-  );
-  const ungroupedOperations = feature.operations.filter(
-    (operation) => !groupedOperationIds.has(operation.id)
-  );
-
-  return ungroupedOperations.length > 0
-    ? [
-        ...groupedSections,
-        {
-          id: "core:other",
-          label: "Other",
-          operations: ungroupedOperations
-        }
-      ]
-    : groupedSections;
-};
-
-const buildInputValue = (
-  raw: string,
-  type: "text" | "integer" | "boolean" | "json"
-): { ok: true; value: unknown } | { ok: false; error: string } => {
-  switch (type) {
-    case "text":
-      return { ok: true, value: raw };
-    case "integer": {
-      if (raw.trim().length === 0) {
-        return { ok: true, value: undefined };
-      }
-      const parsed = Number(raw);
-      if (!Number.isFinite(parsed) || Math.trunc(parsed) !== parsed) {
-        return { ok: false, error: "Integer fields must contain a whole number." };
-      }
-      return { ok: true, value: parsed };
-    }
-    case "boolean":
-      return { ok: true, value: raw === "true" };
-    case "json":
-      if (raw.trim().length === 0) {
-        return { ok: true, value: undefined };
-      }
-      try {
-        return { ok: true, value: JSON.parse(raw) as unknown };
-      } catch {
-        return { ok: false, error: "JSON fields must contain valid JSON." };
-      }
-  }
-};
-
-const isLifecycleOperationDisabled = (
+const getOperationFieldOptions = (
   operationId: string,
-  snapshotStatus: JourneyDevtoolsSerializableSnapshot["status"]
-): boolean => {
-  switch (snapshotStatus) {
-    case "running":
-      return operationId === "core.startJourney";
-    case "completed":
-    case "terminated":
-      return operationId !== "core.resetJourney";
-    case "idled":
-      return operationId === "core.terminateJourney" || operationId === "core.completeJourney";
+  stepIds: readonly string[],
+  eventTypes: readonly string[]
+): Partial<Record<string, readonly string[]>> | undefined => {
+  switch (operationId) {
+    case "core.goToStepById":
+    case "core.clearStepError":
+      return stepIds.length > 0 ? { stepId: stepIds } : undefined;
+    case "core.sendEvent":
+      return eventTypes.length > 0 ? { type: eventTypes } : undefined;
     default:
-      return false;
+      return undefined;
   }
 };
 
-const hasMissingRequiredFields = (
+const getOperationDisabled = (
   operation: JourneyDevtoolsMachineOperationDescriptor,
-  fieldValues: Record<string, string>
-): boolean =>
-  operation.fields.some((field) => {
-    if (!field.required || field.type === "boolean") {
-      return false;
-    }
+  sectionId: string,
+  disabled: boolean,
+  mutationsEnabled: boolean,
+  snapshotStatus: JourneyDevtoolsSerializableSnapshot["status"]
+) =>
+  disabled ||
+  (operation.mutates && !mutationsEnabled) ||
+  (isMachineCommandsSection(sectionId) &&
+    isLifecycleOperationDisabled(operation.id, snapshotStatus));
 
-    const stateKey = `${operation.id}:${field.key}`;
-    return (fieldValues[stateKey] ?? "").trim().length === 0;
-  });
+const getSubmitDisabled = (
+  operation: JourneyDevtoolsMachineOperationDescriptor,
+  sectionId: string,
+  disabled: boolean,
+  mutationsEnabled: boolean,
+  snapshotStatus: JourneyDevtoolsSerializableSnapshot["status"],
+  fieldValues: Record<string, string>
+) =>
+  getOperationDisabled(operation, sectionId, disabled, mutationsEnabled, snapshotStatus) ||
+  hasMissingRequiredFields(operation, fieldValues);
+
+const renderSectionOperations = (
+  sectionId: string,
+  operations: readonly JourneyDevtoolsMachineOperationDescriptor[],
+  renderOperation: (operation: JourneyDevtoolsMachineOperationDescriptor) => React.ReactNode
+) => {
+  if (isNavigationSection(sectionId)) {
+    const operationsById = new Map(operations.map((operation) => [operation.id, operation]));
+
+    return (
+      <div className={styles.navigationGrid}>
+        {[
+          "core.goToStepById",
+          "core.goToPreviousStep",
+          "core.goToNextStep",
+          "core.goToLastVisitedStep"
+        ].flatMap((operationId) => {
+          const operation = operationsById.get(operationId);
+          return operation ? [renderOperation(operation)] : [];
+        })}
+      </div>
+    );
+  }
+
+  if (isEventsSection(sectionId)) {
+    const operationsById = new Map(operations.map((operation) => [operation.id, operation]));
+    const sendEvent = operationsById.get("core.sendEvent");
+    const clearStepError = operationsById.get("core.clearStepError");
+
+    return (
+      <div className={styles.eventsGrid}>
+        {sendEvent ? renderOperation(sendEvent) : null}
+        {clearStepError ? renderOperation(clearStepError) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={
+        isMachineCommandsSection(sectionId) ? styles.machineCommandsGrid : styles.layoutGrid
+      }
+    >
+      {operations.map(renderOperation)}
+    </div>
+  );
+};
 
 export const CommandControls = ({
   features,
@@ -173,7 +111,9 @@ export const CommandControls = ({
   onInvoke,
   disabled,
   disabledReason,
-  mutationsEnabled
+  mutationsEnabled,
+  stepIds = [],
+  eventTypes = []
 }: {
   features: readonly JourneyDevtoolsMachineFeatureDescriptor[];
   snapshotStatus: JourneyDevtoolsSerializableSnapshot["status"];
@@ -181,16 +121,13 @@ export const CommandControls = ({
   disabled: boolean;
   disabledReason?: string | null;
   mutationsEnabled: boolean;
+  stepIds: readonly string[] | undefined;
+  eventTypes: readonly string[] | undefined;
 }) => {
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({});
   const [fieldValues, setFieldValues] = React.useState<Record<string, string>>({});
   const [formError, setFormError] = React.useState<{ sectionId: string; message: string } | null>(
     null
-  );
-
-  const isSectionOpen = React.useCallback(
-    (featureId: string) => openSections[featureId] ?? true,
-    [openSections]
   );
 
   const setFieldValue = React.useCallback((key: string, value: string) => {
@@ -199,10 +136,7 @@ export const CommandControls = ({
   }, []);
 
   const submit = React.useCallback(
-    (
-      operation: JourneyDevtoolsMachineFeatureDescriptor["operations"][number],
-      sectionId: string
-    ) => {
+    (operation: JourneyDevtoolsMachineOperationDescriptor, sectionId: string) => {
       const input: Record<string, unknown> = {};
 
       for (const field of operation.fields) {
@@ -211,6 +145,7 @@ export const CommandControls = ({
           field.type === "boolean"
             ? (fieldValues[stateKey] ?? "false")
             : (fieldValues[stateKey] ?? "");
+
         if (field.required && raw.trim().length === 0 && field.type !== "boolean") {
           setFormError({ sectionId, message: `${field.label} is required.` });
           return;
@@ -237,156 +172,85 @@ export const CommandControls = ({
     [fieldValues, onInvoke]
   );
 
-  const renderOperation = React.useCallback(
-    (operation: JourneyDevtoolsMachineOperationDescriptor, sectionId: string) => {
-      const operationDisabled =
-        disabled ||
-        (operation.mutates && !mutationsEnabled) ||
-        (isMachineCommandsSection(sectionId) &&
-          isLifecycleOperationDisabled(operation.id, snapshotStatus)) ||
-        hasMissingRequiredFields(operation, fieldValues);
-      const buttonLabel = operation.id === "core.resetJourney" ? "restartJourney" : operation.label;
-      return (
-        <label key={operation.id}>
-          {operation.fields.map((field) => {
-            const stateKey = `${operation.id}:${field.key}`;
-
-            if (field.type === "boolean") {
-              return (
-                <select
-                  key={stateKey}
-                  value={fieldValues[stateKey] ?? "false"}
-                  onChange={(event) => setFieldValue(stateKey, event.target.value)}
-                  disabled={operationDisabled}
-                >
-                  <option value="false">false</option>
-                  <option value="true">true</option>
-                </select>
-              );
-            }
-
-            return (
-              <input
-                key={stateKey}
-                value={fieldValues[stateKey] ?? ""}
-                onChange={(event) => setFieldValue(stateKey, event.target.value)}
-                placeholder={field.placeholder ?? field.key}
-                disabled={operationDisabled}
-              />
-            );
-          })}
-          <button
-            type="button"
-            disabled={operationDisabled}
-            onClick={() => submit(operation, sectionId)}
-          >
-            {buttonLabel}
-          </button>
-        </label>
-      );
-    },
-    [disabled, fieldValues, mutationsEnabled, setFieldValue, snapshotStatus, submit]
-  );
-
-  const renderNavigationSection = React.useCallback(
-    (operations: readonly JourneyDevtoolsMachineOperationDescriptor[]) => {
-      const operationsById = new Map(operations.map((operation) => [operation.id, operation]));
-      const goToStepById = operationsById.get("core.goToStepById");
-      const goToPreviousStep = operationsById.get("core.goToPreviousStep");
-      const goToLastVisitedStep = operationsById.get("core.goToLastVisitedStep");
-      const goToNextStep = operationsById.get("core.goToNextStep");
-
-      return (
-        <div className="navigation-grid">
-          {goToStepById ? renderOperation(goToStepById, "core:navigation") : null}
-          {goToPreviousStep ? renderOperation(goToPreviousStep, "core:navigation") : null}
-          {goToLastVisitedStep ? renderOperation(goToLastVisitedStep, "core:navigation") : null}
-          {goToNextStep ? renderOperation(goToNextStep, "core:navigation") : null}
-        </div>
-      );
-    },
-    [renderOperation]
-  );
-
-  const renderEventsSection = React.useCallback(
-    (operations: readonly JourneyDevtoolsMachineOperationDescriptor[]) => {
-      const operationsById = new Map(operations.map((operation) => [operation.id, operation]));
-      const sendEvent = operationsById.get("core.sendEvent");
-      const clearStepError = operationsById.get("core.clearStepError");
-
-      return (
-        <div className="events-grid">
-          {sendEvent ? renderOperation(sendEvent, "core:events") : null}
-          {clearStepError ? renderOperation(clearStepError, "core:events") : null}
-        </div>
-      );
-    },
-    [renderOperation]
-  );
-
   return (
-    <>
-      <section className="panel-card">
-        <h2>Operations</h2>
-        <p className="muted">
+    <div className={styles.stack}>
+      <section className={panelStyles.card}>
+        <h2 className={panelStyles.title}>Operations</h2>
+        <p className={`${panelStyles.muted} ${styles.summaryText}`}>
           Status: {snapshotStatus} · Mutations {mutationsEnabled ? "enabled" : "disabled"}
         </p>
       </section>
 
       {features.flatMap((feature) =>
-        groupFeatureSections(feature).map((section) => (
-          <section key={section.id} className="panel-card">
-            <div className="section-header">
-              <h2>{section.label}</h2>
-              <button
-                type="button"
-                className="section-toggle"
-                aria-label={
-                  isSectionOpen(section.id)
-                    ? `Collapse ${section.label}`
-                    : `Expand ${section.label}`
-                }
-                title={
-                  isSectionOpen(section.id)
-                    ? `Collapse ${section.label}`
-                    : `Expand ${section.label}`
-                }
-                onClick={() =>
-                  setOpenSections((current) => ({
-                    ...current,
-                    [section.id]: !(current[section.id] ?? true)
-                  }))
-                }
-              >
-                {isSectionOpen(section.id) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-              </button>
-            </div>
-            {section.description ? <p className="muted">{section.description}</p> : null}
-            {isSectionOpen(section.id) ? (
-              isNavigationSection(section.id) ? (
-                renderNavigationSection(section.operations)
-              ) : isEventsSection(section.id) ? (
-                renderEventsSection(section.operations)
-              ) : (
-                <div
+        groupFeatureSections(feature).map((section) => {
+          const isOpen = openSections[section.id] ?? true;
+          return (
+            <OperationSectionCard
+              key={section.id}
+              section={section}
+              isOpen={isOpen}
+              onToggle={() =>
+                setOpenSections((current) => ({
+                  ...current,
+                  [section.id]: !(current[section.id] ?? true)
+                }))
+              }
+            >
+              {renderSectionOperations(section.id, section.operations, (operation) => (
+                <OperationForm
+                  key={operation.id}
+                  operation={operation}
+                  sectionId={section.id}
                   className={
-                    isMachineCommandsSection(section.id)
-                      ? "command-form-grid is-machine-commands"
-                      : "command-form-grid"
+                    operation.id === "core.goToStepById" || operation.id === "core.goToPreviousStep"
+                      ? styles.navigationInlineForm
+                      : operation.id === "core.sendEvent"
+                        ? styles.eventSendForm
+                        : operation.id === "core.clearStepError"
+                          ? styles.eventClearForm
+                          : undefined
                   }
-                >
-                  {section.operations.map((operation) => renderOperation(operation, section.id))}
-                </div>
-              )
-            ) : null}
-            {formError?.sectionId === section.id ? (
-              <p className="form-error">{formError.message}</p>
-            ) : null}
-          </section>
-        ))
+                  buttonClassName={
+                    operation.id === "core.goToStepById" || operation.id === "core.goToPreviousStep"
+                      ? styles.navigationInlineButton
+                      : operation.id === "core.sendEvent"
+                        ? styles.eventSendButton
+                        : operation.id === "core.clearStepError"
+                          ? styles.eventClearButton
+                          : undefined
+                  }
+                  fieldsDisabled={getOperationDisabled(
+                    operation,
+                    section.id,
+                    disabled,
+                    mutationsEnabled,
+                    snapshotStatus
+                  )}
+                  submitDisabled={getSubmitDisabled(
+                    operation,
+                    section.id,
+                    disabled,
+                    mutationsEnabled,
+                    snapshotStatus,
+                    fieldValues
+                  )}
+                  fieldValues={fieldValues}
+                  fieldOptions={getOperationFieldOptions(operation.id, stepIds, eventTypes)}
+                  onFieldChange={setFieldValue}
+                  onSubmit={submit}
+                />
+              ))}
+              {formError?.sectionId === section.id ? (
+                <p className={styles.formError}>{formError.message}</p>
+              ) : null}
+            </OperationSectionCard>
+          );
+        })
       )}
 
-      {disabled && disabledReason ? <p className="muted">{disabledReason}</p> : null}
-    </>
+      {disabled && disabledReason ? (
+        <p className={`${panelStyles.muted} ${styles.disabledReason}`}>{disabledReason}</p>
+      ) : null}
+    </div>
   );
 };
