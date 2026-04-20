@@ -5,7 +5,13 @@
     "paths": {
       "@rxova/journey-core": ["packages/core/src/index.ts"],
       "@rxova/journey-core/execution-paths": ["packages/core/src/plugins/execution-paths/index.ts"],
-      "@rxova/journey-core/persistence": ["packages/core/src/plugins/persistence/index.ts"]
+      "@rxova/journey-core/persistence": ["packages/core/src/plugins/persistence/index.ts"],
+      "@rxova/journey-common": ["packages/common/src/index.ts"],
+      "@rxova/journey-common/predicates": ["packages/common/src/predicates/index.ts"],
+      "@rxova/journey-common/serialization": ["packages/common/src/serialization/index.ts"],
+      "@rxova/journey-common/async": ["packages/common/src/async/index.ts"],
+      "@rxova/journey-common/dev": ["packages/common/src/dev/index.ts"],
+      "@rxova/journey-common/origin": ["packages/common/src/origin/index.ts"]
     }
   },
   "include": ["src"]

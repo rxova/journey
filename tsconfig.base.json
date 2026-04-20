@@ -28,7 +28,13 @@
       "@rxova/journey-core/persistence": ["packages/core/src/plugins/persistence/index.ts"],
       "@rxova/journey-core/replay": ["packages/core/src/plugins/replay/index.ts"],
       "@rxova/journey-react": ["packages/react/src/index.ts"],
-      "@rxova/journey-devtools-bridge": ["packages/devtools-bridge/src/index.ts"]
+      "@rxova/journey-devtools-bridge": ["packages/devtools-bridge/src/index.ts"],
+      "@rxova/journey-common": ["packages/common/src/index.ts"],
+      "@rxova/journey-common/predicates": ["packages/common/src/predicates/index.ts"],
+      "@rxova/journey-common/serialization": ["packages/common/src/serialization/index.ts"],
+      "@rxova/journey-common/async": ["packages/common/src/async/index.ts"],
+      "@rxova/journey-common/dev": ["packages/common/src/dev/index.ts"],
+      "@rxova/journey-common/origin": ["packages/common/src/origin/index.ts"]
     }
   }
 }

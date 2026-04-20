@@ -13,10 +13,19 @@
     "paths": {
       "@rxova/journey-core": ["../core/dist/index.d.ts"],
       "@rxova/journey-core/execution-paths": ["../core/dist/plugins/execution-paths/index.d.ts"],
-      "@rxova/journey-core/persistence": ["../core/dist/plugins/persistence/index.d.ts"]
+      "@rxova/journey-core/persistence": ["../core/dist/plugins/persistence/index.d.ts"],
+      "@rxova/journey-common": ["../common/dist/index.d.ts"],
+      "@rxova/journey-common/predicates": ["../common/dist/predicates/index.d.ts"],
+      "@rxova/journey-common/serialization": ["../common/dist/serialization/index.d.ts"],
+      "@rxova/journey-common/async": ["../common/dist/async/index.d.ts"],
+      "@rxova/journey-common/dev": ["../common/dist/dev/index.d.ts"],
+      "@rxova/journey-common/origin": ["../common/dist/origin/index.d.ts"]
     }
   },
   "references": [
+    {
+      "path": "../common/tsconfig.build.json"
+    },
     {
       "path": "../core/tsconfig.build.json"
     }
