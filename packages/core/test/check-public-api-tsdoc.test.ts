@@ -10,6 +10,7 @@ import {
   isEntrypoint,
   main,
   parseTsConfig,
+  resolveApiTSDocSources,
   toRepoPath
 } from "../../../scripts/check-public-api-tsdoc";
 
@@ -178,5 +179,59 @@ describe("check-public-api-tsdoc script", () => {
     expect(isEntrypoint("", "file:///a/script.ts")).toBe(false);
     expect(isEntrypoint("/a/script.ts", "file:///a/script.ts")).toBe(true);
     expect(isEntrypoint("/a/other.ts", "file:///a/script.ts")).toBe(false);
+  });
+
+  it("resolves api tsdoc sources from filesystem, skipping private and malformed packages", async () => {
+    const root = await mkdtemp(join(tmpdir(), "resolve-api-tsdoc-sources-"));
+
+    const writePackage = async (
+      dir: string,
+      manifest: Record<string, unknown>,
+      { withEntry = true, withTsconfig = true } = {}
+    ) => {
+      await mkdir(join(root, "packages", dir, "src"), { recursive: true });
+      await writeFile(
+        join(root, "packages", dir, "package.json"),
+        `${JSON.stringify(manifest, null, 2)}\n`,
+        "utf8"
+      );
+      if (withEntry) {
+        await writeFile(join(root, "packages", dir, "src/index.ts"), "export {};\n", "utf8");
+      }
+      if (withTsconfig) {
+        await writeFile(join(root, "packages", dir, "tsconfig.json"), "{}\n", "utf8");
+      }
+    };
+
+    await writePackage("public-a", { name: "@scope/public-a" });
+    await writePackage("public-b", { name: "@scope/public-b", private: false });
+    await writePackage("private-one", { name: "@scope/private-one", private: true });
+    await writePackage("nameless", { private: false });
+    await writePackage("no-entry", { name: "@scope/no-entry" }, { withEntry: false });
+    await writePackage("no-tsconfig", { name: "@scope/no-tsconfig" }, { withTsconfig: false });
+
+    await mkdir(join(root, "packages", "malformed"), { recursive: true });
+    await writeFile(join(root, "packages", "malformed", "package.json"), "{ not json", "utf8");
+
+    await mkdir(join(root, "packages", "no-manifest"), { recursive: true });
+
+    const sources = resolveApiTSDocSources(root);
+    expect(sources.map((source) => source.packageName)).toEqual([
+      "@scope/public-a",
+      "@scope/public-b"
+    ]);
+    expect(sources[0]).toEqual({
+      packageName: "@scope/public-a",
+      entry: "packages/public-a/src/index.ts",
+      tsconfig: "packages/public-a/tsconfig.json"
+    });
+
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it("returns empty array when packages directory is missing", async () => {
+    const root = await mkdtemp(join(tmpdir(), "resolve-api-tsdoc-sources-empty-"));
+    expect(resolveApiTSDocSources(root)).toEqual([]);
+    await rm(root, { recursive: true, force: true });
   });
 });
