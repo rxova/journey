@@ -13,7 +13,8 @@ import {
   withAbortSignal,
   withTimeout,
   buildInitialAsyncState,
-  buildSnapshot
+  buildSnapshot,
+  transitionSnapshot
 } from "../src/journey-machine/helpers";
 
 type TestEventMap = Record<never, never>;
@@ -34,6 +35,8 @@ describe("helpers extra coverage", () => {
       /test value\.bad must be JSON-serializable\. Received non-plain map/i
     );
     expect(() => assertSerializableContext({ bad: 1n } as never)).toThrow(/received bigint/i);
+    expect(() => assertSerializableContext({ bad: null } as never)).not.toThrow();
+    expect(() => assertSerializableContext({ bad: [1, 2] } as never)).not.toThrow();
     expect(() => assertSerializableContext({ nested: { missing: undefined } } as never)).toThrow(
       /nested\.missing must be JSON-serializable\. Received undefined/i
     );
@@ -123,6 +126,67 @@ describe("helpers extra coverage", () => {
     ).rejects.toThrow("runner failed");
   });
 
+  it("covers guard timeout defaults, sync guard errors, and same-step snapshots", async () => {
+    vi.useFakeTimers();
+    const steps: Record<"a" | "b", unknown> = { a: {}, b: {} };
+    const snapshot = buildSnapshot(
+      ["a"],
+      0,
+      { count: 0 },
+      "running",
+      buildInitialAsyncState(steps)
+    );
+    const event: TestEvent = { type: "goToNextStep" };
+
+    const timedOut = selectTransition(
+      [
+        {
+          id: "slow",
+          from: "a",
+          event: "goToNextStep",
+          to: "b",
+          when: async () => new Promise<boolean>(() => undefined)
+        }
+      ],
+      snapshot,
+      event,
+      new AbortController().signal,
+      {},
+      undefined,
+      10
+    );
+    const timedOutExpectation = expect(timedOut).rejects.toThrow(
+      "Transition guard timed out after 10ms"
+    );
+    await vi.advanceTimersByTimeAsync(10);
+    await timedOutExpectation;
+
+    expect(() =>
+      transitionSnapshot(snapshot, "a", {
+        count: 1
+      })
+    ).not.toThrow();
+
+    await expect(
+      selectTransition(
+        [
+          {
+            from: "a",
+            event: "goToNextStep",
+            to: "b",
+            when: () => {
+              throw new Error("sync guard failed");
+            }
+          }
+        ],
+        snapshot,
+        event,
+        new AbortController().signal,
+        {}
+      )
+    ).rejects.toThrow("sync guard failed");
+  });
+
   it("rejects aborted signals for async guards and direct promise waits", async () => {
     const snapshot = buildSnapshot(
       ["a", "b"],
@@ -196,10 +260,38 @@ describe("helpers extra coverage", () => {
 
     expect(() =>
       validateJourneyTransitions(
+        [{ from: "a", event: "goToNextStep", to: "b", extra: true } as never],
+        steps
+      )
+    ).toThrow(/unsupported field "extra"/i);
+
+    expect(() =>
+      validateJourneyTransitions(
+        [{ from: "a", event: "goToNextStep", to: "b", when: true } as never],
+        steps
+      )
+    ).toThrow(/"when" as a function/i);
+
+    expect(() =>
+      validateJourneyTransitions(
         [{ from: "a", event: "goToNextStep", to: "b", onLeave: true } as never],
         steps
       )
     ).toThrow(/"onLeave" as a function/i);
+
+    expect(() =>
+      validateJourneyTransitions(
+        [{ from: "a", event: "goToNextStep", to: "b", id: 1 } as never],
+        steps
+      )
+    ).toThrow(/"id" as a string/i);
+
+    expect(() =>
+      validateJourneyTransitions(
+        [{ from: "a", event: "goToNextStep", to: "b", label: 1 } as never],
+        steps
+      )
+    ).toThrow(/"label" as a string/i);
 
     expect(() =>
       validateJourneyTransitions([{ from: "a", event: "completeJourney", to: "b" } as never], steps)

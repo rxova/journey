@@ -190,6 +190,33 @@ describe("journey machine edge cases", () => {
     ).toThrow(/json-serializable/i);
   });
 
+  it("rejects invalid normalized transition fields", () => {
+    const invalidTransitions = [
+      [{ from: "start", event: "goToNextStep", to: "middle", extra: true }],
+      [{ from: "start", event: "goToNextStep", to: "middle", when: true }],
+      [{ from: "start", event: "goToNextStep", to: "middle", updateContext: true }],
+      [{ from: "start", event: "goToNextStep", to: "middle", onEnter: true }],
+      [{ from: "start", event: "goToNextStep", to: "middle", onLeave: true }],
+      [{ from: "start", event: "goToNextStep", to: "middle", id: 1 }],
+      [{ from: "start", event: "goToNextStep", to: "middle", label: 1 }],
+      [{ from: "start", event: "completeJourney", to: "middle" }],
+      [{ from: "missing", event: "goToNextStep", to: "middle" }],
+      [{ from: "start", event: 1, to: "middle" }],
+      [null]
+    ];
+
+    for (const transitions of invalidTransitions) {
+      expect(() =>
+        createJourneyMachine({
+          initial: "start",
+          context: { value: 0 },
+          steps: { start: {}, middle: {} },
+          transitions
+        } as never)
+      ).toThrow();
+    }
+  });
+
   it("rejects non-JSON values returned from updateContext", async () => {
     const machine = await createStartedMachine(createBaseJourney());
 

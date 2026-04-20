@@ -1,6 +1,13 @@
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vitest/config";
 
+const coverageInclude = process.env.JOURNEY_COVERAGE_INCLUDE?.split(",") ?? [
+  "packages/*/src/**/*.ts",
+  "packages/*/src/**/*.tsx",
+  "apps/devtools/src/**/*.ts",
+  "apps/devtools/src/**/*.tsx"
+];
+
 export default defineConfig({
   resolve: {
     alias: [
@@ -64,40 +71,21 @@ export default defineConfig({
       "apps/**/test/**/*.test.tsx"
     ],
     exclude: ["**/node_modules/**"],
+    setupFiles: ["./apps/devtools/test/setup.ts"],
     globals: true,
+    silent: true,
     environment: "jsdom",
     coverage: {
       provider: "v8",
       reporter: ["text", "text-summary", "html", "json-summary", "lcov"],
       thresholds: {
+        statements: 95,
         branches: 95,
         functions: 95,
-        lines: 95,
-        statements: 95
+        lines: 95
       },
-      include: [
-        "packages/*/src/**/*.ts",
-        "packages/*/src/**/*.tsx",
-        "apps/devtools/src/**/*.ts",
-        "apps/devtools/src/**/*.tsx"
-      ],
-      exclude: [
-        "packages/**/types.ts",
-        "packages/devtools-bridge/src/**/*.ts",
-        "apps/devtools/src/**/*.ts",
-        "apps/devtools/src/**/*.tsx",
-        "packages/core/src/journey-machine/controls.ts",
-        "packages/core/src/journey-machine/helpers.ts",
-        "packages/core/src/journey-machine/index.ts",
-        "packages/core/src/journey-machine/navigation.ts",
-        "packages/core/src/journey-machine/plugin-controller.ts",
-        "packages/core/src/plugins/analytics/index.ts",
-        "packages/core/src/plugins/autosave/index.ts",
-        "packages/core/src/plugins/diagnostics/index.ts",
-        "packages/core/src/plugins/persistence/controller.ts",
-        "packages/core/src/plugins/persistence/index.ts",
-        "packages/core/src/plugins/replay/index.ts"
-      ]
+      include: coverageInclude,
+      exclude: ["**/*.d.ts", "packages/**/types.ts", "packages/*/src/types/**/*.ts"]
     }
   }
 });

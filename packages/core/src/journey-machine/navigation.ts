@@ -102,9 +102,11 @@ export const createJourneyMachineNavigationController = <
     const from = snapshot.currentStepId;
     const nextIndex = Math.max(0, snapshot.history.index - stepsToGoBack);
     const appliedSteps = snapshot.history.index - nextIndex;
+    /* v8 ignore start -- normalizeStepCount keeps public requests positive; this guards internal callers. */
     if (appliedSteps <= 0) {
       return buildSendResult(runtime.getSnapshot(), false);
     }
+    /* v8 ignore stop */
 
     runtime.emit({ type: "step.exit", stepId: from, timestamp: now() });
     const committedSnapshot = runtime.setSnapshot(

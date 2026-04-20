@@ -276,6 +276,77 @@ describe("PanelProvider bridge lifecycle", () => {
     });
   });
 
+  it("dispatches panel action callbacks and falls back when randomUUID is unavailable", async () => {
+    act(() => {
+      root.render(
+        <PanelProvider>
+          <TestConsumer />
+        </PanelProvider>
+      );
+    });
+
+    const port = ports[0];
+    if (!port) {
+      throw new Error("expected active port");
+    }
+
+    await act(async () => {
+      port.emitMessage({ type: "panel-connected", connected: true });
+      port.emitMessage({
+        type: "panel-bridge-envelope",
+        envelope: createRegisterEnvelope("machine-1")
+      });
+      port.emitMessage({
+        type: "panel-bridge-envelope",
+        envelope: createRegisterEnvelope("machine-2")
+      });
+      await Promise.resolve();
+    });
+
+    const actions = latestActions;
+    if (!actions) {
+      throw new Error("expected panel actions");
+    }
+
+    await act(async () => {
+      actions.selectMachine("machine-1");
+      actions.selectTimelineEntry("machine-1", 0);
+      actions.setFollowLatest("machine-1", false);
+      actions.setDisplayLimit(10);
+      actions.pruneTimeline("machine-1", 1);
+      await Promise.resolve();
+    });
+
+    expect(latestState?.panelState.selectedMachineId).toBe("machine-1");
+    expect(latestState?.panelState.displayLimit).toBe(10);
+    expect(latestState?.panelState.machines["machine-1"]?.followLatest).toBe(false);
+
+    const originalRandomUUID = globalThis.crypto.randomUUID;
+    Object.defineProperty(globalThis.crypto, "randomUUID", {
+      configurable: true,
+      value: undefined
+    });
+    vi.spyOn(Date, "now").mockReturnValue(0x1234);
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+
+    await act(async () => {
+      actions.invokeOperation("machine-1", { operationId: "core.goToNextStep" });
+      await Promise.resolve();
+    });
+
+    expect(port.postedMessages.at(-1)).toMatchObject({
+      type: "panel-command",
+      envelope: {
+        requestId: expect.stringMatching(/^req-/)
+      }
+    });
+
+    Object.defineProperty(globalThis.crypto, "randomUUID", {
+      configurable: true,
+      value: originalRandomUUID
+    });
+  });
+
   it("blocks commands and exposes a mismatch reason for legacy protocol machines", async () => {
     act(() => {
       root.render(
@@ -368,6 +439,49 @@ describe("PanelProvider bridge lifecycle", () => {
     expect(latestState?.panelState.machineOrder).toEqual([]);
   });
 
+  it("cancels pending disconnect cleanup when the panel reconnects", async () => {
+    act(() => {
+      root.render(
+        <PanelProvider>
+          <TestConsumer />
+        </PanelProvider>
+      );
+    });
+
+    const firstPort = ports[0];
+    if (!firstPort) {
+      throw new Error("expected active port");
+    }
+
+    await act(async () => {
+      firstPort.emitMessage({ type: "panel-connected", connected: true });
+      firstPort.emitMessage({
+        type: "panel-bridge-envelope",
+        envelope: createRegisterEnvelope("machine-1")
+      });
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      firstPort.emitMessage({ type: "panel-connected", connected: false });
+      await Promise.resolve();
+    });
+    expect(latestState?.panelState.machineOrder).toEqual(["machine-1"]);
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+      firstPort.emitMessage({ type: "panel-connected", connected: true });
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(1200);
+      await Promise.resolve();
+    });
+    expect(latestState?.displayConnected).toBe(true);
+    expect(latestState?.panelState.machineOrder).toEqual(["machine-1"]);
+  });
+
   it("reconnects after disconnect and tears down the old port", async () => {
     act(() => {
       root.render(
@@ -397,5 +511,132 @@ describe("PanelProvider bridge lifecycle", () => {
     expect(connectMock).toHaveBeenCalledTimes(2);
     expect(firstPort.disconnected).toBe(true);
     expect(ports[1]?.postedMessages).toEqual([{ type: "panel-init", tabId: 7 }]);
+  });
+
+  it("retries connection when chrome.runtime.connect throws", async () => {
+    connectMock.mockImplementationOnce(() => {
+      throw new Error("connect failed");
+    });
+
+    act(() => {
+      root.render(
+        <PanelProvider>
+          <TestConsumer />
+        </PanelProvider>
+      );
+    });
+
+    expect(latestState?.isCommandChannelReady).toBe(false);
+
+    await act(async () => {
+      vi.advanceTimersByTime(600);
+      await Promise.resolve();
+    });
+
+    expect(connectMock).toHaveBeenCalledTimes(2);
+    expect(ports[0]?.postedMessages).toEqual([{ type: "panel-init", tabId: 7 }]);
+  });
+
+  it("ignores malformed and stale port messages", async () => {
+    act(() => {
+      root.render(
+        <PanelProvider>
+          <TestConsumer />
+        </PanelProvider>
+      );
+    });
+
+    const firstPort = ports[0];
+    if (!firstPort) {
+      throw new Error("expected active port");
+    }
+
+    await act(async () => {
+      firstPort.emitMessage({ type: "not-valid" });
+      await Promise.resolve();
+    });
+    expect(latestState?.panelState.machineOrder).toEqual([]);
+
+    await act(async () => {
+      firstPort.disconnect();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(600);
+      await Promise.resolve();
+    });
+
+    const secondPort = ports[1];
+    if (!secondPort) {
+      throw new Error("expected second port");
+    }
+
+    await act(async () => {
+      firstPort.emitMessage({
+        type: "panel-bridge-envelope",
+        envelope: createRegisterEnvelope("stale-machine")
+      });
+      secondPort.emitMessage({
+        type: "panel-bridge-envelope",
+        envelope: createRegisterEnvelope("fresh-machine")
+      });
+      await Promise.resolve();
+    });
+
+    expect(latestState?.panelState.machineOrder).toEqual(["fresh-machine"]);
+
+    await act(async () => {
+      firstPort.disconnect();
+      await Promise.resolve();
+    });
+    expect(latestState?.panelState.machineOrder).toEqual(["fresh-machine"]);
+  });
+
+  it("disconnects the active port when the provider unmounts", () => {
+    act(() => {
+      root.render(
+        <PanelProvider>
+          <TestConsumer />
+        </PanelProvider>
+      );
+    });
+
+    const firstPort = ports[0];
+    if (!firstPort) {
+      throw new Error("expected active port");
+    }
+
+    act(() => {
+      root.unmount();
+    });
+
+    expect(firstPort.disconnected).toBe(true);
+  });
+
+  it("ignores invoke requests after the port has been cleared", async () => {
+    act(() => {
+      root.render(
+        <PanelProvider>
+          <TestConsumer />
+        </PanelProvider>
+      );
+    });
+
+    const firstPort = ports[0];
+    const actions = latestActions;
+    if (!firstPort || !actions) {
+      throw new Error("expected active port and actions");
+    }
+
+    act(() => {
+      root.unmount();
+    });
+
+    await act(async () => {
+      actions.invokeOperation("machine-1", { operationId: "core.goToNextStep" });
+      await Promise.resolve();
+    });
+
+    expect(firstPort.postedMessages).toEqual([{ type: "panel-init", tabId: 7 }]);
   });
 });

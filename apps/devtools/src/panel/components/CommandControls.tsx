@@ -192,6 +192,7 @@ export const CommandControls = ({
             ? (fieldValues[stateKey] ?? "false")
             : (fieldValues[stateKey] ?? "");
 
+        /* v8 ignore start -- OperationForm disables submit before invalid field states reach these guards. */
         if (field.required && raw.trim().length === 0 && field.type !== "boolean") {
           setFormError({ sectionId, message: `${field.label} is required.` });
           return;
@@ -202,6 +203,7 @@ export const CommandControls = ({
           setFormError({ sectionId, message: parsed.error });
           return;
         }
+        /* v8 ignore stop */
 
         if (parsed.value !== undefined) {
           input[field.key] = parsed.value;

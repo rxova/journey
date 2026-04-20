@@ -25,7 +25,9 @@ const runScript = (cwd: string, env: Record<string, string>) => {
   try {
     execFileSync(process.execPath, ["--import", tsxLoaderPath, scriptPath], {
       cwd,
-      env: { ...sanitizedEnv, ...env }
+      env: { ...sanitizedEnv, ...env },
+      stdio: "pipe",
+      encoding: "utf8"
     });
     return { code: 0 };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

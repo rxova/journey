@@ -1,4 +1,5 @@
 export { attachJourneyDevtools, type JourneyDevtoolsBridgeOptions } from "./bridge";
+export { getJourneyMachineDevtoolsRegistry } from "@rxova/journey-core";
 
 export {
   JOURNEY_DEVTOOLS_CHANNEL,

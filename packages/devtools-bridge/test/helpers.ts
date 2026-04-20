@@ -27,9 +27,17 @@ const createJourney = (): JourneyDefinition<Context, StepId> => ({
   }
 });
 
-export const createTestMachine = async () => {
-  const machine = createJourneyMachine(createJourney(), {
-    plugins: [createExecutionPathsPlugin()] as const
+export const createTestMachine = async (
+  options: {
+    withExecutionPaths?: boolean;
+    journey?: JourneyDefinition<Context, StepId>;
+  } = {}
+) => {
+  const machine = createJourneyMachine(options.journey ?? createJourney(), {
+    plugins:
+      options.withExecutionPaths === false
+        ? ([] as const)
+        : ([createExecutionPathsPlugin()] as const)
   });
 
   await machine.startJourney();
