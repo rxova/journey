@@ -192,7 +192,11 @@ const snapshotEnvelope = (
 
 describe("panel state and command helpers", () => {
   it("groups core operations into expected sections", () => {
-    const sections = groupFeatureSections(coreFeatures[0]);
+    const feature = coreFeatures[0];
+    if (!feature) {
+      throw new Error("missing core feature fixture");
+    }
+    const sections = groupFeatureSections(feature);
 
     expect(sections.map((section) => section.id)).toEqual([
       "core:machine-commands",
@@ -208,9 +212,14 @@ describe("panel state and command helpers", () => {
   });
 
   it("labels the final core section as Context", () => {
-    const sections = groupFeatureSections(coreFeatures[0]);
-    expect(sections.at(-1)?.label).toBe("Context");
-    expect(sections.at(-1)?.operations.map((operation) => operation.id)).toEqual([
+    const feature = coreFeatures[0];
+    if (!feature) {
+      throw new Error("missing core feature fixture");
+    }
+    const sections = groupFeatureSections(feature);
+    const lastSection = sections[sections.length - 1];
+    expect(lastSection?.label).toBe("Context");
+    expect(lastSection?.operations.map((operation) => operation.id)).toEqual([
       "core.patchContext",
       "core.updateContext"
     ]);

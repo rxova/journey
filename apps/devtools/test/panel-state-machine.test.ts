@@ -4,8 +4,10 @@ import {
   JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
   JOURNEY_DEVTOOLS_CHANNEL,
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
-  type JourneyDevtoolsBridgeEnvelope
+  type JourneyDevtoolsBridgeEnvelope,
+  type JourneyDevtoolsSerializableSnapshot
 } from "@rxova/journey-devtools-bridge";
+import type { JourneyJsonObject } from "@rxova/journey-core";
 import {
   INITIAL_SNAPSHOT,
   MAX_MACHINE_TIMELINE_ENTRIES,
@@ -17,6 +19,7 @@ import {
   selectSelectedTimelineEntry,
   selectVisibleTimelineEntries,
   type JourneyPanelMachineState,
+  type JourneyPanelTimelineEntry,
   type JourneyPanelState
 } from "../src/panel/store";
 import {
@@ -34,9 +37,9 @@ import {
 
 const createSnapshot = (
   currentStepId: string,
-  context: Record<string, unknown> = {},
+  context: JourneyJsonObject = {},
   status: "idled" | "running" | "completed" | "terminated" = "running"
-) => ({
+): JourneyDevtoolsSerializableSnapshot => ({
   currentStepId,
   history: { timeline: [currentStepId], index: 0 },
   context,
@@ -49,7 +52,7 @@ const createRegisterEnvelope = (
   machineId: string,
   timestamp: number,
   currentStepId: string,
-  context: Record<string, unknown> = {}
+  context: JourneyJsonObject = {}
 ): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "register" }> => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
   version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
@@ -71,7 +74,7 @@ const createSnapshotEnvelope = (
   machineId: string,
   timestamp: number,
   currentStepId: string,
-  context: Record<string, unknown> = {}
+  context: JourneyJsonObject = {}
 ): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "snapshot" }> => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
   version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
@@ -112,12 +115,18 @@ const createOperationResultEnvelope = (
   timestamp,
   requestId,
   operationId,
-  result: {
-    kind: "snapshot",
-    snapshot,
-    transitioned,
-    transitionId: transitioned ? operationId : undefined
-  }
+  result: transitioned
+    ? {
+        kind: "snapshot",
+        snapshot,
+        transitioned: true,
+        transitionId: operationId
+      }
+    : {
+        kind: "snapshot",
+        snapshot,
+        transitioned: false
+      }
 });
 
 const createOperationErrorEnvelope = (
@@ -144,7 +153,7 @@ const createOperationErrorEnvelope = (
 
 const createMachine = (
   currentStepId = "start",
-  context: Record<string, unknown> = {}
+  context: JourneyJsonObject = {}
 ): JourneyPanelMachineState =>
   buildJourneyMachineState("machine-1", createSnapshot(currentStepId, context));
 
@@ -372,7 +381,8 @@ describe("panel timeline helpers", () => {
         machineId: "machine-1",
         label: "Machine 1",
         appName: null,
-        mode: "graph"
+        mode: "graph",
+        features: []
       })
     ).toMatchObject({
       machineId: "machine-1",
@@ -449,18 +459,21 @@ describe("panel timeline helpers", () => {
       followLatest: false,
       selectedTimelineIndex: 2,
       timelineSequence: MAX_MACHINE_TIMELINE_ENTRIES - 1,
-      timelineEntries: Array.from({ length: MAX_MACHINE_TIMELINE_ENTRIES - 1 }, (_, index) => ({
-        id: `entry-${index}`,
-        timestamp: index,
-        kind: "snapshot" as const,
-        label: `SNAPSHOT/${index}`,
-        requestId: null,
-        invocation: null,
-        envelopeKind: "snapshot" as const,
-        snapshot: createSnapshot(`step-${index}`),
-        actionPayload: {},
-        meta: { machineId: "machine-1" }
-      }))
+      timelineEntries: Array.from(
+        { length: MAX_MACHINE_TIMELINE_ENTRIES - 1 },
+        (_, index): JourneyPanelTimelineEntry => ({
+          id: `entry-${index}`,
+          timestamp: index,
+          kind: "snapshot",
+          label: `SNAPSHOT/${index}`,
+          requestId: null,
+          invocation: null,
+          envelopeKind: "snapshot",
+          snapshot: createSnapshot(`step-${index}`),
+          actionPayload: {},
+          meta: { machineId: "machine-1" }
+        })
+      )
     };
 
     machine = appendTimelineEntry(machine, {
@@ -492,11 +505,17 @@ describe("panel timeline helpers", () => {
     expect(machine.timelineEntries[0]?.id).toBe("entry-1");
     expect(machine.selectedTimelineIndex).toBe(1);
 
+    const secondToLastEntry = machine.timelineEntries[machine.timelineEntries.length - 2];
+    if (!secondToLastEntry) {
+      throw new Error("expected second-to-last timeline entry");
+    }
     const replaced = replaceTimelineEntry(machine, "overflow-a", {
-      ...machine.timelineEntries.at(-2)!,
+      ...secondToLastEntry,
       label: "OP/replaced"
     });
-    expect(replaced.timelineEntries.at(-2)?.label).toBe("OP/replaced");
+    expect(replaced.timelineEntries[replaced.timelineEntries.length - 2]?.label).toBe(
+      "OP/replaced"
+    );
 
     const appendedOnMiss = replaceTimelineEntry(machine, "missing", {
       id: "appended",
@@ -510,7 +529,9 @@ describe("panel timeline helpers", () => {
       actionPayload: {},
       meta: { machineId: "machine-1" }
     });
-    expect(appendedOnMiss.timelineEntries.at(-1)?.id).toBe("appended");
+    expect(appendedOnMiss.timelineEntries[appendedOnMiss.timelineEntries.length - 1]?.id).toBe(
+      "appended"
+    );
 
     const pruned = pruneTimelineEntries(
       {
@@ -536,15 +557,15 @@ describe("panel timeline helpers", () => {
     expect(clearPendingCommand(pending, "missing")).toBe(pending);
     expect(clearPendingCommand(pending, "req-1")).toEqual({});
 
-    const entries = [
+    const entries: JourneyPanelTimelineEntry[] = [
       {
         id: "event",
         timestamp: 1000,
-        kind: "event" as const,
+        kind: "event",
         label: "EVENT/x",
         requestId: null,
         invocation: null,
-        envelopeKind: "observation" as const,
+        envelopeKind: "observation",
         snapshot: null,
         actionPayload: {},
         meta: { machineId: "machine-1" }
@@ -552,11 +573,11 @@ describe("panel timeline helpers", () => {
       {
         id: "snapshot",
         timestamp: 1001,
-        kind: "snapshot" as const,
+        kind: "snapshot",
         label: "SNAPSHOT/review",
         requestId: null,
         invocation: null,
-        envelopeKind: "snapshot" as const,
+        envelopeKind: "snapshot",
         snapshot: createSnapshot("review"),
         actionPayload: {},
         meta: { machineId: "machine-1" }
@@ -564,11 +585,11 @@ describe("panel timeline helpers", () => {
       {
         id: "error",
         timestamp: 1002,
-        kind: "error" as const,
+        kind: "error",
         label: "ERROR/x",
         requestId: null,
         invocation: null,
-        envelopeKind: "operationError" as const,
+        envelopeKind: "operationError",
         snapshot: null,
         actionPayload: {},
         meta: { machineId: "machine-1" }
@@ -582,17 +603,17 @@ describe("panel timeline helpers", () => {
 
 describe("panel selectors", () => {
   it("selects active machines and slices visible timeline entries", () => {
-    const machine = {
+    const machine: JourneyPanelMachineState = {
       ...createMachine("review"),
       timelineEntries: [
         {
           id: "0",
           timestamp: 1000,
-          kind: "init" as const,
+          kind: "init",
           label: "@@INIT",
           requestId: null,
           invocation: null,
-          envelopeKind: "register" as const,
+          envelopeKind: "register",
           snapshot: createSnapshot("start"),
           actionPayload: {},
           meta: { machineId: "machine-1" }
@@ -600,11 +621,11 @@ describe("panel selectors", () => {
         {
           id: "1",
           timestamp: 1001,
-          kind: "snapshot" as const,
+          kind: "snapshot",
           label: "SNAPSHOT/review",
           requestId: null,
           invocation: null,
-          envelopeKind: "snapshot" as const,
+          envelopeKind: "snapshot",
           snapshot: createSnapshot("review"),
           actionPayload: {},
           meta: { machineId: "machine-1" }
