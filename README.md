@@ -42,24 +42,18 @@ The current runtime contract being frozen for the upcoming `1.0.0-rc` line is:
 
 Sizes are brotli-compressed with all dependencies.
 
-## Super quick start
+## Plugins
 
-```bash
-npm i @rxova/journey-core
-```
+| Plugin                                                                                              | Size                                                      | Description                                 |
+| --------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------- |
+| [`@rxova/journey-core/persistence`](https://rxova.org/docs/core/persistence)                        | ![2.68 kB](https://img.shields.io/badge/2.68%20kB-0f8f6a) | Persist and rehydrate journey state         |
+| [`@rxova/journey-core/autosave`](https://rxova.org/docs/core/autosave)                              | ![3.06 kB](https://img.shields.io/badge/3.06%20kB-0f8f6a) | Debounced draft persistence and save status |
+| [`@rxova/journey-core/analytics`](https://rxova.org/docs/core/plugins/analytics-plugin)             | ![804 B](https://img.shields.io/badge/804%20B-0f8f6a)     | Normalized lifecycle analytics envelopes    |
+| [`@rxova/journey-core/replay`](https://rxova.org/docs/core/replay)                                  | ![648 B](https://img.shields.io/badge/648%20B-0f8f6a)     | In-memory replay capture and export         |
+| [`@rxova/journey-core/diagnostics`](https://rxova.org/docs/core/plugins/diagnostics-plugin)         | ![2.42 kB](https://img.shields.io/badge/2.42%20kB-0f8f6a) | Structural journey analysis                 |
+| [`@rxova/journey-core/execution-paths`](https://rxova.org/docs/core/plugins/execution-paths-plugin) | ![1.79 kB](https://img.shields.io/badge/1.79%20kB-0f8f6a) | Enumerate reachable execution paths         |
 
-```ts
-import { createJourneyMachine } from "@rxova/journey-core";
-
-const machine = createJourneyMachine({
-  context: { name: "" },
-  steps: { account: {}, review: {} },
-  transitions: ["account", "review"] // linear — initial defaults to first element
-});
-
-machine.startJourney();
-await machine.send({ type: "goToNextStep" });
-```
+Sizes are brotli-compressed with all dependencies.
 
 ## Three Ways to Define Transitions
 
@@ -94,12 +88,16 @@ transitions: {
   login: {
     goToNextStep: [
       { to: "admin", when: ({ context }) => context.role === "admin" },
+      { to: "setup2fa", when: ({ context }) => context.requires2fa },
       { to: "dashboard" }
     ]
   },
-  admin: { completeJourney: true },
-  dashboard: { completeJourney: true },
-  global: { terminateJourney: true }
+  setup2fa: {
+    goToNextStep: [{ to: "dashboard" }]
+  },
+  blocked: {
+    retry: [{ to: "login" }]
+  }
 }
 ```
 
@@ -122,8 +120,7 @@ export const loginStep = createStep("login", {
 const definition = build({
   initial: "login",
   context: { role: "user" },
-  steps: [loginStep, adminStep, dashboardStep],
-  global: { completeJourney: true, terminateJourney: true }
+  steps: [loginStep, setup2faStep, adminStep, dashboardStep, blockedStep]
 });
 ```
 
@@ -224,12 +221,9 @@ const machine = createJourneyMachine<Context, StepId, EventMap, StepMeta>({
       goToNextStep: [{ to: "review", when: ({ context }) => context.name !== "" }],
       back: [{ to: "account" }]
     },
-    review: {
-      completeJourney: true
-    },
+    review: {},
     global: {
-      requestClose: [{ to: "account", when: ({ event }) => event.payload.confirmed }],
-      terminateJourney: true
+      requestClose: [{ to: "account", when: ({ event }) => event.payload.confirmed }]
     }
   }
 });
@@ -390,7 +384,7 @@ The `global` key defines transitions available from any step:
 ```ts
 transitions: {
   step1: { goToNextStep: [{ to: "step2" }] },
-  global: { terminateJourney: true }
+  global: { requestClose: [{ to: "confirmExit" }] }
 }
 ```
 

@@ -736,6 +736,67 @@ describe("createJourney", () => {
     expect(selectedValues[selectedValues.length - 1]).toBe(initialSelection);
   });
 
+  it("updates selector cache snapshot reference while preserving selected value when equality fn returns true", async () => {
+    // This test targets runtime-hooks.tsx lines 90-97: the branch where the snapshot
+    // reference has changed (Object.is(cached.snapshot, nextSnapshot) === false) but the
+    // equality function returns true, so the cache is updated with the new snapshot pointer
+    // while the previously-selected object reference is preserved.
+    //
+    // The scenario requires:
+    // 1. async act() fully applies updateContext so the snapshot reference is new
+    // 2. subscribeSelector short-circuits (equalityFn returns true for same stepId)
+    //    so onStoreChange is never called — no React re-render, cache stays stale
+    // 3. rerender() with a new tick prop forces a synchronous re-render
+    // 4. useSyncExternalStore calls getSelectedSnapshot, which hits lines 90-97
+    const { journey } = createJourneyHarness();
+
+    const selector = (snapshot: ReturnType<typeof journey.useJourneySnapshot>) => ({
+      stepId: snapshot.currentStepId
+    });
+    const equalityFn = vi.fn(
+      (previous: { stepId: StepId }, next: { stepId: StepId }) => previous.stepId === next.stepId
+    );
+
+    const selectedValues: Array<{ stepId: StepId }> = [];
+
+    const SelectorProbe = ({ tick }: { tick: number }) => {
+      const selected = journey.useJourneySelector(selector, equalityFn);
+      selectedValues.push(selected);
+      return (
+        <div>
+          <span data-testid="selected-step">{selected.stepId}</span>
+          <span data-testid="tick">{tick}</span>
+        </div>
+      );
+    };
+
+    const { rerender } = render(<SelectorProbe tick={0} />);
+    const initialSelection = selectedValues[selectedValues.length - 1];
+    if (!initialSelection) {
+      throw new Error("expected an initial selector value");
+    }
+
+    // Apply both startJourney and updateContext fully (async act ensures microtasks resolve).
+    // subscribeSelector fires for both snapshot changes, but equalityFn returns true each time
+    // (currentStepId stays "start") so onStoreChange is never called — cache is now stale.
+    await act(async () => {
+      await journey.machine.startJourney();
+      await journey.machine.updateContext((ctx) => ({ ...ctx, name: "Grace Hopper" }));
+    });
+
+    const equalityCallsBefore = equalityFn.mock.calls.length;
+
+    // Forcing a re-render causes useSyncExternalStore to call getSelectedSnapshot.
+    // cached.snapshot !== current machine snapshot → the selector runs → equalityFn is
+    // called (lines 90-97) → cache pointer updated, selected value preserved.
+    rerender(<SelectorProbe tick={1} />);
+
+    expect(equalityFn.mock.calls.length).toBeGreaterThan(equalityCallsBefore);
+    expect(selectedValues[selectedValues.length - 1]).toBe(initialSelection);
+    expect(screen.getByTestId("selected-step").textContent).toBe("start");
+    expect(screen.getByTestId("tick").textContent).toBe("1");
+  });
+
   it("keeps StepRenderer stable across context-only updates when the current step does not change", async () => {
     const { journey } = createJourneyHarness();
     const startRender = vi.fn();

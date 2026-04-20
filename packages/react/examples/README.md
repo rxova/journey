@@ -16,7 +16,7 @@ These React examples are `createJourney()` wrappers around the canonical flow de
 - `custom-event.flow.tsx`: custom event via `api.send({ type })`.
 - `subscribe-vs-subscribe-event.flow.tsx`: snapshot updates via `useJourneySnapshot` and typed telemetry via `useJourneyEvent`.
 - `async-guard.flow.tsx`: async validation in `when`.
-- `async-effect.flow.tsx`: async context update in `effect`.
+- `async-transition-update.flow.tsx`: async data preparation before a transition `updateContext`.
 - `dynamic-steps.flow.tsx`: add/remove optional step by rebuilding journey graph at runtime.
 - `reset-on-journey-change.flow.tsx`: intentionally swap to a new journey instance when the definition variant changes.
 - `confirm-close.flow.tsx`: dirty-close confirmation journey.

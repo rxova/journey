@@ -78,11 +78,16 @@ transitions: {
   login: {
     goToNextStep: [
       { to: "admin", when: ({ context }) => context.role === "admin" },
+      { to: "setup2fa", when: ({ context }) => context.requires2fa },
       { to: "dashboard" }
     ]
   },
-  admin: { completeJourney: true },
-  dashboard: { completeJourney: true }
+  setup2fa: {
+    goToNextStep: [{ to: "dashboard" }]
+  },
+  blocked: {
+    retry: [{ to: "login" }]
+  },
 }
 ```
 

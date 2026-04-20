@@ -16,8 +16,8 @@ Headless examples for `@rxova/journey-core`.
 - `custom-event.flow.ts`: custom event via `send({ type })`.
 - `subscribe-vs-subscribe-event.flow.ts`: when to use `subscribe` (snapshot reactivity) vs `subscribeEvent` (typed telemetry).
 - `async-guard.flow.ts`: async validation in `when`.
-- `async-effect.flow.ts`: async context update in `effect`.
-- `async-timeout.flow.ts`: finite `timeoutMs` on async guard/effect plus timeout-aware recovery.
+- `async-transition-update.flow.ts`: async data preparation before a transition `updateContext`.
+- `async-timeout.flow.ts`: finite `timeoutMs` on async guards plus timeout-aware recovery.
 - `dynamic-steps.flow.ts`: add/remove optional step by rebuilding journey graph at runtime.
 - `reset-on-journey-change.flow.ts`: recreate the internal machine when the journey definition changes.
 - `confirm-close.flow.ts`: dirty-close confirmation journey.

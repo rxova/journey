@@ -22,9 +22,8 @@ import { createJourneyMachine } from "@rxova/journey-core";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 
 const machine = createJourneyMachine(definition);
-machine.startJourney();
-
 const detach = attachJourneyDevtools(machine, { label: "Checkout" });
+machine.startJourney();
 ```
 
 ## What It Does

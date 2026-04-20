@@ -92,11 +92,7 @@ import { blockedStep } from "./steps/blocked.step";
 const definition = build({
   initial: "login",
   context: { role: "user", name: "" },
-  steps: [loginStep, dashboardStep, adminStep, blockedStep],
-  global: {
-    completeJourney: true,
-    terminateJourney: true
-  }
+  steps: [loginStep, dashboardStep, adminStep, blockedStep]
 });
 
 export const journey = createJourney(definition);

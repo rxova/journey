@@ -103,11 +103,8 @@ const journey = {
         }
       ]
     },
-    review: {
-      completeJourney: true
-    },
     global: {
-      terminateJourney: [{ label: "cancel-anywhere" }]
+      requestClose: [{ to: "start", label: "restart-flow" }]
     }
   }
 };

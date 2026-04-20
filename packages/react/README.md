@@ -38,7 +38,7 @@ const definition: JourneyDefinition<Context, StepId> = {
   steps: { start: {}, review: {} },
   transitions: {
     start: { goToNextStep: [{ to: "review" }] },
-    review: { completeJourney: true }
+    review: {}
   }
 };
 
@@ -76,9 +76,10 @@ export const App = () => (
 - **`useJourneySnapshot()`** — full snapshot: `currentStepId`, `context`, `history`, `status`, `async`
 - **`useJourneyApi()`** — runtime commands: `startJourney`, `goToNextStep`, `goToPreviousStep`, `completeJourney`, `send`, etc.
 - **`useStepApi(stepId)`** — step-scoped command surface with `send(...)` narrowed to custom events handled by that step or `global`
-- **`useJourneyComputed()`** — derived state: `mode`, `activeStepId`, `isLoading`, `isFirstStep`, `isLastStep`
+- **`useJourneyComputed()`** — derived state: `mode`, `activeStepId`, `activeStepIndex`, `visitedStepCount`, `isLoading`, `isIdle`, `isRunning`, `isComplete`, `isTerminated`, `isInitialStep`; linear mode adds `stepCount`, `journeyLength`, `isFirstStep`, `isLastStep`, `stepOrder`
 - **`useJourneySelector(selector, eq?)`** — subscribe to a slice of the snapshot
 - **`useJourneyEvent(listener)`** — stream lifecycle events for analytics
+- **`useJourneyStepLifecycle(stepId, callbacks)`** — run side effects on step enter/leave
 
 ## Navigation
 

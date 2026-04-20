@@ -41,9 +41,6 @@ const journey = {
     },
     company: {
       goToNextStep: [{ to: "review" }]
-    },
-    review: {
-      completeJourney: true
     }
   }
 };
@@ -87,10 +84,10 @@ const journey = {
       goToNextStep: [{ to: "review" }]
     },
     approved: {
-      completeJourney: true
+      requestChanges: [{ to: "review" }]
     },
     rejected: {
-      terminateJourney: true
+      goToNextStep: [{ to: "retry" }]
     }
   }
 };
