@@ -218,43 +218,17 @@
   }
 
   .row {
-    grid-template-columns: 42px 48px minmax(0, 1fr) auto;
-    grid-template-rows: auto auto;
-    gap: 4px 8px;
-    align-content: center;
-    min-height: 42px;
-  }
-
-  .index {
-    grid-column: 1;
-    grid-row: 1;
-    align-self: center;
-  }
-
-  .kind {
-    grid-column: 2;
-    grid-row: 1;
-    align-self: center;
-  }
-
-  .label {
-    grid-column: 3;
-    grid-row: 1;
+    grid-template-columns: 34px 48px minmax(0, 1fr) auto;
+    grid-template-rows: 1fr;
+    gap: 6px;
     min-width: 0;
-    align-self: center;
-  }
-
-  .time {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    align-self: center;
-    justify-self: end;
-    line-height: 1;
   }
 
   .outcome {
     grid-column: 4;
-    grid-row: 1;
-    align-self: center;
+  }
+
+  .time {
+    display: none;
   }
 }

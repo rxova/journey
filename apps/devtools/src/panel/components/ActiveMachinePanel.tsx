@@ -51,11 +51,15 @@ export const ActiveMachinePanel = () => {
         <CommandControls
           features={activeMachine.meta.features}
           snapshotStatus={activeMachine.snapshot.status}
+          currentStepId={activeMachine.snapshot.currentStepId}
           disabled={areCommandsDisabled}
           disabledReason={commandDisabledReason}
           mutationsEnabled={activeMachine.meta.mutationsEnabled}
+          mode={activeMachine.meta.mode}
           stepIds={activeMachine.meta.stepIds}
           eventTypes={activeMachine.meta.eventTypes}
+          eventTypesBySource={activeMachine.meta.eventTypesBySource}
+          goToStepTargetsBySource={activeMachine.meta.goToStepTargetsBySource}
           onInvoke={(invocation) => invokeOperation(activeMachine.meta.machineId, invocation)}
         />
       </SectionErrorBoundary>

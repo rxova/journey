@@ -154,12 +154,21 @@ export const panelReducer = (
       const existingMachine =
         state.machines[envelope.machineId] ??
         buildJourneyMachineState(envelope.machineId, INITIAL_SNAPSHOT, envelope.version);
-      const machineWithSnapshot = applyMachineUpdateForEnvelope(existingMachine, envelope);
-      const timelineEntry = buildTimelineEntry(machineWithSnapshot, envelope);
       const pending =
         "requestId" in envelope
-          ? machineWithSnapshot.pendingCommandsByRequestId[envelope.requestId]
+          ? existingMachine.pendingCommandsByRequestId[envelope.requestId]
           : null;
+      const hasPostCommandSnapshot =
+        envelope.kind === "operationResult" &&
+        envelope.result.kind === "snapshot" &&
+        pending != null &&
+        existingMachine.timelineEntries.some(
+          (entry) => entry.envelopeKind === "snapshot" && entry.timestamp > pending.timestamp
+        );
+      const machineWithSnapshot = applyMachineUpdateForEnvelope(existingMachine, envelope, {
+        applyOperationResultSnapshot: !hasPostCommandSnapshot
+      });
+      const timelineEntry = buildTimelineEntry(machineWithSnapshot, envelope);
       const machineWithEntry =
         envelope.kind === "operationResult" || envelope.kind === "operationError"
           ? replaceTimelineEntry(

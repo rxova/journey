@@ -610,6 +610,9 @@ importers:
       '@rxova/journey-core':
         specifier: workspace:1.0.0-rc.2
         version: link:../../packages/core
+      '@rxova/journey-devtools-bridge':
+        specifier: workspace:1.0.0-rc.2
+        version: link:../../packages/devtools-bridge
       '@rxova/journey-react':
         specifier: workspace:1.0.0-rc.2
         version: link:../../packages/react
@@ -641,6 +644,9 @@ importers:
       '@rxova/journey-core':
         specifier: workspace:1.0.0-rc.2
         version: link:../../packages/core
+      '@rxova/journey-devtools-bridge':
+        specifier: workspace:1.0.0-rc.2
+        version: link:../../packages/devtools-bridge
       '@rxova/journey-react':
         specifier: workspace:1.0.0-rc.2
         version: link:../../packages/react
