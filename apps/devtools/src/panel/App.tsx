@@ -3,7 +3,7 @@ import React from "react";
 import {
   JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
-  type JourneyDevtoolsCommand,
+  type JourneyDevtoolsOperationInvoke,
   type JourneyDevtoolsProtocolVersion
 } from "@rxova/journey-devtools-bridge";
 import { CommandControls } from "./components/CommandControls";
@@ -22,7 +22,7 @@ import {
 } from "./store";
 import {
   JOURNEY_DEVTOOLS_PANEL_PORT,
-  createCommandEnvelope,
+  createInvokeEnvelope,
   isBackgroundToPanelMessage,
   type BackgroundToPanelMessage,
   type PanelWarning,
@@ -198,8 +198,8 @@ export const App = () => {
     };
   }, []);
 
-  const sendCommand = React.useCallback(
-    (machineId: string, command: JourneyDevtoolsCommand) => {
+  const sendInvocation = React.useCallback(
+    (machineId: string, invocation: JourneyDevtoolsOperationInvoke) => {
       const port = portRef.current;
       if (!port) {
         return;
@@ -215,14 +215,14 @@ export const App = () => {
         type: "queue-command",
         machineId,
         requestId,
-        command,
+        invocation,
         timestamp: Date.now()
       });
 
-      const envelope = createCommandEnvelope(
+      const envelope = createInvokeEnvelope(
         machineId,
         requestId,
-        command,
+        invocation,
         protocolVersion ?? JOURNEY_DEVTOOLS_PROTOCOL_VERSION
       );
       const message: PanelCommandMessage = {
@@ -247,7 +247,6 @@ export const App = () => {
   );
   const selectedDiff = React.useMemo(() => selectSelectedDiff(activeMachine), [activeMachine]);
   const isCommandChannelReady = state.connected && portRef.current !== null;
-  const availableCommands = activeMachine?.meta.capabilities.commands ?? [];
   const protocolMismatchReason = getProtocolMismatchReason(activeMachine?.protocolVersion);
   const areCommandsDisabled = !isCommandChannelReady || protocolMismatchReason !== null;
   const commandDisabledReason = !isCommandChannelReady
@@ -327,11 +326,12 @@ export const App = () => {
 
           <SectionErrorBoundary section="Controls">
             <CommandControls
-              availableCommands={availableCommands}
+              features={activeMachine.meta.features}
               snapshotStatus={activeMachine.snapshot.status}
               disabled={areCommandsDisabled}
               disabledReason={commandDisabledReason}
-              onCommand={(command) => sendCommand(activeMachine.meta.machineId, command)}
+              mutationsEnabled={activeMachine.meta.mutationsEnabled}
+              onInvoke={(invocation) => sendInvocation(activeMachine.meta.machineId, invocation)}
             />
           </SectionErrorBoundary>
         </>

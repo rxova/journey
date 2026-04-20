@@ -1,5 +1,6 @@
 export { createJourneyMachine } from "./journey-machine";
 export { createJourneyBuilder } from "./journey-builder";
+export { getJourneyMachineDevtoolsRegistry } from "./journey-machine/devtools-registry";
 export { JourneyDisposedError, JourneyTimeoutError } from "./journey-machine/helpers";
 export type {
   JourneyBuilder,
@@ -46,6 +47,12 @@ export {
   type JourneyLifecycleErrorObservationEvent,
   type JourneyLifecycleErrorPhase,
   type JourneyLifecycleArgs,
+  type JourneyMachineDevtoolsFeatureSpec,
+  type JourneyMachineDevtoolsFieldSpec,
+  type JourneyMachineDevtoolsFieldType,
+  type JourneyMachineDevtoolsOperationResult,
+  type JourneyMachineDevtoolsOperationResultKind,
+  type JourneyMachineDevtoolsOperationSpec,
   type JourneyMachine,
   type JourneyMachineOptions,
   type JourneyMachinePlugin,

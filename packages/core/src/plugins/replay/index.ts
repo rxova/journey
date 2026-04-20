@@ -134,6 +134,11 @@ export const createReplayPlugin = (options: JourneyReplayPluginOptions = {}) => 
 
   return {
     name: "replay",
+    __extension__: undefined as unknown as JourneyReplayMachineExtension<
+      JourneyJsonObject,
+      string,
+      Record<string, unknown>
+    >,
     setup: () => ({
       hydrateSnapshot: (snapshot) => {
         initialSnapshot = snapshot as JourneySnapshot<JourneyJsonObject, string>;
@@ -178,6 +183,52 @@ export const createReplayPlugin = (options: JourneyReplayPluginOptions = {}) => 
             serializeReplaySession(buildSession(), exportOptions)
         };
       },
+      getDevtoolsFeatures: () => [
+        {
+          id: "replay",
+          label: "Replay",
+          operations: [
+            {
+              id: "replay.inspectSession",
+              label: "inspectSession",
+              mutates: false,
+              output: "data",
+              run: () => ({
+                kind: "data",
+                data: buildSession()
+              })
+            },
+            {
+              id: "replay.exportSession",
+              label: "exportSession",
+              mutates: false,
+              output: "text",
+              fields: [{ key: "pretty", label: "pretty", type: "boolean" }],
+              run: ({ input }) => ({
+                kind: "text",
+                text: serializeReplaySession(buildSession(), {
+                  pretty: input?.pretty === true
+                })
+              })
+            },
+            {
+              id: "replay.clearSession",
+              label: "clearSession",
+              mutates: true,
+              output: "void",
+              run: ({ machine }) => {
+                initialSnapshot = machine.getSnapshot() as JourneySnapshot<
+                  JourneyJsonObject,
+                  string
+                >;
+                entries.length = 0;
+                truncated = false;
+                return { kind: "void" };
+              }
+            }
+          ]
+        }
+      ],
       dispose: () => {
         unsubscribeEvents?.();
       }

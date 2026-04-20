@@ -1,11 +1,9 @@
 import type {
   JourneyDevtoolsBridgeEnvelope,
-  JourneyDevtoolsCommand,
-  JourneyDevtoolsMachineCapabilities,
+  JourneyDevtoolsMachineFeatureDescriptor,
   JourneyDevtoolsMachineMeta,
+  JourneyDevtoolsOperationInvoke,
   JourneyDevtoolsProtocolVersion,
-  JourneyDevtoolsSerializableExecutionPathsResult,
-  JourneyDevtoolsSerializableObservationEvent,
   JourneyDevtoolsSerializableSnapshot
 } from "@rxova/journey-devtools-bridge";
 import { JOURNEY_DEVTOOLS_PROTOCOL_VERSION } from "@rxova/journey-devtools-bridge";
@@ -17,27 +15,14 @@ import {
 
 type TimelineEnvelopeKind =
   | Exclude<JourneyDevtoolsBridgeEnvelope["kind"], "unregister">
-  | "queuedCommand"
-  | "queuedQuery";
+  | "queuedOperation";
 type NonUnregisterBridgeEnvelope = Exclude<JourneyDevtoolsBridgeEnvelope, { kind: "unregister" }>;
-type JourneyMachineUpdatersByEnvelopeKind = {
-  [TKind in NonUnregisterBridgeEnvelope["kind"]]: (
-    machine: JourneyPanelMachineState,
-    envelope: Extract<NonUnregisterBridgeEnvelope, { kind: TKind }>
-  ) => JourneyPanelMachineState;
-};
 
-export type JourneyPanelTimelineKind =
-  | "init"
-  | "snapshot"
-  | "command"
-  | "query"
-  | "event"
-  | "error";
+export type JourneyPanelTimelineKind = "init" | "snapshot" | "operation" | "event" | "error";
 
 export type JourneyPanelPendingCommand = {
   requestId: string;
-  command: JourneyDevtoolsCommand;
+  invocation: JourneyDevtoolsOperationInvoke;
   timestamp: number;
   timelineEntryId: string;
 };
@@ -48,12 +33,13 @@ export type JourneyPanelTimelineEntry = {
   kind: JourneyPanelTimelineKind;
   label: string;
   requestId: string | null;
-  command: JourneyDevtoolsCommand | null;
+  invocation: JourneyDevtoolsOperationInvoke | null;
   envelopeKind: TimelineEnvelopeKind;
   snapshot: JourneyDevtoolsSerializableSnapshot | null;
   actionPayload: unknown;
   meta: {
     machineId: string;
+    operationId?: string;
     transitioned?: boolean;
     transitionId?: string;
     errorMessage?: string;
@@ -61,7 +47,8 @@ export type JourneyPanelTimelineEntry = {
 };
 
 type JourneyPanelMachineMeta = JourneyDevtoolsMachineMeta & {
-  capabilities: JourneyDevtoolsMachineCapabilities;
+  mutationsEnabled: boolean;
+  features: readonly JourneyDevtoolsMachineFeatureDescriptor[];
 };
 
 export type JourneyPanelMachineState = {
@@ -96,37 +83,19 @@ export type JourneyPanelAction =
       type: "queue-command";
       machineId: string;
       requestId: string;
-      command: JourneyDevtoolsCommand;
+      invocation: JourneyDevtoolsOperationInvoke;
       timestamp: number;
     };
 
 export const MAX_MACHINE_TIMELINE_ENTRIES = 2000;
 
-const LEGACY_MUTATING_COMMANDS: JourneyDevtoolsCommand["type"][] = [
-  "goToNextStep",
-  "terminateJourney",
-  "completeJourney",
-  "goToStepById",
-  "goToPreviousStep",
-  "goToLastVisitedStep",
-  "send",
-  "resetJourney",
-  "clearStepError"
-];
-
 const initialSnapshot: JourneyDevtoolsSerializableSnapshot = {
   currentStepId: "unknown",
-  history: {
-    timeline: ["unknown"],
-    index: 0
-  },
+  history: { timeline: ["unknown"], index: 0 },
   context: {},
   visited: {},
   status: "idled",
-  async: {
-    isLoading: false,
-    byStep: {}
-  }
+  async: { isLoading: false, byStep: {} }
 };
 
 const buildJourneyMachineState = (
@@ -138,12 +107,8 @@ const buildJourneyMachineState = (
     machineId,
     label: machineId,
     appName: null,
-    commandsEnabled: true,
-    capabilities: {
-      commands: [],
-      observe: false,
-      executionPaths: false
-    }
+    mutationsEnabled: true,
+    features: []
   },
   protocolVersion,
   snapshot,
@@ -154,58 +119,35 @@ const buildJourneyMachineState = (
   pendingCommandsByRequestId: {}
 });
 
-const getLegacyCapabilities = (commandsEnabled: boolean): JourneyDevtoolsMachineCapabilities => ({
-  commands: commandsEnabled ? LEGACY_MUTATING_COMMANDS : [],
-  observe: false,
-  executionPaths: false
+const normalizeMachineMeta = (meta: JourneyDevtoolsMachineMeta): JourneyPanelMachineMeta => ({
+  ...meta,
+  mutationsEnabled: meta.mutationsEnabled ?? true,
+  features: meta.features ?? []
 });
 
-const normalizeMachineMeta = (meta: JourneyDevtoolsMachineMeta): JourneyPanelMachineMeta => {
-  const commandsEnabled = meta.commandsEnabled ?? true;
-
-  return {
-    ...meta,
-    commandsEnabled,
-    capabilities: meta.capabilities ?? getLegacyCapabilities(commandsEnabled)
-  };
-};
-
-const journeyMachineUpdatersByEnvelopeKind: JourneyMachineUpdatersByEnvelopeKind = {
-  register: (
-    machine: JourneyPanelMachineState,
-    envelope: Extract<NonUnregisterBridgeEnvelope, { kind: "register" }>
-  ): JourneyPanelMachineState => ({
-    ...machine,
-    meta: normalizeMachineMeta(envelope.meta),
-    protocolVersion: envelope.version,
-    snapshot: envelope.snapshot
-  }),
-  snapshot: (
-    machine: JourneyPanelMachineState,
-    envelope: Extract<NonUnregisterBridgeEnvelope, { kind: "snapshot" }>
-  ): JourneyPanelMachineState => ({
-    ...machine,
-    protocolVersion: envelope.version,
-    snapshot: envelope.snapshot
-  }),
-  commandResult: (
-    machine: JourneyPanelMachineState,
-    envelope: Extract<NonUnregisterBridgeEnvelope, { kind: "commandResult" }>
-  ): JourneyPanelMachineState => ({
-    ...machine,
-    protocolVersion: envelope.version,
-    snapshot: envelope.snapshot
-  }),
-  observation: (machine: JourneyPanelMachineState): JourneyPanelMachineState => machine,
-  commandError: (machine: JourneyPanelMachineState): JourneyPanelMachineState => machine,
-  executionPathsResult: (machine: JourneyPanelMachineState): JourneyPanelMachineState => machine
-};
-
-export const applyMachineUpdateForEnvelope = <TKind extends NonUnregisterBridgeEnvelope["kind"]>(
+export const applyMachineUpdateForEnvelope = (
   machine: JourneyPanelMachineState,
-  envelope: Extract<NonUnregisterBridgeEnvelope, { kind: TKind }>
+  envelope: NonUnregisterBridgeEnvelope
 ): JourneyPanelMachineState => {
-  return journeyMachineUpdatersByEnvelopeKind[envelope.kind](machine, envelope);
+  switch (envelope.kind) {
+    case "register":
+      return {
+        ...machine,
+        meta: normalizeMachineMeta(envelope.meta),
+        protocolVersion: envelope.version,
+        snapshot: envelope.snapshot
+      };
+    case "snapshot":
+      return { ...machine, protocolVersion: envelope.version, snapshot: envelope.snapshot };
+    case "operationResult":
+      return {
+        ...machine,
+        protocolVersion: envelope.version,
+        snapshot: envelope.result.kind === "snapshot" ? envelope.result.snapshot : machine.snapshot
+      };
+    default:
+      return machine;
+  }
 };
 
 const buildEntryId = (
@@ -215,58 +157,34 @@ const buildEntryId = (
   nextSequence: number
 ): string => `${machineId}-timeline-${envelopeKind}-${timestamp}-${nextSequence}`;
 
-const buildCommandLabel = (
-  requestId: string,
-  pendingCommand: JourneyPanelPendingCommand | null,
-  isError: boolean
-): string => {
-  if (pendingCommand) {
-    const prefix = isError ? "ERROR" : "COMMAND";
-    return `${prefix}/${pendingCommand.command.type}`;
-  }
-
-  return isError ? `ERROR/${requestId}` : `COMMAND_RESULT/${requestId}`;
-};
-
-const buildObservationLabel = (event: JourneyDevtoolsSerializableObservationEvent): string =>
-  `EVENT/${event.type}`;
-
-const buildExecutionPathsLabel = (
-  pendingCommand: JourneyPanelPendingCommand | null,
-  requestId: string
-): string =>
-  pendingCommand?.command.type === "getExecutionPaths"
-    ? "QUERY/getExecutionPaths"
-    : `QUERY/${requestId}`;
+const buildOperationLabel = (operationId: string, prefix: "OP" | "ERROR" | "EVENT" | "SNAPSHOT") =>
+  `${prefix}/${operationId}`;
 
 const buildQueuedTimelineEntry = (
   machine: JourneyPanelMachineState,
   machineId: string,
   requestId: string,
-  command: JourneyDevtoolsCommand,
+  invocation: JourneyDevtoolsOperationInvoke,
   timestamp: number
 ): JourneyPanelTimelineEntry => {
   const nextSequence = (machine.timelineSequence ?? machine.timelineEntries.length) + 1;
-  const isQuery = command.type === "getExecutionPaths";
-  const label = isQuery ? "QUERY/getExecutionPaths" : `COMMAND/${command.type}`;
-
   return {
-    id: buildEntryId(machineId, isQuery ? "queuedQuery" : "queuedCommand", timestamp, nextSequence),
+    id: buildEntryId(machineId, "queuedOperation", timestamp, nextSequence),
     timestamp,
-    kind: isQuery ? "query" : "command",
-    label,
+    kind: "operation",
+    label: buildOperationLabel(invocation.operationId, "OP"),
     requestId,
-    command,
-    envelopeKind: isQuery ? "queuedQuery" : "queuedCommand",
+    invocation,
+    envelopeKind: "queuedOperation",
     snapshot: null,
     actionPayload: {
-      type: label,
       machineId,
       requestId,
-      command
+      invocation
     },
     meta: {
-      machineId
+      machineId,
+      operationId: invocation.operationId
     }
   };
 };
@@ -277,156 +195,91 @@ const buildTimelineEntry = (
 ): JourneyPanelTimelineEntry => {
   const nextSequence = (machine.timelineSequence ?? machine.timelineEntries.length) + 1;
 
-  if (envelope.kind === "register") {
-    return {
-      id: buildEntryId(envelope.machineId, envelope.kind, envelope.timestamp, nextSequence),
-      timestamp: envelope.timestamp,
-      kind: "init",
-      label: "@@INIT",
-      requestId: null,
-      command: null,
-      envelopeKind: envelope.kind,
-      snapshot: envelope.snapshot,
-      actionPayload: {
-        type: "@@INIT",
-        machineId: envelope.machineId,
-        meta: envelope.meta
-      },
-      meta: {
-        machineId: envelope.machineId
-      }
-    };
-  }
-
-  if (envelope.kind === "snapshot") {
-    const label = `SNAPSHOT/${envelope.snapshot.currentStepId}`;
-    return {
-      id: buildEntryId(envelope.machineId, envelope.kind, envelope.timestamp, nextSequence),
-      timestamp: envelope.timestamp,
-      kind: "snapshot",
-      label,
-      requestId: null,
-      command: null,
-      envelopeKind: envelope.kind,
-      snapshot: envelope.snapshot,
-      actionPayload: {
-        type: label,
-        machineId: envelope.machineId,
-        currentStepId: envelope.snapshot.currentStepId,
-        index: envelope.snapshot.history.index
-      },
-      meta: {
-        machineId: envelope.machineId
-      }
-    };
-  }
-
-  if (envelope.kind === "observation") {
-    const label = buildObservationLabel(envelope.event);
-    return {
-      id: buildEntryId(envelope.machineId, envelope.kind, envelope.timestamp, nextSequence),
-      timestamp: envelope.timestamp,
-      kind: "event",
-      label,
-      requestId: null,
-      command: null,
-      envelopeKind: envelope.kind,
-      snapshot: null,
-      actionPayload: {
-        type: label,
-        machineId: envelope.machineId,
-        event: envelope.event
-      },
-      meta: {
-        machineId: envelope.machineId
-      }
-    };
-  }
-
-  if (envelope.kind === "executionPathsResult") {
-    const pendingCommand = machine.pendingCommandsByRequestId[envelope.requestId] ?? null;
-    const label = buildExecutionPathsLabel(pendingCommand, envelope.requestId);
-    return {
-      id: buildEntryId(envelope.machineId, envelope.kind, envelope.timestamp, nextSequence),
-      timestamp: envelope.timestamp,
-      kind: "query",
-      label,
-      requestId: envelope.requestId,
-      command: pendingCommand?.command ?? null,
-      envelopeKind: envelope.kind,
-      snapshot: null,
-      actionPayload: {
-        type: label,
-        machineId: envelope.machineId,
+  switch (envelope.kind) {
+    case "register":
+      return {
+        id: buildEntryId(envelope.machineId, envelope.kind, envelope.timestamp, nextSequence),
+        timestamp: envelope.timestamp,
+        kind: "init",
+        label: "@@INIT",
+        requestId: null,
+        invocation: null,
+        envelopeKind: envelope.kind,
+        snapshot: envelope.snapshot,
+        actionPayload: { machineId: envelope.machineId, meta: envelope.meta },
+        meta: { machineId: envelope.machineId }
+      };
+    case "snapshot":
+      return {
+        id: buildEntryId(envelope.machineId, envelope.kind, envelope.timestamp, nextSequence),
+        timestamp: envelope.timestamp,
+        kind: "snapshot",
+        label: buildOperationLabel(envelope.snapshot.currentStepId, "SNAPSHOT"),
+        requestId: null,
+        invocation: null,
+        envelopeKind: envelope.kind,
+        snapshot: envelope.snapshot,
+        actionPayload: envelope.snapshot,
+        meta: { machineId: envelope.machineId }
+      };
+    case "observation":
+      return {
+        id: buildEntryId(envelope.machineId, envelope.kind, envelope.timestamp, nextSequence),
+        timestamp: envelope.timestamp,
+        kind: "event",
+        label: buildOperationLabel(String(envelope.event.type ?? "event"), "EVENT"),
+        requestId: null,
+        invocation: null,
+        envelopeKind: envelope.kind,
+        snapshot: null,
+        actionPayload: envelope.event,
+        meta: { machineId: envelope.machineId }
+      };
+    case "operationResult": {
+      const pending = machine.pendingCommandsByRequestId[envelope.requestId] ?? null;
+      const snapshot = envelope.result.kind === "snapshot" ? envelope.result.snapshot : null;
+      return {
+        id: buildEntryId(envelope.machineId, envelope.kind, envelope.timestamp, nextSequence),
+        timestamp: envelope.timestamp,
+        kind: "operation",
+        label: buildOperationLabel(envelope.operationId, "OP"),
         requestId: envelope.requestId,
-        command: pendingCommand?.command ?? null,
-        result: envelope.result as JourneyDevtoolsSerializableExecutionPathsResult
-      },
-      meta: {
-        machineId: envelope.machineId
-      }
-    };
-  }
-
-  if (envelope.kind === "commandResult") {
-    const pendingCommand = machine.pendingCommandsByRequestId[envelope.requestId] ?? null;
-    const label = buildCommandLabel(envelope.requestId, pendingCommand, false);
-    return {
-      id: buildEntryId(envelope.machineId, envelope.kind, envelope.timestamp, nextSequence),
-      timestamp: envelope.timestamp,
-      kind: "command",
-      label,
-      requestId: envelope.requestId,
-      command: pendingCommand?.command ?? null,
-      envelopeKind: envelope.kind,
-      snapshot: envelope.snapshot,
-      actionPayload: {
-        type: label,
-        machineId: envelope.machineId,
-        requestId: envelope.requestId,
-        command: pendingCommand?.command ?? null,
-        transitioned: envelope.transitioned ?? null,
-        transitionId: envelope.transitionId ?? null
-      },
-      meta: {
-        machineId: envelope.machineId,
-        ...(envelope.transitioned === undefined
-          ? {}
-          : {
-              transitioned: envelope.transitioned
-            }),
-        ...(envelope.transitionId === undefined
-          ? {}
-          : {
-              transitionId: envelope.transitionId
-            })
-      }
-    };
-  }
-
-  const pendingCommand = machine.pendingCommandsByRequestId[envelope.requestId] ?? null;
-  const label = buildCommandLabel(envelope.requestId, pendingCommand, true);
-  return {
-    id: buildEntryId(envelope.machineId, envelope.kind, envelope.timestamp, nextSequence),
-    timestamp: envelope.timestamp,
-    kind: "error",
-    label,
-    requestId: envelope.requestId,
-    command: pendingCommand?.command ?? null,
-    envelopeKind: envelope.kind,
-    snapshot: null,
-    actionPayload: {
-      type: label,
-      machineId: envelope.machineId,
-      requestId: envelope.requestId,
-      command: pendingCommand?.command ?? null,
-      error: envelope.error
-    },
-    meta: {
-      machineId: envelope.machineId,
-      errorMessage: envelope.error.message
+        invocation: pending?.invocation ?? null,
+        envelopeKind: envelope.kind,
+        snapshot,
+        actionPayload: envelope.result,
+        meta: {
+          machineId: envelope.machineId,
+          operationId: envelope.operationId,
+          ...(envelope.result.kind === "snapshot" && envelope.result.transitioned !== undefined
+            ? { transitioned: envelope.result.transitioned }
+            : {}),
+          ...(envelope.result.kind === "snapshot" && envelope.result.transitionId !== undefined
+            ? { transitionId: envelope.result.transitionId }
+            : {})
+        }
+      };
     }
-  };
+    case "operationError": {
+      const pending = machine.pendingCommandsByRequestId[envelope.requestId] ?? null;
+      return {
+        id: buildEntryId(envelope.machineId, envelope.kind, envelope.timestamp, nextSequence),
+        timestamp: envelope.timestamp,
+        kind: "error",
+        label: buildOperationLabel(envelope.operationId, "ERROR"),
+        requestId: envelope.requestId,
+        invocation: pending?.invocation ?? null,
+        envelopeKind: envelope.kind,
+        snapshot: null,
+        actionPayload: envelope.error,
+        meta: {
+          machineId: envelope.machineId,
+          operationId: envelope.operationId,
+          errorMessage: envelope.error.message
+        }
+      };
+    }
+  }
 };
 
 const appendTimelineEntry = (
@@ -454,34 +307,23 @@ const replaceTimelineEntry = (
   machine: JourneyPanelMachineState,
   entryId: string,
   nextEntry: JourneyPanelTimelineEntry
-): JourneyPanelMachineState => {
+) => {
   const index = machine.timelineEntries.findIndex((entry) => entry.id === entryId);
   if (index === -1) {
     return appendTimelineEntry(machine, nextEntry);
   }
-
   const nextEntries = [...machine.timelineEntries];
   nextEntries[index] = nextEntry;
-
-  return {
-    ...machine,
-    timelineEntries: nextEntries
-  };
+  return { ...machine, timelineEntries: nextEntries };
 };
 
-const pruneTimelineEntries = (
-  machine: JourneyPanelMachineState,
-  keep: number
-): JourneyPanelMachineState => {
+const pruneTimelineEntries = (machine: JourneyPanelMachineState, keep: number) => {
   const safeKeep = Math.max(0, keep);
   if (safeKeep >= machine.timelineEntries.length) {
     return machine;
   }
-
   const removedCount = machine.timelineEntries.length - safeKeep;
-  const nextEntries = machine.timelineEntries.slice(
-    Math.max(0, machine.timelineEntries.length - safeKeep)
-  );
+  const nextEntries = machine.timelineEntries.slice(machine.timelineEntries.length - safeKeep);
   const lastIndex = Math.max(0, nextEntries.length - 1);
   const boundedSelectedIndex = Math.max(0, machine.selectedTimelineIndex - removedCount);
 
@@ -494,12 +336,8 @@ const pruneTimelineEntries = (
   };
 };
 
-const upsertJourneyMachineOrder = (order: string[], machineId: string): string[] => {
-  if (order.includes(machineId)) {
-    return order;
-  }
-  return [...order, machineId];
-};
+const upsertJourneyMachineOrder = (order: string[], machineId: string): string[] =>
+  order.includes(machineId) ? order : [...order, machineId];
 
 const removeJourneyMachineOrder = (order: string[], machineId: string): string[] =>
   order.filter((id) => id !== machineId);
@@ -507,11 +345,10 @@ const removeJourneyMachineOrder = (order: string[], machineId: string): string[]
 const clearPendingCommand = (
   pendingCommandsByRequestId: Record<string, JourneyPanelPendingCommand>,
   requestId: string
-): Record<string, JourneyPanelPendingCommand> => {
+) => {
   if (!(requestId in pendingCommandsByRequestId)) {
     return pendingCommandsByRequestId;
   }
-
   const nextPendingCommands = { ...pendingCommandsByRequestId };
   delete nextPendingCommands[requestId];
   return nextPendingCommands;
@@ -543,55 +380,34 @@ export const panelReducer = (
   action: JourneyPanelAction
 ): JourneyPanelState => {
   if (action.type === "clear-machines") {
-    return {
-      ...state,
-      machines: {},
-      machineOrder: [],
-      selectedMachineId: null
-    };
+    return { ...state, machines: {}, machineOrder: [], selectedMachineId: null };
   }
-
   if (action.type === "set-connected") {
-    return {
-      ...state,
-      connected: action.connected
-    };
+    return { ...state, connected: action.connected };
   }
-
   if (action.type === "select-machine") {
     const machine = state.machines[action.machineId];
     if (!machine) {
       return state;
     }
-
     const lastIndex = Math.max(0, machine.timelineEntries.length - 1);
     return {
       ...state,
       selectedMachineId: action.machineId,
       machines: {
         ...state.machines,
-        [action.machineId]: {
-          ...machine,
-          followLatest: true,
-          selectedTimelineIndex: lastIndex
-        }
+        [action.machineId]: { ...machine, followLatest: true, selectedTimelineIndex: lastIndex }
       }
     };
   }
-
   if (action.type === "set-display-limit") {
-    return {
-      ...state,
-      displayLimit: action.limit
-    };
+    return { ...state, displayLimit: action.limit };
   }
-
   if (action.type === "set-follow-latest") {
     const machine = state.machines[action.machineId];
     if (!machine) {
       return state;
     }
-
     const lastIndex = Math.max(0, machine.timelineEntries.length - 1);
     return {
       ...state,
@@ -607,34 +423,26 @@ export const panelReducer = (
       }
     };
   }
-
   if (action.type === "select-timeline-entry") {
     const machine = state.machines[action.machineId];
     if (!machine) {
       return state;
     }
-
     const lastIndex = Math.max(0, machine.timelineEntries.length - 1);
     const safeIndex = Math.max(0, Math.min(action.index, lastIndex));
     return {
       ...state,
       machines: {
         ...state.machines,
-        [action.machineId]: {
-          ...machine,
-          selectedTimelineIndex: safeIndex,
-          followLatest: false
-        }
+        [action.machineId]: { ...machine, selectedTimelineIndex: safeIndex, followLatest: false }
       }
     };
   }
-
   if (action.type === "prune-timeline") {
     const machine = state.machines[action.machineId];
     if (!machine || action.keep === null) {
       return state;
     }
-
     return {
       ...state,
       machines: {
@@ -643,22 +451,19 @@ export const panelReducer = (
       }
     };
   }
-
   if (action.type === "queue-command") {
     const machine = state.machines[action.machineId];
     if (!machine) {
       return state;
     }
-
     const queuedEntry = buildQueuedTimelineEntry(
       machine,
       action.machineId,
       action.requestId,
-      action.command,
+      action.invocation,
       action.timestamp
     );
     const machineWithEntry = appendTimelineEntry(machine, queuedEntry);
-
     return {
       ...state,
       machines: {
@@ -669,7 +474,7 @@ export const panelReducer = (
             ...machineWithEntry.pendingCommandsByRequestId,
             [action.requestId]: {
               requestId: action.requestId,
-              command: action.command,
+              invocation: action.invocation,
               timestamp: action.timestamp,
               timelineEntryId: queuedEntry.id
             }
@@ -684,7 +489,6 @@ export const panelReducer = (
     const nextOrder = removeJourneyMachineOrder(state.machineOrder, envelope.machineId);
     const nextMachines = { ...state.machines };
     delete nextMachines[envelope.machineId];
-
     return {
       ...state,
       machines: nextMachines,
@@ -699,34 +503,24 @@ export const panelReducer = (
   const existingMachine =
     state.machines[envelope.machineId] ??
     buildJourneyMachineState(envelope.machineId, initialSnapshot, envelope.version);
-
   const machineWithSnapshot = applyMachineUpdateForEnvelope(existingMachine, envelope);
-
   const timelineEntry = buildTimelineEntry(machineWithSnapshot, envelope);
-  const pendingCommand =
+  const pending =
     "requestId" in envelope
       ? machineWithSnapshot.pendingCommandsByRequestId[envelope.requestId]
       : null;
   const machineWithEntry =
-    envelope.kind === "commandResult" ||
-    envelope.kind === "commandError" ||
-    envelope.kind === "executionPathsResult"
+    envelope.kind === "operationResult" || envelope.kind === "operationError"
       ? replaceTimelineEntry(
           machineWithSnapshot,
-          pendingCommand?.timelineEntryId ?? "",
-          pendingCommand
-            ? {
-                ...timelineEntry,
-                id: pendingCommand.timelineEntryId,
-                timestamp: pendingCommand.timestamp
-              }
+          pending?.timelineEntryId ?? "",
+          pending
+            ? { ...timelineEntry, id: pending.timelineEntryId, timestamp: pending.timestamp }
             : timelineEntry
         )
       : appendTimelineEntry(machineWithSnapshot, timelineEntry);
   const machineWithPendingCleanup =
-    envelope.kind === "commandResult" ||
-    envelope.kind === "commandError" ||
-    envelope.kind === "executionPathsResult"
+    envelope.kind === "operationResult" || envelope.kind === "operationError"
       ? {
           ...machineWithEntry,
           pendingCommandsByRequestId: clearPendingCommand(
@@ -739,22 +533,14 @@ export const panelReducer = (
 
   return {
     ...state,
-    machines: {
-      ...state.machines,
-      [envelope.machineId]: machineWithPendingCleanup
-    },
+    machines: { ...state.machines, [envelope.machineId]: machineWithPendingCleanup },
     machineOrder: nextOrder,
     selectedMachineId: state.selectedMachineId ?? envelope.machineId
   };
 };
 
-export const selectActiveMachine = (state: JourneyPanelState): JourneyPanelMachineState | null => {
-  if (!state.selectedMachineId) {
-    return null;
-  }
-
-  return state.machines[state.selectedMachineId] ?? null;
-};
+export const selectActiveMachine = (state: JourneyPanelState): JourneyPanelMachineState | null =>
+  state.selectedMachineId ? (state.machines[state.selectedMachineId] ?? null) : null;
 
 export const selectVisibleTimelineEntries = (
   entries: readonly JourneyPanelTimelineEntry[],
@@ -763,7 +549,6 @@ export const selectVisibleTimelineEntries = (
   if (limit === null) {
     return [...entries];
   }
-
   const keep = Math.max(0, limit);
   return entries.slice(Math.max(0, entries.length - keep));
 };
@@ -774,7 +559,6 @@ export const selectSelectedTimelineEntry = (
   if (!machine || machine.timelineEntries.length === 0) {
     return null;
   }
-
   const safeIndex = Math.max(
     0,
     Math.min(machine.selectedTimelineIndex, machine.timelineEntries.length - 1)
@@ -788,15 +572,9 @@ export const selectDisplayedSnapshot = (
   if (!machine) {
     return null;
   }
-
-  if (machine.followLatest) {
+  if (machine.followLatest || machine.timelineEntries.length === 0) {
     return machine.snapshot;
   }
-
-  if (machine.timelineEntries.length === 0) {
-    return machine.snapshot;
-  }
-
   const safeIndex = Math.max(
     0,
     Math.min(machine.selectedTimelineIndex, machine.timelineEntries.length - 1)
@@ -810,7 +588,6 @@ export const selectSelectedDiff = (
   if (!machine || machine.timelineEntries.length === 0) {
     return EMPTY_STRUCTURED_DIFF;
   }
-
   const safeIndex = Math.max(
     0,
     Math.min(machine.selectedTimelineIndex, machine.timelineEntries.length - 1)
@@ -830,11 +607,9 @@ export const selectSelectedDiff = (
     Object.keys(immediateDiff.removed).length === 0 &&
     Object.keys(immediateDiff.changed).length === 0;
 
-  // Commands often emit a snapshot row before commandResult with identical state.
-  // In that case, compare commandResult against the snapshot before that row.
   if (
     immediateDiffIsEmpty &&
-    currentEntry?.envelopeKind === "commandResult" &&
+    currentEntry?.envelopeKind === "operationResult" &&
     safeIndex > 1 &&
     machine.timelineEntries[safeIndex - 1]?.envelopeKind === "snapshot"
   ) {

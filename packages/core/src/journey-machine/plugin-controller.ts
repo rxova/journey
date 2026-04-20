@@ -4,6 +4,7 @@ import type {
   JourneyDefinition,
   JourneyJsonObject,
   JourneyMachine,
+  JourneyMachineDevtoolsFeatureSpec,
   JourneyMachinePlugin,
   JourneyMachinePluginHooks,
   JourneyMachinePluginSetupContext,
@@ -31,6 +32,15 @@ export type JourneyMachinePluginController<
     machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>
   ) => JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
   dispose: () => void;
+  getDevtoolsFeatures: (
+    machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>
+  ) => readonly JourneyMachineDevtoolsFeatureSpec<
+    TContext,
+    TStepId,
+    TEventMap,
+    TStepMeta,
+    THandlers
+  >[];
 };
 
 export const createJourneyMachinePluginController = <
@@ -84,6 +94,33 @@ export const createJourneyMachinePluginController = <
       throw pluginError;
     }
   }
+
+  const assertUniqueDevtoolsIds = (
+    features: readonly JourneyMachineDevtoolsFeatureSpec<
+      TContext,
+      TStepId,
+      TEventMap,
+      TStepMeta,
+      THandlers
+    >[]
+  ) => {
+    const featureIds = new Set<string>();
+    const operationIds = new Set<string>();
+
+    for (const feature of features) {
+      if (featureIds.has(feature.id)) {
+        throw new Error(`Journey devtools feature "${feature.id}" is already registered.`);
+      }
+      featureIds.add(feature.id);
+
+      for (const operation of feature.operations) {
+        if (operationIds.has(operation.id)) {
+          throw new Error(`Journey devtools operation "${operation.id}" is already registered.`);
+        }
+        operationIds.add(operation.id);
+      }
+    }
+  };
 
   return {
     hydrateSnapshot: (snapshot) =>
@@ -180,6 +217,41 @@ export const createJourneyMachinePluginController = <
       if (firstError !== undefined) {
         throw firstError;
       }
+    },
+    getDevtoolsFeatures: (machine) => {
+      const features = hooks.flatMap((plugin) => {
+        try {
+          return (
+            plugin.hooks.getDevtoolsFeatures?.({
+              machine,
+              journey: setupContext.journey as JourneyDefinition<
+                TContext,
+                TStepId,
+                TEventMap,
+                TStepMeta,
+                THandlers
+              >,
+              resolvedJourney: setupContext.resolvedJourney as JourneyResolvedDefinition<
+                TContext,
+                TStepId,
+                TEventMap,
+                TStepMeta,
+                THandlers
+              >
+            }) ?? []
+          );
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          const wrappedError = new Error(
+            `Journey plugin "${plugin.name}" devtools registration failed: ${message}`
+          );
+          Object.assign(wrappedError, { cause: error });
+          throw wrappedError;
+        }
+      });
+
+      assertUniqueDevtoolsIds(features);
+      return features;
     }
   };
 };

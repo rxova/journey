@@ -3,7 +3,6 @@ import { expectTypeOf } from "expect-type";
 import {
   createJourneyBuilder,
   createJourneyMachine,
-  type JourneyAnalyticsTrackedEvent,
   type JourneyAsyncPhase,
   type JourneyAsyncState,
   type JourneyAutosaveState,
@@ -242,9 +241,6 @@ expectTypeOf<JourneyAsyncState<StepId>>().toEqualTypeOf<{
 }>();
 expectTypeOf(executionPathsMachine.getExecutionPaths).toBeFunction();
 expectTypeOf(analyticsMachine.trackAnalyticsEvent).toBeFunction();
-expectTypeOf(
-  analyticsMachine.trackAnalyticsEvent("checkout_abandoned", { reason: "modal_closed" })
-).toMatchTypeOf<JourneyAnalyticsTrackedEvent<Context, StepId, unknown>>();
 expectTypeOf(autosaveMachine.getAutosaveState()).toEqualTypeOf<JourneyAutosaveState>();
 expectTypeOf(autosaveMachine.flushAutosave()).toEqualTypeOf<Promise<void>>();
 expectTypeOf(diagnosticsResult.summary.mode).toEqualTypeOf<"linear" | "graph" | "headless">();

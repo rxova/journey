@@ -1,349 +1,392 @@
 import React from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
-import type { JourneyDevtoolsCommand } from "@rxova/journey-devtools-bridge";
-import type { JourneyDevtoolsSerializableSnapshot } from "@rxova/journey-devtools-bridge";
-import {
-  type CommandBuildResult,
-  buildClearStepErrorCommand,
-  buildCustomSendCommand,
-  buildGoToCommand,
-  buildGoToPreviousStepCommand
-} from "../command-utils";
+import type {
+  JourneyDevtoolsMachineFeatureDescriptor,
+  JourneyDevtoolsMachineOperationDescriptor,
+  JourneyDevtoolsOperationInvoke,
+  JourneyDevtoolsSerializableSnapshot
+} from "@rxova/journey-devtools-bridge";
 
-type CommandField = "customType" | "customPayload" | "goToStep" | "stepErrorId" | "previousSteps";
-
-type CommandFormState = {
-  customType: string;
-  customPayload: string;
-  goToStep: string;
-  stepErrorId: string;
-  previousSteps: string;
-  formError: string | null;
+type OperationSection = {
+  id: string;
+  label: string;
+  description?: string | null;
+  operations: readonly JourneyDevtoolsMachineOperationDescriptor[];
 };
 
-type CommandFormAction =
-  | {
-      type: "set-field";
-      field: CommandField;
-      value: string;
-    }
-  | {
-      type: "set-error";
-      error: string | null;
-    };
+const isMachineCommandsSection = (sectionId: string): boolean =>
+  sectionId === "core:machine-commands";
+const isNavigationSection = (sectionId: string): boolean => sectionId === "core:navigation";
+const isEventsSection = (sectionId: string): boolean => sectionId === "core:events";
 
-const INITIAL_FORM_STATE: CommandFormState = {
-  customType: "",
-  customPayload: "",
-  goToStep: "",
-  stepErrorId: "",
-  previousSteps: "",
-  formError: null
-};
-
-const MACHINE_COMMANDS = [
-  "startJourney",
-  "terminateJourney",
-  "completeJourney",
-  "resetJourney"
+const CORE_OPERATION_SECTION_ORDER = [
+  "machine-commands",
+  "navigation",
+  "events",
+  "commands"
 ] as const;
 
-const NAVIGATION_COMMANDS = ["goToNextStep", "goToLastVisitedStep"] as const;
-
-const commandFormReducer = (
-  state: CommandFormState,
-  action: CommandFormAction
-): CommandFormState => {
-  if (action.type === "set-field") {
-    return {
-      ...state,
-      [action.field]: action.value
-    };
+const CORE_OPERATION_SECTIONS: Record<
+  (typeof CORE_OPERATION_SECTION_ORDER)[number],
+  {
+    label: string;
+    operationIds: readonly string[];
   }
-
-  return {
-    ...state,
-    formError: action.error
-  };
+> = {
+  "machine-commands": {
+    label: "Machine commands",
+    operationIds: [
+      "core.startJourney",
+      "core.resetJourney",
+      "core.terminateJourney",
+      "core.completeJourney"
+    ]
+  },
+  navigation: {
+    label: "Navigation",
+    operationIds: [
+      "core.goToNextStep",
+      "core.goToStepById",
+      "core.goToPreviousStep",
+      "core.goToLastVisitedStep"
+    ]
+  },
+  events: {
+    label: "Events",
+    operationIds: ["core.sendEvent", "core.clearStepError"]
+  },
+  commands: {
+    label: "Commands",
+    operationIds: []
+  }
 };
 
+const groupFeatureSections = (
+  feature: JourneyDevtoolsMachineFeatureDescriptor
+): readonly OperationSection[] => {
+  if (feature.id !== "core") {
+    return [
+      {
+        id: feature.id,
+        label: feature.label,
+        description: feature.description,
+        operations: feature.operations
+      }
+    ];
+  }
+
+  const operationsById = new Map(feature.operations.map((operation) => [operation.id, operation]));
+  const groupedSections = CORE_OPERATION_SECTION_ORDER.map((sectionId) => ({
+    id: `core:${sectionId}`,
+    label: CORE_OPERATION_SECTIONS[sectionId].label,
+    operations: CORE_OPERATION_SECTIONS[sectionId].operationIds
+      .map((operationId) => operationsById.get(operationId))
+      .filter((operation): operation is JourneyDevtoolsMachineOperationDescriptor =>
+        Boolean(operation)
+      )
+  })).filter((section) => section.operations.length > 0);
+
+  const groupedOperationIds = new Set(
+    groupedSections.flatMap((section) => section.operations.map((operation) => operation.id))
+  );
+  const ungroupedOperations = feature.operations.filter(
+    (operation) => !groupedOperationIds.has(operation.id)
+  );
+
+  return ungroupedOperations.length > 0
+    ? [
+        ...groupedSections,
+        {
+          id: "core:other",
+          label: "Other",
+          operations: ungroupedOperations
+        }
+      ]
+    : groupedSections;
+};
+
+const buildInputValue = (
+  raw: string,
+  type: "text" | "integer" | "boolean" | "json"
+): { ok: true; value: unknown } | { ok: false; error: string } => {
+  switch (type) {
+    case "text":
+      return { ok: true, value: raw };
+    case "integer": {
+      if (raw.trim().length === 0) {
+        return { ok: true, value: undefined };
+      }
+      const parsed = Number(raw);
+      if (!Number.isFinite(parsed) || Math.trunc(parsed) !== parsed) {
+        return { ok: false, error: "Integer fields must contain a whole number." };
+      }
+      return { ok: true, value: parsed };
+    }
+    case "boolean":
+      return { ok: true, value: raw === "true" };
+    case "json":
+      if (raw.trim().length === 0) {
+        return { ok: true, value: undefined };
+      }
+      try {
+        return { ok: true, value: JSON.parse(raw) as unknown };
+      } catch {
+        return { ok: false, error: "JSON fields must contain valid JSON." };
+      }
+  }
+};
+
+const isLifecycleOperationDisabled = (
+  operationId: string,
+  snapshotStatus: JourneyDevtoolsSerializableSnapshot["status"]
+): boolean => {
+  switch (snapshotStatus) {
+    case "running":
+      return operationId === "core.startJourney";
+    case "completed":
+    case "terminated":
+      return operationId !== "core.resetJourney";
+    case "idled":
+      return operationId === "core.terminateJourney" || operationId === "core.completeJourney";
+    default:
+      return false;
+  }
+};
+
+const hasMissingRequiredFields = (
+  operation: JourneyDevtoolsMachineOperationDescriptor,
+  fieldValues: Record<string, string>
+): boolean =>
+  operation.fields.some((field) => {
+    if (!field.required || field.type === "boolean") {
+      return false;
+    }
+
+    const stateKey = `${operation.id}:${field.key}`;
+    return (fieldValues[stateKey] ?? "").trim().length === 0;
+  });
+
 export const CommandControls = ({
-  availableCommands,
+  features,
   snapshotStatus,
-  onCommand,
+  onInvoke,
   disabled,
-  disabledReason
+  disabledReason,
+  mutationsEnabled
 }: {
-  availableCommands: readonly JourneyDevtoolsCommand["type"][];
+  features: readonly JourneyDevtoolsMachineFeatureDescriptor[];
   snapshotStatus: JourneyDevtoolsSerializableSnapshot["status"];
-  onCommand: (command: JourneyDevtoolsCommand) => void;
+  onInvoke: (invocation: JourneyDevtoolsOperationInvoke) => void;
   disabled: boolean;
   disabledReason?: string | null;
+  mutationsEnabled: boolean;
 }) => {
-  const [formState, dispatch] = React.useReducer(commandFormReducer, INITIAL_FORM_STATE);
-  const [machineCommandsOpen, setMachineCommandsOpen] = React.useState(true);
-  const [navigationCommandsOpen, setNavigationCommandsOpen] = React.useState(true);
-  const [eventsOpen, setEventsOpen] = React.useState(true);
-  const effectiveAvailableCommands = React.useMemo(() => {
-    if (snapshotStatus === "running") {
-      return availableCommands.filter((command) => command !== "startJourney");
-    }
-
-    if (snapshotStatus === "terminated" || snapshotStatus === "completed") {
-      return availableCommands.filter((command) => command === "resetJourney");
-    }
-
-    return availableCommands;
-  }, [availableCommands, snapshotStatus]);
-  const availableCommandSet = new Set(effectiveAvailableCommands);
-  const hasMachineCommandsSection = MACHINE_COMMANDS.some((type) =>
-    availableCommands.includes(type)
+  const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({});
+  const [fieldValues, setFieldValues] = React.useState<Record<string, string>>({});
+  const [formError, setFormError] = React.useState<{ sectionId: string; message: string } | null>(
+    null
   );
-  const visibleNavigationCommands = NAVIGATION_COMMANDS.filter((type) =>
-    availableCommandSet.has(type)
-  );
-  const hasEventsSection =
-    availableCommandSet.has("send") || availableCommandSet.has("clearStepError");
 
-  const updateField = React.useCallback((field: CommandField, value: string) => {
-    dispatch({
-      type: "set-field",
-      field,
-      value
-    });
+  const isSectionOpen = React.useCallback(
+    (featureId: string) => openSections[featureId] ?? true,
+    [openSections]
+  );
+
+  const setFieldValue = React.useCallback((key: string, value: string) => {
+    setFieldValues((current) => ({ ...current, [key]: value }));
+    setFormError((current) => (current ? null : current));
   }, []);
 
-  const runCommand = React.useCallback(
-    (commandBuilder: CommandBuildResult) => {
-      if (!commandBuilder.ok) {
-        dispatch({ type: "set-error", error: commandBuilder.error });
-        return;
+  const submit = React.useCallback(
+    (
+      operation: JourneyDevtoolsMachineFeatureDescriptor["operations"][number],
+      sectionId: string
+    ) => {
+      const input: Record<string, unknown> = {};
+
+      for (const field of operation.fields) {
+        const stateKey = `${operation.id}:${field.key}`;
+        const raw =
+          field.type === "boolean"
+            ? (fieldValues[stateKey] ?? "false")
+            : (fieldValues[stateKey] ?? "");
+        if (field.required && raw.trim().length === 0 && field.type !== "boolean") {
+          setFormError({ sectionId, message: `${field.label} is required.` });
+          return;
+        }
+
+        const parsed = buildInputValue(raw, field.type);
+        if (!parsed.ok) {
+          setFormError({ sectionId, message: parsed.error });
+          return;
+        }
+
+        if (parsed.value !== undefined) {
+          input[field.key] = parsed.value;
+        }
       }
 
-      dispatch({ type: "set-error", error: null });
-      onCommand(commandBuilder.command);
+      setFormError((current) => (current?.sectionId === sectionId ? null : current));
+      onInvoke(
+        Object.keys(input).length === 0
+          ? { operationId: operation.id }
+          : { operationId: operation.id, input }
+      );
     },
-    [onCommand]
+    [fieldValues, onInvoke]
+  );
+
+  const renderOperation = React.useCallback(
+    (operation: JourneyDevtoolsMachineOperationDescriptor, sectionId: string) => {
+      const operationDisabled =
+        disabled ||
+        (operation.mutates && !mutationsEnabled) ||
+        (isMachineCommandsSection(sectionId) &&
+          isLifecycleOperationDisabled(operation.id, snapshotStatus)) ||
+        hasMissingRequiredFields(operation, fieldValues);
+      const buttonLabel = operation.id === "core.resetJourney" ? "restartJourney" : operation.label;
+      return (
+        <label key={operation.id}>
+          {operation.fields.map((field) => {
+            const stateKey = `${operation.id}:${field.key}`;
+
+            if (field.type === "boolean") {
+              return (
+                <select
+                  key={stateKey}
+                  value={fieldValues[stateKey] ?? "false"}
+                  onChange={(event) => setFieldValue(stateKey, event.target.value)}
+                  disabled={operationDisabled}
+                >
+                  <option value="false">false</option>
+                  <option value="true">true</option>
+                </select>
+              );
+            }
+
+            return (
+              <input
+                key={stateKey}
+                value={fieldValues[stateKey] ?? ""}
+                onChange={(event) => setFieldValue(stateKey, event.target.value)}
+                placeholder={field.placeholder ?? field.key}
+                disabled={operationDisabled}
+              />
+            );
+          })}
+          <button
+            type="button"
+            disabled={operationDisabled}
+            onClick={() => submit(operation, sectionId)}
+          >
+            {buttonLabel}
+          </button>
+        </label>
+      );
+    },
+    [disabled, fieldValues, mutationsEnabled, setFieldValue, snapshotStatus, submit]
+  );
+
+  const renderNavigationSection = React.useCallback(
+    (operations: readonly JourneyDevtoolsMachineOperationDescriptor[]) => {
+      const operationsById = new Map(operations.map((operation) => [operation.id, operation]));
+      const goToStepById = operationsById.get("core.goToStepById");
+      const goToPreviousStep = operationsById.get("core.goToPreviousStep");
+      const goToLastVisitedStep = operationsById.get("core.goToLastVisitedStep");
+      const goToNextStep = operationsById.get("core.goToNextStep");
+
+      return (
+        <div className="navigation-grid">
+          {goToStepById ? renderOperation(goToStepById, "core:navigation") : null}
+          {goToPreviousStep ? renderOperation(goToPreviousStep, "core:navigation") : null}
+          {goToLastVisitedStep ? renderOperation(goToLastVisitedStep, "core:navigation") : null}
+          {goToNextStep ? renderOperation(goToNextStep, "core:navigation") : null}
+        </div>
+      );
+    },
+    [renderOperation]
+  );
+
+  const renderEventsSection = React.useCallback(
+    (operations: readonly JourneyDevtoolsMachineOperationDescriptor[]) => {
+      const operationsById = new Map(operations.map((operation) => [operation.id, operation]));
+      const sendEvent = operationsById.get("core.sendEvent");
+      const clearStepError = operationsById.get("core.clearStepError");
+
+      return (
+        <div className="events-grid">
+          {sendEvent ? renderOperation(sendEvent, "core:events") : null}
+          {clearStepError ? renderOperation(clearStepError, "core:events") : null}
+        </div>
+      );
+    },
+    [renderOperation]
   );
 
   return (
     <>
-      {hasMachineCommandsSection ? (
-        <section className="panel-card">
-          <div className={machineCommandsOpen ? "section-header with-content" : "section-header"}>
-            <h2>Machine Commands</h2>
-            <button
-              type="button"
-              className="section-toggle"
-              aria-label={
-                machineCommandsOpen ? "Collapse Machine Commands" : "Expand Machine Commands"
-              }
-              title={machineCommandsOpen ? "Collapse Machine Commands" : "Expand Machine Commands"}
-              onClick={() => setMachineCommandsOpen((open) => !open)}
-            >
-              {machineCommandsOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-            </button>
-          </div>
-          {machineCommandsOpen ? (
-            <div className="button-grid">
-              {MACHINE_COMMANDS.map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => onCommand({ type })}
-                  disabled={disabled || !availableCommandSet.has(type)}
+      <section className="panel-card">
+        <h2>Operations</h2>
+        <p className="muted">
+          Status: {snapshotStatus} · Mutations {mutationsEnabled ? "enabled" : "disabled"}
+        </p>
+      </section>
+
+      {features.flatMap((feature) =>
+        groupFeatureSections(feature).map((section) => (
+          <section key={section.id} className="panel-card">
+            <div className="section-header">
+              <h2>{section.label}</h2>
+              <button
+                type="button"
+                className="section-toggle"
+                aria-label={
+                  isSectionOpen(section.id)
+                    ? `Collapse ${section.label}`
+                    : `Expand ${section.label}`
+                }
+                title={
+                  isSectionOpen(section.id)
+                    ? `Collapse ${section.label}`
+                    : `Expand ${section.label}`
+                }
+                onClick={() =>
+                  setOpenSections((current) => ({
+                    ...current,
+                    [section.id]: !(current[section.id] ?? true)
+                  }))
+                }
+              >
+                {isSectionOpen(section.id) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              </button>
+            </div>
+            {section.description ? <p className="muted">{section.description}</p> : null}
+            {isSectionOpen(section.id) ? (
+              isNavigationSection(section.id) ? (
+                renderNavigationSection(section.operations)
+              ) : isEventsSection(section.id) ? (
+                renderEventsSection(section.operations)
+              ) : (
+                <div
+                  className={
+                    isMachineCommandsSection(section.id)
+                      ? "command-form-grid is-machine-commands"
+                      : "command-form-grid"
+                  }
                 >
-                  {type}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </section>
-      ) : null}
-
-      {visibleNavigationCommands.length > 0 ? (
-        <section className="panel-card">
-          <div
-            className={navigationCommandsOpen ? "section-header with-content" : "section-header"}
-          >
-            <h2>Navigation Commands</h2>
-            <button
-              type="button"
-              className="section-toggle"
-              aria-label={
-                navigationCommandsOpen
-                  ? "Collapse Navigation Commands"
-                  : "Expand Navigation Commands"
-              }
-              title={
-                navigationCommandsOpen
-                  ? "Collapse Navigation Commands"
-                  : "Expand Navigation Commands"
-              }
-              onClick={() => setNavigationCommandsOpen((open) => !open)}
-            >
-              {navigationCommandsOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-            </button>
-          </div>
-          {navigationCommandsOpen ? (
-            <>
-              <div className="button-grid">
-                {visibleNavigationCommands.map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => onCommand({ type })}
-                    disabled={disabled}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
-
-              {(availableCommandSet.has("goToStepById") ||
-                availableCommandSet.has("goToPreviousStep")) && (
-                <div className="command-form-grid">
-                  {availableCommandSet.has("goToStepById") ? (
-                    <label>
-                      goToStepById step
-                      <div className="form-row">
-                        <input
-                          value={formState.goToStep}
-                          onChange={(event) => updateField("goToStep", event.target.value)}
-                          placeholder="review"
-                          disabled={disabled}
-                        />
-                        <button
-                          type="button"
-                          disabled={disabled}
-                          onClick={() => runCommand(buildGoToCommand(formState.goToStep))}
-                        >
-                          Send goToStepById
-                        </button>
-                      </div>
-                    </label>
-                  ) : null}
-
-                  {availableCommandSet.has("goToPreviousStep") ? (
-                    <label>
-                      goToPreviousStep steps (optional)
-                      <div className="form-row">
-                        <input
-                          value={formState.previousSteps}
-                          onChange={(event) => updateField("previousSteps", event.target.value)}
-                          placeholder="1"
-                          disabled={disabled}
-                        />
-                        <button
-                          type="button"
-                          disabled={disabled}
-                          onClick={() =>
-                            runCommand(buildGoToPreviousStepCommand(formState.previousSteps))
-                          }
-                        >
-                          Send previous
-                        </button>
-                      </div>
-                    </label>
-                  ) : null}
+                  {section.operations.map((operation) => renderOperation(operation, section.id))}
                 </div>
-              )}
-            </>
-          ) : null}
-        </section>
-      ) : null}
-
-      {hasEventsSection && (
-        <section className="panel-card">
-          <div className={eventsOpen ? "section-header with-content" : "section-header"}>
-            <h2>Events</h2>
-            <button
-              type="button"
-              className="section-toggle"
-              aria-label={eventsOpen ? "Collapse Events" : "Expand Events"}
-              title={eventsOpen ? "Collapse Events" : "Expand Events"}
-              onClick={() => setEventsOpen((open) => !open)}
-            >
-              {eventsOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-            </button>
-          </div>
-          {eventsOpen ? (
-            <div className="command-form-grid">
-              {availableCommandSet.has("send") ? (
-                <>
-                  <label>
-                    Custom event type
-                    <input
-                      value={formState.customType}
-                      onChange={(event) => updateField("customType", event.target.value)}
-                      placeholder="retry"
-                      disabled={disabled}
-                    />
-                  </label>
-                  <label>
-                    Custom payload JSON
-                    <textarea
-                      value={formState.customPayload}
-                      onChange={(event) => updateField("customPayload", event.target.value)}
-                      placeholder='{"attempt": 2}'
-                      disabled={disabled}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() =>
-                      runCommand(
-                        buildCustomSendCommand(formState.customType, formState.customPayload)
-                      )
-                    }
-                  >
-                    Send custom event
-                  </button>
-                </>
-              ) : null}
-
-              {availableCommandSet.has("clearStepError") ? (
-                <label>
-                  clearStepError stepId (optional)
-                  <div className="form-row">
-                    <input
-                      value={formState.stepErrorId}
-                      onChange={(event) => updateField("stepErrorId", event.target.value)}
-                      placeholder="details"
-                      disabled={disabled}
-                    />
-                    <button
-                      type="button"
-                      disabled={disabled}
-                      onClick={() => runCommand(buildClearStepErrorCommand(formState.stepErrorId))}
-                    >
-                      Clear error
-                    </button>
-                  </div>
-                </label>
-              ) : null}
-            </div>
-          ) : null}
-        </section>
+              )
+            ) : null}
+            {formError?.sectionId === section.id ? (
+              <p className="form-error">{formError.message}</p>
+            ) : null}
+          </section>
+        ))
       )}
 
-      {effectiveAvailableCommands.length === 0 ? (
-        <section className="panel-card">
-          <p className="muted">No remote actions are exposed for this machine.</p>
-        </section>
-      ) : null}
-      {formState.formError ? (
-        <section className="panel-card">
-          <p className="form-error">{formState.formError}</p>
-        </section>
-      ) : null}
-      {disabled && disabledReason ? (
-        <section className="panel-card">
-          <p className="muted">{disabledReason}</p>
-        </section>
-      ) : null}
+      {disabled && disabledReason ? <p className="muted">{disabledReason}</p> : null}
     </>
   );
 };

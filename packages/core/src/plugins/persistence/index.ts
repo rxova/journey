@@ -34,7 +34,35 @@ export const createPersistencePlugin = <TContext extends JourneyJsonObject, TSte
         }
 
         controller.persistSnapshot(snapshot as never);
-      }
+      },
+      getDevtoolsFeatures: () => [
+        {
+          id: "persistence",
+          label: "Persistence",
+          operations: [
+            {
+              id: "persistence.inspect",
+              label: "inspect",
+              mutates: false,
+              output: "data",
+              run: () => ({
+                kind: "data",
+                data: controller.inspectPersistedState()
+              })
+            },
+            {
+              id: "persistence.clear",
+              label: "clear",
+              mutates: true,
+              output: "void",
+              run: () => {
+                controller.removePersistedSnapshot();
+                return { kind: "void" };
+              }
+            }
+          ]
+        }
+      ]
     };
   }) as JourneyMachinePlugin["setup"];
 

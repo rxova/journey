@@ -154,10 +154,9 @@ const broadcastToPanel = (tabId: number, message: BackgroundToPanelMessage) => {
 
 const cacheEnvelope = (tabId: number, envelope: JourneyDevtoolsBridgeEnvelope) => {
   if (
-    envelope.kind === "commandResult" ||
-    envelope.kind === "commandError" ||
-    envelope.kind === "observation" ||
-    envelope.kind === "executionPathsResult"
+    envelope.kind === "operationResult" ||
+    envelope.kind === "operationError" ||
+    envelope.kind === "observation"
   ) {
     return;
   }
