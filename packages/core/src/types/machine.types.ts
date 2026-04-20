@@ -66,6 +66,86 @@ export type JourneyMachinePluginSnapshotChange<
   reason: JourneyMachineSnapshotReason;
 };
 
+export type JourneyMachineDevtoolsFieldType = "text" | "integer" | "boolean" | "json";
+
+export type JourneyMachineDevtoolsFieldSpec = {
+  key: string;
+  label: string;
+  type: JourneyMachineDevtoolsFieldType;
+  required?: boolean;
+  description?: string;
+  placeholder?: string;
+  min?: number;
+  max?: number;
+};
+
+export type JourneyMachineDevtoolsOperationResultKind = "snapshot" | "data" | "text" | "void";
+
+export type JourneyMachineDevtoolsOperationResult<
+  TContext extends JourneyJsonObject,
+  TStepId extends string
+> =
+  | {
+      kind: "snapshot";
+      snapshot: JourneySnapshot<TContext, TStepId>;
+      transitioned?: boolean;
+      transitionId?: string;
+      error?: unknown;
+    }
+  | {
+      kind: "data";
+      data: unknown;
+    }
+  | {
+      kind: "text";
+      text: string;
+    }
+  | {
+      kind: "void";
+    };
+
+export type JourneyMachineDevtoolsOperationSpec<
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TStepMeta = unknown,
+  THandlers extends Record<string, unknown> = Record<never, never>
+> = {
+  id: string;
+  label: string;
+  description?: string;
+  mutates: boolean;
+  output: JourneyMachineDevtoolsOperationResultKind;
+  fields?: readonly JourneyMachineDevtoolsFieldSpec[];
+  run: (context: {
+    machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
+    input: Record<string, unknown> | undefined;
+    journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
+    resolvedJourney: JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
+  }) =>
+    | JourneyMachineDevtoolsOperationResult<TContext, TStepId>
+    | Promise<JourneyMachineDevtoolsOperationResult<TContext, TStepId>>;
+};
+
+export type JourneyMachineDevtoolsFeatureSpec<
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TStepMeta = unknown,
+  THandlers extends Record<string, unknown> = Record<never, never>
+> = {
+  id: string;
+  label: string;
+  description?: string;
+  operations: readonly JourneyMachineDevtoolsOperationSpec<
+    TContext,
+    TStepId,
+    TEventMap,
+    TStepMeta,
+    THandlers
+  >[];
+};
+
 /** Hooks returned from a journey plugin setup call. */
 export type JourneyMachinePluginHooks<
   TContext extends JourneyJsonObject,
@@ -84,6 +164,17 @@ export type JourneyMachinePluginHooks<
     journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
     resolvedJourney: JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
   }) => TExtension;
+  getDevtoolsFeatures?: (context: {
+    machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
+    journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
+    resolvedJourney: JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
+  }) => readonly JourneyMachineDevtoolsFeatureSpec<
+    TContext,
+    TStepId,
+    TEventMap,
+    TStepMeta,
+    THandlers
+  >[];
   dispose?: () => void;
 };
 

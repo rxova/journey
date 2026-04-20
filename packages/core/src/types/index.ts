@@ -79,6 +79,12 @@ export type {
 } from "./observation.types";
 
 export type {
+  JourneyMachineDevtoolsFeatureSpec,
+  JourneyMachineDevtoolsFieldSpec,
+  JourneyMachineDevtoolsFieldType,
+  JourneyMachineDevtoolsOperationResult,
+  JourneyMachineDevtoolsOperationResultKind,
+  JourneyMachineDevtoolsOperationSpec,
   JourneyLifecycleErrorContext,
   JourneyMachine,
   JourneyMachineOptions,

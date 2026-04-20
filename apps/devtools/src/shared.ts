@@ -4,10 +4,10 @@ import {
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
   isJourneyDevtoolsBridgeEnvelope,
   isJourneyDevtoolsExtensionEnvelope,
-  type JourneyDevtoolsBridgeCommandErrorEnvelope,
+  type JourneyDevtoolsBridgeOperationErrorEnvelope,
   type JourneyDevtoolsBridgeEnvelope,
-  type JourneyDevtoolsCommand,
   type JourneyDevtoolsExtensionEnvelope,
+  type JourneyDevtoolsOperationInvoke,
   type JourneyDevtoolsProtocolVersion,
   type JourneyDevtoolsSerializedError
 } from "@rxova/journey-devtools-bridge";
@@ -151,19 +151,19 @@ export const isBackgroundToPanelMessage = (value: unknown): value is BackgroundT
   return false;
 };
 
-export const createCommandEnvelope = (
+export const createInvokeEnvelope = (
   machineId: string,
   requestId: string,
-  command: JourneyDevtoolsCommand,
+  invocation: JourneyDevtoolsOperationInvoke,
   version: JourneyDevtoolsProtocolVersion = JOURNEY_DEVTOOLS_PROTOCOL_VERSION
 ): JourneyDevtoolsExtensionEnvelope => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
   version,
   source: "rxova-journey-extension",
-  kind: "command",
+  kind: "invoke",
   machineId,
   requestId,
-  command,
+  invocation,
   timestamp: Date.now()
 });
 
@@ -172,16 +172,18 @@ export const createTransportErrorEnvelope = (
   requestId: string,
   error: JourneyDevtoolsSerializedError,
   version: JourneyDevtoolsProtocolVersion = JOURNEY_DEVTOOLS_PROTOCOL_VERSION
-): JourneyDevtoolsBridgeCommandErrorEnvelope => ({
-  channel: JOURNEY_DEVTOOLS_CHANNEL,
-  version,
-  source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
-  kind: "commandError",
-  machineId,
-  requestId,
-  error,
-  timestamp: Date.now()
-});
+): JourneyDevtoolsBridgeOperationErrorEnvelope =>
+  ({
+    channel: JOURNEY_DEVTOOLS_CHANNEL,
+    version,
+    source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
+    kind: "operationError",
+    machineId,
+    requestId,
+    operationId: "transport",
+    error,
+    timestamp: Date.now()
+  }) as JourneyDevtoolsBridgeOperationErrorEnvelope;
 
 export const serializeTransportError = (error: unknown): JourneyDevtoolsSerializedError => {
   if (error instanceof Error) {

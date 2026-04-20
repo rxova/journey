@@ -34,11 +34,41 @@ export type JourneyExecutionPathsMachine<
 export const createExecutionPathsPlugin = () =>
   ({
     name: "execution-paths",
+    __extension__: undefined as unknown as JourneyExecutionPathsMachineExtension<string, string>,
     setup: ({ resolvedJourney }) => ({
       augmentMachine: () => ({
         getExecutionPaths: (options?: JourneyExecutionPathOptions) =>
           getExecutionPaths(resolvedJourney, options)
-      })
+      }),
+      getDevtoolsFeatures: () => [
+        {
+          id: "execution-paths",
+          label: "Execution Paths",
+          operations: [
+            {
+              id: "execution-paths.inspect",
+              label: "inspect",
+              mutates: false,
+              output: "data",
+              fields: [
+                { key: "maxDepth", label: "maxDepth", type: "integer", min: 1, max: 10000 },
+                { key: "maxPaths", label: "maxPaths", type: "integer", min: 1, max: 10000 }
+              ],
+              run: ({ input }) => ({
+                kind: "data",
+                data: getExecutionPaths(resolvedJourney, {
+                  ...(typeof input?.maxDepth === "number"
+                    ? { maxDepth: Math.trunc(input.maxDepth) }
+                    : {}),
+                  ...(typeof input?.maxPaths === "number"
+                    ? { maxPaths: Math.trunc(input.maxPaths) }
+                    : {})
+                })
+              })
+            }
+          ]
+        }
+      ]
     })
   }) satisfies JourneyMachinePlugin;
 
