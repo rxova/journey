@@ -17,11 +17,7 @@
       ],
       "@rxova/journey-core/persistence": ["packages/core/dist/plugins/persistence/index.d.ts"],
       "@rxova/journey-common": ["packages/common/dist/index.d.ts"],
-      "@rxova/journey-common/predicates": ["packages/common/dist/predicates/index.d.ts"],
-      "@rxova/journey-common/serialization": ["packages/common/dist/serialization/index.d.ts"],
-      "@rxova/journey-common/async": ["packages/common/dist/async/index.d.ts"],
-      "@rxova/journey-common/dev": ["packages/common/dist/dev/index.d.ts"],
-      "@rxova/journey-common/origin": ["packages/common/dist/origin/index.d.ts"]
+      "@rxova/journey-common/*": ["packages/common/dist/*/index.d.ts"]
     }
   },
   "references": [
