@@ -61,6 +61,9 @@
     "attw": "attw --pack .",
     "size": "size-limit"
   },
+  "devDependencies": {
+    "@rxova/journey-common": "workspace:*"
+  },
   "size-limit": [
     {
       "name": "devtools-bridge/attachJourneyDevtools",

@@ -104,6 +104,9 @@
     "attw": "attw --pack .",
     "size": "size-limit"
   },
+  "devDependencies": {
+    "@rxova/journey-common": "workspace:*"
+  },
   "size-limit": [
     {
       "name": "core/createJourneyMachine",
