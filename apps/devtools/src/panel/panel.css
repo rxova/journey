@@ -244,7 +244,41 @@ button:disabled {
 .timeline-header {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
+  gap: 10px;
+}
+
+.timeline-header-actions,
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-header {
+  justify-content: space-between;
+}
+
+.timeline-header.with-content,
+.section-header.with-content {
+  margin-bottom: 6px;
+}
+
+.timeline-header h2,
+.section-header h2,
+.section-header h3 {
+  margin: 0;
+}
+
+.section-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  padding: 0;
+  border-radius: 6px;
 }
 
 .timeline-toolbar {
@@ -270,21 +304,29 @@ button:disabled {
   margin: 0;
   padding: 0 0 8px;
   list-style: none;
-  display: grid;
-  align-content: start;
-  gap: 6px;
+  position: relative;
   max-height: 320px;
   overflow: auto;
   scroll-padding-bottom: 8px;
 }
 
-.timeline-list li {
-  content-visibility: auto;
-  contain-intrinsic-size: 42px;
+.timeline-item {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 48px;
+  padding-bottom: 6px;
+  box-sizing: border-box;
+}
+
+.timeline-virtual-spacer {
+  position: relative;
+  width: 100%;
 }
 
 .timeline-row {
   width: 100%;
+  height: 42px;
+  box-sizing: border-box;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);

@@ -554,6 +554,14 @@ describe("panelReducer", () => {
       command: { type: "getExecutionPaths", options: { maxDepth: 3 } },
       timestamp: nextTs()
     });
+
+    const queuedEntries = state.machines.a?.timelineEntries ?? [];
+    const queuedQuery = queuedEntries[queuedEntries.length - 1];
+
+    expect(queuedQuery?.label).toBe("QUERY/getExecutionPaths");
+    expect(queuedQuery?.kind).toBe("query");
+    expect(queuedQuery?.snapshot).toBeNull();
+
     state = panelReducer(state, {
       type: "bridge-envelope",
       envelope: observationEnvelope("a", "journey.start")
@@ -564,8 +572,8 @@ describe("panelReducer", () => {
     });
 
     const entries = state.machines.a?.timelineEntries ?? [];
-    const observation = entries[entries.length - 2];
-    const query = entries[entries.length - 1];
+    const query = entries[entries.length - 2];
+    const observation = entries[entries.length - 1];
 
     expect(observation?.label).toBe("EVENT/journey.start");
     expect(observation?.kind).toBe("event");
@@ -574,6 +582,7 @@ describe("panelReducer", () => {
     expect(query?.label).toBe("QUERY/getExecutionPaths");
     expect(query?.kind).toBe("query");
     expect(query?.snapshot).toBeNull();
+    expect(query?.id).toBe(queuedQuery?.id);
     expect(state.machines.a?.pendingCommandsByRequestId["req-paths"]).toBeUndefined();
     expect(selectDisplayedSnapshot(state.machines.a ?? null)?.currentStepId).toBe("start");
   });

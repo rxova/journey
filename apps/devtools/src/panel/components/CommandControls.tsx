@@ -1,23 +1,17 @@
 import React from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 import type { JourneyDevtoolsCommand } from "@rxova/journey-devtools-bridge";
+import type { JourneyDevtoolsSerializableSnapshot } from "@rxova/journey-devtools-bridge";
 import {
   type CommandBuildResult,
   buildClearStepErrorCommand,
   buildCustomSendCommand,
-  buildExecutionPathsCommand,
   buildGoToCommand,
   buildGoToPreviousStepCommand
 } from "../command-utils";
 
-type CommandField =
-  | "customType"
-  | "customPayload"
-  | "goToStep"
-  | "stepErrorId"
-  | "previousSteps"
-  | "executionMaxDepth"
-  | "executionMaxPaths";
+type CommandField = "customType" | "customPayload" | "goToStep" | "stepErrorId" | "previousSteps";
 
 type CommandFormState = {
   customType: string;
@@ -25,8 +19,6 @@ type CommandFormState = {
   goToStep: string;
   stepErrorId: string;
   previousSteps: string;
-  executionMaxDepth: string;
-  executionMaxPaths: string;
   formError: string | null;
 };
 
@@ -47,19 +39,17 @@ const INITIAL_FORM_STATE: CommandFormState = {
   goToStep: "",
   stepErrorId: "",
   previousSteps: "",
-  executionMaxDepth: "",
-  executionMaxPaths: "",
   formError: null
 };
 
-const PRIMARY_COMMANDS = [
+const MACHINE_COMMANDS = [
   "startJourney",
-  "goToNextStep",
   "terminateJourney",
   "completeJourney",
-  "resetJourney",
-  "goToLastVisitedStep"
+  "resetJourney"
 ] as const;
+
+const NAVIGATION_COMMANDS = ["goToNextStep", "goToLastVisitedStep"] as const;
 
 const commandFormReducer = (
   state: CommandFormState,
@@ -80,18 +70,41 @@ const commandFormReducer = (
 
 export const CommandControls = ({
   availableCommands,
+  snapshotStatus,
   onCommand,
   disabled,
   disabledReason
 }: {
   availableCommands: readonly JourneyDevtoolsCommand["type"][];
+  snapshotStatus: JourneyDevtoolsSerializableSnapshot["status"];
   onCommand: (command: JourneyDevtoolsCommand) => void;
   disabled: boolean;
   disabledReason?: string | null;
 }) => {
   const [formState, dispatch] = React.useReducer(commandFormReducer, INITIAL_FORM_STATE);
-  const availableCommandSet = new Set(availableCommands);
-  const visiblePrimaryCommands = PRIMARY_COMMANDS.filter((type) => availableCommandSet.has(type));
+  const [machineCommandsOpen, setMachineCommandsOpen] = React.useState(true);
+  const [navigationCommandsOpen, setNavigationCommandsOpen] = React.useState(true);
+  const [eventsOpen, setEventsOpen] = React.useState(true);
+  const effectiveAvailableCommands = React.useMemo(() => {
+    if (snapshotStatus === "running") {
+      return availableCommands.filter((command) => command !== "startJourney");
+    }
+
+    if (snapshotStatus === "terminated" || snapshotStatus === "completed") {
+      return availableCommands.filter((command) => command === "resetJourney");
+    }
+
+    return availableCommands;
+  }, [availableCommands, snapshotStatus]);
+  const availableCommandSet = new Set(effectiveAvailableCommands);
+  const hasMachineCommandsSection = MACHINE_COMMANDS.some((type) =>
+    availableCommands.includes(type)
+  );
+  const visibleNavigationCommands = NAVIGATION_COMMANDS.filter((type) =>
+    availableCommandSet.has(type)
+  );
+  const hasEventsSection =
+    availableCommandSet.has("send") || availableCommandSet.has("clearStepError");
 
   const updateField = React.useCallback((field: CommandField, value: string) => {
     dispatch({
@@ -115,160 +128,222 @@ export const CommandControls = ({
   );
 
   return (
-    <section className="panel-card">
-      <h2>Commands</h2>
-
-      {visiblePrimaryCommands.length > 0 ? (
-        <div className="button-grid">
-          {visiblePrimaryCommands.map((type) => (
+    <>
+      {hasMachineCommandsSection ? (
+        <section className="panel-card">
+          <div className={machineCommandsOpen ? "section-header with-content" : "section-header"}>
+            <h2>Machine Commands</h2>
             <button
-              key={type}
               type="button"
-              onClick={() => onCommand({ type })}
-              disabled={disabled}
+              className="section-toggle"
+              aria-label={
+                machineCommandsOpen ? "Collapse Machine Commands" : "Expand Machine Commands"
+              }
+              title={machineCommandsOpen ? "Collapse Machine Commands" : "Expand Machine Commands"}
+              onClick={() => setMachineCommandsOpen((open) => !open)}
             >
-              {type}
+              {machineCommandsOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             </button>
-          ))}
-        </div>
+          </div>
+          {machineCommandsOpen ? (
+            <div className="button-grid">
+              {MACHINE_COMMANDS.map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => onCommand({ type })}
+                  disabled={disabled || !availableCommandSet.has(type)}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </section>
       ) : null}
 
-      <div className="command-form-grid">
-        {availableCommandSet.has("goToStepById") ? (
-          <label>
-            goToStepById step
-            <div className="form-row">
-              <input
-                value={formState.goToStep}
-                onChange={(event) => updateField("goToStep", event.target.value)}
-                placeholder="review"
-                disabled={disabled}
-              />
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => runCommand(buildGoToCommand(formState.goToStep))}
-              >
-                Send goToStepById
-              </button>
-            </div>
-          </label>
-        ) : null}
-
-        {availableCommandSet.has("goToPreviousStep") ? (
-          <label>
-            goToPreviousStep steps (optional)
-            <div className="form-row">
-              <input
-                value={formState.previousSteps}
-                onChange={(event) => updateField("previousSteps", event.target.value)}
-                placeholder="1"
-                disabled={disabled}
-              />
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => runCommand(buildGoToPreviousStepCommand(formState.previousSteps))}
-              >
-                Send previous
-              </button>
-            </div>
-          </label>
-        ) : null}
-
-        {availableCommandSet.has("send") ? (
-          <>
-            <label>
-              Custom event type
-              <input
-                value={formState.customType}
-                onChange={(event) => updateField("customType", event.target.value)}
-                placeholder="retry"
-                disabled={disabled}
-              />
-            </label>
-            <label>
-              Custom payload JSON
-              <textarea
-                value={formState.customPayload}
-                onChange={(event) => updateField("customPayload", event.target.value)}
-                placeholder='{"attempt": 2}'
-                disabled={disabled}
-              />
-            </label>
+      {visibleNavigationCommands.length > 0 ? (
+        <section className="panel-card">
+          <div
+            className={navigationCommandsOpen ? "section-header with-content" : "section-header"}
+          >
+            <h2>Navigation Commands</h2>
             <button
               type="button"
-              disabled={disabled}
-              onClick={() =>
-                runCommand(buildCustomSendCommand(formState.customType, formState.customPayload))
+              className="section-toggle"
+              aria-label={
+                navigationCommandsOpen
+                  ? "Collapse Navigation Commands"
+                  : "Expand Navigation Commands"
               }
-            >
-              Send custom event
-            </button>
-          </>
-        ) : null}
-
-        {availableCommandSet.has("clearStepError") ? (
-          <label>
-            clearStepError stepId (optional)
-            <div className="form-row">
-              <input
-                value={formState.stepErrorId}
-                onChange={(event) => updateField("stepErrorId", event.target.value)}
-                placeholder="details"
-                disabled={disabled}
-              />
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => runCommand(buildClearStepErrorCommand(formState.stepErrorId))}
-              >
-                Clear error
-              </button>
-            </div>
-          </label>
-        ) : null}
-
-        {availableCommandSet.has("getExecutionPaths") ? (
-          <label>
-            getExecutionPaths (optional limits)
-            <div className="form-row">
-              <input
-                value={formState.executionMaxDepth}
-                onChange={(event) => updateField("executionMaxDepth", event.target.value)}
-                placeholder="maxDepth"
-                disabled={disabled}
-              />
-              <input
-                value={formState.executionMaxPaths}
-                onChange={(event) => updateField("executionMaxPaths", event.target.value)}
-                placeholder="maxPaths"
-                disabled={disabled}
-              />
-            </div>
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() =>
-                runCommand(
-                  buildExecutionPathsCommand(
-                    formState.executionMaxDepth,
-                    formState.executionMaxPaths
-                  )
-                )
+              title={
+                navigationCommandsOpen
+                  ? "Collapse Navigation Commands"
+                  : "Expand Navigation Commands"
               }
+              onClick={() => setNavigationCommandsOpen((open) => !open)}
             >
-              Query execution paths
+              {navigationCommandsOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             </button>
-          </label>
-        ) : null}
-      </div>
+          </div>
+          {navigationCommandsOpen ? (
+            <>
+              <div className="button-grid">
+                {visibleNavigationCommands.map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => onCommand({ type })}
+                    disabled={disabled}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
 
-      {availableCommands.length === 0 ? (
-        <p className="muted">No remote actions are exposed for this machine.</p>
+              {(availableCommandSet.has("goToStepById") ||
+                availableCommandSet.has("goToPreviousStep")) && (
+                <div className="command-form-grid">
+                  {availableCommandSet.has("goToStepById") ? (
+                    <label>
+                      goToStepById step
+                      <div className="form-row">
+                        <input
+                          value={formState.goToStep}
+                          onChange={(event) => updateField("goToStep", event.target.value)}
+                          placeholder="review"
+                          disabled={disabled}
+                        />
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => runCommand(buildGoToCommand(formState.goToStep))}
+                        >
+                          Send goToStepById
+                        </button>
+                      </div>
+                    </label>
+                  ) : null}
+
+                  {availableCommandSet.has("goToPreviousStep") ? (
+                    <label>
+                      goToPreviousStep steps (optional)
+                      <div className="form-row">
+                        <input
+                          value={formState.previousSteps}
+                          onChange={(event) => updateField("previousSteps", event.target.value)}
+                          placeholder="1"
+                          disabled={disabled}
+                        />
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          onClick={() =>
+                            runCommand(buildGoToPreviousStepCommand(formState.previousSteps))
+                          }
+                        >
+                          Send previous
+                        </button>
+                      </div>
+                    </label>
+                  ) : null}
+                </div>
+              )}
+            </>
+          ) : null}
+        </section>
       ) : null}
-      {formState.formError ? <p className="form-error">{formState.formError}</p> : null}
-      {disabled && disabledReason ? <p className="muted">{disabledReason}</p> : null}
-    </section>
+
+      {hasEventsSection && (
+        <section className="panel-card">
+          <div className={eventsOpen ? "section-header with-content" : "section-header"}>
+            <h2>Events</h2>
+            <button
+              type="button"
+              className="section-toggle"
+              aria-label={eventsOpen ? "Collapse Events" : "Expand Events"}
+              title={eventsOpen ? "Collapse Events" : "Expand Events"}
+              onClick={() => setEventsOpen((open) => !open)}
+            >
+              {eventsOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            </button>
+          </div>
+          {eventsOpen ? (
+            <div className="command-form-grid">
+              {availableCommandSet.has("send") ? (
+                <>
+                  <label>
+                    Custom event type
+                    <input
+                      value={formState.customType}
+                      onChange={(event) => updateField("customType", event.target.value)}
+                      placeholder="retry"
+                      disabled={disabled}
+                    />
+                  </label>
+                  <label>
+                    Custom payload JSON
+                    <textarea
+                      value={formState.customPayload}
+                      onChange={(event) => updateField("customPayload", event.target.value)}
+                      placeholder='{"attempt": 2}'
+                      disabled={disabled}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() =>
+                      runCommand(
+                        buildCustomSendCommand(formState.customType, formState.customPayload)
+                      )
+                    }
+                  >
+                    Send custom event
+                  </button>
+                </>
+              ) : null}
+
+              {availableCommandSet.has("clearStepError") ? (
+                <label>
+                  clearStepError stepId (optional)
+                  <div className="form-row">
+                    <input
+                      value={formState.stepErrorId}
+                      onChange={(event) => updateField("stepErrorId", event.target.value)}
+                      placeholder="details"
+                      disabled={disabled}
+                    />
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => runCommand(buildClearStepErrorCommand(formState.stepErrorId))}
+                    >
+                      Clear error
+                    </button>
+                  </div>
+                </label>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
+      )}
+
+      {effectiveAvailableCommands.length === 0 ? (
+        <section className="panel-card">
+          <p className="muted">No remote actions are exposed for this machine.</p>
+        </section>
+      ) : null}
+      {formState.formError ? (
+        <section className="panel-card">
+          <p className="form-error">{formState.formError}</p>
+        </section>
+      ) : null}
+      {disabled && disabledReason ? (
+        <section className="panel-card">
+          <p className="muted">{disabledReason}</p>
+        </section>
+      ) : null}
+    </>
   );
 };
