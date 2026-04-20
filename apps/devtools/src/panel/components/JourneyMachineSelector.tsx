@@ -1,6 +1,8 @@
 import React from "react";
 
 import type { JourneyPanelMachineState } from "../store";
+import panelStyles from "./panelPrimitives.module.css";
+import styles from "./journeyMachineSelector.module.css";
 
 type JourneyMachineSelectorProps = {
   machineOrder: readonly string[];
@@ -12,15 +14,15 @@ type JourneyMachineSelectorProps = {
 export const JourneyMachineSelector = React.memo(
   ({ machineOrder, machines, selectedMachineId, onSelect }: JourneyMachineSelectorProps) => {
     return (
-      <section className="panel-card">
-        <h2>Journey Machines</h2>
+      <section className={panelStyles.card}>
+        <h2 className={panelStyles.title}>Journey Machines</h2>
         {machineOrder.length === 0 ? (
-          <p className="muted">No journey machines registered yet.</p>
+          <p className={panelStyles.muted}>No journey machines registered yet.</p>
         ) : (
           <select
             value={selectedMachineId ?? ""}
             onChange={(event) => onSelect(event.target.value)}
-            className="machine-select"
+            className={styles.select}
           >
             {machineOrder.map((machineId) => {
               const journeyMachine = machines[machineId];

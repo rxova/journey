@@ -1,0 +1,142 @@
+.stack {
+  display: grid;
+  gap: 12px;
+}
+
+.summaryText {
+  margin: 0;
+}
+
+.sectionDescription {
+  margin: 0;
+}
+
+.layoutGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.machineCommandsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.navigationGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-items: end;
+}
+
+.navigationInlineForm {
+  display: contents;
+}
+
+.navigationInlineForm > div > input,
+.navigationInlineForm > div > select,
+.eventSendForm > div > input,
+.eventSendForm > div > select,
+.eventClearForm > div > input,
+.eventClearForm > div > select {
+  min-width: 0;
+}
+
+.navigationInlineButton {
+  width: 100%;
+}
+
+.eventsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.eventSendForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 17ch;
+  gap: 8px;
+  align-items: start;
+}
+
+.eventSendButton {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: 100%;
+  height: 100%;
+}
+
+.eventClearForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 17ch;
+  gap: 8px;
+  align-items: start;
+}
+
+.eventClearButton {
+  width: 100%;
+}
+
+.operationForm {
+  display: grid;
+  gap: 8px;
+}
+
+.fieldStack {
+  display: grid;
+  gap: 8px;
+}
+
+.actionButton {
+  width: 100%;
+  min-height: 38px;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.formError {
+  margin: 8px 0 0;
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.disabledReason {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .machineCommandsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .navigationGrid,
+  .eventsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .navigationInlineForm {
+    display: grid;
+    gap: 8px;
+  }
+
+  .eventSendForm,
+  .eventClearForm {
+    grid-template-columns: 1fr;
+  }
+
+  .eventSendButton {
+    grid-column: auto;
+    grid-row: auto;
+    height: auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .machineCommandsGrid {
+    grid-template-columns: 1fr;
+  }
+}

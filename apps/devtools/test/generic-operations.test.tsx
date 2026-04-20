@@ -100,6 +100,8 @@ const registerEnvelope = (): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "reg
     label: "Checkout",
     appName: "Store",
     mutationsEnabled: true,
+    stepIds: ["start", "review", "done"],
+    eventTypes: ["journey.start", "review.submit"],
     features
   },
   snapshot: {
@@ -203,6 +205,8 @@ describe("generic devtools operations", () => {
           snapshotStatus="running"
           disabled={false}
           mutationsEnabled={true}
+          stepIds={["start", "review", "done"]}
+          eventTypes={["journey.start", "review.submit"]}
           onInvoke={onInvoke}
         />
       );
@@ -212,6 +216,18 @@ describe("generic devtools operations", () => {
     expect(container.textContent).toContain("Events");
     expect(container.textContent).toContain("Machine commands");
     expect(container.textContent).toContain("restartJourney");
+
+    const navigationSelect = [...container.querySelectorAll("select")].find((select) =>
+      [...select.querySelectorAll("option")].some((option) => option.textContent === "review")
+    );
+    expect(navigationSelect).toBeTruthy();
+
+    const eventTypeSelect = [...container.querySelectorAll("select")].find((select) =>
+      [...select.querySelectorAll("option")].some(
+        (option) => option.textContent === "journey.start"
+      )
+    );
+    expect(eventTypeSelect).toBeTruthy();
 
     const nextButton = [...container.querySelectorAll("button")].find((button) =>
       button.textContent?.includes("goToNextStep")
