@@ -116,6 +116,7 @@ export const resolveNonProductionEnvironment = (
 };
 
 const resolveWindowTargetOrigin = (): string => {
+  /* v8 ignore next 3 -- attachJourneyDevtools is browser-only; SSR calls return before posting. */
   if (typeof window === "undefined") {
     return "*";
   }
@@ -308,6 +309,7 @@ const toSerializableResult = <TContext extends JourneyJsonObject, TStepId extend
   }
 
   const exhaustiveCheck: never = result;
+  /* v8 ignore next -- TypeScript exhaustiveness guard for impossible operation result kinds. */
   throw new Error(`Unsupported operation result kind: ${String(exhaustiveCheck)}`);
 };
 

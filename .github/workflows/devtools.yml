@@ -49,7 +49,7 @@ jobs:
         run: pnpm --filter apps-devtools typecheck
 
       - name: Run devtools tests
-        run: pnpm --filter apps-devtools test -- --run apps/devtools/test
+        run: pnpm --filter apps-devtools test
 
       - name: Build devtools extension
         run: pnpm --filter apps-devtools build

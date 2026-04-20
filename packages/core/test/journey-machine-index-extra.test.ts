@@ -3,11 +3,18 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createJourneyMachine,
   JourneyDisposedError,
-  type JourneyDefinition
+  type JourneyDefinition,
+  type JourneyMachinePlugin
 } from "@rxova/journey-core";
 
 type StepId = "start" | "review" | "done";
 type Context = { count: number };
+
+const flushAsync = async () => {
+  await new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+};
 
 const createJourney = (
   transitionHooks: Partial<{ onEnter: () => void; onLeave: () => void }> = {}
@@ -73,6 +80,85 @@ describe("createJourneyMachine extra coverage", () => {
     expect(lastVisited.error).toBeInstanceOf(JourneyDisposedError);
   });
 
+  it("stops lifecycle dispatch and thrown hook handling after disposal", async () => {
+    let dispatchMachine: ReturnType<typeof createJourneyMachine<Context, StepId>>;
+    dispatchMachine = createJourneyMachine({
+      ...createJourney(),
+      steps: {
+        start: {},
+        review: {
+          onEnter: async ({ dispatch }) => {
+            dispatchMachine.dispose();
+            const result = await dispatch({ type: "goToNextStep" });
+            expect(result.transitioned).toBe(false);
+          }
+        },
+        done: {}
+      }
+    });
+    await dispatchMachine.startJourney();
+    await dispatchMachine.goToNextStep();
+    await flushAsync();
+
+    const hookCases: JourneyDefinition<Context, StepId>[] = [
+      {
+        ...createJourney(),
+        steps: {
+          start: {
+            onLeave: () => {
+              leaveMachine.dispose();
+              throw new Error("disposed from step leave");
+            }
+          },
+          review: {},
+          done: {}
+        }
+      },
+      createJourney({
+        onLeave: () => {
+          transitionLeaveMachine.dispose();
+          throw new Error("disposed from transition leave");
+        }
+      }),
+      {
+        ...createJourney(),
+        steps: {
+          start: {},
+          review: {
+            onEnter: () => {
+              enterMachine.dispose();
+              throw new Error("disposed from step enter");
+            }
+          },
+          done: {}
+        }
+      },
+      createJourney({
+        onEnter: () => {
+          transitionEnterMachine.dispose();
+          throw new Error("disposed from transition enter");
+        }
+      })
+    ];
+
+    let leaveMachine = createJourneyMachine(hookCases[0]!);
+    let transitionLeaveMachine = createJourneyMachine(hookCases[1]!);
+    let enterMachine = createJourneyMachine(hookCases[2]!);
+    let transitionEnterMachine = createJourneyMachine(hookCases[3]!);
+
+    for (const machine of [
+      leaveMachine,
+      transitionLeaveMachine,
+      enterMachine,
+      transitionEnterMachine
+    ]) {
+      await machine.startJourney();
+      await machine.goToNextStep();
+      await flushAsync();
+      expect(machine.getSnapshot().status).toBe("running");
+    }
+  });
+
   it("rejects primitive transition definitions when provided", () => {
     expect(() =>
       createJourneyMachine({
@@ -97,5 +183,103 @@ describe("createJourneyMachine extra coverage", () => {
         }
       } as never)
     ).toThrow(/initial.*required/i);
+  });
+
+  it("rejects malformed graph transition fields during definition resolution", () => {
+    const invalidEdges = [
+      { to: 1 },
+      { to: "review", onEnter: true },
+      { to: "review", onLeave: true },
+      { to: "review", label: 1 }
+    ];
+
+    for (const edge of invalidEdges) {
+      expect(() =>
+        createJourneyMachine({
+          ...createJourney(),
+          transitions: {
+            start: {
+              goToNextStep: [edge]
+            }
+          }
+        } as never)
+      ).toThrow();
+    }
+  });
+
+  it("rejects duplicate and failing plugin devtools registrations", () => {
+    const duplicateFeaturesPlugin: JourneyMachinePlugin = {
+      name: "duplicate-features",
+      setup: () => ({
+        getDevtoolsFeatures: () => [
+          { id: "duplicate", label: "Duplicate", operations: [] },
+          { id: "duplicate", label: "Duplicate again", operations: [] }
+        ]
+      })
+    };
+    expect(() =>
+      createJourneyMachine(createJourney(), { plugins: [duplicateFeaturesPlugin] as const })
+    ).toThrow(/feature "duplicate" is already registered/);
+
+    const duplicateOperationsPlugin: JourneyMachinePlugin = {
+      name: "duplicate-operations",
+      setup: () => ({
+        getDevtoolsFeatures: () => [
+          {
+            id: "feature-a",
+            label: "Feature A",
+            operations: [
+              {
+                id: "operation.same",
+                label: "same",
+                mutates: false,
+                output: "void",
+                run: async () => ({ kind: "void" })
+              }
+            ]
+          },
+          {
+            id: "feature-b",
+            label: "Feature B",
+            operations: [
+              {
+                id: "operation.same",
+                label: "same again",
+                mutates: false,
+                output: "void",
+                run: async () => ({ kind: "void" })
+              }
+            ]
+          }
+        ]
+      })
+    };
+    expect(() =>
+      createJourneyMachine(createJourney(), { plugins: [duplicateOperationsPlugin] as const })
+    ).toThrow(/operation "operation\.same" is already registered/);
+
+    const failingPlugin: JourneyMachinePlugin = {
+      name: "failing-devtools",
+      setup: () => ({
+        getDevtoolsFeatures: () => {
+          throw "boom";
+        }
+      })
+    };
+    expect(() =>
+      createJourneyMachine(createJourney(), { plugins: [failingPlugin] as const })
+    ).toThrow(/plugin "failing-devtools" devtools registration failed: boom/i);
+
+    const failingErrorPlugin: JourneyMachinePlugin = {
+      name: "failing-devtools-error",
+      setup: () => ({
+        getDevtoolsFeatures: () => {
+          throw new Error("error boom");
+        }
+      })
+    };
+    expect(() =>
+      createJourneyMachine(createJourney(), { plugins: [failingErrorPlugin] as const })
+    ).toThrow(/plugin "failing-devtools-error" devtools registration failed: error boom/i);
   });
 });
