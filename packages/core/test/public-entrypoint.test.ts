@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   createJourneyMachine,
   JourneyDisposedError,
+  JourneyTimeoutError,
   type JourneyDefinition
 } from "@rxova/journey-core";
 
@@ -33,6 +34,10 @@ describe("core public entrypoint", () => {
 
   it("re-exports JourneyDisposedError", () => {
     expect(JourneyDisposedError).toBeTypeOf("function");
+  });
+
+  it("re-exports JourneyTimeoutError", () => {
+    expect(JourneyTimeoutError).toBeTypeOf("function");
   });
 
   it("creates a machine directly from the authored journey definition", async () => {
@@ -84,5 +89,33 @@ describe("core public entrypoint", () => {
           }) as never
       )
     ).rejects.toThrow(/json-serializable/i);
+  });
+
+  it("surfaces timeout failures as JourneyTimeoutError from the public entrypoint", async () => {
+    const machine = createJourneyMachine({
+      initial: "account",
+      context: { attempts: 0 },
+      steps: {
+        account: {},
+        review: {}
+      },
+      transitions: {
+        account: {
+          goToNextStep: [
+            {
+              to: "review",
+              timeoutMs: 10,
+              when: async () => new Promise<boolean>(() => undefined)
+            }
+          ]
+        }
+      }
+    });
+
+    await machine.startJourney();
+    const result = await machine.goToNextStep();
+
+    expect(result.transitioned).toBe(false);
+    expect(result.error).toBeInstanceOf(JourneyTimeoutError);
   });
 });

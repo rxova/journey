@@ -28,11 +28,7 @@ const diagnostics = machine.getDiagnostics({
 The plugin augments the machine with:
 
 ```ts
-type JourneyDiagnosticsMachineExtension<TStepId extends string, TEventType extends string> = {
-  getDiagnostics: (
-    options?: JourneyDiagnosticsOptions
-  ) => JourneyDiagnosticsResult<TStepId, TEventType>;
-};
+machine.getDiagnostics(options);
 ```
 
 That result includes:

@@ -27,10 +27,10 @@ Hydrated machines still start as `idled`. If persisted data said the flow was pr
 
 ## What It Persists
 
-The persistence plugin stores the runtime snapshot shape that matters for recovery:
+The persistence plugin stores the runtime snapshot fields that matter for recovery:
 
 ```ts
-type JourneyPersistedSnapshot<TContext, TStepId extends string> = {
+type PersistedSnapshotShape<TContext, TStepId extends string> = {
   currentStepId: TStepId;
   history: {
     timeline: readonly TStepId[];

@@ -176,27 +176,7 @@ Terminal transitions follow the same lifecycle path as step-to-step transitions.
 
 If `onEnter` or `onLeave` throws or rejects, Journey logs a development diagnostic and leaves the committed transition result unchanged. Lifecycle callback failures do not emit `transition.error`.
 
-### React: `useJourneyStepLifecycle`
-
-In React, use `useJourneyStepLifecycle` when the callback needs access to component state or React context. It is a thin wrapper over `useJourneyEvent` filtered to a single step:
-
-```tsx
-const { useJourneyStepLifecycle } = createJourney(definition);
-
-function Dashboard() {
-  useJourneyStepLifecycle("dashboard", {
-    onEnter: ({ context }) => analytics.track("dashboard_entered"),
-    onLeave: ({ context }) => console.log("leaving dashboard")
-  });
-  // ...
-}
-```
-
-The hook always calls the latest version of your callbacks without re-subscribing.
-
-:::note
-`onEnter` / `onLeave` fire on the same tick as `step.enter` / `step.exit` events, in the order they were registered. The step definition callbacks fire first (registered at machine creation), then any `useJourneyStepLifecycle` hooks (registered at component mount).
-:::
+React-specific step lifecycle hooks belong to `@rxova/journey-react`, not `@rxova/journey-core`. This page only documents the core runtime lifecycle contract.
 
 ## How To Think About It
 

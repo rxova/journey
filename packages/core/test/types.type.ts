@@ -4,6 +4,8 @@ import {
   createJourneyBuilder,
   createJourneyMachine,
   type JourneyAnalyticsTrackedEvent,
+  type JourneyAsyncPhase,
+  type JourneyAsyncState,
   type JourneyAutosaveState,
   type JourneyBuilder,
   type JourneyBuilderOnEntry,
@@ -12,30 +14,37 @@ import {
   type JourneyCompleteObservationEvent,
   type JourneyDefaultEventType,
   type JourneyDefinition,
+  type JourneyEvent,
   type JourneyFullEventType,
+  type JourneyHistory,
   type JourneyLinearStep,
   type JourneyLifecycleErrorContext,
   type JourneyLifecycleErrorObservationEvent,
   type JourneyMachine,
   type JourneyMachineOptions,
+  type JourneyMachinePluginHooks,
+  type JourneyMachinePluginSetupContext,
+  type JourneyMode,
   type JourneyObservationEvent,
   type JourneyPayloadFor,
+  type JourneyResolvedDefinition,
   type JourneyResetObservationEvent,
   type JourneySendEvent,
   type JourneySendResult,
   type JourneySnapshot,
   type JourneyStartObservationEvent,
+  type JourneyStatus,
   type JourneyTerminateObservationEvent
 } from "@rxova/journey-core";
 import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
 import { createAutosavePlugin } from "@rxova/journey-core/autosave";
 import { createDiagnosticsPlugin } from "@rxova/journey-core/diagnostics";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
+import { createPersistencePlugin } from "@rxova/journey-core/persistence";
 import { createReplayPlugin } from "@rxova/journey-core/replay";
 import type {
   JourneyBuiltInSendEvent,
   JourneyCustomSendEvent,
-  JourneyEvent,
   JourneyExecutionPathEventType,
   JourneyGoToStepGraphEdge,
   JourneyGoToStepTransition,
@@ -180,6 +189,9 @@ const diagnosticsMachine = createJourneyMachine(journey, {
 const replayMachine = createJourneyMachine(journey, {
   plugins: [createReplayPlugin()] as const
 });
+const persistenceMachine = createJourneyMachine(journey, {
+  plugins: [createPersistencePlugin({ key: "journey:persistence" })] as const
+});
 const defaultedMachine = createJourneyMachine(defaultedJourney);
 const configuredMachine = createJourneyMachine<Context, StepId, EventMap>(journey, {
   requireExplicitCompletion: false,
@@ -194,6 +206,7 @@ const persistenceAllowList: readonly string[] | undefined = persistenceOptions.a
 const persistenceBlockList: readonly string[] | undefined = persistenceOptions.blockList;
 const diagnosticsResult = diagnosticsMachine.getDiagnostics();
 const replaySession = replayMachine.getReplaySession();
+void persistenceMachine;
 
 type SendArg = Parameters<typeof machine.send>[0];
 type ObsEvent = JourneyObservationEvent<StepId, EventMap>;
@@ -207,6 +220,26 @@ type CloseObservationFromMachine = Parameters<Parameters<typeof machine.subscrib
 
 expectTypeOf(confirmExitJourney).toMatchTypeOf<JourneyDefinition<Context, StepId, EventMap>>();
 expectTypeOf(machine).toMatchTypeOf<JourneyMachine<Context, StepId, EventMap>>();
+expectTypeOf<JourneyEvent<StepId, EventMap>>().toMatchTypeOf<JourneySendEvent<StepId, EventMap>>();
+expectTypeOf<JourneyAsyncPhase>().toEqualTypeOf<"idle" | "evaluating-when" | "error">();
+expectTypeOf<JourneyMode>().toEqualTypeOf<"linear" | "graph" | "headless">();
+expectTypeOf<JourneyStatus>().toEqualTypeOf<"idled" | "running" | "completed" | "terminated">();
+expectTypeOf<JourneyHistory<StepId>>().toEqualTypeOf<{
+  timeline: readonly StepId[];
+  index: number;
+}>();
+expectTypeOf<JourneyAsyncState<StepId>>().toEqualTypeOf<{
+  isLoading: boolean;
+  byStep: Record<
+    StepId,
+    {
+      phase: JourneyAsyncPhase;
+      eventType: string | null;
+      transitionId: string | null;
+      error: unknown;
+    }
+  >;
+}>();
 expectTypeOf(executionPathsMachine.getExecutionPaths).toBeFunction();
 expectTypeOf(analyticsMachine.trackAnalyticsEvent).toBeFunction();
 expectTypeOf(
@@ -282,6 +315,18 @@ expectTypeOf<CloseObservationFromMachine["stepId"]>().toEqualTypeOf<StepId>();
 expectTypeOf<JourneyMachineOptions["onLifecycleError"]>().toEqualTypeOf<
   ((error: unknown, context: JourneyLifecycleErrorContext<string>) => void) | undefined
 >();
+expectTypeOf<JourneyMachinePluginSetupContext<Context, StepId, EventMap>>().toMatchTypeOf<{
+  journey: JourneyDefinition<Context, StepId, EventMap>;
+  resolvedJourney: JourneyResolvedDefinition<Context, StepId, EventMap>;
+  buildInitialSnapshot: () => JourneySnapshot<Context, StepId>;
+}>();
+expectTypeOf<
+  JourneyMachinePluginHooks<Context, StepId, EventMap, unknown, Record<never, never>>
+>().toMatchTypeOf<{
+  hydrateSnapshot?: (
+    snapshot: JourneySnapshot<Context, StepId>
+  ) => JourneySnapshot<Context, StepId>;
+}>();
 
 expectTypeOf<JourneyPayloadFor<EventMap, "goToNextStep">>().toEqualTypeOf<{
   origin: "ui";

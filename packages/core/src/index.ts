@@ -1,6 +1,6 @@
 export { createJourneyMachine } from "./journey-machine";
 export { createJourneyBuilder } from "./journey-builder";
-export { JourneyDisposedError } from "./journey-machine/helpers";
+export { JourneyDisposedError, JourneyTimeoutError } from "./journey-machine/helpers";
 export type {
   JourneyBuilder,
   JourneyBuilderCustomEventKey,
@@ -18,6 +18,8 @@ export {
   type JourneyAnalyticsEventPayload,
   type JourneyAnalyticsPluginOptions,
   type JourneyAnalyticsTrackedEvent,
+  type JourneyAsyncPhase,
+  type JourneyAsyncState,
   type JourneyAutosavePluginOptions,
   type JourneyAutosaveState,
   type JourneyAutosaveStatus,
@@ -31,10 +33,12 @@ export {
   type JourneyDiagnosticsSummary,
   type JourneyDefaultEventType,
   type JourneyDefinition,
+  type JourneyEvent,
   type JourneyEqualityFn,
   type JourneyExecutionPathOptions,
   type JourneyExecutionPathsResult,
   type JourneyFullEventType,
+  type JourneyHistory,
   type JourneyJsonObject,
   type JourneyJsonValue,
   type JourneyLinearStep,
@@ -45,9 +49,13 @@ export {
   type JourneyMachine,
   type JourneyMachineOptions,
   type JourneyMachinePlugin,
+  type JourneyMachinePluginHooks,
+  type JourneyMachinePluginSetupContext,
   type JourneyMachineWithPlugins,
+  type JourneyMode,
   type JourneyObservationEvent,
   type JourneyPayloadFor,
+  type JourneyResolvedDefinition,
   type JourneyResolvedTransition,
   type JourneyResetObservationEvent,
   type JourneyReplayEntry,
@@ -61,6 +69,7 @@ export {
   type JourneySendResult,
   type JourneySnapshot,
   type JourneyStartObservationEvent,
+  type JourneyStatus,
   type JourneyStepAsyncState,
   type JourneyStepDefinition,
   type JourneyStepLifecycleCallback,
