@@ -99,16 +99,6 @@ Add other directives only for concrete application needs. If a dev-only integrat
 
 If someone has physical access to a machine with devtools open, they can send commands. This is true for all browser devtools.
 
-## Comparison with Other DevTools
-
-| Feature                   | Journey DevTools | React DevTools | Redux DevTools | Vue DevTools |
-| ------------------------- | ---------------- | -------------- | -------------- | ------------ |
-| Origin Isolation          | ✅               | ✅             | ✅             | ✅           |
-| Rate Limiting             | ✅               | ❌             | ❌             | ❌           |
-| Payload Validation        | ✅ (Deep)        | ✅ (Basic)     | ✅ (Basic)     | ✅ (Basic)   |
-| Production Default        | Disabled         | Enabled        | Enabled        | Enabled      |
-| Same-Page Code Protection | ❌               | ❌             | ❌             | ❌           |
-
 ## Best Practices
 
 ### For Production
