@@ -268,9 +268,13 @@ describe("generic devtools operations", () => {
     });
 
     const machine = state.machines["machine-1"];
+    if (!machine) {
+      throw new Error("expected machine state");
+    }
     expect(machine.snapshot.currentStepId).toBe("review");
-    expect(machine.timelineEntries.at(-1)?.label).toBe("OP/core.goToNextStep");
-    expect(machine.timelineEntries.at(-1)?.meta.transitionId).toBe("goToNextStep");
+    const lastEntry = machine.timelineEntries[machine.timelineEntries.length - 1];
+    expect(lastEntry?.label).toBe("OP/core.goToNextStep");
+    expect(lastEntry?.meta.transitionId).toBe("goToNextStep");
   });
 
   it("renders generic feature-driven controls and dispatches invocations", async () => {
@@ -415,7 +419,7 @@ describe("generic devtools operations", () => {
       }
     });
 
-    expect(state.machines["machine-1"].snapshot.status).toBe("running");
+    expect(state.machines["machine-1"]?.snapshot.status).toBe("running");
   });
 
   it("shows all step ids for headless goToStepById", async () => {
