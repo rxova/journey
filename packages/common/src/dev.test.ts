@@ -116,7 +116,9 @@ describe("resolveNonProductionEnvironment", () => {
   });
 
   it("returns false when bundlerEnv is null and nodeEnv is production", () => {
-    expect(resolveNonProductionEnvironment({ bundlerEnv: null, nodeEnv: "production" })).toBe(false);
+    expect(resolveNonProductionEnvironment({ bundlerEnv: null, nodeEnv: "production" })).toBe(
+      false
+    );
   });
 
   it("returns false when both bundlerEnv and nodeEnv are absent and no ambient env", () => {
