@@ -1,5 +1,5 @@
 // @vitest-environment node
-// This file exercises the module-level branch in provider.tsx and runtime-hooks.tsx:
+// This file exercises the module-level branch in Provider.tsx and Hooks.tsx:
 //   const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
 // In the jsdom environment (all other tests), typeof window !== "undefined", so React.useLayoutEffect
 // is always selected. This file runs in the Node environment where typeof window === "undefined",

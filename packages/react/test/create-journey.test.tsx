@@ -737,7 +737,7 @@ describe("createJourney", () => {
   });
 
   it("updates selector cache snapshot reference while preserving selected value when equality fn returns true", async () => {
-    // This test targets runtime-hooks.tsx lines 90-97: the branch where the snapshot
+    // This test targets Hooks.tsx lines 90-97: the branch where the snapshot
     // reference has changed (Object.is(cached.snapshot, nextSnapshot) === false) but the
     // equality function returns true, so the cache is updated with the new snapshot pointer
     // while the previously-selected object reference is preserved.

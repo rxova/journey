@@ -1,7 +1,6 @@
 import type React from "react";
 
 import type {
-  JourneyBuilderDefinitionMetadata,
   JourneyBuilderCustomEventKey,
   JourneyComputed,
   JourneyDefaultEventType,
@@ -17,101 +16,15 @@ import type {
   JourneySendResult,
   JourneySnapshot
 } from "@rxova/journey-core";
+import type {
+  JourneyCustomSendEventForKeys,
+  JourneyGlobalHandledCustomEventTypeFromDefinition,
+  JourneyStepHandledCustomEventMapFromDefinition
+} from "./type-helpers";
 
 export type JourneyDefaultEvent = JourneyDefaultEventType;
 
 export type JourneyViews<TStepId extends string> = Record<TStepId, React.ComponentType>;
-
-type JourneyCustomSendEventForKeys<
-  TEventMap extends Record<string, unknown>,
-  TAllowedEventType extends keyof TEventMap & string
-> = {
-  [TCurrentEventType in TAllowedEventType]: {
-    type: TCurrentEventType;
-    payload?: JourneyPayloadFor<TEventMap, TCurrentEventType>;
-  };
-}[TAllowedEventType];
-
-type JourneyTransitionsFromDefinition<TDefinition> = TDefinition extends {
-  transitions?: infer TTransitions;
-}
-  ? TTransitions
-  : never;
-
-type JourneyCustomEventKeysFromTransitionEntry<
-  TEventMap extends Record<string, unknown>,
-  TEntry
-> = Extract<keyof NonNullable<TEntry>, JourneyBuilderCustomEventKey<TEventMap>>;
-
-type JourneyStepHandledCustomEventMapFromTransitions<
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  TTransitions
-> = {
-  [TCurrentStepId in TStepId]: JourneyCustomEventKeysFromTransitionEntry<
-    TEventMap,
-    TTransitions extends readonly unknown[]
-      ? never
-      : TTransitions extends Record<string, unknown>
-        ? TCurrentStepId extends keyof TTransitions
-          ? TTransitions[TCurrentStepId]
-          : never
-        : never
-  >;
-};
-
-type JourneyGlobalHandledCustomEventTypeFromTransitions<
-  TEventMap extends Record<string, unknown>,
-  TTransitions
-> = JourneyCustomEventKeysFromTransitionEntry<
-  TEventMap,
-  TTransitions extends readonly unknown[]
-    ? never
-    : TTransitions extends { global?: infer TGlobalTransitions }
-      ? TGlobalTransitions
-      : never
->;
-
-type JourneyStepHandledCustomEventMapFromDefinition<
-  TDefinition,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>
-> =
-  TDefinition extends JourneyBuilderDefinitionMetadata<
-    TStepId,
-    TEventMap,
-    infer TStepHandledMap,
-    infer TGlobalHandledCustomEventType
-  >
-    ? Extract<TStepHandledMap, Record<TStepId, JourneyBuilderCustomEventKey<TEventMap>>> &
-        (Extract<
-          TGlobalHandledCustomEventType,
-          JourneyBuilderCustomEventKey<TEventMap>
-        > extends never
-          ? unknown
-          : unknown)
-    : JourneyStepHandledCustomEventMapFromTransitions<
-        TStepId,
-        TEventMap,
-        JourneyTransitionsFromDefinition<TDefinition>
-      >;
-
-type JourneyGlobalHandledCustomEventTypeFromDefinition<
-  TDefinition,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>
-> =
-  TDefinition extends JourneyBuilderDefinitionMetadata<
-    TStepId,
-    TEventMap,
-    Record<TStepId, JourneyBuilderCustomEventKey<TEventMap>>,
-    infer TGlobalHandledCustomEventType
-  >
-    ? Extract<TGlobalHandledCustomEventType, JourneyBuilderCustomEventKey<TEventMap>>
-    : JourneyGlobalHandledCustomEventTypeFromTransitions<
-        TEventMap,
-        JourneyTransitionsFromDefinition<TDefinition>
-      >;
 
 export type JourneyApi<
   TContext extends JourneyJsonObject,
