@@ -14,7 +14,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const scriptPath = resolve(here, "./check-changeset.ts");
-const tsxLoaderPath = resolve(here, "../node_modules/tsx/dist/loader.mjs");
+const tsxLoaderPath = resolve(here, "../../../node_modules/tsx/dist/loader.mjs");
 
 // GIT_* leaks from the outer repo (notably GIT_DIR under a hook) would point
 // the child at the wrong repository.

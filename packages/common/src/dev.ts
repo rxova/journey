@@ -1,4 +1,4 @@
-import { isRecord } from "../predicates/index";
+import { isRecord } from "./predicates";
 
 type DiagnosticGlobal = typeof globalThis & {
   __DEV__?: unknown;

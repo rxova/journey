@@ -6,7 +6,7 @@
   },
   "include": [
     "packages/*/test",
-    "scripts",
+    "packages/common/tooling",
     "apps/devtools/test",
     "apps/devtools/src/vite-env.d.ts"
   ],

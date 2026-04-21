@@ -32,7 +32,7 @@ describe("publish-devtools script", () => {
       )
       .mockResolvedValueOnce(new Response(JSON.stringify({ status: ["OK"] }), { status: 200 }));
 
-    const { main } = await import("../tooling/publish-devtools");
+    const { main } = await import("./publish-devtools");
 
     await main({
       CWS_PUBLISHER_ID: "publisher-id",
@@ -93,7 +93,7 @@ describe("publish-devtools script", () => {
   });
 
   it("fails early when a required env var is missing", async () => {
-    const { main } = await import("../tooling/publish-devtools");
+    const { main } = await import("./publish-devtools");
 
     await expect(
       main({
@@ -120,7 +120,7 @@ describe("publish-devtools script", () => {
         })
       );
 
-    const { main } = await import("../tooling/publish-devtools");
+    const { main } = await import("./publish-devtools");
 
     await expect(
       main({
@@ -149,7 +149,7 @@ describe("publish-devtools script", () => {
         new Response(JSON.stringify({ error: { message: "publish denied" } }), { status: 403 })
       );
 
-    const { main } = await import("../tooling/publish-devtools");
+    const { main } = await import("./publish-devtools");
 
     await expect(
       main({
@@ -163,7 +163,7 @@ describe("publish-devtools script", () => {
   });
 
   it("fails early when publisher id is missing", async () => {
-    const { main } = await import("../tooling/publish-devtools");
+    const { main } = await import("./publish-devtools");
 
     await expect(
       main({
@@ -187,7 +187,7 @@ describe("publish-devtools script", () => {
         })
       );
 
-    const { main } = await import("../tooling/publish-devtools");
+    const { main } = await import("./publish-devtools");
 
     await main({
       CWS_PUBLISHER_ID: "publisher-id",
@@ -219,7 +219,7 @@ describe("publish-devtools script", () => {
         )
       );
 
-    const { main } = await import("../tooling/publish-devtools");
+    const { main } = await import("./publish-devtools");
 
     await main({
       CWS_PUBLISHER_ID: "publisher-id",

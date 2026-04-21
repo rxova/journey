@@ -30,7 +30,7 @@
       "@rxova/journey-react": ["packages/react/src/index.ts"],
       "@rxova/journey-devtools-bridge": ["packages/devtools-bridge/src/index.ts"],
       "@rxova/journey-common": ["packages/common/src/index.ts"],
-      "@rxova/journey-common/*": ["packages/common/src/*/index.ts"]
+      "@rxova/journey-common/*": ["packages/common/src/*.ts"]
     }
   }
 }

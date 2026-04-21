@@ -63,29 +63,25 @@ export default defineConfig({
       },
       {
         find: "@rxova/journey-common/predicates",
-        replacement: fileURLToPath(
-          new URL("./packages/common/src/predicates/index.ts", import.meta.url)
-        )
+        replacement: fileURLToPath(new URL("./packages/common/src/predicates.ts", import.meta.url))
       },
       {
         find: "@rxova/journey-common/serialization",
         replacement: fileURLToPath(
-          new URL("./packages/common/src/serialization/index.ts", import.meta.url)
+          new URL("./packages/common/src/serialization.ts", import.meta.url)
         )
       },
       {
         find: "@rxova/journey-common/async",
-        replacement: fileURLToPath(new URL("./packages/common/src/async/index.ts", import.meta.url))
+        replacement: fileURLToPath(new URL("./packages/common/src/async.ts", import.meta.url))
       },
       {
         find: "@rxova/journey-common/dev",
-        replacement: fileURLToPath(new URL("./packages/common/src/dev/index.ts", import.meta.url))
+        replacement: fileURLToPath(new URL("./packages/common/src/dev.ts", import.meta.url))
       },
       {
         find: "@rxova/journey-common/origin",
-        replacement: fileURLToPath(
-          new URL("./packages/common/src/origin/index.ts", import.meta.url)
-        )
+        replacement: fileURLToPath(new URL("./packages/common/src/origin.ts", import.meta.url))
       },
       {
         find: "@rxova/journey-common",
@@ -97,6 +93,7 @@ export default defineConfig({
     include: [
       "packages/**/test/**/*.test.ts",
       "packages/**/test/**/*.test.tsx",
+      "packages/common/**/*.test.ts",
       "apps/**/test/**/*.test.ts",
       "apps/**/test/**/*.test.tsx",
       // The repo's own tooling. These sit next to the scripts they cover rather

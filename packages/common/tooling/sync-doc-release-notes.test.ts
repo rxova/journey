@@ -18,10 +18,10 @@ import {
   syncReleaseNotes,
   toRepoPath,
   writeIfChanged
-} from "../tooling/sync-doc-release-notes";
+} from "./sync-doc-release-notes";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const scriptPath = resolve(__dirname, "../tooling/sync-doc-release-notes.ts");
+const scriptPath = resolve(__dirname, "./sync-doc-release-notes.ts");
 
 const oneSource = [
   {
