@@ -21,7 +21,11 @@ describe("withTimeout", () => {
   });
 
   it("skips the timeout when timeoutMs is undefined", async () => {
-    const result = await withTimeout(Promise.resolve("ok"), undefined, () => new Error("timed out"));
+    const result = await withTimeout(
+      Promise.resolve("ok"),
+      undefined,
+      () => new Error("timed out")
+    );
     expect(result).toBe("ok");
   });
 
