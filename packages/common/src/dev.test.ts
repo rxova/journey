@@ -125,4 +125,8 @@ describe("resolveNonProductionEnvironment", () => {
     expect(resolveNonProductionEnvironment({})).toBe(false);
     process.env.NODE_ENV = original;
   });
+
+  it("returns false when bundlerEnv is null and nodeEnv is explicitly undefined", () => {
+    expect(resolveNonProductionEnvironment({ bundlerEnv: null, nodeEnv: undefined })).toBe(false);
+  });
 });
