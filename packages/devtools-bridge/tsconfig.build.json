@@ -11,13 +11,11 @@
     "tsBuildInfoFile": "tsconfig.build.tsbuildinfo",
     "noEmit": false,
     "paths": {
-      "@rxova/journey-core": ["packages/core/dist/index.d.ts"],
-      "@rxova/journey-core/execution-paths": [
-        "packages/core/dist/plugins/execution-paths/index.d.ts"
-      ],
-      "@rxova/journey-core/persistence": ["packages/core/dist/plugins/persistence/index.d.ts"],
-      "@rxova/journey-common": ["packages/common/dist/index.d.ts"],
-      "@rxova/journey-common/*": ["packages/common/dist/*.d.ts"]
+      "@rxova/journey-core": ["../core/dist/index.d.ts"],
+      "@rxova/journey-core/execution-paths": ["../core/dist/plugins/execution-paths/index.d.ts"],
+      "@rxova/journey-core/persistence": ["../core/dist/plugins/persistence/index.d.ts"],
+      "@rxova/journey-common": ["../common/dist/index.d.ts"],
+      "@rxova/journey-common/*": ["../common/dist/*.d.ts"]
     }
   },
   "references": [
