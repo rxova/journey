@@ -7,7 +7,7 @@
       "@rxova/journey-core/execution-paths": ["packages/core/src/plugins/execution-paths/index.ts"],
       "@rxova/journey-core/persistence": ["packages/core/src/plugins/persistence/index.ts"],
       "@rxova/journey-common": ["packages/common/src/index.ts"],
-      "@rxova/journey-common/*": ["packages/common/src/*/index.ts"]
+      "@rxova/journey-common/*": ["packages/common/src/*.ts"]
     }
   },
   "include": ["src"]

@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const scriptPath = resolve(__dirname, "../tooling/check-package-major-versions.ts");
+const scriptPath = resolve(__dirname, "./check-package-major-versions.ts");
 const tsxLoaderPath = resolve(__dirname, "../../../node_modules/tsx/dist/loader.mjs");
 
 const runScript = (cwd: string) => {

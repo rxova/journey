@@ -1,4 +1,4 @@
-import { isRecord } from "../predicates/index";
+import { isRecord } from "./predicates";
 
 export type SerializedError = {
   name: string | null;

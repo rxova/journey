@@ -15,7 +15,7 @@
       "@rxova/journey-core/execution-paths": ["../core/dist/plugins/execution-paths/index.d.ts"],
       "@rxova/journey-core/persistence": ["../core/dist/plugins/persistence/index.d.ts"],
       "@rxova/journey-common": ["packages/common/dist/index.d.ts"],
-      "@rxova/journey-common/*": ["packages/common/dist/*/index.d.ts"]
+      "@rxova/journey-common/*": ["packages/common/dist/*.d.ts"]
     }
   },
   "references": [
