@@ -3,6 +3,7 @@ set -e
 
 pnpm lint-staged
 pnpm format
+pnpm run lint
 pnpm test:precommit
 pnpm typecheck
 pnpm size:check
