@@ -61,7 +61,7 @@ describe("serializeError", () => {
 
   it("includes cause from Error when present", () => {
     const cause = { reason: "downstream failure" };
-    const error = new Error("outer", { cause });
+    const error = Object.assign(new Error("outer"), { cause });
     const result = serializeError(error);
     expect(result.cause).toEqual(cause);
   });
@@ -96,7 +96,12 @@ describe("serializeTransportError", () => {
   it("extracts fields from a record", () => {
     const record = { name: "CustomError", message: "bad message", stack: "at foo:1", cause: "x" };
     const result = serializeTransportError(record);
-    expect(result).toEqual({ name: "CustomError", message: "bad message", stack: "at foo:1", cause: "x" });
+    expect(result).toEqual({
+      name: "CustomError",
+      message: "bad message",
+      stack: "at foo:1",
+      cause: "x"
+    });
   });
 
   it("falls back to Unknown transport error for records without message", () => {
@@ -112,6 +117,11 @@ describe("serializeTransportError", () => {
 
   it("falls back for unknown non-Error non-record value", () => {
     const result = serializeTransportError(undefined);
-    expect(result).toEqual({ name: null, message: "Unknown transport error", stack: null, cause: null });
+    expect(result).toEqual({
+      name: null,
+      message: "Unknown transport error",
+      stack: null,
+      cause: null
+    });
   });
 });
