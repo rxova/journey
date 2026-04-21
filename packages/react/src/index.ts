@@ -1,4 +1,5 @@
-export { createJourney, createJourneyFactory } from "./createJourney";
+export { createJourney } from "./CreateJourney";
+export { createJourneyFactory } from "./CreateJourneyFactory";
 export type {
   JourneyCompleteObservationEvent,
   JourneyComputed,

@@ -12,14 +12,7 @@ import type {
   JourneySnapshot
 } from "@rxova/journey-core";
 import type { JourneyApi, StepScopedJourneyApi } from "./types";
-
-type SelectorCache<TContext extends JourneyJsonObject, TStepId extends string, TSelected> = {
-  machine: unknown;
-  snapshot: JourneySnapshot<TContext, TStepId>;
-  selected: TSelected;
-  selector: unknown;
-  isEqual: JourneyEqualityFn<TSelected>;
-};
+import type { SelectorCache } from "./type-helpers";
 
 const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
 
