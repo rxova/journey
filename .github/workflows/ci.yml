@@ -26,12 +26,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - run: corepack enable
-      - run: corepack prepare pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017 --activate
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
+      - uses: ./.github/actions/setup-pnpm
       - run: pnpm install --frozen-lockfile
       - env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -48,42 +43,20 @@ jobs:
         node-version: [20, 22, 24]
     steps:
       - uses: actions/checkout@v6
-      - run: corepack enable
-      - run: corepack prepare pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017 --activate
-      - uses: actions/setup-node@v6
+      - uses: ./.github/actions/setup-pnpm
         with:
           node-version: ${{ matrix.node-version }}
-          cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Typecheck packages and apps
         run: pnpm run packages:typecheck
       - name: Run test suite
         run: pnpm run test
 
-  devtools-browser:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - run: corepack enable
-      - run: corepack prepare pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017 --activate
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-      - name: Build devtools extension
-        run: pnpm --filter apps-devtools build
   release-verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - run: corepack enable
-      - run: corepack prepare pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017 --activate
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
+      - uses: ./.github/actions/setup-pnpm
       - run: pnpm install --frozen-lockfile
       - name: Audit dependencies
         run: pnpm audit --audit-level=high

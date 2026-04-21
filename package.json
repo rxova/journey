@@ -34,6 +34,7 @@
     "releases": "pnpm run changeset:version && pnpm run release",
     "typecheck": "pnpm run packages:typecheck",
     "docs:check": "pnpm -C apps/docs build",
+    "dedupe:check": "pnpm dedupe --check",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint-staged": "lint-staged",
@@ -49,7 +50,7 @@
     "publint": "pnpm -r --filter \"./packages/*\" publint",
     "packaging:check": "pnpm -r --filter \"./packages/*\" --filter apps-devtools build && pnpm run publint",
     "pack:smoke": "node --import tsx ./packages/common/tooling/pack-smoke.ts",
-    "release:verify": "pnpm run version:major:check && pnpm run format:check && pnpm run lint && pnpm run docs:api:check && pnpm run docs:release-notes:check && pnpm run docs:check && pnpm run packages:typecheck && pnpm run test && pnpm run packaging:check && pnpm run pack:smoke && pnpm run examples:build && pnpm run size:check"
+    "release:verify": "node --import tsx ./packages/common/tooling/release-verify.ts"
   },
   "devDependencies": {
     "@changesets/cli": "^2.30.0",

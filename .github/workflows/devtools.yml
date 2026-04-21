@@ -13,6 +13,20 @@ on:
       - "tsconfig.base.json"
       - "vitest.config.ts"
       - "eslint.config.js"
+      - ".github/actions/setup-pnpm/action.yml"
+      - ".github/workflows/devtools.yml"
+  pull_request:
+    paths:
+      - "apps/devtools/**"
+      - "packages/devtools-bridge/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.json"
+      - "tsconfig.base.json"
+      - "vitest.config.ts"
+      - "eslint.config.js"
+      - ".github/actions/setup-pnpm/action.yml"
       - ".github/workflows/devtools.yml"
   workflow_dispatch:
 
@@ -29,18 +43,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Pin pnpm
-        run: corepack prepare pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017 --activate
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+      - name: Setup pnpm
+        uses: ./.github/actions/setup-pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

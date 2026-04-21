@@ -1,0 +1,48 @@
+name: Setup pnpm
+description: Enable Corepack, pin pnpm, and configure Node.js caching.
+
+inputs:
+  node-version:
+    description: Node.js version to install.
+    required: false
+    default: "24"
+  registry-url:
+    description: Optional package registry URL for publishing jobs.
+    required: false
+    default: ""
+  cache-dependency-path:
+    description: Lockfile path used by setup-node for dependency caching.
+    required: false
+    default: pnpm-lock.yaml
+
+runs:
+  using: composite
+  steps:
+    - name: Enable Corepack
+      shell: bash
+      run: corepack enable
+
+    - name: Pin pnpm
+      shell: bash
+      run: corepack prepare pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017 --activate
+
+    - name: Setup Node
+      if: ${{ inputs['registry-url'] == '' }}
+      uses: actions/setup-node@v6
+      with:
+        node-version: ${{ inputs['node-version'] }}
+        cache: pnpm
+        cache-dependency-path: ${{ inputs['cache-dependency-path'] }}
+
+    - name: Setup Node With Registry
+      if: ${{ inputs['registry-url'] != '' }}
+      uses: actions/setup-node@v6
+      with:
+        node-version: ${{ inputs['node-version'] }}
+        registry-url: ${{ inputs['registry-url'] }}
+        cache: pnpm
+        cache-dependency-path: ${{ inputs['cache-dependency-path'] }}
+
+    - name: Report pnpm version
+      shell: bash
+      run: pnpm --version
