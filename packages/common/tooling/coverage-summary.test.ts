@@ -16,10 +16,10 @@ const SAMPLE_SUMMARY = JSON.stringify({
   }
 });
 
-function runScript(
+const runScript = (
   cwd: string,
   env?: Record<string, string>
-): { stdout: string; status: number } {
+): { stdout: string; status: number } => {
   try {
     const stdout = execFileSync(process.execPath, ["--import", tsxLoaderPath, scriptPath], {
       encoding: "utf8",
@@ -31,7 +31,7 @@ function runScript(
     const e = err as { stdout?: string; status?: number };
     return { stdout: e.stdout ?? "", status: e.status ?? 1 };
   }
-}
+};
 
 describe("coverage-summary script", () => {
   it("exits 0 silently when coverage-summary.json does not exist", () => {

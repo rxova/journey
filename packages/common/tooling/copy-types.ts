@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 
-function collectDtsFiles(dir: string): string[] {
+const collectDtsFiles = (dir: string): string[] => {
   const results: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const fullPath = join(dir, entry.name);
@@ -12,7 +12,7 @@ function collectDtsFiles(dir: string): string[] {
     }
   }
   return results;
-}
+};
 
 const distDir = process.argv[2] ?? "dist";
 const entryTypeFiles = collectDtsFiles(distDir);

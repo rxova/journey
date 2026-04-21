@@ -3,19 +3,19 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
-function getEnv(name: string, required = true): string | undefined {
+const getEnv = (name: string, required = true): string | undefined => {
   const value = process.env[name];
   if (!value && required) {
     throw new Error(`Missing required env: ${name}`);
   }
   return value;
-}
+};
 
-function run(cmd: string): string {
+const run = (cmd: string): string => {
   return execSync(cmd, { encoding: "utf8" }).trim();
-}
+};
 
-function getChangedFiles(baseSha: string, headSha: string, diffFilter?: string): string[] {
+const getChangedFiles = (baseSha: string, headSha: string, diffFilter?: string): string[] => {
   const filterArg = diffFilter ? ` --diff-filter=${diffFilter}` : "";
   const output = run(`git diff --name-only${filterArg} ${baseSha} ${headSha}`);
   if (!output) return [];
@@ -23,16 +23,16 @@ function getChangedFiles(baseSha: string, headSha: string, diffFilter?: string):
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
-}
+};
 
-function getChangesetFiles(files: readonly string[]): string[] {
+const getChangesetFiles = (files: readonly string[]): string[] => {
   return files.filter(
     (file) =>
       file.startsWith(".changeset/") && file.endsWith(".md") && path.basename(file) !== "README.md"
   );
-}
+};
 
-function extractFrontmatterPackageCount(markdown: string): number {
+const extractFrontmatterPackageCount = (markdown: string): number => {
   const match = /^---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/.exec(markdown);
   if (!match) {
     return 0;
@@ -45,9 +45,9 @@ function extractFrontmatterPackageCount(markdown: string): number {
     .filter((line) => /^"[^"]+"\s*:\s*(patch|minor|major)(?:\s+#.*)?$/.test(line));
 
   return packageLines.length;
-}
+};
 
-function ensureSinglePackagePerChangeset(files: readonly string[]): void {
+const ensureSinglePackagePerChangeset = (files: readonly string[]): void => {
   const errors: string[] = [];
 
   for (const file of files) {
@@ -73,9 +73,9 @@ function ensureSinglePackagePerChangeset(files: readonly string[]): void {
     console.error(errors.join("\n"));
     process.exit(1);
   }
-}
+};
 
-function isDocsOrConfigOnly(files: readonly string[]): boolean {
+const isDocsOrConfigOnly = (files: readonly string[]): boolean => {
   const allowedPattern = /^(docs\/|\.github\/|\.changeset\/|.*\.(md|txt|yml|yaml|json))$/;
   const touchesPackage = files.some(
     (file) =>
@@ -85,9 +85,9 @@ function isDocsOrConfigOnly(files: readonly string[]): boolean {
   );
 
   return files.length > 0 && files.every((file) => allowedPattern.test(file)) && !touchesPackage;
-}
+};
 
-function getLabels(repo: string, prNumber: string, token: string): string[] {
+const getLabels = (repo: string, prNumber: string, token: string): string[] => {
   try {
     const output = run(
       `gh api -H "Authorization: Bearer ${token}" repos/${repo}/issues/${prNumber}/labels --jq '.[].name'`
@@ -101,9 +101,9 @@ function getLabels(repo: string, prNumber: string, token: string): string[] {
     console.warn("Warning: failed to fetch labels via GH API, proceeding without labels.");
     return [];
   }
-}
+};
 
-function main(): void {
+const main = (): void => {
   const baseSha = getEnv("BASE_SHA");
   const headSha = getEnv("HEAD_SHA");
   const repo = getEnv("GITHUB_REPOSITORY");
@@ -147,6 +147,6 @@ function main(): void {
     "No changeset found. Add one with 'pnpm run changeset:pkg -- <package> <patch|minor|major> <summary>' (or 'pnpm changeset') or apply the 'skip-changeset' label."
   );
   process.exit(1);
-}
+};
 
 main();

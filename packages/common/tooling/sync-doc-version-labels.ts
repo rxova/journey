@@ -73,29 +73,29 @@ export const versionLabelSources: readonly VersionLabelSource[] = [
 
 export const versionLabelsTarget = "apps/docs/version-labels.json";
 
-export function toRepoPath(repoRoot: string, ...parts: string[]): string {
+export const toRepoPath = (repoRoot: string, ...parts: string[]): string => {
   return path.join(repoRoot, ...parts);
-}
+};
 
-export function readUtf8(filePath: string): string {
+export const readUtf8 = (filePath: string): string => {
   return readFileSync(filePath, "utf8").replace(/\r\n/g, "\n");
-}
+};
 
-export function readJson<T extends JsonRecord = JsonRecord>(filePath: string): T {
+export const readJson = <T extends JsonRecord = JsonRecord>(filePath: string): T => {
   return JSON.parse(readUtf8(filePath)) as T;
-}
+};
 
-export function assertSemver(version: string, context: string): void {
+export const assertSemver = (version: string, context: string): void => {
   const semverPattern = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z-.]+)?$/;
   if (!semverPattern.test(version)) {
     throw new Error(`Invalid semver version "${version}" for ${context}`);
   }
-}
+};
 
-export function buildVersionLabels(
+export const buildVersionLabels = (
   repoRoot = defaultRepoRoot,
   sources: readonly VersionLabelSource[] = versionLabelSources
-): Record<string, string> {
+): Record<string, string> => {
   const labels: Record<string, string> = {};
 
   for (const entry of sources) {
@@ -112,17 +112,17 @@ export function buildVersionLabels(
   }
 
   return labels;
-}
+};
 
-export function expectedContent(
+export const expectedContent = (
   repoRoot = defaultRepoRoot,
   sources: readonly VersionLabelSource[] = versionLabelSources
-): string {
+): string => {
   const labels = buildVersionLabels(repoRoot, sources);
   return `${JSON.stringify(labels, null, 2)}\n`;
-}
+};
 
-export function writeIfChanged(filePath: string, content: string): boolean {
+export const writeIfChanged = (filePath: string, content: string): boolean => {
   let current: string | undefined;
   try {
     current = readUtf8(filePath);
@@ -137,9 +137,9 @@ export function writeIfChanged(filePath: string, content: string): boolean {
   mkdirSync(path.dirname(filePath), { recursive: true });
   writeFileSync(filePath, content, "utf8");
   return true;
-}
+};
 
-export function checkMatches(filePath: string, content: string): boolean {
+export const checkMatches = (filePath: string, content: string): boolean => {
   let current: string;
   try {
     current = readUtf8(filePath);
@@ -147,14 +147,14 @@ export function checkMatches(filePath: string, content: string): boolean {
     return false;
   }
   return current === content;
-}
+};
 
-export function syncDocVersionLabels({
+export const syncDocVersionLabels = ({
   repoRoot = defaultRepoRoot,
   sources = versionLabelSources,
   target = versionLabelsTarget,
   log = console.log
-}: SyncDocVersionLabelsOptions = {}): SyncDocVersionLabelsResult {
+}: SyncDocVersionLabelsOptions = {}): SyncDocVersionLabelsResult => {
   const targetPath = toRepoPath(repoRoot, target);
   const content = expectedContent(repoRoot, sources);
 
@@ -165,16 +165,16 @@ export function syncDocVersionLabels({
 
   log(`Updated ${target}`);
   return { updated: true, target };
-}
+};
 
-export function checkDocVersionLabels({
+export const checkDocVersionLabels = ({
   repoRoot = defaultRepoRoot,
   sources = versionLabelSources,
   target = versionLabelsTarget,
   log = console.log,
   error = console.error,
   exit = defaultExit
-}: CheckDocVersionLabelsOptions = {}): CheckDocVersionLabelsResult {
+}: CheckDocVersionLabelsOptions = {}): CheckDocVersionLabelsResult => {
   const targetPath = toRepoPath(repoRoot, target);
   const content = expectedContent(repoRoot, sources);
 
@@ -187,9 +187,9 @@ export function checkDocVersionLabels({
 
   log("Doc version labels are up to date.");
   return { stale: false, target };
-}
+};
 
-export function main({
+export const main = ({
   argv = process.argv,
   repoRoot = defaultRepoRoot,
   sources = versionLabelSources,
@@ -197,21 +197,21 @@ export function main({
   log = console.log,
   error = console.error,
   exit = defaultExit
-}: MainOptions = {}): MainResult {
+}: MainOptions = {}): MainResult => {
   if (argv.includes("--check")) {
     return checkDocVersionLabels({ repoRoot, sources, target, log, error, exit });
   }
 
   return syncDocVersionLabels({ repoRoot, sources, target, log });
-}
+};
 
-export function isEntrypoint(
+export const isEntrypoint = (
   entryArg: string | undefined = process.argv[1],
   moduleUrl: string = import.meta.url
-): boolean {
+): boolean => {
   if (!entryArg) return false;
   return pathToFileURL(entryArg).href === moduleUrl;
-}
+};
 
 /* c8 ignore next 3 */
 if (isEntrypoint()) {

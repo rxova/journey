@@ -24,11 +24,11 @@ export type MainResult = {
 
 const VALID_BUMPS: readonly VersionBump[] = ["patch", "minor", "major"];
 
-function readJson<T>(filePath: string): T {
+const readJson = <T>(filePath: string): T => {
   return JSON.parse(readFileSync(filePath, "utf8")) as T;
-}
+};
 
-function listVersionedWorkspacePackages(repoRoot: string): PackageMeta[] {
+const listVersionedWorkspacePackages = (repoRoot: string): PackageMeta[] => {
   const configPath = path.join(repoRoot, ".changeset", "config.json");
   const config = readJson<{ ignore?: string[] }>(configPath);
   const ignored = new Set(config.ignore ?? []);
@@ -82,9 +82,9 @@ function listVersionedWorkspacePackages(repoRoot: string): PackageMeta[] {
 
   packages.sort((a, b) => a.name.localeCompare(b.name));
   return packages;
-}
+};
 
-function resolvePackageName(packageToken: string, packages: readonly PackageMeta[]): string {
+const resolvePackageName = (packageToken: string, packages: readonly PackageMeta[]): string => {
   const normalizedToken = packageToken.trim().toLowerCase();
   if (!normalizedToken) {
     throw new Error("Missing package name token.");
@@ -102,16 +102,16 @@ function resolvePackageName(packageToken: string, packages: readonly PackageMeta
   }
 
   throw new Error(`Unknown package token "${packageToken}".`);
-}
+};
 
-function parseVersionBump(value: string): VersionBump {
+const parseVersionBump = (value: string): VersionBump => {
   if (VALID_BUMPS.includes(value as VersionBump)) {
     return value as VersionBump;
   }
   throw new Error(`Invalid bump "${value}". Expected one of: ${VALID_BUMPS.join(", ")}`);
-}
+};
 
-function parseArgs(argv: readonly string[]): ParsedArgs {
+const parseArgs = (argv: readonly string[]): ParsedArgs => {
   let packageToken = "";
   let bump: VersionBump | "" = "";
   const summaryParts: string[] = [];
@@ -151,26 +151,26 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
   }
 
   return { packageToken, bump, summary };
-}
+};
 
-function buildChangesetFileContent(
+const buildChangesetFileContent = (
   packageName: string,
   bump: VersionBump,
   summary: string
-): string {
+): string => {
   return `---\n"${packageName}": ${bump}\n---\n\n${summary.trim()}\n`;
-}
+};
 
-function createFileName(packageName: string): string {
+const createFileName = (packageName: string): string => {
   const packageSegment = packageName
     .replace(/^@/, "")
     .replace(/[^\w-]+/g, "-")
     .toLowerCase();
   const nonce = Date.now().toString(36);
   return `${packageSegment}-${nonce}.md`;
-}
+};
 
-function printHelp(packages: readonly PackageMeta[]): void {
+const printHelp = (packages: readonly PackageMeta[]): void => {
   console.log("Create a one-package changeset entry.");
   console.log("");
   console.log("Usage:");
@@ -187,12 +187,12 @@ function printHelp(packages: readonly PackageMeta[]): void {
   for (const pkg of packages) {
     console.log(`  - ${pkg.name}`);
   }
-}
+};
 
-export function run(
+export const run = (
   argv: readonly string[] = process.argv.slice(2),
   repoRoot: string = process.cwd()
-): MainResult {
+): MainResult => {
   const packages = listVersionedWorkspacePackages(repoRoot);
 
   if (argv.includes("--help") || argv.includes("-h")) {
@@ -220,15 +220,15 @@ export function run(
     packageName,
     bump: parsed.bump
   };
-}
+};
 
-export function isEntrypoint(
+export const isEntrypoint = (
   entryArg: string | undefined = process.argv[1],
   moduleUrl: string = import.meta.url
-): boolean {
+): boolean => {
   if (!entryArg) return false;
   return pathToFileURL(entryArg).href === moduleUrl;
-}
+};
 
 /* c8 ignore next 5 */
 if (isEntrypoint()) {

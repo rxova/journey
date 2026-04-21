@@ -36,7 +36,7 @@ const writeJson = async (filePath: string, data: unknown) => {
   await writeFile(filePath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
 };
 
-async function makeWorkspace() {
+const makeWorkspace = async () => {
   const root = await mkdtemp(join(tmpdir(), "sync-doc-version-labels-"));
   await writeJson(join(root, "packages/core/package.json"), { name: "core", version: "0.6.2" });
   await writeJson(join(root, "packages/react/package.json"), { name: "react", version: "0.7.1" });
@@ -49,7 +49,7 @@ async function makeWorkspace() {
     version: "0.6.0"
   });
   return root;
-}
+};
 
 describe("sync-doc-version-labels script", () => {
   it("reads utf8 and json helpers", async () => {

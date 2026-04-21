@@ -42,12 +42,12 @@ const runPnpmScript: RunScript = (script) =>
     stdio: "inherit"
   });
 
-export function runReleaseVerify({
+export const runReleaseVerify = ({
   error = console.error,
   log = console.log,
   runScript = runPnpmScript,
   steps = releaseVerifySteps
-}: ReleaseVerifyOptions = {}): number {
+}: ReleaseVerifyOptions = {}): number => {
   for (const step of steps) {
     log(`\n==> ${step.name}`);
     const result = runScript(step.script);
@@ -63,15 +63,15 @@ export function runReleaseVerify({
   }
 
   return 0;
-}
+};
 
-export function isEntrypoint(
+export const isEntrypoint = (
   entryArg: string | undefined = process.argv[1],
   moduleUrl = import.meta.url
-): boolean {
+): boolean => {
   if (!entryArg) return false;
   return pathToFileURL(entryArg).href === moduleUrl;
-}
+};
 
 if (isEntrypoint()) {
   process.exitCode = runReleaseVerify();

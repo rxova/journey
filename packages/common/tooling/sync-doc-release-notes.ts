@@ -87,15 +87,15 @@ export const releaseNoteSources: readonly ReleaseNoteSource[] = [
   }
 ];
 
-export function toRepoPath(repoRoot: string, ...parts: string[]): string {
+export const toRepoPath = (repoRoot: string, ...parts: string[]): string => {
   return path.join(repoRoot, ...parts);
-}
+};
 
-export function readUtf8(filePath: string): string {
+export const readUtf8 = (filePath: string): string => {
   return readFileSync(filePath, "utf8").replace(/\r\n/g, "\n");
-}
+};
 
-export function escapeMdxInlineGenerics(text: string): string {
+export const escapeMdxInlineGenerics = (text: string): string => {
   const segments = text.split("`");
   for (let index = 0; index < segments.length; index += 2) {
     const segment = segments[index];
@@ -105,9 +105,9 @@ export function escapeMdxInlineGenerics(text: string): string {
     segments[index] = segment.replace(/\b([A-Za-z_$][\w$.]*<[^<>\n]+>)/g, "`$1`");
   }
   return segments.join("`");
-}
+};
 
-export function normalizeChangelog(markdown: string): string {
+export const normalizeChangelog = (markdown: string): string => {
   const lines = markdown.split("\n");
   const firstLine = lines[0] ?? "";
   const withoutTopHeading = /^#\s+/.test(firstLine) ? lines.slice(1) : lines;
@@ -118,9 +118,9 @@ export function normalizeChangelog(markdown: string): string {
 
   const normalized = `${withoutTopHeading.join("\n").trimEnd()}\n`;
   return escapeMdxInlineGenerics(normalized);
-}
+};
 
-export function renderReleaseDoc(entry: ReleaseNoteSource | undefined, body: string): string {
+export const renderReleaseDoc = (entry: ReleaseNoteSource | undefined, body: string): string => {
   if (!entry) {
     throw new Error("Missing release note source entry.");
   }
@@ -137,12 +137,12 @@ ${entry.description}
 Source: [\`${entry.source}\`](${sourceUrl})
 
 ${body}`;
-}
+};
 
-export function expectedContent(
+export const expectedContent = (
   entry: ReleaseNoteSource | undefined,
   repoRoot = defaultRepoRoot
-): string {
+): string => {
   if (!entry) {
     throw new Error("Missing release note source entry.");
   }
@@ -150,9 +150,9 @@ export function expectedContent(
   const changelog = readUtf8(sourcePath);
   const normalizedBody = normalizeChangelog(changelog);
   return renderReleaseDoc(entry, normalizedBody);
-}
+};
 
-export function writeIfChanged(filePath: string, content: string): boolean {
+export const writeIfChanged = (filePath: string, content: string): boolean => {
   let current = "";
   try {
     current = readUtf8(filePath);
@@ -167,9 +167,9 @@ export function writeIfChanged(filePath: string, content: string): boolean {
   mkdirSync(path.dirname(filePath), { recursive: true });
   writeFileSync(filePath, content, "utf8");
   return true;
-}
+};
 
-export function checkMatches(filePath: string, content: string): boolean {
+export const checkMatches = (filePath: string, content: string): boolean => {
   let current: string;
   try {
     current = readUtf8(filePath);
@@ -177,13 +177,13 @@ export function checkMatches(filePath: string, content: string): boolean {
     return false;
   }
   return current === content;
-}
+};
 
-export function syncReleaseNotes({
+export const syncReleaseNotes = ({
   repoRoot = defaultRepoRoot,
   sources = releaseNoteSources,
   log = console.log
-}: SyncReleaseNotesOptions = {}): SyncReleaseNotesResult {
+}: SyncReleaseNotesOptions = {}): SyncReleaseNotesResult => {
   const updated: string[] = [];
 
   for (const entry of sources) {
@@ -204,15 +204,15 @@ export function syncReleaseNotes({
   }
 
   return { updated };
-}
+};
 
-export function checkReleaseNotes({
+export const checkReleaseNotes = ({
   repoRoot = defaultRepoRoot,
   sources = releaseNoteSources,
   log = console.log,
   error = console.error,
   exit = defaultExit
-}: CheckReleaseNotesOptions = {}): CheckReleaseNotesResult {
+}: CheckReleaseNotesOptions = {}): CheckReleaseNotesResult => {
   const stale: string[] = [];
 
   for (const entry of sources) {
@@ -234,30 +234,30 @@ export function checkReleaseNotes({
 
   log("Release note docs are up to date.");
   return { stale };
-}
+};
 
-export function main({
+export const main = ({
   argv = process.argv,
   repoRoot = defaultRepoRoot,
   sources = releaseNoteSources,
   log = console.log,
   error = console.error,
   exit = defaultExit
-}: MainOptions = {}): MainResult {
+}: MainOptions = {}): MainResult => {
   if (argv.includes("--check")) {
     return checkReleaseNotes({ repoRoot, sources, log, error, exit });
   }
 
   return syncReleaseNotes({ repoRoot, sources, log });
-}
+};
 
-export function isEntrypoint(
+export const isEntrypoint = (
   entryArg: string | undefined = process.argv[1],
   moduleUrl: string = import.meta.url
-): boolean {
+): boolean => {
   if (!entryArg) return false;
   return pathToFileURL(entryArg).href === moduleUrl;
-}
+};
 
 /* c8 ignore next 3 */
 if (isEntrypoint()) {
