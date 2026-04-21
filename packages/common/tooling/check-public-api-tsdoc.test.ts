@@ -31,7 +31,7 @@ const oneSource = [
   }
 ] as const;
 
-async function makeWorkspace({ withMissingSummary = false } = {}) {
+const makeWorkspace = async ({ withMissingSummary = false } = {}) => {
   const root = await mkdtemp(join(tmpdir(), "check-public-api-tsdoc-"));
   await mkdir(join(root, "packages/example/src"), { recursive: true });
 
@@ -72,7 +72,7 @@ ${maybeMissing}`,
   );
 
   return root;
-}
+};
 
 describe("check-public-api-tsdoc script", () => {
   it("builds repo paths", () => {

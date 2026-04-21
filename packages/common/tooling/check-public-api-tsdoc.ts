@@ -26,7 +26,7 @@ type PackageManifest = {
   private?: unknown;
 };
 
-export function resolveApiTSDocSources(repoRoot: string = defaultRepoRoot): ApiTSDocSource[] {
+export const resolveApiTSDocSources = (repoRoot: string = defaultRepoRoot): ApiTSDocSource[] => {
   const packagesDir = path.join(repoRoot, "packages");
   if (!existsSync(packagesDir)) {
     return [];
@@ -69,17 +69,17 @@ export function resolveApiTSDocSources(repoRoot: string = defaultRepoRoot): ApiT
       };
     })
     .filter((entry): entry is ApiTSDocSource => entry !== null);
-}
+};
 
-export function toRepoPath(repoRoot: string, ...parts: string[]): string {
+export const toRepoPath = (repoRoot: string, ...parts: string[]): string => {
   return path.join(repoRoot, ...parts);
-}
+};
 
-function formatDiagnostic(diag: ts.Diagnostic): string {
+const formatDiagnostic = (diag: ts.Diagnostic): string => {
   return ts.flattenDiagnosticMessageText(diag.messageText, "\n");
-}
+};
 
-export function parseTsConfig(tsconfigPath: string): ts.ParsedCommandLine {
+export const parseTsConfig = (tsconfigPath: string): ts.ParsedCommandLine => {
   const loaded = ts.readConfigFile(tsconfigPath, ts.sys.readFile);
   if (loaded.error) {
     throw new Error(`Failed to read ${tsconfigPath}: ${formatDiagnostic(loaded.error)}`);
@@ -102,9 +102,9 @@ export function parseTsConfig(tsconfigPath: string): ts.ParsedCommandLine {
   }
 
   return parsed;
-}
+};
 
-function resolveSymbol(symbol: ts.Symbol, checker: ts.TypeChecker): ts.Symbol {
+const resolveSymbol = (symbol: ts.Symbol, checker: ts.TypeChecker): ts.Symbol => {
   if (symbol.flags & ts.SymbolFlags.Alias) {
     try {
       return checker.getAliasedSymbol(symbol);
@@ -113,21 +113,21 @@ function resolveSymbol(symbol: ts.Symbol, checker: ts.TypeChecker): ts.Symbol {
     }
   }
   return symbol;
-}
+};
 
-function hasFunctionDeclaration(declaration: ts.Declaration): boolean {
+const hasFunctionDeclaration = (declaration: ts.Declaration): boolean => {
   return (
     declaration.kind === ts.SyntaxKind.FunctionDeclaration ||
     declaration.kind === ts.SyntaxKind.MethodDeclaration ||
     declaration.kind === ts.SyntaxKind.MethodSignature
   );
-}
+};
 
-function symbolRequiresSummary(
+const symbolRequiresSummary = (
   symbol: ts.Symbol,
   declarations: ts.Declaration[],
   checker: ts.TypeChecker
-): boolean {
+): boolean => {
   if (declarations.some((declaration) => hasFunctionDeclaration(declaration))) {
     return true;
   }
@@ -149,23 +149,23 @@ function symbolRequiresSummary(
 
   const symbolType = checker.getTypeOfSymbolAtLocation(symbol, target);
   return symbolType.getCallSignatures().length > 0;
-}
+};
 
-function declarationSource(declaration: ts.Declaration, repoRoot: string): string {
+const declarationSource = (declaration: ts.Declaration, repoRoot: string): string => {
   const sourceFile = declaration.getSourceFile();
   const relativePath = path.relative(repoRoot, sourceFile.fileName).replace(/\\/g, "/");
   const location = ts.getLineAndCharacterOfPosition(sourceFile, declaration.getStart(sourceFile));
   return `${relativePath}:${location.line + 1}`;
-}
+};
 
-function isNotNull<T>(value: T | null): value is T {
+const isNotNull = <T>(value: T | null): value is T => {
   return value !== null;
-}
+};
 
-export function collectMissingTSDocForSource(
+export const collectMissingTSDocForSource = (
   entry: ApiTSDocSource,
   repoRoot = defaultRepoRoot
-): MissingTSDocItem[] {
+): MissingTSDocItem[] => {
   const tsconfigPath = toRepoPath(repoRoot, entry.tsconfig);
   const entryPath = toRepoPath(repoRoot, entry.entry);
   const parsed = parseTsConfig(tsconfigPath);
@@ -225,7 +225,7 @@ export function collectMissingTSDocForSource(
     })
     .filter(isNotNull)
     .sort((a, b) => a.exportName.localeCompare(b.exportName));
-}
+};
 
 type CheckPublicApiTSDocOptions = {
   repoRoot?: string;
@@ -235,13 +235,13 @@ type CheckPublicApiTSDocOptions = {
   exit?: ExitFn;
 };
 
-export function checkPublicApiTSDoc({
+export const checkPublicApiTSDoc = ({
   repoRoot = defaultRepoRoot,
   sources,
   log = console.log,
   error = console.error,
   exit = (code) => process.exit(code)
-}: CheckPublicApiTSDocOptions = {}): { missing: MissingTSDocItem[] } {
+}: CheckPublicApiTSDocOptions = {}): { missing: MissingTSDocItem[] } => {
   const resolvedSources = sources ?? resolveApiTSDocSources(repoRoot);
   const missing = resolvedSources.flatMap((entry) => collectMissingTSDocForSource(entry, repoRoot));
 
@@ -256,19 +256,19 @@ export function checkPublicApiTSDoc({
 
   log("Public API TSDoc summaries are up to date.");
   return { missing };
-}
+};
 
-export function main(options: CheckPublicApiTSDocOptions = {}): { missing: MissingTSDocItem[] } {
+export const main = (options: CheckPublicApiTSDocOptions = {}): { missing: MissingTSDocItem[] } => {
   return checkPublicApiTSDoc(options);
-}
+};
 
-export function isEntrypoint(
+export const isEntrypoint = (
   entryArg: string | undefined = process.argv[1],
   moduleUrl = import.meta.url
-): boolean {
+): boolean => {
   if (!entryArg) return false;
   return pathToFileURL(entryArg).href === moduleUrl;
-}
+};
 
 /* c8 ignore next 3 */
 if (isEntrypoint()) {

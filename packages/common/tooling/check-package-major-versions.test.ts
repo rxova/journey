@@ -27,7 +27,12 @@ const runScript = (cwd: string) => {
   }
 };
 
-async function writePackageJson(root: string, relativeDir: string, name: string, version: string) {
+const writePackageJson = async (
+  root: string,
+  relativeDir: string,
+  name: string,
+  version: string
+) => {
   const packageDir = join(root, relativeDir);
   await mkdir(packageDir, { recursive: true });
   await writeFile(
@@ -35,7 +40,7 @@ async function writePackageJson(root: string, relativeDir: string, name: string,
     JSON.stringify({ name, version }, null, 2),
     "utf8"
   );
-}
+};
 
 describe("check-package-major-versions script", () => {
   it("passes when package majors are aligned", async () => {

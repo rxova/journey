@@ -54,11 +54,11 @@ export type MainOptions = {
   ) => SyncRootVersionResult;
 };
 
-export function readJson<T extends JsonRecord = JsonRecord>(filePath: string): T {
+export const readJson = <T extends JsonRecord = JsonRecord>(filePath: string): T => {
   return JSON.parse(readFileSync(filePath, "utf8")) as T;
-}
+};
 
-export function parseVersion(version: string): ParsedVersion {
+export const parseVersion = (version: string): ParsedVersion => {
   const match = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-.]+))?$/.exec(version);
   if (!match) {
     throw new Error(`Invalid semver version: ${version}`);
@@ -77,12 +77,12 @@ export function parseVersion(version: string): ParsedVersion {
     patch: Number.parseInt(patchRaw!, 10),
     prerelease
   };
-}
+};
 
-export function syncRootVersion(
+export const syncRootVersion = (
   repoRoot: string,
   { log = console.log }: { log?: Logger } = {}
-): SyncRootVersionResult {
+): SyncRootVersionResult => {
   const rootPackagePath = path.join(repoRoot, "package.json");
   const rootPackageJson = readJson<PackageJsonWithVersion>(rootPackagePath);
   const corePackageVersion = readJson<PackageJsonWithVersion>(
@@ -108,32 +108,32 @@ export function syncRootVersion(
   writeFileSync(rootPackagePath, `${JSON.stringify(rootPackageJson, null, 2)}\n`, "utf8");
   log(`Updated root package version to match core: ${targetVersion}`);
   return { updated: true, targetVersion };
-}
+};
 
-export function runChangesetVersion({
+export const runChangesetVersion = ({
   runner = execFileSync,
   cwd = process.cwd(),
   stdio = "inherit"
-}: RunChangesetVersionOptions = {}): void {
+}: RunChangesetVersionOptions = {}): void => {
   runner("pnpm", ["exec", "changeset", "version"], { cwd, stdio });
-}
+};
 
-export function main({
+export const main = ({
   repoRoot = process.cwd(),
   runChangesetVersionFn = runChangesetVersion,
   syncRootVersionFn = syncRootVersion
-}: MainOptions = {}): SyncRootVersionResult {
+}: MainOptions = {}): SyncRootVersionResult => {
   runChangesetVersionFn({ cwd: repoRoot, stdio: "inherit" });
   return syncRootVersionFn(repoRoot);
-}
+};
 
-export function isEntrypoint(
+export const isEntrypoint = (
   entryArg: string | undefined = process.argv[1],
   moduleUrl: string = import.meta.url
-): boolean {
+): boolean => {
   if (!entryArg) return false;
   return pathToFileURL(entryArg).href === moduleUrl;
-}
+};
 
 /* c8 ignore next 3 */
 if (isEntrypoint()) {

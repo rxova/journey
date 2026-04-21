@@ -9,7 +9,7 @@ import { cleanPaths } from "./clean-paths";
 const scriptPath = resolve(__dirname, "clean-paths.ts");
 const tsxLoaderPath = resolve(__dirname, "../../../node_modules/tsx/dist/loader.mjs");
 
-function execNode(args: string[]): { stdout: string; stderr: string; status: number } {
+const execNode = (args: string[]): { stdout: string; stderr: string; status: number } => {
   try {
     const stdout = execFileSync(process.execPath, ["--import", tsxLoaderPath, ...args], {
       encoding: "utf8"
@@ -19,7 +19,7 @@ function execNode(args: string[]): { stdout: string; stderr: string; status: num
     const e = err as { stdout?: string; stderr?: string; status?: number };
     return { stdout: e.stdout ?? "", stderr: e.stderr ?? "", status: e.status ?? 1 };
   }
-}
+};
 
 describe("cleanPaths", () => {
   it("removes a directory", () => {
