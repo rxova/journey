@@ -43,7 +43,7 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
     "@types/canvas-confetti": "^1.9.0",
-    "typescript": "~5.9.3"
+    "typescript": "~6.0.3"
   },
   "engines": {
     "node": ">=20.11.0"

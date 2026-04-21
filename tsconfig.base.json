@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "ignoreDeprecations": "5.0",
     "target": "ES2020",
     "module": "ESNext",
     "moduleResolution": "Bundler",
@@ -15,22 +14,23 @@
     "noUncheckedIndexedAccess": true,
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
-    "esModuleInterop": false,
+    "esModuleInterop": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
     "paths": {
-      "@rxova/journey-core": ["packages/core/src/index.ts"],
-      "@rxova/journey-core/analytics": ["packages/core/src/plugins/analytics/index.ts"],
-      "@rxova/journey-core/autosave": ["packages/core/src/plugins/autosave/index.ts"],
-      "@rxova/journey-core/diagnostics": ["packages/core/src/plugins/diagnostics/index.ts"],
-      "@rxova/journey-core/execution-paths": ["packages/core/src/plugins/execution-paths/index.ts"],
-      "@rxova/journey-core/persistence": ["packages/core/src/plugins/persistence/index.ts"],
-      "@rxova/journey-core/replay": ["packages/core/src/plugins/replay/index.ts"],
-      "@rxova/journey-react": ["packages/react/src/index.ts"],
-      "@rxova/journey-devtools-bridge": ["packages/devtools-bridge/src/index.ts"],
-      "@rxova/journey-common": ["packages/common/src/index.ts"],
-      "@rxova/journey-common/*": ["packages/common/src/*.ts"]
+      "@rxova/journey-core": ["./packages/core/src/index.ts"],
+      "@rxova/journey-core/analytics": ["./packages/core/src/plugins/analytics/index.ts"],
+      "@rxova/journey-core/autosave": ["./packages/core/src/plugins/autosave/index.ts"],
+      "@rxova/journey-core/diagnostics": ["./packages/core/src/plugins/diagnostics/index.ts"],
+      "@rxova/journey-core/execution-paths": [
+        "./packages/core/src/plugins/execution-paths/index.ts"
+      ],
+      "@rxova/journey-core/persistence": ["./packages/core/src/plugins/persistence/index.ts"],
+      "@rxova/journey-core/replay": ["./packages/core/src/plugins/replay/index.ts"],
+      "@rxova/journey-react": ["./packages/react/src/index.ts"],
+      "@rxova/journey-devtools-bridge": ["./packages/devtools-bridge/src/index.ts"],
+      "@rxova/journey-common": ["./packages/common/src/index.ts"],
+      "@rxova/journey-common/*": ["./packages/common/src/*.ts"]
     }
   }
 }
