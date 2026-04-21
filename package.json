@@ -47,7 +47,7 @@
     "size": "pnpm -r --reporter=append-only --workspace-concurrency=1 size",
     "size:check": "pnpm -r --reporter=append-only --workspace-concurrency=1 size:check",
     "publint": "pnpm -r --filter \"./packages/*\" publint",
-    "packaging:check": "pnpm -r --filter \"./packages/*\" build && pnpm run publint",
+    "packaging:check": "pnpm -r --filter \"./packages/*\" --filter apps-devtools build && pnpm run publint",
     "pack:smoke": "node --import tsx ./packages/common/tooling/pack-smoke.ts",
     "release:verify": "pnpm run version:major:check && pnpm run format:check && pnpm run lint && pnpm run docs:api:check && pnpm run docs:release-notes:check && pnpm run docs:check && pnpm run packages:typecheck && pnpm run test && pnpm run packaging:check && pnpm run pack:smoke && pnpm run examples:build && pnpm run size:check"
   },
