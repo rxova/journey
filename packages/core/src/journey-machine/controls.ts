@@ -42,11 +42,15 @@ export const createJourneyMachineControls = <
     warnInDevelopment(`Journey machine has been disposed; "${operation}" is a no-op.`);
   };
 
+  // Snapshot the initial context once at machine creation so later mutations
+  // to the caller-owned reference cannot leak into subsequent resets.
+  const initialContextSnapshot = cloneContext(initialContext);
+
   const buildResetSnapshot = () =>
     buildSnapshot(
       [initial],
       0,
-      cloneContext(initialContext),
+      cloneContext(initialContextSnapshot),
       "idled",
       buildInitialAsyncState(steps)
     );
