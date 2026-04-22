@@ -685,6 +685,25 @@ export const attachJourneyDevtools = <
       return;
     }
 
+    if (event.data.version !== JOURNEY_DEVTOOLS_PROTOCOL_VERSION) {
+      postEnvelope({
+        channel: JOURNEY_DEVTOOLS_CHANNEL,
+        version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+        source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
+        kind: "operationError",
+        machineId,
+        timestamp: Date.now(),
+        requestId: event.data.requestId,
+        operationId: event.data.invocation.operationId,
+        error: serializeError(
+          new Error(
+            `Unsupported protocol version ${String(event.data.version)}; bridge speaks ${String(JOURNEY_DEVTOOLS_PROTOCOL_VERSION)}.`
+          )
+        )
+      } satisfies JourneyDevtoolsBridgeOperationErrorEnvelope);
+      return;
+    }
+
     if (!rateLimiter.isAllowed()) {
       postEnvelope({
         channel: JOURNEY_DEVTOOLS_CHANNEL,
