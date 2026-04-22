@@ -538,7 +538,9 @@ export const attachJourneyDevtools = <
   const rateLimiter = new OperationRateLimiter();
   const targetOrigin = resolveWindowTargetOrigin();
 
+  let detached = false;
   const postEnvelope = (envelope: JourneyDevtoolsBridgeEnvelope) => {
+    if (detached) return;
     window.postMessage(envelope, targetOrigin);
   };
 
@@ -704,6 +706,7 @@ export const attachJourneyDevtools = <
   window.addEventListener("message", onMessage);
 
   return () => {
+    if (detached) return;
     unsubscribeSnapshot();
     unsubscribeEvents();
     window.removeEventListener("message", onMessage);
@@ -716,5 +719,6 @@ export const attachJourneyDevtools = <
       machineId,
       timestamp: Date.now()
     } satisfies JourneyDevtoolsBridgeUnregisterEnvelope);
+    detached = true;
   };
 };
