@@ -189,7 +189,7 @@ export function createJourneyMachine<
       onLifecycleError?.(error, context);
     };
 
-    void (async () => {
+    const lifecyclePromise = (async () => {
       try {
         if (sourceStep?.onLeave) {
           try {
@@ -298,6 +298,13 @@ export function createJourneyMachine<
         runtime.closeLifecycle(lifecycleAbortController);
       }
     })();
+
+    lifecyclePromise.catch(() => {
+      // Per-phase errors are already routed through reportLifecycleError
+      // inside the IIFE. This terminal catch only guards against throws
+      // from the finally-block cleanup or the reporter itself, which must
+      // not escape as an unhandled rejection.
+    });
   };
 
   const navigation = createJourneyMachineNavigationController<
