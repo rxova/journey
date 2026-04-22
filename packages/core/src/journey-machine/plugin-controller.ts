@@ -82,7 +82,10 @@ export const createJourneyMachinePluginController = <
     } catch (error) {
       for (const initializedPlugin of [...hooks].reverse()) {
         try {
-          initializedPlugin.hooks.dispose?.();
+          const result = initializedPlugin.hooks.dispose?.();
+          if (isPromiseLike(result)) {
+            Promise.resolve(result).catch(() => {});
+          }
         } catch {
           // Preserve the original setup error; cleanup failures are secondary.
         }
@@ -209,7 +212,10 @@ export const createJourneyMachinePluginController = <
       let firstError: unknown;
       for (const plugin of hooks) {
         try {
-          plugin.hooks.dispose?.();
+          const result = plugin.hooks.dispose?.();
+          if (isPromiseLike(result)) {
+            Promise.resolve(result).catch(() => {});
+          }
         } catch (error) {
           firstError ??= error;
         }
