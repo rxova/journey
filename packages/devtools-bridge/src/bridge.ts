@@ -369,6 +369,9 @@ const createCoreFeature = <
       ],
       run: async ({ input }: { input: Record<string, unknown> | undefined }) => {
         const key = String(input?.key ?? "");
+        if (key === "__proto__" || key === "constructor" || key === "prototype") {
+          throw new Error(`patchContext key "${key}" is reserved.`);
+        }
         const value = input?.value;
 
         return {
