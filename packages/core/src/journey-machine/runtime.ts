@@ -1,4 +1,4 @@
-import { errorInDevelopment, stabilizeSnapshot } from "./helpers";
+import { errorInDevelopment, stabilizeSnapshot, warnInDevelopment } from "./helpers";
 
 import type {
   JourneyEqualityFn,
@@ -199,6 +199,7 @@ export const createJourneyMachineRuntime = <
 
   const subscribe = (listener: () => void) => {
     if (isDisposed) {
+      warnInDevelopment('Journey machine has been disposed; "subscribe" is a no-op.');
       return () => undefined;
     }
 
@@ -214,6 +215,7 @@ export const createJourneyMachineRuntime = <
     equalityFn?: JourneyEqualityFn<TSelected>
   ) => {
     if (isDisposed) {
+      warnInDevelopment('Journey machine has been disposed; "subscribeSelector" is a no-op.');
       return () => undefined;
     }
 
@@ -236,6 +238,7 @@ export const createJourneyMachineRuntime = <
     listener: (event: JourneyObservationEvent<TStepId, TEventMap>) => void
   ) => {
     if (isDisposed) {
+      warnInDevelopment('Journey machine has been disposed; "subscribeEvent" is a no-op.');
       return () => undefined;
     }
 
