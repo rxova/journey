@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 import {
-  createJourneyBuilder,
+  createGraphJourneyBuilder,
   type HeadlessJourneyDefinition,
   type LinearJourneyDefinition
 } from "@rxova/journey-core";
@@ -95,7 +95,7 @@ export const linearDefinition: LinearJourneyDefinition<
   ]
 };
 
-const { createStep, to, build } = createJourneyBuilder<
+const { createStep, to, build } = createGraphJourneyBuilder<
   LoginContext,
   LoginStepId,
   AuthEventMap,

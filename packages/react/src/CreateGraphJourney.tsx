@@ -9,6 +9,7 @@ import { buildJourneyRuntime } from "./create-journey-machine-runtime";
 import type { JourneyRuntime } from "./types";
 import type { JourneyOptionsInput } from "./type-helpers";
 
+/** Creates a graph journey runtime for React from a `GraphJourneyDefinition` or builder output. */
 export function createGraphJourney<
   TContext extends JourneyJsonObject,
   TStepId extends string,

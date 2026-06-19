@@ -34,6 +34,7 @@ export function createGraphJourney<
   def: GraphJourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
   options?: JourneyMachineOptions<TPlugins>
 ): JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins>;
+/** Creates a graph journey machine from a builder definition or a plain `GraphJourneyDefinition` with an object-keyed `transitions` map. */
 export function createGraphJourney<
   TContext extends JourneyJsonObject,
   TStepId extends string,

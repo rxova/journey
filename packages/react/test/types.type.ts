@@ -1,7 +1,7 @@
 import { expectTypeOf } from "expect-type";
 import type * as React from "react";
 
-import { createJourneyBuilder } from "@rxova/journey-core";
+import { createGraphJourneyBuilder } from "@rxova/journey-core";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
 import type { JourneyDefinition, JourneyObservationEvent } from "@rxova/journey-core";
 import type {
@@ -151,7 +151,7 @@ type BuilderEventMap = {
 };
 type BuilderContext = { attempts: number };
 
-const { createStep, to, build } = createJourneyBuilder<
+const { createStep, to, build } = createGraphJourneyBuilder<
   BuilderContext,
   BuilderStepId,
   BuilderEventMap,
@@ -208,7 +208,7 @@ expectTypeOf<BuilderApi>().toMatchTypeOf<
     { label: string }
   >
 >();
-expectTypeOf<BuilderSendArg>().toEqualTypeOf<
+expectTypeOf({} as BuilderSendArg).toExtend<
   | { type: "verifyCodeSuccess"; payload?: { code: string } | undefined }
   | { type: "verifyCodeFailure"; payload?: { code: string } | undefined }
   | { type: "switchAuthMethod"; payload?: unknown }

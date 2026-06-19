@@ -155,7 +155,7 @@ function terminalCandidateToEdge(c: RawTerminalCandidate): Record<string, unknow
 }
 
 /** Creates a typed builder for authoring journey definitions with `createStep`, `to`, and `build` helpers. */
-export function createJourneyBuilder<
+export function createGraphJourneyBuilder<
   TContext extends JourneyJsonObject,
   TStepId extends string,
   TEventMap extends Record<string, unknown> = Record<never, never>,

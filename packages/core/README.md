@@ -93,11 +93,11 @@ transitions: {
 
 #### Graph Builder
 
-For larger flows, `createJourneyBuilder` lets each step declare its own transitions co-located with its component. It compiles to the same `JourneyDefinition` — no new runtime concepts.
+For larger flows, `createGraphJourneyBuilder` lets each step declare its own transitions co-located with its component. It compiles to the same `JourneyDefinition` — no new runtime concepts.
 
 ```ts
 // builder.ts — typed singleton
-const { createStep, to, build } = createJourneyBuilder<Context, StepId, EventMap>();
+const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
 
 // steps/login.step.ts — co-located with Login.tsx
 export const loginStep = createStep("login", {

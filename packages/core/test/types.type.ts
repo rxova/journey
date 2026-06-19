@@ -1,7 +1,7 @@
 import { expectTypeOf } from "expect-type";
 
 import {
-  createJourneyBuilder,
+  createGraphJourneyBuilder,
   createJourneyMachine,
   type JourneyAsyncPhase,
   type JourneyAsyncState,
@@ -476,11 +476,11 @@ const invalidGoToStepTransitions = {
 } satisfies JourneyStepTransitions<Context, StepId, EventMap>;
 void invalidGoToStepTransitions;
 
-// ─── createJourneyBuilder type tests ────────────────────────────────────────
+// ─── createGraphJourneyBuilder type tests ────────────────────────────────────────
 
-const builder = createJourneyBuilder<Context, StepId, EventMap>();
+const builder = createGraphJourneyBuilder<Context, StepId, EventMap>();
 
-// createJourneyBuilder returns the expected JourneyBuilder shape
+// createGraphJourneyBuilder returns the expected JourneyBuilder shape
 expectTypeOf(builder).toMatchTypeOf<JourneyBuilder<Context, StepId, EventMap>>();
 
 // to() only accepts valid StepId values

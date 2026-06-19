@@ -9,6 +9,7 @@ import { buildJourneyRuntime } from "./create-journey-machine-runtime";
 import type { JourneyRuntime } from "./types";
 import type { JourneyOptionsInput } from "./type-helpers";
 
+/** Creates a headless journey runtime for React. Navigation is entirely caller-driven via `machine.goToStepById`. */
 export function createHeadlessJourney<
   TContext extends JourneyJsonObject,
   TStepId extends string,
