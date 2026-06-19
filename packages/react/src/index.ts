@@ -1,3 +1,6 @@
+export { createLinearJourney } from "./CreateLinearJourney";
+export { createHeadlessJourney } from "./CreateHeadlessJourney";
+export { createGraphJourney } from "./CreateGraphJourney";
 export { createJourney } from "./CreateJourney";
 export { createJourneyFactory } from "./CreateJourneyFactory";
 export type {
@@ -20,6 +23,7 @@ export type {
 export type {
   JourneyApi,
   JourneyBuilderRuntime,
+  LinearJourneyRuntime,
   JourneyBuilderRuntimeFactory,
   JourneyBuilderRuntimeFactoryFromDefinition,
   JourneyBuilderRuntimeFromDefinition,

@@ -30,9 +30,12 @@ export type {
   JourneyComputed,
   JourneyComputedBase,
   JourneyDefaultEventType,
+  HeadlessJourneyDefinition,
   JourneyDefinition,
   JourneyDefinitionBase,
   JourneyEqualityFn,
+  LinearJourneyDefinition,
+  LinearJourneyStep,
   JourneyEvent,
   JourneyJsonObject,
   JourneyJsonPrimitive,
@@ -93,11 +96,13 @@ export type {
   JourneyMachinePluginSetupContext,
   JourneyMachinePluginSnapshotChange,
   JourneyMachineSnapshotReason,
-  JourneyMachineWithPlugins
+  JourneyMachineWithPlugins,
+  LinearJourneyMachine
 } from "./machine.types";
 
 export type {
   JourneyDispatch,
+  GraphJourneyDefinition,
   JourneyGlobalKey,
   JourneyLifecycleArgs,
   JourneyGlobalTransition,

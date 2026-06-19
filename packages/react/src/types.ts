@@ -14,7 +14,8 @@ import type {
   JourneySelector,
   JourneySendEvent,
   JourneySendResult,
-  JourneySnapshot
+  JourneySnapshot,
+  LinearJourneyMachine
 } from "@rxova/journey-core";
 import type {
   JourneyCustomSendEventForKeys,
@@ -104,6 +105,20 @@ export type JourneyRuntime<
   ) => void;
   JourneyProvider: React.ComponentType<JourneyProviderProps<TStepId>>;
   StepRenderer: React.ComponentType<{ fallback?: React.ReactNode }>;
+};
+
+/** React runtime for a linear journey — `machine` carries `goToStepByIndex`. */
+export type LinearJourneyRuntime<
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TStepMeta = unknown,
+  TPlugins extends readonly JourneyMachinePlugin[] = [],
+  THandlers extends Record<string, unknown> = Record<never, never>
+> = Omit<
+  JourneyRuntime<TContext, TStepId, Record<never, never>, TStepMeta, TPlugins, THandlers>,
+  "machine"
+> & {
+  machine: LinearJourneyMachine<TContext, TStepId, TStepMeta, THandlers, TPlugins>;
 };
 
 export type JourneyRuntimeWithStepApi<

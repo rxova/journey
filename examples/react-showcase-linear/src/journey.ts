@@ -1,5 +1,4 @@
-import { createJourney } from "@rxova/journey-react";
-import type { JourneyDefinition, JourneyLinearStep } from "@rxova/journey-core";
+import { createLinearJourney } from "@rxova/journey-react";
 
 export type StepId = "login" | "setup2fa" | "verifyCode" | "loggedIn";
 
@@ -14,23 +13,7 @@ export type LoginContext = {
 
 type StepMeta = { label: string };
 
-const setup2faStep: JourneyLinearStep<LoginContext, StepId> = {
-  step: "setup2fa",
-  label: "login-to-setup",
-  timeoutMs: 10000,
-  updateContext: ({ context }) => ({
-    ...context,
-    password: ""
-  })
-};
-
-const verifyCodeStep: JourneyLinearStep<LoginContext, StepId> = {
-  step: "verifyCode",
-  label: "setup-to-verify",
-  timeoutMs: 5000
-};
-
-const definition: JourneyDefinition<LoginContext, StepId, Record<never, never>, StepMeta> = {
+export const journey = createLinearJourney<LoginContext, StepId, StepMeta>({
   context: {
     username: "",
     password: "",
@@ -39,24 +22,21 @@ const definition: JourneyDefinition<LoginContext, StepId, Record<never, never>, 
     error: null,
     attempts: 0
   },
-  steps: {
-    login: { meta: { label: "Login" } },
-    setup2fa: { meta: { label: "Setup 2FA" } },
-    verifyCode: { meta: { label: "Verify Code" } },
-    loggedIn: {
+  steps: [
+    { id: "login", meta: { label: "Login" } },
+    { id: "setup2fa", meta: { label: "Setup 2FA" } },
+    { id: "verifyCode", meta: { label: "Verify Code" } },
+    {
+      id: "loggedIn",
       meta: { label: "Logged In" },
       onEnter: ({ context, dispatch }) => {
         if (context.attempts >= 3) {
           void dispatch({ type: "terminateJourney" });
           return;
         }
-
         alert("loggedIn");
         void dispatch({ type: "completeJourney" });
       }
     }
-  },
-  transitions: ["login", setup2faStep, verifyCodeStep, "loggedIn"]
-};
-
-export const journey = createJourney(definition);
+  ]
+});

@@ -9,6 +9,7 @@ import type {
   JourneySendEvent,
   JourneySendResult,
   JourneySnapshot,
+  JourneyStepDefinition,
   JourneyTerminal
 } from "./journey.types";
 
@@ -366,6 +367,21 @@ export type JourneyLinearTransitions<
   TEventMap extends Record<string, unknown> = Record<never, never>,
   THandlers extends Record<string, unknown> = Record<never, never>
 > = readonly [TStepId, ...(TStepId | JourneyLinearStep<TContext, TStepId, TEventMap, THandlers>)[]];
+
+/** Input type for `createGraphJourney`. `transitions` is required and must be an object map. */
+export type GraphJourneyDefinition<
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TStepMeta = unknown,
+  THandlers extends Record<string, unknown> = Record<never, never>
+> = {
+  initial: TStepId;
+  context: TContext;
+  handlers?: THandlers;
+  steps: Record<TStepId, JourneyStepDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>>;
+  transitions: JourneyTransitionGraph<TContext, TStepId, TEventMap, THandlers>;
+};
 
 export type JourneyTransitionsDefinition<
   TContext extends JourneyJsonObject,
