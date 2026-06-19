@@ -28,6 +28,9 @@
     "docs:release-notes:sync": "node --import tsx ./packages/common/tooling/sync-doc-release-notes.ts",
     "docs:release-notes:check": "node --import tsx ./packages/common/tooling/sync-doc-release-notes.ts --check",
     "docs:api:check": "node --import tsx ./packages/common/tooling/check-public-api-tsdoc.ts",
+    "docs:api:generate": "pnpm docs:api:generate:core && pnpm docs:api:generate:react",
+    "docs:api:generate:core": "typedoc --options typedoc.core.json",
+    "docs:api:generate:react": "typedoc --options typedoc.react.json",
     "examples:build": "pnpm -r --filter \"./examples/*\" build",
     "packages:typecheck": "pnpm -r --filter \"./packages/*\" --filter apps-devtools typecheck && tsc --noEmit -p tsconfig.test.json",
     "release": "pnpm -r build && changeset publish",
@@ -77,6 +80,8 @@
     "publint": "^0.3.18",
     "size-limit": "^12.1.0",
     "tsx": "^4.21.0",
+    "typedoc": "^0.28.19",
+    "typedoc-plugin-markdown": "^4.12.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.4"
   },

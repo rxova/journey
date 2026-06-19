@@ -44,141 +44,141 @@ bun add @rxova/journey-core
 
 ## Define a Journey
 
-Journey supports three ways to define transitions: **linear**, **graph**, and **headless**. All three share the same runtime, snapshot shape, and navigation API. Pick the one that fits your flow.
+Journey exports three factory functions — one per mode. All three produce the same runtime, snapshot shape, and navigation API. Pick the one that fits your flow.
+
+| Factory                 | When to use                                      |
+| ----------------------- | ------------------------------------------------ |
+| `createLinearJourney`   | Fixed step sequence; wizard-style flows          |
+| `createGraphJourney`    | Branching, conditional routing, or custom events |
+| `createHeadlessJourney` | Caller-driven navigation; no transition graph    |
 
 Reserved step ids: `*`, `global`, `COMPLETE`, and `TERMINATED`. They are used by the runtime and cannot be used as actual step names.
 
 ### Linear
 
-Use the array shorthand when steps follow a fixed sequence. Each entry is a step id or an object with synchronous context updates and timeouts.
+Pass an ordered array of step ids (or objects with optional `meta` and lifecycle callbacks). `goToNextStep` advances through them in sequence.
 
 ```ts
-import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
+import { createLinearJourney } from "@rxova/journey-core";
 
 type StepId = "account" | "details" | "payment" | "review";
-type Context = { email: string; completedSteps: number };
+type Context = { email: string };
 type StepMeta = { label: string };
 
-const checkout: JourneyDefinition<Context, StepId, Record<never, never>, StepMeta> = {
-  initial: "account",
-  context: { email: "", completedSteps: 0 },
-  steps: {
-    account: { meta: { label: "Account" } },
-    details: { meta: { label: "Details" } },
-    payment: { meta: { label: "Payment" } },
-    review: { meta: { label: "Review" } }
-  },
-  transitions: [
-    "account",
-    {
-      step: "details",
-      timeoutMs: 5000,
-      updateContext: ({ context }) => ({
-        ...context,
-        completedSteps: context.completedSteps + 1
-      })
-    },
-    "payment",
-    "review"
+const machine = createLinearJourney<Context, StepId, StepMeta>({
+  context: { email: "" },
+  steps: [
+    { id: "account", meta: { label: "Account" } },
+    { id: "details", meta: { label: "Details" } },
+    { id: "payment", meta: { label: "Payment" } },
+    { id: "review", meta: { label: "Review" } }
   ]
-};
+});
 
-const machine = createJourneyMachine(checkout);
 machine.startJourney();
+await machine.goToNextStep(); // account → details
+await machine.goToStepByIndex(3); // jump to review
 ```
 
 ### Graph
 
-Use step-keyed transitions when your flow has branching, conditional routing, retries, or custom events.
+Use `createGraphJourneyBuilder` to define step-keyed transitions with guards, context updates, and custom events, then pass the result to `createGraphJourney`.
 
 ```ts
-import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
+import { createGraphJourneyBuilder, createGraphJourney } from "@rxova/journey-core";
 
 type StepId = "login" | "admin" | "dashboard" | "blocked";
 type Context = { role: "admin" | "user" | null };
+type Events = { login: undefined };
 
-const auth: JourneyDefinition<Context, StepId> = {
-  initial: "login",
-  context: { role: null },
-  steps: {
-    login: {},
-    admin: {},
-    dashboard: {},
-    blocked: {}
-  },
-  transitions: {
-    login: {
-      goToNextStep: [
-        { to: "admin", when: ({ context }) => context.role === "admin" },
-        { to: "dashboard", when: ({ context }) => context.role === "user" },
-        { to: "blocked" }
-      ]
-    },
-    admin: {
-      goToNextStep: [{ to: "dashboard" }]
-    },
-    blocked: {
-      goToNextStep: [{ to: "login" }]
-    }
-  }
-};
+const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, Events>();
 
-const machine = createJourneyMachine(auth);
+const machine = createGraphJourney(
+  build({
+    initial: "login",
+    context: { role: null },
+    steps: [
+      createStep("login", {
+        on: {
+          login: [
+            to("admin").when(({ context }) => context.role === "admin"),
+            to("dashboard").when(({ context }) => context.role === "user"),
+            to("blocked")
+          ]
+        }
+      }),
+      createStep("admin", { on: { login: [to("dashboard")] } }),
+      createStep("dashboard", {}),
+      createStep("blocked", {})
+    ]
+  })
+);
+
 machine.startJourney();
+await machine.send({ type: "login" });
 ```
 
 ### Headless
 
-Omit `transitions` entirely and navigate with `goToStepById`. Useful for custom renderers, non-React environments, or flows where the driver decides the path at runtime.
+No transition graph. Navigation is entirely caller-driven via `goToStepById`. Useful when the driver decides the path at runtime.
 
 ```ts
-import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
+import { createHeadlessJourney } from "@rxova/journey-core";
 
 type StepId = "intro" | "configure" | "confirm";
 
-const flow: JourneyDefinition<Record<string, never>, StepId> = {
+const machine = createHeadlessJourney<Record<string, never>, StepId>({
   initial: "intro",
   context: {},
   steps: { intro: {}, configure: {}, confirm: {} }
-};
+});
 
-const machine = createJourneyMachine(flow);
 machine.startJourney();
-
 await machine.goToStepById("configure");
 await machine.goToStepById("confirm");
 ```
 
-In headless mode, `goToStepById(...)` is the forward-navigation primitive. `goToNextStep()` and custom events stay no-op until you define transitions.
+`goToStepById(...)` is the forward-navigation primitive in headless mode. `goToNextStep()` and custom events remain no-op until you define transitions.
 
 ## Drive It
 
-All three modes share the same runtime API, but not every command is meaningful in every mode:
+All three modes share the same runtime API, but not every method is meaningful in every mode.
+
+| Method                  | Linear                  | Graph                  | Headless  |
+| ----------------------- | ----------------------- | ---------------------- | --------- |
+| `goToNextStep()`        | ✅ Advances in sequence | ✅ Built-in event      | ❌ No-op  |
+| `goToStepByIndex(n)`    | ✅ Linear-only          | —                      | —         |
+| `send({ type })`        | ⚠️ Built-ins only       | ✅ Custom + built-in   | ❌ No-op  |
+| `goToStepById(id)`      | ⚠️ Declared edges only  | ⚠️ Declared edges only | ✅ Always |
+| `goToPreviousStep(n?)`  | ✅                      | ✅                     | ✅        |
+| `goToLastVisitedStep()` | ✅                      | ✅                     | ✅        |
+| `completeJourney()`     | ✅                      | ✅                     | ✅        |
+| `terminateJourney()`    | ✅                      | ✅                     | ✅        |
 
 ```ts
-await machine.send({ type: "goToNextStep" });
-await machine.goToPreviousStep();
-await machine.goToLastVisitedStep();
-await machine.goToStepById("review");
-
-await machine.send({ type: "completeJourney" });
-await machine.send({ type: "terminateJourney" });
-```
-
-- Use `goToNextStep` in linear and graph flows.
-- Use `goToStepById` in headless flows.
-- `goToPreviousStep`, `goToLastVisitedStep`, `completeJourney`, and `terminateJourney` work in all modes.
-
-After `dispose()`, send-style APIs resolve with `transitioned: false` and `error: JourneyDisposedError`. Sync control APIs such as `startJourney()` and `updateContext()` stay no-op and emit a development warning.
-
-Convenience helpers are also available:
-
-```ts
+// Linear — sequential navigation
 await machine.goToNextStep();
 await machine.goToPreviousStep(2); // go back 2 steps
+await machine.goToStepByIndex(3); // LinearJourneyMachine only
+
+// Graph — fire named events
+await machine.send({ type: "submit" });
+
+// Headless — jump directly to any step
+await machine.goToStepById("confirm");
+
+// All modes — lifecycle
 await machine.completeJourney();
 await machine.terminateJourney();
 ```
+
+:::warning
+`goToStepByIndex` is only available on machines created with `createLinearJourney`. Graph and headless machines do not have this method.
+:::
+
+:::note
+After `dispose()`, send-style APIs resolve with `transitioned: false` and `error: JourneyDisposedError`. Sync control APIs such as `startJourney()` and `updateContext()` become no-ops and emit a development warning.
+:::
 
 ## Read the Snapshot
 
@@ -215,9 +215,10 @@ const unsubscribeEvents = machine.subscribeEvent((event) => {
 ## Persistence
 
 ```ts
+import { createLinearJourney } from "@rxova/journey-core";
 import { createPersistencePlugin } from "@rxova/journey-core/persistence";
 
-const machine = createJourneyMachine(checkout, {
+const machine = createLinearJourney(checkoutDef, {
   plugins: [
     createPersistencePlugin({
       key: "checkout-journey",

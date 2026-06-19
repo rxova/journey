@@ -24,6 +24,8 @@
   "scripts": {
     "docusaurus": "docusaurus",
     "start": "docusaurus start",
+    "prebuild": "pnpm -w docs:api:generate",
+    "prestart": "pnpm -w docs:api:generate",
     "build": "docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
@@ -52,6 +54,7 @@
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "3.9.2",
+    "@docusaurus/theme-mermaid": "^3.9.2",
     "@docusaurus/tsconfig": "3.9.2",
     "@docusaurus/types": "3.9.2",
     "@tailwindcss/postcss": "^4.2.1",

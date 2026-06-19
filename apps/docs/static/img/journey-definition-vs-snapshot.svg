@@ -1,0 +1,57 @@
+<svg width="640" height="300" viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5"
+            markerWidth="5" markerHeight="5" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#94A3B8"/>
+    </marker>
+  </defs>
+
+  <!-- Card -->
+  <rect width="640" height="300" rx="12" fill="white" stroke="#E2E8F0" stroke-width="1.5"/>
+
+  <!-- Title -->
+  <text x="320" y="34" text-anchor="middle" font-size="14" font-weight="700" fill="#0F172A" letter-spacing="-0.2">Definition vs. Snapshot</text>
+  <line x1="40" y1="46" x2="600" y2="46" stroke="#F1F5F9" stroke-width="1.5"/>
+
+  <!-- Left Box: Definition -->
+  <rect x="16" y="58" width="218" height="224" rx="8" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1.5"/>
+  <!-- Left header -->
+  <rect x="16" y="58" width="218" height="46" rx="8" fill="#DBEAFE"/>
+  <rect x="16" y="88" width="218" height="16" fill="#DBEAFE"/>
+  <text x="125" y="81" text-anchor="middle" font-size="13" font-weight="700" fill="#1E40AF">Definition</text>
+  <text x="125" y="97" text-anchor="middle" font-size="10.5" fill="#3B82F6">static · defined once at creation</text>
+  <!-- Left divider -->
+  <line x1="28" y1="108" x2="222" y2="108" stroke="#BFDBFE" stroke-width="1"/>
+  <!-- Left items -->
+  <text x="125" y="130" text-anchor="middle" font-size="12" fill="#1E40AF">steps record</text>
+  <text x="125" y="158" text-anchor="middle" font-size="12" fill="#1E40AF">transitions</text>
+  <text x="125" y="186" text-anchor="middle" font-size="12" fill="#1E40AF">initial step</text>
+  <text x="125" y="214" text-anchor="middle" font-size="12" fill="#1E40AF">context factory</text>
+  <text x="125" y="242" text-anchor="middle" font-size="12" fill="#1E40AF">step metadata</text>
+
+  <!-- Right Box: Snapshot -->
+  <rect x="406" y="58" width="218" height="224" rx="8" fill="#F5F3FF" stroke="#C4B5FD" stroke-width="1.5"/>
+  <!-- Right header -->
+  <rect x="406" y="58" width="218" height="46" rx="8" fill="#EDE9FE"/>
+  <rect x="406" y="88" width="218" height="16" fill="#EDE9FE"/>
+  <text x="515" y="81" text-anchor="middle" font-size="13" font-weight="700" fill="#4C1D95">Snapshot</text>
+  <text x="515" y="97" text-anchor="middle" font-size="10.5" fill="#7C3AED">live · updated on each transition</text>
+  <!-- Right divider -->
+  <line x1="418" y1="108" x2="612" y2="108" stroke="#DDD6FE" stroke-width="1"/>
+  <!-- Right items -->
+  <text x="515" y="128" text-anchor="middle" font-size="12" fill="#5B21B6">currentStepId</text>
+  <text x="515" y="150" text-anchor="middle" font-size="12" fill="#5B21B6">history.timeline</text>
+  <text x="515" y="172" text-anchor="middle" font-size="12" fill="#5B21B6">history.index</text>
+  <text x="515" y="194" text-anchor="middle" font-size="12" fill="#5B21B6">context</text>
+  <text x="515" y="216" text-anchor="middle" font-size="12" fill="#5B21B6">visited</text>
+  <text x="515" y="238" text-anchor="middle" font-size="12" fill="#5B21B6">status</text>
+  <text x="515" y="260" text-anchor="middle" font-size="12" fill="#5B21B6">async.byStep</text>
+
+  <!-- Middle arrow and labels -->
+  <text x="311" y="152" text-anchor="middle" font-size="10.5" fill="#64748B">resolves once</text>
+  <text x="311" y="165" text-anchor="middle" font-size="10.5" fill="#64748B">at creation</text>
+  <line x1="238" y1="174" x2="402" y2="174" stroke="#94A3B8" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="311" y="194" text-anchor="middle" font-size="10.5" fill="#64748B">committed after</text>
+  <text x="311" y="207" text-anchor="middle" font-size="10.5" fill="#64748B">each transition</text>
+</svg>

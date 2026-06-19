@@ -15,14 +15,26 @@ In `0.6.x`, prefer additive and bug-fix changes, and avoid breaking API changes 
 
 ```ts
 import {
-  createJourneyMachine,
-  type JourneyDefinition,
+  createLinearJourney,
+  createHeadlessJourney,
+  createGraphJourney,
+  createGraphJourneyBuilder,
   type JourneyObservationEvent,
   type JourneySnapshot
 } from "@rxova/journey-core";
 ```
 
-Most teams use `createJourneyMachine` with either a linear transition array or an event-keyed transition graph.
+Three named factories cover the three journey modes. Pick the one that matches your flow shape:
+
+| Factory                 | Mode     | Transitions                                               |
+| ----------------------- | -------- | --------------------------------------------------------- |
+| `createLinearJourney`   | Linear   | Ordered steps array; `goToNextStep` advances in sequence  |
+| `createGraphJourney`    | Graph    | Object-keyed event map; supports guards and custom events |
+| `createHeadlessJourney` | Headless | None; caller drives navigation via `goToStepById`         |
+
+:::note Deprecated
+`createJourneyMachine` is still exported for backwards compatibility but is deprecated. Use the three named factories instead.
+:::
 
 ## TypeScript-First API Surface
 
@@ -45,30 +57,29 @@ For a complete typing guide, see [Core TypeScript](/docs/core/typescript).
 ## Typical Usage Flow
 
 ```ts
-import { createJourneyMachine } from "@rxova/journey-core";
+import { createGraphJourneyBuilder, createGraphJourney } from "@rxova/journey-core";
 
-const journey = {
-  initial: "start",
-  context: { isVip: false },
-  steps: {
-    start: {},
-    payment: {},
-    review: {}
-  },
-  transitions: {
-    start: {
-      goToNextStep: [
-        { to: "review", when: ({ context }) => context.isVip },
-        { to: "payment", when: ({ context }) => !context.isVip }
-      ]
-    },
-    payment: {
-      goToNextStep: [{ to: "review" }]
-    }
-  }
-};
+type StepId = "start" | "payment" | "review";
+type Context = { isVip: boolean };
 
-const journeyMachine = createJourneyMachine(journey);
+const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId>();
+
+const journeyMachine = createGraphJourney(
+  build({
+    initial: "start",
+    context: { isVip: false },
+    steps: [
+      createStep("start", {
+        on: {
+          goToNextStep: [to("review").when(({ context }) => context.isVip), to("payment")]
+        }
+      }),
+      createStep("payment", { on: { goToNextStep: [to("review")] } }),
+      createStep("review", {})
+    ]
+  })
+);
+
 journeyMachine.startJourney();
 ```
 

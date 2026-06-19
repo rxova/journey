@@ -1,0 +1,20 @@
+{
+  "entryPoints": ["packages/core/src/index.ts"],
+  "tsconfig": "packages/core/tsconfig.json",
+  "plugin": ["typedoc-plugin-markdown"],
+  "out": "apps/docs/docs/core/api/reference",
+  "readme": "none",
+  "excludeInternal": true,
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "useCodeBlocks": true,
+  "parametersFormat": "table",
+  "interfacePropertiesFormat": "table",
+  "classPropertiesFormat": "table",
+  "typeDeclarationFormat": "table",
+  "propertyMembersFormat": "table",
+  "expandObjects": true,
+  "validation": {
+    "notExported": false
+  }
+}
