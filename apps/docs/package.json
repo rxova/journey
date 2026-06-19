@@ -26,7 +26,9 @@
   "author": "Jonatan Kruszewski",
   "scripts": {
     "dev": "astro dev",
+    "predev": "pnpm -w docs:api:generate",
     "build": "astro build",
+    "prebuild": "pnpm -w docs:api:generate",
     "preview": "astro preview",
     "typecheck": "astro check"
   },

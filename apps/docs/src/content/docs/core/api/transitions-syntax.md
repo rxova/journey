@@ -122,11 +122,11 @@ Order matters inside each event array. Journey evaluates the candidates in order
 
 ## Option C: Graph Builder
 
-`createJourneyBuilder` is an alternative to the inline graph object. Instead of one central transition object, each step declares its own transitions and can be co-located with its component. The builder compiles to the same `JourneyDefinition` — no new runtime concepts.
+`createGraphJourneyBuilder` is an alternative to the inline graph object. Instead of one central transition object, each step declares its own transitions and can be co-located with its component. The builder compiles to the same `JourneyDefinition` — no new runtime concepts.
 
 ```ts
 // builder.ts — typed singleton, no local deps
-const { createStep, to, build } = createJourneyBuilder<Context, StepId, EventMap>();
+const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
 
 // steps/login.step.ts — co-located with Login.tsx
 export const loginStep = createStep("login", {

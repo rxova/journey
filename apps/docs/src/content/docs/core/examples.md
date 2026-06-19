@@ -1,25 +1,40 @@
 ---
-title: "Core Examples"
-sidebar:
-  label: "Examples"
+id: examples
+title: Examples
+sidebar_label: Examples
 ---
 
-Representative examples are useful when you want to see the runtime as a product shape, not as a list of features.
+# Examples
 
-| Example                     | What it demonstrates                                                         | Good fit                               |
-| --------------------------- | ---------------------------------------------------------------------------- | -------------------------------------- |
-| Typed checkout wizard       | stable step ids, optional skip rules, typed payloads, completion             | onboarding, checkout, setup flows      |
-| Verification graph          | branching, retry loops, timeout-aware guards, alternate completion paths     | KYC, approvals, support tooling        |
-| Confirm-close flow          | wildcard or cross-cutting close handling with explicit exit confirmation     | long forms, draft-heavy flows          |
-| Observable runtime          | `subscribe`, `subscribeSelector`, and `subscribeEvent` working together      | analytics, debugging, custom renderers |
-| Persistence-enabled machine | resume-later behavior using the persistence plugin                           | multi-session flows                    |
-| Structural path analysis    | execution-path inspection without running guards or committing runtime state | flow audits, product review, tests     |
+Runnable examples live in the repository under `examples/`. Each is a standalone Vite app demonstrating a specific mode.
 
-## What To Look For In The Examples
+## Core Examples (Framework-free)
 
-- How many of the movement rules live in transitions instead of UI handlers
-- Whether step ids stay stable as the flow grows
-- Whether the snapshot alone can explain current runtime truth
-- Whether the event stream is enough to understand how the machine changed
+These use `@rxova/journey-core` directly without a UI framework.
 
-See package examples under `packages/core/examples` for runnable snippets, and pair them with [Recipes](./recipes.md) when you need smaller focused patterns.
+| Example                  | What it shows                                                                         | Link                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `core-showcase-linear`   | Linear journey with sequential steps, step metadata, and progress tracking            | [View →](https://github.com/rxova/journey/tree/main/examples/core-showcase-linear)   |
+| `core-showcase-graph`    | Graph journey with the builder API, branching, guards, and the execution-paths plugin | [View →](https://github.com/rxova/journey/tree/main/examples/core-showcase-graph)    |
+| `core-showcase-headless` | Headless journey with caller-driven navigation and observable state                   | [View →](https://github.com/rxova/journey/tree/main/examples/core-showcase-headless) |
+
+## React Examples
+
+These use `@rxova/journey-react` with provider, hooks, and DevTools integration.
+
+| Example                   | What it shows                                                  | Link                                                                                  |
+| ------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `react-showcase-linear`   | Linear journey with step components and `LinearJourneyRuntime` | [View →](https://github.com/rxova/journey/tree/main/examples/react-showcase-linear)   |
+| `react-showcase-graph`    | Graph journey with the builder and event-driven navigation     | [View →](https://github.com/rxova/journey/tree/main/examples/react-showcase-graph)    |
+| `react-showcase-headless` | Headless journey with custom rendering logic                   | [View →](https://github.com/rxova/journey/tree/main/examples/react-showcase-headless) |
+
+## Running Locally
+
+```bash
+pnpm install
+pnpm -C examples/core-showcase-linear dev
+# or
+pnpm -C examples/react-showcase-graph dev
+```
+
+For focused patterns, see [Recipes](/docs/core/recipes).

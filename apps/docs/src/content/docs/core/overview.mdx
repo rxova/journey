@@ -1,73 +1,61 @@
----
-title: "Overview"
----
+# Overview
 
-import DocAccordion from "../../../components/DocAccordion.astro";
-import DocAccordionItem from "../../../components/DocAccordionItem.astro";
+Journey is a flow runtime for products that need more than "next" and "back".
 
-Journey is a flow runtime for products that need more than “next” and “previous”.
+It works well when your UI looks like a form or stepper, but the behavior underneath is already a graph — branches, skips, retries, async checks, recovery paths, explicit close behavior, and stable history. The goal is not to force one shape. The goal is to let you model the flow you actually have while keeping the API simple.
 
-It works well when your UI still looks like a wizard, but the behavior underneath is already a graph: branches, skips, retries, async checks, recovery paths, explicit close behavior, and stable history. The goal is not to force one shape. The goal is to let you model the flow you actually have while keeping the API simple.
+:::tip The core promise
+Define your flow once. Drive it predictably. Inspect it completely.
+:::
 
-## Motivation
+## The Problem It Solves
 
-The usual stepper model starts with a list and a pointer. That is fine for small flows.
+Most flows start small — a few steps, a next button, maybe one validation check.
 
-The problem appears when decisions move inside components. One step skips another. A validation call decides where the user goes next. A “close” action opens a confirmation branch. A pointer can still tell you where the user is, but it cannot explain why they got there or which path was taken.
+Then product requirements get real. A step can be skipped. A close action needs confirmation. A network check decides whether the user can continue. The UI still looks like a form, but the behavior underneath is already a graph.
 
-Journey keeps that logic in one place by making transitions explicit and event-driven. That gives teams freedom to model both wizard and graph behavior, simplicity in the runtime shape, and versatility when flows grow beyond a fixed sequence.
+That is where Journey helps. It keeps movement rules in one place, makes the path explicit, and gives you a stable snapshot so you can inspect what happened instead of guessing.
 
-## Practical Advantages
+## Three Modes
 
-- **Graph-Based**: model real branching, retries, skips, and recovery paths without hiding them in UI code.
-- **Transition-First**: put movement rules where they belong instead of scattering them across click handlers.
-- **Snapshot-Persisted**: keep the runtime truth in one snapshot with history, context, status, and async state.
-- **Pluggable**: add runtime capabilities such as persistence or structural path analysis without bloating the base machine.
-- **Observable**: subscribe to state or lifecycle events depending on whether you care about “what is true now” or “what just happened”.
-- **Async-Safe**: make async guards part of the model, with explicit phases and timeout support.
+Pick the one that fits your flow shape. All three share the same runtime, snapshot shape, and navigation API.
+
+| Mode         | Factory                 | When to use                                            |
+| ------------ | ----------------------- | ------------------------------------------------------ |
+| **Linear**   | `createLinearJourney`   | Fixed step sequence; top-to-bottom progress            |
+| **Graph**    | `createGraphJourney`    | Branching, conditional routing, retries, custom events |
+| **Headless** | `createHeadlessJourney` | Caller-driven navigation; no transition graph          |
+
+:::info
+You can move between modes over time. A linear flow often grows into a graph. A UI-bound flow often benefits from headless runtime boundaries later.
+:::
+
+## Design Principles
+
+**Transition-first** — movement rules live in transitions, not scattered across button handlers. That keeps intent visible and reviewable.
+
+**Snapshot-persisted** — runtime state lives in one snapshot: current step, history, context, status, visited state, and async state.
+
+**ID-based** — step ids like `"details"` or `"review"` instead of fragile array positions. Reordering a flow or inserting a branch does not silently break navigation.
+
+**Observable** — snapshot subscriptions for rendering, lifecycle events for telemetry. Each at the right level of detail.
+
+**Async-safe** — async guards are part of the model with explicit phases, timeout support, and per-step error state.
 
 ## Under The Hood
 
-Journey processes events through an internal queue. That matters because it gives the runtime a stable order of operations: one event starts, its matching transition is resolved, async work settles, the next snapshot commits, and only then does the next event continue. You do not get overlapping flow mutations fighting each other.
+### Event Pipeline
 
-The runtime is snapshot-first. A journey definition describes the static model, but the snapshot describes the live state. That split is deliberate. Definitions stay small and readable, while the snapshot becomes the single place to inspect current step, realized history, context, visited state, status, and async phase.
+Journey processes events through a serialized queue. One event starts, its matching transition resolves, async work settles, the snapshot commits — and only then does the next queued event begin. No overlapping mutations.
 
-Transitions are the center of the system. Guards decide whether a move is allowed. `updateContext` derives the next context synchronously once a transition is selected. Ordered matching keeps behavior deterministic, which is one of the reasons the runtime stays easy to test and easier to explain during refactors.
+![Event Processing Pipeline](/img/journey-event-pipeline.svg)
 
-The event stream is just as important as the snapshot. Snapshot subscriptions are useful when you want to render. Lifecycle events are useful when you want to debug, log, or analyze behavior. That event-driven architecture keeps UI concerns and runtime telemetry separate without losing visibility into either.
+### Definition vs. Snapshot
 
-## Overview Guide
+The runtime keeps two separate concerns: the static definition (what the flow is) and the live snapshot (where things are now). Definitions stay small and readable; the snapshot is the single authoritative place to inspect current state.
 
-<DocAccordion>
-  <DocAccordionItem
-    title="Architecture"
-    summary="A file-by-file walkthrough of how the machine is assembled, queued, and committed."
-    defaultOpen
-  >
-    Journey is built around a small runtime model: steps, transitions, snapshot, and event
-    processing. Read [Machine Architecture](./architecture.md) when you want the technical picture,
-    including a file-level breakdown of `packages/core/src/journey-machine`, without dropping
-    straight into the API reference.
-  </DocAccordionItem>
-  <DocAccordionItem
-    title="Recipes"
-    summary="Short, practical patterns for the things product teams run into first."
-  >
-    Use [Recipes](./recipes.md) when you need a proven pattern such as explicit back overrides,
-    context updates, close-confirmation flows, timeout-aware transitions, or branch-heavy transition
-    builders.
-  </DocAccordionItem>
-  <DocAccordionItem
-    title="Examples"
-    summary="Longer scenarios that show how Journey feels in real flows."
-  >
-    Use [Examples](./examples.md) when you want to compare list-shaped wizards, graph flows,
-    observable runtimes, or plugin-assisted setups instead of reading features one by one.
-  </DocAccordionItem>
-</DocAccordion>
+![Definition vs. Snapshot](/img/journey-definition-vs-snapshot.svg)
 
-## Where To Go Next
-
-- Read [About](./about.md) for the product model and design intent.
-- Read [Quickstart](./getting-started.md) if you want a typed example immediately.
-- Read [Usage](./usage.md) if you are choosing between wizard, graph, and headless runtime usage.
+:::info
+Read [Machine Architecture](/docs/core/architecture) for a file-by-file walkthrough of how the runtime is assembled, or [Usage](/docs/core/usage) to see each mode in depth.
+:::

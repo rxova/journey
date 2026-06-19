@@ -4,7 +4,7 @@ title: "Graph Builder"
 
 # Graph Builder
 
-`createJourneyBuilder` is an alternative way to write graph-mode definitions. Instead of one central transition object, each step declares its own transitions and can be co-located with its component. The builder compiles to the same `JourneyDefinition` that `createJourneyMachine` and `createJourney` already accept — no new runtime concepts.
+`createGraphJourneyBuilder` is an alternative way to write graph-mode definitions. Instead of one central transition object, each step declares its own transitions and can be co-located with its component. The builder compiles to the same `JourneyDefinition` that `createJourneyMachine` and `createJourney` already accept — no new runtime concepts.
 
 Use it when:
 
@@ -14,17 +14,17 @@ Use it when:
 
 ## Setup
 
-Call `createJourneyBuilder` once, typed with the same generics as your definition. It returns three functions: `createStep`, `to`, and `build`.
+Call `createGraphJourneyBuilder` once, typed with the same generics as your definition. It returns three functions: `createStep`, `to`, and `build`.
 
 ```ts
-import { createJourneyBuilder } from "@rxova/journey-core";
+import { createGraphJourneyBuilder } from "@rxova/journey-core";
 
 type Context = { role: "user" | "admin"; name: string };
 type StepId = "login" | "dashboard" | "admin" | "blocked";
 type EventMap = { submit: { username: string }; back: unknown };
 type StepMeta = { label: string };
 
-const { createStep, to, build } = createJourneyBuilder<Context, StepId, EventMap, StepMeta>();
+const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, EventMap, StepMeta>();
 ```
 
 The builder is fully generic: `to` only accepts valid `StepId` values, event keys in `on` are constrained to `EventMap` plus the built-in events, and guard and `updateContext` callbacks are typed against `Context`.
@@ -104,10 +104,10 @@ export const journey = createJourney(definition);
 
 ```ts
 // builder.ts — typed singleton, no local deps
-import { createJourneyBuilder } from "@rxova/journey-core";
+import { createGraphJourneyBuilder } from "@rxova/journey-core";
 import type { Context, StepId, EventMap, StepMeta } from "./types";
 
-export const { createStep, to, build } = createJourneyBuilder<
+export const { createStep, to, build } = createGraphJourneyBuilder<
   Context,
   StepId,
   EventMap,
@@ -193,7 +193,7 @@ A typical layout for larger flows:
 src/
   types.ts               ← StepId, Context, EventMap, StepMeta
   api.ts                 ← shared API calls (no local deps)
-  builder.ts             ← createJourneyBuilder instance
+  builder.ts             ← createGraphJourneyBuilder instance
   steps/
     Login.tsx            ← component
     login.step.ts        ← step builder (imports builder + api)

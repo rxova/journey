@@ -1,164 +1,124 @@
 ---
-title: "TypeScript"
+id: typescript
+title: TypeScript
+sidebar_label: TypeScript
 ---
 
-Journey is TypeScript-first by design.
+# TypeScript
 
-The current public model is centered on four generic inputs:
+Journey is TypeScript-first. The three factory functions each accept a distinct, non-overlapping generic signature that enforces mode-specific contracts at compile time.
 
-- context
-- step ids
-- an event map
-- optional step metadata
+:::tip
+The [API Reference](/docs/core/api/reference) has the full generated type documentation for every export. This page covers the patterns you'll actually use day-to-day.
+:::
 
-## The Core Generic Shape
-
-The main type most teams start from is `JourneyDefinition`:
+## Factory Generic Signatures
 
 ```ts
-type JourneyDefinition<
-  TContext,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
-  TStepMeta = unknown
->
+// Linear — steps is an ordered array, no transitions field
+createLinearJourney<TContext, TStepId, TStepMeta, THandlers, TPlugins>(
+  def: LinearJourneyDefinition<TContext, TStepId, TStepMeta, THandlers>,
+  options?: JourneyMachineOptions<TPlugins>
+): LinearJourneyMachine<TContext, TStepId, TStepMeta, THandlers, TPlugins>
+
+// Graph — transitions required, builder output or plain definition
+createGraphJourney<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins>(
+  def: GraphJourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
+  options?: JourneyMachineOptions<TPlugins>
+): JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins>
+
+// Headless — initial required, no transitions
+createHeadlessJourney<TContext, TStepId, TStepMeta, THandlers, TPlugins>(
+  def: HeadlessJourneyDefinition<TContext, TStepId, TStepMeta, THandlers>,
+  options?: JourneyMachineOptions<TPlugins>
+): JourneyMachineWithPlugins<TContext, TStepId, never, TStepMeta, THandlers, TPlugins>
 ```
 
-That generic shape gives you four important places to customize the machine model:
+## Four Generic Inputs
 
-- `TContext`: shared runtime data
-- `TStepId`: valid step ids
-- `TEventMap`: custom events keyed by name, with payload types as values
-- `TStepMeta`: per-step definition metadata shape
+All three factories share the same four primary generics:
 
-## A Fully Typed Definition
+| Generic     | What it models                                                                  |
+| ----------- | ------------------------------------------------------------------------------- |
+| `TContext`  | Shared runtime data available to guards and transition callbacks                |
+| `TStepId`   | Union of valid step ids — keeps ids consistent across definition and navigation |
+| `TStepMeta` | Per-step static metadata shape (labels, icons, descriptions)                    |
+| `TEventMap` | Custom event types with payload shapes (graph mode only)                        |
+
+## Defining Types
 
 ```ts
-import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
+import { createLinearJourney } from "@rxova/journey-core";
 
 type StepId = "contact" | "details" | "review";
+
 type Context = {
   email: string;
   dirty: boolean;
 };
-type EventMap = {
-  requestClose: { source: "button" | "shortcut" };
-};
+
 type StepMeta = {
   title: string;
 };
 
-const journey: JourneyDefinition<Context, StepId, EventMap, StepMeta> = {
-  initial: "contact",
-  context: {
-    email: "",
-    dirty: false
-  },
-  steps: {
-    contact: { meta: { title: "Contact" } },
-    details: { meta: { title: "Details" } },
-    review: { meta: { title: "Review" } }
-  },
-  transitions: {
-    contact: {
-      goToNextStep: [{ to: "details" }]
-    },
-    details: {
-      goToNextStep: [{ to: "review" }]
-    },
-    review: {},
-    global: {
-      requestClose: [
-        {
-          to: "review",
-          when: ({ event }) => event.payload?.source === "shortcut"
-        }
-      ]
-    }
-  }
-};
-
-const machine = createJourneyMachine(journey);
-machine.startJourney();
+const machine = createLinearJourney<Context, StepId, StepMeta>({
+  context: { email: "", dirty: false },
+  steps: [
+    { id: "contact", meta: { title: "Contact" } },
+    { id: "details", meta: { title: "Details" } },
+    { id: "review", meta: { title: "Review" } }
+  ]
+});
 ```
 
-## Important Types To Know
-
-### `JourneyDefinition`
-
-This is the authoring type for the machine definition itself. It enforces that step ids used in `initial`, `steps`, and transitions all agree.
-
-### `JourneySendEvent`
-
-This is the event union accepted by `machine.send(...)`. It combines the built-in navigation events with the custom events derived from your event map.
-
-### `JourneySnapshot`
-
-This is the runtime state shape returned by `machine.getSnapshot()`. When you annotate selectors, helpers, or external adapters, this is usually the type you want.
-
-### `JourneySendResult`
-
-This is the resolved result from `send(...)` and convenience helpers. It is useful when your calling code needs to know whether a transition happened, which transition id matched, or whether an error occurred.
-
-### `JourneyObservationEvent`
-
-This is the lifecycle event union emitted by the machine. If you want a specific lifecycle member, prefer the named event types such as `JourneyStartObservationEvent`, `JourneyCompleteObservationEvent`, or `JourneyTerminateObservationEvent`.
-
-## Custom Events And Payloads
-
-The event map is the canonical way to model custom events.
+## Custom Events (Graph)
 
 ```ts
-type EventMap = {
+import { createGraphJourneyBuilder, createGraphJourney } from "@rxova/journey-core";
+
+type StepId = "form" | "confirm";
+type Context = { email: string };
+type Events = {
   saveDraft: { autosave: boolean };
   requestClose: { source: "button" | "shortcut" };
 };
 
-const journey: JourneyDefinition<Context, StepId, EventMap> = {
-  initial: "contact",
-  context: { email: "", dirty: false },
-  steps: {
-    contact: {},
-    details: {}
-  },
-  transitions: {
-    contact: {
-      saveDraft: [{ to: "contact" }],
-      goToNextStep: [{ to: "details" }]
-    }
-  }
-};
+const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, Events>();
 
+const machine = createGraphJourney(
+  build({
+    initial: "form",
+    context: { email: "" },
+    steps: [
+      createStep("form", {
+        on: {
+          saveDraft: [to("form")],
+          requestClose: [to("confirm")]
+        }
+      }),
+      createStep("confirm", {})
+    ]
+  })
+);
+
+// Payload is fully typed
 await machine.send({ type: "saveDraft", payload: { autosave: true } });
-// await machine.send({ type: "saveDraft", payload: { autosave: "yes" } }); // type error
+// await machine.send({ type: "saveDraft", payload: { autosave: "yes" } }); // TS error
 ```
 
-Legacy aliases like `JourneyCustomEvent`, `JourneyEventType`, and `JourneyEventPayloadMap` still exist for compatibility, but new code should prefer an event map directly.
+## Typing Snapshots and Selectors
 
-## Typing Snapshots And Selectors
-
-Most teams do not need to annotate `machine` directly because inference is usually enough. Where explicit types help is at the edges: selectors, utilities, and external adapters.
+Most teams don't annotate `machine` directly — inference is usually enough. Explicit types help at the edges: selectors, shared utilities, and external adapters.
 
 ```ts
-import type { JourneySnapshot } from "@rxova/journey-core";
+import type { JourneySnapshot, JourneySendResult } from "@rxova/journey-core";
 
 type CheckoutSnapshot = JourneySnapshot<Context, StepId>;
 
-const selectCurrentStep = (snapshot: CheckoutSnapshot) => snapshot.currentStepId;
-```
+const selectStep = (snap: CheckoutSnapshot) => snap.currentStepId;
 
-## Typing Send Results
-
-If a caller needs to react differently based on success or failure, annotate the result instead of re-deriving it.
-
-```ts
-import type { JourneySendResult } from "@rxova/journey-core";
-
-const result: JourneySendResult<Context, StepId> = await machine.send({
-  type: "requestClose",
-  payload: { source: "button" }
-});
-
+// Typing send results
+const result: JourneySendResult<Context, StepId> = await machine.send({ type: "submit" });
 if (!result.transitioned) {
   console.error(result.error);
 }
@@ -166,9 +126,7 @@ if (!result.transitioned) {
 
 ## Context Immutability
 
-Journey cannot enforce `Readonly` on `TContext` internally — doing so would require transition updaters to return `Readonly<TContext>`, which creates friction with object spread and breaks the common pattern of returning the next context object.
-
-If you want **compile-time mutation protection**, type your context as `Readonly<T>` yourself:
+Journey cannot enforce `Readonly` internally. If you want compile-time mutation protection, type your context as `Readonly<T>`:
 
 ```ts
 type Context = Readonly<{
@@ -177,42 +135,21 @@ type Context = Readonly<{
 }>;
 ```
 
-Everything that touches context — guards and transition `updateContext` callbacks — will then reject direct mutations:
+Guards and `updateContext` callbacks will then reject direct mutations:
 
 ```ts
 updateContext: ({ context }) => {
-  context.email = "x"; // type error: cannot assign to 'email' because it is read-only
+  context.email = "x"; // TS error: read-only property
   return { ...context, email: "x" }; // ok
 };
 ```
 
-`Readonly<T>` is shallow — nested objects are still mutable at their own level. For deep protection, use a recursive utility like `DeepReadonly<T>` from a utility library, or flatten nested state into a single level.
+:::note
+`Readonly<T>` is shallow. For deep protection, use a recursive utility like `DeepReadonly<T>` from a utility library, or keep context flat.
+:::
 
-## When To Let Inference Win
+## When to Let Inference Win
 
-Be explicit for:
+Be explicit for shared step id unions, shared event maps, and reusable snapshot or result helpers.
 
-- shared step id unions
-- shared event maps
-- reusable snapshot or result helpers
-
-Let inference win for:
-
-- most `machine` variables
-- most inline selectors
-- transition callback argument types
-
-That balance usually gives the best readability without turning every line into generic noise.
-
-## Recommended Team Pattern
-
-1. Define `StepId`, `Context`, and `EventMap` next to the journey.
-2. Use `transitions: ["a", "b", "c"]` for simple sequences.
-3. Switch to the event-keyed transition graph when the flow starts branching.
-4. Put renderer-specific per-step configuration inside `meta`.
-
-## Related Docs
-
-- [Quickstart](./getting-started.md)
-- [Usage](./usage.md)
-- [Transition Syntax](./api/transitions-syntax.md)
+Let inference win for most `machine` variables, inline selectors, and transition callback arguments.
