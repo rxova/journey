@@ -45,18 +45,37 @@ export const createAnalyticsPlugin = <
 >(
   options: JourneyAnalyticsPluginOptions<TContext, TStepId, TEventMap, TStepMeta>
 ) => {
-  const recentEvents: {
+  type RecentEvent = {
     source: "lifecycle" | "custom";
     timestamp: number;
     tracked: JourneyAnalyticsTrackedEvent<TContext, TStepId, TStepMeta>;
     success: boolean;
     error?: unknown;
-  }[] = [];
-  const pushRecentEvent = (entry: (typeof recentEvents)[number]) => {
-    if (recentEvents.length >= 100) {
-      recentEvents.shift();
+  };
+  const RECENT_EVENT_CAPACITY = 100;
+  const recentEventsBuffer: (RecentEvent | undefined)[] = new Array(RECENT_EVENT_CAPACITY);
+  let recentEventsWriteIndex = 0;
+  let recentEventsCount = 0;
+  const pushRecentEvent = (entry: RecentEvent) => {
+    recentEventsBuffer[recentEventsWriteIndex] = entry;
+    recentEventsWriteIndex = (recentEventsWriteIndex + 1) % RECENT_EVENT_CAPACITY;
+    if (recentEventsCount < RECENT_EVENT_CAPACITY) recentEventsCount++;
+  };
+  const snapshotRecentEvents = (): RecentEvent[] => {
+    if (recentEventsCount < RECENT_EVENT_CAPACITY) {
+      return recentEventsBuffer.slice(0, recentEventsCount) as RecentEvent[];
     }
-    recentEvents.push(entry);
+    return [
+      ...recentEventsBuffer.slice(recentEventsWriteIndex),
+      ...recentEventsBuffer.slice(0, recentEventsWriteIndex)
+    ] as RecentEvent[];
+  };
+  const clearRecentEvents = () => {
+    for (let index = 0; index < RECENT_EVENT_CAPACITY; index++) {
+      recentEventsBuffer[index] = undefined;
+    }
+    recentEventsWriteIndex = 0;
+    recentEventsCount = 0;
   };
   let unsubscribe: (() => void) | undefined;
   let startedAt: number | null = null;
@@ -352,8 +371,8 @@ export const createAnalyticsPlugin = <
                 data: {
                   machineId: options.machineId ?? null,
                   includeStepMeta: options.includeStepMeta ?? false,
-                  bufferSize: 100,
-                  entries: [...recentEvents]
+                  bufferSize: RECENT_EVENT_CAPACITY,
+                  entries: snapshotRecentEvents()
                 }
               })
             },
@@ -380,7 +399,7 @@ export const createAnalyticsPlugin = <
               mutates: true,
               output: "void",
               run: () => {
-                recentEvents.length = 0;
+                clearRecentEvents();
                 return { kind: "void" };
               }
             }
