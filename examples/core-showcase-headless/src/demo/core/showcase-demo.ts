@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
-import { createJourneyMachine } from "@rxova/journey-core";
+import {
+  createLinearJourney,
+  createGraphJourney,
+  createHeadlessJourney
+} from "@rxova/journey-core";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
 import "../styles/demo.css";
 import {
@@ -30,12 +34,12 @@ const titles: Record<Mode, string> = {
 export const mountCoreShowcase = async (mode: Mode, root: HTMLElement) => {
   const machine =
     mode === "linear"
-      ? createJourneyMachine(linearDefinition)
+      ? createLinearJourney(linearDefinition)
       : mode === "graph"
-        ? createJourneyMachine(graphDefinition, {
+        ? createGraphJourney(graphDefinition, {
             plugins: [createExecutionPathsPlugin()] as const
           })
-        : createJourneyMachine(headlessDefinition);
+        : createHeadlessJourney(headlessDefinition);
 
   const eventLog: string[] = [];
 

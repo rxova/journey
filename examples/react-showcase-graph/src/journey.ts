@@ -1,4 +1,4 @@
-import { createJourney } from "@rxova/journey-react";
+import { createGraphJourney } from "@rxova/journey-react";
 import type { JourneyBuilderRuntimeFromDefinition } from "@rxova/journey-react";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
 import { build } from "./builder";
@@ -75,7 +75,7 @@ const definition = build({
 const plugins = [createExecutionPathsPlugin()] as const;
 
 export const journey: JourneyBuilderRuntimeFromDefinition<typeof definition, typeof plugins> =
-  createJourney(definition, {
+  createGraphJourney(definition, {
     defaultTimeoutMs: 15000,
     plugins
   });

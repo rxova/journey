@@ -1,3 +1,7 @@
+export { createLinearJourney } from "./create-linear-journey";
+export { createHeadlessJourney } from "./create-headless-journey";
+export { createGraphJourney } from "./create-graph-journey";
+/** @deprecated Use `createLinearJourney`, `createHeadlessJourney`, or `createGraphJourney` instead. */
 export { createJourneyMachine } from "./journey-machine";
 export { createJourneyBuilder } from "./journey-builder";
 export { getJourneyMachineDevtoolsRegistry } from "./journey-machine/devtools-registry";
@@ -15,6 +19,11 @@ export type {
   JourneyToBuilder
 } from "./journey-builder";
 export {
+  type GraphJourneyDefinition,
+  type HeadlessJourneyDefinition,
+  type LinearJourneyDefinition,
+  type LinearJourneyMachine,
+  type LinearJourneyStep,
   type JourneyAnalyticsEventName,
   type JourneyAnalyticsEventPayload,
   type JourneyAnalyticsPluginOptions,

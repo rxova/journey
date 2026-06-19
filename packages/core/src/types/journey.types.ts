@@ -217,6 +217,52 @@ export type JourneySelector<
 /** Equality function used to compare selected values between snapshot updates. */
 export type JourneyEqualityFn<TValue> = (previous: TValue, next: TValue) => boolean;
 
+/** A single entry in a linear journey's steps array — either a bare step id or a step object. */
+export type LinearJourneyStep<
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TStepMeta = unknown,
+  THandlers extends Record<string, unknown> = Record<never, never>
+> =
+  | TStepId
+  | {
+      id: TStepId;
+      meta?: TStepMeta;
+      onEnter?: JourneyStepLifecycleCallback<TContext, TStepId, Record<never, never>, THandlers>;
+      onLeave?: JourneyStepLifecycleCallback<TContext, TStepId, Record<never, never>, THandlers>;
+    };
+
+/** Input type for `createLinearJourney`. Steps array drives both ordering and per-step config. */
+export type LinearJourneyDefinition<
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TStepMeta = unknown,
+  THandlers extends Record<string, unknown> = Record<never, never>
+> = {
+  context: TContext;
+  handlers?: THandlers;
+  steps: readonly [
+    LinearJourneyStep<TContext, TStepId, TStepMeta, THandlers>,
+    ...LinearJourneyStep<TContext, TStepId, TStepMeta, THandlers>[]
+  ];
+};
+
+/** Input type for `createHeadlessJourney`. `initial` is required; no `transitions` allowed. */
+export type HeadlessJourneyDefinition<
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TStepMeta = unknown,
+  THandlers extends Record<string, unknown> = Record<never, never>
+> = {
+  initial: TStepId;
+  context: TContext;
+  handlers?: THandlers;
+  steps: Record<
+    TStepId,
+    JourneyStepDefinition<TContext, TStepId, Record<never, never>, TStepMeta, THandlers>
+  >;
+};
+
 /** Shared definition fields without transition configuration. */
 export type JourneyDefinitionBase<
   TContext extends JourneyJsonObject,

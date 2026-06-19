@@ -329,6 +329,24 @@ export type JourneyMachine<
   ) => () => void;
 };
 
+/** Linear journey machine — base machine plus index-based navigation. */
+export type LinearJourneyMachine<
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TStepMeta = unknown,
+  THandlers extends Record<string, unknown> = Record<never, never>,
+  TPlugins extends readonly JourneyMachinePlugin[] = readonly JourneyMachinePlugin[]
+> = JourneyMachineWithPlugins<
+  TContext,
+  TStepId,
+  Record<never, never>,
+  TStepMeta,
+  THandlers,
+  TPlugins
+> & {
+  goToStepByIndex: (index: number) => Promise<JourneySendResult<TContext, TStepId>>;
+};
+
 /** Journey machine API augmented by plugin-provided extensions. */
 export type JourneyMachineWithPlugins<
   TContext extends JourneyJsonObject,

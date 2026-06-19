@@ -1,5 +1,5 @@
-import { createJourney } from "@rxova/journey-react";
-import type { JourneyDefinition } from "@rxova/journey-core";
+import { createHeadlessJourney } from "@rxova/journey-react";
+import type { HeadlessJourneyDefinition } from "@rxova/journey-core";
 
 export type StepId =
   | "login"
@@ -20,7 +20,7 @@ export type LoginContext = {
   attempts: number;
 };
 
-const definition: JourneyDefinition<LoginContext, StepId> = {
+const definition: HeadlessJourneyDefinition<LoginContext, StepId> = {
   initial: "login",
   context: {
     username: "",
@@ -59,4 +59,4 @@ export const {
   JourneyProvider,
   StepRenderer,
   machine
-} = createJourney(definition);
+} = createHeadlessJourney(definition);

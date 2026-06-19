@@ -2,8 +2,8 @@
 // @ts-nocheck
 import {
   createJourneyBuilder,
-  type JourneyDefinition,
-  type JourneyLinearStep
+  type HeadlessJourneyDefinition,
+  type LinearJourneyDefinition
 } from "@rxova/journey-core";
 import { delay } from "./support";
 
@@ -73,10 +73,9 @@ export const initialLoginContext = (): LoginContext => ({
   attempts: 0
 });
 
-export const linearDefinition: JourneyDefinition<
+export const linearDefinition: LinearJourneyDefinition<
   LoginContext,
   "login" | "setup2fa" | "verifyCode" | "loggedIn",
-  Record<never, never>,
   { label: string }
 > = {
   context: {
@@ -88,25 +87,11 @@ export const linearDefinition: JourneyDefinition<
     error: null,
     attempts: 0
   },
-  steps: {
-    login: { meta: { label: "Login" } },
-    setup2fa: { meta: { label: "Setup 2FA" } },
-    verifyCode: { meta: { label: "Verify Code" } },
-    loggedIn: { meta: { label: "Logged In" } }
-  },
-  transitions: [
-    "login",
-    {
-      step: "setup2fa",
-      label: "login-to-setup",
-      timeoutMs: 8000,
-      updateContext: ({ context }) => ({ ...context, password: "" })
-    } satisfies JourneyLinearStep<LoginContext, "login" | "setup2fa" | "verifyCode" | "loggedIn">,
-    {
-      step: "verifyCode",
-      label: "setup-to-verify"
-    } satisfies JourneyLinearStep<LoginContext, "login" | "setup2fa" | "verifyCode" | "loggedIn">,
-    "loggedIn"
+  steps: [
+    { id: "login", meta: { label: "Login" } },
+    { id: "setup2fa", meta: { label: "Setup 2FA" } },
+    { id: "verifyCode", meta: { label: "Verify Code" } },
+    { id: "loggedIn", meta: { label: "Logged In" } }
   ]
 };
 
@@ -226,7 +211,7 @@ export const graphDefinition = build({
   ]
 });
 
-export const headlessDefinition: JourneyDefinition<LoginContext, LoginStepId> = {
+export const headlessDefinition: HeadlessJourneyDefinition<LoginContext, LoginStepId> = {
   initial: "login",
   context: initialLoginContext(),
   steps: {
