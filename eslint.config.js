@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import js from "@eslint/js";
 import tsParser from "@typescript-eslint/parser";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
@@ -10,6 +13,131 @@ const TEST_FILE_GLOBS = [
   "**/__tests__/**/*.{ts,tsx,js,jsx,mts,cts,cjs}",
   "**/*.{test,spec}.{ts,tsx,js,jsx,mts,cts,cjs}"
 ];
+const PACKAGE_BOUNDARY_FILE_GLOBS = [
+  "packages/*/src/**/*.{ts,tsx,mts,cts}",
+  "packages/*/test/**/*.{ts,tsx,mts,cts}"
+];
+const REPO_ROOT = path.dirname(fileURLToPath(import.meta.url));
+const PACKAGES_ROOT = path.join(REPO_ROOT, "packages");
+const WORKSPACE_PACKAGES = fs
+  .readdirSync(PACKAGES_ROOT, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => {
+    const packageDir = path.join(PACKAGES_ROOT, entry.name);
+    const packageJson = JSON.parse(fs.readFileSync(path.join(packageDir, "package.json"), "utf8"));
+    const declaredWorkspaceDependencies = new Set(
+      [
+        ...Object.keys(packageJson.dependencies ?? {}),
+        ...Object.keys(packageJson.devDependencies ?? {}),
+        ...Object.keys(packageJson.peerDependencies ?? {}),
+        ...Object.keys(packageJson.optionalDependencies ?? {})
+      ].filter((dependencyName) => dependencyName.startsWith("@rxova/"))
+    );
+
+    return {
+      dir: packageDir,
+      dirName: entry.name,
+      name: packageJson.name,
+      declaredWorkspaceDependencies
+    };
+  });
+
+function findWorkspacePackageForFile(filePath) {
+  return WORKSPACE_PACKAGES.find(
+    (workspacePackage) =>
+      filePath === workspacePackage.dir || filePath.startsWith(`${workspacePackage.dir}${path.sep}`)
+  );
+}
+
+function findWorkspacePackageForImport(specifier) {
+  return WORKSPACE_PACKAGES.find(
+    (workspacePackage) =>
+      specifier === workspacePackage.name || specifier.startsWith(`${workspacePackage.name}/`)
+  );
+}
+
+const workspacePlugin = {
+  rules: {
+    "enforce-package-boundaries": {
+      meta: {
+        type: "problem",
+        docs: {
+          description:
+            "Require internal workspace packages to be imported via their package name and only when declared."
+        },
+        schema: []
+      },
+      create(context) {
+        const filename = context.filename ?? context.getFilename();
+
+        if (!path.isAbsolute(filename)) {
+          return {};
+        }
+
+        const sourcePackage = findWorkspacePackageForFile(filename);
+
+        if (!sourcePackage) {
+          return {};
+        }
+
+        function checkImport(node, sourceNode) {
+          const specifier = sourceNode?.value;
+
+          if (typeof specifier !== "string") {
+            return;
+          }
+
+          if (specifier.startsWith(".")) {
+            const resolvedPath = path.resolve(path.dirname(filename), specifier);
+            const targetPackage = findWorkspacePackageForFile(resolvedPath);
+
+            if (targetPackage && targetPackage.name !== sourcePackage.name) {
+              context.report({
+                node: sourceNode,
+                message: `Import from ${targetPackage.name} via its package name instead of a relative path.`
+              });
+            }
+
+            return;
+          }
+
+          const targetPackage = findWorkspacePackageForImport(specifier);
+
+          if (!targetPackage || targetPackage.name === sourcePackage.name) {
+            return;
+          }
+
+          if (!sourcePackage.declaredWorkspaceDependencies.has(targetPackage.name)) {
+            context.report({
+              node: sourceNode,
+              message: `Declare ${targetPackage.name} in packages/${sourcePackage.dirName}/package.json before importing it.`
+            });
+          }
+        }
+
+        return {
+          ExportAllDeclaration(node) {
+            checkImport(node, node.source);
+          },
+          ExportNamedDeclaration(node) {
+            if (node.source) {
+              checkImport(node, node.source);
+            }
+          },
+          ImportDeclaration(node) {
+            checkImport(node, node.source);
+          },
+          ImportExpression(node) {
+            checkImport(node, node.source);
+          },
+          TSImportType(node) {
+            checkImport(node, node.argument);
+          }
+        };
+      }
+    }
+  }
+};
 
 export default [
   {
@@ -73,6 +201,15 @@ export default [
       "react-hooks/set-state-in-effect": "off",
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/consistent-type-imports": ["error", { prefer: "type-imports" }]
+    }
+  },
+  {
+    files: PACKAGE_BOUNDARY_FILE_GLOBS,
+    plugins: {
+      workspace: workspacePlugin
+    },
+    rules: {
+      "workspace/enforce-package-boundaries": "error"
     }
   },
   {
