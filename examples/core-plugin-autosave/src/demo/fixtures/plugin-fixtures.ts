@@ -1,5 +1,5 @@
 import {
-  createJourneyBuilder,
+  createGraphJourneyBuilder,
   type JourneyDefinition,
   type JourneyJsonObject
 } from "@rxova/journey-core";
@@ -50,7 +50,7 @@ export const pluginDefinition: JourneyDefinition<PluginContext, PluginStepId> = 
   transitions: ["profile", "review", "done"]
 };
 
-const { createStep, to, build } = createJourneyBuilder<
+const { createStep, to, build } = createGraphJourneyBuilder<
   JourneyJsonObject,
   StructureStepId,
   StructureEventMap,

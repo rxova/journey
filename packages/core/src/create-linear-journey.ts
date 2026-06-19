@@ -9,6 +9,7 @@ import type {
   LinearJourneyMachine
 } from "./types";
 
+/** Creates a linear journey machine from an ordered steps array. Steps are traversed sequentially; `goToNextStep` advances through them in order. */
 export function createLinearJourney<
   TContext extends JourneyJsonObject,
   TStepId extends string,

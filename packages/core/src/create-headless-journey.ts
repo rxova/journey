@@ -7,6 +7,7 @@ import type {
   JourneyMachineWithPlugins
 } from "./types";
 
+/** Creates a headless journey machine with no predefined transition graph. Navigation is entirely caller-driven via `goToStepById`. */
 export function createHeadlessJourney<
   TContext extends JourneyJsonObject,
   TStepId extends string,

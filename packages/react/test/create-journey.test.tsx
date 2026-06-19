@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import React from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 
-import { createJourneyBuilder } from "@rxova/journey-core";
+import { createGraphJourneyBuilder } from "@rxova/journey-core";
 import { createJourney, createJourneyFactory, type JourneyViews } from "@rxova/journey-react";
 import type { JourneyDefinition } from "@rxova/journey-core";
 
@@ -119,7 +119,7 @@ describe("createJourney", () => {
     };
     type BuilderContext = { attempts: number };
 
-    const { createStep, to, build } = createJourneyBuilder<
+    const { createStep, to, build } = createGraphJourneyBuilder<
       BuilderContext,
       BuilderStepId,
       BuilderEventMap

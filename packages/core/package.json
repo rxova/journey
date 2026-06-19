@@ -115,9 +115,9 @@
       "limit": "8 kB"
     },
     {
-      "name": "core/createJourneyBuilder",
+      "name": "core/createGraphJourneyBuilder",
       "path": "dist/index.js",
-      "import": "{ createJourneyBuilder }",
+      "import": "{ createGraphJourneyBuilder }",
       "limit": "1 kB"
     },
     {

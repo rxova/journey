@@ -9,6 +9,7 @@ import { buildJourneyRuntime } from "./create-journey-machine-runtime";
 import type { LinearJourneyRuntime } from "./types";
 import type { JourneyOptionsInput } from "./type-helpers";
 
+/** Creates a linear journey runtime for React. Returns a `LinearJourneyRuntime` with hooks, provider, and the extended `LinearJourneyMachine`. */
 export function createLinearJourney<
   TContext extends JourneyJsonObject,
   TStepId extends string,

@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { createJourneyBuilder } from "@rxova/journey-core";
+import { createGraphJourneyBuilder } from "@rxova/journey-core";
 
 type Context = { count: number; role: string };
 type StepId = "start" | "review" | "done";
 type EventMap = { submit: { source: string } };
 
-describe("createJourneyBuilder extra coverage", () => {
+describe("createGraphJourneyBuilder extra coverage", () => {
   it("chains lifecycle modifiers on transition builders", () => {
-    const { to } = createJourneyBuilder<Context, StepId, EventMap>();
+    const { to } = createGraphJourneyBuilder<Context, StepId, EventMap>();
     const when = () => true;
     const updateContext = ({ context }: { context: Context }) => context;
     const onEnter = () => undefined;
@@ -34,7 +34,7 @@ describe("createJourneyBuilder extra coverage", () => {
   });
 
   it("serializes step hooks and function-based entries", () => {
-    const { createStep, build } = createJourneyBuilder<Context, StepId, EventMap>();
+    const { createStep, build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
     const stepOnEnter = () => undefined;
     const stepOnLeave = () => undefined;
     const transitionOnEnter = () => undefined;
@@ -77,7 +77,7 @@ describe("createJourneyBuilder extra coverage", () => {
   });
 
   it("serializes terminal candidate lifecycle hooks", () => {
-    const { createStep, build } = createJourneyBuilder<Context, StepId, EventMap>();
+    const { createStep, build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
     const when = ({ context }: { context: Context }) => context.role === "admin";
     const updateContext = ({ context }: { context: Context }) => ({
       ...context,
@@ -120,7 +120,7 @@ describe("createJourneyBuilder extra coverage", () => {
         return message.length;
       }
     };
-    const { createStep, build, to } = createJourneyBuilder<
+    const { createStep, build, to } = createGraphJourneyBuilder<
       Context,
       StepId,
       EventMap,

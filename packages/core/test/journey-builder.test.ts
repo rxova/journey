@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { createJourneyBuilder, createJourneyMachine } from "@rxova/journey-core";
+import { createGraphJourneyBuilder, createJourneyMachine } from "@rxova/journey-core";
 
 type Context = { count: number; role: string };
 type StepId = "start" | "review" | "admin" | "done" | "blocked";
 type EventMap = { submit: { origin: string }; back: unknown };
 
-describe("createJourneyBuilder", () => {
+describe("createGraphJourneyBuilder", () => {
   it("returns createStep, to, and build", () => {
-    const builder = createJourneyBuilder<Context, StepId, EventMap>();
+    const builder = createGraphJourneyBuilder<Context, StepId, EventMap>();
     expect(typeof builder.createStep).toBe("function");
     expect(typeof builder.to).toBe("function");
     expect(typeof builder.build).toBe("function");
@@ -16,7 +16,7 @@ describe("createJourneyBuilder", () => {
 
   describe("createStep", () => {
     it("creates a step with only meta — no transitions", () => {
-      const { createStep, build } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { createStep, build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
 
       const startStep = createStep("start", { meta: { label: "Start" } as unknown });
       const doneStep = createStep("done");
@@ -33,7 +33,7 @@ describe("createJourneyBuilder", () => {
     });
 
     it("creates a step with on transitions", () => {
-      const { createStep, to, build } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
 
       const startStep = createStep("start", {
         on: { submit: [to("review"), to("blocked")] }
@@ -56,7 +56,7 @@ describe("createJourneyBuilder", () => {
 
   describe("to()", () => {
     it("creates a basic edge with just a target", () => {
-      const { to } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { to } = createGraphJourneyBuilder<Context, StepId, EventMap>();
       const builder = to("review");
       expect(builder._candidate._to).toBe("review");
       expect(builder._candidate._when).toBeUndefined();
@@ -64,14 +64,14 @@ describe("createJourneyBuilder", () => {
     });
 
     it(".when() stores the guard and returns a new builder", () => {
-      const { to } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { to } = createGraphJourneyBuilder<Context, StepId, EventMap>();
       const guard = ({ context }: { context: Context }) => context.count > 0;
       const builder = to("review").when(guard);
       expect(builder._candidate._when).toBe(guard);
     });
 
     it(".updateContext() stores the effect and returns a new builder", () => {
-      const { to } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { to } = createGraphJourneyBuilder<Context, StepId, EventMap>();
       const effect = ({ context }: { context: Context }) => ({
         ...context,
         count: context.count + 1
@@ -81,19 +81,19 @@ describe("createJourneyBuilder", () => {
     });
 
     it(".label() stores the label", () => {
-      const { to } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { to } = createGraphJourneyBuilder<Context, StepId, EventMap>();
       const builder = to("review").label("my-transition");
       expect(builder._candidate._label).toBe("my-transition");
     });
 
     it(".timeoutMs() stores the timeout", () => {
-      const { to } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { to } = createGraphJourneyBuilder<Context, StepId, EventMap>();
       const builder = to("review").timeoutMs(5000);
       expect(builder._candidate._timeoutMs).toBe(5000);
     });
 
     it("chains are immutable — original is unchanged", () => {
-      const { to } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { to } = createGraphJourneyBuilder<Context, StepId, EventMap>();
       const base = to("review");
       const withGuard = base.when(() => true);
       expect(base._candidate._when).toBeUndefined();
@@ -101,7 +101,7 @@ describe("createJourneyBuilder", () => {
     });
 
     it("chains all modifiers together", () => {
-      const { to } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { to } = createGraphJourneyBuilder<Context, StepId, EventMap>();
       const guard = () => true;
       const effect = ({ context }: { context: Context }) => context;
       const builder = to("review").when(guard).updateContext(effect).label("t1").timeoutMs(3000);
@@ -115,7 +115,7 @@ describe("createJourneyBuilder", () => {
     });
 
     it("keeps runtime overwrite semantics if duplicate modifiers are forced through", () => {
-      const { to } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { to } = createGraphJourneyBuilder<Context, StepId, EventMap>();
       const firstGuard = () => true;
       const secondGuard = () => false;
       const firstUpdate = ({ context }: { context: Context }) => ({ ...context, count: 1 });
@@ -151,7 +151,7 @@ describe("createJourneyBuilder", () => {
 
   describe("build()", () => {
     it("passes through initial and context", () => {
-      const { build } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
       const context = { count: 42, role: "admin" };
       const definition = build({
         initial: "start",
@@ -163,7 +163,7 @@ describe("createJourneyBuilder", () => {
     });
 
     it("includes label and timeoutMs in edge when set", () => {
-      const { createStep, to, build } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
 
       const startStep = createStep("start", {
         on: { submit: [to("review").label("start-submit").timeoutMs(1000)] }
@@ -184,7 +184,7 @@ describe("createJourneyBuilder", () => {
     });
 
     it("assembles global.completeJourney: true", () => {
-      const { build } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
 
       const definition = build({
         initial: "start",
@@ -199,7 +199,7 @@ describe("createJourneyBuilder", () => {
     });
 
     it("serializes step terminal candidates with guards, effects, labels, and timeouts", () => {
-      const { createStep, build } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { createStep, build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
       const when = ({ context }: { context: Context }) => context.role === "admin";
       const effect = ({ context }: { context: Context }) => ({
         ...context,
@@ -227,7 +227,7 @@ describe("createJourneyBuilder", () => {
     });
 
     it("serializes global terminal candidate arrays", () => {
-      const { build } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
       const when = ({ context }: { context: Context }) => context.count > 0;
       const effect = ({ context }: { context: Context }) => ({
         ...context,
@@ -254,7 +254,7 @@ describe("createJourneyBuilder", () => {
     });
 
     it("produces a definition that createJourneyMachine accepts", () => {
-      const { createStep, to, build } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
 
       const startStep = createStep("start", {
         on: { submit: [to("review")] }
@@ -274,7 +274,7 @@ describe("createJourneyBuilder", () => {
 
   describe("end-to-end with createJourneyMachine", () => {
     it("guard fires on send — matching guard allows transition", async () => {
-      const { createStep, to, build } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
 
       const startStep = createStep("start", {
         on: {
@@ -298,7 +298,7 @@ describe("createJourneyBuilder", () => {
     });
 
     it("guard fires on send — non-matching guard falls through to next candidate", async () => {
-      const { createStep, to, build } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
 
       const startStep = createStep("start", {
         on: {
@@ -322,7 +322,7 @@ describe("createJourneyBuilder", () => {
     });
 
     it("updateContext mutates context on transition", async () => {
-      const { createStep, to, build } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
 
       const startStep = createStep("start", {
         on: {
@@ -348,7 +348,7 @@ describe("createJourneyBuilder", () => {
     });
 
     it("step terminal entries run guards and effects at runtime", async () => {
-      const { createStep, to, build } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
 
       const definition = build({
         initial: "start",
@@ -389,7 +389,7 @@ describe("createJourneyBuilder", () => {
     });
 
     it("global non-terminal event routes correctly", async () => {
-      const { createStep, to, build } = createJourneyBuilder<Context, StepId, EventMap>();
+      const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
 
       const definition = build({
         initial: "start",
