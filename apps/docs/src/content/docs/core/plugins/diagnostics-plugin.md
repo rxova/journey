@@ -1,82 +1,71 @@
 ---
-title: "Diagnostics Plugin"
+title: Diagnostics
+sidebar_label: Diagnostics
 ---
 
-# Diagnostics Plugin
+# Diagnostics
 
-The diagnostics plugin adds structural analysis helpers to a machine.
+The diagnostics plugin checks the _structure_ of your flow — before anyone runs it. It reads the
+journey definition and reports issues like unreachable steps, dead ends, and cycles, which makes it
+a natural fit for authoring, tests, and CI gates.
 
-It does not inspect live runtime state. It analyzes the journey definition and reports issues that are useful during authoring, testing, CI validation, or tooling.
+It doesn't inspect live runtime state; it analyzes the declared graph.
 
-## Install And Use
+## Install and use
 
 ```ts
-import { createJourneyMachine } from "@rxova/journey-core";
+import { createGraphJourney } from "@rxova/journey-core";
 import { createDiagnosticsPlugin } from "@rxova/journey-core/diagnostics";
 
-const machine = createJourneyMachine(journey, {
+const machine = createGraphJourney(journey, {
   plugins: [createDiagnosticsPlugin()]
 });
 
-const diagnostics = machine.getDiagnostics({
-  requireExplicitCompletion: true
-});
+const diagnostics = machine.getDiagnostics({ requireExplicitCompletion: true });
 ```
 
-## What You Get
-
-The plugin augments the machine with:
+## What you get
 
 ```ts
 machine.getDiagnostics(options);
 ```
 
-That result includes:
+The result has two parts — the findings and an aggregate summary:
 
-- `issues`: ordered structural findings
-- `summary`: aggregate counts and mode metadata
+- `issues` — ordered structural findings, each with a `code`, a severity (`warning` or `error`), and
+  context-dependent fields like `stepId`, `from`, `eventType`, `transitionId`, `label`, or `steps`.
+- `summary` — counts and metadata: `mode`, `stepCount`, `reachableStepCount`,
+  `unreachableStepCount`, `deadEndCount`, `cycleCount`, `shadowedTransitionCount`,
+  `graphChecksSkipped`, and `terminalPathExists`.
 
-## Issue Types
+## What it checks
 
-The current diagnostics codes are:
-
-- `cycle-detected`
-- `dead-end-step`
-- `duplicate-transition-id`
-- `no-terminal-path`
-- `shadowed-transition`
-- `unreachable-step`
-
-Issue severities are either `warning` or `error`.
-
-Depending on the finding, an issue may include `stepId`, `from`, `eventType`, `transitionId`, `label`, or `steps`.
-
-## Summary Fields
-
-The diagnostics summary reports:
-
-- `mode`
-- `stepCount`
-- `reachableStepCount`
-- `unreachableStepCount`
-- `deadEndCount`
-- `cycleCount`
-- `shadowedTransitionCount`
-- `graphChecksSkipped`
-- `terminalPathExists`
+| Code                      | Meaning                                                                       |
+| ------------------------- | ----------------------------------------------------------------------------- |
+| `unreachable-step`        | A declared step nothing can reach from the initial step                       |
+| `dead-end-step`           | A reachable step with no outgoing transition and no terminal exit             |
+| `shadowed-transition`     | An unconditional transition that hides later ones for the same `from + event` |
+| `cycle-detected`          | A cycle in the declared graph                                                 |
+| `no-terminal-path`        | No terminal path is reachable from the initial step                           |
+| `duplicate-transition-id` | Two transitions share an id                                                   |
 
 ## Options
 
-- `requireExplicitCompletion`: when `true`, the last step in a linear journey is not treated as an implicit terminal path
+`requireExplicitCompletion` — when `true`, the last step of a linear journey isn't treated as an
+implicit terminal path. Turn it on for teams that require explicit terminal transitions instead of
+relying on linear auto-completion.
 
-That option matters for teams that require explicit terminal transitions instead of relying on linear auto-completion.
+## Gotchas
 
-## What It Checks
+:::note
+For headless journeys there's no declared graph to analyze, so graph-only checks are skipped and
+`summary.graphChecksSkipped` is `true`. That's expected, not a failure.
+:::
 
-- unreachable declared steps
-- reachable dead ends with no outgoing transition or terminal exit
-- unconditional transitions that shadow later transitions for the same `from + event`
-- cycles in the declared graph
-- whether any terminal path is reachable from the initial step
+A good pattern is to assert on diagnostics in a test so a structural regression — an orphaned step, a
+missing terminal path — fails CI instead of shipping.
 
-For headless journeys, graph-only checks are skipped and `summary.graphChecksSkipped` is `true`.
+## Where to next
+
+- [Execution paths](/docs/core/plugins/execution-paths-plugin) — enumerate the paths through the graph.
+- [Graph mode](/docs/core/usage/graph) — the transitions these checks analyze.

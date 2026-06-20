@@ -1,78 +1,69 @@
 ---
-title: "Execution Paths Plugin"
+title: Execution paths
+sidebar_label: Execution paths
 ---
 
-# Execution Paths Plugin
+# Execution paths
 
-The execution-paths plugin adds structural path analysis to a machine.
+The execution-paths plugin enumerates the routes through your flow — every declared path from the
+initial step — without running anything. It's built for understanding shape: reviewing complexity
+before you ship, asserting on a flow's structure in tests, or generating diagrams from a definition.
 
-It does not run the journey. It reads the resolved definition and enumerates possible declared paths from the initial step. That makes it useful for tooling, tests, flow review, and product conversations where you want to understand the shape of the graph without evaluating guards or mutating runtime state.
-
-## Install And Use
+## Install and use
 
 ```ts
-import { createJourneyMachine } from "@rxova/journey-core";
+import { createGraphJourney } from "@rxova/journey-core";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
 
-const machine = createJourneyMachine(journey, {
+const machine = createGraphJourney(journey, {
   plugins: [createExecutionPathsPlugin()]
 });
 
-const paths = machine.getExecutionPaths({
-  maxDepth: 6,
-  maxPaths: 20
-});
+const result = machine.getExecutionPaths({ maxDepth: 6, maxPaths: 20 });
 ```
 
-## What You Get
-
-The plugin augments the machine with:
+## What you get
 
 ```ts
 machine.getExecutionPaths(options);
 ```
 
-That result includes:
+The result reports the discovered paths plus whether traversal hit its limits:
 
-- `paths`: the structural paths discovered from the initial step
-- `truncated`: whether traversal was cut short by limits
-- `cyclesDetected`: whether cycles were encountered during traversal
+- `paths` — the structural paths from the initial step;
+- `truncated` — whether limits cut traversal short;
+- `cyclesDetected` — whether cycles were encountered.
 
-Each path reports:
+Each path carries ordered `steps`, ordered `events`, and a termination reason — `final`, `depth`,
+`cycle`, or `limit` — so you can tell a completed route from one the limits stopped.
 
-- ordered `steps`
-- ordered `events`
-- a termination reason of `final`, `depth`, `cycle`, or `limit`
+## What it's good for
 
-## What It Is Good For
+- Reviewing graph complexity before shipping.
+- Writing tests that assert the declared shape of a flow.
+- Generating tooling or diagrams from a definition.
+- Spotting unexpected cycles or dead ends in authored transitions.
 
-- reviewing graph complexity before shipping
-- writing tests that assert the declared shape of a flow
-- generating tooling or diagrams from a journey definition
-- spotting unexpected cycles or dead ends in authored transitions
+## What it doesn't do
 
-## What It Does Not Do
+:::warning
+This is **structural** analysis, not behavioral. It doesn't run guards, commit context, or read live
+context values, so it can't prove a path is reachable for a specific user at runtime. Read it as
+"what the declared graph allows," not "what someone will actually do."
+:::
 
-The plugin is structural, not behavioral.
+## Traversal limits
 
-It does not:
-
-- run guards
-- commit runtime context changes
-- inspect live context values
-- prove that a path is reachable under real runtime conditions
-
-Think of it as “what the declared graph allows”, not “what a specific user will do at runtime”.
-
-## Traversal Limits
-
-Use traversal limits when the graph contains cycles or when you only need a bounded inspection:
+Cap traversal when the graph has cycles or you only need a bounded look:
 
 ```ts
-const paths = machine.getExecutionPaths({
-  maxDepth: 8,
-  maxPaths: 50
-});
+const result = machine.getExecutionPaths({ maxDepth: 8, maxPaths: 50 });
 ```
 
-This keeps graph inspection practical even for large flows.
+This keeps inspection practical even on large flows — the result's `truncated` and `cyclesDetected`
+flags tell you when a limit kicked in.
+
+## Where to next
+
+- [Diagnostics](/docs/core/plugins/diagnostics-plugin) — structural validation with severity levels.
+- [Graph mode](/docs/core/usage/graph) — the transitions being traversed.
