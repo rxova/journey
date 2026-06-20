@@ -143,6 +143,25 @@ Terminal transitions follow the same path: if `completeJourney` or `terminateJou
 declared transition with `onLeave`/`onEnter`, those run before the machine settles. (React-specific
 step hooks live in `@rxova/journey-react`; this page is the core runtime contract.)
 
+### Chaining with `dispatch`
+
+Callbacks receive more than `context` — they also get a `dispatch` function and an `AbortSignal`.
+`dispatch` sends a follow-up event through the same serialized queue, which lets a step chain the
+flow forward on entry:
+
+```ts
+createStep("review", {
+  onEnter: ({ context, dispatch }) => {
+    if (context.autoApprove) {
+      dispatch({ type: "approve" }); // queued; runs after this entry settles
+    }
+  }
+});
+```
+
+This is Journey's equivalent of a raised self-event. Keep it deliberate — a callback that
+unconditionally dispatches an event that leads back to itself will loop.
+
 ## Observe it
 
 ```ts
