@@ -119,9 +119,8 @@ typed bindings that feel natural in a React app.
 
 <DocAccordionItem title="How does Journey compare to XState?">
 
-They solve overlapping but different problems, and it's not a competition. XState is a general-purpose
-finite state machine and statechart library. Journey is a domain-specific runtime for step-based
-product flows.
+They solve overlapping but different problems. XState is a general-purpose finite state machine and
+statechart library. Journey is a domain-specific runtime for step-based product flows.
 
 **Reach for XState when you need** arbitrary state logic (traffic lights, connection states, game
 logic), hierarchical or nested machines, parallel regions, or a visual editor and formal statechart

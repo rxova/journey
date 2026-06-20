@@ -114,7 +114,7 @@ if (computed.mode === "linear") {
 ## Subscribe
 
 Your UI re-renders by subscribing. Subscribe to every change, or to one slice of state with a
-selector so you only react when that slice actually moves.
+selector so you only react when that slice changes.
 
 ```ts
 // Fires on any snapshot change.
