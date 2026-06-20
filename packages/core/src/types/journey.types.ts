@@ -296,6 +296,7 @@ export type LinearJourneyStep<
       meta?: TStepMeta;
       onEnter?: JourneyStepLifecycleCallback<TContext, TStepId, Record<never, never>, THandlers>;
       onLeave?: JourneyStepLifecycleCallback<TContext, TStepId, Record<never, never>, THandlers>;
+      effect?: JourneyStepEffect<TContext, TStepId, THandlers>;
     };
 
 /** Input type for `createLinearJourney`. Steps array drives both ordering and per-step config. */

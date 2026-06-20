@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
+import {
+  createGraphJourney,
+  createGraphJourneyBuilder,
+  createJourneyMachine,
+  createLinearJourney,
+  type JourneyDefinition
+} from "@rxova/journey-core";
 
 type StepId = "start" | "loading" | "done" | "failed";
 type Context = { result: string | null; error: string | null };
@@ -278,5 +284,73 @@ describe("step effects", () => {
 
     expect(machine.getSnapshot().currentStepId).toBe("loading");
     warn.mockRestore();
+  });
+});
+
+describe("step effects via the builder and linear factory", () => {
+  it("infers the effect output type in the builder and routes it into context", async () => {
+    type BStep = "start" | "loading" | "done";
+    type BContext = { name: string };
+
+    const { createStep, to, build } = createGraphJourneyBuilder<BContext, BStep>();
+    const machine = createGraphJourney(
+      build({
+        initial: "start",
+        context: { name: "" },
+        steps: [
+          createStep("start", { on: { goToNextStep: [to("loading")] } }),
+          createStep("loading", {
+            effect: {
+              run: async () => ({ name: "ada" }),
+              // `output` is inferred as { name: string } — no cast needed.
+              onResolved: {
+                to: "done",
+                updateContext: ({ context, output }) => ({ ...context, name: output.name })
+              }
+            }
+          }),
+          createStep("done", {})
+        ]
+      })
+    );
+
+    await machine.startJourney();
+    await machine.goToNextStep();
+
+    await vi.waitFor(() => {
+      expect(machine.getSnapshot().currentStepId).toBe("done");
+    });
+    expect(machine.getSnapshot().context.name).toBe("ada");
+  });
+
+  it("runs effects on linear steps", async () => {
+    type LStep = "intro" | "fetch" | "ready";
+    type LContext = { token: string | null };
+
+    const machine = createLinearJourney<LContext, LStep>({
+      context: { token: null },
+      steps: [
+        "intro",
+        {
+          id: "fetch",
+          effect: {
+            run: async () => "tok-123",
+            onResolved: {
+              to: "ready",
+              updateContext: ({ context, output }) => ({ ...context, token: output as string })
+            }
+          }
+        },
+        "ready"
+      ]
+    });
+
+    await machine.startJourney();
+    await machine.goToNextStep();
+
+    await vi.waitFor(() => {
+      expect(machine.getSnapshot().currentStepId).toBe("ready");
+    });
+    expect(machine.getSnapshot().context.token).toBe("tok-123");
   });
 });
