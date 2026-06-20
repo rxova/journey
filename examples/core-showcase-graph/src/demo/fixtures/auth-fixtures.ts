@@ -194,7 +194,21 @@ const loggedInStep = createStep("loggedIn", {
 });
 
 const blockedStep = createStep("blocked", {
-  meta: { label: "Blocked", icon: "⛔" }
+  meta: { label: "Blocked", icon: "⛔" },
+  // Demonstrates `after`: a delayed transition that auto-recovers the dead-end
+  // "blocked" screen back to "login" after a cooldown, resetting the attempt
+  // state. The timer starts on entry and cancels if the step is left first.
+  after: {
+    5000: {
+      to: "login",
+      updateContext: ({ context }) => ({
+        ...context,
+        attempts: 0,
+        error: null,
+        password: ""
+      })
+    }
+  }
 });
 
 export const graphDefinition = build({
