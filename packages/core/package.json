@@ -110,10 +110,22 @@
   },
   "size-limit": [
     {
-      "name": "core/createJourneyMachine",
+      "name": "core/createLinearJourney",
       "path": "dist/index.js",
-      "import": "{ createJourneyMachine }",
-      "limit": "8 kB"
+      "import": "{ createLinearJourney }",
+      "limit": "8.5 kB"
+    },
+    {
+      "name": "core/createGraphJourney",
+      "path": "dist/index.js",
+      "import": "{ createGraphJourney }",
+      "limit": "8.5 kB"
+    },
+    {
+      "name": "core/createHeadlessJourney",
+      "path": "dist/index.js",
+      "import": "{ createHeadlessJourney }",
+      "limit": "8.5 kB"
     },
     {
       "name": "core/createGraphJourneyBuilder",
