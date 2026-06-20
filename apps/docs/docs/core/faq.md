@@ -1,134 +1,170 @@
 ---
 title: FAQ
-sidebar_position: 4
+sidebar_label: FAQ
 ---
 
-## How does Journey work under the hood?
+import DocAccordion, { DocAccordionItem } from "@site/src/components/DocAccordion";
 
-Journey runs events through an internal async queue, so state updates happen one at a time in a predictable order. For each event, it emits `transition.start`, scans transitions in order (first valid match wins), evaluates guards (including async guards), derives the next context synchronously through `updateContext` when a transition matches, and then commits the next snapshot. After commit, it emits lifecycle events like `transition.success`, `step.exit`, and `step.enter`; if no transition matches, it returns a non-transition result. A special case exists for `send({ type: "goToPreviousStep" })`, which can fall back to previous-step pointer navigation when no explicit transition matches. This queue + deterministic matching model is what keeps behavior stable under real UI concurrency.
+# FAQ
 
-## How does navigation work?
+Short answers to the questions that come up most. For the concepts behind them, see
+[Core concepts](/docs/core/concepts); for how the runtime works, see
+[How it works](/docs/core/architecture).
 
-Journey uses a timeline + pointer model.
+## How it works
 
-`history.timeline` stores the path the user actually took.
-`history.index` marks where the user is in that path.
-`currentStepId` always matches `history.timeline[history.index]`.
+<DocAccordion>
 
-This model makes navigation predictable and easy to debug.
+<DocAccordionItem title="How does Journey work under the hood?">
 
-## How does `back` work?
+Journey runs events through an internal async queue, so updates happen one at a time in a predictable
+order. For each event it emits `transition.start`, scans transitions in order (first valid match
+wins), evaluates guards (async included), derives the next context synchronously through
+`updateContext` when a transition matches, then commits the next snapshot. After the commit it emits
+lifecycle events like `transition.success`, `step.exit`, and `step.enter`; if nothing matches, it
+returns a non-transition result. One special case: `send({ type: "goToPreviousStep" })` falls back to
+pointer navigation when no explicit transition matches. That queue-plus-deterministic-matching model
+is what keeps behavior stable under concurrent UI updates.
 
-`back` is an event: `machine.send({ type: "back" })`.
+</DocAccordionItem>
 
-Journey does not treat `back` as a built-in event.
+<DocAccordionItem title="How does navigation work?">
 
-If you want `back` behavior, declare `back` as a custom event and add explicit `back` transitions. If you want
-built-in previous-step pointer navigation, use `goToPreviousStep()` or `send({ type: "goToPreviousStep" })`.
+Journey uses a timeline + pointer model. `history.timeline` stores the path the user took,
+`history.index` marks where they are in it, and `currentStepId` always equals
+`history.timeline[history.index]`. That makes navigation predictable and easy to debug — see
+[Timeline & history](/docs/core/history).
 
-So you get custom behavior when needed and safe defaults when you do not.
+</DocAccordionItem>
 
-## What is `goToLastVisitedStep()`?
+<DocAccordionItem title="How does back work?">
 
-It moves the pointer to the latest point in the current timeline.
+`back` is whatever you make it. Journey doesn't treat `back` as a built-in event — so
+`machine.send({ type: "back" })` only does something if you've declared `back` transitions. For
+built-in pointer navigation, use `goToPreviousStep()` or `send({ type: "goToPreviousStep" })`. You
+get custom behavior when you want it and a safe default when you don't.
 
-This is useful when a user goes back to inspect something and then wants to return to where they were.
+</DocAccordionItem>
 
-## What happens if I move forward while not at the end of history?
+<DocAccordionItem title="What is goToLastVisitedStep()?">
 
-Journey truncates the old future path and appends the new one.
+It moves the pointer to the most recent point in the current timeline — handy when a user steps back
+to inspect something and then wants to return to where they were.
 
-In other words, it behaves like normal history systems: once you branch from the past, that becomes the new future.
+</DocAccordionItem>
 
-## How do I observe runtime behavior?
+<DocAccordionItem title="What if I move forward while not at the end of history?">
 
-Use `subscribe(listener)` for snapshot reactivity.
+Journey truncates the old future and appends the new one, like any history system: once you branch
+from the past, that branch becomes the new future. [Timeline & history](/docs/core/history#branching-after-going-back)
+has the worked example.
 
-Use `subscribeSelector(selector, listener, equalityFn?)` when you only care about a selected snapshot slice.
+</DocAccordionItem>
 
-Use `subscribeEvent(listener)` for typed lifecycle events.
+<DocAccordionItem title="How do I observe runtime behavior?">
 
-Teams usually use all three: `subscribe` for UI updates, `subscribeSelector` for focused updates, and `subscribeEvent` for logs, analytics, and debugging.
+Three subscriptions, for three needs: `subscribe(listener)` for snapshot reactivity,
+`subscribeSelector(selector, listener, equalityFn?)` for a focused slice, and
+`subscribeEvent(listener)` for the typed lifecycle stream. Teams usually use all three — `subscribe`
+for UI, `subscribeSelector` for targeted updates, `subscribeEvent` for logs and analytics.
 
-## When should I use a simple wizard library, and when should I use Journey?
+</DocAccordionItem>
 
-A simple wizard library is the right choice when your flow is truly linear, every step is known ahead of time, there is no conditional branching, and there is no async work between steps. If your wizard is three or four static screens with a "next" and "back" button and nothing else, a minimal stepper hook or even local component state will serve you well. There is no reason to adopt a heavier tool for a problem that stays simple.
+</DocAccordion>
 
-Journey is designed for the moment that stops being true. In practice, these are the signals that a simple wizard is no longer enough:
+## Choosing Journey
 
-**Conditional branching.** The product requires "if the user picked X, skip step 3 and go to step 5." In a simple wizard this ends up as `if/else` logic scattered across `onClick` handlers, calling `goToStep(someIndex)`. That logic is invisible to tests, impossible to visualize, and breaks the moment step order changes. Journey lets you declare branches as guarded transitions in the definition, and the runtime resolves them deterministically.
+<DocAccordion>
 
-**Async transitions.** Step 2 needs an API call before the user can move to step 3. With a simple wizard, you manage loading and error state yourself with `useState` in every step component. Journey models async guard evaluation as a first-class phase, and the runtime tracks `evaluating-when` and `error` per step in the snapshot. Your UI reads `snapshot.async.byStep.login.phase` instead of maintaining parallel loading state.
+<DocAccordionItem title="When should I use a simple wizard library, and when should I use Journey?">
 
-**History and back-navigation semantics.** Index-based wizards track a step number. If the user went from step 0 to step 1 to step 3 (skipping step 2 via a condition), pressing "back" goes to index 2 — a step they never visited. You end up building skip-aware back logic yourself. Journey records the realized path the user actually took (`["login", "setup2fa", "verifyCode"]`) and pointer navigation walks that actual history.
+A simple wizard library is the right call when your flow is genuinely linear, every step is known
+ahead of time, there's no branching, and there's no async work between steps. Three or four static
+screens with next/back? A minimal stepper hook — or plain component state — will serve you well.
+There's no reason to adopt a heavier tool for a problem that stays simple.
 
-**Persistence and resumption.** Simple wizards do not support saving progress. You serialize some state to localStorage, figure out which step to restore to, and hope the indices have not shifted between deploys. Journey offers a persistence plugin with snapshot hydration, version migration, and context filtering.
+Journey is for the moment that stops being true. The signals:
 
-**Observability.** Simple wizards give you a step index and nothing else. When something goes wrong in production, there is no event log, no transition record, and no way to answer "how did the user end up here?" Journey emits typed lifecycle events (`transition.start`, `step.exit`, `step.enter`, `transition.error`) and provides a Chrome DevTools extension for timeline inspection.
+- **Conditional branching** — "if the user picked X, skip step 3." In a wizard that becomes `if/else`
+  scattered across `onClick` handlers calling `goToStep(index)`, invisible to tests and fragile when
+  order changes. Journey declares branches as guarded transitions the runtime resolves
+  deterministically.
+- **Async transitions** — step 2 needs an API call before step 3. A wizard leaves you managing
+  loading and error state by hand in every component. Journey models async guards as a first-class
+  phase tracked per step in the snapshot.
+- **History semantics** — index-based wizards track a number, so "back" after a skip lands on a step
+  the user never visited. Journey records the realized path and walks the actual history.
+- **Persistence** — wizards don't save progress; you hand-roll localStorage and hope indices didn't
+  shift between deploys. Journey has a persistence plugin with hydration, migration, and filtering.
+- **Observability** — a wizard gives you a step index. Journey emits typed lifecycle events and ships
+  a Chrome DevTools extension.
+- **Type safety** — wizards expose an untyped `goToStep(index)`. Journey uses string-literal step ids
+  and type-checks the whole definition.
+- **React 18 / SSR** — many wizard libraries predate `useSyncExternalStore` and can tear under
+  concurrent rendering. Journey's React bindings are built on it, with SSR/RSC support.
 
-**Type safety.** Simple wizards typically expose an untyped `goToStep(index)` API. Step references are numbers, not checked at compile time. Journey uses string step IDs as a literal union type, and the full definition — transitions, guards, context updates, events — is generic and type-checked. Invalid step references or event names are compile errors.
+**When you should _not_ move to Journey:** your flow will stay a static linear sequence; current step
+index is all you need; you aren't using React 18 concurrency/Suspense/SSR; or the overhead of
+defining transitions isn't worth it for a three-step form. Journey is built for flows that grow — if
+yours won't, a simpler tool is the better choice.
 
-**React 18+ and SSR.** Most wizard libraries were written before React 18 and use `useState` and `useCallback` internally. They do not use `useSyncExternalStore`, which means they are not safe under concurrent features and can tear during concurrent renders. Journey's React bindings are built on `useSyncExternalStore` from the ground up, which guarantees consistent reads even under concurrent rendering, `startTransition`, and `Suspense`. The core machine is a framework-agnostic external store, and the React layer is a thin typed subscription — the same model React itself recommends for external state. Server rendering is supported through an owned client boundary: the core has zero React dependencies, the root `@rxova/journey-react` entry is server-safe, `@rxova/journey-react/client` provides an explicit client-marked subpath, snapshots are serializable, and `JourneyProvider` auto-starts on the client after hydration. Treat the React runtime as a client-boundary integration rather than a server-component-native package.
+</DocAccordionItem>
 
-### When you should NOT move to Journey
+<DocAccordionItem title="Do I need React to use Journey?">
 
-- Your flow is and will remain a static linear sequence with no branching, no async, and no persistence needs.
-- You do not need to answer "how did the user get here?" — current step index is enough.
-- You are not using React 18+ features (concurrent rendering, Suspense, SSR) and do not plan to.
-- The overhead of defining transitions, even in linear syntax, is not worth it for a three-step form.
+No. `@rxova/journey-core` is framework-agnostic. If you do use React, `@rxova/journey-react` adds
+typed bindings that feel natural in a React app.
 
-Journey is designed for flows that grow. If yours will not, a simpler tool is the better choice.
+</DocAccordionItem>
 
-## Do I need React to use Journey?
+<DocAccordionItem title="How does Journey compare to XState?">
 
-No. `@rxova/journey-core` is framework-agnostic.
+They solve overlapping but different problems, and it's not a competition. XState is a general-purpose
+finite state machine and statechart library. Journey is a domain-specific runtime for step-based
+product flows.
 
-If you use React, `@rxova/journey-react` adds typed bindings that feel natural in React apps.
+**Reach for XState when you need** arbitrary state logic (traffic lights, connection states, game
+logic), hierarchical or nested machines, parallel regions, or a visual editor and formal statechart
+semantics.
 
-## Can users resume an unfinished journey later?
+**Reach for Journey when you need** wizards, onboarding, checkout, or KYC; realized history (not just
+"current state" but "how did they get here"); first-class async phases observable in the UI; a linear
+array _or_ a graph object for the same runtime; a small bundle with optional plugins; a React-first
+integration; deterministic first-match-wins matching; and a snapshot-first model where one
+serializable object holds everything.
 
-Yes. Persistence is optional and versioned.
+**What Journey intentionally doesn't do:** hierarchical/nested machines, parallel regions, dynamic
+step creation, the actor model (invoke/spawn), or a visual editor.
 
-You can store snapshots, migrate old versions, and recover safely. If stored data is invalid, Journey falls back to a valid initial state.
+</DocAccordionItem>
 
-## How does Journey help with debugging production issues?
+</DocAccordion>
 
-You get a deterministic transition model, explicit lifecycle events, and a reproducible history pointer.
+## In production
 
-That means issues are easier to replay, explain, and fix than with scattered component-level navigation logic.
+<DocAccordion>
 
-## How does Journey compare to XState?
+<DocAccordionItem title="Can users resume an unfinished journey later?">
 
-Journey is not competing with XState — they solve overlapping but different problems. XState is a general-purpose finite state machine and statechart library. Journey is a domain-specific runtime for step-based product flows.
+Yes — persistence is optional and versioned. Store snapshots, migrate old versions, and recover
+safely; if stored data is invalid, hydration falls back to a valid initial state. See
+[Persistence](/docs/core/persistence).
 
-**Use XState when you need:**
+</DocAccordionItem>
 
-- Arbitrary state transition logic (traffic lights, connection states, game logic)
-- Hierarchical or nested state machines (parallel regions, child machines)
-- Complex event-driven systems where the graph topology itself is the product
-- A visual editor and formal statechart semantics
+<DocAccordionItem title="How does Journey help with debugging production issues?">
 
-**Use Journey when you need:**
+You get a deterministic transition model, explicit lifecycle events, and a reproducible history
+pointer — so an issue is far easier to replay, explain, and fix than scattered component-level
+navigation logic.
 
-- Wizards, onboarding, checkout, KYC, claim filing — flows where users move through named steps
-- Realized history — not just "current state" but "how did the user get here" with timeline and pointer navigation
-- First-class async phases observable in the UI — `evaluating-when` and errors tracked per-step in the snapshot, not bolted on
-- Two definition syntaxes: a linear array for simple sequences (`["start", "details", "review"]`) or a graph object for branching flows — XState only offers the graph
-- A small bundle: core is **7.58 kB** brotlied, with optional plugins like [persistence](/docs/core/persistence) and [getExecutionPaths](/docs/core/plugins/execution-paths-plugin)
-- A React-first integration with `useSyncExternalStore`, SSR/RSC support, and bound hooks — not a framework-agnostic adapter layer
-- Deterministic ordered matching: first matching transition wins, no priority tables
-- A snapshot-first model: one serializable object tells you current step, full timeline, context, visited map, async phase, and status
+</DocAccordionItem>
 
-**What Journey intentionally does not do:**
+<DocAccordionItem title="Is there a Chrome DevTools extension?">
 
-- No hierarchical or nested machines
-- No parallel/orthogonal regions
-- No dynamic step creation at runtime
-- No invoke/spawn (actors model)
-- No visual editor or formal statechart semantics
+Yes — install it from the
+[Chrome Web Store](https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm).
 
-## Is there a Chrome DevTools extension?
+</DocAccordionItem>
 
-Yes. Install it from Chrome Web Store:
-
-- https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm
+</DocAccordion>

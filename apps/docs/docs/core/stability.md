@@ -1,127 +1,102 @@
 ---
-title: Stability Contract
+title: Stability contract
 sidebar_label: Stability
 ---
 
-Rxova Journey has a typed runtime surface, optional extensions, and a browser-devtools transport. Those pieces do not all carry the same compatibility promise.
+# Stability contract
 
-This page defines the support contract for long-term adopters.
+Journey has a typed runtime surface, optional plugins, and a browser-devtools transport — and they
+don't all carry the same compatibility promise. This page is the support contract for long-term
+adopters.
 
-Journey is currently preparing for a `1.0.0-rc` line. That line is the contract freeze point for the
-current runtime model:
+Journey is preparing the `1.0.0-rc` line, which is the contract freeze point for the current runtime
+model:
 
-- RC builds are expected to be feature-complete and nearly final
-- during the `1.0.0-rc` line, only bug fixes, docs fixes, and release-blocking contract fixes should land
-- if an RC-breaking change is unavoidable, it must come with explicit migration guidance before the next RC
+- RC builds are feature-complete and close to final;
+- during the RC line, only bug fixes, docs fixes, and release-blocking contract fixes should land;
+- if an RC-breaking change is unavoidable, it ships with explicit migration guidance.
 
-Once `1.0.0` is released, documented public APIs follow semver. Additive changes belong in minor releases.
-Breaking behavior or type changes belong in major releases.
+Once `1.0.0` is out, documented public APIs follow semver: additive changes in minors, breaking
+changes in majors.
 
-## Core Runtime
+## Core runtime
 
-`@rxova/journey-core` is the primary stability surface.
+`@rxova/journey-core` is the primary stability surface. For the RC line and later, treat these as
+stable:
 
-For the `1.0.0-rc` line and later, treat these as stable public APIs:
+- the journey factories — `createLinearJourney`, `createGraphJourney`, `createHeadlessJourney`
+  (`createJourneyMachine` remains exported as a deprecated alias);
+- `JourneyMachine` methods and the snapshot shape;
+- the documented transition syntax, lifecycle events, and async timeout/error behavior;
+- the published entry points: `@rxova/journey-core`, `@rxova/journey-core/persistence`,
+  `@rxova/journey-core/execution-paths`.
 
-- `createJourneyMachine(...)`
-- `JourneyMachine` methods and snapshot shape
-- documented transition syntax
-- documented lifecycle events
-- documented async timeout and error behavior
-- published package entrypoints:
-  - `@rxova/journey-core`
-  - `@rxova/journey-core/persistence`
-  - `@rxova/journey-core/execution-paths`
+Expectations:
 
-Compatibility expectations:
+- additive APIs and bug fixes belong in minor/patch releases;
+- RC-only breaking changes should be rare and reserved for release-blocking contract problems;
+- undocumented internals under `src/journey-machine/*` are implementation details, not extension
+  points;
+- runtime context stays JSON-only, step `meta` stays static definition data, and `updateContext()`
+  stays the state-write API.
 
-- additive APIs and bug fixes are preferred in minor/patch releases
-- RC-only breaking changes should be rare and only used to fix release-blocking contract problems
-- undocumented internals under `src/journey-machine/*` are implementation details, not extension points
-- runtime context remains JSON-only, step `meta` remains static definition data, and `updateContext()` remains the state-write API
+## React bindings
 
-## React Bindings
+`@rxova/journey-react` is a stable public package, but its ownership model is part of the contract:
 
-`@rxova/journey-react` is a stable public package, but its runtime model matters:
+- one `createJourney(...)` call creates one machine instance, immediately;
+- the returned hooks and components stay bound to that instance;
+- `JourneyProvider` wires `views`, lifecycle callbacks, and startup around that runtime — it doesn't
+  create isolation.
 
-- one `createJourney(...)` call creates one machine instance immediately
-- the returned hooks and components stay bound to that machine instance
-- `JourneyProvider` does not create isolation; it wires `views`, lifecycle callbacks, and provider-owned startup around that existing runtime
-
-Compatibility expectations:
-
-- the `JourneyRuntime` shape, documented hooks, `JourneyProvider`, and `StepRenderer` are the stable React surface
-- runtime ownership semantics are part of the contract, not an implementation accident
-- one `createJourney(...)` call still means one eagerly-created machine instance
-- `createJourneyFactory(...)` is the stable path for isolated request-scoped or boundary-scoped runtimes
-- consumers should not rely on undocumented component tree behavior beyond what the docs describe
-
-For server-rendered or request-scoped applications, create a runtime per request or per owned component boundary when isolation is required.
+The stable React surface is the `JourneyRuntime` shape, the documented hooks, `JourneyProvider`, and
+`StepRenderer`. For request-scoped or boundary-scoped isolation, use `createJourneyFactory(...)` and
+create a runtime per request or per owned boundary.
 
 ## Plugins
 
-Plugins are stable as optional public extensions, with narrower guarantees than the base runtime.
+Plugins are stable public extensions, with narrower guarantees than the base runtime.
 
-Stable contract:
+**Contract:** the built-in plugin entry points and documented options, plus the documented setup
+hooks — `setup`, `hydrateSnapshot`, `onSnapshotChange`, `augmentMachine`, `dispose`.
 
-- built-in plugin entrypoints and documented options
-- plugin setup hooks documented in public types:
-  - `setup`
-  - `hydrateSnapshot`
-  - `onSnapshotChange`
-  - `augmentMachine`
-  - `dispose`
+**Not contract:** internal machine controller structure, undocumented runtime fields, and any
+assumption about setup ordering beyond what the docs describe.
 
-Non-contract details:
+Custom plugins should depend only on documented public types and hook timing. Augmenting the machine
+is supported, but don't treat injected fields as if they were part of the base machine API.
 
-- internal machine controller structure
-- undocumented runtime fields
-- assumptions about setup ordering beyond what the public docs describe
+## Devtools bridge protocol
 
-Compatibility expectations:
+The devtools bridge is a public integration surface with explicit versioning. The contract is the
+published API in `@rxova/journey-devtools-bridge`, the documented command and envelope shapes for the
+current protocol version, and the protocol version number as the compatibility boundary.
 
-- built-in plugin behavior should evolve additively where possible
-- custom plugins should depend only on documented public types and hook timing
-- augmenting the machine is supported, but consumers should avoid treating injected fields as if they were part of the base machine API
+Incompatible wire-shape changes require a protocol version bump; panel and bridge consumers upgrade
+together. Treat the bridge and panel as tooling, and gate production use explicitly through `enabled`
+and `commandsEnabled`.
 
-## Devtools Bridge Protocol
+## Migration notes
 
-The devtools bridge is a public integration surface with explicit versioning.
+The current runtime differs from older 0.x material in a few ways that matter:
 
-Stable contract:
+- runtime `context` must be JSON-serializable;
+- step `meta` is static definition data, not mutable runtime state;
+- transition-side state updates happen through `updateContext(...)`;
+- React runtimes are instance-bound — use `createJourneyFactory(...)` when isolation matters.
 
-- published bridge API in `@rxova/journey-devtools-bridge`
-- documented command and envelope shapes for the current protocol version
-- protocol version numbers as the compatibility boundary
+See [Pre-1.0 migration](/docs/core/pre-1-0-migration) for the upgrade steps.
 
-Compatibility expectations:
+## Release verification
 
-- incompatible wire-shape changes require a protocol version bump
-- panel and bridge consumers should upgrade together across protocol-version changes
-- additive metadata and additive command/result fields are preferred over shape-breaking mutations
+The release process proves these surfaces separately:
 
-Operational guidance:
+```bash
+pnpm run packages:typecheck
+pnpm run docs:check
+pnpm run packaging:check
+pnpm run pack:smoke
+pnpm run size:check
+```
 
-- treat the bridge and panel as tooling, not as the primary runtime contract
-- production use should be explicit through `enabled` and `commandsEnabled`
-
-## Current Migration Notes
-
-The current runtime model differs from older 0.x material in a few important ways:
-
-- runtime `context` must be JSON-serializable
-- step `meta` is static definition data, not mutable runtime state
-- transition-side state updates happen through `updateContext(...)`
-- React runtimes are instance-bound; use `createJourneyFactory(...)` when isolation matters
-
-## Release Verification
-
-The release process is expected to prove these surfaces separately:
-
-- `pnpm run packages:typecheck`
-- `pnpm run docs:check`
-- `pnpm run packaging:check`
-- `pnpm run pack:smoke`
-- `pnpm run size:check`
-
-`pnpm run release:verify` runs the full release-oriented verification chain from one command.
+`pnpm run release:verify` runs the full chain from one command.
