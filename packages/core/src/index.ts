@@ -41,6 +41,7 @@ export {
   type JourneyDiagnosticsOptions,
   type JourneyDiagnosticsResult,
   type JourneyDiagnosticsSummary,
+  type JourneyAfterTransition,
   type JourneyDefaultEventType,
   type JourneyDefinition,
   type JourneyEffectArgs,

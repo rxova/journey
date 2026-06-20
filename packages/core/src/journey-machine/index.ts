@@ -19,6 +19,7 @@ import {
   cloneMetaValue,
   isPromiseLike,
   isTerminalTarget,
+  JOURNEY_AFTER_EVENT_PREFIX,
   JOURNEY_EFFECT_REJECTED_EVENT,
   JOURNEY_EFFECT_RESOLVED_EVENT,
   JourneyTimeoutError,
@@ -168,6 +169,53 @@ export function createJourneyMachine<
     runtime.closeLifecycle(controller);
   };
 
+  // Delayed (`after`) transitions: timers started on entry, cancelled on step
+  // exit / reset / dispose. The abort signal clears any pending timers.
+  let activeAfterController: AbortController | null = null;
+
+  const cancelActiveAfter = () => {
+    const controller = activeAfterController;
+    if (!controller) {
+      return;
+    }
+    activeAfterController = null;
+    if (!controller.signal.aborted) {
+      controller.abort();
+    }
+    runtime.closeLifecycle(controller);
+  };
+
+  const runStepTimers = (stepId: TStepId, runVersion: number) => {
+    const after = resolvedJourney.steps[stepId]?.after;
+    if (!after || !runtime.isRunActive(runVersion)) {
+      return;
+    }
+
+    const controller = runtime.openLifecycle(runVersion);
+    if (!controller) {
+      return;
+    }
+    activeAfterController = controller;
+    const { signal } = controller;
+
+    for (const delayKey of Object.keys(after)) {
+      const delayMs = Number(delayKey);
+      const handle = setTimeout(() => {
+        if (
+          signal.aborted ||
+          !runtime.isRunActive(runVersion) ||
+          runtime.peekSnapshot().currentStepId !== stepId
+        ) {
+          return;
+        }
+        void dispatchSend({
+          type: `${JOURNEY_AFTER_EVENT_PREFIX}${delayMs}`
+        } as unknown as JourneySendEvent<TStepId, TEventMap>);
+      }, delayMs);
+      signal.addEventListener("abort", () => clearTimeout(handle), { once: true });
+    }
+  };
+
   const runStepEffect = (stepId: TStepId, runVersion: number) => {
     const effect = resolvedJourney.steps[stepId]?.effect;
     if (!effect || !runtime.isRunActive(runVersion)) {
@@ -268,8 +316,9 @@ export function createJourneyMachine<
     runVersion,
     transition
   }) => {
-    // Leaving the current step cancels its in-flight effect.
+    // Leaving the current step cancels its in-flight effect and timers.
     cancelActiveEffect();
+    cancelActiveAfter();
     const sourceStep = resolvedJourney.steps[from];
     const targetStep = isTerminalTarget(to) ? null : resolvedJourney.steps[to];
     const handlers = (resolvedJourney.handlers ?? {}) as THandlers;
@@ -415,6 +464,10 @@ export function createJourneyMachine<
         if (runtime.isRunActive(runVersion) && targetStep?.effect) {
           runStepEffect(to as TStepId, runVersion);
         }
+        // Entering a step with `after` timers starts them.
+        if (runtime.isRunActive(runVersion) && targetStep?.after) {
+          runStepTimers(to as TStepId, runVersion);
+        }
       } finally {
         runtime.closeLifecycle(lifecycleAbortController);
       }
@@ -481,6 +534,7 @@ export function createJourneyMachine<
       // effect here once the machine is running.
       if (!runtime.isDisposed() && runtime.peekSnapshot().status === "running") {
         runStepEffect(runtime.peekSnapshot().currentStepId, runtime.getRunVersion());
+        runStepTimers(runtime.peekSnapshot().currentStepId, runtime.getRunVersion());
       }
       return snapshot;
     },

@@ -33,6 +33,7 @@ export type {
   HeadlessJourneyDefinition,
   JourneyDefinition,
   JourneyDefinitionBase,
+  JourneyAfterTransition,
   JourneyEffectArgs,
   JourneyEffectRejectedBranch,
   JourneyEffectResolvedBranch,

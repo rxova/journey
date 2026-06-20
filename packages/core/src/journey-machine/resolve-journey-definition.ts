@@ -1,4 +1,5 @@
 import {
+  JOURNEY_AFTER_EVENT_PREFIX,
   JOURNEY_EFFECT_REJECTED_EVENT,
   JOURNEY_EFFECT_RESOLVED_EVENT,
   validateFiniteTimeout,
@@ -162,6 +163,60 @@ const buildEffectTransitions = <
   return effectTransitions;
 };
 
+/**
+ * Translates each step's `after` map into the internal transitions the runtime
+ * fires when a delay timer elapses. The timer runner dispatches the matching
+ * synthetic event (suffixed with the delay) for the active step.
+ */
+const buildAfterTransitions = <
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TEventMap extends Record<string, unknown>,
+  THandlers extends Record<string, unknown>
+>(
+  steps: Record<TStepId, JourneyStepDefinition<TContext, TStepId, TEventMap, unknown, THandlers>>
+): JourneyTransition<TContext, TStepId, TEventMap, THandlers>[] => {
+  const afterTransitions: JourneyTransition<TContext, TStepId, TEventMap, THandlers>[] = [];
+
+  for (const [stepId, step] of Object.entries(steps) as [
+    TStepId,
+    JourneyStepDefinition<TContext, TStepId, TEventMap, unknown, THandlers>
+  ][]) {
+    const after = step?.after;
+    if (!after) {
+      continue;
+    }
+
+    for (const [delayKey, branch] of Object.entries(after)) {
+      const delayMs = Number(delayKey);
+      if (!Number.isFinite(delayMs) || delayMs < 0) {
+        throw new Error(
+          `Journey step "${stepId}" after delay "${delayKey}" must be a finite, non-negative number of milliseconds.`
+        );
+      }
+
+      afterTransitions.push({
+        from: stepId,
+        event: `${JOURNEY_AFTER_EVENT_PREFIX}${delayMs}`,
+        to: branch.to,
+        ...(branch.label !== undefined ? { label: branch.label } : {}),
+        ...(branch.updateContext !== undefined
+          ? {
+              updateContext: (args: { snapshot: unknown; context: TContext; from: TStepId }) =>
+                branch.updateContext!({
+                  snapshot: args.snapshot as never,
+                  context: args.context,
+                  from: args.from
+                })
+            }
+          : {})
+      } as unknown as JourneyTransition<TContext, TStepId, TEventMap, THandlers>);
+    }
+  }
+
+  return afterTransitions;
+};
+
 export const resolveJourneyDefinition = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
@@ -173,13 +228,16 @@ export const resolveJourneyDefinition = <
 ): JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers> => {
   type TEventType = string;
   const resolvedTransitions: JourneyTransition<TContext, TStepId, TEventMap, THandlers>[] = [];
-  const effectTransitions = buildEffectTransitions(journey.steps);
+  const effectTransitions = [
+    ...buildEffectTransitions(journey.steps),
+    ...buildAfterTransitions(journey.steps)
+  ];
   const { transitions } = journey;
 
   if (transitions === undefined) {
     if (effectTransitions.length > 0) {
       warnInDevelopment(
-        "Journey step effects require graph or linear transitions and are ignored in headless mode."
+        "Journey step effects and after-transitions require graph or linear transitions and are ignored in headless mode."
       );
     }
     return {

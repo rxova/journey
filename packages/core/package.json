@@ -155,13 +155,13 @@
       "name": "core/createDiagnosticsPlugin",
       "path": "dist/plugins/diagnostics/index.js",
       "import": "{ createDiagnosticsPlugin }",
-      "limit": "2.9 kB"
+      "limit": "3.1 kB"
     },
     {
       "name": "core/createExecutionPathsPlugin",
       "path": "dist/plugins/execution-paths/index.js",
       "import": "{ createExecutionPathsPlugin }",
-      "limit": "2.4 kB"
+      "limit": "2.6 kB"
     },
     {
       "name": "core/createReplayPlugin",

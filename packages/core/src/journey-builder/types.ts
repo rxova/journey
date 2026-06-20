@@ -5,6 +5,7 @@ import type {
   JourneyJsonObject
 } from "../types";
 import type {
+  JourneyAfterTransition,
   JourneyStepEffect,
   JourneyStepLifecycleCallback,
   JourneyTransitionArgsForEvent,
@@ -289,6 +290,8 @@ type JourneyStepBuilderConfig<
   on?: TOn;
   /** Declarative async work run on entry; `output` is inferred from `run`. */
   effect?: JourneyStepEffect<TContext, TStepId, THandlers, TEffectOutput>;
+  /** Delayed transitions keyed by milliseconds. */
+  after?: Record<number, JourneyAfterTransition<TContext, TStepId>>;
 };
 
 export type JourneyStepBuilder<
@@ -321,6 +324,7 @@ export type JourneyStepBuilder<
       >
     | undefined;
   readonly _effect?: JourneyStepEffect<TContext, TStepId, THandlers> | undefined;
+  readonly _after?: Record<number, JourneyAfterTransition<TContext, TStepId>> | undefined;
   readonly _handledCustomEventType?: THandledCustomEventType;
 };
 
