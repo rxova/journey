@@ -1,10 +1,19 @@
 ---
-title: "Comparison Table"
+title: Comparison
+sidebar_label: Comparison
 ---
 
-"Others" refers to typical React step/wizard hook libraries — no specific library is named.
-⚠️ means the feature exists in some libraries but is inconsistent, partial, or untyped.
-❓ means it is not publicly verifiable.
+# Comparison
+
+How Journey stacks up against the typical React step/wizard hook libraries. "Others" is that broad
+category — no specific library is named. A few legend notes:
+
+- ✅ supported · ❌ not supported
+- ⚠️ exists in some libraries but inconsistent, partial, or untyped
+- ❓ not publicly verifiable
+
+If you're weighing Journey against a lighter wizard hook or against XState specifically, the
+[FAQ](/docs/core/faq) has dedicated answers for both.
 
 | Category           | Feature                                                              | Journey  | Others      |
 | ------------------ | -------------------------------------------------------------------- | -------- | ----------- |
@@ -52,3 +61,7 @@ title: "Comparison Table"
 | **React**          | SSR / React Server Components compatible                             | ✅       | ⚠️          |
 | **React**          | `useJourneyStepLifecycle` hook                                       | ✅       | ❌          |
 | **React**          | `useJourneySelector` with custom equality                            | ✅       | ❌          |
+
+The honest summary: if your flow is three static screens with next/back, a wizard hook is the right
+call. Journey earns its place once you need branching, async gating, real history, persistence, or
+observability — the [FAQ](/docs/core/faq) goes through those signals one by one.

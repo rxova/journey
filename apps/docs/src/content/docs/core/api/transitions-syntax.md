@@ -1,59 +1,47 @@
 ---
-title: "Transition Syntax"
+title: Transitions syntax
+sidebar_label: Transitions syntax
 ---
 
-Journey supports two current ways to define transitions:
+# Transitions syntax
 
-- linear step arrays for simple sequential flows
-- event-keyed graph objects for branching or cross-cutting flow logic
+There are three ways to declare transitions, and they all compile to the same runtime model —
+an ordered list where the first valid match wins. Pick the one that fits the flow; you can always
+move up as it grows.
 
-Both resolve to the same runtime model. Transition matching stays deterministic: first valid transition wins.
+:::note
+Reserved step ids — `*`, `global`, `COMPLETE`, and `TERMINATED` — are part of the runtime contract
+and can't be used as step names of your own.
+:::
 
-Reserved step ids: `*`, `global`, `COMPLETE`, and `TERMINATED`. They are part of the runtime contract and cannot be reused as actual step names.
+## Linear shorthand
 
-## Option A: Linear Shorthand
-
-Use a linear array when the flow is just a fixed `goToNextStep` sequence.
+When the flow is a fixed `goToNextStep` sequence, an array is all you need:
 
 ```ts
 const journey = {
   initial: "start",
   context: {},
-  steps: {
-    start: {},
-    details: {},
-    review: {}
-  },
+  steps: { start: {}, details: {}, review: {} },
   transitions: ["start", "details", "review"]
 };
 ```
 
-This is shorthand for:
-
-- `start --goToNextStep--> details`
-- `details --goToNextStep--> review`
-
-You can also annotate the next step without switching to graph syntax:
+That expands to `start → details → review` on `goToNextStep`. You can annotate a step without
+leaving the linear form by replacing a string with an object:
 
 ```ts
 const journey = {
   initial: "start",
-  context: { draftId: null },
-  steps: {
-    start: {},
-    details: {},
-    review: {}
-  },
+  context: { completedSteps: 0 },
+  steps: { start: {}, details: {}, review: {} },
   transitions: [
     "start",
     {
       step: "details",
       id: "start-next",
       timeoutMs: 5_000,
-      updateContext: ({ context }) => ({
-        ...context,
-        completedSteps: context.completedSteps + 1
-      })
+      updateContext: ({ context }) => ({ ...context, completedSteps: context.completedSteps + 1 })
     },
     "review"
   ]
@@ -62,44 +50,32 @@ const journey = {
 
 In linear mode:
 
-- strings are shorthand for the next step id
-- object entries use `step`, not `to`
-- object entries support `label`, `updateContext`, `onEnter`, `onLeave`, and `timeoutMs`
-- `when` is not supported
+- strings are shorthand for the next step id;
+- object entries use `step` (not `to`);
+- object entries support `label`, `updateContext`, `onEnter`, `onLeave`, and `timeoutMs`;
+- `when` is **not** supported — the moment a next step becomes conditional, move to the graph form.
 
-It is best when the flow really is linear and you do not need branching, custom events, guards, or explicit terminal transitions.
+## Graph object
 
-## Option B: Transition Graph Object
-
-Use the graph object when you need branching, custom events, async logic, or wildcard behavior.
+When you need branching, custom events, async guards, or wildcard behavior, use the event-keyed
+object:
 
 ```ts
 const journey = {
   initial: "start",
   context: { canContinue: false },
-  steps: {
-    start: {},
-    details: {},
-    review: {}
-  },
+  steps: { start: {}, details: {}, review: {} },
   transitions: {
     start: {
       goToNextStep: [{ id: "start-next", to: "details" }]
     },
     details: {
       goToNextStep: [
-        {
-          id: "details-next-guarded",
-          to: "review",
-          when: ({ context }) => context.canContinue
-        },
+        { id: "details-guarded", to: "review", when: ({ context }) => context.canContinue },
         {
           id: "details-save",
           to: "review",
-          updateContext: ({ context }) => ({
-            ...context,
-            draftSaved: true
-          })
+          updateContext: ({ context }) => ({ ...context, draftSaved: true })
         }
       ]
     },
@@ -110,32 +86,33 @@ const journey = {
 };
 ```
 
-## How The Graph Object Works
+How it reads:
 
-- Top-level keys are source step ids.
-- Event names under each step map to ordered arrays of candidate edges.
-- Each edge is an object containing `to` plus optional `label`, `when`, `updateContext`, `onEnter`, `onLeave`, and `timeoutMs`.
-- `global` is the reserved wildcard bucket for fallback cross-cutting transitions.
-- `COMPLETE` and `TERMINATED` are reserved terminal outcomes, not regular step ids.
+- top-level keys are source step ids;
+- each event maps to an **ordered** array of candidate edges;
+- each edge has a `to` plus optional `label`, `when`, `updateContext`, `onEnter`, `onLeave`, and
+  `timeoutMs`;
+- `global` is the wildcard bucket for cross-cutting fallbacks;
+- `COMPLETE` and `TERMINATED` are terminal outcomes, not step ids.
 
-Order matters inside each event array. Journey evaluates the candidates in order and picks the first valid match.
+Order matters inside each event array — Journey evaluates candidates top to bottom and takes the
+first whose guard passes.
 
-## Option C: Graph Builder
+## Graph builder
 
-`createGraphJourneyBuilder` is an alternative to the inline graph object. Instead of one central transition object, each step declares its own transitions and can be co-located with its component. The builder compiles to the same `JourneyDefinition` — no new runtime concepts.
+`createGraphJourneyBuilder` is an alternative to the inline object: each step declares its own
+transitions, so they can live next to the component that renders them. It compiles to the same
+`JourneyDefinition` — no new runtime concepts.
 
 ```ts
-// builder.ts — typed singleton, no local deps
 const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
 
-// steps/login.step.ts — co-located with Login.tsx
 export const loginStep = createStep("login", {
   on: {
     submit: [to("admin").when(({ context }) => context.role === "admin"), to("dashboard")]
   }
 });
 
-// journey.ts — one-screen assembly
 const definition = build({
   initial: "login",
   context: { role: "user" },
@@ -143,33 +120,33 @@ const definition = build({
 });
 ```
 
-Use the **factory form** when you need `event.payload` narrowed to the specific event type:
+Use the factory form of an `on` entry when you need `event.payload` narrowed to a specific event:
 
 ```ts
 submit: ({ to }) => [to("admin").when(({ context, event }) => event.payload?.username !== "")];
 ```
 
-See the [Graph Builder API reference](./graph-builder.md) for the full API including `.label()`, `.timeoutMs()`, `.updateContext()`, typed event payloads, and file organization patterns.
+The [Graph builder](./graph-builder) page covers the full API — `.label()`, `.timeoutMs()`,
+`.updateContext()`, typed payloads, and file organization.
 
-## Which Style Should You Use?
+## Choosing a form
 
-- Choose the linear array when the doc or feature is teaching a simple fixed sequence.
-- Choose the graph object when the flow has branching, skips, retries, custom events, guards, lifecycle callbacks, or global behavior.
-- Choose the graph builder when the flow is large, multiple people own different steps, or you want transitions co-located with the components that drive them.
-- Move from linear to graph as soon as the next step itself becomes conditional.
+- **Linear array** — a fixed sequence you're teaching or shipping as-is.
+- **Graph object** — branching, skips, retries, custom events, guards, or global behavior.
+- **Graph builder** — a large flow, multiple owners, or transitions you want co-located with UI.
 
-Most real product flows start with the linear shorthand and then move to the graph object (or builder) as soon as the sequence stops being fixed.
+Most flows start linear and move to the graph form the moment the next step becomes conditional.
 
-## Transition Fields
+## Transition fields
 
-Core fields you can use in transition records and graph edges:
+| Field           | What it does                                                        |
+| --------------- | ------------------------------------------------------------------- |
+| `to`            | Target step or terminal outcome                                     |
+| `when`          | Optional guard (sync or async)                                      |
+| `updateContext` | Optional synchronous context updater                                |
+| `onEnter`       | Optional observational callback, after commit, on the target side   |
+| `onLeave`       | Optional observational callback, after commit, on the source side   |
+| `timeoutMs`     | Optional finite millisecond cap for an async `when`                 |
+| `label`         | Optional human-readable identifier surfaced in observability events |
 
-- `to`: target step or terminal outcome
-- `when`: optional guard (sync or async)
-- `updateContext`: optional synchronous context updater
-- `onEnter`: optional observational callback after commit on the target side
-- `onLeave`: optional observational callback after commit on the source side
-- `timeoutMs`: optional finite millisecond limit for async `when`
-- `label`: optional human-readable identifier included in observability/debugging events
-
-For runtime semantics of guards and context updates, see [Async Behavior](../async.md).
+For the runtime semantics of guards and updates, see [Async behavior](/docs/core/async).
