@@ -194,6 +194,7 @@ event transition wins and the timer is cancelled.
 
 ## Where to next
 
+- [Step behavior](/docs/core/usage/step-behavior) — where `effect` and `after` sit among the other step hooks, and which modes honor each.
 - [Async behavior](/docs/core/async) — the `invoking` phase alongside guards and timeouts.
 - [Coming from XState](/docs/core/coming-from-xstate) — effects vs. `invoke` and `after`, side by side.
 - [Recipes](/docs/core/recipes) — short patterns, including retry and error handling.
