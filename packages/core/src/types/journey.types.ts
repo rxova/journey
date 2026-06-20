@@ -48,7 +48,7 @@ type JourneyCustomSendEventType<TEventMap extends Record<string, unknown>> = Exc
 >;
 
 /** Union of supported async lifecycle phases. */
-export type JourneyAsyncPhase = "idle" | "evaluating-when" | "error";
+export type JourneyAsyncPhase = "idle" | "evaluating-when" | "invoking" | "error";
 
 /** Async execution state for a single step. */
 export type JourneyStepAsyncState = {
@@ -119,7 +119,71 @@ export type JourneyEvent<
   TEventMap extends Record<string, unknown> = Record<never, never>
 > = JourneySendEvent<TStepId, TEventMap>;
 
-/** Step definition with optional metadata and lifecycle callbacks. */
+/** Arguments passed to a step effect's `run` function. */
+export type JourneyEffectArgs<
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  THandlers extends Record<string, unknown> = Record<never, never>
+> = {
+  snapshot: JourneySnapshot<TContext, TStepId>;
+  context: Readonly<TContext>;
+  /** The step the effect is attached to. */
+  from: TStepId;
+  handlers: THandlers;
+  /** Aborts when the step is left, or the machine is reset or disposed. */
+  signal: AbortSignal;
+};
+
+/** Branch taken when a step effect resolves successfully. */
+export type JourneyEffectResolvedBranch<
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TOutput
+> = {
+  to: TStepId;
+  label?: string;
+  updateContext?: (args: {
+    snapshot: JourneySnapshot<TContext, TStepId>;
+    context: Readonly<TContext>;
+    from: TStepId;
+    output: Awaited<TOutput>;
+  }) => TContext;
+};
+
+/** Branch taken when a step effect rejects. */
+export type JourneyEffectRejectedBranch<
+  TContext extends JourneyJsonObject,
+  TStepId extends string
+> = {
+  to: TStepId;
+  label?: string;
+  updateContext?: (args: {
+    snapshot: JourneySnapshot<TContext, TStepId>;
+    context: Readonly<TContext>;
+    from: TStepId;
+    error: unknown;
+  }) => TContext;
+};
+
+/**
+ * Declarative async work that runs when a step is entered. The runtime starts
+ * `run` on entry, tracks an `invoking` async phase, cancels it on exit/reset/
+ * dispose, and routes the result to `onResolved`/`onRejected`.
+ */
+export type JourneyStepEffect<
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  THandlers extends Record<string, unknown> = Record<never, never>,
+  TOutput = unknown
+> = {
+  run: (args: JourneyEffectArgs<TContext, TStepId, THandlers>) => TOutput | Promise<TOutput>;
+  /** Caps the async `run`; on timeout the effect rejects with `JourneyTimeoutError`. */
+  timeoutMs?: number;
+  onResolved?: JourneyEffectResolvedBranch<TContext, TStepId, TOutput>;
+  onRejected?: JourneyEffectRejectedBranch<TContext, TStepId>;
+};
+
+/** Step definition with optional metadata, lifecycle callbacks, and an effect. */
 export type JourneyStepDefinition<
   TContext extends JourneyJsonObject = JourneyJsonObject,
   TStepId extends string = string,
@@ -132,6 +196,8 @@ export type JourneyStepDefinition<
   onEnter?: JourneyStepLifecycleCallback<TContext, TStepId, TEventMap, THandlers>;
   /** Called when the machine leaves this step. */
   onLeave?: JourneyStepLifecycleCallback<TContext, TStepId, TEventMap, THandlers>;
+  /** Declarative async work run on entry. See {@link JourneyStepEffect}. */
+  effect?: JourneyStepEffect<TContext, TStepId, THandlers>;
 };
 
 /** Timeline of visited steps and current history index. */

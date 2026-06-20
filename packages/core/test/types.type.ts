@@ -220,7 +220,9 @@ type CloseObservationFromMachine = Parameters<Parameters<typeof machine.subscrib
 expectTypeOf(confirmExitJourney).toMatchTypeOf<JourneyDefinition<Context, StepId, EventMap>>();
 expectTypeOf(machine).toMatchTypeOf<JourneyMachine<Context, StepId, EventMap>>();
 expectTypeOf<JourneyEvent<StepId, EventMap>>().toMatchTypeOf<JourneySendEvent<StepId, EventMap>>();
-expectTypeOf<JourneyAsyncPhase>().toEqualTypeOf<"idle" | "evaluating-when" | "error">();
+expectTypeOf<JourneyAsyncPhase>().toEqualTypeOf<
+  "idle" | "evaluating-when" | "invoking" | "error"
+>();
 expectTypeOf<JourneyMode>().toEqualTypeOf<"linear" | "graph" | "headless">();
 expectTypeOf<JourneyStatus>().toEqualTypeOf<"idled" | "running" | "completed" | "terminated">();
 expectTypeOf<JourneyHistory<StepId>>().toEqualTypeOf<{

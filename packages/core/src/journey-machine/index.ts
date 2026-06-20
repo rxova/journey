@@ -17,10 +17,16 @@ import {
   buildSnapshot,
   cloneContext,
   cloneMetaValue,
+  isPromiseLike,
   isTerminalTarget,
+  JOURNEY_EFFECT_REJECTED_EVENT,
+  JOURNEY_EFFECT_RESOLVED_EVENT,
+  JourneyTimeoutError,
   now,
   validateFiniteTimeout,
-  validateJourneyTransitions
+  validateJourneyTransitions,
+  withAbortSignal,
+  withTimeout
 } from "./helpers";
 import { resolveJourneyDefinition } from "./resolve-journey-definition";
 
@@ -143,6 +149,114 @@ export function createJourneyMachine<
   ) => Promise<JourneySendResult<TContext, TStepId>> = () =>
     Promise.resolve(buildSendResult(runtime.getSnapshot(), false));
 
+  // Step effects: declarative async work that runs on step entry. The runner
+  // reuses the serialized send pipeline by dispatching a synthetic event that
+  // the resolver wired to onResolved/onRejected transitions. One effect is
+  // in-flight at a time; its lifecycle controller cancels it on step exit
+  // (via `cancelActiveEffect`), reset, or dispose.
+  let activeEffectController: AbortController | null = null;
+
+  const cancelActiveEffect = () => {
+    const controller = activeEffectController;
+    if (!controller) {
+      return;
+    }
+    activeEffectController = null;
+    if (!controller.signal.aborted) {
+      controller.abort();
+    }
+    runtime.closeLifecycle(controller);
+  };
+
+  const runStepEffect = (stepId: TStepId, runVersion: number) => {
+    const effect = resolvedJourney.steps[stepId]?.effect;
+    if (!effect || !runtime.isRunActive(runVersion)) {
+      return;
+    }
+
+    const controller = runtime.openLifecycle(runVersion);
+    if (!controller) {
+      return;
+    }
+    activeEffectController = controller;
+    const { signal } = controller;
+    const handlers = (resolvedJourney.handlers ?? {}) as THandlers;
+
+    asyncState.setStepLoading(
+      stepId,
+      "invoking",
+      JOURNEY_EFFECT_RESOLVED_EVENT,
+      undefined,
+      runVersion
+    );
+
+    void (async () => {
+      let output: unknown;
+      let failure: { error: unknown } | null = null;
+      try {
+        const result = effect.run({
+          snapshot: runtime.getSnapshot(),
+          context: runtime.peekSnapshot().context,
+          from: stepId,
+          handlers,
+          signal
+        });
+        output = isPromiseLike(result)
+          ? await withTimeout(
+              withAbortSignal(result as PromiseLike<unknown>, signal),
+              effect.timeoutMs ?? defaultTimeoutMs,
+              () =>
+                new JourneyTimeoutError(
+                  `Step effect timed out after ${effect.timeoutMs ?? defaultTimeoutMs}ms (step: ${String(stepId)}).`
+                )
+            )
+          : result;
+      } catch (error) {
+        failure = { error };
+      } finally {
+        if (activeEffectController === controller) {
+          activeEffectController = null;
+        }
+        runtime.closeLifecycle(controller);
+      }
+
+      if (
+        signal.aborted ||
+        !runtime.isRunActive(runVersion) ||
+        runtime.peekSnapshot().currentStepId !== stepId
+      ) {
+        return;
+      }
+
+      if (failure) {
+        if (effect.onRejected) {
+          void dispatchSend({
+            type: JOURNEY_EFFECT_REJECTED_EVENT,
+            payload: failure.error
+          } as unknown as JourneySendEvent<TStepId, TEventMap>);
+        } else {
+          asyncState.setStepError(
+            stepId,
+            JOURNEY_EFFECT_REJECTED_EVENT,
+            failure.error,
+            undefined,
+            runVersion
+          );
+        }
+        return;
+      }
+
+      if (effect.onResolved) {
+        void dispatchSend({
+          type: JOURNEY_EFFECT_RESOLVED_EVENT,
+          payload: output
+        } as unknown as JourneySendEvent<TStepId, TEventMap>);
+      } else {
+        asyncState.setStepIdle(stepId, runVersion);
+      }
+    })();
+  };
+
   const scheduleLifecycle: JourneyLifecycleScheduler<TContext, TStepId, TEventMap, THandlers> = ({
     previousSnapshot,
     snapshot,
@@ -154,6 +268,8 @@ export function createJourneyMachine<
     runVersion,
     transition
   }) => {
+    // Leaving the current step cancels its in-flight effect.
+    cancelActiveEffect();
     const sourceStep = resolvedJourney.steps[from];
     const targetStep = isTerminalTarget(to) ? null : resolvedJourney.steps[to];
     const handlers = (resolvedJourney.handlers ?? {}) as THandlers;
@@ -294,6 +410,11 @@ export function createJourneyMachine<
             return;
           }
         }
+
+        // Entering a step with an effect starts it after entry callbacks settle.
+        if (runtime.isRunActive(runVersion) && targetStep?.effect) {
+          runStepEffect(to as TStepId, runVersion);
+        }
       } finally {
         runtime.closeLifecycle(lifecycleAbortController);
       }
@@ -354,7 +475,15 @@ export function createJourneyMachine<
     getSnapshot: runtime.getSnapshot,
     getStepMeta: (stepId) => cloneMetaValue(stepMeta[stepId]),
     getComputed,
-    startJourney: controls.startJourney,
+    startJourney: async () => {
+      const snapshot = await controls.startJourney();
+      // The initial step is not "entered" via a transition, so trigger its
+      // effect here once the machine is running.
+      if (!runtime.isDisposed() && runtime.peekSnapshot().status === "running") {
+        runStepEffect(runtime.peekSnapshot().currentStepId, runtime.getRunVersion());
+      }
+      return snapshot;
+    },
     subscribe: runtime.subscribe,
     subscribeSelector: runtime.subscribeSelector,
     subscribeEvent: runtime.subscribeEvent,

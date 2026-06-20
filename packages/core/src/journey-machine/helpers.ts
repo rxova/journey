@@ -34,6 +34,11 @@ export {
   withTimeout
 };
 
+/** Internal event type dispatched when a step effect resolves successfully. */
+export const JOURNEY_EFFECT_RESOLVED_EVENT = "@@journey.effect.resolved";
+/** Internal event type dispatched when a step effect rejects. */
+export const JOURNEY_EFFECT_REJECTED_EVENT = "@@journey.effect.rejected";
+
 export const assertStepExists = <TStepId extends string>(
   steps: Record<TStepId, unknown>,
   stepId: TStepId,
