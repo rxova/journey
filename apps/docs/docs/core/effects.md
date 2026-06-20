@@ -164,8 +164,36 @@ Both can be async, so it's worth being clear on which to reach for:
 A guard answers "may this transition fire?"; an effect answers "I just arrived — go do the work and
 route me based on how it went."
 
+## Delayed transitions (`after`)
+
+A close cousin of effects: instead of running async work, `after` moves the flow once a step has
+been active for a given number of milliseconds. The timer starts on entry and cancels the moment you
+leave (or reset, or dispose) — so it's safe for idle timeouts, auto-advancing splash screens, and
+resend cooldowns.
+
+```ts
+createStep("otp", {
+  after: {
+    30_000: { to: "expired" } // 30s with no input → expire
+  },
+  on: { submit: [to("verify")] }
+});
+```
+
+Keyed by delay, so a step can have more than one:
+
+```ts
+createStep("splash", {
+  after: { 2_000: { to: "home", updateContext: ({ context }) => ({ ...context, seen: true }) } }
+});
+```
+
+Like effects, `after` works in linear and graph modes (ignored in headless), runs on the initial
+step too, and re-arms each time the step is entered. If the user acts before the timer fires, your
+event transition wins and the timer is cancelled.
+
 ## Where to next
 
 - [Async behavior](/docs/core/async) — the `invoking` phase alongside guards and timeouts.
-- [Coming from XState](/docs/core/coming-from-xstate) — effects vs. `invoke`, side by side.
+- [Coming from XState](/docs/core/coming-from-xstate) — effects vs. `invoke` and `after`, side by side.
 - [Recipes](/docs/core/recipes) — short patterns, including retry and error handling.

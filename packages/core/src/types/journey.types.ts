@@ -183,7 +183,22 @@ export type JourneyStepEffect<
   onRejected?: JourneyEffectRejectedBranch<TContext, TStepId>;
 };
 
-/** Step definition with optional metadata, lifecycle callbacks, and an effect. */
+/**
+ * A delayed transition: when the step has been active for `<delay>` ms, the
+ * machine moves to `to`. The timer starts on entry and cancels on exit, reset,
+ * or dispose. Keyed by delay (milliseconds) on a step's `after`.
+ */
+export type JourneyAfterTransition<TContext extends JourneyJsonObject, TStepId extends string> = {
+  to: TStepId;
+  label?: string;
+  updateContext?: (args: {
+    snapshot: JourneySnapshot<TContext, TStepId>;
+    context: Readonly<TContext>;
+    from: TStepId;
+  }) => TContext;
+};
+
+/** Step definition with optional metadata, lifecycle callbacks, an effect, and delayed transitions. */
 export type JourneyStepDefinition<
   TContext extends JourneyJsonObject = JourneyJsonObject,
   TStepId extends string = string,
@@ -198,6 +213,8 @@ export type JourneyStepDefinition<
   onLeave?: JourneyStepLifecycleCallback<TContext, TStepId, TEventMap, THandlers>;
   /** Declarative async work run on entry. See {@link JourneyStepEffect}. */
   effect?: JourneyStepEffect<TContext, TStepId, THandlers>;
+  /** Delayed transitions keyed by milliseconds. See {@link JourneyAfterTransition}. */
+  after?: Record<number, JourneyAfterTransition<TContext, TStepId>>;
 };
 
 /** Timeline of visited steps and current history index. */
@@ -297,6 +314,7 @@ export type LinearJourneyStep<
       onEnter?: JourneyStepLifecycleCallback<TContext, TStepId, Record<never, never>, THandlers>;
       onLeave?: JourneyStepLifecycleCallback<TContext, TStepId, Record<never, never>, THandlers>;
       effect?: JourneyStepEffect<TContext, TStepId, THandlers>;
+      after?: Record<number, JourneyAfterTransition<TContext, TStepId>>;
     };
 
 /** Input type for `createLinearJourney`. Steps array drives both ordering and per-step config. */

@@ -231,6 +231,7 @@ export function createGraphJourneyBuilder<
       onLeave?: unknown;
       on?: Record<string, unknown>;
       effect?: unknown;
+      after?: unknown;
     }
   ) {
     return {
@@ -239,7 +240,8 @@ export function createGraphJourneyBuilder<
       _onEnter: config?.onEnter,
       _onLeave: config?.onLeave,
       _on: config?.on,
-      _effect: config?.effect
+      _effect: config?.effect,
+      _after: config?.after
     } as JourneyStepBuilder<
       TContext,
       TStepId,
@@ -279,7 +281,8 @@ export function createGraphJourneyBuilder<
         ...(stepBuilder._meta !== undefined ? { meta: stepBuilder._meta } : {}),
         ...(stepBuilder._onEnter !== undefined ? { onEnter: stepBuilder._onEnter } : {}),
         ...(stepBuilder._onLeave !== undefined ? { onLeave: stepBuilder._onLeave } : {}),
-        ...(stepBuilder._effect !== undefined ? { effect: stepBuilder._effect } : {})
+        ...(stepBuilder._effect !== undefined ? { effect: stepBuilder._effect } : {}),
+        ...(stepBuilder._after !== undefined ? { after: stepBuilder._after } : {})
       };
 
       if (stepBuilder._on) {

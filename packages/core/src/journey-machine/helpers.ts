@@ -38,6 +38,8 @@ export {
 export const JOURNEY_EFFECT_RESOLVED_EVENT = "@@journey.effect.resolved";
 /** Internal event type dispatched when a step effect rejects. */
 export const JOURNEY_EFFECT_REJECTED_EVENT = "@@journey.effect.rejected";
+/** Prefix for the internal event type dispatched when an `after` timer fires (suffixed with the delay). */
+export const JOURNEY_AFTER_EVENT_PREFIX = "@@journey.after:";
 
 export const assertStepExists = <TStepId extends string>(
   steps: Record<TStepId, unknown>,
