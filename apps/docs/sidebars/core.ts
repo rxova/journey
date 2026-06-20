@@ -12,7 +12,7 @@ const sidebars: SidebarsConfig = {
       type: "category",
       label: "Use it",
       collapsed: false,
-      items: ["usage/linear", "usage/graph", "usage/headless", "recipes", "examples"]
+      items: ["usage/linear", "usage/graph", "usage/headless", "effects", "recipes", "examples"]
     },
     {
       type: "category",
@@ -45,6 +45,7 @@ const sidebars: SidebarsConfig = {
         "api/graph-builder",
         "typescript",
         "comparison",
+        "coming-from-xstate",
         "stability",
         "pre-1-0-migration",
         "faq",
