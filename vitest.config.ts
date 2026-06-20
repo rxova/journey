@@ -84,6 +84,10 @@ export default defineConfig({
         replacement: fileURLToPath(new URL("./packages/common/src/origin.ts", import.meta.url))
       },
       {
+        find: "@rxova/journey-common/memoize",
+        replacement: fileURLToPath(new URL("./packages/common/src/memoize.ts", import.meta.url))
+      },
+      {
         find: "@rxova/journey-common",
         replacement: fileURLToPath(new URL("./packages/common/src/index.ts", import.meta.url))
       }
