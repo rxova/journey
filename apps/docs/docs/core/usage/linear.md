@@ -6,15 +6,19 @@ sidebar_label: Linear
 
 # Linear
 
-`createLinearJourney` creates a machine where steps follow a fixed sequence. `goToNextStep` advances through them in order; `goToPreviousStep` moves back. The factory derives the transition graph from the steps array automatically — no need to declare it manually.
+Linear mode is the wizard workhorse. You hand `createLinearJourney` an ordered list of steps, and it
+derives the transitions for you — `goToNextStep` advances through them, `goToPreviousStep` walks
+back. No transition graph to declare; the order _is_ the graph.
 
 :::info Good fit
-Onboarding flows, checkout, multi-step forms, configuration wizards, any flow where "next" always means the same thing.
+Onboarding, checkout, multi-step forms, configuration wizards — anywhere "next" always means the
+same thing.
 :::
 
-## Define a Linear Journey
+## Define a linear journey
 
-Pass an ordered array of step ids. Each entry can be a plain string or an object for richer step configuration.
+Pass an ordered array of step ids. Each entry can be a plain string, or an object when you want
+metadata or lifecycle callbacks.
 
 ```ts
 import { createLinearJourney } from "@rxova/journey-core";
@@ -36,9 +40,7 @@ const machine = createLinearJourney<Context, StepId, StepMeta>({
 await machine.startJourney();
 ```
 
-### String shorthand
-
-If you don't need per-step metadata or lifecycle callbacks, use plain strings:
+If you don't need metadata or callbacks, the string shorthand is all you need:
 
 ```ts
 const machine = createLinearJourney<Context, StepId>({
@@ -47,99 +49,100 @@ const machine = createLinearJourney<Context, StepId>({
 });
 ```
 
-### Step lifecycle callbacks
+## Navigation
 
-Use `onEnter` and `onLeave` to hook into step transitions without polluting context:
+Sequential moves are the bread and butter:
+
+```ts
+await machine.goToNextStep(); // forward one
+await machine.goToPreviousStep(); // back one
+await machine.goToPreviousStep(2); // back two
+```
+
+There's also an index-based helper that's unique to linear machines. `goToStepByIndex` maps the
+target index to the right primitive under the hood:
+
+```ts
+await machine.goToStepByIndex(0); // → goToPreviousStep (back to first)
+await machine.goToStepByIndex(1); // → goToNextStep (next step)
+await machine.goToStepByIndex(3); // → goToStepById (a forward jump)
+```
+
+:::note
+`goToStepByIndex` is a `LinearJourneyMachine`-only method — graph and headless machines don't have
+it. Out-of-bounds indices return `{ transitioned: false }` rather than throwing, so you can call it
+straight from a clicked step without bounds-checking first.
+:::
+
+Reaching the end auto-completes the journey, unless you opt into explicit completion:
+
+```ts
+await machine.completeJourney(); // explicit completion
+```
+
+Pass `requireExplicitCompletion: true` in the options when you'd rather the last `goToNextStep`
+_not_ auto-complete — handy when the final step has its own confirm button.
+
+## Step lifecycle callbacks
+
+Hook into entering and leaving a step without touching context — perfect for analytics or
+prefetching:
 
 ```ts
 steps: [
   {
     id: "payment",
     meta: { label: "Payment", icon: "card" },
-    onEnter: async ({ context }) => {
-      await analytics.track("payment_viewed");
-    },
-    onLeave: async ({ context }) => {
-      await analytics.track("payment_left");
-    }
+    onEnter: () => analytics.track("payment_viewed"),
+    onLeave: () => analytics.track("payment_left")
   }
 ];
 ```
 
-## Navigation
+These run after the move commits and can't block it — see
+[Lifecycle & events](/docs/core/lifecycle#step-lifecycle-callbacks) for the exact timing.
 
-### Sequential navigation
+## Linear-only computed state
 
-```ts
-await machine.goToNextStep(); // advances one step
-await machine.goToPreviousStep(); // goes back one step
-await machine.goToPreviousStep(2); // goes back two steps
-```
-
-### Index-based navigation
-
-`goToStepByIndex` is a `LinearJourneyMachine`-only method. It maps the index to the correct navigation primitive:
-
-```ts
-await machine.goToStepByIndex(0); // → goToPreviousStep (back to first)
-await machine.goToStepByIndex(1); // → goToNextStep (next step)
-await machine.goToStepByIndex(3); // → goToStepById (arbitrary forward jump)
-```
-
-:::note
-`goToStepByIndex` returns `{ transitioned: false }` for out-of-bounds indices instead of throwing.
-:::
-
-### Completion
-
-`goToNextStep` on the last step auto-completes the journey unless you set `requireExplicitCompletion: true` in the options.
-
-```ts
-await machine.completeJourney(); // explicit completion
-```
-
-## Linear-only Computed State
+`getComputed()` gives you the derived values a progress UI needs, already memoized. Narrow on
+`mode === "linear"` to unlock the linear-specific fields:
 
 ```ts
 const computed = machine.getComputed();
 
 if (computed.mode === "linear") {
-  computed.stepCount; // total number of steps
-  computed.isFirstStep; // true when on step index 0
-  computed.isLastStep; // true when on the final step
-  computed.stepOrder; // readonly ordered step id array
-  computed.activeStepIndex; // current position in the sequence
+  computed.stepCount; // total steps
+  computed.activeStepIndex; // current position
+  computed.isFirstStep; // on index 0?
+  computed.isLastStep; // on the final step?
+  computed.stepOrder; // readonly ordered step ids
 }
 ```
 
-Use these to drive progress indicators, back-button visibility, and completion gates without manual tracking.
+That's everything a progress bar or a back-button gate wants, without tracking it yourself:
 
-```tsx
-// Progress bar example
+```ts
 const { stepCount, activeStepIndex } = machine.getComputed();
 const progress = ((activeStepIndex + 1) / stepCount) * 100;
 ```
 
-## Step Metadata
+## Reading metadata and updating context
 
-Read per-step static data at any time:
+Static per-step data is always a call away:
 
 ```ts
 const meta = machine.getStepMeta("payment");
-console.log(meta?.label); // "Payment"
-console.log(meta?.icon); // "card"
+meta?.label; // "Payment"
 ```
 
-## Context Updates
-
-Context updates are separate from transitions. Use `updateContext` before or after a navigation call:
+Context updates are separate from navigation — patch before or after a move:
 
 ```ts
-await machine.updateContext((ctx) => ({ ...ctx, email: "user@example.com" }));
+await machine.updateContext((ctx) => ({ ...ctx, email: "ada@example.com" }));
 await machine.goToNextStep();
 ```
 
-## Full Example
+## A complete flow
 
 ```ts
 import { createLinearJourney } from "@rxova/journey-core";
@@ -155,12 +158,10 @@ const machine = createLinearJourney<Context, StepId>({
 await machine.startJourney();
 
 machine.subscribe(() => {
-  const snap = machine.getSnapshot();
-  console.log("step:", snap.currentStepId);
+  console.log("step:", machine.getSnapshot().currentStepId);
 });
 
-// User progresses
-await machine.updateContext((ctx) => ({ ...ctx, name: "Alice" }));
+await machine.updateContext((ctx) => ({ ...ctx, name: "Ada" }));
 await machine.goToNextStep(); // intro → profile
 
 await machine.updateContext((ctx) => ({ ...ctx, agreed: true }));
@@ -168,3 +169,9 @@ await machine.goToNextStep(); // profile → confirm
 
 await machine.completeJourney();
 ```
+
+## Where to next
+
+- [Graph](./graph) — when "next" starts meaning different things.
+- [Snapshot](/docs/core/snapshot) — the object your `subscribe` callback renders from.
+- [Recipes](/docs/core/recipes) — short answers to common "how do I…" questions.
