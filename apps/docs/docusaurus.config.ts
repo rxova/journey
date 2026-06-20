@@ -43,7 +43,10 @@ const config: Config = {
   favicon: "img/rxova-logo-256.png",
 
   future: {
-    v4: true
+    v4: true,
+    // Docusaurus 3.10's `v4: true` shortcut now also flips on `fasterByDefault`
+    // (the Rust/SWC "faster" build). Keep it off — opting in is a separate migration.
+    faster: false
   },
 
   url: "https://rxova.org",
@@ -57,7 +60,11 @@ const config: Config = {
   clientModules: ["./src/sidebar-resize.ts"],
 
   markdown: {
-    mermaid: true
+    mermaid: true,
+    // `v4: true` also sets `mdx1CompatDisabledByDefault`, which would drop support for
+    // HTML comments and `{#id}` heading anchors used throughout the docs. Keep the
+    // MDX1 compat shims on until the content is migrated to strict MDX3.
+    mdx1Compat: { comments: true, admonitions: true, headingIds: true }
   },
 
   themes: ["@docusaurus/theme-mermaid"],
