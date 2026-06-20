@@ -1,115 +1,107 @@
 ---
-title: Timeline Navigation
-sidebar_position: 7
+id: history
+title: Timeline & history
+sidebar_label: Timeline & history
 ---
 
-Journey navigation is built on a timeline + pointer model.
+# Timeline & history
 
-This is the reason back/forward behavior is deterministic instead of guesswork.
-
-## Mental Model
-
-```text
-timeline: [start] -> [details] -> [payment] -> [review]
-index:                           ^
-currentStepId:                   "payment"
-```
-
-The timeline records realized history. The index chooses which point in that realized history is considered "now".
-
-## The Model
-
-- `history.timeline`: the path of reached steps.
-- `history.index`: the current pointer into that path.
-- `currentStepId`: always `history.timeline[history.index]`.
-
-## Why This Matters
-
-You get two benefits at once:
-
-- true history (what happened)
-- current position (where you are now)
-
-That makes debugging and replay much easier.
-
-## Navigation Modes
-
-| Operation                       | What changes                                      | What does not change                            |
-| ------------------------------- | ------------------------------------------------- | ----------------------------------------------- |
-| step transition                 | appends or rewrites realized tail                 | earlier realized history before current pointer |
-| `goToPreviousStep(steps?)`      | moves pointer backward                            | timeline entries, `visited`                     |
-| `goToLastVisitedStep()`         | moves pointer to the realized tail                | timeline entries, `visited`                     |
-| headless `goToStepById(stepId)` | appends target as a new realized step when needed | earlier realized history before current pointer |
-
-## Built-in Navigation APIs
-
-- `goToPreviousStep(steps?)`: move pointer backward
-- `goToLastVisitedStep()`: move pointer to timeline tail
-- `goToStepById(stepId)`: direct jump in headless mode, or a declared transition in graph/linear mode
-
-You can also model a custom `back` event:
-
-```ts
-await machine.send({ type: "back" });
-```
-
-Journey does not treat `back` as a built-in event. If you want `back` behavior, declare it as a custom event and
-add explicit `back` transitions.
-
-Direct helper and send fallback are related but not identical:
-
-- `machine.goToPreviousStep()` is pure pointer navigation
-- `machine.send({ type: "goToPreviousStep" })` goes through the send pipeline first
-- `machine.send({ type: "back" })` is just a custom event, so it only does something when your journey declares a
-  matching `back` transition
-
-## Branching After Going Back
-
-When you are not at the tail and a forward transition happens, Journey:
-
-1. truncates timeline to `history.index + 1`
-2. appends the new target step
-3. moves pointer to the new end
-
-Example:
-
-- before: `timeline = ["start", "details", "payment", "review"]`, `index = 1`
-- forward to `upsell`
-- after: `timeline = ["start", "details", "upsell"]`, `index = 2`
+Back and forward behavior in Journey is deterministic, not guesswork, because navigation is built on
+one model: a **timeline of the path actually taken** plus a **pointer** marking where "now" is on
+that path.
 
 ```text
-before
-[start] -> [details] -> [payment] -> [review]
-              ^
-
-after forward transition to "upsell"
-[start] -> [details] -> [upsell]
-                           ^
+timeline:  account → details → payment → review
+index:                          ▲
+currentStepId:                  "payment"
 ```
 
-This is the same mental model users expect from history systems.
+Three fields, one rule:
 
-## `visited` vs Pointer
+- `history.timeline` — the realized path of reached steps.
+- `history.index` — the pointer into that path.
+- `currentStepId` — always equal to `history.timeline[history.index]`.
 
-`visited` tracks whether a step was ever entered.
+That rule (the third one) is an invariant: the current step is never out of sync with the pointer.
+You get true history and current position at the same time, which is what makes debugging and replay
+straightforward.
 
-Pointer navigation does not rewrite `visited`, because revisiting old timeline positions should not erase historical facts.
+## What each navigation does
 
-That distinction is useful in UI:
+| Operation                       | Changes                                   | Leaves alone                        |
+| ------------------------------- | ----------------------------------------- | ----------------------------------- |
+| step transition                 | appends or rewrites the realized tail     | realized history before the pointer |
+| `goToPreviousStep(steps?)`      | moves the pointer backward                | timeline entries, `visited`         |
+| `goToLastVisitedStep()`         | moves the pointer to the realized tail    | timeline entries, `visited`         |
+| headless `goToStepById(stepId)` | appends the target as a new realized step | realized history before the pointer |
 
-- use `history.index` and `currentStepId` for current position
-- use `visited[stepId]` for "has this step ever happened?"
+Moving back never erases the timeline — it moves the pointer. That's the whole trick.
 
-## No-Op Cases
+## Branching after going back
 
-- `goToPreviousStep(...)` is a no-op at the start of history
-- `goToLastVisitedStep()` is a no-op when you are already at the realized tail
-- pointer helpers are no-ops when machine status is terminal
-- explicit `goToPreviousStep` transitions still win over built-in previous-step navigation fallback
+Here's the case worth understanding. When you're _not_ at the tail and a forward transition fires,
+Journey truncates the timeline to the pointer, appends the new target, and moves the pointer to the
+new end:
 
-## Recommended Reading
+```mermaid
+flowchart TB
+  subgraph Before["Before — pointer on details"]
+    direction LR
+    A1[account] --> B1[details] --> C1[payment] --> D1[review]
+  end
+  subgraph After["After — forward to upsell"]
+    direction LR
+    A2[account] --> B2[details] --> E2[upsell]
+  end
+  Before -->|"forward transition to upsell"| After
 
-- Read [Snapshot](/docs/core/snapshot) for the full shape of `history` and `visited`.
-- Read [Lifecycle](/docs/core/lifecycle) for `navigation.previous` and `navigation.lastVisited`.
-- Read [Navigation Commits](/docs/core/architecture/navigation) for the implementation side.
-- Read [Send Pipeline](/docs/core/architecture/send) if you want to understand fallback navigation from `send(...)`.
+  classDef now fill:#0f8f6a,color:#fff,stroke:#0f8f6a;
+  class B1,E2 now
+```
+
+Before: `timeline = ["account", "details", "payment", "review"]`, `index = 1`.
+After branching forward to `upsell`: `timeline = ["account", "details", "upsell"]`, `index = 2`.
+
+This is exactly what people expect from a history system — go back, take a different path, and the
+abandoned branch falls away.
+
+## `visited` vs. the pointer
+
+`visited` answers a different question than the pointer does. The pointer is "where am I now";
+`visited[stepId]` is "has this step **ever** been entered." Pointer navigation doesn't rewrite
+`visited`, because moving back to inspect an earlier step shouldn't erase the fact that a later one
+already happened.
+
+In UI:
+
+- use `history.index` and `currentStepId` for current position;
+- use `visited[stepId]` for "has this step happened at least once?" (lighting up a progress bar, say).
+
+## "Back" is not a built-in event
+
+Journey gives you pointer navigation, but it doesn't assume what `back` means for your product. The
+built-ins are explicit:
+
+- `machine.goToPreviousStep(steps?)` — pure pointer navigation.
+- `machine.goToLastVisitedStep()` — jump the pointer to the realized tail.
+- `machine.send({ type: "goToPreviousStep" })` — goes through the send pipeline first, then falls
+  back to pointer navigation.
+
+If you want a custom `back` event with its own transitions, declare it — `send({ type: "back" })`
+only does something when your definition has matching `back` transitions. A declared
+`goToPreviousStep` transition also wins over the built-in fallback, so you can override the default
+when you need to.
+
+## No-op cases
+
+These do nothing on purpose, so you don't have to guard against them:
+
+- `goToPreviousStep(...)` at the very start of history.
+- `goToLastVisitedStep()` when you're already at the realized tail.
+- any pointer helper when the machine status is terminal.
+
+## Where to next
+
+- [Snapshot](/docs/core/snapshot) — the full shape of `history` and `visited`.
+- [Lifecycle & events](/docs/core/lifecycle) — `navigation.previous` and `navigation.lastVisited`.
+- [How it works → Committing a move](/docs/core/architecture#committing-a-move) — the runtime side.

@@ -99,7 +99,7 @@ The three modes are just three ways of declaring transitions over the _same_ run
 
 ```mermaid
 flowchart TD
-  R(("One runtime\none snapshot\none API"))
+  R(("One runtime<br/>one snapshot<br/>one API"))
   R --- L["**Linear**<br/>transitions derived<br/>from step order"]
   R --- G["**Graph**<br/>transitions declared<br/>with guards + events"]
   R --- H["**Headless**<br/>no transitions<br/>caller navigates"]
