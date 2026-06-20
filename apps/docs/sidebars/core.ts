@@ -12,7 +12,15 @@ const sidebars: SidebarsConfig = {
       type: "category",
       label: "Use it",
       collapsed: false,
-      items: ["usage/linear", "usage/graph", "usage/headless", "effects", "recipes", "examples"]
+      items: [
+        "usage/linear",
+        "usage/graph",
+        "usage/headless",
+        "usage/step-behavior",
+        "effects",
+        "recipes",
+        "examples"
+      ]
     },
     {
       type: "category",

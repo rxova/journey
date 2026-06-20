@@ -180,6 +180,7 @@ const unsubscribe = machine.subscribeEvent((event) => {
 
 ## Where to next
 
+- [Step behavior](/docs/core/usage/step-behavior) — `onEnter`/`onLeave` next to `when`, `effect`, and `after`, with a per-mode availability map and the full `updateContext` catalog.
 - [Snapshot](/docs/core/snapshot) — the state object these events explain.
 - [Async behavior](/docs/core/async) — failure and timeout semantics behind `transition.error`.
 - [Timeline & history](/docs/core/history) — `navigation.previous` and `navigation.lastVisited`.
