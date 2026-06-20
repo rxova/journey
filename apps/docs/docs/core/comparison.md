@@ -21,7 +21,7 @@ If you're weighing Journey against a lighter wizard hook or against XState speci
 | **Architecture**   | TypeScript-first (strict generics throughout)                        | ✅       | ⚠️          |
 | **Architecture**   | Zero dependencies                                                    | ✅       | ⚠️          |
 | **Architecture**   | 95%+ test coverage, enforced in CI                                   | ✅       | ❓          |
-| **Architecture**   | Under 8 kB (core, brotli)                                            | ✅       | ✅          |
+| **Architecture**   | Under 9 kB (core, brotli)                                            | ✅       | ✅          |
 | **Navigation**     | Linear (sequential) flow                                             | ✅       | ✅          |
 | **Navigation**     | `goToNextStep()`                                                     | ✅       | ✅          |
 | **Navigation**     | `goToPreviousStep()`                                                 | ✅       | ✅          |

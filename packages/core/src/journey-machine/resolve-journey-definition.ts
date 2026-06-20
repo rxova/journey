@@ -1,10 +1,16 @@
-import { validateFiniteTimeout } from "./helpers";
+import {
+  JOURNEY_EFFECT_REJECTED_EVENT,
+  JOURNEY_EFFECT_RESOLVED_EVENT,
+  validateFiniteTimeout,
+  warnInDevelopment
+} from "./helpers";
 
 import type {
   JourneyDefinition,
   JourneyJsonObject,
   JourneyResolvedDefinition,
   JourneyResolvedTransition,
+  JourneyStepDefinition,
   JourneyTransition,
   JourneyTransitionGraph
 } from "../types";
@@ -70,6 +76,92 @@ const buildResolvedTransitions = <
   });
 };
 
+/**
+ * Translates each step's declarative `effect` into the internal transitions the
+ * runtime fires when the effect settles. The effect runner dispatches the
+ * matching synthetic event with the resolved output (or rejection error) as the
+ * payload; the wrapped `updateContext` exposes that payload as `output`/`error`.
+ */
+const buildEffectTransitions = <
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TEventMap extends Record<string, unknown>,
+  THandlers extends Record<string, unknown>
+>(
+  steps: Record<TStepId, JourneyStepDefinition<TContext, TStepId, TEventMap, unknown, THandlers>>
+): JourneyTransition<TContext, TStepId, TEventMap, THandlers>[] => {
+  const effectTransitions: JourneyTransition<TContext, TStepId, TEventMap, THandlers>[] = [];
+
+  for (const [stepId, step] of Object.entries(steps) as [
+    TStepId,
+    JourneyStepDefinition<TContext, TStepId, TEventMap, unknown, THandlers>
+  ][]) {
+    const effect = step?.effect;
+    if (!effect) {
+      continue;
+    }
+
+    if (typeof effect.run !== "function") {
+      throw new Error(`Journey step "${stepId}" effect must define "run" as a function.`);
+    }
+    validateFiniteTimeout(effect.timeoutMs, `Journey step "${stepId}" effect`);
+
+    if (effect.onResolved) {
+      const branch = effect.onResolved;
+      effectTransitions.push({
+        from: stepId,
+        event: JOURNEY_EFFECT_RESOLVED_EVENT,
+        to: branch.to,
+        ...(branch.label !== undefined ? { label: branch.label } : {}),
+        ...(branch.updateContext !== undefined
+          ? {
+              updateContext: (args: {
+                snapshot: unknown;
+                context: TContext;
+                from: TStepId;
+                event: { payload?: unknown };
+              }) =>
+                branch.updateContext!({
+                  snapshot: args.snapshot as never,
+                  context: args.context,
+                  from: args.from,
+                  output: args.event.payload as never
+                })
+            }
+          : {})
+      } as unknown as JourneyTransition<TContext, TStepId, TEventMap, THandlers>);
+    }
+
+    if (effect.onRejected) {
+      const branch = effect.onRejected;
+      effectTransitions.push({
+        from: stepId,
+        event: JOURNEY_EFFECT_REJECTED_EVENT,
+        to: branch.to,
+        ...(branch.label !== undefined ? { label: branch.label } : {}),
+        ...(branch.updateContext !== undefined
+          ? {
+              updateContext: (args: {
+                snapshot: unknown;
+                context: TContext;
+                from: TStepId;
+                event: { payload?: unknown };
+              }) =>
+                branch.updateContext!({
+                  snapshot: args.snapshot as never,
+                  context: args.context,
+                  from: args.from,
+                  error: args.event.payload
+                })
+            }
+          : {})
+      } as unknown as JourneyTransition<TContext, TStepId, TEventMap, THandlers>);
+    }
+  }
+
+  return effectTransitions;
+};
+
 export const resolveJourneyDefinition = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
@@ -81,9 +173,15 @@ export const resolveJourneyDefinition = <
 ): JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers> => {
   type TEventType = string;
   const resolvedTransitions: JourneyTransition<TContext, TStepId, TEventMap, THandlers>[] = [];
+  const effectTransitions = buildEffectTransitions(journey.steps);
   const { transitions } = journey;
 
   if (transitions === undefined) {
+    if (effectTransitions.length > 0) {
+      warnInDevelopment(
+        "Journey step effects require graph or linear transitions and are ignored in headless mode."
+      );
+    }
     return {
       ...journey,
       transitions: buildResolvedTransitions(resolvedTransitions)
@@ -220,7 +318,7 @@ export const resolveJourneyDefinition = <
     return {
       ...journey,
       initial: resolvedInitial,
-      transitions: buildResolvedTransitions(resolvedTransitions)
+      transitions: buildResolvedTransitions([...resolvedTransitions, ...effectTransitions])
     };
   }
 
@@ -343,6 +441,6 @@ export const resolveJourneyDefinition = <
 
   return {
     ...journey,
-    transitions: buildResolvedTransitions(resolvedTransitions)
+    transitions: buildResolvedTransitions([...resolvedTransitions, ...effectTransitions])
   } as JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
 };

@@ -113,19 +113,19 @@
       "name": "core/createLinearJourney",
       "path": "dist/index.js",
       "import": "{ createLinearJourney }",
-      "limit": "8.5 kB"
+      "limit": "9 kB"
     },
     {
       "name": "core/createGraphJourney",
       "path": "dist/index.js",
       "import": "{ createGraphJourney }",
-      "limit": "8.5 kB"
+      "limit": "9 kB"
     },
     {
       "name": "core/createHeadlessJourney",
       "path": "dist/index.js",
       "import": "{ createHeadlessJourney }",
-      "limit": "8.5 kB"
+      "limit": "9 kB"
     },
     {
       "name": "core/createGraphJourneyBuilder",
@@ -155,13 +155,13 @@
       "name": "core/createDiagnosticsPlugin",
       "path": "dist/plugins/diagnostics/index.js",
       "import": "{ createDiagnosticsPlugin }",
-      "limit": "2.6 kB"
+      "limit": "2.9 kB"
     },
     {
       "name": "core/createExecutionPathsPlugin",
       "path": "dist/plugins/execution-paths/index.js",
       "import": "{ createExecutionPathsPlugin }",
-      "limit": "2 kB"
+      "limit": "2.4 kB"
     },
     {
       "name": "core/createReplayPlugin",

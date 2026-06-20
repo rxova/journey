@@ -27,6 +27,7 @@ export type JourneyMachineRuntime<
   ) => JourneySnapshot<TContext, TStepId>;
   isDisposed: () => boolean;
   isRunActive: (runVersion: number) => boolean;
+  getRunVersion: () => number;
   cancelInFlight: () => void;
   openLifecycle: (runVersion: number) => AbortController | null;
   closeLifecycle: (controller: AbortController) => void;
@@ -266,6 +267,7 @@ export const createJourneyMachineRuntime = <
     setSnapshot,
     isDisposed: () => isDisposed,
     isRunActive,
+    getRunVersion: () => lifecycleVersion,
     cancelInFlight,
     openLifecycle,
     closeLifecycle,

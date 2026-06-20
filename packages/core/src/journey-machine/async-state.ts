@@ -43,7 +43,8 @@ export const createJourneyMachineAsyncStateController = <
 }: {
   runtime: JourneyMachineRuntime<TContext, TStepId, TEventMap>;
 }): JourneyMachineAsyncStateController<TStepId> => {
-  const isAsyncLoadingPhase = (phase: JourneyAsyncPhase): boolean => phase === "evaluating-when";
+  const isAsyncLoadingPhase = (phase: JourneyAsyncPhase): boolean =>
+    phase === "evaluating-when" || phase === "invoking";
 
   const countLoadingSteps = (asyncState: JourneyAsyncState<TStepId>): number =>
     (Object.values(asyncState.byStep) as JourneyStepAsyncState[]).reduce(
