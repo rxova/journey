@@ -1,20 +1,22 @@
 ---
 id: autosave
-title: Autosave Plugin
-sidebar_label: Autosave Plugin
+title: Autosave
+sidebar_label: Autosave
 ---
 
-Autosave is an opt-in plugin for draft-style persistence with UX-oriented runtime state.
+# Autosave
 
-It debounces snapshot writes, can hydrate the initial snapshot from storage, and exposes save status through the machine API. It is built on the same snapshot persistence behavior as Journey persistence, but it does not require consumers to register the persistence plugin separately.
+Autosave is persistence with a UX layer. It debounces writes, can hydrate from storage, and — the
+part persistence doesn't give you — exposes a save status you can render ("Saving…", "Saved",
+"Couldn't save"). Reach for it when you're saving drafts and the user expects to see that happening.
 
-## Install And Use
+## Install and use
 
 ```ts
-import { createJourneyMachine } from "@rxova/journey-core";
+import { createLinearJourney } from "@rxova/journey-core";
 import { createAutosavePlugin } from "@rxova/journey-core/autosave";
 
-const machine = createJourneyMachine(journey, {
+const machine = createLinearJourney(checkout, {
   plugins: [
     createAutosavePlugin({
       key: "journey.checkout.draft",
@@ -26,9 +28,9 @@ const machine = createJourneyMachine(journey, {
 });
 ```
 
-## What You Get
+## What you get
 
-The plugin augments the machine with three methods:
+The plugin adds three methods:
 
 ```ts
 machine.getAutosaveState();
@@ -36,7 +38,7 @@ machine.flushAutosave();
 machine.clearAutosave();
 ```
 
-`getAutosaveState()` returns:
+`getAutosaveState()` is what you bind your save indicator to:
 
 ```ts
 type JourneyAutosaveState = {
@@ -49,64 +51,48 @@ type JourneyAutosaveState = {
 
 ## Options
 
-- `key`: unique storage key
-- `storage`: custom storage adapter
-- `debounceMs`: delay before writes are committed
-- `hydrate`: whether to hydrate the initial snapshot from storage
-- `saveOn`: snapshot-change reasons that should trigger autosave
-- `allowList`: persist only matching context paths
-- `blockList`: remove matching context paths before storage
-- `clearOnReset`: remove storage entry on reset instead of writing the initial snapshot
-- `serialize` / `deserialize`: custom codecs
-- `migrate(value, persistedVersion)`: migrate older payloads
-- `onSaved(details)`: callback after a successful autosave commit
-- `onError(error)`: storage or serialization error handler
+| Option                      | What it does                                                      |
+| --------------------------- | ----------------------------------------------------------------- |
+| `key`                       | Unique storage key                                                |
+| `storage`                   | Custom storage adapter                                            |
+| `debounceMs`                | Delay before a write commits                                      |
+| `hydrate`                   | Whether to restore the last draft into the initial snapshot       |
+| `saveOn`                    | Which snapshot-change reasons trigger a save                      |
+| `allowList` / `blockList`   | Filter which `context` paths get stored                           |
+| `clearOnReset`              | Remove the entry on reset instead of writing the initial snapshot |
+| `serialize` / `deserialize` | Custom codecs                                                     |
+| `migrate(value, version)`   | Upgrade older payloads                                            |
+| `onSaved(details)`          | Callback after a successful save                                  |
+| `onError(error)`            | Storage or serialization error handler                            |
 
-## Runtime Behavior
+## How it behaves
 
-Autosave schedules writes from committed snapshot changes.
-
-- `async` snapshot changes are ignored
-- `reset` clears storage when `clearOnReset` is enabled
-- `flushAutosave()` forces the pending write immediately
-- `clearAutosave()` removes the stored draft and resets autosave state
-
-When `hydrate` is enabled, the plugin restores the last saved draft into the initial machine snapshot before normal runtime work begins.
-
-## Relationship To Persistence
-
-Autosave is not a wrapper around `createPersistencePlugin(...)` at the public API level.
-
-Use persistence when you want straightforward durable snapshots with minimal behavior.
-
-Use autosave when you want:
-
-- debounced draft saving
-- save status for UI
-- explicit flush/clear controls
-- the same filtering and migration model as persistence
-
-## Example
+Autosave schedules writes from committed snapshot changes. `async`-only changes are ignored,
+`flushAutosave()` forces the pending write immediately, and `clearAutosave()` removes the draft and
+resets the status. With `hydrate` on, the last saved draft is restored into the initial snapshot
+before the runtime starts.
 
 ```ts
-const machine = createJourneyMachine(journey, {
-  plugins: [
-    createAutosavePlugin({
-      key: "journey.checkout.draft",
-      debounceMs: 300,
-      saveOn: ["context", "transition", "navigation"],
-      onSaved: ({ timestamp }) => {
-        console.log("draft saved", timestamp);
-      }
-    })
-  ]
-});
-
 await machine.startJourney();
-await machine.updateContext((context) => ({ ...context, email: "user@example.com" }));
+await machine.updateContext((context) => ({ ...context, email: "ada@example.com" }));
 
-const autosave = machine.getAutosaveState();
-// { status: "pending" }
-
+machine.getAutosaveState(); // { status: "pending", ... }
 await machine.flushAutosave();
+machine.getAutosaveState(); // { status: "saved", lastSavedAt: … }
 ```
+
+## Autosave or persistence?
+
+They share the same filtering and migration model, but solve different jobs:
+
+- **[Persistence](/docs/core/persistence)** — durable snapshots with minimal ceremony. You want the
+  flow to survive a reload and that's it.
+- **Autosave** — debounced drafts, a save-status API, and explicit flush/clear controls. You want the
+  user to _see_ their progress being saved.
+
+Use one or the other for a given key; they're not meant to be stacked on the same storage entry.
+
+## Where to next
+
+- [Persistence](/docs/core/persistence) — the simpler durable-snapshot option.
+- [Lifecycle & events](/docs/core/lifecycle) — the change reasons behind `saveOn` and `pendingReason`.

@@ -1,26 +1,23 @@
 ---
-title: Replay Plugin
-sidebar_label: Replay Plugin
+title: Replay
+sidebar_label: Replay
 ---
 
-# Replay Plugin
+# Replay
 
-The replay plugin records machine activity into an in-memory session you can inspect or export.
+The replay plugin records a machine's activity into an in-memory session you can inspect or export.
+It's the plugin you want when a bug report needs the exact sequence of snapshots and events that led
+somewhere — debugging, QA capture, support tickets, test tooling — without changing how the machine
+behaves.
 
-It is useful for debugging, QA capture, support tickets, and test tooling where you want to preserve the order of runtime snapshots and lifecycle events without changing machine behavior.
-
-## Install And Use
+## Install and use
 
 ```ts
-import { createJourneyMachine } from "@rxova/journey-core";
+import { createGraphJourney } from "@rxova/journey-core";
 import { createReplayPlugin } from "@rxova/journey-core/replay";
 
-const machine = createJourneyMachine(journey, {
-  plugins: [
-    createReplayPlugin({
-      maxEntries: 250
-    })
-  ]
+const machine = createGraphJourney(journey, {
+  plugins: [createReplayPlugin({ maxEntries: 250 })]
 });
 
 await machine.startJourney();
@@ -29,9 +26,7 @@ const session = machine.getReplaySession();
 const exported = machine.exportReplaySession({ pretty: true });
 ```
 
-## What You Get
-
-The plugin augments the machine with:
+## What you get
 
 ```ts
 machine.getReplaySession();
@@ -39,7 +34,7 @@ machine.clearReplaySession();
 machine.exportReplaySession(options);
 ```
 
-`getReplaySession()` returns:
+A session is an ordered log with the starting snapshot and a flag for whether it overflowed:
 
 ```ts
 type JourneyReplaySession = {
@@ -50,37 +45,43 @@ type JourneyReplaySession = {
 };
 ```
 
-Entries are ordered and come in two forms:
-
-- `snapshot`: a committed snapshot plus the snapshot-change `reason`
-- `event`: an observation event emitted by the machine
+Entries come in two forms: a `snapshot` entry (a committed snapshot plus its change `reason`) and an
+`event` entry (an observation event). Together they reconstruct exactly what happened, in order.
 
 ## Options
 
-- `maxEntries`: replay buffer size, default `500`
-- `captureEvents`: include observation events, default `true`
-- `captureSnapshots`: include snapshot entries, default `true`
+| Option             | Default | What it does              |
+| ------------------ | ------- | ------------------------- |
+| `maxEntries`       | `500`   | Ring-buffer size          |
+| `captureEvents`    | `true`  | Record observation events |
+| `captureSnapshots` | `true`  | Record snapshot entries   |
 
-When the buffer fills, the oldest entries are dropped and `truncated` becomes `true`.
+When the buffer fills, the oldest entries drop and `truncated` flips to `true`.
 
-## Runtime Behavior
+## Exporting
 
-- `hydrateSnapshot(...)` captures the starting snapshot as `initialSnapshot`
-- later snapshot commits are recorded when `captureSnapshots` is enabled
-- lifecycle events are recorded through `subscribeEvent(...)` when `captureEvents` is enabled
-- `clearReplaySession()` resets the buffer and uses the current machine snapshot as the new replay baseline
+`exportReplaySession()` returns JSON that's safe to drop into a log or attach to a ticket. The
+serializer normalizes the values that JSON usually chokes on:
 
-## Export Behavior
+- `bigint` → string, `undefined` → `null`
+- functions and symbols → placeholder strings
+- `Date` → ISO text, `Error` → `{ name, message, stack? }`
+- circular references → `[circular]`
 
-`exportReplaySession()` returns JSON safe for logs or attachment workflows.
+Pass `pretty: true` for readable local output.
 
-The serializer normalizes values that are awkward or invalid in JSON:
+## Gotchas
 
-- `bigint` becomes a string
-- `undefined` becomes `null`
-- functions and symbols become placeholder strings
-- `Date` becomes ISO text
-- `Error` becomes a plain object with `name`, `message`, and optional `stack`
-- circular references are replaced with `[circular]`
+:::warning
+The buffer is bounded. On a long-running session, early entries are dropped once `maxEntries` is hit
+(`truncated` tells you when). Size it for the window you actually need to debug, not for an entire
+session's lifetime.
+:::
 
-Use `pretty: true` when you want readable output for local debugging.
+`clearReplaySession()` resets the buffer and uses the current snapshot as the new baseline — handy
+right before reproducing a bug, so the capture starts clean.
+
+## Where to next
+
+- [Snapshot](/docs/core/snapshot) and [Lifecycle & events](/docs/core/lifecycle) — the two entry types.
+- [Diagnostics](/docs/core/plugins/diagnostics-plugin) — structural checks rather than runtime capture.
