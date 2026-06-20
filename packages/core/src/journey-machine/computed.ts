@@ -1,3 +1,5 @@
+import { memoizeByIdentity } from "@rxova/journey-common/memoize";
+
 import type {
   JourneyComputed,
   JourneyDefinition,
@@ -59,8 +61,7 @@ export const createJourneyMachineComputedGetter = <
         )
       : null;
 
-  return () => {
-    const snapshot = getSnapshot();
+  const compute = (snapshot: JourneySnapshot<TContext, TStepId>): JourneyComputed<TStepId> => {
     const activeStepIndex = snapshot.history.index;
     const base = {
       activeStepId: snapshot.currentStepId,
@@ -102,4 +103,10 @@ export const createJourneyMachineComputedGetter = <
       mode: "headless"
     };
   };
+
+  const getComputedForSnapshot = memoizeByIdentity((snapshot: JourneySnapshot<TContext, TStepId>) =>
+    Object.freeze(compute(snapshot))
+  );
+
+  return () => getComputedForSnapshot(getSnapshot());
 };

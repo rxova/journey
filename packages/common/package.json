@@ -14,7 +14,8 @@
     "./serialization": "./src/serialization.ts",
     "./async": "./src/async.ts",
     "./dev": "./src/dev.ts",
-    "./origin": "./src/origin.ts"
+    "./origin": "./src/origin.ts",
+    "./memoize": "./src/memoize.ts"
   },
   "sideEffects": false,
   "scripts": {
