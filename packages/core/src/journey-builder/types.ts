@@ -5,6 +5,7 @@ import type {
   JourneyJsonObject
 } from "../types";
 import type {
+  JourneyStepEffect,
   JourneyStepLifecycleCallback,
   JourneyTransitionArgsForEvent,
   JourneyTransitionUpdateContextArgsForEvent
@@ -279,12 +280,15 @@ type JourneyStepBuilderConfig<
   THandlers extends Record<string, unknown>,
   TOn extends JourneyStepBuilderOnConfig<TContext, TStepId, TEventMap, THandlers> | undefined =
     | JourneyStepBuilderOnConfig<TContext, TStepId, TEventMap, THandlers>
-    | undefined
+    | undefined,
+  TEffectOutput = unknown
 > = {
   meta?: TStepMeta;
   onEnter?: JourneyStepLifecycleCallback<TContext, TStepId, TEventMap, THandlers>;
   onLeave?: JourneyStepLifecycleCallback<TContext, TStepId, TEventMap, THandlers>;
   on?: TOn;
+  /** Declarative async work run on entry; `output` is inferred from `run`. */
+  effect?: JourneyStepEffect<TContext, TStepId, THandlers, TEffectOutput>;
 };
 
 export type JourneyStepBuilder<
@@ -316,6 +320,7 @@ export type JourneyStepBuilder<
         >
       >
     | undefined;
+  readonly _effect?: JourneyStepEffect<TContext, TStepId, THandlers> | undefined;
   readonly _handledCustomEventType?: THandledCustomEventType;
 };
 
@@ -422,10 +427,19 @@ export type JourneyBuilder<
     TStepKey extends TStepId,
     TOn extends JourneyStepBuilderOnConfig<TContext, TStepId, TEventMap, THandlers> | undefined =
       | JourneyStepBuilderOnConfig<TContext, TStepId, TEventMap, THandlers>
-      | undefined
+      | undefined,
+    TEffectOutput = unknown
   >(
     id: TStepKey,
-    config?: JourneyStepBuilderConfig<TContext, TStepId, TEventMap, TStepMeta, THandlers, TOn>
+    config?: JourneyStepBuilderConfig<
+      TContext,
+      TStepId,
+      TEventMap,
+      TStepMeta,
+      THandlers,
+      TOn,
+      TEffectOutput
+    >
   ) => JourneyStepBuilder<
     TContext,
     TStepId,

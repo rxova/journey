@@ -29,13 +29,14 @@ export function createLinearJourney<
       if (typeof s === "string") {
         return [s, {}];
       }
-      const { id, meta, onEnter, onLeave } = s as {
+      const { id, meta, onEnter, onLeave, effect } = s as {
         id: TStepId;
         meta?: TStepMeta;
         onEnter?: unknown;
         onLeave?: unknown;
+        effect?: unknown;
       };
-      return [id, { meta, onEnter, onLeave }];
+      return [id, { meta, onEnter, onLeave, effect }];
     })
   ) as Record<
     TStepId,
