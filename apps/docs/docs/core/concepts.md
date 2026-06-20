@@ -149,6 +149,15 @@ the model, not a `loading` boolean you bolt on at render time. While an async gu
 step's async phase reflects it, and you can apply a timeout. The [Async behavior](/docs/core/async)
 page covers this in full.
 
+## Effects
+
+A guard decides whether a move you triggered is allowed. An **effect** is the other half: work the
+machine does for you _on arriving_ at a step — call an API, load a record — and then branches on the
+result. You declare it on the step; the runtime runs it on entry, shows an `invoking` phase while it
+waits, cancels it if you leave, and routes the resolved `output` (or the `error`) to the next step.
+This is how Journey keeps async work in the flow instead of in your components.
+[Effects](/docs/core/effects) is the guide.
+
 ## The snapshot
 
 The **snapshot** is the single read model for a live machine. If you inspect one value to

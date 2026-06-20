@@ -36,6 +36,10 @@ stateDiagram-v2
 The active step's phase lives in `snapshot.async.byStep[stepId]`, and `snapshot.async.isLoading`
 answers the machine-wide question "is any async transition work in flight right now?"
 
+There's a fourth phase, `invoking`, used while a step [effect](/docs/core/effects) runs on entry. It
+behaves like `evaluating-when` for rendering — both mean "async work in flight, `isLoading` is
+true" — but it comes from arriving at a step rather than from a guard you triggered.
+
 ## Async guards
 
 Use `when` to decide whether a transition may fire. It receives one args object and may return a
@@ -92,6 +96,7 @@ Per-step phases map cleanly onto UI states:
 | ----------------- | ------------------------------------------- |
 | `idle`            | normal, interactive                         |
 | `evaluating-when` | disable controls / show a validating state  |
+| `invoking`        | a loading state while a step effect runs    |
 | `error`           | a recoverable error with a retry affordance |
 
 ## Timeouts
