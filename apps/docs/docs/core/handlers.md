@@ -26,7 +26,16 @@ import { createGraphJourney, createGraphJourneyBuilder } from "@rxova/journey-co
 type Context = { token: string; plan: string | null };
 type StepId = "verify" | "approved" | "blocked";
 
-const { createStep, build } = createGraphJourneyBuilder<{ context: Context; stepId: StepId }>();
+// Declare the handler shape so calls to it are fully typed.
+type Handlers = {
+  verifyToken: (token: string, opts: { signal: AbortSignal }) => Promise<{ plan: string }>;
+};
+
+const { createStep, build } = createGraphJourneyBuilder<{
+  context: Context;
+  stepId: StepId;
+  handlers: Handlers;
+}>();
 
 const machine = createGraphJourney(
   build({
@@ -55,8 +64,11 @@ const machine = createGraphJourney(
 );
 ```
 
-`handlers` is fully typed from what you declared — `handlers.verifyToken` has the exact signature you
-wrote, and a typo or wrong argument is a compile error.
+You declare the handler shape as the `handlers` field of the builder's type bundle, and the value you
+pass to `build({ handlers })` must match it. From there `handlers` is fully typed everywhere it's
+injected — `handlers.verifyToken` has the exact signature you wrote, and a typo or wrong argument is a
+compile error. (Omit the `handlers` field and it defaults to an empty record — there's simply nothing
+to call.)
 
 ## Where `handlers` is available
 
