@@ -7,6 +7,8 @@ import {
   getJourneyMachineDevtoolsRegistry,
   JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
   JOURNEY_DEVTOOLS_CHANNEL,
+  JOURNEY_DEVTOOLS_EXTENSION_SOURCE,
+  JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION,
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
   attachJourneyDevtools
 } from "@rxova/journey-devtools-bridge";
@@ -1332,5 +1334,172 @@ describe("attachJourneyDevtools v5", () => {
       configurable: true,
       value: originalStructuredClone
     });
+  });
+});
+
+describe("attachJourneyDevtools v6", () => {
+  type AsyncStepId = "loading" | "ready" | "timeout";
+  type AsyncMeta = { label: string };
+
+  const createEffectJourney = (): JourneyDefinition<
+    { value: string | null },
+    AsyncStepId,
+    Record<never, never>,
+    AsyncMeta
+  > => ({
+    initial: "loading",
+    context: { value: null },
+    steps: {
+      loading: {
+        meta: { label: "Loading" },
+        onEnter: () => {},
+        effect: {
+          // Never settles, so the step stays in the `invoking` phase.
+          run: () => new Promise<string>(() => {}),
+          onResolved: { to: "ready" }
+        }
+      },
+      ready: {
+        onLeave: () => {}
+      },
+      timeout: {
+        after: {
+          5000: { to: "loading" },
+          1000: { to: "ready" }
+        }
+      }
+    },
+    transitions: {}
+  });
+
+  it("surfaces per-step feature descriptors in the register envelope", async () => {
+    const collector = collectBridgeMessages();
+    const machine = createJourneyMachine(createEffectJourney(), { plugins: [] as const });
+    await machine.startJourney();
+
+    const detach = attachJourneyDevtools(machine, {
+      machineId: "m-v6-steps",
+      enabled: true
+    });
+
+    await waitForCollector(() =>
+      collector.messages.some(
+        (message) => message.kind === "register" && message.machineId === "m-v6-steps"
+      )
+    );
+
+    const register = collector.messages.find(
+      (message) => message.kind === "register" && message.machineId === "m-v6-steps"
+    );
+
+    expect(register?.kind).toBe("register");
+    if (register?.kind === "register") {
+      expect(register.version).toBe(JOURNEY_DEVTOOLS_PROTOCOL_VERSION);
+      expect(register.meta.steps).toEqual({
+        loading: {
+          hasEffect: true,
+          afterDelays: [],
+          hasOnEnter: true,
+          hasOnLeave: false,
+          hasMeta: true
+        },
+        ready: {
+          hasEffect: false,
+          afterDelays: [],
+          hasOnEnter: false,
+          hasOnLeave: true,
+          hasMeta: false
+        },
+        timeout: {
+          hasEffect: false,
+          afterDelays: [1000, 5000],
+          hasOnEnter: false,
+          hasOnLeave: false,
+          hasMeta: false
+        }
+      });
+    }
+
+    detach();
+    collector.stop();
+  });
+
+  it("serializes the `invoking` async phase for a step running an effect", async () => {
+    const collector = collectBridgeMessages();
+    const machine = createJourneyMachine(createEffectJourney(), { plugins: [] as const });
+    await machine.startJourney();
+
+    const detach = attachJourneyDevtools(machine, {
+      machineId: "m-v6-invoking",
+      enabled: true
+    });
+
+    await waitForCollector(() =>
+      collector.messages.some(
+        (message) => message.kind === "register" && message.machineId === "m-v6-invoking"
+      )
+    );
+
+    const register = collector.messages.find(
+      (message) => message.kind === "register" && message.machineId === "m-v6-invoking"
+    );
+
+    expect(register?.kind).toBe("register");
+    if (register?.kind === "register") {
+      expect(register.snapshot.async.byStep.loading?.phase).toBe("invoking");
+    }
+
+    detach();
+    collector.stop();
+  });
+
+  it("accepts invoke envelopes from the prior protocol version (v5 back-compat)", async () => {
+    const collector = collectBridgeMessages();
+    const machine = await createTestMachine();
+
+    const detach = attachJourneyDevtools(machine, {
+      machineId: "m-v5-compat",
+      enabled: true
+    });
+
+    await waitForCollector(() =>
+      collector.messages.some(
+        (message) => message.kind === "register" && message.machineId === "m-v5-compat"
+      )
+    );
+
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        source: window,
+        origin: window.location.origin,
+        data: {
+          channel: JOURNEY_DEVTOOLS_CHANNEL,
+          version: JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION,
+          source: JOURNEY_DEVTOOLS_EXTENSION_SOURCE,
+          kind: "invoke",
+          machineId: "m-v5-compat",
+          requestId: "req-v5",
+          invocation: { operationId: "core.goToNextStep" },
+          timestamp: Date.now()
+        }
+      })
+    );
+
+    await waitForCollector(() =>
+      collector.messages.some(
+        (message) => message.kind === "operationResult" && message.requestId === "req-v5"
+      )
+    );
+
+    const result = collector.messages.find(
+      (message) => message.kind === "operationResult" && message.requestId === "req-v5"
+    );
+    expect(result?.kind).toBe("operationResult");
+    if (result?.kind === "operationResult" && result.result.kind === "snapshot") {
+      expect(result.result.snapshot.currentStepId).toBe("review");
+    }
+
+    detach();
+    collector.stop();
   });
 });

@@ -5,7 +5,9 @@ import {
   JOURNEY_DEVTOOLS_CHANNEL,
   JOURNEY_DEVTOOLS_EXTENSION_SOURCE,
   JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
+  JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION,
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+  isCompatibleInvokeProtocolVersion,
   isJourneyDevtoolsBridgeEnvelope,
   isJourneyDevtoolsEnvelope,
   isJourneyDevtoolsExtensionEnvelope
@@ -971,5 +973,69 @@ describe("protocol v5 guards", () => {
         timestamp: Date.now()
       })
     ).toBe(false);
+  });
+});
+
+describe("protocol v6", () => {
+  const buildRegister = (version: number, steps?: unknown) => {
+    const envelope = createRegisterEnvelope();
+    return {
+      ...envelope,
+      version,
+      meta: { ...envelope.meta, ...(steps === undefined ? {} : { steps }) }
+    };
+  };
+
+  it("treats v6 as the current protocol version", () => {
+    expect(JOURNEY_DEVTOOLS_PROTOCOL_VERSION).toBe(6);
+    expect(JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION).toBe(5);
+  });
+
+  it("accepts current (v6), prior (v5), and legacy (v3) register envelopes", () => {
+    expect(isJourneyDevtoolsBridgeEnvelope(buildRegister(JOURNEY_DEVTOOLS_PROTOCOL_VERSION))).toBe(
+      true
+    );
+    expect(
+      isJourneyDevtoolsBridgeEnvelope(buildRegister(JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION))
+    ).toBe(true);
+    expect(
+      isJourneyDevtoolsBridgeEnvelope(buildRegister(JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION))
+    ).toBe(true);
+    expect(isJourneyDevtoolsBridgeEnvelope(buildRegister(4))).toBe(false);
+  });
+
+  it("validates well-formed per-step feature descriptors", () => {
+    const steps = {
+      loading: {
+        hasEffect: true,
+        afterDelays: [1000, 5000],
+        hasOnEnter: true,
+        hasOnLeave: false,
+        hasMeta: true
+      }
+    };
+    expect(
+      isJourneyDevtoolsBridgeEnvelope(buildRegister(JOURNEY_DEVTOOLS_PROTOCOL_VERSION, steps))
+    ).toBe(true);
+  });
+
+  it("rejects malformed per-step feature descriptors", () => {
+    expect(
+      isJourneyDevtoolsBridgeEnvelope(
+        buildRegister(JOURNEY_DEVTOOLS_PROTOCOL_VERSION, {
+          loading: { hasEffect: true, afterDelays: ["soon"], hasOnEnter: true }
+        })
+      )
+    ).toBe(false);
+    expect(
+      isJourneyDevtoolsBridgeEnvelope(buildRegister(JOURNEY_DEVTOOLS_PROTOCOL_VERSION, "nope"))
+    ).toBe(false);
+  });
+
+  it("identifies protocol versions whose invokes can be processed", () => {
+    expect(isCompatibleInvokeProtocolVersion(JOURNEY_DEVTOOLS_PROTOCOL_VERSION)).toBe(true);
+    expect(isCompatibleInvokeProtocolVersion(JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION)).toBe(true);
+    expect(isCompatibleInvokeProtocolVersion(JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION)).toBe(false);
+    expect(isCompatibleInvokeProtocolVersion(4)).toBe(false);
   });
 });
