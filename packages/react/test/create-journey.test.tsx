@@ -119,11 +119,11 @@ describe("createJourney", () => {
     };
     type BuilderContext = { attempts: number };
 
-    const { createStep, to, build } = createGraphJourneyBuilder<
-      BuilderContext,
-      BuilderStepId,
-      BuilderEventMap
-    >();
+    const { createStep, to, build } = createGraphJourneyBuilder<{
+      context: BuilderContext;
+      stepId: BuilderStepId;
+      events: BuilderEventMap;
+    }>();
     const emailCodeStep = createStep("emailCode", {
       on: {
         verifyCodeSuccess: [to("loggedIn")]

@@ -66,7 +66,11 @@ export type {
   JourneyStatus,
   JourneyStepAsyncState,
   JourneyStepDefinition,
-  JourneyTerminal
+  JourneyTerminal,
+  JourneyTypes,
+  JourneyTypesInput,
+  JourneyEmpty,
+  ResolveJourneyTypes
 } from "./journey.types";
 
 export type {

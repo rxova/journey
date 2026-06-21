@@ -8,7 +8,11 @@ type EventMap = { submit: { source: string } };
 
 describe("createGraphJourneyBuilder extra coverage", () => {
   it("chains lifecycle modifiers on transition builders", () => {
-    const { to } = createGraphJourneyBuilder<Context, StepId, EventMap>();
+    const { to } = createGraphJourneyBuilder<{
+      context: Context;
+      stepId: StepId;
+      events: EventMap;
+    }>();
     const when = () => true;
     const updateContext = ({ context }: { context: Context }) => context;
     const onEnter = () => undefined;
@@ -34,7 +38,11 @@ describe("createGraphJourneyBuilder extra coverage", () => {
   });
 
   it("serializes step hooks and function-based entries", () => {
-    const { createStep, build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
+    const { createStep, build } = createGraphJourneyBuilder<{
+      context: Context;
+      stepId: StepId;
+      events: EventMap;
+    }>();
     const stepOnEnter = () => undefined;
     const stepOnLeave = () => undefined;
     const transitionOnEnter = () => undefined;
@@ -77,7 +85,11 @@ describe("createGraphJourneyBuilder extra coverage", () => {
   });
 
   it("serializes terminal candidate lifecycle hooks", () => {
-    const { createStep, build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
+    const { createStep, build } = createGraphJourneyBuilder<{
+      context: Context;
+      stepId: StepId;
+      events: EventMap;
+    }>();
     const when = ({ context }: { context: Context }) => context.role === "admin";
     const updateContext = ({ context }: { context: Context }) => ({
       ...context,
@@ -120,13 +132,13 @@ describe("createGraphJourneyBuilder extra coverage", () => {
         return message.length;
       }
     };
-    const { createStep, build, to } = createGraphJourneyBuilder<
-      Context,
-      StepId,
-      EventMap,
-      unknown,
-      typeof handlers
-    >();
+    const { createStep, build, to } = createGraphJourneyBuilder<{
+      context: Context;
+      stepId: StepId;
+      events: EventMap;
+      meta: unknown;
+      handlers: typeof handlers;
+    }>();
 
     const definition = build({
       initial: "start",

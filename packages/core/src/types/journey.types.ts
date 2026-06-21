@@ -41,6 +41,33 @@ export type JourneyFullEventType<TEventMap extends Record<string, unknown>> =
   | (keyof TEventMap & string)
   | JourneyDefaultEventType;
 
+/** Empty record — the default for a journey with no custom events or handlers. */
+export type JourneyEmpty = Record<never, never>;
+
+/**
+ * The type knobs that parameterize a journey, bundled into one object so types
+ * take a single `T extends JourneyTypes` rather than five positional generics.
+ */
+export interface JourneyTypes {
+  context: JourneyJsonObject;
+  stepId: string;
+  events: Record<string, unknown>;
+  meta: unknown;
+  handlers: Record<string, unknown>;
+}
+
+/** Partial bundle a user supplies; missing fields fall back to defaults via {@link ResolveJourneyTypes}. */
+export type JourneyTypesInput = Partial<JourneyTypes>;
+
+/** Fills a partial {@link JourneyTypesInput} with defaults (empty events/handlers, unknown meta). */
+export type ResolveJourneyTypes<T extends JourneyTypesInput> = {
+  context: T extends { context: infer C extends JourneyJsonObject } ? C : JourneyJsonObject;
+  stepId: T extends { stepId: infer S extends string } ? S : string;
+  events: T extends { events: infer E extends Record<string, unknown> } ? E : JourneyEmpty;
+  meta: T extends { meta: infer M } ? M : unknown;
+  handlers: T extends { handlers: infer H extends Record<string, unknown> } ? H : JourneyEmpty;
+};
+
 type JourneyBuiltInSendEventType = Exclude<JourneyDefaultEventType, "goToStepById">;
 type JourneyCustomSendEventType<TEventMap extends Record<string, unknown>> = Exclude<
   keyof TEventMap & string,
