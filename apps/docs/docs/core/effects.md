@@ -109,7 +109,7 @@ With the [graph builder](/docs/core/api/graph-builder), the type of `output` is 
 `run` returns — no annotation, no cast:
 
 ```ts
-const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId>();
+const { createStep, to, build } = createGraphJourneyBuilder<{ context: Context; stepId: StepId }>();
 
 createStep("loadProfile", {
   effect: {

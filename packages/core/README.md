@@ -97,7 +97,11 @@ For larger flows, `createGraphJourneyBuilder` lets each step declare its own tra
 
 ```ts
 // builder.ts — typed singleton
-const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
+const { createStep, to, build } = createGraphJourneyBuilder<{
+  context: Context;
+  stepId: StepId;
+  events: EventMap;
+}>();
 
 // steps/login.step.ts — co-located with Login.tsx
 export const loginStep = createStep("login", {

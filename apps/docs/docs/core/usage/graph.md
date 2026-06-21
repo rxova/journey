@@ -32,7 +32,11 @@ type Events = {
   verifyFailure: undefined;
 };
 
-const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, Events>();
+const { createStep, to, build } = createGraphJourneyBuilder<{
+  context: Context;
+  stepId: StepId;
+  events: Events;
+}>();
 
 const machine = createGraphJourney(
   build({
@@ -193,7 +197,11 @@ type StepId = "draft" | "review" | "approved" | "rejected";
 type Context = { score: number; reviewerId: string | null };
 type Events = { submit: undefined; approve: undefined; reject: undefined; revise: undefined };
 
-const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, Events>();
+const { createStep, to, build } = createGraphJourneyBuilder<{
+  context: Context;
+  stepId: StepId;
+  events: Events;
+}>();
 
 const machine = createGraphJourney(
   build({

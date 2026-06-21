@@ -95,12 +95,12 @@ export const linearDefinition: LinearJourneyDefinition<
   ]
 };
 
-const { createStep, to, build } = createGraphJourneyBuilder<
-  LoginContext,
-  LoginStepId,
-  AuthEventMap,
-  StepMeta
->();
+const { createStep, to, build } = createGraphJourneyBuilder<{
+  context: LoginContext;
+  stepId: LoginStepId;
+  events: AuthEventMap;
+  meta: StepMeta;
+}>();
 
 const loginStep = createStep("login", {
   meta: { label: "Login", icon: "🔐" },

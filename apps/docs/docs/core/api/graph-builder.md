@@ -29,7 +29,12 @@ type StepId = "login" | "dashboard" | "admin" | "blocked";
 type EventMap = { submit: { username: string }; back: unknown };
 type StepMeta = { label: string };
 
-const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, EventMap, StepMeta>();
+const { createStep, to, build } = createGraphJourneyBuilder<{
+  context: Context;
+  stepId: StepId;
+  events: EventMap;
+  meta: StepMeta;
+}>();
 ```
 
 Everything is generic: `to` accepts only valid `StepId`s, event keys in `on` are constrained to
