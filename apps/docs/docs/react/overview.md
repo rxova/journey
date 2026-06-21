@@ -89,32 +89,102 @@ If you need isolated state per request, per card, or per mounted route boundary,
 
 ## React Example
 
+This example uses every step option — `meta`, `onEnter`, `onLeave`, `effect`, and `after` — and a typed `applyCoupon` payload that validates the code, records a discount, and advances to review. Applying a coupon is a real transition; for a context change that should _not_ navigate, call `api.updateContext(...)` instead — a self-transition (`to` equal to the current step) re-runs `onEnter` and resets the step's `after` timer.
+
 ```tsx
 import React from "react";
 import { createJourney, type JourneyViews } from "@rxova/journey-react";
 import type { JourneyDefinition } from "@rxova/journey-core";
 
-type StepId = "details" | "payment" | "review";
-type Context = { isVip: boolean };
-type EventMap = { applyCoupon: unknown };
+// Stand-ins for your own services.
+declare const analytics: { track: (event: string, props?: Record<string, unknown>) => void };
+declare function submitOrder(
+  input: { couponCode: string | null; discountPct: number },
+  signal: AbortSignal
+): Promise<{ orderId: string }>;
+
+type StepId = "details" | "payment" | "review" | "placingOrder" | "confirmation";
+type Context = {
+  isVip: boolean;
+  couponCode: string | null;
+  discountPct: number;
+  orderId: string | null;
+};
+// The payload reaches `when`, `updateContext`, and `api.send` fully typed.
+type EventMap = { applyCoupon: { code: string } };
 
 const definition: JourneyDefinition<Context, StepId, EventMap> = {
   initial: "details",
-  context: { isVip: false },
+  context: { isVip: false, couponCode: null, discountPct: 0, orderId: null },
   steps: {
-    details: { meta: { title: "Details" } },
-    payment: { meta: { title: "Payment" } },
-    review: { meta: { title: "Review" } }
+    details: {
+      meta: { title: "Your details" },
+      onEnter: ({ context }) => analytics.track("checkout_started", { isVip: context.isVip }),
+      onLeave: ({ context }) => analytics.track("details_completed", { coupon: context.couponCode })
+    },
+    payment: {
+      meta: { title: "Payment" },
+      onEnter: () => analytics.track("payment_viewed"),
+      // Delayed transition: abandon the payment session after 10 minutes.
+      // The timer starts on entry and is cancelled on exit, reset, or dispose.
+      after: {
+        600000: { to: "details", label: "payment-session-expired" }
+      }
+    },
+    review: {
+      meta: { title: "Review order" },
+      onEnter: ({ context }) =>
+        analytics.track("review_viewed", { discountPct: context.discountPct })
+    },
+    placingOrder: {
+      meta: { title: "Placing your order" },
+      // Declarative async work: runs on entry, is cancelled via `signal` on
+      // exit/reset/dispose, and routes its result to onResolved / onRejected.
+      effect: {
+        run: ({ context, signal }) =>
+          submitOrder({ couponCode: context.couponCode, discountPct: context.discountPct }, signal),
+        timeoutMs: 8000,
+        onResolved: {
+          to: "confirmation",
+          // In the declarative form `output` is typed `unknown`; narrow it here.
+          updateContext: ({ context, output }) => ({
+            ...context,
+            orderId: (output as { orderId: string }).orderId
+          })
+        },
+        onRejected: { to: "payment", label: "order-submission-failed" }
+      }
+    },
+    confirmation: {
+      meta: { title: "Order confirmed" },
+      onEnter: ({ context }) => analytics.track("order_confirmed", { orderId: context.orderId })
+    }
   },
   transitions: {
     details: {
+      // VIP customers skip payment and go straight to review.
       goToNextStep: [
         { to: "review", when: ({ context }) => context.isVip },
         { to: "payment", when: ({ context }) => !context.isVip }
       ]
     },
     payment: {
-      applyCoupon: [{ to: "review" }]
+      goToNextStep: [{ to: "review" }],
+      // A valid coupon records the discount and advances to review. An empty
+      // code fails the guard, so the event is a no-op — no transition, no re-entry.
+      applyCoupon: [
+        {
+          to: "review",
+          when: ({ event }) => (event.payload?.code.trim().length ?? 0) > 0,
+          updateContext: ({ context, event }) => {
+            const code = event.payload?.code.trim() ?? "";
+            return { ...context, couponCode: code, discountPct: code === "VIP50" ? 50 : 10 };
+          }
+        }
+      ]
+    },
+    review: {
+      goToNextStep: [{ to: "placingOrder" }]
     }
   }
 };
@@ -123,23 +193,78 @@ const checkoutJourney = createJourney(definition);
 
 const Details = () => {
   const api = checkoutJourney.useJourneyApi();
-  return <button onClick={() => void api.goToNextStep()}>Next</button>;
+  return <button onClick={() => void api.goToNextStep()}>Continue</button>;
 };
 
 const Payment = () => {
   const api = checkoutJourney.useJourneyApi();
-  return <button onClick={() => void api.send({ type: "applyCoupon" })}>Apply coupon</button>;
+  const [code, setCode] = React.useState("");
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void api.send({ type: "applyCoupon", payload: { code } });
+      }}
+    >
+      <input
+        value={code}
+        onChange={(event) => setCode(event.target.value)}
+        placeholder="Coupon code"
+      />
+      <button type="submit">Apply coupon</button>
+      <button type="button" onClick={() => void api.goToNextStep()}>
+        Continue without coupon
+      </button>
+    </form>
+  );
 };
 
 const Review = () => {
   const api = checkoutJourney.useJourneyApi();
-  return <button onClick={() => void api.completeJourney()}>Finish</button>;
+  const couponCode = checkoutJourney.useJourneySelector((snapshot) => snapshot.context.couponCode);
+  const discountPct = checkoutJourney.useJourneySelector(
+    (snapshot) => snapshot.context.discountPct
+  );
+
+  return (
+    <div>
+      {couponCode ? (
+        <p>
+          Coupon {couponCode} applied — {discountPct}% off.
+        </p>
+      ) : (
+        <p>No coupon applied.</p>
+      )}
+      <button onClick={() => void api.goToNextStep()}>Place order</button>
+    </div>
+  );
+};
+
+const PlacingOrder = () => {
+  const asyncState = checkoutJourney.useStepAsyncState("placingOrder");
+  return (
+    <p>{asyncState.phase === "error" ? "Could not place your order." : "Placing your order…"}</p>
+  );
+};
+
+const Confirmation = () => {
+  const api = checkoutJourney.useJourneyApi();
+  const orderId = checkoutJourney.useJourneySelector((snapshot) => snapshot.context.orderId);
+  return (
+    <div>
+      <p>Order {orderId} confirmed.</p>
+      <button onClick={() => void api.completeJourney()}>Done</button>
+    </div>
+  );
 };
 
 const views: JourneyViews<StepId> = {
   details: Details,
   payment: Payment,
-  review: Review
+  review: Review,
+  placingOrder: PlacingOrder,
+  confirmation: Confirmation
 };
 
 export const App = () => (
@@ -150,6 +275,8 @@ export const App = () => (
 ```
 
 Guard and `updateContext` failures resolve through `result.error` instead of rejecting, so fire-and-forget button handlers like `void api.goToNextStep()` do not surface as unhandled promise rejections.
+
+The `effect` on `placingOrder` is the idiomatic async pattern: it runs on entry, surfaces its progress through `useStepAsyncState` / `isLoading`, and routes success to `confirmation` and failure back to `payment` — no imperative submit handler required.
 
 ## What Still Lives In Core
 
