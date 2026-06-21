@@ -1,7 +1,14 @@
 export { createLinearJourney } from "./create-linear-journey";
 export { createHeadlessJourney } from "./create-headless-journey";
 export { createGraphJourney } from "./create-graph-journey";
-/** @deprecated Use `createLinearJourney`, `createHeadlessJourney`, or `createGraphJourney` instead. */
+/**
+ * Generic factory and shared implementation behind the named factories.
+ *
+ * @deprecated Soft-deprecated: stays exported and behavior-stable through the
+ * entire 1.x line, scheduled for removal in 2.0. Prefer `createLinearJourney`,
+ * `createHeadlessJourney`, or `createGraphJourney` — they pick the mode for you
+ * and give tighter types.
+ */
 export { createJourneyMachine } from "./journey-machine";
 export { createGraphJourneyBuilder } from "./journey-builder";
 export { getJourneyMachineDevtoolsRegistry } from "./journey-machine/devtools-registry";

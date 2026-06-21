@@ -1,45 +1,73 @@
 ---
-title: "Devtools Examples"
-sidebar:
-  label: "Examples"
+id: examples
+title: Examples
+sidebar_label: Examples
 ---
 
-## Attach Bridge to Core Machine
+# Examples
+
+A few ways to wire the bridge into a real app. The bridge is observational by default and a no-op
+outside the browser, so it's safe to attach unconditionally in development.
+
+## Attach to a core machine
 
 ```ts
-import { createJourneyMachine } from "@rxova/journey-core";
+import { createGraphJourney } from "@rxova/journey-core";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 
-const journeyMachine = createJourneyMachine(journey);
-const detach = attachJourneyDevtools(journeyMachine, {
+const machine = createGraphJourney(journey);
+
+const detach = attachJourneyDevtools(machine, {
   machineId: "checkout",
-  label: "Checkout Journey",
-  enabled: true
+  label: "Checkout Journey"
 });
-journeyMachine.startJourney();
+
+machine.startJourney();
+
+// later, on teardown
+// detach();
 ```
 
-## Attach Bridge to React Flow
+## Attach in a React app
 
-When using bindings, attach once to the shared machine (outside or before React mount).
+With `@rxova/journey-react`, attach once to the shared runtime's `machine` — outside render, or in an
+effect that returns the `detach` cleanup:
 
-## Command Examples
+```tsx
+import { useEffect } from "react";
+import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
+import { checkoutJourney } from "./checkout-journey";
+
+export const DevtoolsBridge = () => {
+  useEffect(
+    () =>
+      attachJourneyDevtools(checkoutJourney.machine, {
+        machineId: "checkout",
+        label: "Checkout Journey"
+      }),
+    []
+  );
+  return null;
+};
+```
+
+## Inspect in production, read-only
+
+Enable the transport but block mutations so the panel can observe without driving the machine:
 
 ```ts
-{ type: "startJourney" }
-{ type: "goToNextStep" }
-{ type: "goToStepById", stepId: "review" }
-{ type: "goToPreviousStep", steps: 2 }
-{ type: "goToLastVisitedStep" }
-{ type: "send", event: { type: "custom", payload: { source: "panel" } } }
-{ type: "resetJourney" }
-{ type: "clearStepError", stepId: "review" }
-{ type: "getExecutionPaths" }
-{ type: "getExecutionPaths", options: { maxDepth: 5, maxPaths: 20 } }
+attachJourneyDevtools(machine, { enabled: true, mutationsEnabled: false });
 ```
 
-## Snapshot Fields Used by Panel
+## What the panel can invoke
 
-- `currentStepId`, `history.timeline`, `history.index`
-- `visited`, `context`
-- `status`, `async`
+The panel drives the machine through the **operations** the bridge advertises — core navigation and
+lifecycle (`goToNextStep`, `goToStepById`, `goToPreviousStep`, `completeJourney`, `resetJourney`,
+`clearStepError`, …), custom event dispatch, and read-only plugin queries such as execution-paths
+inspection. Mutating operations require `mutationsEnabled`. See [Bridge API](./bridge-api) for the
+full list and [Protocol](./protocol) for the wire shapes.
+
+## Where to next
+
+- [Bridge API](./bridge-api) — options and what the bridge streams.
+- [Protocol](./protocol) — envelopes, operations, and versioning.

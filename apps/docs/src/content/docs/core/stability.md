@@ -24,8 +24,8 @@ changes in majors.
 `@rxova/journey-core` is the primary stability surface. For the RC line and later, treat these as
 stable:
 
-- the journey factories — `createLinearJourney`, `createGraphJourney`, `createHeadlessJourney`
-  (`createJourneyMachine` remains exported as a deprecated alias);
+- the journey factories — `createLinearJourney`, `createGraphJourney`, `createHeadlessJourney`, and
+  the `createGraphJourneyBuilder` authoring helper;
 - `JourneyMachine` methods and the snapshot shape;
 - the documented transition syntax, lifecycle events, and async timeout/error behavior;
 - the published entry points: `@rxova/journey-core`, `@rxova/journey-core/persistence`,
@@ -39,6 +39,19 @@ Expectations:
   points;
 - runtime context stays JSON-only, step `meta` stays static definition data, and `updateContext()`
   stays the state-write API.
+
+### `createJourneyMachine` deprecation contract
+
+`createJourneyMachine` is the original generic factory and the shared implementation the three named
+factories adapt. It is **soft-deprecated**:
+
+- it stays **exported and behavior-stable for the entire 1.x line** — no removal in any 1.x release;
+- it is **scheduled for removal in 2.0**;
+- new code should use `createLinearJourney`, `createGraphJourney`, or `createHeadlessJourney`, which
+  pick the right mode and give tighter types.
+
+In other words, existing `createJourneyMachine` code keeps working through 1.x; migrate at your
+convenience before 2.0. See [Pre-1.0 migration](/docs/core/pre-1-0-migration#migrating-from-createjourneymachine).
 
 ## React bindings
 
@@ -69,12 +82,12 @@ is supported, but don't treat injected fields as if they were part of the base m
 ## Devtools bridge protocol
 
 The devtools bridge is a public integration surface with explicit versioning. The contract is the
-published API in `@rxova/journey-devtools-bridge`, the documented command and envelope shapes for the
-current protocol version, and the protocol version number as the compatibility boundary.
+published API in `@rxova/journey-devtools-bridge`, the documented operation and envelope shapes for
+the current protocol version, and the protocol version number as the compatibility boundary.
 
 Incompatible wire-shape changes require a protocol version bump; panel and bridge consumers upgrade
 together. Treat the bridge and panel as tooling, and gate production use explicitly through `enabled`
-and `commandsEnabled`.
+and `mutationsEnabled`.
 
 ## Migration notes
 

@@ -45,6 +45,51 @@ annotations. It isn't mutable runtime state — that belongs in `context`.
 that instance. Use `createJourneyFactory(...)` when you need request-scoped isolation, route-boundary
 isolation, or one runtime per mounted card or widget.
 
+## Migrating from `createJourneyMachine`
+
+`createJourneyMachine` still works and stays stable through all of 1.x (removed in 2.0 — see the
+[deprecation contract](/docs/core/stability#createjourneymachine-deprecation-contract)). Migrating to
+the named factories is mechanical, and the shapes barely change.
+
+**Graph** — pass the same object; the factory just fixes the mode:
+
+```ts
+// Before
+const machine = createJourneyMachine({ initial, context, steps, transitions });
+// After
+const machine = createGraphJourney({ initial, context, steps, transitions });
+```
+
+**Headless** — same object, minus the (absent) `transitions`:
+
+```ts
+// Before
+const machine = createJourneyMachine({ initial, context, steps }); // no transitions
+// After
+const machine = createHeadlessJourney({ initial, context, steps });
+```
+
+**Linear** — the array of step ids that used to live in `transitions` becomes the `steps` array, so
+order and per-step config live in one place (and there's no separate `transitions`):
+
+```ts
+// Before
+const machine = createJourneyMachine({
+  context,
+  steps: { intro: {}, details: { meta }, done: {} },
+  transitions: ["intro", "details", "done"]
+});
+// After
+const machine = createLinearJourney({
+  context,
+  steps: ["intro", { id: "details", meta }, "done"]
+});
+```
+
+That last form also unlocks `goToStepByIndex(...)` on the returned machine. Using the
+[graph builder](/docs/core/api/graph-builder)? `build(...)` output passes straight into
+`createGraphJourney(...)` — no other change.
+
 ## RC guidance
 
 The `1.0.0-rc` line freezes the public contract for this runtime model. Expect new RCs to be mostly
