@@ -110,6 +110,11 @@ const buildEffectTransitions = <
 
     if (effect.onResolved) {
       const branch = effect.onResolved;
+      if (branch.to === stepId) {
+        throw new Error(
+          `Journey step "${stepId}" effect "onResolved" cannot target its own step "${stepId}".`
+        );
+      }
       effectTransitions.push({
         from: stepId,
         event: JOURNEY_EFFECT_RESOLVED_EVENT,
@@ -136,6 +141,11 @@ const buildEffectTransitions = <
 
     if (effect.onRejected) {
       const branch = effect.onRejected;
+      if (branch.to === stepId) {
+        throw new Error(
+          `Journey step "${stepId}" effect "onRejected" cannot target its own step "${stepId}".`
+        );
+      }
       effectTransitions.push({
         from: stepId,
         event: JOURNEY_EFFECT_REJECTED_EVENT,
@@ -193,6 +203,12 @@ const buildAfterTransitions = <
       if (!Number.isFinite(delayMs) || delayMs < 0) {
         throw new Error(
           `Journey step "${stepId}" after delay "${delayKey}" must be a finite, non-negative number of milliseconds.`
+        );
+      }
+
+      if (branch.to === stepId) {
+        throw new Error(
+          `Journey step "${stepId}" after delay "${delayKey}" cannot target its own step "${stepId}".`
         );
       }
 
@@ -442,6 +458,12 @@ export const resolveJourneyDefinition = <
         if (!isTerminal && typeof (edge as { to?: unknown }).to !== "string") {
           throw new Error(
             `Journey transition at "${fromKey}.${event}[${index}]" must define string "to".`
+          );
+        }
+
+        if (!isTerminal && fromKey !== "global" && (edge as { to?: unknown }).to === fromKey) {
+          throw new Error(
+            `Journey transition "${fromKey}.${event}[${index}]" cannot target its own step "${fromKey}".`
           );
         }
 
