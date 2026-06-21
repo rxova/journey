@@ -269,4 +269,41 @@ describe("diagnostics plugin", () => {
     expect(diagnostics.summary.stepCount).toBe(2);
     expect(diagnostics.summary.unreachableStepCount).toBe(0);
   });
+
+  it("reports effect/after edges with public labels, never internal @@journey.* names", () => {
+    // The effect routes back to "start", forming a cycle through the effect edge.
+    const journey: JourneyDefinition<Record<string, never>, "start" | "loading"> = {
+      initial: "start",
+      context: {},
+      steps: {
+        start: {},
+        loading: {
+          effect: {
+            run: async () => "x",
+            onResolved: { to: "start" }
+          }
+        }
+      },
+      transitions: {
+        start: { goToNextStep: [{ to: "loading" }] },
+        loading: {}
+      }
+    };
+
+    const diagnostics = getJourneyDiagnostics(journey);
+
+    // No issue surfaces an internal synthetic event name.
+    expect(
+      diagnostics.issues.every(
+        (issue) =>
+          !String((issue as { eventType?: unknown }).eventType ?? "").startsWith("@@journey.")
+      )
+    ).toBe(true);
+    // The cycle closed by the effect edge is reported with a public label.
+    expect(
+      diagnostics.issues.some(
+        (issue) => issue.code === "cycle-detected" && String(issue.eventType) === "effect.resolved"
+      )
+    ).toBe(true);
+  });
 });

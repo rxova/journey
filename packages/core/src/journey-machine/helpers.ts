@@ -52,6 +52,17 @@ export const JOURNEY_AFTER_EVENT_PREFIX = `${JOURNEY_INTERNAL_EVENT_PREFIX}after
 export const isInternalEventType = (eventType: string): boolean =>
   eventType.startsWith(JOURNEY_INTERNAL_EVENT_PREFIX);
 
+/**
+ * Maps an event type to a public, label-safe form for structural output
+ * (execution paths, diagnostics). Internal synthetic events lose their
+ * `@@journey.` namespace — `@@journey.effect.resolved` → `effect.resolved`,
+ * `@@journey.after:100` → `after:100`. Non-internal events are returned as-is.
+ */
+export const toPublicEventType = (eventType: string): string =>
+  isInternalEventType(eventType)
+    ? eventType.slice(JOURNEY_INTERNAL_EVENT_PREFIX.length)
+    : eventType;
+
 export const assertStepExists = <TStepId extends string>(
   steps: Record<TStepId, unknown>,
   stepId: TStepId,

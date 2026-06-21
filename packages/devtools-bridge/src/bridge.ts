@@ -1,5 +1,6 @@
 import {
   getJourneyMachineDevtoolsRegistry,
+  isInternalEventType,
   type JourneyJsonObject,
   type JourneyMachine,
   type JourneyMachineDevtoolsFeatureSpec,
@@ -445,7 +446,12 @@ const createOperationRegistry = <
     new Set(
       registry.resolvedJourney.transitions
         .map((transition) => transition.event)
-        .filter((eventType) => !BUILT_IN_EVENT_TYPES.has(eventType))
+        // Custom, user-dispatchable events only — exclude built-ins and the
+        // internal `@@journey.*` effect/after events (effect/after surface via
+        // the `steps` metadata, not as invokable event choices).
+        .filter(
+          (eventType) => !BUILT_IN_EVENT_TYPES.has(eventType) && !isInternalEventType(eventType)
+        )
     )
   );
   const mode: JourneyMode =
@@ -458,7 +464,7 @@ const createOperationRegistry = <
     Array.from(
       registry.resolvedJourney.transitions
         .reduce((typesBySource, transition) => {
-          if (BUILT_IN_EVENT_TYPES.has(transition.event)) {
+          if (BUILT_IN_EVENT_TYPES.has(transition.event) || isInternalEventType(transition.event)) {
             return typesBySource;
           }
 

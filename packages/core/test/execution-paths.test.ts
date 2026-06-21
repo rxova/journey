@@ -469,4 +469,46 @@ describe("execution paths", () => {
       cyclesDetected: false
     });
   });
+
+  it("surfaces effect/after edges with public labels, never internal @@journey.* names", () => {
+    const journey: JourneyDefinition<
+      { n: number },
+      "start" | "loading" | "ready" | "failed" | "timeout"
+    > = {
+      initial: "start",
+      context: { n: 0 },
+      steps: {
+        start: { after: { 100: { to: "timeout" } } },
+        loading: {
+          effect: {
+            run: async () => "d",
+            onResolved: { to: "ready" },
+            onRejected: { to: "failed" }
+          }
+        },
+        ready: {},
+        failed: {},
+        timeout: {}
+      },
+      transitions: {
+        start: { goToNextStep: [{ to: "loading" }] },
+        loading: {},
+        ready: {},
+        failed: {},
+        timeout: {}
+      }
+    };
+
+    const result = getExecutionPaths(journey, { maxPaths: 50 });
+    const allEvents = result.paths.flatMap((path) => path.events.map(String));
+
+    // No internal synthetic event names leak into public path output.
+    expect(allEvents.some((event) => event.startsWith("@@journey."))).toBe(false);
+    // Effect/after edges are still present, with public labels.
+    expect(allEvents).toContain("effect.resolved");
+    expect(allEvents).toContain("effect.rejected");
+    expect(allEvents).toContain("after:100");
+    // The effect step is not treated as terminal (its edges are real).
+    expect(result.paths.some((path) => path.steps.includes("ready"))).toBe(true);
+  });
 });

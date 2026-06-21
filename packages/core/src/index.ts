@@ -12,7 +12,11 @@ export { createGraphJourney } from "./create-graph-journey";
 export { createJourneyMachine } from "./journey-machine";
 export { createGraphJourneyBuilder } from "./journey-builder";
 export { getJourneyMachineDevtoolsRegistry } from "./journey-machine/devtools-registry";
-export { JourneyDisposedError, JourneyTimeoutError } from "./journey-machine/helpers";
+export {
+  JourneyDisposedError,
+  JourneyTimeoutError,
+  isInternalEventType
+} from "./journey-machine/helpers";
 export type {
   JourneyBuilder,
   JourneyBuilderCustomEventKey,
