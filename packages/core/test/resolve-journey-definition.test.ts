@@ -289,4 +289,63 @@ describe("resolveJourneyDefinition", () => {
       })
     ).toThrow('Journey transitions for "start" must be an event map object.');
   });
+
+  it("rejects a graph transition that targets its own step", () => {
+    expect(() =>
+      resolveJourneyDefinition({
+        ...createJourney(),
+        transitions: {
+          start: { goToNextStep: [{ to: "start" }] }
+        } as never
+      })
+    ).toThrow('Journey transition "start.goToNextStep[0]" cannot target its own step "start".');
+  });
+
+  it("allows a global transition to target any step", () => {
+    expect(() =>
+      resolveJourneyDefinition({
+        ...createJourney(),
+        transitions: {
+          global: { goToNextStep: [{ to: "start" }] }
+        }
+      })
+    ).not.toThrow();
+  });
+
+  it("rejects an after delay that targets its own step", () => {
+    expect(() =>
+      resolveJourneyDefinition({
+        ...createJourney(),
+        steps: {
+          start: { after: { 1000: { to: "start" } } },
+          details: {},
+          review: {}
+        }
+      })
+    ).toThrow('Journey step "start" after delay "1000" cannot target its own step "start".');
+  });
+
+  it("rejects an effect branch that targets its own step", () => {
+    expect(() =>
+      resolveJourneyDefinition({
+        ...createJourney(),
+        steps: {
+          start: { effect: { run: () => null, onResolved: { to: "start" } } },
+          details: {},
+          review: {}
+        }
+      })
+    ).toThrow('Journey step "start" effect "onResolved" cannot target its own step "start".');
+
+    expect(() =>
+      resolveJourneyDefinition({
+        ...createJourney(),
+        steps: {
+          start: { effect: { run: () => null, onRejected: { to: "start" } } },
+          details: {},
+          review: {}
+        }
+      })
+    ).toThrow('Journey step "start" effect "onRejected" cannot target its own step "start".');
+  });
 });

@@ -29,7 +29,7 @@ describe("diagnostics plugin", () => {
           retry: [{ label: "dup", to: "loop" }]
         },
         loop: {
-          goToNextStep: [{ to: "loop" }]
+          goToNextStep: [{ to: "review" }]
         }
       }
     };
@@ -53,7 +53,7 @@ describe("diagnostics plugin", () => {
         }),
         expect.objectContaining({
           code: "cycle-detected",
-          steps: ["loop", "loop"]
+          steps: ["review", "loop", "review"]
         }),
         expect.objectContaining({
           code: "no-terminal-path"
@@ -185,7 +185,7 @@ describe("diagnostics plugin", () => {
           goToNextStep: [{ to: "loop" }]
         },
         loop: {
-          retry: [{ to: "loop" }]
+          retry: [{ to: "left" }]
         }
       }
     };
