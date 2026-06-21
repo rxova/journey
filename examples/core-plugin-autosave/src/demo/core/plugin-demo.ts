@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 // @ts-nocheck
 import {
-  createJourneyMachine,
+  createGraphJourney,
+  createLinearJourney,
   type JourneyMachine,
   type JourneySnapshot
 } from "@rxova/journey-core";
@@ -49,15 +50,15 @@ export const mountCorePluginDemo = async (kind: PluginDemoKind, root: HTMLElemen
 
   const machine =
     kind === "diagnostics"
-      ? createJourneyMachine(structureDefinition, {
+      ? createGraphJourney(structureDefinition, {
           plugins: [createDiagnosticsPlugin()] as const
         })
       : kind === "execution-paths"
-        ? createJourneyMachine(structureDefinition, {
+        ? createGraphJourney(structureDefinition, {
             plugins: [createExecutionPathsPlugin()] as const
           })
         : kind === "analytics"
-          ? createJourneyMachine(pluginDefinition, {
+          ? createLinearJourney(pluginDefinition, {
               plugins: [
                 createAnalyticsPlugin({
                   machineId: "core-plugin-analytics",
@@ -68,7 +69,7 @@ export const mountCorePluginDemo = async (kind: PluginDemoKind, root: HTMLElemen
               ] as const
             })
           : kind === "autosave"
-            ? createJourneyMachine(pluginDefinition, {
+            ? createLinearJourney(pluginDefinition, {
                 plugins: [
                   createAutosavePlugin({
                     key: storageKey,
@@ -78,10 +79,10 @@ export const mountCorePluginDemo = async (kind: PluginDemoKind, root: HTMLElemen
                 ] as const
               })
             : kind === "persistence"
-              ? createJourneyMachine(pluginDefinition, {
+              ? createLinearJourney(pluginDefinition, {
                   plugins: [createPersistencePlugin({ key: storageKey, version: 1 })] as const
                 })
-              : createJourneyMachine(pluginDefinition, {
+              : createLinearJourney(pluginDefinition, {
                   plugins: [createReplayPlugin({ maxEntries: 60 })] as const
                 });
 
@@ -191,7 +192,7 @@ export const mountCorePluginDemo = async (kind: PluginDemoKind, root: HTMLElemen
             <span class="badge badge-plugin">Plugin</span>
           </div>
           <h1>Core ${pluginTitles[kind]}</h1>
-          <p>Prefixed runnable Vite example for the ${pluginTitles[kind].toLowerCase()} using createJourneyMachine().</p>
+          <p>Prefixed runnable Vite example for the ${pluginTitles[kind].toLowerCase()} using the named journey factories.</p>
         </header>
         <div class="split">
           <div class="stack">
