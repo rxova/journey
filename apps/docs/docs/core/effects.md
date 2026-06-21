@@ -85,9 +85,10 @@ If the effect settles after you've already left the step, its result is ignored 
 flow you're no longer on.
 
 :::tip
-`handlers` are the dependency-injected functions you pass to the definition (`handlers` on `build()`
-or the definition object). Keep your I/O there — `verifyToken`, `search`, `loadProfile` — and effects
-become trivially testable: swap the handlers in a test and the flow's wiring is unchanged.
+[`handlers`](/docs/core/handlers) are the dependency-injected functions you pass to the definition
+(`handlers` on `build()` or the definition object). Keep your I/O there — `verifyToken`, `search`,
+`loadProfile` — and effects become trivially testable: swap the handlers in a test and the flow's
+wiring is unchanged.
 :::
 
 ## Timeouts

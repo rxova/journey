@@ -18,6 +18,7 @@ const sidebars: SidebarsConfig = {
         "usage/headless",
         "usage/step-behavior",
         "effects",
+        "handlers",
         "recipes",
         "examples"
       ]
