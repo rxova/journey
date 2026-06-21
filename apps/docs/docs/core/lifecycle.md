@@ -64,6 +64,15 @@ Subscribe with `subscribeEvent(...)`:
 | `navigation.previous`    | the pointer moves backward                             | `from`, `to`, `requestedSteps`, `appliedSteps`        |
 | `navigation.lastVisited` | the pointer jumps to the realized tail                 | `from`, `to`                                          |
 
+:::note Effects and `after` route through internal events
+Step [effects](/docs/core/effects) and [delayed `after` transitions](/docs/core/effects#delayed-transitions-after)
+move the flow through **internal synthetic events** (an `@@journey.*` namespace). Those are an
+implementation detail: they are **not** delivered to `subscribeEvent`, so you won't see a
+`transition.start`/`transition.success` for them. The navigation they produce is still fully
+observable as `step.exit` / `step.enter`. Don't depend on the `@@journey.*` names — they're internal
+and may change.
+:::
+
 ## Event order
 
 Ordering is guaranteed, which is what makes events reliable for analytics. A normal step-to-step

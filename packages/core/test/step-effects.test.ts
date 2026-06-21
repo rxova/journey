@@ -89,6 +89,45 @@ describe("step effects", () => {
     expect(machine.getSnapshot().context.error).toBe("boom");
   });
 
+  it("does not surface internal synthetic effect events on the observation stream", async () => {
+    const machine = createJourneyMachine(
+      baseDefinition({
+        run: async () => "loaded-data",
+        onResolved: { to: "done" },
+        onRejected: { to: "failed" }
+      })
+    );
+
+    const syntheticObservations: unknown[] = [];
+    const enteredSteps: string[] = [];
+    machine.subscribeEvent((event) => {
+      if (event.type === "step.enter") {
+        enteredSteps.push(event.stepId);
+      }
+      if (event.type === "transition.start" && event.event.type.startsWith("@@journey.")) {
+        syntheticObservations.push(event);
+      }
+      if (
+        (event.type === "transition.success" || event.type === "transition.error") &&
+        event.eventType.startsWith("@@journey.")
+      ) {
+        syntheticObservations.push(event);
+      }
+    });
+
+    await machine.startJourney();
+    await machine.goToNextStep(); // start → loading; the effect then routes to done
+
+    await vi.waitFor(() => {
+      expect(machine.getSnapshot().currentStepId).toBe("done");
+    });
+
+    // The internal effect-resolved transition is filtered from the stream…
+    expect(syntheticObservations).toEqual([]);
+    // …but the real navigation it produced is still observable.
+    expect(enteredSteps).toContain("done");
+  });
+
   it("reports an invoking async phase while the effect is in flight", async () => {
     const gate = deferred<string>();
     const machine = createJourneyMachine(
