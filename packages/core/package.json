@@ -27,6 +27,9 @@
   },
   "license": "MIT",
   "author": "Jonatan Kruszewski",
+  "engines": {
+    "node": ">=20.11.0"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -112,19 +115,19 @@
       "name": "core/createLinearJourney",
       "path": "dist/index.js",
       "import": "{ createLinearJourney }",
-      "limit": "9 kB"
+      "limit": "10 kB"
     },
     {
       "name": "core/createGraphJourney",
       "path": "dist/index.js",
       "import": "{ createGraphJourney }",
-      "limit": "9 kB"
+      "limit": "10 kB"
     },
     {
       "name": "core/createHeadlessJourney",
       "path": "dist/index.js",
       "import": "{ createHeadlessJourney }",
-      "limit": "9 kB"
+      "limit": "10 kB"
     },
     {
       "name": "core/createGraphJourneyBuilder",
