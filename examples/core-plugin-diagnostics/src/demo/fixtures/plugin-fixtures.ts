@@ -1,7 +1,7 @@
 import {
   createGraphJourneyBuilder,
-  type JourneyDefinition,
-  type JourneyJsonObject
+  type JourneyJsonObject,
+  type LinearJourneyDefinition
 } from "@rxova/journey-core";
 
 export type PluginDemoKind =
@@ -30,24 +30,21 @@ export type StructureEventMap = {
 export const pluginStorageKey = (runtime: "core" | "react", kind: PluginDemoKind) =>
   `journey.example.${runtime}.${kind}`;
 
-export const pluginDefinition: JourneyDefinition<PluginContext, PluginStepId> = {
+export const pluginDefinition: LinearJourneyDefinition<
+  PluginContext,
+  PluginStepId,
+  { label: string }
+> = {
   context: {
     name: "",
     email: "",
     notes: ""
   },
-  steps: {
-    profile: {
-      meta: { label: "Profile" }
-    },
-    review: {
-      meta: { label: "Review" }
-    },
-    done: {
-      meta: { label: "Done" }
-    }
-  },
-  transitions: ["profile", "review", "done"]
+  steps: [
+    { id: "profile", meta: { label: "Profile" } },
+    { id: "review", meta: { label: "Review" } },
+    { id: "done", meta: { label: "Done" } }
+  ]
 };
 
 const { createStep, to, build } = createGraphJourneyBuilder<
