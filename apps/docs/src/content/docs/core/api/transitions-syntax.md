@@ -105,7 +105,11 @@ transitions, so they can live next to the component that renders them. It compil
 `JourneyDefinition` — no new runtime concepts.
 
 ```ts
-const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, EventMap>();
+const { createStep, to, build } = createGraphJourneyBuilder<{
+  context: Context;
+  stepId: StepId;
+  events: EventMap;
+}>();
 
 export const loginStep = createStep("login", {
   on: {

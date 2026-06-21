@@ -50,12 +50,12 @@ export const pluginDefinition: JourneyDefinition<PluginContext, PluginStepId> = 
   transitions: ["profile", "review", "done"]
 };
 
-const { createStep, to, build } = createGraphJourneyBuilder<
-  JourneyJsonObject,
-  StructureStepId,
-  StructureEventMap,
-  { label: string }
->();
+const { createStep, to, build } = createGraphJourneyBuilder<{
+  context: JourneyJsonObject;
+  stepId: StructureStepId;
+  events: StructureEventMap;
+  meta: { label: string };
+}>();
 
 const start = createStep("start", {
   meta: { label: "Start" },

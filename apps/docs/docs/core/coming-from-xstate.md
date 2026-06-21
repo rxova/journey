@@ -51,13 +51,13 @@ const machine = setup({
 ```ts
 import { createGraphJourneyBuilder, createGraphJourney } from "@rxova/journey-core";
 
-const { createStep, build } = createGraphJourneyBuilder<
-  Context,
-  StepId,
-  Events,
-  unknown,
-  Handlers
->();
+const { createStep, build } = createGraphJourneyBuilder<{
+  context: Context;
+  stepId: StepId;
+  events: Events;
+  meta: unknown;
+  handlers: Handlers;
+}>();
 
 const machine = createGraphJourney(
   build({

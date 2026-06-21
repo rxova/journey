@@ -81,7 +81,11 @@ type Events = {
   requestClose: { source: "button" | "shortcut" };
 };
 
-const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, Events>();
+const { createStep, to, build } = createGraphJourneyBuilder<{
+  context: Context;
+  stepId: StepId;
+  events: Events;
+}>();
 
 const machine = createGraphJourney(
   build({
