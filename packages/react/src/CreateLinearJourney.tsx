@@ -8,13 +8,14 @@ import type {
 import { buildJourneyRuntime } from "./create-journey-machine-runtime";
 import type { LinearJourneyRuntime } from "./types";
 import type { JourneyOptionsInput } from "./type-helpers";
+import type { JourneyEmpty } from "@rxova/journey-core";
 
 /** Creates a linear journey runtime for React. Returns a `LinearJourneyRuntime` with hooks, provider, and the extended `LinearJourneyMachine`. */
 export function createLinearJourney<
   TContext extends JourneyJsonObject,
   TStepId extends string,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>,
+  THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   definition: LinearJourneyDefinition<TContext, TStepId, TStepMeta, THandlers>,

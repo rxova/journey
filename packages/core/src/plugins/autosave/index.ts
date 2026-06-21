@@ -9,6 +9,7 @@ import type {
   JourneyMachineSnapshotReason,
   JourneySnapshot
 } from "../../types";
+import type { JourneyEmpty } from "../../types";
 
 const DEFAULT_SAVE_REASONS = ["context", "navigation", "reset", "start", "transition"] as const;
 
@@ -29,9 +30,9 @@ export type JourneyAutosaveMachineExtension = {
 export type JourneyAutosaveMachine<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 > = JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers> &
   JourneyAutosaveMachineExtension;
 

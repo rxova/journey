@@ -12,6 +12,7 @@ import type {
   JourneyResolvedDefinition,
   JourneySnapshot
 } from "../types";
+import type { JourneyEmpty } from "../types";
 
 export type JourneyMachinePluginController<
   TContext extends JourneyJsonObject,
@@ -48,7 +49,7 @@ export const createJourneyMachinePluginController = <
   TStepId extends string,
   TEventMap extends Record<string, unknown>,
   TStepMeta,
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 >({
   plugins,
   setupContext

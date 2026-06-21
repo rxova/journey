@@ -15,6 +15,7 @@ import type {
   JourneyTransition,
   JourneyTransitionGraph
 } from "../types";
+import type { JourneyEmpty } from "../types";
 
 const hashTransitionDescriptor = (value: string) => {
   let hash = 2166136261;
@@ -222,7 +223,7 @@ export const resolveJourneyDefinition = <
   TStepId extends string,
   TEventMap extends Record<string, unknown>,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 >(
   journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>
 ): JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers> => {

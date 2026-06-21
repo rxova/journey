@@ -6,15 +6,16 @@ import type {
   JourneyResolvedDefinition,
   JourneySendResult
 } from "../types";
+import type { JourneyEmpty } from "../types";
 
 export const JOURNEY_MACHINE_DEVTOOLS_SYMBOL = Symbol.for("rxova.journey.devtools");
 
 export type JourneyMachineDevtoolsRegistry<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 > = {
   controls?: {
     forceStepTransition?: (stepId: TStepId) => Promise<JourneySendResult<TContext, TStepId>>;
@@ -33,9 +34,9 @@ export type JourneyMachineDevtoolsRegistry<
 export const attachJourneyMachineDevtoolsRegistry = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 >(
   machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
   registry: JourneyMachineDevtoolsRegistry<TContext, TStepId, TEventMap, TStepMeta, THandlers>
@@ -52,9 +53,9 @@ export const attachJourneyMachineDevtoolsRegistry = <
 export const getJourneyMachineDevtoolsRegistry = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 >(
   machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>
 ) =>

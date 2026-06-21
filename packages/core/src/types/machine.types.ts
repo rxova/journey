@@ -20,6 +20,7 @@ import type {
   JourneyStartObservationEvent,
   JourneyTerminateObservationEvent
 } from "./observation.types";
+import type { JourneyEmpty } from "./journey.types";
 
 /** Reasons why a machine snapshot changed. */
 export type JourneyMachineSnapshotReason =
@@ -43,9 +44,9 @@ export type JourneyLifecycleErrorContext<TStepId extends string> = {
 export type JourneyMachinePluginSetupContext<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 > = {
   journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
   resolvedJourney: JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
@@ -107,9 +108,9 @@ export type JourneyMachineDevtoolsOperationResult<
 export type JourneyMachineDevtoolsOperationSpec<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 > = {
   id: string;
   label: string;
@@ -130,9 +131,9 @@ export type JourneyMachineDevtoolsOperationSpec<
 export type JourneyMachineDevtoolsFeatureSpec<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 > = {
   id: string;
   label: string;
@@ -150,10 +151,10 @@ export type JourneyMachineDevtoolsFeatureSpec<
 export type JourneyMachinePluginHooks<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>,
-  TExtension extends object = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty,
+  TExtension extends object = JourneyEmpty
 > = {
   hydrateSnapshot?: (
     snapshot: JourneySnapshot<TContext, TStepId>
@@ -185,9 +186,9 @@ export type JourneyMachinePlugin = {
   setup: <
     TContext extends JourneyJsonObject,
     TStepId extends string,
-    TEventMap extends Record<string, unknown> = Record<never, never>,
+    TEventMap extends Record<string, unknown> = JourneyEmpty,
     TStepMeta = unknown,
-    THandlers extends Record<string, unknown> = Record<never, never>
+    THandlers extends Record<string, unknown> = JourneyEmpty
   >(
     context: JourneyMachinePluginSetupContext<TContext, TStepId, TEventMap, TStepMeta, THandlers>
   ) => JourneyMachinePluginHooks<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
@@ -228,7 +229,7 @@ type JourneyMachinePluginExtensionFor<
         augmentMachine?: (...args: never[]) => infer THookExtension;
       }
       ? THookExtension
-      : Record<never, never>
+      : JourneyEmpty
     : Exclude<TExtension, undefined>
   : JourneyMachinePluginHooksFor<
         TPlugin,
@@ -241,15 +242,15 @@ type JourneyMachinePluginExtensionFor<
         augmentMachine?: (...args: never[]) => infer THookExtension;
       }
     ? THookExtension
-    : Record<never, never>;
+    : JourneyEmpty;
 
 type UnionToIntersection<TValue> = [TValue] extends [never]
-  ? Record<never, never>
+  ? JourneyEmpty
   : (TValue extends unknown ? (value: TValue) => void : never) extends (
         value: infer TIntersection
       ) => void
     ? TIntersection
-    : Record<never, never>;
+    : JourneyEmpty;
 
 type JourneyTypeParam<TValue> = TValue extends unknown ? unknown : never;
 
@@ -283,9 +284,9 @@ type JourneyPayloadForDefaultEvent<
 export type JourneyMachine<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 > = JourneyTypeParam<THandlers> & {
   getSnapshot: () => JourneySnapshot<TContext, TStepId>;
   getStepMeta: (stepId: TStepId) => TStepMeta | undefined;
@@ -334,16 +335,9 @@ export type LinearJourneyMachine<
   TContext extends JourneyJsonObject,
   TStepId extends string,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>,
+  THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = readonly JourneyMachinePlugin[]
-> = JourneyMachineWithPlugins<
-  TContext,
-  TStepId,
-  Record<never, never>,
-  TStepMeta,
-  THandlers,
-  TPlugins
-> & {
+> = JourneyMachineWithPlugins<TContext, TStepId, JourneyEmpty, TStepMeta, THandlers, TPlugins> & {
   goToStepByIndex: (index: number) => Promise<JourneySendResult<TContext, TStepId>>;
 };
 
@@ -351,9 +345,9 @@ export type LinearJourneyMachine<
 export type JourneyMachineWithPlugins<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>,
+  THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = readonly JourneyMachinePlugin[]
 > = JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers> &
   UnionToIntersection<

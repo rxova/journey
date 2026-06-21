@@ -7,6 +7,7 @@ import type {
 import { createJourneyMachineRuntime } from "./create-journey-machine-runtime";
 import type { JourneyRuntimeFactory, JourneyRuntimeFactoryFromDefinition } from "./types";
 import type { JourneyOptionsInput } from "./type-helpers";
+import type { JourneyEmpty } from "@rxova/journey-core";
 
 /**
  * Creates a typed factory for producing fresh React-bound journey runtimes.
@@ -23,9 +24,9 @@ export function createJourneyFactory<
 export function createJourneyFactory<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>,
+  THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   definition: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
