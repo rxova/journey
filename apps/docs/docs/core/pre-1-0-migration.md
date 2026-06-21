@@ -45,6 +45,26 @@ annotations. It isn't mutable runtime state — that belongs in `context`.
 that instance. Use `createJourneyFactory(...)` when you need request-scoped isolation, route-boundary
 isolation, or one runtime per mounted card or widget.
 
+### The graph builder takes one type object
+
+`createGraphJourneyBuilder` now takes a single `JourneyTypes` object instead of positional generics —
+named fields read more clearly and you can omit what you don't use:
+
+```ts
+// Before
+const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, Events>();
+// After
+const { createStep, to, build } = createGraphJourneyBuilder<{
+  context: Context;
+  stepId: StepId;
+  events: Events;
+}>();
+```
+
+Omitted fields default (`events`/`handlers` to an empty record, `meta` to `unknown`). The factory
+functions — `createGraphJourney`, `createLinearJourney`, `createHeadlessJourney` — are unchanged:
+they still infer types from the definition you pass, so they keep positional generics.
+
 ## Migrating from `createJourneyMachine`
 
 `createJourneyMachine` still works and stays stable through all of 1.x (removed in 2.0 — see the
