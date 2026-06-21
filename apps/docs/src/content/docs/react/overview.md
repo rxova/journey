@@ -21,6 +21,7 @@ React bindings are a wrapper layer, not a second runtime.
 - `useJourneySnapshot()`
 - `useJourneyComputed()`
 - `useJourneySelector(selector, equalityFn?)`
+- `useStepAsyncState(stepId)`
 - `useJourneyApi()`
 - `useStepApi(stepId)`
 - `useJourneyEvent(listener)`
@@ -30,7 +31,19 @@ React bindings are a wrapper layer, not a second runtime.
 
 Hooks work without a provider for reads and manual control. `useJourneyApi()` includes `startJourney()` for provider-free flows, and `JourneyProvider` supplies the `views` map, lifecycle callbacks, and client-side auto-start for an `idled` machine.
 
-Older React entrypoints are not part of this package surface anymore. `createJourney(...)` is the supported runtime entrypoint.
+### Named factories, mirrored from Core
+
+Like Core, React exposes a factory per flow shape — `createLinearJourney`, `createHeadlessJourney`,
+and `createGraphJourney` — each wrapping the matching core factory and returning the same React
+runtime bundle. Reach for the one that matches your flow; they buy you tighter inference (the graph
+builder runtime even types `useStepApi` per step). `createJourney(definition)` stays as the generic
+entry point that accepts any definition shape, and `createJourneyFactory(...)` returns a thunk that
+mints a fresh runtime per call (one per request, card, or route boundary).
+
+:::info Choosing a factory
+The decision is the same as Core's — see [Choosing a mode](/docs/core/usage). React adds nothing to
+that choice; it only wraps the result in hooks and a provider.
+:::
 
 ## Runtime Ownership
 
@@ -58,9 +71,11 @@ For deeper type modeling such as events, payload maps, and snapshots, see [Core 
 
 ## What The React Package Gives You
 
-- `createJourney(definition, options?)`
+- `createJourney(definition, options?)` plus the named `createLinearJourney` /
+  `createHeadlessJourney` / `createGraphJourney` factories
 - hooks bound to the created machine
 - `useJourneyComputed()` for derived progress state and lifecycle flags
+- `useStepAsyncState(stepId)` for a step's async phase, driving loading and error UI
 - `useStepApi(stepId)` for step-scoped custom event typing
 - `useJourneyStepLifecycle(stepId, callbacks)` for step enter/leave side effects
 - a `JourneyProvider` for `views` and lifecycle callbacks
@@ -160,3 +175,10 @@ Core docs remain the source of truth for:
 
 Use React docs for how to wire Journey into React.
 Use Core docs for how Journey works under the hood.
+
+## Where to next
+
+- [Quickstart](./quickstart) — install and wire a flow into React in a few minutes.
+- [Provider & hooks](./provider-and-hooks) — the full hook and provider surface.
+- [Async UI](./async-ui) — render loading and error states with `useStepAsyncState`.
+- [Choosing a mode](/docs/core/usage) — pick linear, graph, or headless for your flow.
