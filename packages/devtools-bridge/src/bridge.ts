@@ -22,6 +22,7 @@ import {
   JOURNEY_DEVTOOLS_EXTENSION_SOURCE,
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
   JOURNEY_DEVTOOLS_REPLAY_REQUEST,
+  isCompatibleInvokeProtocolVersion,
   isJourneyDevtoolsEnvelope,
   type JourneyDevtoolsBridgeEnvelope,
   type JourneyDevtoolsBridgeOperationErrorEnvelope,
@@ -33,15 +34,23 @@ import {
   type JourneyDevtoolsMachineFeatureDescriptor,
   type JourneyDevtoolsOperationInvoke,
   type JourneyDevtoolsOperationResultPayload,
-  type JourneyDevtoolsSerializableSnapshot
+  type JourneyDevtoolsSerializableSnapshot,
+  type JourneyDevtoolsStepFeatureDescriptor
 } from "./protocol";
 
+/** Options for {@link attachJourneyDevtools}. */
 export type JourneyDevtoolsBridgeOptions = {
+  /** Stable id for this machine in devtools. Defaults to a generated id. */
   machineId?: string;
+  /** Human-readable label shown in the devtools panel. */
   label?: string;
+  /** Force the bridge on or off. Defaults to enabled only in non-production builds. */
   enabled?: boolean;
+  /** App name shown in devtools. Defaults to `document.title`. */
   appName?: string;
+  /** Allow devtools to mutate the machine (navigate, patch context). Defaults to non-production. */
   mutationsEnabled?: boolean;
+  /** @deprecated Alias for {@link JourneyDevtoolsBridgeOptions.mutationsEnabled}. */
   commandsEnabled?: boolean;
 };
 
@@ -124,6 +133,7 @@ const serializeSnapshot = <TContext extends JourneyJsonObject, TStepId extends s
       phase:
         stepState.phase === "idle" ||
         stepState.phase === "evaluating-when" ||
+        stepState.phase === "invoking" ||
         stepState.phase === "error"
           ? stepState.phase
           : "idle",
@@ -480,6 +490,28 @@ const createOperationRegistry = <
     ).map(([source, targets]) => [source, Array.from(targets)])
   );
 
+  const steps: Record<string, JourneyDevtoolsStepFeatureDescriptor> = Object.fromEntries(
+    stepIds.map((stepId) => {
+      const stepDefinition = registry.journey.steps[stepId as TStepId];
+      const afterDelays = stepDefinition?.after
+        ? Object.keys(stepDefinition.after)
+            .map((delay) => Number(delay))
+            .filter((delay) => Number.isFinite(delay))
+            .sort((a, b) => a - b)
+        : [];
+      return [
+        stepId,
+        {
+          hasEffect: stepDefinition?.effect !== undefined,
+          afterDelays,
+          hasOnEnter: stepDefinition?.onEnter !== undefined,
+          hasOnLeave: stepDefinition?.onLeave !== undefined,
+          hasMeta: stepDefinition?.meta !== undefined
+        }
+      ];
+    })
+  );
+
   const operationMap = new Map<string, OperationRunner<TContext, TStepId>>();
 
   for (const feature of features) {
@@ -511,7 +543,8 @@ const createOperationRegistry = <
     goToStepTargetsBySource,
     mode,
     operations: operationMap,
-    stepIds
+    stepIds,
+    steps
   };
 };
 
@@ -565,6 +598,7 @@ export const attachJourneyDevtools = <
         eventTypes: operationRegistry.eventTypes,
         eventTypesBySource: operationRegistry.eventTypesBySource,
         goToStepTargetsBySource: operationRegistry.goToStepTargetsBySource,
+        steps: operationRegistry.steps,
         features: operationRegistry.features
       },
       snapshot: serializeSnapshot(machine.getSnapshot())
@@ -688,7 +722,7 @@ export const attachJourneyDevtools = <
       return;
     }
 
-    if (event.data.version !== JOURNEY_DEVTOOLS_PROTOCOL_VERSION) {
+    if (!isCompatibleInvokeProtocolVersion(event.data.version)) {
       postEnvelope({
         channel: JOURNEY_DEVTOOLS_CHANNEL,
         version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,

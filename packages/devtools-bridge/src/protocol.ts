@@ -7,25 +7,54 @@ import type {
 } from "@rxova/journey-core";
 import { isRecord } from "@rxova/journey-common/predicates";
 
-export const JOURNEY_DEVTOOLS_PROTOCOL_VERSION = 5 as const;
+/** Current devtools protocol version emitted by the bridge. */
+export const JOURNEY_DEVTOOLS_PROTOCOL_VERSION = 6 as const;
+/**
+ * Prior protocol version still accepted on the wire. v6 added per-step feature
+ * metadata to the register envelope; the `invoke` envelope shape is unchanged
+ * from v5, so a v6 bridge and a v5 extension interoperate.
+ */
+export const JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION = 5 as const;
+/** Oldest protocol version still tolerated for register envelopes. */
 export const JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION = 3 as const;
+/** `window.postMessage` channel discriminator for all devtools traffic. */
 export const JOURNEY_DEVTOOLS_CHANNEL = "__RXOVA_JOURNEY_DEVTOOLS__" as const;
+/** Message kind the extension sends to ask the bridge to re-emit register + snapshot. */
 export const JOURNEY_DEVTOOLS_REPLAY_REQUEST = "__RXOVA_JOURNEY_DEVTOOLS_REPLAY_REQUEST__" as const;
 
+/** `source` marker on envelopes the bridge sends to the extension. */
 export const JOURNEY_DEVTOOLS_BRIDGE_SOURCE = "rxova-journey-bridge" as const;
+/** `source` marker on envelopes the extension sends to the bridge. */
 export const JOURNEY_DEVTOOLS_EXTENSION_SOURCE = "rxova-journey-extension" as const;
 
+/** Protocol versions accepted on the wire (current, prior, and legacy). */
 export type JourneyDevtoolsProtocolVersion =
   | typeof JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION
+  | typeof JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION
   | typeof JOURNEY_DEVTOOLS_PROTOCOL_VERSION;
+
+/**
+ * Whether the bridge can process an `invoke` from a given protocol version.
+ * Accepts the current and prior versions (their invoke shapes are identical);
+ * the v3 legacy version is tolerated for register envelopes but cannot invoke.
+ */
+export const isCompatibleInvokeProtocolVersion = (
+  value: unknown
+): value is
+  | typeof JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION
+  | typeof JOURNEY_DEVTOOLS_PROTOCOL_VERSION =>
+  value === JOURNEY_DEVTOOLS_PROTOCOL_VERSION || value === JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION;
 
 export type JourneyDevtoolsSource =
   | typeof JOURNEY_DEVTOOLS_BRIDGE_SOURCE
   | typeof JOURNEY_DEVTOOLS_EXTENSION_SOURCE;
 
+/** Per-step async state as carried over the wire. */
 export type JourneyDevtoolsStepAsyncState = JourneyStepAsyncState;
+/** A journey snapshot serialized for transport to the extension. */
 export type JourneyDevtoolsSerializableSnapshot = JourneySnapshot<JourneyJsonObject, string>;
 
+/** Metadata describing one devtools-invokable operation (id, label, inputs, output kind). */
 export type JourneyDevtoolsMachineOperationDescriptor = {
   id: string;
   label: string;
@@ -35,6 +64,7 @@ export type JourneyDevtoolsMachineOperationDescriptor = {
   fields: readonly JourneyMachineDevtoolsFieldSpec[];
 };
 
+/** A named group of devtools operations (core navigation, plugin features, …). */
 export type JourneyDevtoolsMachineFeatureDescriptor = {
   id: string;
   label: string;
@@ -42,6 +72,21 @@ export type JourneyDevtoolsMachineFeatureDescriptor = {
   operations: readonly JourneyDevtoolsMachineOperationDescriptor[];
 };
 
+/**
+ * Per-step authored features, surfaced so devtools can show which steps carry
+ * an effect, delayed (`after`) transitions, lifecycle callbacks, or metadata.
+ * Added in protocol v6; absent on v5/v3 register envelopes.
+ */
+export type JourneyDevtoolsStepFeatureDescriptor = {
+  hasEffect: boolean;
+  /** Delays (ms) of the step's `after` transitions, ascending. Empty when none. */
+  afterDelays: readonly number[];
+  hasOnEnter: boolean;
+  hasOnLeave: boolean;
+  hasMeta: boolean;
+};
+
+/** Static description of a machine sent in the `register` envelope: identity, mode, steps, events, and features. */
 export type JourneyDevtoolsMachineMeta = {
   machineId: string;
   label: string;
@@ -52,6 +97,7 @@ export type JourneyDevtoolsMachineMeta = {
   eventTypes?: readonly string[];
   eventTypesBySource?: Record<string, readonly string[]>;
   goToStepTargetsBySource?: Record<string, readonly string[]>;
+  steps?: Record<string, JourneyDevtoolsStepFeatureDescriptor>;
   features: readonly JourneyDevtoolsMachineFeatureDescriptor[];
 };
 
@@ -161,7 +207,9 @@ const isKnownSource = (value: unknown): value is JourneyDevtoolsSource =>
   value === JOURNEY_DEVTOOLS_BRIDGE_SOURCE || value === JOURNEY_DEVTOOLS_EXTENSION_SOURCE;
 
 const isSupportedProtocolVersion = (value: unknown): value is JourneyDevtoolsProtocolVersion =>
-  value === JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION || value === JOURNEY_DEVTOOLS_PROTOCOL_VERSION;
+  value === JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION ||
+  value === JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION ||
+  value === JOURNEY_DEVTOOLS_PROTOCOL_VERSION;
 
 const MAX_PAYLOAD_DEPTH = 10;
 const MAX_PAYLOAD_SIZE = 500_000;
@@ -221,6 +269,17 @@ const isNullableString = (value: unknown): value is string | null =>
 
 const isStringArray = (value: unknown): value is readonly string[] =>
   Array.isArray(value) && value.every((entry) => typeof entry === "string");
+
+const isNumberArray = (value: unknown): value is readonly number[] =>
+  Array.isArray(value) && value.every((entry) => typeof entry === "number");
+
+const isStepFeatureDescriptor = (value: unknown): value is JourneyDevtoolsStepFeatureDescriptor =>
+  isRecord(value) &&
+  typeof value.hasEffect === "boolean" &&
+  isNumberArray(value.afterDelays) &&
+  typeof value.hasOnEnter === "boolean" &&
+  typeof value.hasOnLeave === "boolean" &&
+  typeof value.hasMeta === "boolean";
 
 const isFieldType = (value: unknown): value is JourneyMachineDevtoolsFieldSpec["type"] =>
   value === "text" || value === "integer" || value === "boolean" || value === "json";
@@ -308,6 +367,9 @@ const isMachineMeta = (
     (value.goToStepTargetsBySource === undefined ||
       (isRecord(value.goToStepTargetsBySource) &&
         Object.values(value.goToStepTargetsBySource).every((targets) => isStringArray(targets)))) &&
+    (value.steps === undefined ||
+      (isRecord(value.steps) &&
+        Object.values(value.steps).every((step) => isStepFeatureDescriptor(step)))) &&
     value.features.every((feature) => isFeatureDescriptor(feature))
   );
 };

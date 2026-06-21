@@ -4,10 +4,12 @@ export { getJourneyMachineDevtoolsRegistry } from "@rxova/journey-core";
 export {
   JOURNEY_DEVTOOLS_CHANNEL,
   JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
+  JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION,
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
   JOURNEY_DEVTOOLS_REPLAY_REQUEST,
   JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
   JOURNEY_DEVTOOLS_EXTENSION_SOURCE,
+  isCompatibleInvokeProtocolVersion,
   isJourneyDevtoolsEnvelope,
   isJourneyDevtoolsBridgeEnvelope,
   isJourneyDevtoolsExtensionEnvelope,
@@ -28,5 +30,6 @@ export {
   type JourneyDevtoolsOperationResultPayload,
   type JourneyDevtoolsProtocolVersion,
   type JourneyDevtoolsSerializableSnapshot,
-  type JourneyDevtoolsSerializedError
+  type JourneyDevtoolsSerializedError,
+  type JourneyDevtoolsStepFeatureDescriptor
 } from "./protocol";
