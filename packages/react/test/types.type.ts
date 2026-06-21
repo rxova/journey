@@ -22,7 +22,7 @@ import type {
   JourneyViews,
   StepScopedJourneyApi
 } from "@rxova/journey-react";
-import { createJourney, createJourneyFactory } from "@rxova/journey-react";
+import { createGraphJourney, createJourney, createJourneyFactory } from "@rxova/journey-react";
 
 type Context = { userId: string };
 type StepId = "start" | "review";
@@ -211,6 +211,15 @@ expectTypeOf(builderJourney).toMatchTypeOf<
   JourneyBuilderRuntime<BuilderContext, BuilderStepId, BuilderEventMap, { label: string }>
 >();
 expectTypeOf(builderJourney).toEqualTypeOf<BuilderRuntime>();
+
+// The named graph factory accepts builder output and infers the same builder
+// runtime (including `useStepApi`) as the generic createJourney.
+const graphBuilderJourney = createGraphJourney(builderDefinition, { plugins });
+expectTypeOf(graphBuilderJourney).toEqualTypeOf<
+  JourneyBuilderRuntimeFromDefinition<typeof builderDefinition, typeof plugins>
+>();
+expectTypeOf(graphBuilderJourney.useStepApi).toBeFunction();
+
 expectTypeOf<BuilderApi>().toMatchTypeOf<
   StepScopedJourneyApi<
     BuilderContext,
