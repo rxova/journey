@@ -65,7 +65,7 @@ journeyMachine.startJourney();
 // detachDevtools();
 ```
 
-The bridge does not auto-start the machine. Call `journeyMachine.startJourney()` when your app is ready to process navigation and transition commands.
+The bridge does not auto-start the machine. Call `journeyMachine.startJourney()` when your app is ready to process navigation and transitions.
 
 ### React Example
 
@@ -115,7 +115,7 @@ Do this quick check:
 
 1. Trigger UI event in app (e.g. `goToNextStep`).
 2. Confirm `currentStepId` updates in Snapshot tab.
-3. Send `goToPreviousStep` command from panel.
+3. Run the `goToPreviousStep` operation from the panel.
 4. Confirm app returns to previous step.
 
 ## First Successful Session Screenshot

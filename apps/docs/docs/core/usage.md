@@ -109,7 +109,7 @@ Good fit:
 - telemetry-heavy runtime orchestration
 
 ```ts
-const journeyMachine = createJourneyMachine(journey);
+const journeyMachine = createHeadlessJourney(journey);
 journeyMachine.startJourney();
 
 journeyMachine.subscribe(() => {
