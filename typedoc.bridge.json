@@ -1,0 +1,16 @@
+{
+  "entryPoints": ["packages/devtools-bridge/src/index.ts"],
+  "tsconfig": "packages/devtools-bridge/tsconfig.json",
+  "plugin": ["typedoc-plugin-markdown"],
+  "out": "apps/docs/docs/bridge/api/reference",
+  "readme": "none",
+  "excludeInternal": true,
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "useCodeBlocks": true,
+  "parametersFormat": "table",
+  "interfacePropertiesFormat": "table",
+  "validation": {
+    "notExported": false
+  }
+}
