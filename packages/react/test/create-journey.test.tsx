@@ -1726,3 +1726,122 @@ describe("useJourneyStepLifecycle", () => {
     journey.dispose();
   });
 });
+
+describe("useStepAsyncState", () => {
+  type AsyncStepId = "loading" | "ready" | "failed";
+  type AsyncContext = { result: string | null };
+
+  const createEffectJourney = (run: () => Promise<string>, withRejectBranch: boolean) =>
+    createJourney<JourneyDefinition<AsyncContext, AsyncStepId>>({
+      initial: "loading",
+      context: { result: null },
+      steps: {
+        loading: {
+          effect: {
+            run,
+            onResolved: {
+              to: "ready",
+              updateContext: ({ context, output }) => ({ ...context, result: output as string })
+            },
+            ...(withRejectBranch ? { onRejected: { to: "failed" } } : {})
+          }
+        },
+        ready: {},
+        failed: {}
+      },
+      transitions: {}
+    });
+
+  it("reports the invoking phase while an effect runs, then idle once it resolves", async () => {
+    let resolveRun!: (value: string) => void;
+    const run = () => new Promise<string>((resolve) => (resolveRun = resolve));
+    const journey = createEffectJourney(run, true);
+
+    const Probe = () => {
+      const async = journey.useStepAsyncState("loading");
+      return <div data-testid="phase">{async.phase}</div>;
+    };
+
+    render(<Probe />);
+    await act(async () => {
+      await journey.machine.startJourney();
+    });
+
+    expect(screen.getByTestId("phase").textContent).toBe("invoking");
+
+    await act(async () => {
+      resolveRun("done");
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId("phase").textContent).toBe("idle");
+    expect(journey.machine.getSnapshot().currentStepId).toBe("ready");
+    expect(journey.machine.getSnapshot().context.result).toBe("done");
+    journey.dispose();
+  });
+
+  it("reports the error phase when an effect rejects with no onRejected branch", async () => {
+    let rejectRun!: (reason: unknown) => void;
+    const run = () => new Promise<string>((_, reject) => (rejectRun = reject));
+    const journey = createEffectJourney(run, false);
+
+    const Probe = () => {
+      const async = journey.useStepAsyncState("loading");
+      return <div data-testid="phase">{async.phase}</div>;
+    };
+
+    render(<Probe />);
+    await act(async () => {
+      await journey.machine.startJourney();
+    });
+
+    await act(async () => {
+      rejectRun(new Error("boom"));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId("phase").textContent).toBe("error");
+    // Stays on the step because there is no onRejected branch to route through.
+    expect(journey.machine.getSnapshot().currentStepId).toBe("loading");
+    journey.dispose();
+  });
+
+  it("advances when a step's `after` timer fires", async () => {
+    vi.useFakeTimers();
+    type SplashStepId = "splash" | "home";
+    const journey = createJourney<JourneyDefinition<{ seen: boolean }, SplashStepId>>({
+      initial: "splash",
+      context: { seen: false },
+      steps: {
+        splash: {
+          after: {
+            1000: {
+              to: "home",
+              updateContext: ({ context }) => ({ ...context, seen: true })
+            }
+          }
+        },
+        home: {}
+      },
+      transitions: {}
+    });
+
+    try {
+      await act(async () => {
+        await journey.machine.startJourney();
+      });
+      expect(journey.machine.getSnapshot().currentStepId).toBe("splash");
+
+      await act(async () => {
+        vi.advanceTimersByTime(1000);
+        await Promise.resolve();
+      });
+
+      expect(journey.machine.getSnapshot().currentStepId).toBe("home");
+      expect(journey.machine.getSnapshot().context.seen).toBe(true);
+    } finally {
+      journey.dispose();
+      vi.useRealTimers();
+    }
+  });
+});

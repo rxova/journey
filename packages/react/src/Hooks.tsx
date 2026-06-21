@@ -9,12 +9,26 @@ import type {
   JourneyMachineWithPlugins,
   JourneyObservationEvent,
   JourneySelector,
-  JourneySnapshot
+  JourneySnapshot,
+  JourneyStepAsyncState
 } from "@rxova/journey-core";
 import type { JourneyApi, StepScopedJourneyApi } from "./types";
 import type { SelectorCache } from "./type-helpers";
 
 const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
+
+const IDLE_STEP_ASYNC_STATE: JourneyStepAsyncState = {
+  phase: "idle",
+  eventType: null,
+  transitionId: null,
+  error: null
+};
+
+const isSameStepAsyncState = (a: JourneyStepAsyncState, b: JourneyStepAsyncState): boolean =>
+  a.phase === b.phase &&
+  a.eventType === b.eventType &&
+  a.transitionId === b.transitionId &&
+  Object.is(a.error, b.error);
 
 export const createJourneyHooks = <
   TContext extends JourneyJsonObject,
@@ -149,6 +163,12 @@ export const createJourneyHooks = <
     });
   };
 
+  const useStepAsyncState = (stepId: TStepId): JourneyStepAsyncState =>
+    useJourneySelector(
+      (snapshot) => snapshot.async.byStep[stepId] ?? IDLE_STEP_ASYNC_STATE,
+      isSameStepAsyncState
+    );
+
   const useJourneyApi = (): JourneyApi<TContext, TStepId, TEventMap, TStepMeta> => {
     const runtimeMachine = machine;
     return React.useMemo(
@@ -216,6 +236,7 @@ export const createJourneyHooks = <
     useJourneySnapshot,
     useJourneyComputed,
     useJourneySelector,
+    useStepAsyncState,
     useJourneyApi,
     useStepApi,
     useJourneyEvent,

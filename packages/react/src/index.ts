@@ -4,6 +4,7 @@ export { createGraphJourney } from "./CreateGraphJourney";
 export { createJourney } from "./CreateJourney";
 export { createJourneyFactory } from "./CreateJourneyFactory";
 export type {
+  JourneyAsyncPhase,
   JourneyCompleteObservationEvent,
   JourneyComputed,
   JourneyDefinition,
@@ -18,6 +19,7 @@ export type {
   JourneySendResult,
   JourneyStartObservationEvent,
   JourneySnapshot,
+  JourneyStepAsyncState,
   JourneyLifecycleArgs
 } from "@rxova/journey-core";
 export type {

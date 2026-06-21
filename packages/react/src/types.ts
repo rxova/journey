@@ -15,6 +15,7 @@ import type {
   JourneySendEvent,
   JourneySendResult,
   JourneySnapshot,
+  JourneyStepAsyncState,
   LinearJourneyMachine
 } from "@rxova/journey-core";
 import type {
@@ -94,6 +95,7 @@ export type JourneyRuntime<
     selector: JourneySelector<TContext, TStepId, TSelected>,
     equalityFn?: JourneyEqualityFn<TSelected>
   ) => TSelected;
+  useStepAsyncState: (stepId: TStepId) => JourneyStepAsyncState;
   useJourneyApi: () => JourneyApi<TContext, TStepId, TEventMap, TStepMeta>;
   useJourneyEvent: (listener: (event: JourneyObservationEvent<TStepId, TEventMap>) => void) => void;
   useJourneyStepLifecycle: (

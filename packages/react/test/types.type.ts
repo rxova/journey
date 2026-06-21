@@ -3,7 +3,12 @@ import type * as React from "react";
 
 import { createGraphJourneyBuilder } from "@rxova/journey-core";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
-import type { JourneyDefinition, JourneyObservationEvent } from "@rxova/journey-core";
+import type {
+  JourneyAsyncPhase,
+  JourneyDefinition,
+  JourneyObservationEvent,
+  JourneyStepAsyncState
+} from "@rxova/journey-core";
 import type {
   JourneyApi,
   JourneyComputed,
@@ -96,6 +101,13 @@ expectTypeOf<ReturnType<typeof journeyRuntime.useJourneyComputed>>().toEqualType
   JourneyComputed<StepId>
 >();
 expectTypeOf<ReturnType<typeof journeyRuntime.useJourneyApi>>().toMatchTypeOf<Api>();
+expectTypeOf<Parameters<typeof journeyRuntime.useStepAsyncState>>().toEqualTypeOf<[StepId]>();
+expectTypeOf<
+  ReturnType<typeof journeyRuntime.useStepAsyncState>
+>().toEqualTypeOf<JourneyStepAsyncState>();
+expectTypeOf<
+  ReturnType<typeof journeyRuntime.useStepAsyncState>["phase"]
+>().toEqualTypeOf<JourneyAsyncPhase>();
 expectTypeOf<ReturnType<typeof journeyRuntime.dispose>>().toEqualTypeOf<void>();
 expectTypeOf(journeyRuntime.machine.getExecutionPaths).toBeFunction();
 expectTypeOf<
