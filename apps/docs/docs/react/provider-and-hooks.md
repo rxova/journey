@@ -50,6 +50,9 @@ const checkout = createJourney(definition);
 - `checkout.useJourneySelector(selector, equalityFn?)`
   Read only the selected part of snapshot state.
 
+- `checkout.useStepAsyncState(stepId)`
+  Read one step's async phase (`idle` / `invoking` / `evaluating-when` / `error`) for loading and error UI.
+
 - `checkout.useJourneyEvent(listener)`
   Subscribe to typed lifecycle and telemetry events.
 
@@ -242,6 +245,29 @@ const EmailCode = () => {
 ```
 
 The narrowed event set includes custom events declared on that step plus custom events declared in `global`. Built-in methods such as `goToNextStep()`, `goToPreviousStep()`, `startJourney()`, and `resetJourney()` stay available.
+
+## `useStepAsyncState(stepId)`
+
+Use `useStepAsyncState(stepId)` to render a step's async state — a spinner while a step
+[`effect`](/docs/core/effects) runs, a disabled state while an async guard evaluates, an error panel
+when something rejects. It returns the step's `{ phase, eventType, transitionId, error }` and is
+backed by `useJourneySelector` with a shallow equality, so it re-renders only when that step's async
+slice changes.
+
+```tsx
+const Verify = () => {
+  const { phase, error } = checkout.useStepAsyncState("verify");
+  const api = checkout.useJourneyApi();
+
+  if (phase === "invoking") return <Spinner />;
+  if (phase === "error")
+    return <ErrorPanel message={String(error)} onRetry={() => api.clearStepError("verify")} />;
+  return <VerifyForm />;
+};
+```
+
+`phase` is one of `idle`, `invoking` (a step effect is running), `evaluating-when` (an async guard is
+deciding), or `error`. [Async UI](./async-ui) covers the phase-to-view mapping end to end.
 
 ## `useJourneyStepLifecycle(stepId, callbacks)`
 
