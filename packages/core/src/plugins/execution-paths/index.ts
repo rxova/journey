@@ -8,6 +8,7 @@ import type {
   JourneyMachine,
   JourneyMachinePlugin
 } from "../../types";
+import type { JourneyEmpty } from "../../types";
 
 export type JourneyExecutionPathsMachineExtension<
   TStepId extends string,
@@ -21,9 +22,9 @@ export type JourneyExecutionPathsMachineExtension<
 export type JourneyExecutionPathsMachine<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 > = JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers> &
   JourneyExecutionPathsMachineExtension<TStepId, JourneyFullEventType<TEventMap>>;
 

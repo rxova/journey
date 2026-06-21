@@ -1,4 +1,5 @@
 import type { JourneySendEvent, JourneyTerminal } from "./journey.types";
+import type { JourneyEmpty } from "./journey.types";
 
 export type JourneyLifecycleErrorPhase =
   | "step.onLeave"
@@ -20,7 +21,7 @@ export type JourneyResetObservationEvent<TStepId extends string> = {
 
 export type JourneyTransitionStartObservationEvent<
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>
+  TEventMap extends Record<string, unknown> = JourneyEmpty
 > = {
   type: "transition.start";
   from: TStepId;
@@ -103,7 +104,7 @@ export type JourneyLastVisitedNavigationObservationEvent<TStepId extends string>
 /** Observation events emitted by the machine lifecycle/event stream. */
 export type JourneyObservationEvent<
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>
+  TEventMap extends Record<string, unknown> = JourneyEmpty
 > =
   | JourneyStartObservationEvent<TStepId>
   | JourneyResetObservationEvent<TStepId>

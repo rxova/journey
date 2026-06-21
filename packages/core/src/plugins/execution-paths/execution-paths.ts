@@ -12,6 +12,7 @@ import type {
   JourneyJsonObject,
   JourneyResolvedDefinition
 } from "../../types";
+import type { JourneyEmpty } from "../../types";
 
 const normalizeLimit = (value: number | undefined, fallback: number): number => {
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -29,7 +30,7 @@ export function getExecutionPaths<
   TStepId extends string,
   TEventMap extends Record<string, unknown>,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 >(
   journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
   options?: JourneyExecutionPathOptions
@@ -39,7 +40,7 @@ export function getExecutionPaths<
   TStepId extends string,
   TEventMap extends Record<string, unknown>,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 >(
   journey: JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
   options?: JourneyExecutionPathOptions
@@ -49,7 +50,7 @@ export function getExecutionPaths<
   TStepId extends string,
   TEventMap extends Record<string, unknown>,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 >(
   journey:
     | JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>

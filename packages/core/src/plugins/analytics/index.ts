@@ -9,6 +9,7 @@ import type {
   JourneyObservationEvent,
   JourneyTerminal
 } from "../../types";
+import type { JourneyEmpty } from "../../types";
 
 const buildBasePayload = <TContext extends JourneyJsonObject>({
   context
@@ -30,9 +31,9 @@ export type JourneyAnalyticsMachineExtension<
 export type JourneyAnalyticsMachine<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 > = JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers> &
   JourneyAnalyticsMachineExtension<TContext, TStepId, TStepMeta>;
 
@@ -40,7 +41,7 @@ export type JourneyAnalyticsMachine<
 export const createAnalyticsPlugin = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown
 >(
   options: JourneyAnalyticsPluginOptions<TContext, TStepId, TEventMap, TStepMeta>

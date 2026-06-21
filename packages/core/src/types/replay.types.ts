@@ -1,6 +1,7 @@
 import type { JourneyMachineSnapshotReason } from "./machine.types";
 import type { JourneyJsonObject, JourneySnapshot } from "./journey.types";
 import type { JourneyObservationEvent } from "./observation.types";
+import type { JourneyEmpty } from "./journey.types";
 
 /** Snapshot entry captured by the replay plugin. */
 export type JourneyReplaySnapshotEntry<
@@ -16,7 +17,7 @@ export type JourneyReplaySnapshotEntry<
 /** Observation event entry captured by the replay plugin. */
 export type JourneyReplayEventEntry<
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>
+  TEventMap extends Record<string, unknown> = JourneyEmpty
 > = {
   kind: "event";
   timestamp: number;
@@ -27,14 +28,14 @@ export type JourneyReplayEventEntry<
 export type JourneyReplayEntry<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>
+  TEventMap extends Record<string, unknown> = JourneyEmpty
 > = JourneyReplaySnapshotEntry<TContext, TStepId> | JourneyReplayEventEntry<TStepId, TEventMap>;
 
 /** Full replay session captured from a journey machine. */
 export type JourneyReplaySession<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>
+  TEventMap extends Record<string, unknown> = JourneyEmpty
 > = {
   version: 1;
   initialSnapshot: JourneySnapshot<TContext, TStepId> | null;

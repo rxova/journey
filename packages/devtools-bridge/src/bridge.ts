@@ -38,6 +38,7 @@ import {
   type JourneyDevtoolsSerializableSnapshot,
   type JourneyDevtoolsStepFeatureDescriptor
 } from "./protocol";
+import type { JourneyEmpty } from "@rxova/journey-core";
 
 /** Options for {@link attachJourneyDevtools}. */
 export type JourneyDevtoolsBridgeOptions = {
@@ -558,9 +559,9 @@ const createOperationRegistry = <
 export const attachJourneyDevtools = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 >(
   machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
   options: JourneyDevtoolsBridgeOptions = {}

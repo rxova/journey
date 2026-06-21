@@ -8,6 +8,7 @@ import type {
   JourneyMachineOptions,
   JourneyMachineWithPlugins
 } from "./types";
+import type { JourneyEmpty } from "./types";
 
 /**
  * Creates a graph journey machine from a builder definition or a plain
@@ -26,9 +27,9 @@ export function createGraphJourney<
 export function createGraphJourney<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>,
+  THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   def: GraphJourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,

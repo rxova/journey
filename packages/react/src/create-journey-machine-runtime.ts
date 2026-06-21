@@ -14,13 +14,14 @@ import { createJourneyProviderArtifacts } from "./Provider";
 import { createJourneyHooks } from "./Hooks";
 import type { JourneyRuntime } from "./types";
 import type { JourneyOptionsInput } from "./type-helpers";
+import type { JourneyEmpty } from "@rxova/journey-core";
 
 export const buildJourneyRuntime = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>,
+  THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   machine: JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins>
@@ -48,9 +49,9 @@ export const buildJourneyRuntime = <
 export const createJourneyMachineRuntime = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>,
+  THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   definition: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
@@ -76,9 +77,9 @@ export const createJourneyMachineRuntime = <
 const createMachineForDefinition = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>,
+  THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   definition: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,

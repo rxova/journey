@@ -41,6 +41,7 @@ import type {
   JourneySendEvent,
   JourneySendResult
 } from "../types";
+import type { JourneyEmpty } from "../types";
 
 const DEVTOOLS_FORCE_STEP_ID = "devtools.forceStep";
 
@@ -48,9 +49,9 @@ const DEVTOOLS_FORCE_STEP_ID = "devtools.forceStep";
 export function createJourneyMachine<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>,
+  THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,

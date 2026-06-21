@@ -23,6 +23,7 @@ import type {
   JourneyGlobalHandledCustomEventTypeFromDefinition,
   JourneyStepHandledCustomEventMapFromDefinition
 } from "./type-helpers";
+import type { JourneyEmpty } from "@rxova/journey-core";
 
 export type JourneyDefaultEvent = JourneyDefaultEventType;
 
@@ -31,7 +32,7 @@ export type JourneyViews<TStepId extends string> = Record<TStepId, React.Compone
 export type JourneyApi<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown
 > = {
   startJourney: () => Promise<JourneySnapshot<TContext, TStepId>>;
@@ -59,7 +60,7 @@ export type JourneyApi<
 export type StepScopedJourneyApi<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TAllowedEventType extends keyof TEventMap & string = never,
   TStepMeta = unknown
 > = Omit<JourneyApi<TContext, TStepId, TEventMap, TStepMeta>, "send"> & {
@@ -82,10 +83,10 @@ export type JourneyProviderProps<TStepId extends string> = {
 export type JourneyRuntime<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
   TPlugins extends readonly JourneyMachinePlugin[] = [],
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 > = {
   machine: JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins>;
   dispose: () => void;
@@ -115,9 +116,9 @@ export type LinearJourneyRuntime<
   TStepId extends string,
   TStepMeta = unknown,
   TPlugins extends readonly JourneyMachinePlugin[] = [],
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 > = Omit<
-  JourneyRuntime<TContext, TStepId, Record<never, never>, TStepMeta, TPlugins, THandlers>,
+  JourneyRuntime<TContext, TStepId, JourneyEmpty, TStepMeta, TPlugins, THandlers>,
   "machine"
 > & {
   machine: LinearJourneyMachine<TContext, TStepId, TStepMeta, THandlers, TPlugins>;
@@ -126,10 +127,10 @@ export type LinearJourneyRuntime<
 export type JourneyRuntimeWithStepApi<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
   TPlugins extends readonly JourneyMachinePlugin[] = [],
-  THandlers extends Record<string, unknown> = Record<never, never>,
+  THandlers extends Record<string, unknown> = JourneyEmpty,
   TStepHandledCustomEventMap extends Record<TStepId, JourneyBuilderCustomEventKey<TEventMap>> =
     Record<TStepId, never>,
   TGlobalHandledCustomEventType extends JourneyBuilderCustomEventKey<TEventMap> = never
@@ -151,10 +152,10 @@ export type JourneyRuntimeWithStepApi<
 export type JourneyBuilderRuntime<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
   TPlugins extends readonly JourneyMachinePlugin[] = [],
-  THandlers extends Record<string, unknown> = Record<never, never>,
+  THandlers extends Record<string, unknown> = JourneyEmpty,
   TStepHandledCustomEventMap extends Record<TStepId, JourneyBuilderCustomEventKey<TEventMap>> =
     Record<TStepId, never>,
   TGlobalHandledCustomEventType extends JourneyBuilderCustomEventKey<TEventMap> = never
@@ -172,10 +173,10 @@ export type JourneyBuilderRuntime<
 export type JourneyBuilderRuntimeFactory<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
   TPlugins extends readonly JourneyMachinePlugin[] = [],
-  THandlers extends Record<string, unknown> = Record<never, never>,
+  THandlers extends Record<string, unknown> = JourneyEmpty,
   TStepHandledCustomEventMap extends Record<TStepId, JourneyBuilderCustomEventKey<TEventMap>> =
     Record<TStepId, never>,
   TGlobalHandledCustomEventType extends JourneyBuilderCustomEventKey<TEventMap> = never
@@ -239,8 +240,8 @@ export type JourneyBuilderRuntimeFactoryFromDefinition<
 export type JourneyRuntimeFactory<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
   TPlugins extends readonly JourneyMachinePlugin[] = [],
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 > = () => JourneyRuntime<TContext, TStepId, TEventMap, TStepMeta, TPlugins, THandlers>;

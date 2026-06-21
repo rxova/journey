@@ -9,6 +9,7 @@ import type {
   JourneyResolvedDefinition,
   JourneySnapshot
 } from "../types";
+import type { JourneyEmpty } from "../types";
 
 const resolveLinearStepOrder = <
   TContext extends JourneyJsonObject,
@@ -55,7 +56,7 @@ export const createJourneyMachineComputedGetter = <
           journey.transitions as JourneyLinearTransitions<
             TContext,
             TStepId,
-            Record<never, never>,
+            JourneyEmpty,
             THandlers
           >
         )

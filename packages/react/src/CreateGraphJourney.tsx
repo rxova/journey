@@ -10,6 +10,7 @@ import type {
 import { buildJourneyRuntime } from "./create-journey-machine-runtime";
 import type { JourneyRuntime, JourneyRuntimeFromDefinition } from "./types";
 import type { JourneyOptionsInput } from "./type-helpers";
+import type { JourneyEmpty } from "@rxova/journey-core";
 
 /**
  * Creates a graph journey runtime for React from a `GraphJourneyDefinition` or
@@ -26,9 +27,9 @@ export function createGraphJourney<
 export function createGraphJourney<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>,
+  THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   definition: GraphJourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,

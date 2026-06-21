@@ -9,6 +9,7 @@ import type {
   JourneyReplaySession,
   JourneySnapshot
 } from "../../types";
+import type { JourneyEmpty } from "../../types";
 
 const normalizeMaxEntries = (value: number | undefined) => {
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -77,7 +78,7 @@ const toSerializable = (value: unknown, seen = new WeakSet<object>()): unknown =
 export const serializeReplaySession = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>
+  TEventMap extends Record<string, unknown> = JourneyEmpty
 >(
   session: JourneyReplaySession<TContext, TStepId, TEventMap>,
   options?: JourneyReplayExportOptions
@@ -86,7 +87,7 @@ export const serializeReplaySession = <
 export type JourneyReplayMachineExtension<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>
+  TEventMap extends Record<string, unknown> = JourneyEmpty
 > = {
   getReplaySession: () => JourneyReplaySession<TContext, TStepId, TEventMap>;
   clearReplaySession: () => void;
@@ -96,9 +97,9 @@ export type JourneyReplayMachineExtension<
 export type JourneyReplayMachine<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 > = JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers> &
   JourneyReplayMachineExtension<TContext, TStepId, TEventMap>;
 

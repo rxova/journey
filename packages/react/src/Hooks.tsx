@@ -14,6 +14,7 @@ import type {
 } from "@rxova/journey-core";
 import type { JourneyApi, StepScopedJourneyApi } from "./types";
 import type { SelectorCache } from "./type-helpers";
+import type { JourneyEmpty } from "@rxova/journey-core";
 
 const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
 
@@ -33,9 +34,9 @@ const isSameStepAsyncState = (a: JourneyStepAsyncState, b: JourneyStepAsyncState
 export const createJourneyHooks = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEventMap extends Record<string, unknown> = JourneyEmpty,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>,
+  THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = [],
   TStepHandledCustomEventMap extends Record<TStepId, JourneyBuilderCustomEventKey<TEventMap>> =
     Record<TStepId, never>,

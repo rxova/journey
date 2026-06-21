@@ -11,6 +11,7 @@ import type {
   JourneyJsonObject,
   JourneyMode
 } from "../../types";
+import type { JourneyEmpty } from "../../types";
 
 const buildShadowKey = (from: string, event: string) => `${from}\u0000${event}`;
 
@@ -20,7 +21,7 @@ export function getJourneyDiagnostics<
   TStepId extends string,
   TEventMap extends Record<string, unknown>,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 >(
   journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
   options?: JourneyDiagnosticsOptions
@@ -30,7 +31,7 @@ export function getJourneyDiagnostics<
   TStepId extends string,
   TEventMap extends Record<string, unknown>,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
+  THandlers extends Record<string, unknown> = JourneyEmpty
 >(
   journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
   options: JourneyDiagnosticsOptions = {}

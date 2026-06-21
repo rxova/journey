@@ -8,13 +8,14 @@ import type {
   LinearJourneyDefinition,
   LinearJourneyMachine
 } from "./types";
+import type { JourneyEmpty } from "./types";
 
 /** Creates a linear journey machine from an ordered steps array. Steps are traversed sequentially; `goToNextStep` advances through them in order. */
 export function createLinearJourney<
   TContext extends JourneyJsonObject,
   TStepId extends string,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>,
+  THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   def: LinearJourneyDefinition<TContext, TStepId, TStepMeta, THandlers>,
@@ -41,16 +42,10 @@ export function createLinearJourney<
     })
   ) as Record<
     TStepId,
-    JourneyStepDefinition<TContext, TStepId, Record<never, never>, TStepMeta, THandlers>
+    JourneyStepDefinition<TContext, TStepId, JourneyEmpty, TStepMeta, THandlers>
   >;
 
-  const internalDef: JourneyDefinition<
-    TContext,
-    TStepId,
-    Record<never, never>,
-    TStepMeta,
-    THandlers
-  > = {
+  const internalDef: JourneyDefinition<TContext, TStepId, JourneyEmpty, TStepMeta, THandlers> = {
     context: def.context,
     ...(def.handlers !== undefined ? { handlers: def.handlers } : {}),
     steps: stepsRecord,
@@ -60,7 +55,7 @@ export function createLinearJourney<
   const machine = createJourneyMachine<
     TContext,
     TStepId,
-    Record<never, never>,
+    JourneyEmpty,
     TStepMeta,
     THandlers,
     TPlugins

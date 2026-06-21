@@ -8,18 +8,19 @@ import type {
 import { buildJourneyRuntime } from "./create-journey-machine-runtime";
 import type { JourneyRuntime } from "./types";
 import type { JourneyOptionsInput } from "./type-helpers";
+import type { JourneyEmpty } from "@rxova/journey-core";
 
 /** Creates a headless journey runtime for React. Navigation is entirely caller-driven via `machine.goToStepById`. */
 export function createHeadlessJourney<
   TContext extends JourneyJsonObject,
   TStepId extends string,
   TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>,
+  THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   definition: HeadlessJourneyDefinition<TContext, TStepId, TStepMeta, THandlers>,
   options?: JourneyOptionsInput<TPlugins>
-): JourneyRuntime<TContext, TStepId, Record<never, never>, TStepMeta, TPlugins, THandlers> {
+): JourneyRuntime<TContext, TStepId, JourneyEmpty, TStepMeta, TPlugins, THandlers> {
   const machine = coreCreateHeadlessJourney<TContext, TStepId, TStepMeta, THandlers, TPlugins>(
     definition,
     options as JourneyMachineOptions<TPlugins> | undefined
