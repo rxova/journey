@@ -123,6 +123,20 @@ can fail (a guard that rejects, an async check that throws), check the result ra
 went through.
 :::
 
+:::note Observing dropped events
+If a sent event matches no enabled transition — every candidate is guarded and none pass, or none is
+declared — it's dropped with `transitioned: false` and no state change. To make those silent drops
+visible, pass an `onNoMatch` hook in the machine options; without one, a development-only warning is
+logged instead. Internal `effect`/`after` events never trigger it.
+
+```ts
+createGraphJourney(definition, {
+  onNoMatch: ({ from, eventType }) => log.warn(`"${eventType}" did nothing in "${from}"`)
+});
+```
+
+:::
+
 ## Guards decide; updates derive
 
 A transition has two jobs. The **guard** (`when`) decides whether the move is allowed — it can be

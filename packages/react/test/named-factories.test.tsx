@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { act, render, screen } from "@testing-library/react";
 
@@ -165,6 +165,60 @@ describe("createJourney transition routing", () => {
     });
 
     expect(tracked).toContain("b");
+    journey.dispose();
+  });
+});
+
+// ─── Creation options threaded through React (handlers / onNoMatch) ───────────
+
+describe("createJourney creation options", () => {
+  it("applies a creation-time handler override (typed test-time DI)", async () => {
+    type Handlers = { allow: () => boolean };
+
+    const journey = createJourney<
+      JourneyDefinition<SimpleContext, "start" | "done", { go: undefined }, unknown, Handlers>
+    >(
+      {
+        initial: "start",
+        context: { value: 0 },
+        handlers: { allow: () => false },
+        steps: { start: {}, done: {} },
+        transitions: { start: { go: [{ to: "done", when: ({ handlers }) => handlers.allow() }] } }
+      },
+      { handlers: { allow: () => true } }
+    );
+
+    await act(async () => {
+      await journey.machine.startJourney();
+      await journey.machine.send({ type: "go" });
+    });
+
+    // Definition's `allow` would block; the override let the transition through.
+    expect(journey.machine.getSnapshot().currentStepId).toBe("done");
+    journey.dispose();
+  });
+
+  it("forwards onNoMatch for a dropped event", async () => {
+    const onNoMatch = vi.fn();
+    const journey = createJourney<
+      JourneyDefinition<SimpleContext, "start" | "done", { go: undefined }>
+    >(
+      {
+        initial: "start",
+        context: { value: 0 },
+        steps: { start: {}, done: {} },
+        transitions: { start: { go: [{ to: "done", when: () => false }] } }
+      },
+      { onNoMatch }
+    );
+
+    await act(async () => {
+      await journey.machine.startJourney();
+      await journey.machine.send({ type: "go" });
+    });
+
+    expect(journey.machine.getSnapshot().currentStepId).toBe("start");
+    expect(onNoMatch).toHaveBeenCalledWith({ from: "start", eventType: "go" });
     journey.dispose();
   });
 });

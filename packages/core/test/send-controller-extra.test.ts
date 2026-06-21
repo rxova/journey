@@ -97,7 +97,18 @@ describe("send controller extra coverage", () => {
       StepId,
       EventMap,
       Record<never, never>
-    >(runtime, asyncState, navigation, false, { start: {}, review: {} }, [], {}, false, undefined);
+    >(
+      runtime,
+      asyncState,
+      navigation,
+      false,
+      { start: {}, review: {} },
+      [],
+      {},
+      false,
+      undefined,
+      () => undefined
+    );
 
     expect(controller.buildCanceledSendResult("send").error).toBeInstanceOf(JourneyDisposedError);
   });
@@ -112,7 +123,18 @@ describe("send controller extra coverage", () => {
       StepId,
       EventMap,
       Record<never, never>
-    >(runtime, asyncState, navigation, false, { start: {}, review: {} }, [], {}, false, undefined);
+    >(
+      runtime,
+      asyncState,
+      navigation,
+      false,
+      { start: {}, review: {} },
+      [],
+      {},
+      false,
+      undefined,
+      () => undefined
+    );
 
     const result = await controller.executeSend(
       { type: "goToNextStep" } as never,
@@ -134,7 +156,18 @@ describe("send controller extra coverage", () => {
       StepId,
       EventMap,
       Record<never, never>
-    >(runtime, asyncState, navigation, true, { start: {}, review: {} }, [], {}, false, undefined);
+    >(
+      runtime,
+      asyncState,
+      navigation,
+      true,
+      { start: {}, review: {} },
+      [],
+      {},
+      false,
+      undefined,
+      () => undefined
+    );
 
     await controller.executeSend(
       { type: "goToStepById", stepId: "review" } as never,
@@ -168,7 +201,18 @@ describe("send controller extra coverage", () => {
       StepId,
       EventMap,
       Record<never, never>
-    >(runtime, asyncState, navigation, true, { start: {}, review: {} }, [], {}, false, undefined);
+    >(
+      runtime,
+      asyncState,
+      navigation,
+      true,
+      { start: {}, review: {} },
+      [],
+      {},
+      false,
+      undefined,
+      () => undefined
+    );
 
     await controller.executeSend(
       { type: "completeJourney" } as never,
@@ -197,7 +241,18 @@ describe("send controller extra coverage", () => {
       StepId,
       EventMap,
       Record<never, never>
-    >(runtime, asyncState, navigation, false, { start: {}, review: {} }, [], {}, false, undefined);
+    >(
+      runtime,
+      asyncState,
+      navigation,
+      false,
+      { start: {}, review: {} },
+      [],
+      {},
+      false,
+      undefined,
+      () => undefined
+    );
 
     await controller.executeSend(
       { type: "goToPreviousStep" } as never,
@@ -284,7 +339,8 @@ describe("send controller extra coverage", () => {
       ] as never,
       {},
       false,
-      undefined
+      undefined,
+      () => undefined
     );
 
     const result = await controller.executeSend(
@@ -327,7 +383,8 @@ describe("send controller extra coverage", () => {
       ] as never,
       {},
       false,
-      undefined
+      undefined,
+      () => undefined
     );
 
     const result = await controller.executeSend(
@@ -378,7 +435,8 @@ describe("send controller extra coverage", () => {
       ] as never,
       {},
       false,
-      undefined
+      undefined,
+      () => undefined
     );
 
     const result = await controller.executeSend(
@@ -427,7 +485,8 @@ describe("send controller extra coverage", () => {
       ] as never,
       {},
       false,
-      undefined
+      undefined,
+      () => undefined
     );
 
     const result = await controller.executeSend(
@@ -457,7 +516,18 @@ describe("send controller extra coverage", () => {
       StepId,
       EventMap,
       Record<never, never>
-    >(runtime, asyncState, navigation, false, { start: {}, review: {} }, [], {}, true, undefined);
+    >(
+      runtime,
+      asyncState,
+      navigation,
+      false,
+      { start: {}, review: {} },
+      [],
+      {},
+      true,
+      undefined,
+      () => undefined
+    );
 
     const result = await controller.executeSend(
       { type: "goToNextStep" } as never,
@@ -482,7 +552,18 @@ describe("send controller extra coverage", () => {
       StepId,
       EventMap,
       Record<never, never>
-    >(runtime, asyncState, navigation, false, { start: {}, review: {} }, [], {}, false, undefined);
+    >(
+      runtime,
+      asyncState,
+      navigation,
+      false,
+      { start: {}, review: {} },
+      [],
+      {},
+      false,
+      undefined,
+      () => undefined
+    );
 
     await controller.executeSend(
       { type: "goToPreviousStep" } as never,
@@ -527,7 +608,8 @@ describe("send controller extra coverage", () => {
       ] as never,
       {},
       false,
-      undefined
+      undefined,
+      () => undefined
     );
 
     const result = await controller.executeSend(
@@ -572,7 +654,8 @@ describe("send controller extra coverage", () => {
       ] as never,
       {},
       false,
-      undefined
+      undefined,
+      () => undefined
     );
 
     const result = await controller.executeSend(
@@ -617,7 +700,8 @@ describe("send controller extra coverage", () => {
       ] as never,
       {},
       false,
-      undefined
+      undefined,
+      () => undefined
     );
 
     const result = await controller.executeSend(

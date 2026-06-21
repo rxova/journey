@@ -17,7 +17,7 @@ export function createHeadlessJourney<
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   def: HeadlessJourneyDefinition<TContext, TStepId, TStepMeta, THandlers>,
-  options?: JourneyMachineOptions<TPlugins>
+  options?: JourneyMachineOptions<TPlugins, THandlers>
 ): JourneyMachineWithPlugins<TContext, TStepId, JourneyEmpty, TStepMeta, THandlers, TPlugins> {
   return createJourneyMachine<TContext, TStepId, JourneyEmpty, TStepMeta, THandlers, TPlugins>(
     { ...def },

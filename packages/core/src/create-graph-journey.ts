@@ -10,6 +10,13 @@ import type {
 } from "./types";
 import type { JourneyEmpty } from "./types";
 
+/** Extracts the `THandlers` parameter from a journey definition type, defaulting to a loose record. */
+type JourneyHandlersOfDefinition<TDefinition> =
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  TDefinition extends JourneyDefinition<infer _TC, infer _TS, infer _TE, infer _TM, infer TH>
+    ? TH
+    : Record<string, unknown>;
+
 /**
  * Creates a graph journey machine from a builder definition or a plain
  * definition object with an object-style `transitions` map.
@@ -20,7 +27,7 @@ export function createGraphJourney<
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   def: TDefinition,
-  options?: JourneyMachineOptions<TPlugins>
+  options?: JourneyMachineOptions<TPlugins, JourneyHandlersOfDefinition<TDefinition>>
 ): TDefinition extends JourneyDefinition<infer TC, infer TS, infer TE, infer TM, infer TH>
   ? JourneyMachineWithPlugins<TC, TS, TE, TM, TH, TPlugins>
   : never;
@@ -33,7 +40,7 @@ export function createGraphJourney<
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   def: GraphJourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
-  options?: JourneyMachineOptions<TPlugins>
+  options?: JourneyMachineOptions<TPlugins, THandlers>
 ): JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins>;
 /** Creates a graph journey machine from a builder definition or a plain `GraphJourneyDefinition` with an object-keyed `transitions` map. */
 export function createGraphJourney<
@@ -45,7 +52,7 @@ export function createGraphJourney<
   TPlugins extends readonly JourneyMachinePlugin[]
 >(
   def: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
-  options?: JourneyMachineOptions<TPlugins>
+  options?: JourneyMachineOptions<TPlugins, THandlers>
 ): JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins> {
   return createJourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins>(
     def,

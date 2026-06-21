@@ -55,9 +55,9 @@ export const createJourneyMachineRuntime = <
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   definition: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
-  options?: JourneyOptionsInput<TPlugins>
+  options?: JourneyOptionsInput<TPlugins, THandlers>
 ): JourneyRuntime<TContext, TStepId, TEventMap, TStepMeta, TPlugins, THandlers> => {
-  const machineOptions = options as JourneyMachineOptions<TPlugins> | undefined;
+  const machineOptions = options as JourneyMachineOptions<TPlugins, THandlers> | undefined;
   const machine = createMachineForDefinition<
     TContext,
     TStepId,
@@ -83,7 +83,7 @@ const createMachineForDefinition = <
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   definition: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
-  options: JourneyMachineOptions<TPlugins> | undefined
+  options: JourneyMachineOptions<TPlugins, THandlers> | undefined
 ): JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins> => {
   type Machine = JourneyMachineWithPlugins<
     TContext,

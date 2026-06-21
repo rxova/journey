@@ -26,6 +26,7 @@ import {
   now,
   validateFiniteTimeout,
   validateJourneyTransitions,
+  warnInDevelopment,
   withAbortSignal,
   withTimeout
 } from "./helpers";
@@ -39,7 +40,8 @@ import type {
   JourneyMachineOptions,
   JourneyMachineWithPlugins,
   JourneySendEvent,
-  JourneySendResult
+  JourneySendResult,
+  JourneyNoMatchContext
 } from "../types";
 import type { JourneyEmpty } from "../types";
 
@@ -55,7 +57,7 @@ export function createJourneyMachine<
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
-  options?: JourneyMachineOptions<TPlugins>
+  options?: JourneyMachineOptions<TPlugins, THandlers>
 ): JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins> {
   if (!journey.steps || typeof journey.steps !== "object") {
     throw new Error("Journey steps must be a record object.");
@@ -95,6 +97,13 @@ export function createJourneyMachine<
   const requireExplicitCompletion = options?.requireExplicitCompletion ?? false;
   validateFiniteTimeout(options?.defaultTimeoutMs, "Journey machine options");
   const defaultTimeoutMs = options?.defaultTimeoutMs;
+  // `handlers` are the dependency-injection seam. Creation-time overrides
+  // (`options.handlers`) shallow-merge over the definition's handlers per-key,
+  // so a test can swap a subset without rebuilding the definition.
+  const handlers = {
+    ...(resolvedJourney.handlers ?? {}),
+    ...(options?.handlers ?? {})
+  } as THandlers;
   const initialContextTemplate = cloneContext(resolvedJourney.context);
   const stepMeta = Object.fromEntries(
     (Object.keys(resolvedJourney.steps) as TStepId[]).map((stepId) => [
@@ -229,7 +238,6 @@ export function createJourneyMachine<
     }
     activeEffectController = controller;
     const { signal } = controller;
-    const handlers = (resolvedJourney.handlers ?? {}) as THandlers;
 
     asyncState.setStepLoading(
       stepId,
@@ -322,7 +330,6 @@ export function createJourneyMachine<
     cancelActiveAfter();
     const sourceStep = resolvedJourney.steps[from];
     const targetStep = isTerminalTarget(to) ? null : resolvedJourney.steps[to];
-    const handlers = (resolvedJourney.handlers ?? {}) as THandlers;
     const dispatch = (nextEvent: JourneySendEvent<TStepId, TEventMap>) => {
       if (!runtime.isRunActive(runVersion) || runtime.isDisposed()) {
         return Promise.resolve(buildSendResult(runtime.getSnapshot(), false));
@@ -494,6 +501,17 @@ export function createJourneyMachine<
     scheduleLifecycle
   });
 
+  // A dropped event (no matching/passing transition) reports through the
+  // `onNoMatch` hook when provided, otherwise a development-only warning — the
+  // same "hook, or dev fallback" shape as `onListenerError`.
+  const reportNoMatch =
+    options?.onNoMatch ??
+    ((context: JourneyNoMatchContext<string>) => {
+      warnInDevelopment(
+        `Journey event "${context.eventType}" matched no enabled transition from step "${context.from}" and was dropped.`
+      );
+    });
+
   const sendController = createJourneyMachineSendController<
     TContext,
     TStepId,
@@ -506,9 +524,10 @@ export function createJourneyMachine<
     journey.transitions === undefined,
     resolvedJourney.steps,
     resolvedJourney.transitions,
-    (resolvedJourney.handlers ?? {}) as THandlers,
+    handlers,
     requireExplicitCompletion,
-    defaultTimeoutMs
+    defaultTimeoutMs,
+    reportNoMatch
   );
 
   const controls = createJourneyMachineControls<TContext, TStepId, TEventMap>({

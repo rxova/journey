@@ -68,6 +68,7 @@ export {
   type JourneyJsonValue,
   type JourneyLinearStep,
   type JourneyLifecycleErrorContext,
+  type JourneyNoMatchContext,
   type JourneyLifecycleErrorObservationEvent,
   type JourneyLifecycleErrorPhase,
   type JourneyLifecycleArgs,

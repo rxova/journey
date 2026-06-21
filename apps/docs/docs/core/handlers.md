@@ -117,6 +117,24 @@ const machine = createGraphJourney(
 The transitions, guards, and effects are identical; only the injected functions change. No mocking
 of modules, no intercepting `fetch`.
 
+### Override at creation, reuse one definition
+
+You don't have to rebuild the definition per test. Pass `handlers` in the options argument of any
+`create*Journey` factory and it is **shallow-merged over the definition's handlers, per key**, so a
+test can swap just the I/O it cares about and reuse the exact same definition everywhere:
+
+```ts
+import { definition } from "./checkout-flow"; // the real, shared definition
+
+const machine = createGraphJourney(definition, {
+  handlers: { verifyToken: async () => ({ plan: "pro" }) } // override one; the rest fall back
+});
+```
+
+Keys you omit keep the definition's implementation. This is Journey's direct equivalent of XState's
+`.provide()` (see below) — and it's fully typed: the override must match the definition's handler
+shape.
+
 ## Coming from XState
 
 XState solves the same problem with **named registration**. You register implementations in
@@ -158,13 +176,14 @@ build({
     })
   ]
 });
-// tests: pass a different `handlers` object.
+// tests: createGraphJourney(definition, { handlers: { verifyToken: async () => ({ plan: "pro" }) } })
 ```
 
 The difference is indirection. XState decouples through **string keys** (`src: "verifyToken"`) and a
 separate registry, which is what powers its visualizer and `.provide()`. Journey passes the **actual
 function**, so the call is direct and fully inferred — `handlers.verifyToken(...)` with no string to
-keep in sync — and you "provide" simply by handing over a different `handlers` object. You trade the
+keep in sync — and you "provide" by handing a `handlers` object to the factory's options
+(`create*Journey(def, { handlers })`), shallow-merged over the definition. You trade the
 tooling/indirection for inference and fewer moving parts.
 
 ## Where to next

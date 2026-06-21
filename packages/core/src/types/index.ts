@@ -98,6 +98,7 @@ export type {
   JourneyMachineDevtoolsOperationResultKind,
   JourneyMachineDevtoolsOperationSpec,
   JourneyLifecycleErrorContext,
+  JourneyNoMatchContext,
   JourneyMachine,
   JourneyMachineOptions,
   JourneyMachinePlugin,
