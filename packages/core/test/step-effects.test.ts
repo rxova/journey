@@ -393,3 +393,158 @@ describe("step effects via the builder and linear factory", () => {
     expect(machine.getSnapshot().context.token).toBe("tok-123");
   });
 });
+
+describe("step effects — disposal and interactions", () => {
+  type IStep = "start" | "both" | "fromEffect" | "fromAfter" | "skipped";
+  type IContext = { tag: string | null };
+  type IEvents = { skip: undefined };
+
+  it("aborts a pending effect on dispose", async () => {
+    const { promise } = deferred<string>();
+    let aborted = false;
+
+    const machine = createJourneyMachine(
+      baseDefinition({
+        run: ({ signal }) => {
+          signal.addEventListener("abort", () => {
+            aborted = true;
+          });
+          return promise;
+        },
+        onResolved: { to: "done" }
+      })
+    );
+
+    await machine.startJourney();
+    await machine.goToNextStep(); // → loading, effect in flight
+    expect(machine.getSnapshot().async.byStep.loading.phase).toBe("invoking");
+
+    machine.dispose();
+    expect(aborted).toBe(true);
+  });
+
+  it("after + effect on one step: the effect wins when it settles first", async () => {
+    const def: JourneyDefinition<IContext, IStep, IEvents> = {
+      initial: "start",
+      context: { tag: null },
+      steps: {
+        start: {},
+        both: {
+          effect: { run: async () => "ok", onResolved: { to: "fromEffect" } },
+          after: { 1000: { to: "fromAfter" } }
+        },
+        fromEffect: {},
+        fromAfter: {},
+        skipped: {}
+      },
+      transitions: {
+        start: { goToNextStep: [{ to: "both" }] },
+        both: {},
+        fromEffect: {},
+        fromAfter: {},
+        skipped: {}
+      }
+    };
+
+    const machine = createJourneyMachine(def);
+    await machine.startJourney();
+    await machine.goToNextStep();
+
+    await vi.waitFor(() => {
+      expect(machine.getSnapshot().currentStepId).toBe("fromEffect");
+    });
+    // The 1000ms timer was cancelled when the effect routed away.
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    expect(machine.getSnapshot().currentStepId).toBe("fromEffect");
+  });
+
+  it("after + effect on one step: a short after preempts a slow effect and cancels it", async () => {
+    const { promise } = deferred<string>();
+    let aborted = false;
+
+    const def: JourneyDefinition<IContext, IStep, IEvents> = {
+      initial: "start",
+      context: { tag: null },
+      steps: {
+        start: {},
+        both: {
+          effect: {
+            run: ({ signal }) => {
+              signal.addEventListener("abort", () => {
+                aborted = true;
+              });
+              return promise;
+            },
+            onResolved: { to: "fromEffect" }
+          },
+          after: { 20: { to: "fromAfter" } }
+        },
+        fromEffect: {},
+        fromAfter: {},
+        skipped: {}
+      },
+      transitions: {
+        start: { goToNextStep: [{ to: "both" }] },
+        both: {},
+        fromEffect: {},
+        fromAfter: {},
+        skipped: {}
+      }
+    };
+
+    const machine = createJourneyMachine(def);
+    await machine.startJourney();
+    await machine.goToNextStep();
+
+    await vi.waitFor(() => {
+      expect(machine.getSnapshot().currentStepId).toBe("fromAfter");
+    });
+    expect(aborted).toBe(true);
+  });
+
+  it("an onEnter dispatch navigates away from a step with a pending effect, cancelling it", async () => {
+    const { promise } = deferred<string>();
+    let aborted = false;
+
+    const def: JourneyDefinition<IContext, IStep, IEvents> = {
+      initial: "start",
+      context: { tag: null },
+      steps: {
+        start: {},
+        both: {
+          onEnter: ({ dispatch }) => {
+            dispatch({ type: "skip" });
+          },
+          effect: {
+            run: ({ signal }) => {
+              signal.addEventListener("abort", () => {
+                aborted = true;
+              });
+              return promise;
+            },
+            onResolved: { to: "fromEffect" }
+          }
+        },
+        fromEffect: {},
+        fromAfter: {},
+        skipped: {}
+      },
+      transitions: {
+        start: { goToNextStep: [{ to: "both" }] },
+        both: { skip: [{ to: "skipped" }] },
+        fromEffect: {},
+        fromAfter: {},
+        skipped: {}
+      }
+    };
+
+    const machine = createJourneyMachine(def);
+    await machine.startJourney();
+    await machine.goToNextStep(); // → both; onEnter dispatches skip, effect is pending
+
+    await vi.waitFor(() => {
+      expect(machine.getSnapshot().currentStepId).toBe("skipped");
+    });
+    expect(aborted).toBe(true);
+  });
+});

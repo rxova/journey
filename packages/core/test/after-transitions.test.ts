@@ -122,6 +122,60 @@ describe("after (delayed transitions)", () => {
     expect(machine.getSnapshot().currentStepId).toBe("waiting");
   });
 
+  it("fires the earliest of multiple delays on one step and cancels the longer one", async () => {
+    const def: JourneyDefinition<Context, StepId> = {
+      initial: "waiting",
+      context: { advancedBy: null },
+      steps: {
+        start: {},
+        waiting: {
+          after: {
+            60: { to: "elsewhere" },
+            20: { to: "next" }
+          }
+        },
+        next: {},
+        elsewhere: {}
+      },
+      transitions: { start: {}, waiting: {}, next: {}, elsewhere: {} }
+    };
+
+    const machine = createJourneyMachine(def);
+    await machine.startJourney();
+
+    await vi.waitFor(() => {
+      expect(machine.getSnapshot().currentStepId).toBe("next");
+    });
+
+    // Leaving "waiting" via the 20ms timer cancels the 60ms timer.
+    await sleep(80);
+    expect(machine.getSnapshot().currentStepId).toBe("next");
+  });
+
+  it("cancels a pending after timer on dispose", async () => {
+    const def: JourneyDefinition<Context, StepId> = {
+      initial: "waiting",
+      context: { advancedBy: null },
+      steps: {
+        start: {},
+        waiting: { after: { 30: { to: "next" } } },
+        next: {},
+        elsewhere: {}
+      },
+      transitions: { start: {}, waiting: {}, next: {}, elsewhere: {} }
+    };
+
+    const machine = createJourneyMachine(def);
+    await machine.startJourney();
+    expect(machine.getSnapshot().currentStepId).toBe("waiting");
+
+    machine.dispose();
+    await sleep(60);
+
+    // The timer must not fire after dispose.
+    expect(machine.getSnapshot().currentStepId).toBe("waiting");
+  });
+
   it("works through the builder and the linear factory", async () => {
     type BStep = "splash" | "home";
     const { createStep, build } = createGraphJourneyBuilder<{ seen: boolean }, BStep>();
