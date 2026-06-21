@@ -1453,6 +1453,39 @@ describe("attachJourneyDevtools v6", () => {
     collector.stop();
   });
 
+  it("excludes internal effect/after events from the invokable event metadata", async () => {
+    const collector = collectBridgeMessages();
+    const machine = createJourneyMachine(createEffectJourney(), { plugins: [] as const });
+    await machine.startJourney();
+
+    const detach = attachJourneyDevtools(machine, {
+      machineId: "m-v6-events",
+      enabled: true
+    });
+
+    await waitForCollector(() =>
+      collector.messages.some(
+        (message) => message.kind === "register" && message.machineId === "m-v6-events"
+      )
+    );
+
+    const register = collector.messages.find(
+      (message) => message.kind === "register" && message.machineId === "m-v6-events"
+    );
+
+    expect(register?.kind).toBe("register");
+    if (register?.kind === "register") {
+      const advertised = [
+        ...(register.meta.eventTypes ?? []),
+        ...Object.values(register.meta.eventTypesBySource ?? {}).flat()
+      ];
+      expect(advertised.some((eventType) => eventType.startsWith("@@journey."))).toBe(false);
+    }
+
+    detach();
+    collector.stop();
+  });
+
   it("accepts invoke envelopes from the prior protocol version (v5 back-compat)", async () => {
     const collector = collectBridgeMessages();
     const machine = await createTestMachine();

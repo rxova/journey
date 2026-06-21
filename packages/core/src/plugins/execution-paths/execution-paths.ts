@@ -1,5 +1,5 @@
 /* eslint-disable no-redeclare */
-import { resolveTransitionTarget } from "../../journey-machine/helpers";
+import { resolveTransitionTarget, toPublicEventType } from "../../journey-machine/helpers";
 import { resolveJourneyDefinition } from "../../journey-machine/resolve-journey-definition";
 
 import type {
@@ -107,7 +107,12 @@ export function getExecutionPaths<
     }
 
     for (const transition of outgoing) {
-      const nextEvents = [...events, transition.event as JourneyExecutionPathEventType<TEventType>];
+      const nextEvents = [
+        ...events,
+        // Effect/after edges are real reachability edges, but their internal
+        // `@@journey.*` event names must not leak — surface a public label.
+        toPublicEventType(transition.event) as JourneyExecutionPathEventType<TEventType>
+      ];
       const target = resolveTransitionTarget(transition);
 
       if (target === "COMPLETE" || target === "TERMINATED") {

@@ -1,5 +1,5 @@
 /* eslint-disable no-redeclare */
-import { resolveTransitionTarget } from "../../journey-machine/helpers";
+import { resolveTransitionTarget, toPublicEventType } from "../../journey-machine/helpers";
 import { resolveJourneyDefinition } from "../../journey-machine/resolve-journey-definition";
 
 import type {
@@ -70,6 +70,7 @@ export function getJourneyDiagnostics<
 
   resolvedJourney.transitions.forEach((transition, index) => {
     const key = buildShadowKey(transition.from, transition.event);
+    const publicEvent = toPublicEventType(transition.event);
     const blocker = unconditionalTransitionByKey.get(key);
 
     if (blocker) {
@@ -78,13 +79,13 @@ export function getJourneyDiagnostics<
         code: "shadowed-transition",
         severity: "warning",
         from: transition.from,
-        eventType: transition.event as TEventType,
+        eventType: publicEvent as TEventType,
         transitionId: transition.id,
         ...(transition.label !== undefined ? { label: transition.label } : {}),
         message:
           blocker.transitionId === null
-            ? `Transition "${transition.from}.${transition.event}" is shadowed by an earlier unconditional transition.`
-            : `Transition "${transition.from}.${transition.event}" is shadowed by unconditional transition "${blocker.transitionId}".`
+            ? `Transition "${transition.from}.${publicEvent}" is shadowed by an earlier unconditional transition.`
+            : `Transition "${transition.from}.${publicEvent}" is shadowed by unconditional transition "${blocker.transitionId}".`
       });
       return;
     }
@@ -182,7 +183,7 @@ export function getJourneyDiagnostics<
             code: "cycle-detected",
             severity: "warning",
             from: transition.from,
-            eventType: transition.event as TEventType,
+            eventType: toPublicEventType(transition.event) as TEventType,
             transitionId: transition.id,
             ...(transition.label !== undefined ? { label: transition.label } : {}),
             steps: cycleSteps,
