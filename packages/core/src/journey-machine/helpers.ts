@@ -34,12 +34,23 @@ export {
   withTimeout
 };
 
+/**
+ * Namespace prefix for internal synthetic event types. Effect routing and
+ * `after` timers reuse the serialized send pipeline by dispatching events under
+ * this prefix; they are an implementation detail and are filtered out of the
+ * public observation stream (see {@link isInternalEventType}).
+ */
+export const JOURNEY_INTERNAL_EVENT_PREFIX = "@@journey.";
 /** Internal event type dispatched when a step effect resolves successfully. */
-export const JOURNEY_EFFECT_RESOLVED_EVENT = "@@journey.effect.resolved";
+export const JOURNEY_EFFECT_RESOLVED_EVENT = `${JOURNEY_INTERNAL_EVENT_PREFIX}effect.resolved`;
 /** Internal event type dispatched when a step effect rejects. */
-export const JOURNEY_EFFECT_REJECTED_EVENT = "@@journey.effect.rejected";
+export const JOURNEY_EFFECT_REJECTED_EVENT = `${JOURNEY_INTERNAL_EVENT_PREFIX}effect.rejected`;
 /** Prefix for the internal event type dispatched when an `after` timer fires (suffixed with the delay). */
-export const JOURNEY_AFTER_EVENT_PREFIX = "@@journey.after:";
+export const JOURNEY_AFTER_EVENT_PREFIX = `${JOURNEY_INTERNAL_EVENT_PREFIX}after:`;
+
+/** True when an event type is an internal synthetic event (effect/after routing). */
+export const isInternalEventType = (eventType: string): boolean =>
+  eventType.startsWith(JOURNEY_INTERNAL_EVENT_PREFIX);
 
 export const assertStepExists = <TStepId extends string>(
   steps: Record<TStepId, unknown>,

@@ -1,4 +1,9 @@
-import { errorInDevelopment, stabilizeSnapshot, warnInDevelopment } from "./helpers";
+import {
+  errorInDevelopment,
+  isInternalEventType,
+  stabilizeSnapshot,
+  warnInDevelopment
+} from "./helpers";
 
 import type {
   JourneyEqualityFn,
@@ -12,6 +17,25 @@ import type {
 type SnapshotOptions = {
   notify?: boolean;
   reason?: JourneyMachineSnapshotReason;
+};
+
+/**
+ * True for `transition.*` observation events whose underlying event type is an
+ * internal synthetic event (effect/after routing). These are filtered from the
+ * observation stream; the real navigation (`step.enter`/`step.exit`) still fires.
+ */
+const isInternalTransitionObservation = (event: {
+  type: string;
+  event?: { type?: unknown };
+  eventType?: unknown;
+}): boolean => {
+  if (event.type === "transition.start") {
+    return typeof event.event?.type === "string" && isInternalEventType(event.event.type);
+  }
+  if (event.type === "transition.success" || event.type === "transition.error") {
+    return typeof event.eventType === "string" && isInternalEventType(event.eventType);
+  }
+  return false;
 };
 
 export type JourneyMachineRuntime<
@@ -95,6 +119,13 @@ export const createJourneyMachineRuntime = <
   };
 
   const emit = (event: JourneyObservationEvent<TStepId, TEventMap>) => {
+    // Effect routing and `after` timers drive transitions through internal
+    // synthetic events. The resulting navigation (step.enter/exit) is real and
+    // observable, but the synthetic transition.* notifications are an
+    // implementation detail and must not surface to subscribers or plugins.
+    if (isInternalTransitionObservation(event)) {
+      return;
+    }
     for (const listener of eventListeners) {
       try {
         listener(event);
