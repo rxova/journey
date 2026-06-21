@@ -2,7 +2,6 @@
 
 import React from "react";
 import { journey } from "../journey";
-import { mockApi } from "../api";
 
 export const VerifyCode = () => {
   const snapshot = journey.useJourneySnapshot();
@@ -20,11 +19,8 @@ export const VerifyCode = () => {
     setIsSubmitting(true);
     try {
       api.updateContext((ctx) => ({ ...ctx, error: null }));
-      const result = await mockApi.verifyCode(code);
-      await api.send({
-        type: result.success ? "verifyCodeSuccess" : "verifyCodeFailure",
-        payload: { code }
-      });
+      // The machine validates the code via the injected `verifyCode` handler.
+      await api.send({ type: "submitCode", payload: { code } });
     } finally {
       setIsSubmitting(false);
     }

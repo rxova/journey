@@ -1,10 +1,17 @@
-import { createStep, to } from "../builder";
+import { createStep } from "../builder";
 
 export const verifyCodeStep = createStep("verifyCode", {
   meta: { label: "Verify Setup", icon: "✅" },
   on: {
-    verifyCodeSuccess: [to("loggedIn")],
-    verifyCodeFailure: [
+    // `submitCode` carries the entered code; the machine — not the UI — validates
+    // it by calling the injected `verifyCode` handler from an async guard. Swap
+    // that handler in a test and this flow is unchanged. See the Handlers docs.
+    // The callback form of `on` narrows `event` to the `submitCode` payload.
+    submitCode: ({ to }) => [
+      to("loggedIn").when(async ({ handlers, event }) => {
+        const result = await handlers.verifyCode(event.payload?.code ?? "");
+        return result.success;
+      }),
       to("blocked")
         .when(({ context }) => context.attempts >= 2)
         .updateContext(({ context }) => ({

@@ -2,6 +2,7 @@ import { createGraphJourney } from "@rxova/journey-react";
 import type { JourneyBuilderRuntimeFromDefinition } from "@rxova/journey-react";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
 import { build } from "./builder";
+import { mockApi } from "./api";
 import { loginStep } from "./steps/login.step";
 import { setup2faStep } from "./steps/setup2fa.step";
 import { verifyCodeStep } from "./steps/verifyCode.step";
@@ -23,6 +24,11 @@ const definition = build({
     qrCode: null,
     error: null,
     attempts: 0
+  },
+  // Injected dependencies — the verifyCode step's guard calls handlers.verifyCode
+  // instead of importing the API. A test passes a different verifyCode here.
+  handlers: {
+    verifyCode: mockApi.verifyCode
   },
   steps: [
     loginStep,
