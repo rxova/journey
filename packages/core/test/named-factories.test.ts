@@ -159,7 +159,11 @@ describe("createGraphJourney", () => {
     type StepId = "login" | "dashboard";
     type Events = { submit: undefined };
 
-    const { createStep, to, build } = createGraphJourneyBuilder<SimpleContext, StepId, Events>();
+    const { createStep, to, build } = createGraphJourneyBuilder<{
+      context: SimpleContext;
+      stepId: StepId;
+      events: Events;
+    }>();
     const definition = build({
       initial: "login",
       context: { value: 0 },
@@ -177,7 +181,10 @@ describe("createGraphJourney", () => {
   });
 
   it("exposes graph computed mode", async () => {
-    const { createStep, build } = createGraphJourneyBuilder<SimpleContext, "node">();
+    const { createStep, build } = createGraphJourneyBuilder<{
+      context: SimpleContext;
+      stepId: "node";
+    }>();
     const definition = build({
       initial: "node",
       context: { value: 0 },

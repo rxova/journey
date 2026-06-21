@@ -163,12 +163,12 @@ type BuilderEventMap = {
 };
 type BuilderContext = { attempts: number };
 
-const { createStep, to, build } = createGraphJourneyBuilder<
-  BuilderContext,
-  BuilderStepId,
-  BuilderEventMap,
-  { label: string }
->();
+const { createStep, to, build } = createGraphJourneyBuilder<{
+  context: BuilderContext;
+  stepId: BuilderStepId;
+  events: BuilderEventMap;
+  meta: { label: string };
+}>();
 
 const emailCodeStep = createStep("emailCode", {
   meta: { label: "Email Code" },

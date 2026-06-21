@@ -1,8 +1,10 @@
 import type {
   JourneyFullEventType,
-  JourneyJsonObject,
   JourneyStepDefinition,
-  JourneyTransitionGraph
+  JourneyTransitionGraph,
+  JourneyTypes,
+  JourneyTypesInput,
+  ResolveJourneyTypes
 } from "../types";
 import type {
   JourneyBuilder,
@@ -58,78 +60,50 @@ type RawTerminalCandidate = {
 };
 
 function makeToBuilder<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  THandlers extends Record<string, unknown>,
-  TEventType extends JourneyFullEventType<TEventMap>,
+  T extends JourneyTypes,
+  TEventType extends JourneyFullEventType<T["events"]>,
   TUsed extends JourneyToBuilderUsage = JourneyToBuilderUnused
->(
-  candidate: JourneyBuilderCandidate<TContext, TStepId, TEventMap, THandlers, TEventType>
-): JourneyToBuilder<TContext, TStepId, TEventMap, THandlers, TEventType, TUsed> {
+>(candidate: JourneyBuilderCandidate<T, TEventType>): JourneyToBuilder<T, TEventType, TUsed> {
   return {
     _candidate: candidate,
-    when(guard: JourneyBuilderGuard<TContext, TStepId, TEventMap, THandlers, TEventType>) {
-      return makeToBuilder<
-        TContext,
-        TStepId,
-        TEventMap,
-        THandlers,
-        TEventType,
-        Omit<TUsed, "when"> & { readonly when: true }
-      >({ ...candidate, _when: guard });
+    when(guard: JourneyBuilderGuard<T, TEventType>) {
+      return makeToBuilder<T, TEventType, Omit<TUsed, "when"> & { readonly when: true }>({
+        ...candidate,
+        _when: guard
+      });
     },
-    updateContext(fn: JourneyBuilderUpdateContext<TContext, TStepId, TEventMap, TEventType>) {
+    updateContext(fn: JourneyBuilderUpdateContext<T, TEventType>) {
       return makeToBuilder<
-        TContext,
-        TStepId,
-        TEventMap,
-        THandlers,
+        T,
         TEventType,
         Omit<TUsed, "updateContext"> & { readonly updateContext: true }
       >({ ...candidate, _updateContext: fn });
     },
-    onEnter(fn: JourneyBuilderLifecycle<TContext, TStepId, TEventMap, THandlers>) {
-      return makeToBuilder<
-        TContext,
-        TStepId,
-        TEventMap,
-        THandlers,
-        TEventType,
-        Omit<TUsed, "onEnter"> & { readonly onEnter: true }
-      >({ ...candidate, _onEnter: fn });
+    onEnter(fn: JourneyBuilderLifecycle<T>) {
+      return makeToBuilder<T, TEventType, Omit<TUsed, "onEnter"> & { readonly onEnter: true }>({
+        ...candidate,
+        _onEnter: fn
+      });
     },
-    onLeave(fn: JourneyBuilderLifecycle<TContext, TStepId, TEventMap, THandlers>) {
-      return makeToBuilder<
-        TContext,
-        TStepId,
-        TEventMap,
-        THandlers,
-        TEventType,
-        Omit<TUsed, "onLeave"> & { readonly onLeave: true }
-      >({ ...candidate, _onLeave: fn });
+    onLeave(fn: JourneyBuilderLifecycle<T>) {
+      return makeToBuilder<T, TEventType, Omit<TUsed, "onLeave"> & { readonly onLeave: true }>({
+        ...candidate,
+        _onLeave: fn
+      });
     },
     label(label: string) {
-      return makeToBuilder<
-        TContext,
-        TStepId,
-        TEventMap,
-        THandlers,
-        TEventType,
-        Omit<TUsed, "label"> & { readonly label: true }
-      >({ ...candidate, _label: label });
+      return makeToBuilder<T, TEventType, Omit<TUsed, "label"> & { readonly label: true }>({
+        ...candidate,
+        _label: label
+      });
     },
     timeoutMs(ms: number) {
-      return makeToBuilder<
-        TContext,
-        TStepId,
-        TEventMap,
-        THandlers,
-        TEventType,
-        Omit<TUsed, "timeoutMs"> & { readonly timeoutMs: true }
-      >({ ...candidate, _timeoutMs: ms });
+      return makeToBuilder<T, TEventType, Omit<TUsed, "timeoutMs"> & { readonly timeoutMs: true }>({
+        ...candidate,
+        _timeoutMs: ms
+      });
     }
-  } as JourneyToBuilder<TContext, TStepId, TEventMap, THandlers, TEventType, TUsed>;
+  } as JourneyToBuilder<T, TEventType, TUsed>;
 }
 
 function candidateToEdge(c: RawCandidate): Record<string, unknown> {
@@ -154,31 +128,23 @@ function terminalCandidateToEdge(c: RawTerminalCandidate): Record<string, unknow
   return edge;
 }
 
-/** Creates a typed builder for authoring journey definitions with `createStep`, `to`, and `build` helpers. */
+/**
+ * Creates a typed builder for authoring journey definitions with `createStep`,
+ * `to`, and `build` helpers. The journey's types are supplied as a single
+ * bundle object: `createGraphJourneyBuilder<{ context; stepId; events; … }>()`.
+ */
 export function createGraphJourneyBuilder<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
-  TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
->(): JourneyBuilder<TContext, TStepId, TEventMap, TStepMeta, THandlers> {
-  type WideNonTerminalEntry = JourneyBuilderOnEntry<
-    TContext,
-    TStepId,
-    TEventMap,
-    THandlers,
-    JourneyBuilderStepEventKey<TEventMap>
-  >;
+  TInput extends JourneyTypesInput = JourneyTypesInput
+>(): JourneyBuilder<ResolveJourneyTypes<TInput>> {
+  type T = ResolveJourneyTypes<TInput>;
+  type WideNonTerminalEntry = JourneyBuilderOnEntry<T, JourneyBuilderStepEventKey<T["events"]>>;
   type WideTerminalEntry = JourneyBuilderTerminalEntry<
-    TContext,
-    TStepId,
-    TEventMap,
-    THandlers,
-    JourneyBuilderTerminalEventKey<TEventMap>
+    T,
+    JourneyBuilderTerminalEventKey<T["events"]>
   >;
   type BuilderWithCandidate = { readonly _candidate: RawCandidate };
 
-  function to(stepId: TStepId): JourneyToBuilder<TContext, TStepId, TEventMap, THandlers> {
+  function to(stepId: T["stepId"]): JourneyToBuilder<T> {
     return makeToBuilder({
       _to: stepId,
       _when: undefined,
@@ -193,14 +159,8 @@ export function createGraphJourneyBuilder<
   function resolveEntry(entry: WideNonTerminalEntry): readonly BuilderWithCandidate[] {
     if (typeof entry === "function") {
       const scopedTo = to as (
-        stepId: TStepId
-      ) => JourneyToBuilder<
-        TContext,
-        TStepId,
-        TEventMap,
-        THandlers,
-        JourneyBuilderStepEventKey<TEventMap>
-      >;
+        stepId: T["stepId"]
+      ) => JourneyToBuilder<T, JourneyBuilderStepEventKey<T["events"]>>;
       return entry({ to: scopedTo });
     }
 
@@ -214,19 +174,16 @@ export function createGraphJourneyBuilder<
 
     return (
       entry as readonly JourneyBuilderTerminalCandidate<
-        TContext,
-        TStepId,
-        TEventMap,
-        THandlers,
-        JourneyBuilderTerminalEventKey<TEventMap>
+        T,
+        JourneyBuilderTerminalEventKey<T["events"]>
       >[]
     ).map((candidate) => terminalCandidateToEdge(candidate));
   }
 
-  function createStep<TStepKey extends TStepId>(
+  function createStep<TStepKey extends T["stepId"]>(
     id: TStepKey,
     config?: {
-      meta?: TStepMeta;
+      meta?: T["meta"];
       onEnter?: unknown;
       onLeave?: unknown;
       on?: Record<string, unknown>;
@@ -242,37 +199,21 @@ export function createGraphJourneyBuilder<
       _on: config?.on,
       _effect: config?.effect,
       _after: config?.after
-    } as JourneyStepBuilder<
-      TContext,
-      TStepId,
-      TStepKey,
-      TEventMap,
-      TStepMeta,
-      THandlers,
-      JourneyBuilderCustomEventKey<TEventMap>
-    >;
+    } as JourneyStepBuilder<T, TStepKey, JourneyBuilderCustomEventKey<T["events"]>>;
   }
 
   function build(input: {
-    initial: TStepId;
-    context: TContext;
-    handlers?: THandlers;
-    steps: readonly JourneyStepBuilder<
-      TContext,
-      TStepId,
-      TStepId,
-      TEventMap,
-      TStepMeta,
-      THandlers,
-      JourneyBuilderCustomEventKey<TEventMap>
-    >[];
+    initial: T["stepId"];
+    context: T["context"];
+    handlers?: T["handlers"];
+    steps: readonly JourneyStepBuilder<T, T["stepId"], JourneyBuilderCustomEventKey<T["events"]>>[];
     global?: {
       [key: string]: unknown;
     };
-  }): JourneyBuilderDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers> {
+  }): JourneyBuilderDefinition<T> {
     const stepsRecord = {} as Record<
-      TStepId,
-      JourneyStepDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>
+      T["stepId"],
+      JourneyStepDefinition<T["context"], T["stepId"], T["events"], T["meta"], T["handlers"]>
     >;
     const transitionGraph = {} as Record<string, unknown>;
 
@@ -315,9 +256,9 @@ export function createGraphJourneyBuilder<
         if (eventType === "completeJourney" || eventType === "terminateJourney") {
           globalTransitions[eventType] = resolveTerminalEntry(value as WideTerminalEntry);
         } else if (Array.isArray(value)) {
-          globalTransitions[eventType] = (
-            value as readonly JourneyToBuilder<TContext, TStepId, TEventMap, THandlers>[]
-          ).map((builder) => candidateToEdge(builder._candidate));
+          globalTransitions[eventType] = (value as readonly JourneyToBuilder<T>[]).map((builder) =>
+            candidateToEdge(builder._candidate)
+          );
         }
       }
 
@@ -330,17 +271,17 @@ export function createGraphJourneyBuilder<
       ...(input.handlers !== undefined ? { handlers: input.handlers } : {}),
       steps: stepsRecord,
       transitions: transitionGraph as JourneyTransitionGraph<
-        TContext,
-        TStepId,
-        TEventMap,
-        THandlers
+        T["context"],
+        T["stepId"],
+        T["events"],
+        T["handlers"]
       >
-    } as JourneyBuilderDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
+    } as JourneyBuilderDefinition<T>;
   }
 
   return {
     createStep,
     to,
     build
-  } as unknown as JourneyBuilder<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
+  } as unknown as JourneyBuilder<T>;
 }

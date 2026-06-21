@@ -480,10 +480,18 @@ void invalidGoToStepTransitions;
 
 // ─── createGraphJourneyBuilder type tests ────────────────────────────────────────
 
-const builder = createGraphJourneyBuilder<Context, StepId, EventMap>();
+const builder = createGraphJourneyBuilder<{ context: Context; stepId: StepId; events: EventMap }>();
 
 // createGraphJourneyBuilder returns the expected JourneyBuilder shape
-expectTypeOf(builder).toMatchTypeOf<JourneyBuilder<Context, StepId, EventMap>>();
+expectTypeOf(builder).toMatchTypeOf<
+  JourneyBuilder<{
+    context: Context;
+    stepId: StepId;
+    events: EventMap;
+    meta: unknown;
+    handlers: Record<never, never>;
+  }>
+>();
 
 // to() only accepts valid StepId values
 // @ts-expect-error "nonexistent" is not a valid StepId
@@ -580,10 +588,13 @@ builder.createStep("start", {
 
 // JourneyBuilderOnEntry is exported and usable as an explicit type annotation
 const _typedEntry: JourneyBuilderOnEntry<
-  Context,
-  StepId,
-  EventMap,
-  Record<never, never>,
+  {
+    context: Context;
+    stepId: StepId;
+    events: EventMap;
+    meta: unknown;
+    handlers: Record<never, never>;
+  },
   "custom"
 > = ({ to }) => [
   to("review").when(({ event }) => {
@@ -594,10 +605,13 @@ const _typedEntry: JourneyBuilderOnEntry<
 void _typedEntry;
 
 const _typedTerminalEntry: JourneyBuilderTerminalEntry<
-  Context,
-  StepId,
-  EventMap,
-  Record<never, never>,
+  {
+    context: Context;
+    stepId: StepId;
+    events: EventMap;
+    meta: unknown;
+    handlers: Record<never, never>;
+  },
   "completeJourney"
 > = [
   {

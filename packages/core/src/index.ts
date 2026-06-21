@@ -107,5 +107,9 @@ export {
   type JourneyStepLifecycleCallback,
   type JourneyTerminateObservationEvent,
   type JourneyTransitionArgsForEvent,
-  type JourneyTransitionUpdateContextArgsForEvent
+  type JourneyTransitionUpdateContextArgsForEvent,
+  type JourneyTypes,
+  type JourneyTypesInput,
+  type JourneyEmpty,
+  type ResolveJourneyTypes
 } from "./types";

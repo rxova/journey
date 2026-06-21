@@ -178,7 +178,10 @@ describe("after (delayed transitions)", () => {
 
   it("works through the builder and the linear factory", async () => {
     type BStep = "splash" | "home";
-    const { createStep, build } = createGraphJourneyBuilder<{ seen: boolean }, BStep>();
+    const { createStep, build } = createGraphJourneyBuilder<{
+      context: { seen: boolean };
+      stepId: BStep;
+    }>();
     const graph = createGraphJourney(
       build({
         initial: "splash",

@@ -331,7 +331,10 @@ describe("step effects via the builder and linear factory", () => {
     type BStep = "start" | "loading" | "done";
     type BContext = { name: string };
 
-    const { createStep, to, build } = createGraphJourneyBuilder<BContext, BStep>();
+    const { createStep, to, build } = createGraphJourneyBuilder<{
+      context: BContext;
+      stepId: BStep;
+    }>();
     const machine = createGraphJourney(
       build({
         initial: "start",

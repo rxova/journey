@@ -2,7 +2,7 @@ import type {
   JourneyDefaultEventType,
   JourneyDefinition,
   JourneyFullEventType,
-  JourneyJsonObject
+  JourneyTypes
 } from "../types";
 import type {
   JourneyAfterTransition,
@@ -28,47 +28,46 @@ export type JourneyBuilderCustomEventKey<TEventMap extends Record<string, unknow
 >;
 
 export type JourneyBuilderGuard<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  THandlers extends Record<string, unknown>,
-  TEventType extends JourneyFullEventType<TEventMap> = JourneyFullEventType<TEventMap>
+  T extends JourneyTypes,
+  TEventType extends JourneyFullEventType<T["events"]> = JourneyFullEventType<T["events"]>
 > = (
-  args: JourneyTransitionArgsForEvent<TContext, TStepId, TEventMap, THandlers, TEventType>
+  args: JourneyTransitionArgsForEvent<
+    T["context"],
+    T["stepId"],
+    T["events"],
+    T["handlers"],
+    TEventType
+  >
 ) => boolean | Promise<boolean>;
 
 export type JourneyBuilderUpdateContext<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  TEventType extends JourneyFullEventType<TEventMap> = JourneyFullEventType<TEventMap>
+  T extends JourneyTypes,
+  TEventType extends JourneyFullEventType<T["events"]> = JourneyFullEventType<T["events"]>
 > = (
-  args: JourneyTransitionUpdateContextArgsForEvent<TContext, TStepId, TEventMap, TEventType>
-) => TContext;
+  args: JourneyTransitionUpdateContextArgsForEvent<
+    T["context"],
+    T["stepId"],
+    T["events"],
+    TEventType
+  >
+) => T["context"];
 
-export type JourneyBuilderLifecycle<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  THandlers extends Record<string, unknown>
-> = JourneyStepLifecycleCallback<TContext, TStepId, TEventMap, THandlers>;
+export type JourneyBuilderLifecycle<T extends JourneyTypes> = JourneyStepLifecycleCallback<
+  T["context"],
+  T["stepId"],
+  T["events"],
+  T["handlers"]
+>;
 
 export type JourneyBuilderCandidate<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  THandlers extends Record<string, unknown>,
-  TEventType extends JourneyFullEventType<TEventMap> = JourneyFullEventType<TEventMap>
+  T extends JourneyTypes,
+  TEventType extends JourneyFullEventType<T["events"]> = JourneyFullEventType<T["events"]>
 > = {
-  readonly _to: TStepId;
-  readonly _when:
-    | JourneyBuilderGuard<TContext, TStepId, TEventMap, THandlers, TEventType>
-    | undefined;
-  readonly _updateContext:
-    | JourneyBuilderUpdateContext<TContext, TStepId, TEventMap, TEventType>
-    | undefined;
-  readonly _onEnter: JourneyBuilderLifecycle<TContext, TStepId, TEventMap, THandlers> | undefined;
-  readonly _onLeave: JourneyBuilderLifecycle<TContext, TStepId, TEventMap, THandlers> | undefined;
+  readonly _to: T["stepId"];
+  readonly _when: JourneyBuilderGuard<T, TEventType> | undefined;
+  readonly _updateContext: JourneyBuilderUpdateContext<T, TEventType> | undefined;
+  readonly _onEnter: JourneyBuilderLifecycle<T> | undefined;
+  readonly _onLeave: JourneyBuilderLifecycle<T> | undefined;
   readonly _label: string | undefined;
   readonly _timeoutMs: number | undefined;
 };
@@ -98,174 +97,90 @@ type JourneyDuplicateModifierCall<TName extends string> = (
 ) => never;
 
 export type JourneyToBuilder<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  THandlers extends Record<string, unknown>,
-  TEventType extends JourneyFullEventType<TEventMap> = JourneyFullEventType<TEventMap>,
+  T extends JourneyTypes,
+  TEventType extends JourneyFullEventType<T["events"]> = JourneyFullEventType<T["events"]>,
   TUsed extends JourneyToBuilderUsage = JourneyToBuilderUnused
 > = {
-  readonly _candidate: JourneyBuilderCandidate<TContext, TStepId, TEventMap, THandlers, TEventType>;
+  readonly _candidate: JourneyBuilderCandidate<T, TEventType>;
   when: TUsed["when"] extends true
     ? JourneyDuplicateModifierCall<"when">
     : (
-        guard: JourneyBuilderGuard<TContext, TStepId, TEventMap, THandlers, TEventType>
-      ) => JourneyToBuilder<
-        TContext,
-        TStepId,
-        TEventMap,
-        THandlers,
-        TEventType,
-        Omit<TUsed, "when"> & { readonly when: true }
-      >;
+        guard: JourneyBuilderGuard<T, TEventType>
+      ) => JourneyToBuilder<T, TEventType, Omit<TUsed, "when"> & { readonly when: true }>;
   updateContext: TUsed["updateContext"] extends true
     ? JourneyDuplicateModifierCall<"updateContext">
     : (
-        fn: JourneyBuilderUpdateContext<TContext, TStepId, TEventMap, TEventType>
+        fn: JourneyBuilderUpdateContext<T, TEventType>
       ) => JourneyToBuilder<
-        TContext,
-        TStepId,
-        TEventMap,
-        THandlers,
+        T,
         TEventType,
         Omit<TUsed, "updateContext"> & { readonly updateContext: true }
       >;
   onEnter: TUsed["onEnter"] extends true
     ? JourneyDuplicateModifierCall<"onEnter">
     : (
-        fn: JourneyBuilderLifecycle<TContext, TStepId, TEventMap, THandlers>
-      ) => JourneyToBuilder<
-        TContext,
-        TStepId,
-        TEventMap,
-        THandlers,
-        TEventType,
-        Omit<TUsed, "onEnter"> & { readonly onEnter: true }
-      >;
+        fn: JourneyBuilderLifecycle<T>
+      ) => JourneyToBuilder<T, TEventType, Omit<TUsed, "onEnter"> & { readonly onEnter: true }>;
   onLeave: TUsed["onLeave"] extends true
     ? JourneyDuplicateModifierCall<"onLeave">
     : (
-        fn: JourneyBuilderLifecycle<TContext, TStepId, TEventMap, THandlers>
-      ) => JourneyToBuilder<
-        TContext,
-        TStepId,
-        TEventMap,
-        THandlers,
-        TEventType,
-        Omit<TUsed, "onLeave"> & { readonly onLeave: true }
-      >;
+        fn: JourneyBuilderLifecycle<T>
+      ) => JourneyToBuilder<T, TEventType, Omit<TUsed, "onLeave"> & { readonly onLeave: true }>;
   label: TUsed["label"] extends true
     ? JourneyDuplicateModifierCall<"label">
     : (
         label: string
-      ) => JourneyToBuilder<
-        TContext,
-        TStepId,
-        TEventMap,
-        THandlers,
-        TEventType,
-        Omit<TUsed, "label"> & { readonly label: true }
-      >;
+      ) => JourneyToBuilder<T, TEventType, Omit<TUsed, "label"> & { readonly label: true }>;
   timeoutMs: TUsed["timeoutMs"] extends true
     ? JourneyDuplicateModifierCall<"timeoutMs">
     : (
         ms: number
-      ) => JourneyToBuilder<
-        TContext,
-        TStepId,
-        TEventMap,
-        THandlers,
-        TEventType,
-        Omit<TUsed, "timeoutMs"> & { readonly timeoutMs: true }
-      >;
+      ) => JourneyToBuilder<T, TEventType, Omit<TUsed, "timeoutMs"> & { readonly timeoutMs: true }>;
 };
 
 type JourneyBuiltTransitionCandidate<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  THandlers extends Record<string, unknown>,
-  TEventType extends JourneyFullEventType<TEventMap> = JourneyFullEventType<TEventMap>
+  T extends JourneyTypes,
+  TEventType extends JourneyFullEventType<T["events"]> = JourneyFullEventType<T["events"]>
 > = {
-  readonly _candidate: JourneyBuilderCandidate<TContext, TStepId, TEventMap, THandlers, TEventType>;
+  readonly _candidate: JourneyBuilderCandidate<T, TEventType>;
 };
 
 export type JourneyBuilderOnEntry<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  THandlers extends Record<string, unknown>,
-  TEventType extends JourneyBuilderStepEventKey<TEventMap>
+  T extends JourneyTypes,
+  TEventType extends JourneyBuilderStepEventKey<T["events"]>
 > =
-  | readonly JourneyBuiltTransitionCandidate<TContext, TStepId, TEventMap, THandlers>[]
+  | readonly JourneyBuiltTransitionCandidate<T>[]
   | ((helpers: {
-      to: (
-        stepId: TStepId
-      ) => JourneyToBuilder<TContext, TStepId, TEventMap, THandlers, TEventType>;
-    }) => readonly JourneyBuiltTransitionCandidate<
-      TContext,
-      TStepId,
-      TEventMap,
-      THandlers,
-      TEventType
-    >[]);
+      to: (stepId: T["stepId"]) => JourneyToBuilder<T, TEventType>;
+    }) => readonly JourneyBuiltTransitionCandidate<T, TEventType>[]);
 
 export type JourneyBuilderTerminalCandidate<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  THandlers extends Record<string, unknown>,
-  TEventType extends JourneyBuilderTerminalEventKey<TEventMap>
+  T extends JourneyTypes,
+  TEventType extends JourneyBuilderTerminalEventKey<T["events"]>
 > = {
-  when?: JourneyBuilderGuard<TContext, TStepId, TEventMap, THandlers, TEventType>;
-  updateContext?: JourneyBuilderUpdateContext<TContext, TStepId, TEventMap, TEventType>;
-  onEnter?: JourneyBuilderLifecycle<TContext, TStepId, TEventMap, THandlers>;
-  onLeave?: JourneyBuilderLifecycle<TContext, TStepId, TEventMap, THandlers>;
+  when?: JourneyBuilderGuard<T, TEventType>;
+  updateContext?: JourneyBuilderUpdateContext<T, TEventType>;
+  onEnter?: JourneyBuilderLifecycle<T>;
+  onLeave?: JourneyBuilderLifecycle<T>;
   label?: string;
   timeoutMs?: number;
 };
 
 export type JourneyBuilderTerminalEntry<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  THandlers extends Record<string, unknown>,
-  TEventType extends JourneyBuilderTerminalEventKey<TEventMap>
-> =
-  | true
-  | readonly []
-  | readonly JourneyBuilderTerminalCandidate<TContext, TStepId, TEventMap, THandlers, TEventType>[];
+  T extends JourneyTypes,
+  TEventType extends JourneyBuilderTerminalEventKey<T["events"]>
+> = true | readonly [] | readonly JourneyBuilderTerminalCandidate<T, TEventType>[];
 
 type JourneyBuilderEventEntry<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  THandlers extends Record<string, unknown>,
-  TEventType extends JourneyFullEventType<TEventMap>
+  T extends JourneyTypes,
+  TEventType extends JourneyFullEventType<T["events"]>
 > =
-  TEventType extends JourneyBuilderTerminalEventKey<TEventMap>
-    ? JourneyBuilderTerminalEntry<TContext, TStepId, TEventMap, THandlers, TEventType>
-    : JourneyBuilderOnEntry<
-        TContext,
-        TStepId,
-        TEventMap,
-        THandlers,
-        Extract<TEventType, JourneyBuilderStepEventKey<TEventMap>>
-      >;
+  TEventType extends JourneyBuilderTerminalEventKey<T["events"]>
+    ? JourneyBuilderTerminalEntry<T, TEventType>
+    : JourneyBuilderOnEntry<T, Extract<TEventType, JourneyBuilderStepEventKey<T["events"]>>>;
 
-type JourneyStepBuilderOnConfig<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  THandlers extends Record<string, unknown>
-> = Partial<{
-  [TEventType in JourneyFullEventType<TEventMap>]: JourneyBuilderEventEntry<
-    TContext,
-    TStepId,
-    TEventMap,
-    THandlers,
-    TEventType
-  >;
+type JourneyStepBuilderOnConfig<T extends JourneyTypes> = Partial<{
+  [TEventType in JourneyFullEventType<T["events"]>]: JourneyBuilderEventEntry<T, TEventType>;
 }>;
 
 type JourneyStepBuilderHandledCustomEventKey<
@@ -274,75 +189,55 @@ type JourneyStepBuilderHandledCustomEventKey<
 > = Extract<keyof NonNullable<TOn>, JourneyBuilderCustomEventKey<TEventMap>>;
 
 type JourneyStepBuilderConfig<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  TStepMeta,
-  THandlers extends Record<string, unknown>,
-  TOn extends JourneyStepBuilderOnConfig<TContext, TStepId, TEventMap, THandlers> | undefined =
-    | JourneyStepBuilderOnConfig<TContext, TStepId, TEventMap, THandlers>
-    | undefined,
+  T extends JourneyTypes,
+  TOn extends JourneyStepBuilderOnConfig<T> | undefined = JourneyStepBuilderOnConfig<T> | undefined,
   TEffectOutput = unknown
 > = {
-  meta?: TStepMeta;
-  onEnter?: JourneyStepLifecycleCallback<TContext, TStepId, TEventMap, THandlers>;
-  onLeave?: JourneyStepLifecycleCallback<TContext, TStepId, TEventMap, THandlers>;
+  meta?: T["meta"];
+  onEnter?: JourneyStepLifecycleCallback<T["context"], T["stepId"], T["events"], T["handlers"]>;
+  onLeave?: JourneyStepLifecycleCallback<T["context"], T["stepId"], T["events"], T["handlers"]>;
   on?: TOn;
   /** Declarative async work run on entry; `output` is inferred from `run`. */
-  effect?: JourneyStepEffect<TContext, TStepId, THandlers, TEffectOutput>;
+  effect?: JourneyStepEffect<T["context"], T["stepId"], T["handlers"], TEffectOutput>;
   /** Delayed transitions keyed by milliseconds. */
-  after?: Record<number, JourneyAfterTransition<TContext, TStepId>>;
+  after?: Record<number, JourneyAfterTransition<T["context"], T["stepId"]>>;
 };
 
 export type JourneyStepBuilder<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TStepKey extends TStepId,
-  TEventMap extends Record<string, unknown>,
-  TStepMeta,
-  THandlers extends Record<string, unknown>,
-  THandledCustomEventType extends JourneyBuilderCustomEventKey<TEventMap> = never
+  T extends JourneyTypes,
+  TStepKey extends T["stepId"],
+  THandledCustomEventType extends JourneyBuilderCustomEventKey<T["events"]> = never
 > = {
   readonly id: TStepKey;
-  readonly _meta: TStepMeta | undefined;
+  readonly _meta: T["meta"] | undefined;
   readonly _onEnter:
-    | JourneyStepLifecycleCallback<TContext, TStepId, TEventMap, THandlers>
+    | JourneyStepLifecycleCallback<T["context"], T["stepId"], T["events"], T["handlers"]>
     | undefined;
   readonly _onLeave:
-    | JourneyStepLifecycleCallback<TContext, TStepId, TEventMap, THandlers>
+    | JourneyStepLifecycleCallback<T["context"], T["stepId"], T["events"], T["handlers"]>
     | undefined;
   readonly _on:
-    | Record<
-        string,
-        JourneyBuilderEventEntry<
-          TContext,
-          TStepId,
-          TEventMap,
-          THandlers,
-          JourneyFullEventType<TEventMap>
-        >
-      >
+    | Record<string, JourneyBuilderEventEntry<T, JourneyFullEventType<T["events"]>>>
     | undefined;
-  readonly _effect?: JourneyStepEffect<TContext, TStepId, THandlers> | undefined;
-  readonly _after?: Record<number, JourneyAfterTransition<TContext, TStepId>> | undefined;
+  readonly _effect?: JourneyStepEffect<T["context"], T["stepId"], T["handlers"]> | undefined;
+  readonly _after?: Record<number, JourneyAfterTransition<T["context"], T["stepId"]>> | undefined;
   readonly _handledCustomEventType?: THandledCustomEventType;
 };
 
 type JourneyStepBuilderHandledCustomEventMap<
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  T extends JourneyTypes,
   TSteps extends readonly {
-    readonly id: TStepId;
-    readonly _handledCustomEventType?: JourneyBuilderCustomEventKey<TEventMap>;
+    readonly id: T["stepId"];
+    readonly _handledCustomEventType?: JourneyBuilderCustomEventKey<T["events"]>;
   }[]
 > = {
-  [TCurrentStepId in TStepId]: Extract<
+  [TCurrentStepId in T["stepId"]]: Extract<
     Extract<TSteps[number], { readonly id: TCurrentStepId }> extends {
       readonly _handledCustomEventType?: infer THandledCustomEventType;
     }
       ? THandledCustomEventType
       : never,
-    JourneyBuilderCustomEventKey<TEventMap>
+    JourneyBuilderCustomEventKey<T["events"]>
   >;
 };
 
@@ -367,124 +262,73 @@ export type JourneyBuilderDefinitionMetadata<
 };
 
 export type JourneyBuilderDefinition<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>,
-  TStepHandledCustomEventMap extends Record<TStepId, JourneyBuilderCustomEventKey<TEventMap>> =
-    Record<TStepId, never>,
-  TGlobalHandledCustomEventType extends JourneyBuilderCustomEventKey<TEventMap> = never
-> = JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers> &
+  T extends JourneyTypes,
+  TStepHandledCustomEventMap extends Record<
+    T["stepId"],
+    JourneyBuilderCustomEventKey<T["events"]>
+  > = Record<T["stepId"], never>,
+  TGlobalHandledCustomEventType extends JourneyBuilderCustomEventKey<T["events"]> = never
+> = JourneyDefinition<T["context"], T["stepId"], T["events"], T["meta"], T["handlers"]> &
   JourneyBuilderDefinitionMetadata<
-    TStepId,
-    TEventMap,
+    T["stepId"],
+    T["events"],
     TStepHandledCustomEventMap,
     TGlobalHandledCustomEventType
   >;
 
-type JourneyBuilderGlobalConfig<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  THandlers extends Record<string, unknown>
-> = Partial<{
-  [TEventType in JourneyFullEventType<TEventMap>]: TEventType extends JourneyBuilderTerminalEventKey<TEventMap>
-    ? JourneyBuilderTerminalEntry<TContext, TStepId, TEventMap, THandlers, TEventType>
-    : readonly JourneyBuiltTransitionCandidate<TContext, TStepId, TEventMap, THandlers>[];
+type JourneyBuilderGlobalConfig<T extends JourneyTypes> = Partial<{
+  [TEventType in JourneyFullEventType<
+    T["events"]
+  >]: TEventType extends JourneyBuilderTerminalEventKey<T["events"]>
+    ? JourneyBuilderTerminalEntry<T, TEventType>
+    : readonly JourneyBuiltTransitionCandidate<T>[];
 }>;
 
 type JourneyBuilderBuildInput<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  TStepMeta,
-  THandlers extends Record<string, unknown>,
+  T extends JourneyTypes,
   TSteps extends readonly JourneyStepBuilder<
-    TContext,
-    TStepId,
-    TStepId,
-    TEventMap,
-    TStepMeta,
-    THandlers,
-    JourneyBuilderCustomEventKey<TEventMap>
+    T,
+    T["stepId"],
+    JourneyBuilderCustomEventKey<T["events"]>
   >[],
-  TGlobal extends JourneyBuilderGlobalConfig<TContext, TStepId, TEventMap, THandlers> | undefined =
-    | JourneyBuilderGlobalConfig<TContext, TStepId, TEventMap, THandlers>
+  TGlobal extends JourneyBuilderGlobalConfig<T> | undefined =
+    | JourneyBuilderGlobalConfig<T>
     | undefined
 > = {
-  initial: TStepId;
-  context: TContext;
-  handlers?: THandlers;
+  initial: T["stepId"];
+  context: T["context"];
+  handlers?: T["handlers"];
   steps: TSteps;
   global?: TGlobal;
 };
 
-export type JourneyBuilder<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
-  TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
-> = {
+export type JourneyBuilder<T extends JourneyTypes> = {
   createStep: <
-    TStepKey extends TStepId,
-    TOn extends JourneyStepBuilderOnConfig<TContext, TStepId, TEventMap, THandlers> | undefined =
-      | JourneyStepBuilderOnConfig<TContext, TStepId, TEventMap, THandlers>
+    TStepKey extends T["stepId"],
+    TOn extends JourneyStepBuilderOnConfig<T> | undefined =
+      | JourneyStepBuilderOnConfig<T>
       | undefined,
     TEffectOutput = unknown
   >(
     id: TStepKey,
-    config?: JourneyStepBuilderConfig<
-      TContext,
-      TStepId,
-      TEventMap,
-      TStepMeta,
-      THandlers,
-      TOn,
-      TEffectOutput
-    >
-  ) => JourneyStepBuilder<
-    TContext,
-    TStepId,
-    TStepKey,
-    TEventMap,
-    TStepMeta,
-    THandlers,
-    JourneyStepBuilderHandledCustomEventKey<TEventMap, TOn>
-  >;
-  to: (stepId: TStepId) => JourneyToBuilder<TContext, TStepId, TEventMap, THandlers>;
+    config?: JourneyStepBuilderConfig<T, TOn, TEffectOutput>
+  ) => JourneyStepBuilder<T, TStepKey, JourneyStepBuilderHandledCustomEventKey<T["events"], TOn>>;
+  to: (stepId: T["stepId"]) => JourneyToBuilder<T>;
   build: <
     TSteps extends readonly JourneyStepBuilder<
-      TContext,
-      TStepId,
-      TStepId,
-      TEventMap,
-      TStepMeta,
-      THandlers,
-      JourneyBuilderCustomEventKey<TEventMap>
+      T,
+      T["stepId"],
+      JourneyBuilderCustomEventKey<T["events"]>
     >[],
-    TGlobal extends
-      | JourneyBuilderGlobalConfig<TContext, TStepId, TEventMap, THandlers>
-      | undefined = JourneyBuilderGlobalConfig<TContext, TStepId, TEventMap, THandlers> | undefined
+    TGlobal extends JourneyBuilderGlobalConfig<T> | undefined =
+      | JourneyBuilderGlobalConfig<T>
+      | undefined
   >(
-    input: JourneyBuilderBuildInput<
-      TContext,
-      TStepId,
-      TEventMap,
-      TStepMeta,
-      THandlers,
-      TSteps,
-      TGlobal
-    >
+    input: JourneyBuilderBuildInput<T, TSteps, TGlobal>
   ) => JourneyBuilderDefinition<
-    TContext,
-    TStepId,
-    TEventMap,
-    TStepMeta,
-    THandlers,
-    JourneyStepBuilderHandledCustomEventMap<TStepId, TEventMap, TSteps>,
-    JourneyBuilderGlobalHandledCustomEventKey<TEventMap, TGlobal>
+    T,
+    JourneyStepBuilderHandledCustomEventMap<T, TSteps>,
+    JourneyBuilderGlobalHandledCustomEventKey<T["events"], TGlobal>
   >;
 };
 
