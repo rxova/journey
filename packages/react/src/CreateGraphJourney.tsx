@@ -9,7 +9,7 @@ import type {
 } from "@rxova/journey-core";
 import { buildJourneyRuntime } from "./create-journey-machine-runtime";
 import type { JourneyRuntime, JourneyRuntimeFromDefinition } from "./types";
-import type { JourneyOptionsInput } from "./type-helpers";
+import type { JourneyHandlersOfDefinition, JourneyOptionsInput } from "./type-helpers";
 import type { JourneyEmpty } from "@rxova/journey-core";
 
 /**
@@ -22,7 +22,7 @@ export function createGraphJourney<
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   definition: TDefinition,
-  options?: JourneyOptionsInput<TPlugins>
+  options?: JourneyOptionsInput<TPlugins, JourneyHandlersOfDefinition<TDefinition>>
 ): JourneyRuntimeFromDefinition<TDefinition, TPlugins>;
 export function createGraphJourney<
   TContext extends JourneyJsonObject,
@@ -33,11 +33,11 @@ export function createGraphJourney<
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   definition: GraphJourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
-  options?: JourneyOptionsInput<TPlugins>
+  options?: JourneyOptionsInput<TPlugins, THandlers>
 ): JourneyRuntime<TContext, TStepId, TEventMap, TStepMeta, TPlugins, THandlers> {
   const machine = coreCreateGraphJourney(
     definition,
-    options as JourneyMachineOptions<TPlugins> | undefined
+    options as JourneyMachineOptions<TPlugins, THandlers> | undefined
   ) as JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins>;
   return buildJourneyRuntime(machine);
 }

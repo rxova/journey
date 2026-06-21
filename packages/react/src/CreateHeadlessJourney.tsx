@@ -19,11 +19,11 @@ export function createHeadlessJourney<
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   definition: HeadlessJourneyDefinition<TContext, TStepId, TStepMeta, THandlers>,
-  options?: JourneyOptionsInput<TPlugins>
+  options?: JourneyOptionsInput<TPlugins, THandlers>
 ): JourneyRuntime<TContext, TStepId, JourneyEmpty, TStepMeta, TPlugins, THandlers> {
   const machine = coreCreateHeadlessJourney<TContext, TStepId, TStepMeta, THandlers, TPlugins>(
     definition,
-    options as JourneyMachineOptions<TPlugins> | undefined
+    options as JourneyMachineOptions<TPlugins, THandlers> | undefined
   );
   return buildJourneyRuntime(machine);
 }

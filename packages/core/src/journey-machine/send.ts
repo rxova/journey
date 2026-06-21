@@ -4,6 +4,7 @@ import {
   buildSendResult,
   JourneyDisposedError,
   isGoToStepByIdEvent,
+  isInternalEventType,
   isTerminalTarget,
   now,
   resolveTransitionTarget,
@@ -14,6 +15,7 @@ import {
 import type {
   JourneyEvent,
   JourneyJsonObject,
+  JourneyNoMatchContext,
   JourneyResolvedTransition,
   JourneySendEvent,
   JourneySendResult,
@@ -68,12 +70,26 @@ export const createJourneyMachineSendController = <
   transitions: readonly JourneyResolvedTransition<TContext, TStepId, TEventMap, THandlers>[],
   handlers: THandlers,
   requireExplicitCompletion: boolean,
-  defaultTimeoutMs: number | undefined
+  defaultTimeoutMs: number | undefined,
+  reportNoMatch: (context: JourneyNoMatchContext<TStepId>) => void
 ): JourneyMachineSendController<TContext, TStepId, TEventMap> => {
   const buildCanceledSendResult = (operation = "send"): JourneySendResult<TContext, TStepId> =>
     buildSendResult(runtime.getSnapshot(), false, {
       ...(runtime.isDisposed() ? { error: new JourneyDisposedError(operation) } : {})
     });
+
+  // The event reached the runtime but produced no transition. Surface it as a
+  // dropped event (skipping internal synthetic effect/after events), then return
+  // the canceled no-op result.
+  const dropAsNoMatch = (
+    event: RuntimeSendEvent<TStepId, TEventMap>,
+    fromStep: TStepId
+  ): JourneySendResult<TContext, TStepId> => {
+    if (!isInternalEventType(event.type)) {
+      reportNoMatch({ from: fromStep, eventType: event.type });
+    }
+    return buildCanceledSendResult(event.type);
+  };
 
   const buildErroredSendResult = (
     error: unknown,
@@ -217,7 +233,7 @@ export const createJourneyMachineSendController = <
     runVersion: number
   ): JourneySendResult<TContext, TStepId> => {
     if (isGoToStepByIdEvent(event)) {
-      return buildCanceledSendResult(event.type);
+      return dropAsNoMatch(event, fromStep);
     }
 
     if (event.type === "goToPreviousStep") {
@@ -281,7 +297,7 @@ export const createJourneyMachineSendController = <
       );
     }
 
-    return buildCanceledSendResult(event.type);
+    return dropAsNoMatch(event, fromStep);
   };
 
   const resolveNextContext = (
@@ -381,7 +397,7 @@ export const createJourneyMachineSendController = <
           event.type !== "terminateJourney" &&
           event.type !== "goToPreviousStep"
         ) {
-          return buildCanceledSendResult(event.type);
+          return dropAsNoMatch(event, fromStep);
         }
       }
 

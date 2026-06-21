@@ -19,7 +19,7 @@ export function createLinearJourney<
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   def: LinearJourneyDefinition<TContext, TStepId, TStepMeta, THandlers>,
-  options?: JourneyMachineOptions<TPlugins>
+  options?: JourneyMachineOptions<TPlugins, THandlers>
 ): LinearJourneyMachine<TContext, TStepId, TStepMeta, THandlers, TPlugins> {
   const stepOrder = def.steps.map((s) =>
     typeof s === "string" ? (s as TStepId) : (s as { id: TStepId }).id

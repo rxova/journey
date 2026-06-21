@@ -1,6 +1,7 @@
 import type {
   JourneyBuilderCustomEventKey,
   JourneyBuilderDefinitionMetadata,
+  JourneyDefinition,
   JourneyEqualityFn,
   JourneyJsonObject,
   JourneyMachineOptions,
@@ -17,8 +18,20 @@ export type SelectorCache<TContext extends JourneyJsonObject, TStepId extends st
   isEqual: JourneyEqualityFn<TSelected>;
 };
 
-export type JourneyOptionsInput<TPlugins extends readonly JourneyMachinePlugin[]> =
-  JourneyMachineOptions<TPlugins extends [] ? readonly JourneyMachinePlugin[] : TPlugins>;
+export type JourneyOptionsInput<
+  TPlugins extends readonly JourneyMachinePlugin[],
+  THandlers extends Record<string, unknown> = Record<string, unknown>
+> = JourneyMachineOptions<
+  TPlugins extends [] ? readonly JourneyMachinePlugin[] : TPlugins,
+  THandlers
+>;
+
+/** Extracts the `THandlers` parameter from a journey definition type, defaulting to a loose record. */
+export type JourneyHandlersOfDefinition<TDefinition> =
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  TDefinition extends JourneyDefinition<infer _TC, infer _TS, infer _TE, infer _TM, infer TH>
+    ? TH
+    : Record<string, unknown>;
 
 export type JourneyCustomSendEventForKeys<
   TEventMap extends Record<string, unknown>,

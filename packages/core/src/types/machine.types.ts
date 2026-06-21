@@ -40,6 +40,16 @@ export type JourneyLifecycleErrorContext<TStepId extends string> = {
   label?: string;
 };
 
+/**
+ * Describes a sent event that matched no enabled transition — every candidate
+ * was guarded and none passed, or no candidate was declared at all — and was
+ * therefore silently dropped. Surfaced through {@link JourneyMachineOptions.onNoMatch}.
+ */
+export type JourneyNoMatchContext<TStepId extends string> = {
+  from: TStepId;
+  eventType: string;
+};
+
 /** Setup context passed to journey plugins when a machine is created. */
 export type JourneyMachinePluginSetupContext<
   TContext extends JourneyJsonObject,
@@ -256,11 +266,20 @@ type JourneyTypeParam<TValue> = TValue extends unknown ? unknown : never;
 
 /** Optional machine features and plugin registration. */
 export type JourneyMachineOptions<
-  TPlugins extends readonly JourneyMachinePlugin[] = readonly JourneyMachinePlugin[]
+  TPlugins extends readonly JourneyMachinePlugin[] = readonly JourneyMachinePlugin[],
+  THandlers extends Record<string, unknown> = Record<string, unknown>
 > = {
   requireExplicitCompletion?: boolean;
   defaultTimeoutMs?: number;
   plugins?: TPlugins;
+  /**
+   * Override or supply `handlers` at machine creation, shallow-merged over the
+   * `handlers` declared on the definition (per-key; creation wins). This is the
+   * dependency-injection seam for tests — Journey's typed equivalent of XState's
+   * `.provide()` — letting a test swap I/O implementations without rebuilding
+   * the definition. Provide a subset; keys you omit fall back to the definition.
+   */
+  handlers?: Partial<THandlers>;
   /**
    * Called when a snapshot or event listener throws an unhandled error.
    * Listener failures are isolated so they never block other listeners or
@@ -273,6 +292,14 @@ export type JourneyMachineOptions<
    */
   onListenerError?: (error: unknown, context: "snapshot" | "event") => void;
   onLifecycleError?: (error: unknown, context: JourneyLifecycleErrorContext<string>) => void;
+  /**
+   * Called when a sent event matches no enabled transition — every candidate is
+   * guarded and none pass, or none is declared — so the event is dropped with no
+   * state change. Use it to surface otherwise-silent dropped events. When omitted,
+   * a development-only warning is logged instead. Internal synthetic events
+   * (`effect`/`after`) never trigger this hook.
+   */
+  onNoMatch?: (context: JourneyNoMatchContext<string>) => void;
 };
 
 type JourneyPayloadForDefaultEvent<

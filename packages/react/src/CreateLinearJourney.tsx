@@ -19,11 +19,11 @@ export function createLinearJourney<
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   definition: LinearJourneyDefinition<TContext, TStepId, TStepMeta, THandlers>,
-  options?: JourneyOptionsInput<TPlugins>
+  options?: JourneyOptionsInput<TPlugins, THandlers>
 ): LinearJourneyRuntime<TContext, TStepId, TStepMeta, TPlugins, THandlers> {
   const machine = coreCreateLinearJourney<TContext, TStepId, TStepMeta, THandlers, TPlugins>(
     definition,
-    options as JourneyMachineOptions<TPlugins> | undefined
+    options as JourneyMachineOptions<TPlugins, THandlers> | undefined
   );
   const runtime = buildJourneyRuntime(machine);
   return { ...runtime, machine } as unknown as LinearJourneyRuntime<

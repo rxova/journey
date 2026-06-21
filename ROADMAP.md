@@ -15,6 +15,8 @@ The current emphasis is clear: finish hardening the core contract ahead of the `
 - [x] Testing utilities and harnesses
 - [x] Compatibility coverage across supported framework and runtime targets
 - [x] Release process improvements (versioning, changelog, prerelease flow)
+- [x] No-match observability: an `onNoMatch` machine option (with a development-mode warning fallback) that surfaces events matching no enabled transition instead of silently dropping them
+- [x] Handler overrides at machine creation: `create*Journey(def, { handlers })` shallow-merges over the definition's handlers, a typed equivalent to test-time dependency injection (XState's `.provide()`)
 
 ## Near Term
 
@@ -22,8 +24,6 @@ The current emphasis is clear: finish hardening the core contract ahead of the `
 - [ ] Continue improving migration guidance, docs accuracy, and example coverage around the current runtime model
 - [ ] Tighten integration patterns for real apps: SSR, client boundaries, and multi-runtime ownership
 - [ ] Keep improving devtools ergonomics for inspection, diagnostics, and debugging workflows
-- [ ] No-match observability: an optional hook (or development-mode warning) for when an event matches no enabled transition — i.e. every candidate is guarded and none pass — so silently dropped events become visible
-- [ ] Handler overrides at machine creation: allow `create*Journey(def, { handlers })` in addition to `build({ handlers })`, giving a typed equivalent to test-time dependency injection (XState's `.provide()`)
 
 ## Post V1
 

@@ -6,7 +6,7 @@ import type {
 } from "@rxova/journey-core";
 import { createJourneyMachineRuntime } from "./create-journey-machine-runtime";
 import type { JourneyRuntime, JourneyRuntimeFromDefinition } from "./types";
-import type { JourneyOptionsInput } from "./type-helpers";
+import type { JourneyHandlersOfDefinition, JourneyOptionsInput } from "./type-helpers";
 import type { JourneyEmpty } from "@rxova/journey-core";
 
 /**
@@ -15,7 +15,7 @@ import type { JourneyEmpty } from "@rxova/journey-core";
  */
 export function createJourney<TDefinition, TPlugins extends readonly JourneyMachinePlugin[] = []>(
   definition: TDefinition,
-  options?: JourneyOptionsInput<TPlugins>
+  options?: JourneyOptionsInput<TPlugins, JourneyHandlersOfDefinition<TDefinition>>
 ): JourneyRuntimeFromDefinition<TDefinition, TPlugins>;
 export function createJourney<
   TContext extends JourneyJsonObject,
@@ -26,7 +26,7 @@ export function createJourney<
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
   definition: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
-  options?: JourneyOptionsInput<TPlugins>
+  options?: JourneyOptionsInput<TPlugins, THandlers>
 ): JourneyRuntime<TContext, TStepId, TEventMap, TStepMeta, TPlugins, THandlers> {
   return createJourneyMachineRuntime(definition, options);
 }
