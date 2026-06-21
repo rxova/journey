@@ -48,10 +48,10 @@ bun add @rxova/journey-devtools-bridge
 ### Core Example
 
 ```ts
-import { createJourneyMachine } from "@rxova/journey-core";
+import { createGraphJourney } from "@rxova/journey-core";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 
-const journeyMachine = createJourneyMachine(journey);
+const journeyMachine = createGraphJourney(journey);
 
 const detachDevtools = attachJourneyDevtools(journeyMachine, {
   machineId: "checkout-main",
@@ -142,3 +142,8 @@ attachJourneyDevtools(journeyMachine, { enabled: true });
 - Bridge is attached before machine exists: attach after machine creation.
 - Multiple machines with same `machineId`: use unique ids.
 - Extension not yet available publicly: wait for Chrome Web Store approval and use bridge-only validation meanwhile.
+
+## Where to next
+
+- [Bridge API](./bridge-api) — `attachJourneyDevtools` options and what the bridge streams.
+- [Protocol](./protocol) — the envelope shapes and versioning.

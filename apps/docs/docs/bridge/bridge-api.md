@@ -1,13 +1,16 @@
 ---
 title: Bridge API
-sidebar_position: 3
+sidebar_label: Bridge API
 ---
 
-`attachJourneyDevtools(machine, options?)` connects a Journey machine to the devtools channel.
+# Bridge API
 
-Use it when you want live snapshot streaming, core observation-event streaming, and optional remote command/query control from the Journey Devtools panel.
+`attachJourneyDevtools(machine, options?)` connects a Journey machine to the devtools channel and
+returns a `detach` function. Once attached, the bridge streams snapshots and observation events to
+the panel and — when you allow it — lets the panel drive the machine back.
 
-## Basic Usage
+It's observational by default: attaching does **not** start the machine, so a fresh machine stays
+`idled` until your app calls `startJourney()`.
 
 ```ts
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
@@ -15,164 +18,54 @@ import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 const detach = attachJourneyDevtools(machine, {
   machineId: "checkout-main",
   label: "Checkout Flow",
-  appName: "Storefront",
-  pluginMetadata: {
-    persistence: {
-      key: "checkout-journey",
-      clearOnReset: true
-    }
-  }
+  appName: "Storefront"
 });
 
-// later
+// later, e.g. on unmount
 // detach();
 ```
 
-The bridge is observational by default. It does not call `machine.startJourney()` for you, so fresh machines remain `idled` until your app starts them.
-
 ## Options
 
-### `machineId?: string`
+`JourneyDevtoolsBridgeOptions` (full type in the [API reference](./api/reference/type-aliases/JourneyDevtoolsBridgeOptions.md)):
 
-Unique id for this machine instance.
+| Option             | Default               | Purpose                                                         |
+| ------------------ | --------------------- | --------------------------------------------------------------- |
+| `machineId`        | generated             | Stable id; set it when several machines share a page            |
+| `label`            | `"Journey Machine"`   | Human-readable name in the panel                                |
+| `appName`          | `document.title`      | App name in the registration metadata                           |
+| `enabled`          | on outside production | Force the bridge on or off                                      |
+| `mutationsEnabled` | on outside production | Allow the panel to mutate the machine (navigate, patch context) |
 
-- If omitted, bridge generates one automatically.
-- Use explicit ids when multiple machines exist in the same page/app.
+:::note Safety-first defaults
+Both `enabled` and `mutationsEnabled` default on only in non-production builds (resolved from
+`import.meta.env` or `NODE_ENV`), and the bridge is a no-op outside the browser. Enable them
+explicitly to inspect a production build. `commandsEnabled` is a deprecated alias for
+`mutationsEnabled`.
+:::
 
-### `label?: string`
+## What the bridge streams
 
-Human-readable machine label shown in devtools.
+- **Snapshots** — every machine snapshot change is serialized to a transport-safe payload
+  (`currentStepId`, `history`, `context`, `visited`, `status`, `async`) and sent as a `snapshot`
+  envelope. The per-step async `phase` includes `invoking` for a running [effect](/docs/core/effects).
+- **Observations** — every `JourneyObservationEvent` is forwarded as an `observation` envelope, so
+  the panel can render a live event timeline.
+- **Register metadata** — on attach the bridge sends the machine's mode, step ids, event types,
+  invokable operations, and (as of protocol v6) per-step features. See [Protocol](./protocol).
 
-- Default: `"Journey Machine"`
+## What the panel can invoke
 
-### `appName?: string`
+The bridge advertises a set of **operations** the panel can invoke — core navigation and lifecycle
+(`goToNextStep`, `goToStepById`, `goToPreviousStep`, `goToLastVisitedStep`, `completeJourney`,
+`terminateJourney`, `startJourney`, `resetJourney`, `clearStepError`), custom event dispatch
+(`send`), context edits, and read-only plugin queries such as execution-paths inspection.
 
-App name shown in the devtools registration metadata.
+When `mutationsEnabled` is `false`, mutating operations are rejected while read-only queries still
+run. Each invocation resolves to an `operationResult` or `operationError` — see [Protocol](./protocol).
 
-- Default: `document.title` when available, otherwise `null`.
+## Where to next
 
-### `enabled?: boolean`
-
-Turns bridge transport on/off.
-
-- Default behavior: enabled when `import.meta.env.DEV` is true, disabled when `import.meta.env.PROD` is true, otherwise falls back to `NODE_ENV !== "production"`
-- Production default: disabled
-- Non-browser environments: no-op
-
-### `commandsEnabled?: boolean`
-
-Controls whether the panel can send mutating commands back to the machine.
-
-- Default behavior: enabled when `import.meta.env.DEV` is true, disabled when `import.meta.env.PROD` is true, otherwise falls back to `NODE_ENV !== "production"`
-- Production default: disabled
-- Useful when you want read-only inspection in production-like environments.
-
-### `pluginMetadata?: { persistence?: { key?: string; clearOnReset?: boolean } }`
-
-Optional metadata surfaced in the devtools registration payload for plugin-backed machine features that are not structurally discoverable from the machine object.
-
-- Current use: persistence plugin metadata
-- Displayed in the panel capability summary
-- Does not change machine behavior; this is devtools-facing metadata only
-
-## Local vs Production Behavior
-
-Default behavior is safety-first:
-
-- Local/development: bridge and commands are enabled by default when `import.meta.env` or `process.env.NODE_ENV` exposes a non-production runtime.
-- Production: bridge is disabled by default.
-- Production with bridge enabled: commands are still disabled by default.
-- No env signal available: bridge and commands remain disabled unless explicitly enabled.
-
-Enable explicitly in production only when intended:
-
-```ts
-attachJourneyDevtools(machine, {
-  enabled: true,
-  commandsEnabled: true
-});
-```
-
-## Command Support
-
-The bridge can execute these commands from the panel:
-
-### Navigation
-
-- `goToNextStep`
-- `goToStepById`
-- `goToPreviousStep`
-- `goToLastVisitedStep`
-
-### Lifecycle / Control
-
-- `completeJourney`
-- `terminateJourney` (mapped internally to core `terminateJourney`)
-- `startJourney`
-- `resetJourney`
-
-### State Updates
-
-- `clearStepError`
-
-### Read-only Queries
-
-- `getExecutionPaths`
-
-### Custom Event Dispatch
-
-- `send` (for custom machine events)
-
-This command model allows both high-level controls and lower-level event testing.
-
-When `commandsEnabled` is `false`, mutating commands are blocked, but read-only `getExecutionPaths` remains available when the machine exposes `getExecutionPaths()`.
-
-## Snapshot Payload
-
-Bridge serializes and sends a transport-safe snapshot payload with:
-
-- navigation: `currentStepId`, `history.timeline`, `history.index`
-- runtime data: `context`, `visited`
-- lifecycle/async: `status`, `async`
-
-Example payload:
-
-```ts
-{
-  currentStepId: "payment",
-  history: {
-    timeline: ["start", "details", "payment"],
-    index: 2
-  },
-  context: { isVip: false },
-  visited: {
-    start: true,
-    details: true,
-    payment: true,
-    review: false
-  },
-  status: "running",
-  async: {
-    isLoading: false,
-    byStep: {
-      payment: {
-        phase: "idle",
-        eventType: null,
-        transitionId: null,
-        error: null
-      }
-    }
-  }
-}
-```
-
-For exact command and envelope types, see [Protocol](/docs/bridge/protocol).
-
-## Additional Streams
-
-In protocol v4 the bridge also emits:
-
-- `observation` envelopes mirroring core `JourneyObservationEvent`
-- `executionPathsResult` envelopes for read-only execution-path queries
-
-The Journey Devtools panel uses these to render event rows in the timeline and inspect structural execution paths without mutating the machine.
+- [Getting started](./getting-started) — install and attach the bridge.
+- [Protocol](./protocol) — the envelope shapes and versioning.
+- [API reference](./api/reference/) — exact types for options, envelopes, and guards.

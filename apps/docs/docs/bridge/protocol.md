@@ -1,79 +1,113 @@
 ---
 title: Protocol
-sidebar_position: 6
+sidebar_label: Protocol
 ---
 
-## Commands
+# Protocol
+
+The bridge and the devtools extension talk over `window.postMessage` using a small, versioned
+envelope protocol. You rarely touch it directly — `attachJourneyDevtools` and the panel handle both
+ends — but understanding the shapes helps when debugging a connection or building your own consumer.
+
+Every message is an envelope tagged with a `channel`, a `version`, a `source`
+(`rxova-journey-bridge` or `rxova-journey-extension`), a `kind`, and the `machineId` it concerns. The
+exact types are in the [API reference](./api/reference/) — `JourneyDevtoolsBridgeEnvelope`,
+`JourneyDevtoolsExtensionEnvelope`, and the guards `isJourneyDevtoolsEnvelope` /
+`isJourneyDevtoolsBridgeEnvelope` / `isJourneyDevtoolsExtensionEnvelope`.
+
+## Versioning
+
+The current protocol version is **6** (`JOURNEY_DEVTOOLS_PROTOCOL_VERSION`). The bridge also accepts
+the prior version **5** (`JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION`) and tolerates the legacy version
+**3** for register envelopes.
+
+:::info v5 ↔ v6 interoperate
+v6 only **added** the optional `meta.steps` field to the register envelope. The `invoke` envelope
+shape is unchanged, so a v6 bridge and a v5 extension work together — a v5 extension ignores the new
+field, and the bridge processes v5 invokes (`isCompatibleInvokeProtocolVersion` gates this).
+:::
+
+Protocol version is the compatibility boundary: any breaking change to an envelope or payload shape
+bumps it, and additive optional fields are preferred over mutating existing shapes.
+
+## Bridge → extension envelopes
+
+The bridge emits one of these `kind`s:
+
+| Kind              | When                                        | Key payload                          |
+| ----------------- | ------------------------------------------- | ------------------------------------ |
+| `register`        | On attach (and on replay request)           | `meta` + initial `snapshot`          |
+| `snapshot`        | On every machine snapshot change            | `snapshot`                           |
+| `observation`     | On every `JourneyObservationEvent`          | `event` (transport-safe clone)       |
+| `operationResult` | An invoked operation succeeded              | `requestId`, `operationId`, `result` |
+| `operationError`  | An invoked operation failed or was rejected | `requestId`, `operationId`, `error`  |
+| `unregister`      | On detach                                   | —                                    |
+
+## Register metadata
+
+The `register` envelope carries a `JourneyDevtoolsMachineMeta` describing the machine statically:
+
+- `machineId`, `label`, `appName`, `mutationsEnabled`
+- `mode` — `"linear" | "graph" | "headless"`
+- `stepIds`, `eventTypes`, `eventTypesBySource`, `goToStepTargetsBySource`
+- `features` — the invokable operation groups (core navigation plus plugin features)
+- `steps` — **new in v6**: per-step authored features, so the panel can show which steps carry an
+  effect, delayed transitions, lifecycle callbacks, or metadata:
 
 ```ts
-type JourneyDevtoolsCommand =
-  | { type: "startJourney" }
-  | { type: "goToNextStep" }
-  | { type: "terminateJourney" }
-  | { type: "completeJourney" }
-  | { type: "goToStepById"; stepId: string }
-  | { type: "goToPreviousStep"; steps?: number }
-  | { type: "goToLastVisitedStep" }
-  | { type: "send"; event: { type: string; payload?: unknown } }
-  | { type: "resetJourney" }
-  | { type: "clearStepError"; stepId?: string }
-  | { type: "getExecutionPaths"; options?: { maxDepth?: number; maxPaths?: number } };
+steps: {
+  verify: {
+    hasEffect: true,
+    afterDelays: [], // delays (ms) of the step's `after` transitions
+    hasOnEnter: true,
+    hasOnLeave: false,
+    hasMeta: true
+  }
+}
 ```
 
-## Register Metadata
+## Snapshot payload
 
-Protocol version is `4`.
+`register` and `snapshot` envelopes carry a transport-safe `JourneyDevtoolsSerializableSnapshot` —
+`currentStepId`, `history.timeline`, `history.index`, `context`, `visited`, `status`, and `async`.
+The per-step async phase is one of `idle`, `evaluating-when`, `invoking`, or `error`:
 
-Register envelopes now include capability metadata:
+```ts
+async: {
+  isLoading: true,
+  byStep: {
+    verify: { phase: "invoking", eventType: null, transitionId: null, error: null }
+  }
+}
+```
 
-- `meta.capabilities.commands`
-- `meta.capabilities.observe`
-- `meta.capabilities.executionPaths`
-- `meta.capabilities.persistence` (optional bridge-supplied metadata)
+:::note `invoking` since v6
+The `invoking` phase (a step [effect](/docs/core/effects) is running) is reported as of protocol v6.
+Earlier bridges collapsed it to `idle`.
+:::
 
-## Compatibility Contract
+## Extension → bridge envelopes
 
-Protocol version is the compatibility boundary.
+The extension sends a single `kind`, `invoke`, to run an operation the bridge advertised in
+`meta.features`:
 
-- Incompatible command, envelope, or payload shape changes require a protocol version bump.
-- Panel and bridge consumers should upgrade together across protocol-version changes.
-- Additive metadata and additive fields are preferred over mutating existing shapes in place.
-- The bridge is tooling-facing. The runtime contract still lives in Core and React.
+```ts
+{
+  kind: "invoke",
+  requestId: "req-1",
+  invocation: {
+    operationId: "core.goToNextStep",
+    input: { /* validated against the operation's field spec */ }
+  }
+}
+```
 
-## Bridge Envelopes
+The bridge replies with a matching `operationResult` (a `snapshot`, `data`, `text`, or `void`
+payload) or an `operationError`. Mutating operations are blocked unless the bridge was attached with
+`mutationsEnabled`. A replay request asks the bridge to re-emit its `register` + `snapshot`.
 
-Bridge-origin envelopes now include:
+## Where to next
 
-- `register`
-- `snapshot`
-- `observation`
-- `commandResult`
-- `executionPathsResult`
-- `commandError`
-- `unregister`
-
-## Snapshot Payload
-
-Snapshots sent by bridge include:
-
-- `currentStepId`
-- `history.timeline`
-- `history.index`
-- `context`
-- `visited`
-- `status`
-- `async`
-
-## Observation Payload
-
-`observation` envelopes mirror core `JourneyObservationEvent` field names, with nested payloads/errors cloned to transport-safe JSON values.
-
-## Execution Path Query Result
-
-`executionPathsResult` envelopes return:
-
-- `result.paths`
-- `result.truncated`
-- `result.cyclesDetected`
-
-See the shared [Stability Contract](/docs/core/stability) for the broader support guarantees.
+- [Bridge API](./bridge-api) — `attachJourneyDevtools` and its options.
+- [API reference](./api/reference/) — the exact envelope, meta, and guard types.
+- [Stability contract](/docs/core/stability) — the broader support guarantees.
