@@ -71,7 +71,7 @@ export const assertStepExists = <TStepId extends string>(
   message: string
 ) => {
   if (!(stepId in steps)) {
-    throw new Error(message);
+    throw new JourneyDefinitionError("unknown-step", message);
   }
 };
 
@@ -133,19 +133,29 @@ function assertSerializableValue(
   const pathLabel = path.length === 0 ? label : `${label}.${path.join(".")}`;
 
   if (value === undefined) {
-    throw new Error(`${pathLabel} must be JSON-serializable. Received undefined.`);
+    throw new JourneyDefinitionError(
+      "invalid-context",
+      `${pathLabel} must be JSON-serializable. Received undefined.`
+    );
   }
 
   if (typeof value === "bigint" || typeof value === "symbol" || typeof value === "function") {
-    throw new Error(`${pathLabel} must be JSON-serializable. Received ${typeof value}.`);
+    throw new JourneyDefinitionError(
+      "invalid-context",
+      `${pathLabel} must be JSON-serializable. Received ${typeof value}.`
+    );
   }
 
   if (typeof value !== "object") {
-    throw new Error(`${pathLabel} must be JSON-serializable. Received ${describeValue(value)}.`);
+    throw new JourneyDefinitionError(
+      "invalid-context",
+      `${pathLabel} must be JSON-serializable. Received ${describeValue(value)}.`
+    );
   }
 
   if (state.seen.has(value)) {
-    throw new Error(
+    throw new JourneyDefinitionError(
+      "invalid-context",
       `${pathLabel} must be JSON-serializable. Circular references are not supported.`
     );
   }
@@ -160,7 +170,8 @@ function assertSerializableValue(
   }
 
   if (!isPlainObject(value)) {
-    throw new Error(
+    throw new JourneyDefinitionError(
+      "invalid-context",
       `${pathLabel} must be JSON-serializable. Received non-plain ${describeValue(value)}.`
     );
   }
@@ -384,25 +395,31 @@ export const validateJourneyTransitions = <
 
   for (const [index, transition] of transitions.entries()) {
     if (!transition || typeof transition !== "object") {
-      throw new Error(`Journey transition at index ${index} must be an object.`);
+      throw new JourneyDefinitionError(
+        "invalid-shape",
+        `Journey transition at index ${index} must be an object.`
+      );
     }
 
     for (const key of Object.keys(transition)) {
       if (!allowedKeys.has(key)) {
-        throw new Error(
+        throw new JourneyDefinitionError(
+          "invalid-transition",
           `Journey transition at index ${index} contains unsupported field "${key}".`
         );
       }
     }
 
     if (typeof transition.from !== "string" || typeof transition.event !== "string") {
-      throw new Error(
+      throw new JourneyDefinitionError(
+        "invalid-transition",
         `Journey transition at index ${index} must define string "from" and "event".`
       );
     }
 
     if (transition.from !== "*" && !(transition.from in stepRegistry)) {
-      throw new Error(
+      throw new JourneyDefinitionError(
+        "unknown-step",
         `Journey transition at index ${index} references unknown from step "${transition.from}".`
       );
     }
@@ -410,44 +427,51 @@ export const validateJourneyTransitions = <
     validateFiniteTimeout(transition.timeoutMs, `Journey transition at index ${index}`);
 
     if (transition.when !== undefined && typeof transition.when !== "function") {
-      throw new Error(
+      throw new JourneyDefinitionError(
+        "invalid-transition",
         `Journey transition at index ${index} must define "when" as a function when provided.`
       );
     }
 
     if (transition.updateContext !== undefined && typeof transition.updateContext !== "function") {
-      throw new Error(
+      throw new JourneyDefinitionError(
+        "invalid-transition",
         `Journey transition at index ${index} must define "updateContext" as a function when provided.`
       );
     }
 
     if (transition.onEnter !== undefined && typeof transition.onEnter !== "function") {
-      throw new Error(
+      throw new JourneyDefinitionError(
+        "invalid-transition",
         `Journey transition at index ${index} must define "onEnter" as a function when provided.`
       );
     }
 
     if (transition.onLeave !== undefined && typeof transition.onLeave !== "function") {
-      throw new Error(
+      throw new JourneyDefinitionError(
+        "invalid-transition",
         `Journey transition at index ${index} must define "onLeave" as a function when provided.`
       );
     }
 
     if (transition.id !== undefined && typeof transition.id !== "string") {
-      throw new Error(
+      throw new JourneyDefinitionError(
+        "invalid-transition",
         `Journey transition at index ${index} must define "id" as a string when provided.`
       );
     }
 
     if (transition.label !== undefined && typeof transition.label !== "string") {
-      throw new Error(
+      throw new JourneyDefinitionError(
+        "invalid-transition",
         `Journey transition at index ${index} must define "label" as a string when provided.`
       );
     }
 
     if (transition.event === "completeJourney" || transition.event === "terminateJourney") {
       if ("to" in transition && transition.to !== undefined) {
-        throw new Error(
+        throw new JourneyDefinitionError(
+          "invalid-transition",
           `Journey transition at index ${index} with event "${transition.event}" cannot define "to".`
         );
       }
@@ -455,13 +479,15 @@ export const validateJourneyTransitions = <
     }
 
     if (typeof transition.to !== "string") {
-      throw new Error(
+      throw new JourneyDefinitionError(
+        "invalid-transition",
         `Journey transition at index ${index} with event "${transition.event}" must define string "to".`
       );
     }
 
     if (!isTerminalTarget(transition.to) && !(transition.to in stepRegistry)) {
-      throw new Error(
+      throw new JourneyDefinitionError(
+        "unknown-step",
         `Journey transition at index ${index} points to unknown step "${transition.to}".`
       );
     }

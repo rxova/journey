@@ -14,8 +14,9 @@ programmatically.
   for a structurally invalid definition. It carries a `code` discriminant
   (`JourneyDefinitionErrorCode`): `invalid-shape`, `unknown-step`,
   `reserved-step-id`, `duplicate-step`, `missing-initial`, `invalid-transition`,
-  `invalid-timeout`, `invalid-effect`, `invalid-after`, or `self-transition`.
+  `invalid-timeout`, `invalid-effect`, `invalid-after`, `invalid-context`, or
+  `self-transition`.
 
-All definition-validation throws in `resolveJourneyDefinition` and
-`createJourneyMachine` now use `JourneyDefinitionError`; error messages are
-unchanged.
+All definition-validation throws now use `JourneyDefinitionError` — transition
+resolution, the `createJourneyMachine` shape checks, transition validation, and
+context JSON-serializability checks. Error messages are unchanged.
