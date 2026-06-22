@@ -100,8 +100,10 @@ describe("createJourneyMachine", () => {
     ).toThrow('Journey plugin "string-plugin" setup failed: bad setup');
   });
 
-  it("keeps the snapshot unchanged when a plugin rejects startup", async () => {
+  it("isolates a throwing plugin onSnapshotChange and still commits startup", async () => {
+    const onListenerError = vi.fn();
     const machine = createJourneyMachine(createJourney(), {
+      onListenerError,
       plugins: [
         {
           name: "start-guard",
@@ -116,16 +118,20 @@ describe("createJourneyMachine", () => {
       ] as const
     });
 
-    await expect(machine.startJourney()).rejects.toThrow("start rejected");
+    // A throwing plugin observer must not block the transition.
+    await expect(machine.startJourney()).resolves.toMatchObject({ status: "running" });
     expect(machine.getSnapshot()).toMatchObject({
-      status: "idled",
+      status: "running",
       currentStepId: "start",
       context: { dirty: false, count: 0 }
     });
+    expect(onListenerError).toHaveBeenCalledWith(expect.any(Error), "snapshot");
   });
 
-  it("keeps the snapshot unchanged when a plugin rejects a context update", async () => {
+  it("isolates a throwing plugin onSnapshotChange and still commits a context update", async () => {
+    const onListenerError = vi.fn();
     const machine = createJourneyMachine(createJourney(), {
+      onListenerError,
       plugins: [
         {
           name: "context-guard",
@@ -146,12 +152,13 @@ describe("createJourneyMachine", () => {
         ...context,
         count: context.count + 1
       }))
-    ).rejects.toThrow("context rejected");
+    ).resolves.toMatchObject({ context: { count: 1 } });
     expect(machine.getSnapshot()).toMatchObject({
       status: "running",
       currentStepId: "start",
-      context: { dirty: false, count: 0 }
+      context: { dirty: false, count: 1 }
     });
+    expect(onListenerError).toHaveBeenCalledWith(expect.any(Error), "snapshot");
   });
 
   it("rejects invalid journey construction inputs", () => {

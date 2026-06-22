@@ -144,11 +144,19 @@ export const createJourneyMachineRuntime = <
     const previousExposedSnapshot = exposedSnapshot;
     const stableSnapshot = stabilizeSnapshot(nextSnapshot);
     const nextExposedSnapshot = stabilizeSnapshot(stableSnapshot);
-    onSnapshotChange?.({
-      previousSnapshot: stabilizeSnapshot(previousExposedSnapshot),
-      snapshot: stabilizeSnapshot(nextExposedSnapshot),
-      reason: options.reason ?? "transition"
-    });
+    try {
+      onSnapshotChange?.({
+        previousSnapshot: stabilizeSnapshot(previousExposedSnapshot),
+        snapshot: stabilizeSnapshot(nextExposedSnapshot),
+        reason: options.reason ?? "transition"
+      });
+    } catch (error) {
+      // A plugin's `onSnapshotChange` is a post-change observer (metrics,
+      // persistence, replay); a throw must never abort the commit. Isolate it
+      // like snapshot/event listeners so a misbehaving plugin can't block the
+      // transition — report and continue.
+      reportListenerError(error, "snapshot");
+    }
     snapshot = stableSnapshot;
     exposedSnapshot = nextExposedSnapshot;
     if (options.notify) {

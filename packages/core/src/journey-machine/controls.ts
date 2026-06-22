@@ -11,8 +11,18 @@ import type { JourneyBaseEvent, JourneyJsonObject, JourneySnapshot } from "../ty
 import type { JourneyMachineAsyncStateController } from "./async-state";
 import type { JourneyMachineRuntime } from "./runtime";
 
+/**
+ * Result of {@link JourneyMachineControls.startJourney}. `started` is `true` only
+ * when the call performed the `idled → running` transition, letting the caller
+ * trigger initial-step effects/timers exactly once (and never on a no-op start).
+ */
+export type JourneyStartResult<TContext extends JourneyJsonObject, TStepId extends string> = {
+  snapshot: JourneySnapshot<TContext, TStepId>;
+  started: boolean;
+};
+
 export type JourneyMachineControls<TContext extends JourneyJsonObject, TStepId extends string> = {
-  startJourney: () => Promise<JourneySnapshot<TContext, TStepId>>;
+  startJourney: () => Promise<JourneyStartResult<TContext, TStepId>>;
   resetJourney: () => Promise<JourneySnapshot<TContext, TStepId>>;
   updateContext: (
     updater: (context: TContext) => TContext
@@ -59,14 +69,14 @@ export const createJourneyMachineControls = <
     startJourney: () => {
       if (runtime.isDisposed()) {
         warnDisposedNoop("startJourney");
-        return Promise.resolve(runtime.getSnapshot());
+        return Promise.resolve({ snapshot: runtime.getSnapshot(), started: false });
       }
 
       return runtime.queue(
         async () => {
           const snapshot = runtime.peekSnapshot();
           if (snapshot.status !== "idled") {
-            return runtime.getSnapshot();
+            return { snapshot: runtime.getSnapshot(), started: false };
           }
 
           const committedSnapshot = runtime.setSnapshot(
@@ -81,9 +91,9 @@ export const createJourneyMachineControls = <
             stepId: committedSnapshot.currentStepId,
             timestamp: now()
           });
-          return runtime.getSnapshot();
+          return { snapshot: runtime.getSnapshot(), started: true };
         },
-        () => runtime.getSnapshot()
+        () => ({ snapshot: runtime.getSnapshot(), started: false })
       );
     },
     resetJourney: () => {

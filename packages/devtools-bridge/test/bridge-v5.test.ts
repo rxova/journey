@@ -1057,6 +1057,43 @@ describe("attachJourneyDevtools v5", () => {
     registrySpy.mockRestore();
   });
 
+  it("does not throw into the host app when window.postMessage fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const postMessageSpy = vi.spyOn(window, "postMessage").mockImplementation(() => {
+      throw new Error("postMessage blocked");
+    });
+
+    const machine = await createTestMachine();
+
+    // attach → register emission must not throw.
+    let detach: (() => void) | undefined;
+    expect(() => {
+      detach = attachJourneyDevtools(machine, { machineId: "m-throwing", enabled: true });
+    }).not.toThrow();
+
+    // snapshot emission on a real transition must not throw, and the machine
+    // must still commit the transition.
+    await expect(machine.send({ type: "goToNextStep" })).resolves.toBeDefined();
+    expect(machine.getSnapshot().currentStepId).toBe("review");
+
+    // an incoming operation invocation → result/error emission must not throw.
+    expect(() =>
+      window.dispatchEvent(
+        buildInvokeEnvelope("m-throwing", "req-throwing", {
+          operationId: "core.goToNextStep",
+          fields: {}
+        })
+      )
+    ).not.toThrow();
+    await waitForMessages();
+
+    // detach → unregister emission must not throw.
+    expect(() => detach?.()).not.toThrow();
+
+    // The guard was actually exercised.
+    expect(postMessageSpy).toHaveBeenCalled();
+  });
+
   it("supports custom text, data, void, and non-json operation results from the machine registry", async () => {
     const collector = collectBridgeMessages();
     const machine = await createTestMachine();

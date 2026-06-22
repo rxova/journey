@@ -1045,20 +1045,8 @@ describe("createJourney", () => {
     const onError = vi.fn();
     const unhandledRejections: PromiseRejectionEvent[] = [];
     const startupError = new Error("start rejected");
-    const journey = createJourney(createDefinition(), {
-      plugins: [
-        {
-          name: "start-guard",
-          setup: () => ({
-            onSnapshotChange: ({ reason }: { reason: string }) => {
-              if (reason === "start") {
-                throw startupError;
-              }
-            }
-          })
-        }
-      ] as const
-    });
+    const journey = createJourney(createDefinition());
+    const startSpy = vi.spyOn(journey.machine, "startJourney").mockRejectedValueOnce(startupError);
     const views = {
       start: () => <div data-testid="step-view">Start</div>,
       details: () => <div data-testid="step-view">Details</div>,
@@ -1082,12 +1070,14 @@ describe("createJourney", () => {
         await flushQueuedEffects();
       });
 
+      expect(startSpy).toHaveBeenCalledTimes(1);
       expect(onError).toHaveBeenCalledTimes(1);
       expect(onError).toHaveBeenCalledWith(startupError, { phase: "start" });
       expect(unhandledRejections).toEqual([]);
       expect(journey.machine.getSnapshot().status).toBe("idled");
       expect(screen.getByTestId("step-view").textContent).toBe("Start");
     } finally {
+      startSpy.mockRestore();
       window.removeEventListener("unhandledrejection", handleUnhandledRejection);
       journey.dispose();
     }
@@ -1134,10 +1124,12 @@ describe("createJourney", () => {
     }
   });
 
-  it("falls back to console.error when provider auto-start fails without onError", async () => {
+  it("isolates a throwing plugin onSnapshotChange so the provider still auto-starts", async () => {
+    // Plugin observer errors must never block the provider's auto-start; the
+    // error is isolated (logged in dev) rather than surfaced as a start failure.
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const unhandledRejections: PromiseRejectionEvent[] = [];
-    const startupError = new Error("start rejected");
+    const onError = vi.fn();
+    const startupError = new Error("start observer failed");
     const journey = createJourney(createDefinition(), {
       plugins: [
         {
@@ -1158,15 +1150,10 @@ describe("createJourney", () => {
       review: () => <div data-testid="step-view">Review</div>,
       confirmExit: () => <div data-testid="step-view">Confirm Exit</div>
     } satisfies JourneyViews<StepId>;
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      unhandledRejections.push(event);
-    };
-
-    window.addEventListener("unhandledrejection", handleUnhandledRejection);
 
     try {
       render(
-        <journey.JourneyProvider views={views}>
+        <journey.JourneyProvider views={views} onError={onError}>
           <journey.StepRenderer />
         </journey.JourneyProvider>
       );
@@ -1175,13 +1162,12 @@ describe("createJourney", () => {
         await flushQueuedEffects();
       });
 
-      expect(consoleError).toHaveBeenCalledWith("JourneyProvider start failed.", startupError);
-      expect(unhandledRejections).toEqual([]);
-      expect(journey.machine.getSnapshot().status).toBe("idled");
+      // Auto-start succeeds despite the throwing observer.
+      expect(onError).not.toHaveBeenCalled();
+      expect(journey.machine.getSnapshot().status).toBe("running");
       expect(screen.getByTestId("step-view").textContent).toBe("Start");
     } finally {
       consoleError.mockRestore();
-      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
       journey.dispose();
     }
   });
