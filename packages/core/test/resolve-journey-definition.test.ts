@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { resolveJourneyDefinition } from "../src/journey-machine/resolve-journey-definition";
 
+import { JourneyDefinitionError, JourneyError } from "@rxova/journey-core";
 import type { JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "details" | "review";
@@ -347,5 +348,54 @@ describe("resolveJourneyDefinition", () => {
         }
       })
     ).toThrow('Journey step "start" effect "onRejected" cannot target its own step "start".');
+  });
+
+  it("throws JourneyDefinitionError carrying a code discriminant", () => {
+    const codeOf = (build: () => unknown): string => {
+      try {
+        build();
+      } catch (error) {
+        expect(error).toBeInstanceOf(JourneyDefinitionError);
+        expect(error).toBeInstanceOf(JourneyError);
+        return (error as JourneyDefinitionError).code;
+      }
+      throw new Error("expected resolveJourneyDefinition to throw");
+    };
+
+    expect(
+      codeOf(() =>
+        resolveJourneyDefinition({
+          ...createJourney(),
+          transitions: { start: { goToNextStep: [{ to: "start" }] } } as never
+        })
+      )
+    ).toBe("self-transition");
+
+    expect(
+      codeOf(() =>
+        resolveJourneyDefinition({
+          ...createJourney(),
+          transitions: { missing: { submit: [{ to: "review" }] } } as never
+        })
+      )
+    ).toBe("unknown-step");
+
+    expect(
+      codeOf(() =>
+        resolveJourneyDefinition({
+          ...createJourney(),
+          transitions: { start: 7 } as never
+        })
+      )
+    ).toBe("invalid-shape");
+
+    expect(
+      codeOf(() =>
+        resolveJourneyDefinition({
+          ...createJourney(),
+          transitions: ["start", "details", "details"] as never
+        })
+      )
+    ).toBe("duplicate-step");
   });
 });

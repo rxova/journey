@@ -13,10 +13,13 @@ export { createJourneyMachine } from "./journey-machine";
 export { createGraphJourneyBuilder } from "./journey-builder";
 export { getJourneyMachineDevtoolsRegistry } from "./journey-machine/devtools-registry";
 export {
+  JourneyDefinitionError,
   JourneyDisposedError,
-  JourneyTimeoutError,
-  isInternalEventType
-} from "./journey-machine/helpers";
+  JourneyError,
+  JourneyTimeoutError
+} from "./journey-machine/errors";
+export type { JourneyDefinitionErrorCode } from "./journey-machine/errors";
+export { isInternalEventType } from "./journey-machine/helpers";
 export type {
   JourneyBuilder,
   JourneyBuilderCustomEventKey,
