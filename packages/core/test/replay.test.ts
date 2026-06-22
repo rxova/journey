@@ -4,7 +4,7 @@ import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-cor
 import { createReplayPlugin, serializeReplaySession } from "@rxova/journey-core/replay";
 
 type StepId = "start" | "review";
-type EventMap = { fail: { reason: string } };
+type EventMap = { type: "fail"; payload?: { reason: string } };
 type Context = { count: number };
 
 const createJourney = (): JourneyDefinition<Context, StepId, EventMap> => ({

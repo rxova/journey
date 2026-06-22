@@ -20,7 +20,7 @@ const createJourney = (
     failOnNextStep?: boolean;
     reviewMeta?: Meta | undefined;
   } = {}
-): JourneyDefinition<Context, StepId, Record<never, never>, Meta> => {
+): JourneyDefinition<Context, StepId, never, Meta> => {
   const failOnNextStep = options.failOnNextStep ?? false;
   const reviewMeta =
     "reviewMeta" in options ? options.reviewMeta : ({ title: "Review" } satisfies Meta);

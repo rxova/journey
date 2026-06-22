@@ -29,7 +29,7 @@ const myPlugin = {
 
 ## The one TypeScript wrinkle
 
-`setup` is generic over your machine's `TContext`, `TStepId`, `TEventMap`, and `TStepMeta` — but
+`setup` is generic over your machine's `TContext`, `TStepId`, `TEvents`, and `TStepMeta` — but
 TypeScript can't infer those from a plugin factory that has its own, narrower types. The idiomatic
 fix is to assert `setup`'s type:
 

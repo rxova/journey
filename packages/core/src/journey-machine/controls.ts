@@ -7,7 +7,7 @@ import {
   warnInDevelopment
 } from "./helpers";
 
-import type { JourneyJsonObject, JourneySnapshot } from "../types";
+import type { JourneyBaseEvent, JourneyJsonObject, JourneySnapshot } from "../types";
 import type { JourneyMachineAsyncStateController } from "./async-state";
 import type { JourneyMachineRuntime } from "./runtime";
 
@@ -24,7 +24,7 @@ export type JourneyMachineControls<TContext extends JourneyJsonObject, TStepId e
 export const createJourneyMachineControls = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>
+  TEvents extends JourneyBaseEvent
 >({
   runtime,
   asyncState,
@@ -32,7 +32,7 @@ export const createJourneyMachineControls = <
   initialContext,
   steps
 }: {
-  runtime: JourneyMachineRuntime<TContext, TStepId, TEventMap>;
+  runtime: JourneyMachineRuntime<TContext, TStepId, TEvents>;
   asyncState: JourneyMachineAsyncStateController<TStepId>;
   initial: TStepId;
   initialContext: TContext;

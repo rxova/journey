@@ -27,7 +27,7 @@ describe("runtime extra coverage", () => {
   });
 
   it("returns the canceled result for queued work invalidated before it runs", async () => {
-    const runtime = createJourneyMachineRuntime<Context, StepId, Record<never, never>>({
+    const runtime = createJourneyMachineRuntime<Context, StepId, never>({
       snapshot: createSnapshot()
     });
     let release!: () => void;
@@ -54,7 +54,7 @@ describe("runtime extra coverage", () => {
   });
 
   it("returns noop unsubscribers for snapshot and event listeners after dispose", () => {
-    const runtime = createJourneyMachineRuntime<Context, StepId, Record<never, never>>({
+    const runtime = createJourneyMachineRuntime<Context, StepId, never>({
       snapshot: createSnapshot()
     });
     const snapshotListener = vi.fn();
@@ -76,7 +76,7 @@ describe("runtime extra coverage", () => {
   });
 
   it("opens lifecycle controllers only for active run versions", () => {
-    const runtime = createJourneyMachineRuntime<Context, StepId, Record<never, never>>({
+    const runtime = createJourneyMachineRuntime<Context, StepId, never>({
       snapshot: createSnapshot()
     });
 
@@ -92,7 +92,7 @@ describe("runtime extra coverage", () => {
   });
 
   it("aborts the active queued runner when work is canceled mid-flight", async () => {
-    const runtime = createJourneyMachineRuntime<Context, StepId, Record<never, never>>({
+    const runtime = createJourneyMachineRuntime<Context, StepId, never>({
       snapshot: createSnapshot()
     });
     let signalRef: AbortSignal | null = null;
@@ -125,7 +125,7 @@ describe("runtime extra coverage", () => {
   it("aborts newly created controllers when the run becomes inactive during setup", async () => {
     const OriginalAbortController = AbortController;
 
-    const lifecycleRuntime = createJourneyMachineRuntime<Context, StepId, Record<never, never>>({
+    const lifecycleRuntime = createJourneyMachineRuntime<Context, StepId, never>({
       snapshot: createSnapshot()
     });
     let cancelLifecycleOnConstruct = true;
@@ -144,7 +144,7 @@ describe("runtime extra coverage", () => {
 
     expect(lifecycleRuntime.openLifecycle(0)).toBeNull();
 
-    const queueRuntime = createJourneyMachineRuntime<Context, StepId, Record<never, never>>({
+    const queueRuntime = createJourneyMachineRuntime<Context, StepId, never>({
       snapshot: createSnapshot()
     });
     let cancelQueueOnConstruct = true;
@@ -169,7 +169,7 @@ describe("runtime extra coverage", () => {
   });
 
   it("skips re-aborting lifecycle controllers that were already aborted", () => {
-    const runtime = createJourneyMachineRuntime<Context, StepId, Record<never, never>>({
+    const runtime = createJourneyMachineRuntime<Context, StepId, never>({
       snapshot: createSnapshot()
     });
     const controller = runtime.openLifecycle(0);

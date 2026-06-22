@@ -15,7 +15,7 @@ import {
 } from "@rxova/journey-core/persistence";
 
 type StepId = "start" | "details" | "review";
-type EventMap = { back: unknown };
+type EventMap = { type: "back"; payload?: unknown };
 type Context = { count: number };
 type SensitiveContext = {
   profile: {
@@ -902,7 +902,7 @@ describe("persistence", () => {
     const machine = createJourneyMachine<
       ComposedContext,
       StepId,
-      Record<never, never>,
+      never,
       unknown,
       Record<never, never>,
       typeof plugins

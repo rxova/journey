@@ -3,7 +3,8 @@ import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-cor
 type Ctx = { draftId: string | null };
 type StepId = "details" | "saving" | "review";
 type EventMap = {
-  draftSaved: {
+  type: "draftSaved";
+  payload?: {
     draftId: string;
   };
 };

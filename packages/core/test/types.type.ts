@@ -64,12 +64,11 @@ import type {
 type Context = { count: number };
 type StepId = "start" | "review" | "done";
 
-type EventMap = {
-  goToNextStep: { origin: "ui" };
-  custom: { amount: number };
-  requestClose: { source: "browser" };
-  goToStepById: { reason: string };
-};
+type EventMap =
+  | { type: "goToNextStep"; payload?: { origin: "ui" } }
+  | { type: "custom"; payload?: { amount: number } }
+  | { type: "requestClose"; payload?: { source: "browser" } }
+  | { type: "goToStepById"; payload?: { reason: string } };
 
 const stepTransitions = {
   goToNextStep: [{ to: "review" }],
@@ -428,7 +427,11 @@ const badGoToStepSendEvent: JourneySendEvent<StepId, EventMap> = {
 };
 void badGoToStepSendEvent;
 
-const badTerminalStep: JourneyDefinition<Context, StepId, { completeJourney: unknown }> = {
+const badTerminalStep: JourneyDefinition<
+  Context,
+  StepId,
+  { type: "completeJourney"; payload?: unknown }
+> = {
   initial: "start",
   context: { count: 0 },
   steps: {
@@ -448,6 +451,54 @@ const badTerminalStep: JourneyDefinition<Context, StepId, { completeJourney: unk
   }
 };
 void badTerminalStep;
+
+// ─── Discriminated-union events: required vs. absent payloads ────────────────
+
+type CouponEvents =
+  | { type: "applyCoupon"; payload: { code: string } } // payload required
+  | { type: "reset" }; // no payload
+
+// JourneyPayloadFor resolves the required payload type (no `| undefined`).
+expectTypeOf<JourneyPayloadFor<CouponEvents, "applyCoupon">>().toEqualTypeOf<{ code: string }>();
+
+const couponTransitions = {
+  applyCoupon: [
+    {
+      to: "review",
+      when: ({ event }) => {
+        expectTypeOf(event.type).toEqualTypeOf<"applyCoupon">();
+        // Required payloads surface as non-optional — no `?? default` needed.
+        expectTypeOf(event.payload).toEqualTypeOf<{ code: string }>();
+        return event.payload.code.length > 0;
+      }
+    }
+  ],
+  reset: [
+    {
+      to: "start",
+      when: ({ event }) => {
+        expectTypeOf(event.type).toEqualTypeOf<"reset">();
+        // @ts-expect-error a payload-less event carries no payload property
+        void event.payload;
+        return true;
+      }
+    }
+  ]
+} satisfies JourneyStepTransitions<Context, StepId, CouponEvents>;
+void couponTransitions;
+
+const couponMachine = createJourneyMachine<Context, StepId, CouponEvents>({
+  initial: "start",
+  context: { count: 0 },
+  steps: { start: {}, review: {}, done: {} },
+  transitions: { start: { applyCoupon: [{ to: "review" }] } }
+});
+void couponMachine.send({ type: "applyCoupon", payload: { code: "X" } });
+void couponMachine.send({ type: "reset" });
+// @ts-expect-error applyCoupon requires a payload
+void couponMachine.send({ type: "applyCoupon" });
+// @ts-expect-error reset does not accept a payload
+void couponMachine.send({ type: "reset", payload: {} });
 
 const transitionGraph = {
   start: {

@@ -400,7 +400,7 @@ describe("step effects via the builder and linear factory", () => {
 describe("step effects — disposal and interactions", () => {
   type IStep = "start" | "both" | "fromEffect" | "fromAfter" | "skipped";
   type IContext = { tag: string | null };
-  type IEvents = { skip: undefined };
+  type IEvents = { type: "skip"; payload?: undefined };
 
   it("aborts a pending effect on dispose", async () => {
     const { promise } = deferred<string>();

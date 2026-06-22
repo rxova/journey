@@ -1,6 +1,7 @@
 import { createPersistenceController } from "../persistence/controller";
 
 import type {
+  JourneyBaseEvent,
   JourneyAutosavePluginOptions,
   JourneyAutosaveState,
   JourneyJsonObject,
@@ -30,10 +31,10 @@ export type JourneyAutosaveMachineExtension = {
 export type JourneyAutosaveMachine<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty
-> = JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers> &
+> = JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers> &
   JourneyAutosaveMachineExtension;
 
 /**

@@ -1,6 +1,7 @@
 import { buildIdleStepAsyncState } from "./helpers";
 
 import type {
+  JourneyBaseEvent,
   JourneyAsyncPhase,
   JourneyAsyncState,
   JourneyJsonObject,
@@ -37,11 +38,11 @@ export type JourneyMachineAsyncStateController<TStepId extends string> = {
 export const createJourneyMachineAsyncStateController = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>
+  TEvents extends JourneyBaseEvent
 >({
   runtime
 }: {
-  runtime: JourneyMachineRuntime<TContext, TStepId, TEventMap>;
+  runtime: JourneyMachineRuntime<TContext, TStepId, TEvents>;
 }): JourneyMachineAsyncStateController<TStepId> => {
   const isAsyncLoadingPhase = (phase: JourneyAsyncPhase): boolean =>
     phase === "evaluating-when" || phase === "invoking";

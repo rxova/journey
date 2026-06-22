@@ -17,7 +17,7 @@ import {
   transitionSnapshot
 } from "../src/journey-machine/helpers";
 
-type TestEventMap = Record<never, never>;
+type TestEventMap = never;
 type TestEvent = JourneyEvent<string, TestEventMap>;
 
 describe("helpers extra coverage", () => {

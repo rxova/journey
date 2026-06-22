@@ -14,7 +14,7 @@ import type {
 } from "@rxova/journey-core";
 import type { JourneyApi, StepScopedJourneyApi } from "./types";
 import type { SelectorCache } from "./type-helpers";
-import type { JourneyEmpty } from "@rxova/journey-core";
+import type { JourneyBaseEvent, JourneyEmpty } from "@rxova/journey-core";
 
 const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
 
@@ -34,15 +34,15 @@ const isSameStepAsyncState = (a: JourneyStepAsyncState, b: JourneyStepAsyncState
 export const createJourneyHooks = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = [],
-  TStepHandledCustomEventMap extends Record<TStepId, JourneyBuilderCustomEventKey<TEventMap>> =
+  TStepHandledCustomEventMap extends Record<TStepId, JourneyBuilderCustomEventKey<TEvents>> =
     Record<TStepId, never>,
-  TGlobalHandledCustomEventType extends JourneyBuilderCustomEventKey<TEventMap> = never
+  TGlobalHandledCustomEventType extends JourneyBuilderCustomEventKey<TEvents> = never
 >(
-  machine: JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins>
+  machine: JourneyMachineWithPlugins<TContext, TStepId, TEvents, TStepMeta, THandlers, TPlugins>
 ) => {
   const useJourneySnapshot = (): JourneySnapshot<TContext, TStepId> => {
     const runtimeMachine = machine;
@@ -135,7 +135,7 @@ export const createJourneyHooks = <
   };
 
   const useJourneyEvent = (
-    listener: (event: JourneyObservationEvent<TStepId, TEventMap>) => void
+    listener: (event: JourneyObservationEvent<TStepId, TEvents>) => void
   ): void => {
     const runtimeMachine = machine;
     const listenerRef = React.useRef(listener);
@@ -170,7 +170,7 @@ export const createJourneyHooks = <
       isSameStepAsyncState
     );
 
-  const useJourneyApi = (): JourneyApi<TContext, TStepId, TEventMap, TStepMeta> => {
+  const useJourneyApi = (): JourneyApi<TContext, TStepId, TEvents, TStepMeta> => {
     const runtimeMachine = machine;
     return React.useMemo(
       () => ({
@@ -196,11 +196,8 @@ export const createJourneyHooks = <
   ): StepScopedJourneyApi<
     TContext,
     TStepId,
-    TEventMap,
-    Extract<
-      TStepHandledCustomEventMap[TStepKey] | TGlobalHandledCustomEventType,
-      keyof TEventMap & string
-    >,
+    TEvents,
+    Extract<TStepHandledCustomEventMap[TStepKey] | TGlobalHandledCustomEventType, TEvents["type"]>,
     TStepMeta
   > => {
     const runtimeMachine = machine;
@@ -224,10 +221,10 @@ export const createJourneyHooks = <
     ) as StepScopedJourneyApi<
       TContext,
       TStepId,
-      TEventMap,
+      TEvents,
       Extract<
         TStepHandledCustomEventMap[TStepKey] | TGlobalHandledCustomEventType,
-        keyof TEventMap & string
+        TEvents["type"]
       >,
       TStepMeta
     >;

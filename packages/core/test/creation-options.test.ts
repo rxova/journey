@@ -4,7 +4,7 @@ import type { GraphJourneyDefinition } from "@rxova/journey-core";
 
 type Context = { plan: string | null };
 type StepId = "verify" | "approved" | "blocked";
-type EventMap = { submit: undefined };
+type EventMap = { type: "submit"; payload?: undefined };
 
 // ─── Handler overrides at creation (options.handlers) ────────────────────────
 
@@ -121,7 +121,7 @@ describe("no-match observability", () => {
 
   it("calls onNoMatch when no transition is declared for the event", async () => {
     const onNoMatch = vi.fn();
-    const machine = createGraphJourney(
+    const machine = createGraphJourney<Context, StepId, EventMap>(
       {
         initial: "verify",
         context: { plan: null },
@@ -140,7 +140,7 @@ describe("no-match observability", () => {
 
   it("does not call onNoMatch when the event matches a passing transition", async () => {
     const onNoMatch = vi.fn();
-    const machine = createGraphJourney(
+    const machine = createGraphJourney<Context, StepId, EventMap>(
       {
         initial: "verify",
         context: { plan: null },

@@ -27,7 +27,7 @@ const createSnapshot = (currentStepId: StepId = "start"): Snapshot => ({
 
 describe("machine runtime", () => {
   it("keeps later queued work running after an earlier queued action rejects", async () => {
-    const runtime = createJourneyMachineRuntime<Context, StepId, Record<never, never>>({
+    const runtime = createJourneyMachineRuntime<Context, StepId, never>({
       snapshot: createSnapshot()
     });
     const firstRunner = vi.fn(async () => {
@@ -45,7 +45,7 @@ describe("machine runtime", () => {
   });
 
   it("returns a noop selector unsubscribe after dispose", () => {
-    const runtime = createJourneyMachineRuntime<Context, StepId, Record<never, never>>({
+    const runtime = createJourneyMachineRuntime<Context, StepId, never>({
       snapshot: createSnapshot()
     });
     const listener = vi.fn();
@@ -60,7 +60,7 @@ describe("machine runtime", () => {
   });
 
   it("notifies all subscribers even when one throws", () => {
-    const runtime = createJourneyMachineRuntime<Context, StepId, Record<never, never>>({
+    const runtime = createJourneyMachineRuntime<Context, StepId, never>({
       snapshot: createSnapshot()
     });
 
@@ -82,7 +82,7 @@ describe("machine runtime", () => {
   });
 
   it("emits to all event listeners even when one throws", () => {
-    const runtime = createJourneyMachineRuntime<Context, StepId, Record<never, never>>({
+    const runtime = createJourneyMachineRuntime<Context, StepId, never>({
       snapshot: createSnapshot()
     });
 
@@ -108,7 +108,7 @@ describe("machine runtime", () => {
     const initialSnapshot = createSnapshot();
     const nextSnapshot = createSnapshot("review");
     const listener = vi.fn();
-    const runtime = createJourneyMachineRuntime<Context, StepId, Record<never, never>>({
+    const runtime = createJourneyMachineRuntime<Context, StepId, never>({
       snapshot: initialSnapshot,
       onSnapshotChange: () => {
         throw new Error("plugin hook failed");
@@ -129,7 +129,7 @@ describe("machine runtime", () => {
     const nextSnapshot = createSnapshot("review");
     const onSnapshotChange = vi.fn();
     const onDispose = vi.fn();
-    const runtime = createJourneyMachineRuntime<Context, StepId, Record<never, never>>({
+    const runtime = createJourneyMachineRuntime<Context, StepId, never>({
       snapshot: initialSnapshot,
       onSnapshotChange,
       onDispose
@@ -173,7 +173,7 @@ describe("machine runtime", () => {
       })
     });
 
-    const runtime = createJourneyMachineRuntime<RichContext, StepId, Record<never, never>>({
+    const runtime = createJourneyMachineRuntime<RichContext, StepId, never>({
       snapshot: createRichSnapshot(),
       onSnapshotChange: ({ snapshot }) => {
         expect(() => {
@@ -206,7 +206,7 @@ describe("machine runtime", () => {
 
   it("keeps async loading state aligned after a failed async snapshot hook", () => {
     let shouldThrow = true;
-    const runtime = createJourneyMachineRuntime<Context, StepId, Record<never, never>>({
+    const runtime = createJourneyMachineRuntime<Context, StepId, never>({
       snapshot: createSnapshot(),
       onSnapshotChange: ({ reason }) => {
         if (reason === "async" && shouldThrow) {
@@ -215,11 +215,7 @@ describe("machine runtime", () => {
         }
       }
     });
-    const asyncState = createJourneyMachineAsyncStateController<
-      Context,
-      StepId,
-      Record<never, never>
-    >({
+    const asyncState = createJourneyMachineAsyncStateController<Context, StepId, never>({
       runtime
     });
 
@@ -239,14 +235,10 @@ describe("machine runtime", () => {
   });
 
   it("ignores stale and identical async state updates", () => {
-    const runtime = createJourneyMachineRuntime<Context, StepId, Record<never, never>>({
+    const runtime = createJourneyMachineRuntime<Context, StepId, never>({
       snapshot: createSnapshot()
     });
-    const asyncState = createJourneyMachineAsyncStateController<
-      Context,
-      StepId,
-      Record<never, never>
-    >({
+    const asyncState = createJourneyMachineAsyncStateController<Context, StepId, never>({
       runtime
     });
 
@@ -262,7 +254,7 @@ describe("machine runtime", () => {
   });
 
   it("creates missing async step state entries from the idle fallback", () => {
-    const runtime = createJourneyMachineRuntime<Context, StepId, Record<never, never>>({
+    const runtime = createJourneyMachineRuntime<Context, StepId, never>({
       snapshot: {
         ...createSnapshot(),
         async: {
@@ -271,11 +263,7 @@ describe("machine runtime", () => {
         }
       }
     });
-    const asyncState = createJourneyMachineAsyncStateController<
-      Context,
-      StepId,
-      Record<never, never>
-    >({
+    const asyncState = createJourneyMachineAsyncStateController<Context, StepId, never>({
       runtime
     });
 
@@ -291,14 +279,10 @@ describe("machine runtime", () => {
   });
 
   it("syncs loading counts and records async step errors", () => {
-    const runtime = createJourneyMachineRuntime<Context, StepId, Record<never, never>>({
+    const runtime = createJourneyMachineRuntime<Context, StepId, never>({
       snapshot: createSnapshot()
     });
-    const asyncState = createJourneyMachineAsyncStateController<
-      Context,
-      StepId,
-      Record<never, never>
-    >({
+    const asyncState = createJourneyMachineAsyncStateController<Context, StepId, never>({
       runtime
     });
 

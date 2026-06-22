@@ -8,7 +8,7 @@ import {
 } from "@rxova/journey-core";
 
 type StepId = "start" | "details" | "review" | "confirmExit";
-type EventMap = { requestClose: unknown; back: unknown };
+type EventMap = { type: "requestClose"; payload?: unknown } | { type: "back"; payload?: unknown };
 type Context = { dirty: boolean; count: number };
 
 const createJourney = (): JourneyDefinition<Context, StepId, EventMap> => ({

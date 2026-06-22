@@ -5,7 +5,7 @@ import { createDiagnosticsPlugin, getJourneyDiagnostics } from "@rxova/journey-c
 
 type StepId = "start" | "review" | "dead" | "loop";
 type Context = { count: number };
-type EventMap = { retry: unknown };
+type EventMap = { type: "retry"; payload?: unknown };
 
 describe("diagnostics plugin", () => {
   it("reports structural issues for graph journeys", () => {

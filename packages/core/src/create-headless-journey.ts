@@ -18,8 +18,8 @@ export function createHeadlessJourney<
 >(
   def: HeadlessJourneyDefinition<TContext, TStepId, TStepMeta, THandlers>,
   options?: JourneyMachineOptions<TPlugins, THandlers>
-): JourneyMachineWithPlugins<TContext, TStepId, JourneyEmpty, TStepMeta, THandlers, TPlugins> {
-  return createJourneyMachine<TContext, TStepId, JourneyEmpty, TStepMeta, THandlers, TPlugins>(
+): JourneyMachineWithPlugins<TContext, TStepId, never, TStepMeta, THandlers, TPlugins> {
+  return createJourneyMachine<TContext, TStepId, never, TStepMeta, THandlers, TPlugins>(
     { ...def },
     options
   );

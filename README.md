@@ -131,7 +131,7 @@ const definition = build({
 Use the **factory form** when you need `event.payload` narrowed to the specific event type:
 
 ```ts
-submit: ({ to }) => [to("admin").when(({ context, event }) => event.payload?.username !== "")];
+submit: ({ to }) => [to("admin").when(({ context, event }) => event.payload.username !== "")];
 ```
 
 Each transition modifier is single-use at the type level. Calling `.when()`, `.updateContext()`,
@@ -203,7 +203,9 @@ import { createJourneyMachine } from "@rxova/journey-core";
 
 type Context = { name: string; role: "user" | "admin" };
 type StepId = "account" | "details" | "review";
-type EventMap = { back: { reason: string }; requestClose: { confirmed: boolean } };
+type EventMap =
+  | { type: "back"; payload: { reason: string } }
+  | { type: "requestClose"; payload: { confirmed: boolean } };
 type StepMeta = { title: string; icon?: string };
 
 const machine = createJourneyMachine<Context, StepId, EventMap, StepMeta>({
@@ -242,12 +244,12 @@ const machine = createJourneyMachine<Context, StepId, EventMap, StepMeta>({
 
 **Type parameters:**
 
-| Parameter   | Constraint                | Default                | Description                                                                                                                    |
-| ----------- | ------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `TContext`  | —                         | —                      | Shape of the machine context.                                                                                                  |
-| `TStepId`   | `extends string`          | —                      | Union of all step IDs (inferred from `steps` keys).                                                                            |
-| `TEventMap` | `Record<string, unknown>` | `Record<never, never>` | Maps custom event names to their payload types. Payloads are accessible in guards and transition updaters via `event.payload`. |
-| `TStepMeta` | —                         | `unknown`              | Type of per-step definition metadata, readable via `machine.getStepMeta(stepId)`.                                              |
+| Parameter   | Constraint                 | Default   | Description                                                                                                                                                                                                   |
+| ----------- | -------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TContext`  | —                          | —         | Shape of the machine context.                                                                                                                                                                                 |
+| `TStepId`   | `extends string`           | —         | Union of all step IDs (inferred from `steps` keys).                                                                                                                                                           |
+| `TEvents`   | `extends JourneyBaseEvent` | `never`   | A discriminated union of `{ type; payload? }` event members. Declare `payload` to require it, omit it for payload-less events. Payloads are accessible in guards and transition updaters via `event.payload`. |
+| `TStepMeta` | —                          | `unknown` | Type of per-step definition metadata, readable via `machine.getStepMeta(stepId)`.                                                                                                                             |
 
 ### Machine options
 

@@ -1,7 +1,7 @@
 import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "idle" | "failed" | "done";
-type EventMap = { retry: unknown };
+type EventMap = { type: "retry"; payload?: unknown };
 type Ctx = { tries: number };
 
 export const customEventJourney: JourneyDefinition<Ctx, StepId, EventMap> = {

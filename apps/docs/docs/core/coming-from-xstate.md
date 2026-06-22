@@ -97,20 +97,20 @@ See [Effects](/docs/core/effects) for the full API.
 
 ## Concept map
 
-| XState v5                    | Journey                                                          |
-| ---------------------------- | ---------------------------------------------------------------- |
-| `createMachine` / `states`   | a journey definition / `steps`                                   |
-| `context` (typed in `setup`) | `TContext` generic (inferred from your definition)               |
-| events (discriminated union) | `TEventMap` (payloads narrowed via the builder's factory form)   |
-| `invoke` + `fromPromise`     | a step [effect](/docs/core/effects) (`effect.run`)               |
-| `onDone` / `onError`         | `onResolved` / `onRejected`                                      |
-| `after` (delayed transition) | a step's [`after`](/docs/core/effects#delayed-transitions-after) |
-| `assign(...)`                | a transition's [`updateContext`](/docs/core/async)               |
-| guards (named in `setup`)    | [`when`](/docs/core/usage/graph) (inline, inferred)              |
-| `and` / `or` / `not`         | ordered candidates, first match wins                             |
-| entry / exit actions         | step `onEnter` / `onLeave` (which can `dispatch` to chain)       |
-| `actor.send`                 | `machine.send`                                                   |
-| `actor.subscribe` / snapshot | `subscribe` / `getSnapshot` (one serializable snapshot)          |
+| XState v5                    | Journey                                                                                    |
+| ---------------------------- | ------------------------------------------------------------------------------------------ |
+| `createMachine` / `states`   | a journey definition / `steps`                                                             |
+| `context` (typed in `setup`) | `TContext` generic (inferred from your definition)                                         |
+| events (discriminated union) | `TEvents` (a `{ type; payload? }` union; payloads narrowed via the builder's factory form) |
+| `invoke` + `fromPromise`     | a step [effect](/docs/core/effects) (`effect.run`)                                         |
+| `onDone` / `onError`         | `onResolved` / `onRejected`                                                                |
+| `after` (delayed transition) | a step's [`after`](/docs/core/effects#delayed-transitions-after)                           |
+| `assign(...)`                | a transition's [`updateContext`](/docs/core/async)                                         |
+| guards (named in `setup`)    | [`when`](/docs/core/usage/graph) (inline, inferred)                                        |
+| `and` / `or` / `not`         | ordered candidates, first match wins                                                       |
+| entry / exit actions         | step `onEnter` / `onLeave` (which can `dispatch` to chain)                                 |
+| `actor.send`                 | `machine.send`                                                                             |
+| `actor.subscribe` / snapshot | `subscribe` / `getSnapshot` (one serializable snapshot)                                    |
 
 ## Where Journey is stronger
 

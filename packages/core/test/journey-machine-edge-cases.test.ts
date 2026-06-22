@@ -6,7 +6,11 @@ import {
   type JourneyDefinition,
   type JourneyJsonObject
 } from "@rxova/journey-core";
-import type { JourneyStepTransitions, JourneyTransitionGraph } from "../src/types";
+import type {
+  JourneyBaseEvent,
+  JourneyStepTransitions,
+  JourneyTransitionGraph
+} from "../src/types";
 
 type StepId = "start" | "middle";
 type Context = { value: number };
@@ -60,9 +64,9 @@ const flushAsync = async () => {
 const createStartedMachine = async <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>
+  TEvents extends JourneyBaseEvent = never
 >(
-  journey: JourneyDefinition<TContext, TStepId, TEventMap>
+  journey: JourneyDefinition<TContext, TStepId, TEvents>
 ) => {
   const machine = createJourneyMachine(journey);
   await machine.startJourney();

@@ -14,6 +14,7 @@ import {
 } from "./errors";
 
 import type {
+  JourneyBaseEvent,
   JourneyAsyncState,
   JourneyEvent,
   JourneyGoToEvent,
@@ -349,12 +350,9 @@ export const buildInitialAsyncState = <TStepId extends string>(
   };
 };
 
-export const isGoToStepByIdEvent = <
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>
->(
-  event: JourneySendEvent<TStepId, TEventMap>
-): event is JourneyGoToEvent<TStepId, JourneyPayloadFor<TEventMap, "goToStepById">> =>
+export const isGoToStepByIdEvent = <TStepId extends string, TEvents extends JourneyBaseEvent>(
+  event: JourneySendEvent<TStepId, TEvents>
+): event is JourneyGoToEvent<TStepId, JourneyPayloadFor<TEvents, "goToStepById">> =>
   event.type === "goToStepById" && "stepId" in event;
 
 export const isTerminalTarget = <TStepId extends string>(
@@ -364,10 +362,10 @@ export const isTerminalTarget = <TStepId extends string>(
 export const resolveTransitionTarget = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   THandlers extends Record<string, unknown>
 >(
-  transition: JourneyTransition<TContext, TStepId, TEventMap, THandlers>
+  transition: JourneyTransition<TContext, TStepId, TEvents, THandlers>
 ): TStepId | JourneyTerminal =>
   transition.event === "completeJourney"
     ? "COMPLETE"
@@ -378,10 +376,10 @@ export const resolveTransitionTarget = <
 export const validateJourneyTransitions = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   THandlers extends Record<string, unknown>
 >(
-  transitions: readonly JourneyResolvedTransition<TContext, TStepId, TEventMap, THandlers>[],
+  transitions: readonly JourneyResolvedTransition<TContext, TStepId, TEvents, THandlers>[],
   steps: Record<TStepId, unknown>
 ) => {
   const stepRegistry = steps as Record<string, unknown>;
@@ -573,13 +571,13 @@ export const stabilizeSnapshot = <TContext extends JourneyJsonObject, TStepId ex
 export const selectTransition = async <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   THandlers extends Record<string, unknown>,
   TTransition extends {
     from: TStepId | "*";
     event: string;
     when?: (
-      args: JourneyTransitionArgs<TContext, TStepId, TEventMap, THandlers>
+      args: JourneyTransitionArgs<TContext, TStepId, TEvents, THandlers>
     ) => boolean | Promise<boolean>;
     timeoutMs?: number;
     id?: string;
@@ -588,7 +586,7 @@ export const selectTransition = async <
 >(
   transitions: readonly TTransition[],
   snapshot: JourneySnapshot<TContext, TStepId>,
-  event: JourneyEvent<TStepId, TEventMap>,
+  event: JourneyEvent<TStepId, TEvents>,
   signal: AbortSignal,
   handlers: THandlers,
   hooks?: {
@@ -617,7 +615,7 @@ export const selectTransition = async <
 
     guardResult = (
       transition.when as (
-        args: JourneyTransitionArgs<TContext, TStepId, TEventMap, THandlers>
+        args: JourneyTransitionArgs<TContext, TStepId, TEvents, THandlers>
       ) => boolean | Promise<boolean>
     )({
       snapshot,

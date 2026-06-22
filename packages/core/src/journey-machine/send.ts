@@ -13,6 +13,7 @@ import {
 } from "./helpers";
 
 import type {
+  JourneyBaseEvent,
   JourneyEvent,
   JourneyJsonObject,
   JourneyNoMatchContext,
@@ -26,30 +27,30 @@ import type { JourneyMachineAsyncStateController } from "./async-state";
 import type { JourneyMachineNavigationController } from "./navigation";
 import type { JourneyMachineRuntime } from "./runtime";
 
-type RuntimeSendEvent<
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>
-> = JourneySendEvent<TStepId, TEventMap>;
+type RuntimeSendEvent<TStepId extends string, TEvents extends JourneyBaseEvent> = JourneySendEvent<
+  TStepId,
+  TEvents
+>;
 
 type RuntimeTransitionEvent<
   TStepId extends string,
-  TEventMap extends Record<string, unknown>
-> = JourneyEvent<TStepId, TEventMap>;
+  TEvents extends JourneyBaseEvent
+> = JourneyEvent<TStepId, TEvents>;
 
 type RuntimeTransition<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   THandlers extends Record<string, unknown>
-> = JourneyResolvedTransition<TContext, TStepId, TEventMap, THandlers>;
+> = JourneyResolvedTransition<TContext, TStepId, TEvents, THandlers>;
 
 export type JourneyMachineSendController<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>
+  TEvents extends JourneyBaseEvent
 > = {
   executeSend: (
-    event: JourneySendEvent<TStepId, TEventMap>,
+    event: JourneySendEvent<TStepId, TEvents>,
     runVersion: number,
     signal: AbortSignal
   ) => Promise<JourneySendResult<TContext, TStepId>>;
@@ -59,20 +60,20 @@ export type JourneyMachineSendController<
 export const createJourneyMachineSendController = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   THandlers extends Record<string, unknown>
 >(
-  runtime: JourneyMachineRuntime<TContext, TStepId, TEventMap>,
+  runtime: JourneyMachineRuntime<TContext, TStepId, TEvents>,
   asyncState: JourneyMachineAsyncStateController<TStepId>,
-  navigation: JourneyMachineNavigationController<TContext, TStepId, TEventMap, THandlers>,
+  navigation: JourneyMachineNavigationController<TContext, TStepId, TEvents, THandlers>,
   headless: boolean,
   steps: Record<TStepId, unknown>,
-  transitions: readonly JourneyResolvedTransition<TContext, TStepId, TEventMap, THandlers>[],
+  transitions: readonly JourneyResolvedTransition<TContext, TStepId, TEvents, THandlers>[],
   handlers: THandlers,
   requireExplicitCompletion: boolean,
   defaultTimeoutMs: number | undefined,
   reportNoMatch: (context: JourneyNoMatchContext<TStepId>) => void
-): JourneyMachineSendController<TContext, TStepId, TEventMap> => {
+): JourneyMachineSendController<TContext, TStepId, TEvents> => {
   const buildCanceledSendResult = (operation = "send"): JourneySendResult<TContext, TStepId> =>
     buildSendResult(runtime.getSnapshot(), false, {
       ...(runtime.isDisposed() ? { error: new JourneyDisposedError(operation) } : {})
@@ -82,7 +83,7 @@ export const createJourneyMachineSendController = <
   // dropped event (skipping internal synthetic effect/after events), then return
   // the canceled no-op result.
   const dropAsNoMatch = (
-    event: RuntimeSendEvent<TStepId, TEventMap>,
+    event: RuntimeSendEvent<TStepId, TEvents>,
     fromStep: TStepId
   ): JourneySendResult<TContext, TStepId> => {
     if (!isInternalEventType(event.type)) {
@@ -127,10 +128,10 @@ export const createJourneyMachineSendController = <
   };
 
   const resolveTransitionsForSend = (
-    event: RuntimeSendEvent<TStepId, TEventMap>,
+    event: RuntimeSendEvent<TStepId, TEvents>,
     fromStep: TStepId
   ): {
-    transitionsToEvaluate: readonly RuntimeTransition<TContext, TStepId, TEventMap, THandlers>[];
+    transitionsToEvaluate: readonly RuntimeTransition<TContext, TStepId, TEvents, THandlers>[];
     earlyResult: JourneySendResult<TContext, TStepId> | null;
   } => {
     if (!isGoToStepByIdEvent(event)) {
@@ -154,14 +155,14 @@ export const createJourneyMachineSendController = <
   };
 
   const selectTransitionForSend = async (
-    transitionsToEvaluate: readonly RuntimeTransition<TContext, TStepId, TEventMap, THandlers>[],
-    transitionEvent: RuntimeTransitionEvent<TStepId, TEventMap>,
+    transitionsToEvaluate: readonly RuntimeTransition<TContext, TStepId, TEvents, THandlers>[],
+    transitionEvent: RuntimeTransitionEvent<TStepId, TEvents>,
     fromStep: TStepId,
     runVersion: number,
     signal: AbortSignal
   ): Promise<
     | {
-        transition: RuntimeTransition<TContext, TStepId, TEventMap, THandlers> | null;
+        transition: RuntimeTransition<TContext, TStepId, TEvents, THandlers> | null;
         earlyResult: null;
       }
     | { transition: null; earlyResult: JourneySendResult<TContext, TStepId> }
@@ -204,7 +205,7 @@ export const createJourneyMachineSendController = <
           }
         },
         defaultTimeoutMs
-      )) as RuntimeTransition<TContext, TStepId, TEventMap, THandlers> | null;
+      )) as RuntimeTransition<TContext, TStepId, TEvents, THandlers> | null;
     } catch (error) {
       if (!runtime.isRunActive(runVersion)) {
         return { transition: null, earlyResult: buildCanceledSendResult(transitionEvent.type) };
@@ -228,7 +229,7 @@ export const createJourneyMachineSendController = <
   };
 
   const handleNoTransitionMatch = (
-    event: RuntimeSendEvent<TStepId, TEventMap>,
+    event: RuntimeSendEvent<TStepId, TEvents>,
     fromStep: TStepId,
     runVersion: number
   ): JourneySendResult<TContext, TStepId> => {
@@ -301,8 +302,8 @@ export const createJourneyMachineSendController = <
   };
 
   const resolveNextContext = (
-    transition: RuntimeTransition<TContext, TStepId, TEventMap, THandlers>,
-    transitionEvent: RuntimeTransitionEvent<TStepId, TEventMap>,
+    transition: RuntimeTransition<TContext, TStepId, TEvents, THandlers>,
+    transitionEvent: RuntimeTransitionEvent<TStepId, TEvents>,
     fromStep: TStepId,
     runVersion: number
   ):
@@ -319,7 +320,7 @@ export const createJourneyMachineSendController = <
           args: JourneyTransitionUpdateContextArgsForEvent<
             TContext,
             TStepId,
-            TEventMap,
+            TEvents,
             typeof transitionEvent.type
           >
         ) => TContext
@@ -332,7 +333,7 @@ export const createJourneyMachineSendController = <
         event: transitionEvent as JourneyTransitionArgsForEvent<
           TContext,
           TStepId,
-          TEventMap,
+          TEvents,
           THandlers,
           typeof transitionEvent.type
         >["event"]
@@ -364,7 +365,7 @@ export const createJourneyMachineSendController = <
   return {
     buildCanceledSendResult,
     executeSend: async (
-      event: RuntimeSendEvent<TStepId, TEventMap>,
+      event: RuntimeSendEvent<TStepId, TEvents>,
       runVersion: number,
       signal: AbortSignal
     ): Promise<JourneySendResult<TContext, TStepId>> => {
@@ -373,7 +374,7 @@ export const createJourneyMachineSendController = <
       }
 
       const fromStep = runtime.peekSnapshot().currentStepId;
-      const transitionEvent = event as RuntimeTransitionEvent<TStepId, TEventMap>;
+      const transitionEvent = event as RuntimeTransitionEvent<TStepId, TEvents>;
       runtime.emit({ type: "transition.start", from: fromStep, event, timestamp: now() });
 
       if (headless) {
@@ -386,7 +387,7 @@ export const createJourneyMachineSendController = <
               from: fromStep,
               event: "goToStepById",
               to: event.stepId
-            } as RuntimeTransition<TContext, TStepId, TEventMap, THandlers>,
+            } as RuntimeTransition<TContext, TStepId, TEvents, THandlers>,
             runtime.peekSnapshot().context,
             runVersion
           );

@@ -1,4 +1,5 @@
 import type {
+  JourneyBaseEvent,
   JourneyComputed,
   JourneyDefaultEventType,
   JourneyDefinition,
@@ -54,12 +55,12 @@ export type JourneyNoMatchContext<TStepId extends string> = {
 export type JourneyMachinePluginSetupContext<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty
 > = {
-  journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
-  resolvedJourney: JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
+  journey: JourneyDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>;
+  resolvedJourney: JourneyResolvedDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>;
   options: {
     requireExplicitCompletion: boolean;
     defaultTimeoutMs: number | undefined;
@@ -118,7 +119,7 @@ export type JourneyMachineDevtoolsOperationResult<
 export type JourneyMachineDevtoolsOperationSpec<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty
 > = {
@@ -129,10 +130,10 @@ export type JourneyMachineDevtoolsOperationSpec<
   output: JourneyMachineDevtoolsOperationResultKind;
   fields?: readonly JourneyMachineDevtoolsFieldSpec[];
   run: (context: {
-    machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
+    machine: JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers>;
     input: Record<string, unknown> | undefined;
-    journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
-    resolvedJourney: JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
+    journey: JourneyDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>;
+    resolvedJourney: JourneyResolvedDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>;
   }) =>
     | JourneyMachineDevtoolsOperationResult<TContext, TStepId>
     | Promise<JourneyMachineDevtoolsOperationResult<TContext, TStepId>>;
@@ -141,7 +142,7 @@ export type JourneyMachineDevtoolsOperationSpec<
 export type JourneyMachineDevtoolsFeatureSpec<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty
 > = {
@@ -151,7 +152,7 @@ export type JourneyMachineDevtoolsFeatureSpec<
   operations: readonly JourneyMachineDevtoolsOperationSpec<
     TContext,
     TStepId,
-    TEventMap,
+    TEvents,
     TStepMeta,
     THandlers
   >[];
@@ -161,7 +162,7 @@ export type JourneyMachineDevtoolsFeatureSpec<
 export type JourneyMachinePluginHooks<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty,
   TExtension extends object = JourneyEmpty
@@ -171,18 +172,18 @@ export type JourneyMachinePluginHooks<
   ) => JourneySnapshot<TContext, TStepId>;
   onSnapshotChange?: (change: JourneyMachinePluginSnapshotChange<TContext, TStepId>) => void;
   augmentMachine?: (context: {
-    machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
-    journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
-    resolvedJourney: JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
+    machine: JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers>;
+    journey: JourneyDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>;
+    resolvedJourney: JourneyResolvedDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>;
   }) => TExtension;
   getDevtoolsFeatures?: (context: {
-    machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
-    journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
-    resolvedJourney: JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
+    machine: JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers>;
+    journey: JourneyDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>;
+    resolvedJourney: JourneyResolvedDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>;
   }) => readonly JourneyMachineDevtoolsFeatureSpec<
     TContext,
     TStepId,
-    TEventMap,
+    TEvents,
     TStepMeta,
     THandlers
   >[];
@@ -196,24 +197,24 @@ export type JourneyMachinePlugin = {
   setup: <
     TContext extends JourneyJsonObject,
     TStepId extends string,
-    TEventMap extends Record<string, unknown> = JourneyEmpty,
+    TEvents extends JourneyBaseEvent = never,
     TStepMeta = unknown,
     THandlers extends Record<string, unknown> = JourneyEmpty
   >(
-    context: JourneyMachinePluginSetupContext<TContext, TStepId, TEventMap, TStepMeta, THandlers>
-  ) => JourneyMachinePluginHooks<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
+    context: JourneyMachinePluginSetupContext<TContext, TStepId, TEvents, TStepMeta, THandlers>
+  ) => JourneyMachinePluginHooks<TContext, TStepId, TEvents, TStepMeta, THandlers>;
 };
 
 type JourneyMachinePluginHooksFor<
   TPlugin,
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   TStepMeta,
   THandlers extends Record<string, unknown>
 > = TPlugin extends {
   setup: (
-    context: JourneyMachinePluginSetupContext<TContext, TStepId, TEventMap, TStepMeta, THandlers>
+    context: JourneyMachinePluginSetupContext<TContext, TStepId, TEvents, TStepMeta, THandlers>
   ) => infer THooks;
 }
   ? THooks
@@ -223,7 +224,7 @@ type JourneyMachinePluginExtensionFor<
   TPlugin,
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   TStepMeta,
   THandlers extends Record<string, unknown>
 > = TPlugin extends { __extension__?: infer TExtension }
@@ -232,7 +233,7 @@ type JourneyMachinePluginExtensionFor<
         TPlugin,
         TContext,
         TStepId,
-        TEventMap,
+        TEvents,
         TStepMeta,
         THandlers
       > extends {
@@ -245,7 +246,7 @@ type JourneyMachinePluginExtensionFor<
         TPlugin,
         TContext,
         TStepId,
-        TEventMap,
+        TEvents,
         TStepMeta,
         THandlers
       > extends {
@@ -303,15 +304,15 @@ export type JourneyMachineOptions<
 };
 
 type JourneyPayloadForDefaultEvent<
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   TDefaultEvent extends JourneyDefaultEventType
-> = JourneyPayloadFor<TEventMap, TDefaultEvent>;
+> = JourneyPayloadFor<TEvents, TDefaultEvent>;
 
 /** Runtime machine API for reading snapshots, sending events, and controlling flow. */
 export type JourneyMachine<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty
 > = JourneyTypeParam<THandlers> & {
@@ -320,15 +321,15 @@ export type JourneyMachine<
   getComputed: () => JourneyComputed<TStepId>;
   startJourney: () => Promise<JourneySnapshot<TContext, TStepId>>;
   send: (
-    event: JourneySendEvent<TStepId, TEventMap>
+    event: JourneySendEvent<TStepId, TEvents>
   ) => Promise<JourneySendResult<TContext, TStepId>>;
   goToNextStep: () => Promise<JourneySendResult<TContext, TStepId>>;
   goToStepById: (stepId: TStepId) => Promise<JourneySendResult<TContext, TStepId>>;
   terminateJourney: (
-    payload?: JourneyPayloadForDefaultEvent<TEventMap, "terminateJourney">
+    payload?: JourneyPayloadForDefaultEvent<TEvents, "terminateJourney">
   ) => Promise<JourneySendResult<TContext, TStepId>>;
   completeJourney: (
-    payload?: JourneyPayloadForDefaultEvent<TEventMap, "completeJourney">
+    payload?: JourneyPayloadForDefaultEvent<TEvents, "completeJourney">
   ) => Promise<JourneySendResult<TContext, TStepId>>;
   goToPreviousStep: (steps?: number) => Promise<JourneySendResult<TContext, TStepId>>;
   goToLastVisitedStep: () => Promise<JourneySendResult<TContext, TStepId>>;
@@ -345,7 +346,7 @@ export type JourneyMachine<
     equalityFn?: JourneyEqualityFn<TSelected>
   ) => () => void;
   subscribeEvent: (
-    listener: (event: JourneyObservationEvent<TStepId, TEventMap>) => void
+    listener: (event: JourneyObservationEvent<TStepId, TEvents>) => void
   ) => () => void;
   subscribeStart: (listener: (event: JourneyStartObservationEvent<TStepId>) => void) => () => void;
   subscribeReset: (listener: (event: JourneyResetObservationEvent<TStepId>) => void) => () => void;
@@ -364,7 +365,7 @@ export type LinearJourneyMachine<
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = readonly JourneyMachinePlugin[]
-> = JourneyMachineWithPlugins<TContext, TStepId, JourneyEmpty, TStepMeta, THandlers, TPlugins> & {
+> = JourneyMachineWithPlugins<TContext, TStepId, never, TStepMeta, THandlers, TPlugins> & {
   goToStepByIndex: (index: number) => Promise<JourneySendResult<TContext, TStepId>>;
 };
 
@@ -372,17 +373,17 @@ export type LinearJourneyMachine<
 export type JourneyMachineWithPlugins<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = readonly JourneyMachinePlugin[]
-> = JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers> &
+> = JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers> &
   UnionToIntersection<
     JourneyMachinePluginExtensionFor<
       TPlugins[number],
       TContext,
       TStepId,
-      TEventMap,
+      TEvents,
       TStepMeta,
       THandlers
     >

@@ -6,6 +6,7 @@ import {
 } from "./helpers";
 
 import type {
+  JourneyBaseEvent,
   JourneyEqualityFn,
   JourneyJsonObject,
   JourneyMachineSnapshotReason,
@@ -41,7 +42,7 @@ const isInternalTransitionObservation = (event: {
 export type JourneyMachineRuntime<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>
+  TEvents extends JourneyBaseEvent
 > = {
   getSnapshot: () => JourneySnapshot<TContext, TStepId>;
   peekSnapshot: () => JourneySnapshot<TContext, TStepId>;
@@ -60,7 +61,7 @@ export type JourneyMachineRuntime<
     onCanceled: () => T
   ) => Promise<T>;
   notify: () => void;
-  emit: (event: JourneyObservationEvent<TStepId, TEventMap>) => void;
+  emit: (event: JourneyObservationEvent<TStepId, TEvents>) => void;
   subscribe: (listener: () => void) => () => void;
   subscribeSelector: <TSelected>(
     selector: JourneySelector<TContext, TStepId, TSelected>,
@@ -68,7 +69,7 @@ export type JourneyMachineRuntime<
     equalityFn?: JourneyEqualityFn<TSelected>
   ) => () => void;
   subscribeEvent: (
-    listener: (event: JourneyObservationEvent<TStepId, TEventMap>) => void
+    listener: (event: JourneyObservationEvent<TStepId, TEvents>) => void
   ) => () => void;
   dispose: () => void;
 };
@@ -76,7 +77,7 @@ export type JourneyMachineRuntime<
 export const createJourneyMachineRuntime = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>
+  TEvents extends JourneyBaseEvent
 >({
   snapshot: initialSnapshot,
   onSnapshotChange,
@@ -91,11 +92,11 @@ export const createJourneyMachineRuntime = <
   }) => void;
   onDispose?: () => void;
   onListenerError?: (error: unknown, context: "snapshot" | "event") => void;
-}): JourneyMachineRuntime<TContext, TStepId, TEventMap> => {
+}): JourneyMachineRuntime<TContext, TStepId, TEvents> => {
   let snapshot = stabilizeSnapshot(initialSnapshot);
   let exposedSnapshot = stabilizeSnapshot(snapshot);
   const listeners = new Set<() => void>();
-  const eventListeners = new Set<(event: JourneyObservationEvent<TStepId, TEventMap>) => void>();
+  const eventListeners = new Set<(event: JourneyObservationEvent<TStepId, TEvents>) => void>();
   let actionQueue: Promise<void> = Promise.resolve();
   let lifecycleVersion = 0;
   let isDisposed = false;
@@ -118,7 +119,7 @@ export const createJourneyMachineRuntime = <
     }
   };
 
-  const emit = (event: JourneyObservationEvent<TStepId, TEventMap>) => {
+  const emit = (event: JourneyObservationEvent<TStepId, TEvents>) => {
     // Effect routing and `after` timers drive transitions through internal
     // synthetic events. The resulting navigation (step.enter/exit) is real and
     // observable, but the synthetic transition.* notifications are an
@@ -266,9 +267,7 @@ export const createJourneyMachineRuntime = <
     });
   };
 
-  const subscribeEvent = (
-    listener: (event: JourneyObservationEvent<TStepId, TEventMap>) => void
-  ) => {
+  const subscribeEvent = (listener: (event: JourneyObservationEvent<TStepId, TEvents>) => void) => {
     if (isDisposed) {
       warnInDevelopment('Journey machine has been disposed; "subscribeEvent" is a no-op.');
       return () => undefined;

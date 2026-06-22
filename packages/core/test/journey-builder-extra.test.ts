@@ -4,7 +4,7 @@ import { createGraphJourneyBuilder } from "@rxova/journey-core";
 
 type Context = { count: number; role: string };
 type StepId = "start" | "review" | "done";
-type EventMap = { submit: { source: string } };
+type EventMap = { type: "submit"; payload?: { source: string } };
 
 describe("createGraphJourneyBuilder extra coverage", () => {
   it("chains lifecycle modifiers on transition builders", () => {

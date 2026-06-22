@@ -20,7 +20,7 @@ export function createHeadlessJourney<
 >(
   definition: HeadlessJourneyDefinition<TContext, TStepId, TStepMeta, THandlers>,
   options?: JourneyOptionsInput<TPlugins, THandlers>
-): JourneyRuntime<TContext, TStepId, JourneyEmpty, TStepMeta, TPlugins, THandlers> {
+): JourneyRuntime<TContext, TStepId, never, TStepMeta, TPlugins, THandlers> {
   const machine = coreCreateHeadlessJourney<TContext, TStepId, TStepMeta, THandlers, TPlugins>(
     definition,
     options as JourneyMachineOptions<TPlugins, THandlers> | undefined

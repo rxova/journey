@@ -157,7 +157,7 @@ describe("createHeadlessJourney", () => {
 describe("createGraphJourney", () => {
   it("creates a graph machine from builder output", async () => {
     type StepId = "login" | "dashboard";
-    type Events = { submit: undefined };
+    type Events = { type: "submit"; payload?: undefined };
 
     const { createStep, to, build } = createGraphJourneyBuilder<{
       context: SimpleContext;
@@ -197,7 +197,7 @@ describe("createGraphJourney", () => {
   });
 
   it("accepts the GraphJourneyDefinition type", () => {
-    const def: GraphJourneyDefinition<SimpleContext, "a", Record<never, never>> = {
+    const def: GraphJourneyDefinition<SimpleContext, "a", never> = {
       initial: "a",
       context: { value: 0 },
       steps: { a: {} },

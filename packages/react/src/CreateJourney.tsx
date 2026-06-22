@@ -8,7 +8,7 @@ import type {
 import { createJourneyMachineRuntime } from "./create-journey-machine-runtime";
 import type { JourneyRuntime, JourneyRuntimeFromDefinition } from "./types";
 import type { JourneyHandlersOfDefinition, JourneyOptionsInput } from "./type-helpers";
-import type { JourneyEmpty } from "@rxova/journey-core";
+import type { JourneyBaseEvent, JourneyEmpty } from "@rxova/journey-core";
 
 /**
  * Creates a journey machine and returns React hooks/components bound to that machine.
@@ -24,13 +24,13 @@ export function createJourney<
 export function createJourney<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
-  definition: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
+  definition: JourneyDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>,
   options?: JourneyOptionsInput<TPlugins, THandlers>
-): JourneyRuntime<TContext, TStepId, TEventMap, TStepMeta, TPlugins, THandlers> {
+): JourneyRuntime<TContext, TStepId, TEvents, TStepMeta, TPlugins, THandlers> {
   return createJourneyMachineRuntime(definition, options);
 }

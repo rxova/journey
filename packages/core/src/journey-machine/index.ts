@@ -34,6 +34,7 @@ import { JourneyDefinitionError } from "./errors";
 import { resolveJourneyDefinition } from "./resolve-journey-definition";
 
 import type {
+  JourneyBaseEvent,
   JourneyDefinition,
   JourneyJsonObject,
   JourneyMachine,
@@ -52,14 +53,14 @@ const DEVTOOLS_FORCE_STEP_ID = "devtools.forceStep";
 export function createJourneyMachine<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
-  journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
+  journey: JourneyDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>,
   options?: JourneyMachineOptions<TPlugins, THandlers>
-): JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins> {
+): JourneyMachineWithPlugins<TContext, TStepId, TEvents, TStepMeta, THandlers, TPlugins> {
   if (!journey.steps || typeof journey.steps !== "object") {
     throw new JourneyDefinitionError("invalid-shape", "Journey steps must be a record object.");
   }
@@ -132,7 +133,7 @@ export function createJourneyMachine<
   const pluginController = createJourneyMachinePluginController<
     TContext,
     TStepId,
-    TEventMap,
+    TEvents,
     TStepMeta,
     THandlers
   >({
@@ -153,18 +154,18 @@ export function createJourneyMachine<
 
   const onListenerError = options?.onListenerError;
   const onLifecycleError = options?.onLifecycleError;
-  const runtime = createJourneyMachineRuntime<TContext, TStepId, TEventMap>({
+  const runtime = createJourneyMachineRuntime<TContext, TStepId, TEvents>({
     snapshot: initialSnapshot,
     onSnapshotChange: pluginController.onSnapshotChange,
     onDispose: pluginController.dispose,
     ...(onListenerError !== undefined ? { onListenerError } : {})
   });
-  const asyncState = createJourneyMachineAsyncStateController<TContext, TStepId, TEventMap>({
+  const asyncState = createJourneyMachineAsyncStateController<TContext, TStepId, TEvents>({
     runtime
   });
 
   let dispatchSend: (
-    event: JourneySendEvent<TStepId, TEventMap>
+    event: JourneySendEvent<TStepId, TEvents>
   ) => Promise<JourneySendResult<TContext, TStepId>> = () =>
     Promise.resolve(buildSendResult(runtime.getSnapshot(), false));
 
@@ -228,7 +229,7 @@ export function createJourneyMachine<
         }
         void dispatchSend({
           type: `${JOURNEY_AFTER_EVENT_PREFIX}${delayMs}`
-        } as unknown as JourneySendEvent<TStepId, TEventMap>);
+        } as unknown as JourneySendEvent<TStepId, TEvents>);
       }, delayMs);
       signal.addEventListener("abort", () => clearTimeout(handle), { once: true });
     }
@@ -298,7 +299,7 @@ export function createJourneyMachine<
           void dispatchSend({
             type: JOURNEY_EFFECT_REJECTED_EVENT,
             payload: failure.error
-          } as unknown as JourneySendEvent<TStepId, TEventMap>);
+          } as unknown as JourneySendEvent<TStepId, TEvents>);
         } else {
           asyncState.setStepError(
             stepId,
@@ -315,14 +316,14 @@ export function createJourneyMachine<
         void dispatchSend({
           type: JOURNEY_EFFECT_RESOLVED_EVENT,
           payload: output
-        } as unknown as JourneySendEvent<TStepId, TEventMap>);
+        } as unknown as JourneySendEvent<TStepId, TEvents>);
       } else {
         asyncState.setStepIdle(stepId, runVersion);
       }
     })();
   };
 
-  const scheduleLifecycle: JourneyLifecycleScheduler<TContext, TStepId, TEventMap, THandlers> = ({
+  const scheduleLifecycle: JourneyLifecycleScheduler<TContext, TStepId, TEvents, THandlers> = ({
     previousSnapshot,
     snapshot,
     from,
@@ -338,7 +339,7 @@ export function createJourneyMachine<
     cancelActiveAfter();
     const sourceStep = resolvedJourney.steps[from];
     const targetStep = isTerminalTarget(to) ? null : resolvedJourney.steps[to];
-    const dispatch = (nextEvent: JourneySendEvent<TStepId, TEventMap>) => {
+    const dispatch = (nextEvent: JourneySendEvent<TStepId, TEvents>) => {
       if (!runtime.isRunActive(runVersion) || runtime.isDisposed()) {
         return Promise.resolve(buildSendResult(runtime.getSnapshot(), false));
       }
@@ -500,7 +501,7 @@ export function createJourneyMachine<
   const navigation = createJourneyMachineNavigationController<
     TContext,
     TStepId,
-    TEventMap,
+    TEvents,
     THandlers
   >({
     runtime,
@@ -520,12 +521,7 @@ export function createJourneyMachine<
       );
     });
 
-  const sendController = createJourneyMachineSendController<
-    TContext,
-    TStepId,
-    TEventMap,
-    THandlers
-  >(
+  const sendController = createJourneyMachineSendController<TContext, TStepId, TEvents, THandlers>(
     runtime,
     asyncState,
     navigation,
@@ -538,7 +534,7 @@ export function createJourneyMachine<
     reportNoMatch
   );
 
-  const controls = createJourneyMachineControls<TContext, TStepId, TEventMap>({
+  const controls = createJourneyMachineControls<TContext, TStepId, TEvents>({
     runtime,
     asyncState,
     initial: resolvedJourney.initial,
@@ -552,7 +548,7 @@ export function createJourneyMachine<
     runtime.getSnapshot
   );
 
-  const machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers> = {
+  const machine: JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers> = {
     getSnapshot: runtime.getSnapshot,
     getStepMeta: (stepId) => cloneMetaValue(stepMeta[stepId]),
     getComputed,
@@ -610,23 +606,23 @@ export function createJourneyMachine<
         () => sendController.buildCanceledSendResult("goToLastVisitedStep")
       ),
     goToNextStep: () =>
-      machine.send({ type: "goToNextStep" } as JourneySendEvent<TStepId, TEventMap>),
+      machine.send({ type: "goToNextStep" } as JourneySendEvent<TStepId, TEvents>),
     goToStepById: (stepId: TStepId) =>
-      machine.send({ type: "goToStepById", stepId } as JourneySendEvent<TStepId, TEventMap>),
+      machine.send({ type: "goToStepById", stepId } as JourneySendEvent<TStepId, TEvents>),
     terminateJourney: (payload) =>
       payload === undefined
-        ? machine.send({ type: "terminateJourney" } as JourneySendEvent<TStepId, TEventMap>)
+        ? machine.send({ type: "terminateJourney" } as JourneySendEvent<TStepId, TEvents>)
         : machine.send({
             type: "terminateJourney",
             payload
-          } as JourneySendEvent<TStepId, TEventMap>),
+          } as JourneySendEvent<TStepId, TEvents>),
     completeJourney: (payload) =>
       payload === undefined
-        ? machine.send({ type: "completeJourney" } as JourneySendEvent<TStepId, TEventMap>)
+        ? machine.send({ type: "completeJourney" } as JourneySendEvent<TStepId, TEvents>)
         : machine.send({
             type: "completeJourney",
             payload
-          } as JourneySendEvent<TStepId, TEventMap>),
+          } as JourneySendEvent<TStepId, TEvents>),
     send: (event) =>
       runtime.queue(
         (runVersion, signal) => sendController.executeSend(event, runVersion, signal),
@@ -655,7 +651,7 @@ export function createJourneyMachine<
               event: {
                 type: DEVTOOLS_FORCE_STEP_ID,
                 stepId
-              } as unknown as JourneySendEvent<TStepId, TEventMap>,
+              } as unknown as JourneySendEvent<TStepId, TEvents>,
               timestamp: now()
             });
 
@@ -664,7 +660,7 @@ export function createJourneyMachine<
               stepId,
               { type: DEVTOOLS_FORCE_STEP_ID, stepId } as unknown as JourneySendEvent<
                 TStepId,
-                TEventMap
+                TEvents
               >,
               {
                 id: DEVTOOLS_FORCE_STEP_ID,
@@ -689,7 +685,7 @@ export function createJourneyMachine<
   return extendedMachine as JourneyMachineWithPlugins<
     TContext,
     TStepId,
-    TEventMap,
+    TEvents,
     TStepMeta,
     THandlers,
     TPlugins

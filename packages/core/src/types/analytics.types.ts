@@ -2,8 +2,7 @@ import type {
   JourneyObservationEvent,
   JourneyTransitionSuccessObservationEvent
 } from "./observation.types";
-import type { JourneyJsonObject, JourneyTerminal } from "./journey.types";
-import type { JourneyEmpty } from "./journey.types";
+import type { JourneyBaseEvent, JourneyJsonObject, JourneyTerminal } from "./journey.types";
 
 /** Standard analytics event names emitted by the analytics plugin. */
 export type JourneyAnalyticsEventName =
@@ -55,7 +54,7 @@ export type JourneyAnalyticsTrackedEvent<
 export type JourneyAnalyticsPluginOptions<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown
 > = {
   track: (event: JourneyAnalyticsTrackedEvent<TContext, TStepId, TStepMeta>) => void;
@@ -64,7 +63,7 @@ export type JourneyAnalyticsPluginOptions<
   onError?: (
     error: unknown,
     event?:
-      | JourneyObservationEvent<TStepId, TEventMap>
+      | JourneyObservationEvent<TStepId, TEvents>
       | JourneyAnalyticsTrackedEvent<TContext, TStepId, TStepMeta>
   ) => void;
 };

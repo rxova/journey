@@ -8,7 +8,7 @@ import type {
   JourneyMachinePlugin
 } from "@rxova/journey-core";
 import type { JourneyProviderErrorContext, JourneyProviderProps, JourneyViews } from "./types";
-import type { JourneyEmpty } from "@rxova/journey-core";
+import type { JourneyBaseEvent, JourneyEmpty } from "@rxova/journey-core";
 
 const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
 
@@ -28,12 +28,12 @@ const reportProviderError = (
 export const createJourneyProviderArtifacts = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
-  machine: JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins>,
+  machine: JourneyMachineWithPlugins<TContext, TStepId, TEvents, TStepMeta, THandlers, TPlugins>,
   useJourneySelector: <TSelected>(
     selector: JourneySelector<TContext, TStepId, TSelected>,
     equalityFn?: JourneyEqualityFn<TSelected>

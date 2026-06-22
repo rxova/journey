@@ -26,11 +26,7 @@ import { createGraphJourneyBuilder, createGraphJourney } from "@rxova/journey-co
 
 type StepId = "login" | "setup2fa" | "verify" | "loggedIn" | "blocked";
 type Context = { role: "admin" | "user" | null; attempts: number };
-type Events = {
-  submit: undefined;
-  verifySuccess: undefined;
-  verifyFailure: undefined;
-};
+type Events = { type: "submit" } | { type: "verifySuccess" } | { type: "verifyFailure" };
 
 const { createStep, to, build } = createGraphJourneyBuilder<{
   context: Context;
@@ -209,7 +205,7 @@ import { createGraphJourneyBuilder, createGraphJourney } from "@rxova/journey-co
 
 type StepId = "draft" | "review" | "approved" | "rejected";
 type Context = { score: number; reviewerId: string | null };
-type Events = { submit: undefined; approve: undefined; reject: undefined; revise: undefined };
+type Events = { type: "submit" } | { type: "approve" } | { type: "reject" } | { type: "revise" };
 
 const { createStep, to, build } = createGraphJourneyBuilder<{
   context: Context;

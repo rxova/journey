@@ -378,9 +378,7 @@ describe("attachJourneyDevtools v5", () => {
   it("derives graph metadata for custom events and goToStepById targets", async () => {
     type StepId = "start" | "emailCode" | "authenticatorCode";
     type Context = { count: number };
-    type EventMap = {
-      submitLogin: { channel: "email" | "authenticator" };
-    };
+    type EventMap = { type: "submitLogin"; payload?: { channel: "email" | "authenticator" } };
 
     const journey: JourneyDefinition<Context, StepId, EventMap> = {
       initial: "start",
@@ -801,9 +799,7 @@ describe("attachJourneyDevtools v5", () => {
   it("supports the remaining core operations and trims default metadata", async () => {
     type StepId = "start" | "review";
     type Context = { count: number };
-    type EventMap = {
-      custom: { amount: number };
-    };
+    type EventMap = { type: "custom"; payload?: { amount: number } };
 
     const journey: JourneyDefinition<Context, StepId, EventMap> = {
       initial: "start",

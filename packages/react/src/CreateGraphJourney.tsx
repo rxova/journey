@@ -11,7 +11,7 @@ import type {
 import { buildJourneyRuntime } from "./create-journey-machine-runtime";
 import type { JourneyRuntime, JourneyRuntimeFromDefinition } from "./types";
 import type { JourneyHandlersOfDefinition, JourneyOptionsInput } from "./type-helpers";
-import type { JourneyEmpty } from "@rxova/journey-core";
+import type { JourneyBaseEvent, JourneyEmpty } from "@rxova/journey-core";
 
 /**
  * Creates a graph journey runtime for React from a `GraphJourneyDefinition` or
@@ -28,17 +28,17 @@ export function createGraphJourney<
 export function createGraphJourney<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
-  definition: GraphJourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
+  definition: GraphJourneyDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>,
   options?: JourneyOptionsInput<TPlugins, THandlers>
-): JourneyRuntime<TContext, TStepId, TEventMap, TStepMeta, TPlugins, THandlers> {
+): JourneyRuntime<TContext, TStepId, TEvents, TStepMeta, TPlugins, THandlers> {
   const machine = coreCreateGraphJourney(
     definition,
     options as JourneyMachineOptions<TPlugins, THandlers> | undefined
-  ) as JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins>;
+  ) as JourneyMachineWithPlugins<TContext, TStepId, TEvents, TStepMeta, THandlers, TPlugins>;
   return buildJourneyRuntime(machine);
 }

@@ -1,6 +1,8 @@
 import type {
+  JourneyBaseEvent,
   JourneyBuiltInFrom,
   JourneyEvent,
+  JourneyEventFor,
   JourneyFullEventType,
   JourneyGoToEvent,
   JourneyHistory,
@@ -30,25 +32,24 @@ type JourneyTransitionArgsBase<
 
 type JourneyTransitionEventOfType<
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  TEventType extends JourneyFullEventType<TEventMap>
+  TEvents extends JourneyBaseEvent,
+  TEventType extends JourneyFullEventType<TEvents>
 > = TEventType extends "goToStepById"
-  ? JourneyGoToEvent<TStepId, JourneyPayloadFor<TEventMap, "goToStepById">>
-  : {
-      type: TEventType;
-      payload?: JourneyPayloadFor<TEventMap, TEventType>;
-    };
+  ? JourneyGoToEvent<TStepId, JourneyPayloadFor<TEvents, "goToStepById">>
+  : [JourneyEventFor<TEvents, TEventType>] extends [never]
+    ? { type: TEventType; payload?: unknown }
+    : JourneyEventFor<TEvents, TEventType>;
 
 export type JourneyDispatch<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>
-> = (event: JourneySendEvent<TStepId, TEventMap>) => Promise<JourneySendResult<TContext, TStepId>>;
+  TEvents extends JourneyBaseEvent
+> = (event: JourneySendEvent<TStepId, TEvents>) => Promise<JourneySendResult<TContext, TStepId>>;
 
 export type JourneyLifecycleArgs<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   THandlers extends Record<string, unknown>
 > = {
   snapshot: JourneySnapshot<TContext, TStepId>;
@@ -60,7 +61,7 @@ export type JourneyLifecycleArgs<
   label?: string;
   handlers: THandlers;
   signal: AbortSignal;
-  dispatch: JourneyDispatch<TContext, TStepId, TEventMap>;
+  dispatch: JourneyDispatch<TContext, TStepId, TEvents>;
 };
 
 /**
@@ -74,53 +75,53 @@ type JourneyBivariantCallback<TArgs, TResult> = {
 export type JourneyStepLifecycleCallback<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   THandlers extends Record<string, unknown>
 > = JourneyBivariantCallback<
-  JourneyLifecycleArgs<TContext, TStepId, TEventMap, THandlers>,
+  JourneyLifecycleArgs<TContext, TStepId, TEvents, THandlers>,
   void | Promise<void>
 >;
 
 export type JourneyTransitionArgs<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   THandlers extends Record<string, unknown> = JourneyEmpty
 > = JourneyTransitionArgsBase<TContext, TStepId, THandlers> & {
-  event: JourneyEvent<TStepId, TEventMap>;
+  event: JourneyEvent<TStepId, TEvents>;
 };
 
 export type JourneyTransitionArgsForEvent<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   THandlers extends Record<string, unknown>,
-  TEventType extends JourneyFullEventType<TEventMap>
+  TEventType extends JourneyFullEventType<TEvents>
 > = JourneyTransitionArgsBase<TContext, TStepId, THandlers> & {
-  event: JourneyTransitionEventOfType<TStepId, TEventMap, TEventType>;
+  event: JourneyTransitionEventOfType<TStepId, TEvents, TEventType>;
 };
 
 export type JourneyTransitionUpdateContextArgsForEvent<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  TEventType extends JourneyFullEventType<TEventMap>
+  TEvents extends JourneyBaseEvent,
+  TEventType extends JourneyFullEventType<TEvents>
 > = {
   snapshot: JourneySnapshot<TContext, TStepId>;
   context: Readonly<TContext>;
   from: TStepId;
   timeline: JourneyHistory<TStepId>["timeline"];
   index: number;
-  event: JourneyTransitionEventOfType<TStepId, TEventMap, TEventType>;
+  event: JourneyTransitionEventOfType<TStepId, TEvents, TEventType>;
 };
 
-type JourneyStepTransitionEventType<TEventMap extends Record<string, unknown>> = Exclude<
-  JourneyFullEventType<TEventMap>,
+type JourneyStepTransitionEventType<TEvents extends JourneyBaseEvent> = Exclude<
+  JourneyFullEventType<TEvents>,
   "completeJourney" | "terminateJourney" | "goToStepById"
 >;
 
-type JourneyTerminalTransitionEventType<TEventMap extends Record<string, unknown>> = Extract<
-  JourneyFullEventType<TEventMap>,
+type JourneyTerminalTransitionEventType<TEvents extends JourneyBaseEvent> = Extract<
+  JourneyFullEventType<TEvents>,
   "completeJourney" | "terminateJourney"
 >;
 
@@ -129,46 +130,46 @@ export type JourneyTransitionTarget<TStepId extends string> = TStepId | JourneyT
 type JourneyTransitionBehavior<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   THandlers extends Record<string, unknown>,
-  TEventType extends JourneyFullEventType<TEventMap>
+  TEventType extends JourneyFullEventType<TEvents>
 > = {
   label?: string;
   timeoutMs?: number;
   when?: JourneyBivariantCallback<
-    JourneyTransitionArgsForEvent<TContext, TStepId, TEventMap, THandlers, TEventType>,
+    JourneyTransitionArgsForEvent<TContext, TStepId, TEvents, THandlers, TEventType>,
     boolean | Promise<boolean>
   >;
   updateContext?: JourneyBivariantCallback<
-    JourneyTransitionUpdateContextArgsForEvent<TContext, TStepId, TEventMap, TEventType>,
+    JourneyTransitionUpdateContextArgsForEvent<TContext, TStepId, TEvents, TEventType>,
     TContext
   >;
-  onEnter?: JourneyStepLifecycleCallback<TContext, TStepId, TEventMap, THandlers>;
-  onLeave?: JourneyStepLifecycleCallback<TContext, TStepId, TEventMap, THandlers>;
+  onEnter?: JourneyStepLifecycleCallback<TContext, TStepId, TEvents, THandlers>;
+  onLeave?: JourneyStepLifecycleCallback<TContext, TStepId, TEvents, THandlers>;
 };
 
 type JourneyTransitionConfig<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   THandlers extends Record<string, unknown>,
-  TEventType extends JourneyFullEventType<TEventMap>
-> = JourneyTransitionBehavior<TContext, TStepId, TEventMap, THandlers, TEventType> & {
+  TEventType extends JourneyFullEventType<TEvents>
+> = JourneyTransitionBehavior<TContext, TStepId, TEvents, THandlers, TEventType> & {
   from: TStepId | JourneyBuiltInFrom;
 };
 
 export type JourneyStepEventTransition<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   THandlers extends Record<string, unknown> = JourneyEmpty,
-  TEventType extends JourneyStepTransitionEventType<TEventMap> =
-    JourneyStepTransitionEventType<TEventMap>
+  TEventType extends JourneyStepTransitionEventType<TEvents> =
+    JourneyStepTransitionEventType<TEvents>
 > = {
   [TSelectedEvent in TEventType]: JourneyTransitionConfig<
     TContext,
     TStepId,
-    TEventMap,
+    TEvents,
     THandlers,
     TSelectedEvent
   > & {
@@ -180,15 +181,15 @@ export type JourneyStepEventTransition<
 export type JourneyTerminalTransition<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   THandlers extends Record<string, unknown> = JourneyEmpty,
-  TEventType extends JourneyTerminalTransitionEventType<TEventMap> =
-    JourneyTerminalTransitionEventType<TEventMap>
+  TEventType extends JourneyTerminalTransitionEventType<TEvents> =
+    JourneyTerminalTransitionEventType<TEvents>
 > = {
   [TSelectedEvent in TEventType]: JourneyTransitionConfig<
     TContext,
     TStepId,
-    TEventMap,
+    TEvents,
     THandlers,
     TSelectedEvent
   > & {
@@ -200,9 +201,9 @@ export type JourneyTerminalTransition<
 export type JourneyGoToStepTransition<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   THandlers extends Record<string, unknown> = JourneyEmpty
-> = JourneyTransitionConfig<TContext, TStepId, TEventMap, THandlers, "goToStepById"> & {
+> = JourneyTransitionConfig<TContext, TStepId, TEvents, THandlers, "goToStepById"> & {
   event: "goToStepById";
   to: TStepId;
 };
@@ -210,19 +211,19 @@ export type JourneyGoToStepTransition<
 export type JourneyTransition<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   THandlers extends Record<string, unknown> = JourneyEmpty
 > =
-  | JourneyStepEventTransition<TContext, TStepId, TEventMap, THandlers>
-  | JourneyTerminalTransition<TContext, TStepId, TEventMap, THandlers>
-  | JourneyGoToStepTransition<TContext, TStepId, TEventMap, THandlers>;
+  | JourneyStepEventTransition<TContext, TStepId, TEvents, THandlers>
+  | JourneyTerminalTransition<TContext, TStepId, TEvents, THandlers>
+  | JourneyGoToStepTransition<TContext, TStepId, TEvents, THandlers>;
 
 export type JourneyResolvedTransition<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   THandlers extends Record<string, unknown> = JourneyEmpty
-> = JourneyTransition<TContext, TStepId, TEventMap, THandlers> & {
+> = JourneyTransition<TContext, TStepId, TEvents, THandlers> & {
   id: string;
   label?: string;
 };
@@ -230,24 +231,24 @@ export type JourneyResolvedTransition<
 export type JourneyGlobalTransition<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   THandlers extends Record<string, unknown> = JourneyEmpty
-> = JourneyTransition<TContext, TStepId, TEventMap, THandlers> & {
+> = JourneyTransition<TContext, TStepId, TEvents, THandlers> & {
   from: JourneyBuiltInFrom;
 };
 
 export type JourneyStepEventGraphEdge<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   THandlers extends Record<string, unknown> = JourneyEmpty,
-  TEventType extends JourneyStepTransitionEventType<TEventMap> =
-    JourneyStepTransitionEventType<TEventMap>
+  TEventType extends JourneyStepTransitionEventType<TEvents> =
+    JourneyStepTransitionEventType<TEvents>
 > = {
   [TSelectedEvent in TEventType]: JourneyTransitionBehavior<
     TContext,
     TStepId,
-    TEventMap,
+    TEvents,
     THandlers,
     TSelectedEvent
   > & {
@@ -258,15 +259,15 @@ export type JourneyStepEventGraphEdge<
 export type JourneyTerminalGraphEdge<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   THandlers extends Record<string, unknown> = JourneyEmpty,
-  TEventType extends JourneyTerminalTransitionEventType<TEventMap> =
-    JourneyTerminalTransitionEventType<TEventMap>
+  TEventType extends JourneyTerminalTransitionEventType<TEvents> =
+    JourneyTerminalTransitionEventType<TEvents>
 > = {
   [TSelectedEvent in TEventType]: JourneyTransitionBehavior<
     TContext,
     TStepId,
-    TEventMap,
+    TEvents,
     THandlers,
     TSelectedEvent
   > & {
@@ -277,65 +278,65 @@ export type JourneyTerminalGraphEdge<
 export type JourneyGoToStepGraphEdge<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   THandlers extends Record<string, unknown> = JourneyEmpty
-> = JourneyTransitionBehavior<TContext, TStepId, TEventMap, THandlers, "goToStepById"> & {
+> = JourneyTransitionBehavior<TContext, TStepId, TEvents, THandlers, "goToStepById"> & {
   to: TStepId;
 };
 
 export type JourneyGraphEdge<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   THandlers extends Record<string, unknown> = JourneyEmpty,
-  TEventType extends JourneyFullEventType<TEventMap> = JourneyFullEventType<TEventMap>
+  TEventType extends JourneyFullEventType<TEvents> = JourneyFullEventType<TEvents>
 > =
   | JourneyStepEventGraphEdge<
       TContext,
       TStepId,
-      TEventMap,
+      TEvents,
       THandlers,
-      Extract<TEventType, JourneyStepTransitionEventType<TEventMap>>
+      Extract<TEventType, JourneyStepTransitionEventType<TEvents>>
     >
   | JourneyTerminalGraphEdge<
       TContext,
       TStepId,
-      TEventMap,
+      TEvents,
       THandlers,
-      Extract<TEventType, JourneyTerminalTransitionEventType<TEventMap>>
+      Extract<TEventType, JourneyTerminalTransitionEventType<TEvents>>
     >
   | (Extract<TEventType, "goToStepById"> extends never
       ? never
-      : JourneyGoToStepGraphEdge<TContext, TStepId, TEventMap, THandlers>);
+      : JourneyGoToStepGraphEdge<TContext, TStepId, TEvents, THandlers>);
 
 export type JourneyTerminalTransitionShorthand<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   THandlers extends Record<string, unknown>,
-  TEventType extends JourneyTerminalTransitionEventType<TEventMap>
+  TEventType extends JourneyTerminalTransitionEventType<TEvents>
 > =
   | true
   | readonly []
-  | readonly JourneyGraphEdge<TContext, TStepId, TEventMap, THandlers, TEventType>[];
+  | readonly JourneyGraphEdge<TContext, TStepId, TEvents, THandlers, TEventType>[];
 
 export type JourneyStepTransitions<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   THandlers extends Record<string, unknown> = JourneyEmpty
 > = Partial<{
-  [TSelectedEvent in JourneyFullEventType<TEventMap>]: TSelectedEvent extends
+  [TSelectedEvent in JourneyFullEventType<TEvents>]: TSelectedEvent extends
     | "completeJourney"
     | "terminateJourney"
     ? JourneyTerminalTransitionShorthand<
         TContext,
         TStepId,
-        TEventMap,
+        TEvents,
         THandlers,
-        Extract<TSelectedEvent, JourneyTerminalTransitionEventType<TEventMap>>
+        Extract<TSelectedEvent, JourneyTerminalTransitionEventType<TEvents>>
       >
-    : readonly JourneyGraphEdge<TContext, TStepId, TEventMap, THandlers, TSelectedEvent>[];
+    : readonly JourneyGraphEdge<TContext, TStepId, TEvents, THandlers, TSelectedEvent>[];
 }>;
 
 export type JourneyGlobalKey = "global";
@@ -343,18 +344,18 @@ export type JourneyGlobalKey = "global";
 export type JourneyTransitionGraph<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   THandlers extends Record<string, unknown> = JourneyEmpty
-> = Partial<Record<TStepId, JourneyStepTransitions<TContext, TStepId, TEventMap, THandlers>>> & {
-  global?: JourneyStepTransitions<TContext, TStepId, TEventMap, THandlers>;
+> = Partial<Record<TStepId, JourneyStepTransitions<TContext, TStepId, TEvents, THandlers>>> & {
+  global?: JourneyStepTransitions<TContext, TStepId, TEvents, THandlers>;
 };
 
 export type JourneyLinearStep<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   THandlers extends Record<string, unknown> = JourneyEmpty
-> = JourneyTransitionBehavior<TContext, TStepId, TEventMap, THandlers, "goToNextStep"> & {
+> = JourneyTransitionBehavior<TContext, TStepId, TEvents, THandlers, "goToNextStep"> & {
   step: TStepId;
   when?: never;
   to?: never;
@@ -365,33 +366,33 @@ export type JourneyLinearStep<
 export type JourneyLinearTransitions<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   THandlers extends Record<string, unknown> = JourneyEmpty
-> = readonly [TStepId, ...(TStepId | JourneyLinearStep<TContext, TStepId, TEventMap, THandlers>)[]];
+> = readonly [TStepId, ...(TStepId | JourneyLinearStep<TContext, TStepId, TEvents, THandlers>)[]];
 
 /** Input type for `createGraphJourney`. `transitions` is required and must be an object map. */
 export type GraphJourneyDefinition<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty
 > = {
   initial: TStepId;
   context: TContext;
   handlers?: THandlers;
-  steps: Record<TStepId, JourneyStepDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>>;
-  transitions: JourneyTransitionGraph<TContext, TStepId, TEventMap, THandlers>;
+  steps: Record<TStepId, JourneyStepDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>>;
+  transitions: JourneyTransitionGraph<TContext, TStepId, TEvents, THandlers>;
 };
 
 export type JourneyTransitionsDefinition<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   THandlers extends Record<string, unknown> = JourneyEmpty
 > =
-  | JourneyLinearTransitions<TContext, TStepId, TEventMap, THandlers>
-  | JourneyTransitionGraph<TContext, TStepId, TEventMap, THandlers>;
+  | JourneyLinearTransitions<TContext, TStepId, TEvents, THandlers>
+  | JourneyTransitionGraph<TContext, TStepId, TEvents, THandlers>;
 
 /**
  * Required marker property whose *name* is the compile error surfaced when a

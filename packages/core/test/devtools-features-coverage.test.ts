@@ -66,20 +66,14 @@ const getFeature = (
   return feature as JourneyMachineDevtoolsFeatureSpec<
     Context,
     StepId,
-    Record<never, never>,
+    never,
     unknown,
     Record<never, never>
   >;
 };
 
 const getOperation = (
-  feature: JourneyMachineDevtoolsFeatureSpec<
-    Context,
-    StepId,
-    Record<never, never>,
-    unknown,
-    Record<never, never>
-  >,
+  feature: JourneyMachineDevtoolsFeatureSpec<Context, StepId, never, unknown, Record<never, never>>,
   operationId: string
 ) => {
   const operation = feature.operations.find((item) => item.id === operationId);

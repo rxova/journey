@@ -4,7 +4,9 @@ import { createGraphJourneyBuilder, createJourneyMachine } from "@rxova/journey-
 
 type Context = { count: number; role: string };
 type StepId = "start" | "review" | "admin" | "done" | "blocked";
-type EventMap = { submit: { origin: string }; back: unknown };
+type EventMap =
+  | { type: "submit"; payload?: { origin: string } }
+  | { type: "back"; payload?: unknown };
 
 describe("createGraphJourneyBuilder", () => {
   it("returns createStep, to, and build", () => {

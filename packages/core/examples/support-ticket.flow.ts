@@ -1,7 +1,7 @@
 import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "category" | "details" | "screenshot" | "review" | "confirmExit";
-type EventMap = { back: unknown; requestClose: unknown };
+type EventMap = { type: "back"; payload?: unknown } | { type: "requestClose"; payload?: unknown };
 type Ctx = {
   includeScreenshot: boolean;
   dirty: boolean;

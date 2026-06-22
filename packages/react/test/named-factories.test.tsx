@@ -10,7 +10,7 @@ import {
   type JourneyViews
 } from "@rxova/journey-react";
 import { createGraphJourneyBuilder } from "@rxova/journey-core";
-import type { JourneyDefinition, JourneyEmpty } from "@rxova/journey-core";
+import type { JourneyDefinition } from "@rxova/journey-core";
 
 type SimpleContext = { value: number };
 
@@ -19,7 +19,7 @@ type SimpleContext = { value: number };
 describe("createGraphJourney (React)", () => {
   it("builds a graph runtime and drives it through an event", async () => {
     type StepId = "start" | "done";
-    type EventMap = { go: undefined };
+    type EventMap = { type: "go"; payload?: undefined };
 
     const { createStep, to, build } = createGraphJourneyBuilder<{
       context: SimpleContext;
@@ -146,7 +146,7 @@ describe("createJourney transition routing", () => {
     const tracked: string[] = [];
 
     const journey = createJourney<
-      JourneyDefinition<SimpleContext, "a" | "b", JourneyEmpty, unknown, Handlers>
+      JourneyDefinition<SimpleContext, "a" | "b", never, unknown, Handlers>
     >({
       context: { value: 0 },
       handlers: { track: (label) => tracked.push(label) },
@@ -176,7 +176,13 @@ describe("createJourney creation options", () => {
     type Handlers = { allow: () => boolean };
 
     const journey = createJourney<
-      JourneyDefinition<SimpleContext, "start" | "done", { go: undefined }, unknown, Handlers>
+      JourneyDefinition<
+        SimpleContext,
+        "start" | "done",
+        { type: "go"; payload?: undefined },
+        unknown,
+        Handlers
+      >
     >(
       {
         initial: "start",
@@ -201,7 +207,7 @@ describe("createJourney creation options", () => {
   it("forwards onNoMatch for a dropped event", async () => {
     const onNoMatch = vi.fn();
     const journey = createJourney<
-      JourneyDefinition<SimpleContext, "start" | "done", { go: undefined }>
+      JourneyDefinition<SimpleContext, "start" | "done", { type: "go"; payload?: undefined }>
     >(
       {
         initial: "start",

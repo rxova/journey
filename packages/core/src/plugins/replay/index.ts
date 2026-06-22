@@ -1,4 +1,5 @@
 import type {
+  JourneyBaseEvent,
   JourneyJsonObject,
   JourneyMachine,
   JourneyMachinePlugin,
@@ -78,18 +79,18 @@ const toSerializable = (value: unknown, seen = new WeakSet<object>()): unknown =
 export const serializeReplaySession = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty
+  TEvents extends JourneyBaseEvent = never
 >(
-  session: JourneyReplaySession<TContext, TStepId, TEventMap>,
+  session: JourneyReplaySession<TContext, TStepId, TEvents>,
   options?: JourneyReplayExportOptions
 ) => JSON.stringify(toSerializable(session), null, options?.pretty ? 2 : undefined);
 
 export type JourneyReplayMachineExtension<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty
+  TEvents extends JourneyBaseEvent = never
 > = {
-  getReplaySession: () => JourneyReplaySession<TContext, TStepId, TEventMap>;
+  getReplaySession: () => JourneyReplaySession<TContext, TStepId, TEvents>;
   clearReplaySession: () => void;
   exportReplaySession: (options?: JourneyReplayExportOptions) => string;
 };
@@ -97,11 +98,11 @@ export type JourneyReplayMachineExtension<
 export type JourneyReplayMachine<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty
-> = JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers> &
-  JourneyReplayMachineExtension<TContext, TStepId, TEventMap>;
+> = JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers> &
+  JourneyReplayMachineExtension<TContext, TStepId, TEvents>;
 
 /** Creates a plugin that records snapshot and lifecycle activity into a replay session. */
 export const createReplayPlugin = (options: JourneyReplayPluginOptions = {}) => {
@@ -110,13 +111,11 @@ export const createReplayPlugin = (options: JourneyReplayPluginOptions = {}) => 
   const maxEntries = normalizeMaxEntries(options.maxEntries);
 
   let initialSnapshot: JourneySnapshot<JourneyJsonObject, string> | null = null;
-  const entries: JourneyReplayEntry<JourneyJsonObject, string, Record<string, unknown>>[] = [];
+  const entries: JourneyReplayEntry<JourneyJsonObject, string, JourneyBaseEvent>[] = [];
   let truncated = false;
   let unsubscribeEvents: (() => void) | undefined;
 
-  const pushEntry = (
-    entry: JourneyReplayEntry<JourneyJsonObject, string, Record<string, unknown>>
-  ) => {
+  const pushEntry = (entry: JourneyReplayEntry<JourneyJsonObject, string, JourneyBaseEvent>) => {
     if (entries.length >= maxEntries) {
       entries.shift();
       truncated = true;
@@ -131,14 +130,14 @@ export const createReplayPlugin = (options: JourneyReplayPluginOptions = {}) => 
       initialSnapshot,
       entries: [...entries],
       truncated
-    }) satisfies JourneyReplaySession<JourneyJsonObject, string, Record<string, unknown>>;
+    }) satisfies JourneyReplaySession<JourneyJsonObject, string, JourneyBaseEvent>;
 
   return {
     name: "replay",
     __extension__: undefined as unknown as JourneyReplayMachineExtension<
       JourneyJsonObject,
       string,
-      Record<string, unknown>
+      JourneyBaseEvent
     >,
     setup: () => ({
       hydrateSnapshot: (snapshot) => {
@@ -163,18 +162,14 @@ export const createReplayPlugin = (options: JourneyReplayPluginOptions = {}) => 
             pushEntry({
               kind: "event",
               timestamp: event.timestamp,
-              event: event as JourneyObservationEvent<string, Record<string, unknown>>
+              event: event as JourneyObservationEvent<string, JourneyBaseEvent>
             });
           });
         }
 
         return {
           getReplaySession: () =>
-            buildSession() as JourneyReplaySession<
-              JourneyJsonObject,
-              string,
-              Record<string, unknown>
-            >,
+            buildSession() as JourneyReplaySession<JourneyJsonObject, string, JourneyBaseEvent>,
           clearReplaySession: () => {
             initialSnapshot = machine.getSnapshot() as JourneySnapshot<JourneyJsonObject, string>;
             entries.length = 0;

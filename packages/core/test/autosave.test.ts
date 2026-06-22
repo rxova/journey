@@ -145,7 +145,7 @@ describe("autosave plugin", () => {
     const machine = createJourneyMachine<
       ComposedContext,
       StepId,
-      Record<never, never>,
+      never,
       unknown,
       Record<never, never>,
       typeof plugins
@@ -295,7 +295,7 @@ describe("autosave plugin", () => {
     const machine = createJourneyMachine<
       ComposedContext,
       StepId,
-      Record<never, never>,
+      never,
       unknown,
       Record<never, never>,
       typeof plugins

@@ -8,7 +8,7 @@ import {
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
 
 type StepId = "start" | "details" | "review" | "confirmExit";
-type EventMap = { back: unknown; requestClose: unknown };
+type EventMap = { type: "back"; payload?: unknown } | { type: "requestClose"; payload?: unknown };
 type Context = { dirty: boolean; count: number };
 type Meta = { title: string };
 

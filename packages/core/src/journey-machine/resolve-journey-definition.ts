@@ -8,6 +8,7 @@ import {
 import { JourneyDefinitionError } from "./errors";
 
 import type {
+  JourneyBaseEvent,
   JourneyDefinition,
   JourneyJsonObject,
   JourneyResolvedDefinition,
@@ -30,11 +31,11 @@ const hashTransitionDescriptor = (value: string) => {
 const buildResolvedTransitions = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   THandlers extends Record<string, unknown>
 >(
-  transitions: readonly JourneyTransition<TContext, TStepId, TEventMap, THandlers>[]
-): JourneyResolvedTransition<TContext, TStepId, TEventMap, THandlers>[] => {
+  transitions: readonly JourneyTransition<TContext, TStepId, TEvents, THandlers>[]
+): JourneyResolvedTransition<TContext, TStepId, TEvents, THandlers>[] => {
   const transitionRouteCounts = new Map<string, number>();
   const usedIds = new Set<string>();
 
@@ -75,7 +76,7 @@ const buildResolvedTransitions = <
       ...transition,
       id,
       ...(transition.label !== undefined ? { label: transition.label } : {})
-    } as JourneyResolvedTransition<TContext, TStepId, TEventMap, THandlers>;
+    } as JourneyResolvedTransition<TContext, TStepId, TEvents, THandlers>;
   });
 };
 
@@ -88,16 +89,16 @@ const buildResolvedTransitions = <
 const buildEffectTransitions = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   THandlers extends Record<string, unknown>
 >(
-  steps: Record<TStepId, JourneyStepDefinition<TContext, TStepId, TEventMap, unknown, THandlers>>
-): JourneyTransition<TContext, TStepId, TEventMap, THandlers>[] => {
-  const effectTransitions: JourneyTransition<TContext, TStepId, TEventMap, THandlers>[] = [];
+  steps: Record<TStepId, JourneyStepDefinition<TContext, TStepId, TEvents, unknown, THandlers>>
+): JourneyTransition<TContext, TStepId, TEvents, THandlers>[] => {
+  const effectTransitions: JourneyTransition<TContext, TStepId, TEvents, THandlers>[] = [];
 
   for (const [stepId, step] of Object.entries(steps) as [
     TStepId,
-    JourneyStepDefinition<TContext, TStepId, TEventMap, unknown, THandlers>
+    JourneyStepDefinition<TContext, TStepId, TEvents, unknown, THandlers>
   ][]) {
     const effect = step?.effect;
     if (!effect) {
@@ -141,7 +142,7 @@ const buildEffectTransitions = <
                 })
             }
           : {})
-      } as unknown as JourneyTransition<TContext, TStepId, TEventMap, THandlers>);
+      } as unknown as JourneyTransition<TContext, TStepId, TEvents, THandlers>);
     }
 
     if (effect.onRejected) {
@@ -173,7 +174,7 @@ const buildEffectTransitions = <
                 })
             }
           : {})
-      } as unknown as JourneyTransition<TContext, TStepId, TEventMap, THandlers>);
+      } as unknown as JourneyTransition<TContext, TStepId, TEvents, THandlers>);
     }
   }
 
@@ -188,16 +189,16 @@ const buildEffectTransitions = <
 const buildAfterTransitions = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   THandlers extends Record<string, unknown>
 >(
-  steps: Record<TStepId, JourneyStepDefinition<TContext, TStepId, TEventMap, unknown, THandlers>>
-): JourneyTransition<TContext, TStepId, TEventMap, THandlers>[] => {
-  const afterTransitions: JourneyTransition<TContext, TStepId, TEventMap, THandlers>[] = [];
+  steps: Record<TStepId, JourneyStepDefinition<TContext, TStepId, TEvents, unknown, THandlers>>
+): JourneyTransition<TContext, TStepId, TEvents, THandlers>[] => {
+  const afterTransitions: JourneyTransition<TContext, TStepId, TEvents, THandlers>[] = [];
 
   for (const [stepId, step] of Object.entries(steps) as [
     TStepId,
-    JourneyStepDefinition<TContext, TStepId, TEventMap, unknown, THandlers>
+    JourneyStepDefinition<TContext, TStepId, TEvents, unknown, THandlers>
   ][]) {
     const after = step?.after;
     if (!after) {
@@ -235,7 +236,7 @@ const buildAfterTransitions = <
                 })
             }
           : {})
-      } as unknown as JourneyTransition<TContext, TStepId, TEventMap, THandlers>);
+      } as unknown as JourneyTransition<TContext, TStepId, TEvents, THandlers>);
     }
   }
 
@@ -245,14 +246,14 @@ const buildAfterTransitions = <
 export const resolveJourneyDefinition = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty
 >(
-  journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>
-): JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers> => {
+  journey: JourneyDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>
+): JourneyResolvedDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers> => {
   type TEventType = string;
-  const resolvedTransitions: JourneyTransition<TContext, TStepId, TEventMap, THandlers>[] = [];
+  const resolvedTransitions: JourneyTransition<TContext, TStepId, TEvents, THandlers>[] = [];
   const effectTransitions = [
     ...buildEffectTransitions(journey.steps),
     ...buildAfterTransitions(journey.steps)
@@ -268,7 +269,7 @@ export const resolveJourneyDefinition = <
     return {
       ...journey,
       transitions: buildResolvedTransitions(resolvedTransitions)
-    } as JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
+    } as JourneyResolvedDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>;
   }
 
   if (Array.isArray(transitions)) {
@@ -333,7 +334,7 @@ export const resolveJourneyDefinition = <
           from: previousStep,
           event: "goToNextStep" as TEventType,
           to: entry as TStepId
-        } as JourneyTransition<TContext, TStepId, TEventMap, THandlers>);
+        } as JourneyTransition<TContext, TStepId, TEvents, THandlers>);
         previousStep = entry as TStepId;
         continue;
       }
@@ -416,7 +417,7 @@ export const resolveJourneyDefinition = <
         from: previousStep,
         event: "goToNextStep" as TEventType,
         to: entry.step as TStepId
-      } as JourneyTransition<TContext, TStepId, TEventMap, THandlers>);
+      } as JourneyTransition<TContext, TStepId, TEvents, THandlers>);
       previousStep = entry.step as TStepId;
     }
 
@@ -437,7 +438,7 @@ export const resolveJourneyDefinition = <
   const transitionGraph = transitions as JourneyTransitionGraph<
     TContext,
     TStepId,
-    TEventMap,
+    TEvents,
     THandlers
   >;
 
@@ -566,7 +567,7 @@ export const resolveJourneyDefinition = <
           ...edge,
           from: (fromKey === "global" ? "*" : fromKey) as TStepId | "*",
           event
-        } as JourneyTransition<TContext, TStepId, TEventMap, THandlers>);
+        } as JourneyTransition<TContext, TStepId, TEvents, THandlers>);
       }
     }
   }
@@ -574,5 +575,5 @@ export const resolveJourneyDefinition = <
   return {
     ...journey,
     transitions: buildResolvedTransitions([...resolvedTransitions, ...effectTransitions])
-  } as JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
+  } as JourneyResolvedDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>;
 };

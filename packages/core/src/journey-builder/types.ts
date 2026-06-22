@@ -1,4 +1,5 @@
 import type {
+  JourneyBaseEvent,
   JourneyDefaultEventType,
   JourneyDefinition,
   JourneyFullEventType,
@@ -12,18 +13,18 @@ import type {
   JourneyTransitionUpdateContextArgsForEvent
 } from "../types";
 
-export type JourneyBuilderStepEventKey<TEventMap extends Record<string, unknown>> = Exclude<
-  JourneyFullEventType<TEventMap>,
+export type JourneyBuilderStepEventKey<TEvents extends JourneyBaseEvent> = Exclude<
+  JourneyFullEventType<TEvents>,
   "completeJourney" | "terminateJourney"
 >;
 
-export type JourneyBuilderTerminalEventKey<TEventMap extends Record<string, unknown>> = Extract<
-  JourneyFullEventType<TEventMap>,
+export type JourneyBuilderTerminalEventKey<TEvents extends JourneyBaseEvent> = Extract<
+  JourneyFullEventType<TEvents>,
   "completeJourney" | "terminateJourney"
 >;
 
-export type JourneyBuilderCustomEventKey<TEventMap extends Record<string, unknown>> = Exclude<
-  keyof TEventMap & string,
+export type JourneyBuilderCustomEventKey<TEvents extends JourneyBaseEvent> = Exclude<
+  TEvents["type"],
   JourneyDefaultEventType
 >;
 
@@ -183,10 +184,10 @@ type JourneyStepBuilderOnConfig<T extends JourneyTypes> = Partial<{
   [TEventType in JourneyFullEventType<T["events"]>]: JourneyBuilderEventEntry<T, TEventType>;
 }>;
 
-type JourneyStepBuilderHandledCustomEventKey<
-  TEventMap extends Record<string, unknown>,
-  TOn
-> = Extract<keyof NonNullable<TOn>, JourneyBuilderCustomEventKey<TEventMap>>;
+type JourneyStepBuilderHandledCustomEventKey<TEvents extends JourneyBaseEvent, TOn> = Extract<
+  keyof NonNullable<TOn>,
+  JourneyBuilderCustomEventKey<TEvents>
+>;
 
 type JourneyStepBuilderConfig<
   T extends JourneyTypes,
@@ -241,19 +242,19 @@ type JourneyStepBuilderHandledCustomEventMap<
   >;
 };
 
-type JourneyBuilderGlobalHandledCustomEventKey<
-  TEventMap extends Record<string, unknown>,
-  TGlobal
-> = Extract<keyof NonNullable<TGlobal>, JourneyBuilderCustomEventKey<TEventMap>>;
+type JourneyBuilderGlobalHandledCustomEventKey<TEvents extends JourneyBaseEvent, TGlobal> = Extract<
+  keyof NonNullable<TGlobal>,
+  JourneyBuilderCustomEventKey<TEvents>
+>;
 
 declare const journeyBuilderDefinitionBrand: unique symbol;
 
 export type JourneyBuilderDefinitionMetadata<
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  TStepHandledCustomEventMap extends Record<TStepId, JourneyBuilderCustomEventKey<TEventMap>> =
+  TEvents extends JourneyBaseEvent,
+  TStepHandledCustomEventMap extends Record<TStepId, JourneyBuilderCustomEventKey<TEvents>> =
     Record<TStepId, never>,
-  TGlobalHandledCustomEventType extends JourneyBuilderCustomEventKey<TEventMap> = never
+  TGlobalHandledCustomEventType extends JourneyBuilderCustomEventKey<TEvents> = never
 > = {
   readonly [journeyBuilderDefinitionBrand]?: {
     readonly stepHandledCustomEvents: TStepHandledCustomEventMap;

@@ -40,26 +40,19 @@ export function createLinearJourney<
       };
       return [id, { meta, onEnter, onLeave, effect, after }];
     })
-  ) as Record<
-    TStepId,
-    JourneyStepDefinition<TContext, TStepId, JourneyEmpty, TStepMeta, THandlers>
-  >;
+  ) as Record<TStepId, JourneyStepDefinition<TContext, TStepId, never, TStepMeta, THandlers>>;
 
-  const internalDef: JourneyDefinition<TContext, TStepId, JourneyEmpty, TStepMeta, THandlers> = {
+  const internalDef: JourneyDefinition<TContext, TStepId, never, TStepMeta, THandlers> = {
     context: def.context,
     ...(def.handlers !== undefined ? { handlers: def.handlers } : {}),
     steps: stepsRecord,
     transitions: stepOrder as unknown as readonly [TStepId, ...TStepId[]]
   };
 
-  const machine = createJourneyMachine<
-    TContext,
-    TStepId,
-    JourneyEmpty,
-    TStepMeta,
-    THandlers,
-    TPlugins
-  >(internalDef, options);
+  const machine = createJourneyMachine<TContext, TStepId, never, TStepMeta, THandlers, TPlugins>(
+    internalDef,
+    options
+  );
 
   const goToStepByIndex = (index: number) => {
     const stepId = stepOrder[index];
