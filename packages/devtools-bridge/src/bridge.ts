@@ -13,6 +13,7 @@ import {
 } from "@rxova/journey-core";
 import {
   resolveNonProductionEnvironment as resolveNonProductionEnvironmentCommon,
+  warnInDevelopment,
   type NonProductionBundlerEnv
 } from "@rxova/journey-common/dev";
 import { isExpectedWindowOrigin, resolveWindowTargetOrigin } from "@rxova/journey-common/origin";
@@ -584,10 +585,12 @@ export const attachJourneyDevtools = <
     if (detached) return;
     try {
       window.postMessage(envelope, targetOrigin);
-    } catch {
+    } catch (error) {
       // Tooling must never break the host app: swallow transport failures (e.g.
       // a throwing/unavailable `postMessage`) so bridge lifecycle and command
-      // flows stay non-throwing.
+      // flows stay non-throwing — but surface them in development so a silently
+      // failing devtools attach stays debuggable.
+      warnInDevelopment("Journey devtools bridge failed to post a message.", error);
     }
   };
 
