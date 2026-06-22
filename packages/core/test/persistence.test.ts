@@ -1521,11 +1521,15 @@ describe("persistence", () => {
     expect(emptyController.hydrateSnapshot().currentStepId).toBe("start");
     expect(onTypeError).toHaveBeenCalledWith(
       expect.objectContaining({
+        name: "JourneyPersistenceError",
+        code: "invalid-path",
         message: expect.stringContaining("Persistence allowList entries must be strings")
       })
     );
     expect(onEmptyError).toHaveBeenCalledWith(
       expect.objectContaining({
+        name: "JourneyPersistenceError",
+        code: "invalid-path",
         message: expect.stringContaining("Persistence allowList entries must not be empty")
       })
     );

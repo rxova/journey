@@ -1,4 +1,5 @@
 import { isPromiseLike, warnInDevelopment } from "./helpers";
+import { JourneyStateError } from "./errors";
 
 import type {
   JourneyDefinition,
@@ -113,13 +114,19 @@ export const createJourneyMachinePluginController = <
 
     for (const feature of features) {
       if (featureIds.has(feature.id)) {
-        throw new Error(`Journey devtools feature "${feature.id}" is already registered.`);
+        throw new JourneyStateError(
+          "duplicate-registration",
+          `Journey devtools feature "${feature.id}" is already registered.`
+        );
       }
       featureIds.add(feature.id);
 
       for (const operation of feature.operations) {
         if (operationIds.has(operation.id)) {
-          throw new Error(`Journey devtools operation "${operation.id}" is already registered.`);
+          throw new JourneyStateError(
+            "duplicate-registration",
+            `Journey devtools operation "${operation.id}" is already registered.`
+          );
         }
         operationIds.add(operation.id);
       }
@@ -193,12 +200,14 @@ export const createJourneyMachinePluginController = <
         for (const [key, value] of Object.entries(extension)) {
           const existingPlugin = pluginExtensionKeys.get(key);
           if (existingPlugin) {
-            throw new Error(
+            throw new JourneyStateError(
+              "plugin-conflict",
               `Journey plugin "${plugin.name}" cannot add "${key}" — already provided by plugin "${existingPlugin}".`
             );
           }
           if (key in extensionTarget) {
-            throw new Error(
+            throw new JourneyStateError(
+              "plugin-conflict",
               `Journey plugin "${plugin.name}" cannot override machine property "${key}".`
             );
           }

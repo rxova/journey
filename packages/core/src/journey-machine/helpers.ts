@@ -6,7 +6,12 @@ import {
 } from "@rxova/journey-common/dev";
 import { isPlainObject, isPromiseLike } from "@rxova/journey-common/predicates";
 
-import { JourneyDefinitionError, JourneyDisposedError, JourneyTimeoutError } from "./errors";
+import {
+  JourneyDefinitionError,
+  JourneyDisposedError,
+  JourneyStateError,
+  JourneyTimeoutError
+} from "./errors";
 
 import type {
   JourneyAsyncState,
@@ -519,7 +524,7 @@ export const buildSnapshot = <TContext extends JourneyJsonObject, TStepId extend
   visited?: Record<TStepId, boolean>
 ): JourneySnapshot<TContext, TStepId> => {
   if (timeline.length === 0) {
-    throw new Error("Journey timeline cannot be empty.");
+    throw new JourneyStateError("invalid-snapshot", "Journey timeline cannot be empty.");
   }
 
   const safeIndex = Math.max(0, Math.min(Math.trunc(index), timeline.length - 1));
