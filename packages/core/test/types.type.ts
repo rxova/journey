@@ -1,6 +1,7 @@
 import { expectTypeOf } from "expect-type";
 
 import {
+  createGraphJourney,
   createGraphJourneyBuilder,
   createJourneyMachine,
   type JourneyAsyncPhase,
@@ -460,6 +461,32 @@ const transitionGraph = {
   }
 } satisfies JourneyTransitionGraph<Context, StepId, EventMap>;
 void transitionGraph;
+
+// createGraphJourney rejects a transition whose `to` is its own step.
+// @ts-expect-error a transition cannot target its own step "start"
+const selfTransitionJourney = createGraphJourney({
+  initial: "start",
+  context: { count: 0 },
+  steps: { start: {}, review: {}, done: {} },
+  transitions: {
+    start: {
+      goToNextStep: [{ to: "start" }]
+    }
+  }
+});
+void selfTransitionJourney;
+
+// A valid graph definition (no self-transition) is accepted.
+const crossStepJourney = createGraphJourney({
+  initial: "start",
+  context: { count: 0 },
+  steps: { start: {}, review: {}, done: {} },
+  transitions: {
+    start: { goToNextStep: [{ to: "review" }] },
+    review: { goToNextStep: [{ to: "done" }] }
+  }
+});
+void crossStepJourney;
 
 const terminalShorthandTrue = {
   start: { goToNextStep: [{ to: "review" }] },
