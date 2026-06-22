@@ -1,6 +1,7 @@
 import { getJourneyDiagnostics } from "./diagnostics";
 
 import type {
+  JourneyBaseEvent,
   JourneyDiagnosticsOptions,
   JourneyDiagnosticsResult,
   JourneyFullEventType,
@@ -22,11 +23,11 @@ export type JourneyDiagnosticsMachineExtension<
 export type JourneyDiagnosticsMachine<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty
-> = JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers> &
-  JourneyDiagnosticsMachineExtension<TStepId, JourneyFullEventType<TEventMap>>;
+> = JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers> &
+  JourneyDiagnosticsMachineExtension<TStepId, JourneyFullEventType<TEvents>>;
 
 /** Creates a plugin that augments a machine with structural diagnostics helpers. */
 export const createDiagnosticsPlugin = () =>

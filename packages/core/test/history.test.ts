@@ -4,7 +4,7 @@ import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-cor
 import type { JourneyTransitionGraph } from "../src/types";
 
 type StepId = "a" | "b" | "c" | "d";
-type EventMap = { back: unknown; jump: unknown };
+type EventMap = { type: "back"; payload?: unknown } | { type: "jump"; payload?: unknown };
 type Context = { count: number };
 
 const createJourney = (): JourneyDefinition<Context, StepId, EventMap> => ({

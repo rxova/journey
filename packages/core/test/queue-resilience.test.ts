@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "mid" | "end";
-type EventMap = { back: unknown };
+type EventMap = { type: "back"; payload?: unknown };
 type Context = { count: number };
 
 const deferred = <T>() => {

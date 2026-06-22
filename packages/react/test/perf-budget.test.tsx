@@ -9,7 +9,7 @@ import { createJourney, type JourneyApi } from "@rxova/journey-react";
 import type { JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "details" | "review";
-type EventMap = { back: unknown };
+type EventMap = { type: "back"; payload?: unknown };
 type Ctx = { count: number };
 
 const journeyDefinition: JourneyDefinition<Ctx, StepId, EventMap> = {

@@ -90,7 +90,11 @@ describe("execution paths", () => {
   });
 
   it("branching transitions produce multiple paths", () => {
-    const journey: JourneyDefinition<Record<string, never>, "a" | "b" | "c", { skip: unknown }> = {
+    const journey: JourneyDefinition<
+      Record<string, never>,
+      "a" | "b" | "c",
+      { type: "skip"; payload?: unknown }
+    > = {
       initial: "a",
       context: {},
       steps: {
@@ -157,7 +161,7 @@ describe("execution paths", () => {
     const journey: JourneyDefinition<
       Record<string, never>,
       "s1" | "s2" | "s3" | "s4" | "s5" | "s6",
-      { goA: unknown; goB: unknown }
+      { type: "goA"; payload?: unknown } | { type: "goB"; payload?: unknown }
     > = {
       initial: "s1",
       context: {},
@@ -388,7 +392,11 @@ describe("execution paths", () => {
   });
 
   it("truncates after a recursive branch fills the remaining path budget", () => {
-    type BranchEventMap = { left: unknown; right: unknown; leftA: unknown; leftB: unknown };
+    type BranchEventMap =
+      | { type: "left"; payload?: unknown }
+      | { type: "right"; payload?: unknown }
+      | { type: "leftA"; payload?: unknown }
+      | { type: "leftB"; payload?: unknown };
     const journey: JourneyDefinition<
       Record<string, never>,
       "start" | "left" | "right" | "leftA" | "leftB" | "finish",

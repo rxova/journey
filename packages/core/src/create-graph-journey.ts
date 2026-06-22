@@ -1,6 +1,7 @@
 /* eslint-disable no-redeclare */
 import { createJourneyMachine } from "./journey-machine";
 import type {
+  JourneyBaseEvent,
   AssertNoSelfTransitions,
   GraphJourneyDefinition,
   JourneyDefinition,
@@ -29,33 +30,39 @@ export function createGraphJourney<
 >(
   def: TDefinition & AssertNoSelfTransitions<NoInfer<TDefinition>>,
   options?: JourneyMachineOptions<TPlugins, JourneyHandlersOfDefinition<TDefinition>>
-): TDefinition extends JourneyDefinition<infer TC, infer TS, infer TE, infer TM, infer TH>
+): TDefinition extends JourneyDefinition<
+  infer TC,
+  infer TS,
+  infer TE extends JourneyBaseEvent,
+  infer TM,
+  infer TH
+>
   ? JourneyMachineWithPlugins<TC, TS, TE, TM, TH, TPlugins>
   : never;
 export function createGraphJourney<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
-  def: GraphJourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
+  def: GraphJourneyDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>,
   options?: JourneyMachineOptions<TPlugins, THandlers>
-): JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins>;
+): JourneyMachineWithPlugins<TContext, TStepId, TEvents, TStepMeta, THandlers, TPlugins>;
 /** Creates a graph journey machine from a builder definition or a plain `GraphJourneyDefinition` with an object-keyed `transitions` map. */
 export function createGraphJourney<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   TStepMeta,
   THandlers extends Record<string, unknown>,
   TPlugins extends readonly JourneyMachinePlugin[]
 >(
-  def: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
+  def: JourneyDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>,
   options?: JourneyMachineOptions<TPlugins, THandlers>
-): JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins> {
-  return createJourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins>(
+): JourneyMachineWithPlugins<TContext, TStepId, TEvents, TStepMeta, THandlers, TPlugins> {
+  return createJourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers, TPlugins>(
     def,
     options
   );

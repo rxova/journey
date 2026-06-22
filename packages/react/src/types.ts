@@ -1,6 +1,7 @@
 import type React from "react";
 
 import type {
+  JourneyBaseEvent,
   JourneyBuilderCustomEventKey,
   JourneyComputed,
   JourneyDefaultEventType,
@@ -32,20 +33,20 @@ export type JourneyViews<TStepId extends string> = Record<TStepId, React.Compone
 export type JourneyApi<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown
 > = {
   startJourney: () => Promise<JourneySnapshot<TContext, TStepId>>;
   send: (
-    event: JourneySendEvent<TStepId, TEventMap>
+    event: JourneySendEvent<TStepId, TEvents>
   ) => Promise<JourneySendResult<TContext, TStepId>>;
   goToNextStep: () => Promise<JourneySendResult<TContext, TStepId>>;
   goToStepById: (stepId: TStepId) => Promise<JourneySendResult<TContext, TStepId>>;
   terminateJourney: (
-    payload?: JourneyPayloadFor<TEventMap, "terminateJourney">
+    payload?: JourneyPayloadFor<TEvents, "terminateJourney">
   ) => Promise<JourneySendResult<TContext, TStepId>>;
   completeJourney: (
-    payload?: JourneyPayloadFor<TEventMap, "completeJourney">
+    payload?: JourneyPayloadFor<TEvents, "completeJourney">
   ) => Promise<JourneySendResult<TContext, TStepId>>;
   goToPreviousStep: (steps?: number) => Promise<JourneySendResult<TContext, TStepId>>;
   goToLastVisitedStep: () => Promise<JourneySendResult<TContext, TStepId>>;
@@ -60,12 +61,12 @@ export type JourneyApi<
 export type StepScopedJourneyApi<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
-  TAllowedEventType extends keyof TEventMap & string = never,
+  TEvents extends JourneyBaseEvent = never,
+  TAllowedEventType extends TEvents["type"] = never,
   TStepMeta = unknown
-> = Omit<JourneyApi<TContext, TStepId, TEventMap, TStepMeta>, "send"> & {
+> = Omit<JourneyApi<TContext, TStepId, TEvents, TStepMeta>, "send"> & {
   send: (
-    event: JourneyCustomSendEventForKeys<TEventMap, TAllowedEventType>
+    event: JourneyCustomSendEventForKeys<TEvents, TAllowedEventType>
   ) => Promise<JourneySendResult<TContext, TStepId>>;
 };
 
@@ -83,12 +84,12 @@ export type JourneyProviderProps<TStepId extends string> = {
 export type JourneyRuntime<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   TPlugins extends readonly JourneyMachinePlugin[] = [],
   THandlers extends Record<string, unknown> = JourneyEmpty
 > = {
-  machine: JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins>;
+  machine: JourneyMachineWithPlugins<TContext, TStepId, TEvents, TStepMeta, THandlers, TPlugins>;
   dispose: () => void;
   useJourneySnapshot: () => JourneySnapshot<TContext, TStepId>;
   useJourneyComputed: () => JourneyComputed<TStepId>;
@@ -97,8 +98,8 @@ export type JourneyRuntime<
     equalityFn?: JourneyEqualityFn<TSelected>
   ) => TSelected;
   useStepAsyncState: (stepId: TStepId) => JourneyStepAsyncState;
-  useJourneyApi: () => JourneyApi<TContext, TStepId, TEventMap, TStepMeta>;
-  useJourneyEvent: (listener: (event: JourneyObservationEvent<TStepId, TEventMap>) => void) => void;
+  useJourneyApi: () => JourneyApi<TContext, TStepId, TEvents, TStepMeta>;
+  useJourneyEvent: (listener: (event: JourneyObservationEvent<TStepId, TEvents>) => void) => void;
   useJourneyStepLifecycle: (
     stepId: TStepId,
     callbacks: {
@@ -117,34 +118,28 @@ export type LinearJourneyRuntime<
   TStepMeta = unknown,
   TPlugins extends readonly JourneyMachinePlugin[] = [],
   THandlers extends Record<string, unknown> = JourneyEmpty
-> = Omit<
-  JourneyRuntime<TContext, TStepId, JourneyEmpty, TStepMeta, TPlugins, THandlers>,
-  "machine"
-> & {
+> = Omit<JourneyRuntime<TContext, TStepId, never, TStepMeta, TPlugins, THandlers>, "machine"> & {
   machine: LinearJourneyMachine<TContext, TStepId, TStepMeta, THandlers, TPlugins>;
 };
 
 export type JourneyRuntimeWithStepApi<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   TPlugins extends readonly JourneyMachinePlugin[] = [],
   THandlers extends Record<string, unknown> = JourneyEmpty,
-  TStepHandledCustomEventMap extends Record<TStepId, JourneyBuilderCustomEventKey<TEventMap>> =
+  TStepHandledCustomEventMap extends Record<TStepId, JourneyBuilderCustomEventKey<TEvents>> =
     Record<TStepId, never>,
-  TGlobalHandledCustomEventType extends JourneyBuilderCustomEventKey<TEventMap> = never
-> = JourneyRuntime<TContext, TStepId, TEventMap, TStepMeta, TPlugins, THandlers> & {
+  TGlobalHandledCustomEventType extends JourneyBuilderCustomEventKey<TEvents> = never
+> = JourneyRuntime<TContext, TStepId, TEvents, TStepMeta, TPlugins, THandlers> & {
   useStepApi: <TStepKey extends TStepId>(
     stepId: TStepKey
   ) => StepScopedJourneyApi<
     TContext,
     TStepId,
-    TEventMap,
-    Extract<
-      TStepHandledCustomEventMap[TStepKey] | TGlobalHandledCustomEventType,
-      keyof TEventMap & string
-    >,
+    TEvents,
+    Extract<TStepHandledCustomEventMap[TStepKey] | TGlobalHandledCustomEventType, TEvents["type"]>,
     TStepMeta
   >;
 };
@@ -152,17 +147,17 @@ export type JourneyRuntimeWithStepApi<
 export type JourneyBuilderRuntime<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   TPlugins extends readonly JourneyMachinePlugin[] = [],
   THandlers extends Record<string, unknown> = JourneyEmpty,
-  TStepHandledCustomEventMap extends Record<TStepId, JourneyBuilderCustomEventKey<TEventMap>> =
+  TStepHandledCustomEventMap extends Record<TStepId, JourneyBuilderCustomEventKey<TEvents>> =
     Record<TStepId, never>,
-  TGlobalHandledCustomEventType extends JourneyBuilderCustomEventKey<TEventMap> = never
+  TGlobalHandledCustomEventType extends JourneyBuilderCustomEventKey<TEvents> = never
 > = JourneyRuntimeWithStepApi<
   TContext,
   TStepId,
-  TEventMap,
+  TEvents,
   TStepMeta,
   TPlugins,
   THandlers,
@@ -173,17 +168,17 @@ export type JourneyBuilderRuntime<
 export type JourneyBuilderRuntimeFactory<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   TPlugins extends readonly JourneyMachinePlugin[] = [],
   THandlers extends Record<string, unknown> = JourneyEmpty,
-  TStepHandledCustomEventMap extends Record<TStepId, JourneyBuilderCustomEventKey<TEventMap>> =
+  TStepHandledCustomEventMap extends Record<TStepId, JourneyBuilderCustomEventKey<TEvents>> =
     Record<TStepId, never>,
-  TGlobalHandledCustomEventType extends JourneyBuilderCustomEventKey<TEventMap> = never
+  TGlobalHandledCustomEventType extends JourneyBuilderCustomEventKey<TEvents> = never
 > = () => JourneyBuilderRuntime<
   TContext,
   TStepId,
-  TEventMap,
+  TEvents,
   TStepMeta,
   TPlugins,
   THandlers,
@@ -198,26 +193,26 @@ export type JourneyRuntimeFromDefinition<
   TDefinition extends JourneyDefinition<
     infer TContext,
     infer TStepId,
-    infer TEventMap,
+    infer TEvents,
     infer TStepMeta,
     infer THandlers
   >
     ? JourneyRuntimeWithStepApi<
         Extract<TContext, JourneyJsonObject>,
         Extract<TStepId, string>,
-        Extract<TEventMap, Record<string, unknown>>,
+        Extract<TEvents, JourneyBaseEvent>,
         TStepMeta,
         TPlugins,
         Extract<THandlers, Record<string, unknown>>,
         JourneyStepHandledCustomEventMapFromDefinition<
           TDefinition,
           Extract<TStepId, string>,
-          Extract<TEventMap, Record<string, unknown>>
+          Extract<TEvents, JourneyBaseEvent>
         >,
         JourneyGlobalHandledCustomEventTypeFromDefinition<
           TDefinition,
           Extract<TStepId, string>,
-          Extract<TEventMap, Record<string, unknown>>
+          Extract<TEvents, JourneyBaseEvent>
         >
       >
     : never;
@@ -240,8 +235,8 @@ export type JourneyBuilderRuntimeFactoryFromDefinition<
 export type JourneyRuntimeFactory<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   TPlugins extends readonly JourneyMachinePlugin[] = [],
   THandlers extends Record<string, unknown> = JourneyEmpty
-> = () => JourneyRuntime<TContext, TStepId, TEventMap, TStepMeta, TPlugins, THandlers>;
+> = () => JourneyRuntime<TContext, TStepId, TEvents, TStepMeta, TPlugins, THandlers>;

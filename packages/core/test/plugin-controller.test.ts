@@ -17,7 +17,7 @@ type Context = { count: number };
 type StepMeta = { title: string };
 type Snapshot = JourneySnapshot<Context, StepId>;
 
-const journey: JourneyDefinition<Context, StepId, Record<never, never>, StepMeta> = {
+const journey: JourneyDefinition<Context, StepId, never, StepMeta> = {
   initial: "start",
   context: { count: 0 },
   steps: {
@@ -60,7 +60,7 @@ const createSetupContext = () => ({
 
 const createPlugin = (
   name: string,
-  hooks: JourneyMachinePluginHooks<Context, StepId, Record<never, never>, StepMeta>
+  hooks: JourneyMachinePluginHooks<Context, StepId, never, StepMeta>
 ): JourneyMachinePlugin => ({
   name,
   setup: (() => hooks) as JourneyMachinePlugin["setup"]
@@ -90,12 +90,7 @@ describe("machine plugin controller", () => {
   it("hydrates snapshots, forwards snapshot change hooks, and disposes plugin hooks", () => {
     const onSnapshotChange = vi.fn();
     const dispose = vi.fn();
-    const controller = createJourneyMachinePluginController<
-      Context,
-      StepId,
-      Record<never, never>,
-      StepMeta
-    >({
+    const controller = createJourneyMachinePluginController<Context, StepId, never, StepMeta>({
       plugins: [
         createPlugin("inspector", {
           hydrateSnapshot: (snapshot: Snapshot) => ({
@@ -132,12 +127,7 @@ describe("machine plugin controller", () => {
 
   it("hydrates snapshots in plugin registration order", () => {
     const order: string[] = [];
-    const controller = createJourneyMachinePluginController<
-      Context,
-      StepId,
-      Record<never, never>,
-      StepMeta
-    >({
+    const controller = createJourneyMachinePluginController<Context, StepId, never, StepMeta>({
       plugins: [
         createPlugin("increment", {
           hydrateSnapshot: (snapshot: Snapshot) => {
@@ -172,12 +162,7 @@ describe("machine plugin controller", () => {
   });
 
   it("extends machines and skips plugins that return no extension", () => {
-    const controller = createJourneyMachinePluginController<
-      Context,
-      StepId,
-      Record<never, never>,
-      StepMeta
-    >({
+    const controller = createJourneyMachinePluginController<Context, StepId, never, StepMeta>({
       plugins: [
         {
           name: "noop",
@@ -199,7 +184,7 @@ describe("machine plugin controller", () => {
 
     const machine = {
       start: vi.fn()
-    } as unknown as JourneyMachine<Context, StepId, Record<never, never>, StepMeta> & {
+    } as unknown as JourneyMachine<Context, StepId, never, StepMeta> & {
       inspect?: () => string;
     };
     const extended = controller.extendMachine(machine);
@@ -215,12 +200,7 @@ describe("machine plugin controller", () => {
     const dispose2 = vi.fn();
     const dispose3 = vi.fn();
 
-    const controller = createJourneyMachinePluginController<
-      Context,
-      StepId,
-      Record<never, never>,
-      StepMeta
-    >({
+    const controller = createJourneyMachinePluginController<Context, StepId, never, StepMeta>({
       plugins: [
         { name: "p1", setup: () => ({ dispose: dispose1 }) },
         { name: "p2", setup: () => ({ dispose: dispose2 }) },
@@ -246,7 +226,7 @@ describe("machine plugin controller", () => {
     });
 
     expect(() =>
-      createJourneyMachinePluginController<Context, StepId, Record<never, never>, StepMeta>({
+      createJourneyMachinePluginController<Context, StepId, never, StepMeta>({
         plugins: [
           { name: "p1", setup: () => ({ dispose: dispose1 }) },
           { name: "p2", setup: () => ({ dispose: dispose2 }) },
@@ -272,12 +252,7 @@ describe("machine plugin controller", () => {
     });
     const onChange2 = vi.fn();
 
-    const controller = createJourneyMachinePluginController<
-      Context,
-      StepId,
-      Record<never, never>,
-      StepMeta
-    >({
+    const controller = createJourneyMachinePluginController<Context, StepId, never, StepMeta>({
       plugins: [
         { name: "p1", setup: () => ({ onSnapshotChange: onChange1 }) },
         { name: "p2", setup: () => ({ onSnapshotChange: onChange2 }) }
@@ -301,12 +276,7 @@ describe("machine plugin controller", () => {
     await withNodeEnv("development", async () => {
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
-      const controller = createJourneyMachinePluginController<
-        Context,
-        StepId,
-        Record<never, never>,
-        StepMeta
-      >({
+      const controller = createJourneyMachinePluginController<Context, StepId, never, StepMeta>({
         plugins: [
           {
             name: "async-plugin",
@@ -328,12 +298,7 @@ describe("machine plugin controller", () => {
   });
 
   it("rejects plugins that try to override machine properties", () => {
-    const controller = createJourneyMachinePluginController<
-      Context,
-      StepId,
-      Record<never, never>,
-      StepMeta
-    >({
+    const controller = createJourneyMachinePluginController<Context, StepId, never, StepMeta>({
       plugins: [
         {
           name: "override-plugin",
@@ -349,7 +314,7 @@ describe("machine plugin controller", () => {
 
     const machine = {
       start: vi.fn()
-    } as unknown as JourneyMachine<Context, StepId, Record<never, never>, StepMeta>;
+    } as unknown as JourneyMachine<Context, StepId, never, StepMeta>;
 
     expect(() => controller.extendMachine(machine)).toThrow(
       'Journey plugin "override-plugin" cannot override machine property "start".'
@@ -357,12 +322,7 @@ describe("machine plugin controller", () => {
   });
 
   it("rejects plugins that collide with another plugin's extension key", () => {
-    const controller = createJourneyMachinePluginController<
-      Context,
-      StepId,
-      Record<never, never>,
-      StepMeta
-    >({
+    const controller = createJourneyMachinePluginController<Context, StepId, never, StepMeta>({
       plugins: [
         {
           name: "analytics",
@@ -384,12 +344,7 @@ describe("machine plugin controller", () => {
       setupContext: createSetupContext()
     });
 
-    const machine = {} as unknown as JourneyMachine<
-      Context,
-      StepId,
-      Record<never, never>,
-      StepMeta
-    >;
+    const machine = {} as unknown as JourneyMachine<Context, StepId, never, StepMeta>;
 
     expect(() => controller.extendMachine(machine)).toThrow(
       'Journey plugin "debugger" cannot add "inspect" — already provided by plugin "analytics".'

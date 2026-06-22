@@ -1,4 +1,5 @@
 import type {
+  JourneyBaseEvent,
   JourneyDefinition,
   JourneyJsonObject,
   JourneyMachine,
@@ -13,7 +14,7 @@ export const JOURNEY_MACHINE_DEVTOOLS_SYMBOL = Symbol.for("rxova.journey.devtool
 export type JourneyMachineDevtoolsRegistry<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty
 > = {
@@ -23,23 +24,23 @@ export type JourneyMachineDevtoolsRegistry<
   features: readonly JourneyMachineDevtoolsFeatureSpec<
     TContext,
     TStepId,
-    TEventMap,
+    TEvents,
     TStepMeta,
     THandlers
   >[];
-  journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
-  resolvedJourney: JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
+  journey: JourneyDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>;
+  resolvedJourney: JourneyResolvedDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>;
 };
 
 export const attachJourneyMachineDevtoolsRegistry = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty
 >(
-  machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
-  registry: JourneyMachineDevtoolsRegistry<TContext, TStepId, TEventMap, TStepMeta, THandlers>
+  machine: JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers>,
+  registry: JourneyMachineDevtoolsRegistry<TContext, TStepId, TEvents, TStepMeta, THandlers>
 ) => {
   Object.defineProperty(machine, JOURNEY_MACHINE_DEVTOOLS_SYMBOL, {
     value: registry,
@@ -53,12 +54,12 @@ export const attachJourneyMachineDevtoolsRegistry = <
 export const getJourneyMachineDevtoolsRegistry = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty
 >(
-  machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>
+  machine: JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers>
 ) =>
   (machine as Record<PropertyKey, unknown>)[JOURNEY_MACHINE_DEVTOOLS_SYMBOL] as
-    | JourneyMachineDevtoolsRegistry<TContext, TStepId, TEventMap, TStepMeta, THandlers>
+    | JourneyMachineDevtoolsRegistry<TContext, TStepId, TEvents, TStepMeta, THandlers>
     | undefined;

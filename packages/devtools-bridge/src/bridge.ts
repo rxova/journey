@@ -1,6 +1,7 @@
 import {
   getJourneyMachineDevtoolsRegistry,
   isInternalEventType,
+  type JourneyBaseEvent,
   type JourneyJsonObject,
   type JourneyMachine,
   type JourneyMachineDevtoolsFeatureSpec,
@@ -166,11 +167,8 @@ const serializeSnapshot = <TContext extends JourneyJsonObject, TStepId extends s
   };
 };
 
-const serializeObservationEvent = <
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>
->(
-  event: JourneyObservationEvent<TStepId, TEventMap>
+const serializeObservationEvent = <TStepId extends string, TEvents extends JourneyBaseEvent>(
+  event: JourneyObservationEvent<TStepId, TEvents>
 ) => cloneForTransport(event) as Record<string, unknown>;
 
 const toSnapshotOperationResult = <TContext extends JourneyJsonObject, TStepId extends string>(
@@ -214,14 +212,14 @@ const toSerializableResult = <TContext extends JourneyJsonObject, TStepId extend
 const normalizeDescriptorFeatures = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   TStepMeta,
   THandlers extends Record<string, unknown>
 >(
   features: readonly JourneyMachineDevtoolsFeatureSpec<
     TContext,
     TStepId,
-    TEventMap,
+    TEvents,
     TStepMeta,
     THandlers
   >[]
@@ -243,12 +241,12 @@ const normalizeDescriptorFeatures = <
 const createCoreFeature = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   TStepMeta,
   THandlers extends Record<string, unknown>
 >(
-  machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>
-): JourneyMachineDevtoolsFeatureSpec<TContext, TStepId, TEventMap, TStepMeta, THandlers> => ({
+  machine: JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers>
+): JourneyMachineDevtoolsFeatureSpec<TContext, TStepId, TEvents, TStepMeta, THandlers> => ({
   id: "core",
   label: "Core",
   operations: [
@@ -430,11 +428,11 @@ const createCoreFeature = <
 const createOperationRegistry = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   TStepMeta,
   THandlers extends Record<string, unknown>
 >(
-  machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>
+  machine: JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers>
 ) => {
   const registry = getJourneyMachineDevtoolsRegistry(machine);
   if (!registry) {
@@ -559,11 +557,11 @@ const createOperationRegistry = <
 export const attachJourneyDevtools = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty
 >(
-  machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
+  machine: JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers>,
   options: JourneyDevtoolsBridgeOptions = {}
 ): (() => void) => {
   const enabled = options.enabled ?? resolveNonProductionEnvironment();
@@ -638,9 +636,7 @@ export const attachJourneyDevtools = <
       kind: "observation",
       machineId,
       timestamp: Date.now(),
-      event: serializeObservationEvent(
-        event as JourneyObservationEvent<string, Record<string, unknown>>
-      )
+      event: serializeObservationEvent(event as JourneyObservationEvent<string, JourneyBaseEvent>)
     } satisfies JourneyDevtoolsBridgeObservationEnvelope);
   });
 

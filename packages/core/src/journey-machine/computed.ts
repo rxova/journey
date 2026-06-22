@@ -1,6 +1,7 @@
 import { memoizeByIdentity } from "@rxova/journey-common/memoize";
 
 import type {
+  JourneyBaseEvent,
   JourneyComputed,
   JourneyDefinition,
   JourneyJsonObject,
@@ -9,15 +10,14 @@ import type {
   JourneyResolvedDefinition,
   JourneySnapshot
 } from "../types";
-import type { JourneyEmpty } from "../types";
 
 const resolveLinearStepOrder = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   THandlers extends Record<string, unknown>
 >(
-  transitions: JourneyLinearTransitions<TContext, TStepId, TEventMap, THandlers>
+  transitions: JourneyLinearTransitions<TContext, TStepId, TEvents, THandlers>
 ): readonly TStepId[] =>
   transitions.map((entry) =>
     typeof entry === "string" ? entry : entry.step
@@ -36,12 +36,12 @@ const countVisitedSteps = <TStepId extends string>(visited: Record<TStepId, bool
 export const createJourneyMachineComputedGetter = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   TStepMeta,
   THandlers extends Record<string, unknown>
 >(
-  journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
-  resolvedJourney: JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
+  journey: JourneyDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>,
+  resolvedJourney: JourneyResolvedDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>,
   getSnapshot: () => JourneySnapshot<TContext, TStepId>
 ): (() => JourneyComputed<TStepId>) => {
   const mode: JourneyMode =
@@ -53,12 +53,7 @@ export const createJourneyMachineComputedGetter = <
   const linearStepOrder =
     mode === "linear"
       ? resolveLinearStepOrder(
-          journey.transitions as JourneyLinearTransitions<
-            TContext,
-            TStepId,
-            JourneyEmpty,
-            THandlers
-          >
+          journey.transitions as JourneyLinearTransitions<TContext, TStepId, never, THandlers>
         )
       : null;
 

@@ -3,6 +3,7 @@ import { resolveTransitionTarget, toPublicEventType } from "../../journey-machin
 import { resolveJourneyDefinition } from "../../journey-machine/resolve-journey-definition";
 
 import type {
+  JourneyBaseEvent,
   JourneyDefinition,
   JourneyDiagnosticsIssue,
   JourneyDiagnosticsOptions,
@@ -19,24 +20,24 @@ const buildShadowKey = (from: string, event: string) => `${from}\u0000${event}`;
 export function getJourneyDiagnostics<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty
 >(
-  journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
+  journey: JourneyDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>,
   options?: JourneyDiagnosticsOptions
-): JourneyDiagnosticsResult<TStepId, JourneyFullEventType<TEventMap>>;
+): JourneyDiagnosticsResult<TStepId, JourneyFullEventType<TEvents>>;
 export function getJourneyDiagnostics<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty
 >(
-  journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
+  journey: JourneyDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>,
   options: JourneyDiagnosticsOptions = {}
-): JourneyDiagnosticsResult<TStepId, JourneyFullEventType<TEventMap>> {
-  type TEventType = JourneyFullEventType<TEventMap>;
+): JourneyDiagnosticsResult<TStepId, JourneyFullEventType<TEvents>> {
+  type TEventType = JourneyFullEventType<TEvents>;
   const resolvedJourney = resolveJourneyDefinition(journey);
   const mode: JourneyMode =
     journey.transitions === undefined

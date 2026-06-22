@@ -14,7 +14,7 @@ import type { JourneyMachineRuntime } from "../src/journey-machine/runtime";
 
 type StepId = "start" | "review";
 type Context = { count: number };
-type EventMap = { custom: { amount: number } };
+type EventMap = { type: "custom"; payload?: { amount: number } };
 
 const createSnapshot = (status: "idled" | "running" = "running") =>
   buildSnapshot(

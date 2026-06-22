@@ -6,7 +6,7 @@ import { JourneyDefinitionError, JourneyError } from "@rxova/journey-core";
 import type { JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "details" | "review";
-type EventMap = { submit: unknown };
+type EventMap = { type: "submit"; payload?: unknown };
 type Context = { count: number };
 
 const createJourney = (): JourneyDefinition<Context, StepId, EventMap> => ({

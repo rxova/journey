@@ -1,4 +1,5 @@
 import type {
+  JourneyBaseEvent,
   JourneyBuilderCustomEventKey,
   JourneyBuilderDefinitionMetadata,
   JourneyDefinition,
@@ -6,7 +7,6 @@ import type {
   JourneyJsonObject,
   JourneyMachineOptions,
   JourneyMachinePlugin,
-  JourneyPayloadFor,
   JourneySnapshot
 } from "@rxova/journey-core";
 
@@ -34,14 +34,9 @@ export type JourneyHandlersOfDefinition<TDefinition> =
     : Record<string, unknown>;
 
 export type JourneyCustomSendEventForKeys<
-  TEventMap extends Record<string, unknown>,
-  TAllowedEventType extends keyof TEventMap & string
-> = {
-  [TCurrentEventType in TAllowedEventType]: {
-    type: TCurrentEventType;
-    payload?: JourneyPayloadFor<TEventMap, TCurrentEventType>;
-  };
-}[TAllowedEventType];
+  TEvents extends JourneyBaseEvent,
+  TAllowedEventType extends TEvents["type"]
+> = Extract<TEvents, { type: TAllowedEventType }>;
 
 type JourneyTransitionsFromDefinition<TDefinition> = TDefinition extends {
   transitions?: infer TTransitions;
@@ -49,18 +44,18 @@ type JourneyTransitionsFromDefinition<TDefinition> = TDefinition extends {
   ? TTransitions
   : never;
 
-type JourneyCustomEventKeysFromTransitionEntry<
-  TEventMap extends Record<string, unknown>,
-  TEntry
-> = Extract<keyof NonNullable<TEntry>, JourneyBuilderCustomEventKey<TEventMap>>;
+type JourneyCustomEventKeysFromTransitionEntry<TEvents extends JourneyBaseEvent, TEntry> = Extract<
+  keyof NonNullable<TEntry>,
+  JourneyBuilderCustomEventKey<TEvents>
+>;
 
 type JourneyStepHandledCustomEventMapFromTransitions<
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   TTransitions
 > = {
   [TCurrentStepId in TStepId]: JourneyCustomEventKeysFromTransitionEntry<
-    TEventMap,
+    TEvents,
     TTransitions extends readonly unknown[]
       ? never
       : TTransitions extends Record<string, unknown>
@@ -72,10 +67,10 @@ type JourneyStepHandledCustomEventMapFromTransitions<
 };
 
 type JourneyGlobalHandledCustomEventTypeFromTransitions<
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   TTransitions
 > = JourneyCustomEventKeysFromTransitionEntry<
-  TEventMap,
+  TEvents,
   TTransitions extends readonly unknown[]
     ? never
     : TTransitions extends { global?: infer TGlobalTransitions }
@@ -86,40 +81,37 @@ type JourneyGlobalHandledCustomEventTypeFromTransitions<
 export type JourneyStepHandledCustomEventMapFromDefinition<
   TDefinition,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>
+  TEvents extends JourneyBaseEvent
 > =
   TDefinition extends JourneyBuilderDefinitionMetadata<
     TStepId,
-    TEventMap,
+    TEvents,
     infer TStepHandledMap,
     infer TGlobalHandledCustomEventType
   >
-    ? Extract<TStepHandledMap, Record<TStepId, JourneyBuilderCustomEventKey<TEventMap>>> &
-        (Extract<
-          TGlobalHandledCustomEventType,
-          JourneyBuilderCustomEventKey<TEventMap>
-        > extends never
+    ? Extract<TStepHandledMap, Record<TStepId, JourneyBuilderCustomEventKey<TEvents>>> &
+        (Extract<TGlobalHandledCustomEventType, JourneyBuilderCustomEventKey<TEvents>> extends never
           ? unknown
           : unknown)
     : JourneyStepHandledCustomEventMapFromTransitions<
         TStepId,
-        TEventMap,
+        TEvents,
         JourneyTransitionsFromDefinition<TDefinition>
       >;
 
 export type JourneyGlobalHandledCustomEventTypeFromDefinition<
   TDefinition,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>
+  TEvents extends JourneyBaseEvent
 > =
   TDefinition extends JourneyBuilderDefinitionMetadata<
     TStepId,
-    TEventMap,
-    Record<TStepId, JourneyBuilderCustomEventKey<TEventMap>>,
+    TEvents,
+    Record<TStepId, JourneyBuilderCustomEventKey<TEvents>>,
     infer TGlobalHandledCustomEventType
   >
-    ? Extract<TGlobalHandledCustomEventType, JourneyBuilderCustomEventKey<TEventMap>>
+    ? Extract<TGlobalHandledCustomEventType, JourneyBuilderCustomEventKey<TEvents>>
     : JourneyGlobalHandledCustomEventTypeFromTransitions<
-        TEventMap,
+        TEvents,
         JourneyTransitionsFromDefinition<TDefinition>
       >;

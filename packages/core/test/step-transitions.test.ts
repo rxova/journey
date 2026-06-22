@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createJourneyMachine } from "@rxova/journey-core";
 
 type StepId = "welcome" | "verify" | "dashboard" | "blocked";
-type EventMap = { requestClose: unknown };
+type EventMap = { type: "requestClose"; payload?: unknown };
 type Context = { needsVerification: boolean; count: number };
 
 const startJourney = <T extends { startJourney: () => unknown }>(machine: T): T => {

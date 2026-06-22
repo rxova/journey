@@ -17,7 +17,7 @@ The bundle returned by `createJourney(definition, options?)`.
 type JourneyRuntime<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   TPlugins extends readonly JourneyMachinePlugin[] = [],
   THandlers extends Record<string, unknown> = Record<never, never>
@@ -27,7 +27,7 @@ type JourneyRuntime<
   useJourneySnapshot: () => JourneySnapshot<TContext, TStepId>;
   useJourneyComputed: () => JourneyComputed<TStepId>;
   useJourneySelector: <TSelected>(selector, equalityFn?) => TSelected;
-  useJourneyApi: () => JourneyApi<TContext, TStepId, TEventMap, TStepMeta>;
+  useJourneyApi: () => JourneyApi<TContext, TStepId, TEvents, TStepMeta>;
   useJourneyEvent: (listener) => void;
   useJourneyStepLifecycle: (stepId, callbacks) => void;
   JourneyProvider: React.ComponentType<JourneyProviderProps<TStepId>>;
@@ -67,7 +67,7 @@ type CheckoutRuntime = JourneyRuntimeFromDefinition<typeof definition>;
 The type of the function returned by `createJourneyFactory(definition, options?)`. Calling it produces a fresh `JourneyRuntime`.
 
 ```ts
-type JourneyRuntimeFactory<TContext, TStepId, TEventMap, TStepMeta, TPlugins, THandlers>
+type JourneyRuntimeFactory<TContext, TStepId, TEvents, TStepMeta, TPlugins, THandlers>
   = () => JourneyRuntime<...>
 ```
 
@@ -122,12 +122,12 @@ The full action surface returned by `useJourneyApi()`.
 type JourneyApi<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown
 > = {
   startJourney: () => Promise<JourneySnapshot<TContext, TStepId>>;
   send: (
-    event: JourneySendEvent<TStepId, TEventMap>
+    event: JourneySendEvent<TStepId, TEvents>
   ) => Promise<JourneySendResult<TContext, TStepId>>;
   goToNextStep: () => Promise<JourneySendResult<TContext, TStepId>>;
   goToStepById: (stepId: TStepId) => Promise<JourneySendResult<TContext, TStepId>>;
@@ -156,10 +156,10 @@ The type returned by `useStepApi(stepId)`. Identical to `JourneyApi` but with `s
 type StepScopedJourneyApi<
   TContext,
   TStepId,
-  TEventMap,
-  TAllowedEventType extends keyof TEventMap & string = never,
+  TEvents,
+  TAllowedEventType extends TEvents["type"] = never,
   TStepMeta = unknown
-> = Omit<JourneyApi<TContext, TStepId, TEventMap, TStepMeta>, "send"> & {
+> = Omit<JourneyApi<TContext, TStepId, TEvents, TStepMeta>, "send"> & {
   send: (event: { type: TAllowedEventType; payload?: ... }) => Promise<...>;
 };
 ```

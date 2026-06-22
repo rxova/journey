@@ -26,7 +26,7 @@ import { createGraphJourneyBuilder } from "@rxova/journey-core";
 
 type Context = { role: "user" | "admin"; name: string };
 type StepId = "login" | "dashboard" | "admin" | "blocked";
-type EventMap = { submit: { username: string }; back: unknown };
+type EventMap = { type: "submit"; payload: { username: string } } | { type: "back" };
 type StepMeta = { label: string };
 
 const { createStep, to, build } = createGraphJourneyBuilder<{
@@ -119,18 +119,17 @@ guard only reads `context`. When you need `event.payload` narrowed to a specific
 **factory form** of the `on` entry — a function that receives an event-typed `to`:
 
 ```ts
-type EventMap = {
-  submit: { username: string; password: string };
-  back: unknown;
-};
+type EventMap =
+  | { type: "submit"; payload: { username: string; password: string } }
+  | { type: "back" };
 
 createStep("login", {
   on: {
     // Factory form: `to` is typed for "submit" — event.payload is
-    // { username: string; password: string } | undefined
+    // { username: string; password: string } (required, so no `?.` needed)
     submit: ({ to }) => [
       to("admin").when(
-        ({ context, event }) => context.role === "admin" && event.payload?.username !== ""
+        ({ context, event }) => context.role === "admin" && event.payload.username !== ""
       ),
       to("dashboard")
     ],

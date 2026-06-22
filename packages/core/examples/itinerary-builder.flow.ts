@@ -1,7 +1,7 @@
 import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "destination" | "dates" | "lodging" | "itinerary" | "confirmExit";
-type EventMap = { back: unknown; requestClose: unknown };
+type EventMap = { type: "back"; payload?: unknown } | { type: "requestClose"; payload?: unknown };
 
 type ItineraryContext = {
   flexibleDates: boolean;

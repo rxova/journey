@@ -3,6 +3,7 @@ import { resolveTransitionTarget, toPublicEventType } from "../../journey-machin
 import { resolveJourneyDefinition } from "../../journey-machine/resolve-journey-definition";
 
 import type {
+  JourneyBaseEvent,
   JourneyDefinition,
   JourneyExecutionPath,
   JourneyExecutionPathEventType,
@@ -28,39 +29,39 @@ const normalizeLimit = (value: number | undefined, fallback: number): number => 
 export function getExecutionPaths<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty
 >(
-  journey: JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
+  journey: JourneyDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>,
   options?: JourneyExecutionPathOptions
-): JourneyExecutionPathsResult<TStepId, JourneyFullEventType<TEventMap>>;
+): JourneyExecutionPathsResult<TStepId, JourneyFullEventType<TEvents>>;
 export function getExecutionPaths<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty
 >(
-  journey: JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
+  journey: JourneyResolvedDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>,
   options?: JourneyExecutionPathOptions
-): JourneyExecutionPathsResult<TStepId, JourneyFullEventType<TEventMap>>;
+): JourneyExecutionPathsResult<TStepId, JourneyFullEventType<TEvents>>;
 export function getExecutionPaths<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty
 >(
   journey:
-    | JourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>
-    | JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
+    | JourneyDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>
+    | JourneyResolvedDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>,
   options: JourneyExecutionPathOptions = {}
-): JourneyExecutionPathsResult<TStepId, JourneyFullEventType<TEventMap>> {
-  type TEventType = JourneyFullEventType<TEventMap>;
+): JourneyExecutionPathsResult<TStepId, JourneyFullEventType<TEvents>> {
+  type TEventType = JourneyFullEventType<TEvents>;
   const isResolvedJourneyDefinition = (
     value: typeof journey
-  ): value is JourneyResolvedDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers> =>
+  ): value is JourneyResolvedDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers> =>
     Array.isArray(value.transitions) &&
     (value.transitions.length === 0 ||
       (typeof value.transitions[0] === "object" && value.transitions[0] !== null));

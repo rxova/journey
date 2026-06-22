@@ -12,8 +12,8 @@ type StepMeta = {
 };
 
 const createJourney = (
-  overrides?: Partial<JourneyDefinition<Context, StepId, Record<never, never>, StepMeta>>
-): JourneyDefinition<Context, StepId, Record<never, never>, StepMeta> => ({
+  overrides?: Partial<JourneyDefinition<Context, StepId, never, StepMeta>>
+): JourneyDefinition<Context, StepId, never, StepMeta> => ({
   initial: "s0",
   context: { count: 0 },
   steps: {

@@ -27,6 +27,7 @@ export type {
   JourneyBuiltInFrom,
   JourneyBuiltInSendEvent,
   JourneyCustomSendEvent,
+  JourneyEventFor,
   JourneyComputed,
   JourneyComputedBase,
   JourneyDefaultEventType,

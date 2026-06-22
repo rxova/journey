@@ -26,10 +26,9 @@ import { createGraphJourney, createJourney, createJourneyFactory } from "@rxova/
 
 type Context = { userId: string };
 type StepId = "start" | "review";
-type EventMap = {
-  goToNextStep: { reason: string };
-  approve: { approvedBy: string };
-};
+type EventMap =
+  | { type: "goToNextStep"; payload?: { reason: string } }
+  | { type: "approve"; payload?: { approvedBy: string } };
 
 const Step: React.FC = () => null;
 const plugins = [createExecutionPathsPlugin()] as const;
@@ -154,13 +153,12 @@ void extraView;
 void badProviderProps;
 
 type BuilderStepId = "emailCode" | "authenticatorCode" | "loggedIn";
-type BuilderEventMap = {
-  verifyCodeSuccess: { code: string };
-  verifyCodeFailure: { code: string };
-  switchAuthMethod: unknown;
-  resendCode: { channel: "email" };
-  submitLogin: { username: string; password: string };
-};
+type BuilderEventMap =
+  | { type: "verifyCodeSuccess"; payload?: { code: string } }
+  | { type: "verifyCodeFailure"; payload?: { code: string } }
+  | { type: "switchAuthMethod"; payload?: unknown }
+  | { type: "resendCode"; payload?: { channel: "email" } }
+  | { type: "submitLogin"; payload?: { username: string; password: string } };
 type BuilderContext = { attempts: number };
 
 const { createStep, to, build } = createGraphJourneyBuilder<{

@@ -1,6 +1,7 @@
 import { warnInDevelopment } from "../../journey-machine/helpers";
 
 import type {
+  JourneyBaseEvent,
   JourneyAnalyticsPluginOptions,
   JourneyAnalyticsTrackedEvent,
   JourneyJsonObject,
@@ -31,20 +32,20 @@ export type JourneyAnalyticsMachineExtension<
 export type JourneyAnalyticsMachine<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty
-> = JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers> &
+> = JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers> &
   JourneyAnalyticsMachineExtension<TContext, TStepId, TStepMeta>;
 
 /** Creates a plugin that converts journey observation events into analytics envelopes. */
 export const createAnalyticsPlugin = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown
 >(
-  options: JourneyAnalyticsPluginOptions<TContext, TStepId, TEventMap, TStepMeta>
+  options: JourneyAnalyticsPluginOptions<TContext, TStepId, TEvents, TStepMeta>
 ) => {
   type RecentEvent = {
     source: "lifecycle" | "custom";
@@ -94,7 +95,7 @@ export const createAnalyticsPlugin = <
 
   const trackSafely = (
     event:
-      | JourneyObservationEvent<TStepId, TEventMap>
+      | JourneyObservationEvent<TStepId, TEvents>
       | JourneyAnalyticsTrackedEvent<TContext, TStepId, TStepMeta>,
     tracked: JourneyAnalyticsTrackedEvent<TContext, TStepId, TStepMeta>
   ) => {
@@ -135,13 +136,13 @@ export const createAnalyticsPlugin = <
         const typedMachine = machine as JourneyMachine<
           TContext,
           TStepId,
-          TEventMap,
+          TEvents,
           TStepMeta,
           Record<string, unknown>
         >;
 
         const emitTracked = (
-          sourceEvent: JourneyObservationEvent<TStepId, TEventMap>,
+          sourceEvent: JourneyObservationEvent<TStepId, TEvents>,
           tracked: JourneyAnalyticsTrackedEvent<TContext, TStepId, TStepMeta>
         ) => {
           trackSafely(sourceEvent, tracked);
@@ -180,7 +181,7 @@ export const createAnalyticsPlugin = <
         };
 
         unsubscribe = typedMachine.subscribeEvent((event) => {
-          const typedEvent = event as JourneyObservationEvent<TStepId, TEventMap>;
+          const typedEvent = event as JourneyObservationEvent<TStepId, TEvents>;
           const snapshot = typedMachine.getSnapshot();
           const basePayload = buildBasePayload({
             context: snapshot.context as TContext

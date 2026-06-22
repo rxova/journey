@@ -8,7 +8,7 @@ import { createJourney, createJourneyFactory, type JourneyViews } from "@rxova/j
 import type { JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "start" | "details" | "review" | "confirmExit";
-type EventMap = { requestClose: unknown };
+type EventMap = { type: "requestClose"; payload?: unknown };
 type Context = {
   name: string;
   includeDetails: boolean;
@@ -113,10 +113,9 @@ const flushQueuedEffects = async (cycles = 2) => {
 describe("createJourney", () => {
   it("provides step-scoped api for builder-authored journeys", async () => {
     type BuilderStepId = "emailCode" | "loggedIn";
-    type BuilderEventMap = {
-      verifyCodeSuccess: { code: string };
-      submitLogin: { username: string; password: string };
-    };
+    type BuilderEventMap =
+      | { type: "verifyCodeSuccess"; payload?: { code: string } }
+      | { type: "submitLogin"; payload?: { username: string; password: string } };
     type BuilderContext = { attempts: number };
 
     const { createStep, to, build } = createGraphJourneyBuilder<{
@@ -180,7 +179,7 @@ describe("createJourney", () => {
   });
 
   it("provides step-scoped api for graph definitions keyed by step id", async () => {
-    const graphJourney = createJourney({
+    const graphJourney = createJourney<JourneyDefinition<Context, StepId, EventMap, Meta>>({
       initial: "start",
       context: {
         name: "",

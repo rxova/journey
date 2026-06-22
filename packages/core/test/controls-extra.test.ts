@@ -39,7 +39,7 @@ const createRuntime = (initialSnapshot = createSnapshot()) => {
     subscribeSelector: vi.fn(),
     subscribeEvent: vi.fn(),
     dispose: vi.fn()
-  } as unknown as JourneyMachineRuntime<Context, StepId, Record<never, never>>;
+  } as unknown as JourneyMachineRuntime<Context, StepId, never>;
 
   return runtime;
 };
@@ -58,7 +58,7 @@ describe("controls extra coverage", () => {
     const asyncState = createAsyncState();
     (runtime.isDisposed as ReturnType<typeof vi.fn>).mockReturnValue(true);
 
-    const controls = createJourneyMachineControls<Context, StepId, Record<never, never>>({
+    const controls = createJourneyMachineControls<Context, StepId, never>({
       runtime,
       asyncState,
       initial: "start",
@@ -82,7 +82,7 @@ describe("controls extra coverage", () => {
     const runtime = createRuntime(createSnapshot("idled"));
     const asyncState = createAsyncState();
 
-    const controls = createJourneyMachineControls<Context, StepId, Record<never, never>>({
+    const controls = createJourneyMachineControls<Context, StepId, never>({
       runtime,
       asyncState,
       initial: "start",
@@ -113,7 +113,7 @@ describe("controls extra coverage", () => {
     const runtime = createRuntime(createSnapshot("running", "review"));
     const asyncState = createAsyncState();
 
-    const controls = createJourneyMachineControls<Context, StepId, Record<never, never>>({
+    const controls = createJourneyMachineControls<Context, StepId, never>({
       runtime,
       asyncState,
       initial: "start",

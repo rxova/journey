@@ -5,7 +5,7 @@ import { getExecutionPaths } from "@rxova/journey-core/execution-paths";
 import type { JourneyTransitionGraph } from "../src/types";
 
 type StepId = "start" | "details" | "extra" | "review" | "confirmExit";
-type EventMap = { requestClose: unknown };
+type EventMap = { type: "requestClose"; payload?: unknown };
 type Context = { includeDetails: boolean; dirty: boolean };
 
 const createJourney = (): JourneyDefinition<Context, StepId, EventMap> => ({

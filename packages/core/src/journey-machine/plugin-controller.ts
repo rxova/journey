@@ -2,6 +2,7 @@ import { isPromiseLike, warnInDevelopment } from "./helpers";
 import { JourneyStateError } from "./errors";
 
 import type {
+  JourneyBaseEvent,
   JourneyDefinition,
   JourneyJsonObject,
   JourneyMachine,
@@ -18,7 +19,7 @@ import type { JourneyEmpty } from "../types";
 export type JourneyMachinePluginController<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   TStepMeta,
   THandlers extends Record<string, unknown>
 > = {
@@ -31,15 +32,15 @@ export type JourneyMachinePluginController<
     reason: JourneyMachineSnapshotReason;
   }) => void;
   extendMachine: (
-    machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>
-  ) => JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
+    machine: JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers>
+  ) => JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers>;
   dispose: () => void;
   getDevtoolsFeatures: (
-    machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>
+    machine: JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers>
   ) => readonly JourneyMachineDevtoolsFeatureSpec<
     TContext,
     TStepId,
-    TEventMap,
+    TEvents,
     TStepMeta,
     THandlers
   >[];
@@ -48,7 +49,7 @@ export type JourneyMachinePluginController<
 export const createJourneyMachinePluginController = <
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown>,
+  TEvents extends JourneyBaseEvent,
   TStepMeta,
   THandlers extends Record<string, unknown> = JourneyEmpty
 >({
@@ -56,17 +57,11 @@ export const createJourneyMachinePluginController = <
   setupContext
 }: {
   plugins: readonly JourneyMachinePlugin[];
-  setupContext: JourneyMachinePluginSetupContext<
-    TContext,
-    TStepId,
-    TEventMap,
-    TStepMeta,
-    THandlers
-  >;
-}): JourneyMachinePluginController<TContext, TStepId, TEventMap, TStepMeta, THandlers> => {
+  setupContext: JourneyMachinePluginSetupContext<TContext, TStepId, TEvents, TStepMeta, THandlers>;
+}): JourneyMachinePluginController<TContext, TStepId, TEvents, TStepMeta, THandlers> => {
   const hooks: {
     name: string;
-    hooks: JourneyMachinePluginHooks<TContext, TStepId, TEventMap, TStepMeta, THandlers>;
+    hooks: JourneyMachinePluginHooks<TContext, TStepId, TEvents, TStepMeta, THandlers>;
   }[] = [];
 
   for (const plugin of plugins) {
@@ -76,7 +71,7 @@ export const createJourneyMachinePluginController = <
         hooks: plugin.setup(setupContext) as JourneyMachinePluginHooks<
           TContext,
           TStepId,
-          TEventMap,
+          TEvents,
           TStepMeta,
           THandlers
         >
@@ -104,7 +99,7 @@ export const createJourneyMachinePluginController = <
     features: readonly JourneyMachineDevtoolsFeatureSpec<
       TContext,
       TStepId,
-      TEventMap,
+      TEvents,
       TStepMeta,
       THandlers
     >[]
@@ -167,7 +162,7 @@ export const createJourneyMachinePluginController = <
       const extensionTarget = machine as JourneyMachine<
         TContext,
         TStepId,
-        TEventMap,
+        TEvents,
         TStepMeta,
         THandlers
       >;
@@ -180,14 +175,14 @@ export const createJourneyMachinePluginController = <
           journey: setupContext.journey as JourneyDefinition<
             TContext,
             TStepId,
-            TEventMap,
+            TEvents,
             TStepMeta,
             THandlers
           >,
           resolvedJourney: setupContext.resolvedJourney as JourneyResolvedDefinition<
             TContext,
             TStepId,
-            TEventMap,
+            TEvents,
             TStepMeta,
             THandlers
           >
@@ -243,14 +238,14 @@ export const createJourneyMachinePluginController = <
               journey: setupContext.journey as JourneyDefinition<
                 TContext,
                 TStepId,
-                TEventMap,
+                TEvents,
                 TStepMeta,
                 THandlers
               >,
               resolvedJourney: setupContext.resolvedJourney as JourneyResolvedDefinition<
                 TContext,
                 TStepId,
-                TEventMap,
+                TEvents,
                 TStepMeta,
                 THandlers
               >

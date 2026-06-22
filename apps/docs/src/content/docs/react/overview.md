@@ -111,7 +111,7 @@ type Context = {
   orderId: string | null;
 };
 // The payload reaches `when`, `updateContext`, and `api.send` fully typed.
-type EventMap = { applyCoupon: { code: string } };
+type EventMap = { type: "applyCoupon"; payload: { code: string } };
 
 const definition: JourneyDefinition<Context, StepId, EventMap> = {
   initial: "details",
@@ -175,9 +175,9 @@ const definition: JourneyDefinition<Context, StepId, EventMap> = {
       applyCoupon: [
         {
           to: "review",
-          when: ({ event }) => (event.payload?.code.trim().length ?? 0) > 0,
+          when: ({ event }) => event.payload.code.trim().length > 0,
           updateContext: ({ context, event }) => {
-            const code = event.payload?.code.trim() ?? "";
+            const code = event.payload.code.trim();
             return { ...context, couponCode: code, discountPct: code === "VIP50" ? 50 : 10 };
           }
         }

@@ -1,6 +1,7 @@
 import { getExecutionPaths } from "./execution-paths";
 
 import type {
+  JourneyBaseEvent,
   JourneyExecutionPathOptions,
   JourneyExecutionPathsResult,
   JourneyFullEventType,
@@ -22,11 +23,11 @@ export type JourneyExecutionPathsMachineExtension<
 export type JourneyExecutionPathsMachine<
   TContext extends JourneyJsonObject,
   TStepId extends string,
-  TEventMap extends Record<string, unknown> = JourneyEmpty,
+  TEvents extends JourneyBaseEvent = never,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty
-> = JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers> &
-  JourneyExecutionPathsMachineExtension<TStepId, JourneyFullEventType<TEventMap>>;
+> = JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers> &
+  JourneyExecutionPathsMachineExtension<TStepId, JourneyFullEventType<TEvents>>;
 
 /**
  * Creates a plugin that augments a machine with structural execution-path

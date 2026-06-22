@@ -25,10 +25,10 @@ createLinearJourney<TContext, TStepId, TStepMeta, THandlers, TPlugins>(
 ): LinearJourneyMachine<TContext, TStepId, TStepMeta, THandlers, TPlugins>;
 
 // Graph — transitions required (builder output or plain definition)
-createGraphJourney<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins>(
-  def: GraphJourneyDefinition<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
+createGraphJourney<TContext, TStepId, TEvents, TStepMeta, THandlers, TPlugins>(
+  def: GraphJourneyDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>,
   options?: JourneyMachineOptions<TPlugins>
-): JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins>;
+): JourneyMachineWithPlugins<TContext, TStepId, TEvents, TStepMeta, THandlers, TPlugins>;
 
 // Headless — initial required, no transitions
 createHeadlessJourney<TContext, TStepId, TStepMeta, THandlers, TPlugins>(
@@ -46,7 +46,7 @@ All three factories share the same primary generics:
 | `TContext`  | Shared runtime data available to guards and transition callbacks                    |
 | `TStepId`   | The union of valid step ids — keeps ids consistent across definition and navigation |
 | `TStepMeta` | Per-step static metadata (labels, icons, descriptions)                              |
-| `TEventMap` | Custom event types with payload shapes (graph mode only)                            |
+| `TEvents`   | Discriminated union of `{ type; payload? }` event members (graph mode only)         |
 
 ## Defining types
 
@@ -69,17 +69,16 @@ const machine = createLinearJourney<Context, StepId, StepMeta>({
 
 ## Custom events (graph)
 
-`TEventMap` is what makes event payloads type-safe end to end:
+`TEvents` is a discriminated union of `{ type; payload? }` members — this is what makes event payloads type-safe end to end:
 
 ```ts
 import { createGraphJourneyBuilder, createGraphJourney } from "@rxova/journey-core";
 
 type StepId = "form" | "confirm";
 type Context = { email: string };
-type Events = {
-  saveDraft: { autosave: boolean };
-  requestClose: { source: "button" | "shortcut" };
-};
+type Events =
+  | { type: "saveDraft"; payload: { autosave: boolean } }
+  | { type: "requestClose"; payload: { source: "button" | "shortcut" } };
 
 const { createStep, to, build } = createGraphJourneyBuilder<{
   context: Context;
@@ -145,7 +144,7 @@ keep context flat.
 
 ## When to annotate, when to infer
 
-- **Be explicit** for shared step-id unions, shared event maps, and reusable snapshot/result helpers.
+- **Be explicit** for shared step-id unions, shared event unions, and reusable snapshot/result helpers.
 - **Let inference win** for most `machine` variables, inline selectors, and transition callback args.
 
 ## Where to next

@@ -1,7 +1,7 @@
 import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 
 type StepId = "edit" | "confirmExit";
-type EventMap = { requestClose: unknown };
+type EventMap = { type: "requestClose"; payload?: unknown };
 type Ctx = { dirty: boolean };
 
 export const confirmExitJourney: JourneyDefinition<Ctx, StepId, EventMap> = {
