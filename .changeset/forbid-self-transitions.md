@@ -12,11 +12,13 @@ observation events, so observers and lifecycle callbacks disagreed about whether
 a re-entry happened. This was almost always a mistake; the intent is usually a
 context change that should _not_ navigate.
 
-`resolveJourneyDefinition` now throws a descriptive error at machine creation for
-a self-targeting graph edge, `after` delay, or `effect` `onResolved` /
-`onRejected` branch. To change context without navigating, call
+**Runtime**: `resolveJourneyDefinition` throws a descriptive error at machine
+creation for a self-targeting graph edge, `after` delay, or `effect`
+`onResolved` / `onRejected` branch. To change context without navigating, call
 `api.updateContext(...)` instead.
 
-This is runtime enforcement; a compile-time guard was prototyped but rejected
-because narrowing each step's `to` to exclude itself regressed type inference for
-consumers such as `getExecutionPaths` and broke dynamic `to: StepId` targets.
+**Compile-time**: `createGraphJourney(...)` now rejects a graph transition that
+targets its own step, surfacing `Self-transition not allowed: step "X" cannot
+target its own step` at the call site. The check is an additive constraint on
+the argument (`NoInfer`-guarded), so step-id inference for consumers such as
+`getExecutionPaths` is unaffected and dynamic `to` targets keep working.
