@@ -181,6 +181,33 @@ describe("step effects", () => {
     expect(machine.getSnapshot().context.result).toBe("from-start");
   });
 
+  it("does not re-run the initial step's effect on a repeated startJourney()", async () => {
+    // A never-resolving effect keeps the machine on the initial step so we can
+    // observe how many times `run` was invoked.
+    const run = vi.fn(() => new Promise<string>(() => undefined));
+    const machine = createJourneyMachine<Context, StepId>({
+      initial: "loading",
+      context: { result: null, error: null },
+      steps: {
+        start: {},
+        loading: { effect: { run } },
+        done: {},
+        failed: {}
+      },
+      transitions: { start: {}, loading: {}, done: {}, failed: {} }
+    });
+
+    await machine.startJourney();
+    // A defensive second start must be a no-op — it cannot re-fire initial I/O.
+    await machine.startJourney();
+
+    await vi.waitFor(() => expect(run).toHaveBeenCalledTimes(1));
+    // Flush the macrotask queue so any erroneous duplicate effect would have run.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(machine.getSnapshot().status).toBe("running");
+  });
+
   it("cancels the in-flight effect when the machine is reset", async () => {
     const gate = deferred<string>();
     let aborted = false;

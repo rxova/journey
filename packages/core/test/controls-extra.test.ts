@@ -66,7 +66,10 @@ describe("controls extra coverage", () => {
       steps: { start: {}, review: {} }
     });
 
-    await expect(controls.startJourney()).resolves.toEqual(runtime.getSnapshot());
+    await expect(controls.startJourney()).resolves.toEqual({
+      snapshot: runtime.getSnapshot(),
+      started: false
+    });
     await expect(controls.resetJourney()).resolves.toEqual(runtime.getSnapshot());
     await expect(controls.updateContext((context) => context)).resolves.toEqual(
       runtime.getSnapshot()
@@ -92,7 +95,8 @@ describe("controls extra coverage", () => {
 
     const started = await controls.startJourney();
 
-    expect(started.status).toBe("running");
+    expect(started.snapshot.status).toBe("running");
+    expect(started.started).toBe(true);
     expect(runtime.setSnapshot).toHaveBeenCalledWith(
       expect.objectContaining({ status: "running" }),
       { notify: true, reason: "start" }
@@ -106,7 +110,8 @@ describe("controls extra coverage", () => {
 
     const alreadyRunning = await controls.startJourney();
 
-    expect(alreadyRunning.status).toBe("running");
+    expect(alreadyRunning.snapshot.status).toBe("running");
+    expect(alreadyRunning.started).toBe(false);
   });
 
   it("resets journey state and clears step errors with explicit or inferred steps", async () => {

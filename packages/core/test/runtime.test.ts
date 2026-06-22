@@ -104,24 +104,26 @@ describe("machine runtime", () => {
     expect(listener3).toHaveBeenCalledWith(event);
   });
 
-  it("does not commit or notify subscribers when onSnapshotChange throws", () => {
+  it("isolates a throwing onSnapshotChange: still commits, notifies, and reports the error", () => {
     const initialSnapshot = createSnapshot();
     const nextSnapshot = createSnapshot("review");
     const listener = vi.fn();
+    const onListenerError = vi.fn();
     const runtime = createJourneyMachineRuntime<Context, StepId, never>({
       snapshot: initialSnapshot,
+      onListenerError,
       onSnapshotChange: () => {
         throw new Error("plugin hook failed");
       }
     });
-    const committedInitialSnapshot = runtime.getSnapshot();
 
     runtime.subscribe(listener);
 
-    expect(() => runtime.setSnapshot(nextSnapshot, { notify: true })).toThrow("plugin hook failed");
-    expect(listener).not.toHaveBeenCalled();
-    expect(runtime.getSnapshot()).toBe(committedInitialSnapshot);
-    expect(runtime.getSnapshot()).toEqual(initialSnapshot);
+    // A throwing plugin observer must never abort the commit.
+    expect(() => runtime.setSnapshot(nextSnapshot, { notify: true })).not.toThrow();
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(runtime.getSnapshot()).toEqual(nextSnapshot);
+    expect(onListenerError).toHaveBeenCalledWith(expect.any(Error), "snapshot");
   });
 
   it("notifies snapshot and dispose hooks with default runtime reasons", () => {
@@ -204,13 +206,13 @@ describe("machine runtime", () => {
     expect(committedSnapshot.context.items).toEqual(["review"]);
   });
 
-  it("keeps async loading state aligned after a failed async snapshot hook", () => {
-    let shouldThrow = true;
+  it("commits async loading state even when the snapshot hook throws", () => {
+    const onListenerError = vi.fn();
     const runtime = createJourneyMachineRuntime<Context, StepId, never>({
       snapshot: createSnapshot(),
+      onListenerError,
       onSnapshotChange: ({ reason }) => {
-        if (reason === "async" && shouldThrow) {
-          shouldThrow = false;
+        if (reason === "async") {
           throw new Error("async hook failed");
         }
       }
@@ -219,13 +221,11 @@ describe("machine runtime", () => {
       runtime
     });
 
-    expect(() => asyncState.setStepLoading("start", "evaluating-when", "goToNextStep")).toThrow(
-      "async hook failed"
-    );
-    expect(runtime.getSnapshot().async.isLoading).toBe(false);
-    expect(runtime.getSnapshot().async.byStep.start?.phase).toBe("idle");
-
-    asyncState.setStepLoading("start", "evaluating-when", "goToNextStep");
+    // The throwing hook is isolated: the commit proceeds and the error is reported.
+    expect(() =>
+      asyncState.setStepLoading("start", "evaluating-when", "goToNextStep")
+    ).not.toThrow();
+    expect(onListenerError).toHaveBeenCalledWith(expect.any(Error), "snapshot");
     expect(runtime.getSnapshot().async.isLoading).toBe(true);
     expect(runtime.getSnapshot().async.byStep.start?.phase).toBe("evaluating-when");
 

@@ -582,7 +582,13 @@ export const attachJourneyDevtools = <
   let detached = false;
   const postEnvelope = (envelope: JourneyDevtoolsBridgeEnvelope) => {
     if (detached) return;
-    window.postMessage(envelope, targetOrigin);
+    try {
+      window.postMessage(envelope, targetOrigin);
+    } catch {
+      // Tooling must never break the host app: swallow transport failures (e.g.
+      // a throwing/unavailable `postMessage`) so bridge lifecycle and command
+      // flows stay non-throwing.
+    }
   };
 
   const emitRegister = () => {

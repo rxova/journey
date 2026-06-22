@@ -553,10 +553,12 @@ export function createJourneyMachine<
     getStepMeta: (stepId) => cloneMetaValue(stepMeta[stepId]),
     getComputed,
     startJourney: async () => {
-      const snapshot = await controls.startJourney();
+      const { snapshot, started } = await controls.startJourney();
       // The initial step is not "entered" via a transition, so trigger its
-      // effect here once the machine is running.
-      if (!runtime.isDisposed() && runtime.peekSnapshot().status === "running") {
+      // effect/timers here — but only when this call actually performed the
+      // idled→running transition, so a repeated (defensive) startJourney() can
+      // never duplicate initial-step I/O or schedule duplicate `after` timers.
+      if (started && !runtime.isDisposed()) {
         runStepEffect(runtime.peekSnapshot().currentStepId, runtime.getRunVersion());
         runStepTimers(runtime.peekSnapshot().currentStepId, runtime.getRunVersion());
       }
