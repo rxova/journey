@@ -88,7 +88,9 @@ describe("check-public-api-tsdoc script", () => {
     expect(missing).toEqual([]);
 
     await rm(root, { recursive: true, force: true });
-  }, 10_000);
+    // First TS-program analysis in the file; under `--coverage` instrumentation
+    // it runs ~18s, so the 10s cap flaked under parallel precommit load.
+  }, 60_000);
 
   it("collects missing summaries for callable exports", async () => {
     const root = await makeWorkspace({ withMissingSummary: true });
