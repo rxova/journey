@@ -18,6 +18,7 @@ export type JourneyDefinitionErrorCode =
   | "invalid-timeout"
   | "invalid-effect"
   | "invalid-after"
+  | "invalid-context"
   | "self-transition";
 
 /**
