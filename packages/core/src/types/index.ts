@@ -111,6 +111,7 @@ export type {
 } from "./machine.types";
 
 export type {
+  AssertNoSelfTransitions,
   JourneyDispatch,
   GraphJourneyDefinition,
   JourneyGlobalKey,

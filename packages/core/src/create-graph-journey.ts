@@ -1,6 +1,7 @@
 /* eslint-disable no-redeclare */
 import { createJourneyMachine } from "./journey-machine";
 import type {
+  AssertNoSelfTransitions,
   GraphJourneyDefinition,
   JourneyDefinition,
   JourneyJsonObject,
@@ -16,46 +17,6 @@ type JourneyHandlersOfDefinition<TDefinition> =
   TDefinition extends JourneyDefinition<infer _TC, infer _TS, infer _TE, infer _TM, infer TH>
     ? TH
     : Record<string, unknown>;
-
-/**
- * Required marker property whose *name* is the compile error a developer sees
- * when a transition targets its own step. Attaching it to the offending edge
- * (rather than narrowing `to`) keeps step-id inference intact.
- */
-type SelfTransitionMarker<TStepId extends string> = {
-  [Message in `Self-transition not allowed: step "${TStepId}" cannot target its own step; use api.updateContext(...) instead`]: true;
-};
-
-/** Marks every edge under step `TStepId` whose `to` equals `TStepId`. */
-type MarkSelfTransitionEdges<TStepTransitions, TStepId extends string> = {
-  [TEvent in keyof TStepTransitions]: TStepTransitions[TEvent] extends readonly unknown[]
-    ? {
-        [TIndex in keyof TStepTransitions[TEvent]]: TStepTransitions[TEvent][TIndex] extends {
-          to: TStepId;
-        }
-          ? TStepTransitions[TEvent][TIndex] & SelfTransitionMarker<TStepId>
-          : TStepTransitions[TEvent][TIndex];
-      }
-    : TStepTransitions[TEvent];
-};
-
-/**
- * Resolves to `unknown` (no constraint) unless a graph transition targets its
- * own step, in which case the offending edge gains a required marker property
- * it cannot satisfy — surfacing a descriptive error at the `to`. Intersected
- * with the definition via `NoInfer`, so it never participates in inference.
- */
-type AssertNoSelfTransitions<TDefinition> = TDefinition extends { transitions: infer TGraph }
-  ? TGraph extends readonly unknown[]
-    ? unknown
-    : {
-        transitions: {
-          [TStepId in keyof TGraph]: TStepId extends "global"
-            ? TGraph[TStepId]
-            : MarkSelfTransitionEdges<TGraph[TStepId], TStepId & string>;
-        };
-      }
-  : unknown;
 
 /**
  * Creates a graph journey machine from a builder definition or a plain

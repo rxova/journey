@@ -30,6 +30,7 @@ export type {
   JourneyToBuilder
 } from "./journey-builder";
 export {
+  type AssertNoSelfTransitions,
   type GraphJourneyDefinition,
   type HeadlessJourneyDefinition,
   type LinearJourneyDefinition,

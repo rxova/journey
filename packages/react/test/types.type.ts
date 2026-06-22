@@ -247,3 +247,52 @@ const invalidBuiltInBuilderSendArg: BuilderSendArg = { type: "goToStepById", ste
 
 void invalidBuilderSendArg;
 void invalidBuiltInBuilderSendArg;
+
+// The create*Journey factories reject an inline transition that targets its own step.
+const selfTransitionRuntime = createJourney({
+  initial: "start",
+  context: { userId: "42" },
+  steps: { start: {}, review: {} },
+  transitions: {
+    start: {
+      // @ts-expect-error a transition cannot target its own step "start"
+      goToNextStep: [{ to: "start" }]
+    }
+  }
+});
+void selfTransitionRuntime;
+
+const selfTransitionFactory = createJourneyFactory({
+  initial: "start",
+  context: { userId: "42" },
+  steps: { start: {}, review: {} },
+  transitions: {
+    start: {
+      // @ts-expect-error createJourneyFactory also rejects a self-transition
+      goToNextStep: [{ to: "start" }]
+    }
+  }
+});
+void selfTransitionFactory;
+
+const selfTransitionGraphRuntime = createGraphJourney({
+  initial: "start",
+  context: { userId: "42" },
+  steps: { start: {}, review: {} },
+  transitions: {
+    start: {
+      // @ts-expect-error react createGraphJourney also rejects a self-transition
+      goToNextStep: [{ to: "start" }]
+    }
+  }
+});
+void selfTransitionGraphRuntime;
+
+// A valid cross-step definition is accepted.
+const crossStepRuntime = createJourney({
+  initial: "start",
+  context: { userId: "42" },
+  steps: { start: {}, review: {} },
+  transitions: { start: { goToNextStep: [{ to: "review" }] } }
+});
+void crossStepRuntime;

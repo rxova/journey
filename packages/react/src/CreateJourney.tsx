@@ -1,5 +1,6 @@
 /* eslint-disable no-redeclare */
 import type {
+  AssertNoSelfTransitions,
   JourneyDefinition,
   JourneyJsonObject,
   JourneyMachinePlugin
@@ -13,8 +14,11 @@ import type { JourneyEmpty } from "@rxova/journey-core";
  * Creates a journey machine and returns React hooks/components bound to that machine.
  * Hooks work without a provider; `JourneyProvider` is only required for `StepRenderer`.
  */
-export function createJourney<TDefinition, TPlugins extends readonly JourneyMachinePlugin[] = []>(
-  definition: TDefinition,
+export function createJourney<
+  const TDefinition,
+  TPlugins extends readonly JourneyMachinePlugin[] = []
+>(
+  definition: TDefinition & AssertNoSelfTransitions<NoInfer<TDefinition>>,
   options?: JourneyOptionsInput<TPlugins, JourneyHandlersOfDefinition<TDefinition>>
 ): JourneyRuntimeFromDefinition<TDefinition, TPlugins>;
 export function createJourney<

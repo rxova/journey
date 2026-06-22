@@ -1,5 +1,6 @@
 /* eslint-disable no-redeclare */
 import type {
+  AssertNoSelfTransitions,
   JourneyDefinition,
   JourneyJsonObject,
   JourneyMachinePlugin
@@ -15,10 +16,10 @@ import type { JourneyEmpty } from "@rxova/journey-core";
  * from the same definition/options pair.
  */
 export function createJourneyFactory<
-  TDefinition,
+  const TDefinition,
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
-  definition: TDefinition,
+  definition: TDefinition & AssertNoSelfTransitions<NoInfer<TDefinition>>,
   options?: JourneyOptionsInput<TPlugins, JourneyHandlersOfDefinition<TDefinition>>
 ): JourneyRuntimeFactoryFromDefinition<TDefinition, TPlugins>;
 export function createJourneyFactory<
