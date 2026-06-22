@@ -5,6 +5,7 @@ import {
   validateFiniteTimeout,
   warnInDevelopment
 } from "./helpers";
+import { JourneyDefinitionError } from "./errors";
 
 import type {
   JourneyDefinition,
@@ -104,14 +105,18 @@ const buildEffectTransitions = <
     }
 
     if (typeof effect.run !== "function") {
-      throw new Error(`Journey step "${stepId}" effect must define "run" as a function.`);
+      throw new JourneyDefinitionError(
+        "invalid-effect",
+        `Journey step "${stepId}" effect must define "run" as a function.`
+      );
     }
     validateFiniteTimeout(effect.timeoutMs, `Journey step "${stepId}" effect`);
 
     if (effect.onResolved) {
       const branch = effect.onResolved;
       if (branch.to === stepId) {
-        throw new Error(
+        throw new JourneyDefinitionError(
+          "self-transition",
           `Journey step "${stepId}" effect "onResolved" cannot target its own step "${stepId}".`
         );
       }
@@ -142,7 +147,8 @@ const buildEffectTransitions = <
     if (effect.onRejected) {
       const branch = effect.onRejected;
       if (branch.to === stepId) {
-        throw new Error(
+        throw new JourneyDefinitionError(
+          "self-transition",
           `Journey step "${stepId}" effect "onRejected" cannot target its own step "${stepId}".`
         );
       }
@@ -201,13 +207,15 @@ const buildAfterTransitions = <
     for (const [delayKey, branch] of Object.entries(after)) {
       const delayMs = Number(delayKey);
       if (!Number.isFinite(delayMs) || delayMs < 0) {
-        throw new Error(
+        throw new JourneyDefinitionError(
+          "invalid-after",
           `Journey step "${stepId}" after delay "${delayKey}" must be a finite, non-negative number of milliseconds.`
         );
       }
 
       if (branch.to === stepId) {
-        throw new Error(
+        throw new JourneyDefinitionError(
+          "self-transition",
           `Journey step "${stepId}" after delay "${delayKey}" cannot target its own step "${stepId}".`
         );
       }
@@ -265,18 +273,25 @@ export const resolveJourneyDefinition = <
 
   if (Array.isArray(transitions)) {
     if (transitions.length === 0) {
-      throw new Error(
+      throw new JourneyDefinitionError(
+        "invalid-shape",
         "Journey linear transitions must include the initial step as the first item."
       );
     }
 
     const [initialStep, ...linearEntries] = transitions;
     if (typeof initialStep !== "string") {
-      throw new Error("Journey linear transitions at index 0 must be a step id string.");
+      throw new JourneyDefinitionError(
+        "invalid-shape",
+        "Journey linear transitions at index 0 must be a step id string."
+      );
     }
 
     if (!(initialStep in journey.steps)) {
-      throw new Error(`Journey linear transitions reference unknown step "${initialStep}".`);
+      throw new JourneyDefinitionError(
+        "unknown-step",
+        `Journey linear transitions reference unknown step "${initialStep}".`
+      );
     }
 
     // Resolve initial: use journey.initial if provided (start from middle), otherwise array[0]
@@ -287,7 +302,8 @@ export const resolveJourneyDefinition = <
         typeof entry === "string" ? entry : entry.step
       );
       if (!allStepIds.includes(journey.initial)) {
-        throw new Error(
+        throw new JourneyDefinitionError(
+          "unknown-step",
           `Journey initial step "${journey.initial}" does not exist in linear transitions.`
         );
       }
@@ -299,11 +315,15 @@ export const resolveJourneyDefinition = <
       const index = offset + 1;
       if (typeof entry === "string") {
         if (!(entry in journey.steps)) {
-          throw new Error(`Journey linear transitions reference unknown step "${entry}".`);
+          throw new JourneyDefinitionError(
+            "unknown-step",
+            `Journey linear transitions reference unknown step "${entry}".`
+          );
         }
 
         if (seenSteps.has(entry)) {
-          throw new Error(
+          throw new JourneyDefinitionError(
+            "duplicate-step",
             `Journey linear transitions contain duplicate step "${entry}" at index ${index}.`
           );
         }
@@ -319,7 +339,8 @@ export const resolveJourneyDefinition = <
       }
 
       if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
-        throw new Error(
+        throw new JourneyDefinitionError(
+          "invalid-shape",
           `Journey linear transitions at index ${index} must be a step id string or step config object.`
         );
       }
@@ -334,43 +355,52 @@ export const resolveJourneyDefinition = <
       ]);
       for (const key of Object.keys(entry)) {
         if (!allowedKeys.has(key)) {
-          throw new Error(
+          throw new JourneyDefinitionError(
+            "invalid-transition",
             `Journey linear transition object at index ${index} contains unsupported field "${key}". Allowed fields are "step", "label", "updateContext", "onEnter", "onLeave", and "timeoutMs".`
           );
         }
       }
 
       if (typeof entry.step !== "string") {
-        throw new Error(
+        throw new JourneyDefinitionError(
+          "invalid-transition",
           `Journey linear transition object at index ${index} must define string "step".`
         );
       }
 
       if (!(entry.step in journey.steps)) {
-        throw new Error(`Journey linear transitions reference unknown step "${entry.step}".`);
+        throw new JourneyDefinitionError(
+          "unknown-step",
+          `Journey linear transitions reference unknown step "${entry.step}".`
+        );
       }
 
       if (seenSteps.has(entry.step)) {
-        throw new Error(
+        throw new JourneyDefinitionError(
+          "duplicate-step",
           `Journey linear transitions contain duplicate step "${entry.step}" at index ${index}.`
         );
       }
       seenSteps.add(entry.step);
 
       if (entry.updateContext !== undefined && typeof entry.updateContext !== "function") {
-        throw new Error(
+        throw new JourneyDefinitionError(
+          "invalid-transition",
           `Journey linear transition object at index ${index} must define "updateContext" as a function when provided.`
         );
       }
 
       if (entry.onEnter !== undefined && typeof entry.onEnter !== "function") {
-        throw new Error(
+        throw new JourneyDefinitionError(
+          "invalid-transition",
           `Journey linear transition object at index ${index} must define "onEnter" as a function when provided.`
         );
       }
 
       if (entry.onLeave !== undefined && typeof entry.onLeave !== "function") {
-        throw new Error(
+        throw new JourneyDefinitionError(
+          "invalid-transition",
           `Journey linear transition object at index ${index} must define "onLeave" as a function when provided.`
         );
       }
@@ -398,7 +428,10 @@ export const resolveJourneyDefinition = <
   }
 
   if (!transitions || typeof transitions !== "object") {
-    throw new Error("Journey transitions must be an array or an object map when provided.");
+    throw new JourneyDefinitionError(
+      "invalid-shape",
+      "Journey transitions must be an array or an object map when provided."
+    );
   }
 
   const transitionGraph = transitions as JourneyTransitionGraph<
@@ -415,11 +448,17 @@ export const resolveJourneyDefinition = <
 
   for (const [fromKey, eventMap] of orderedGraphEntries) {
     if (fromKey !== "global" && !(fromKey in journey.steps)) {
-      throw new Error(`Journey transitions reference unknown step "${fromKey}".`);
+      throw new JourneyDefinitionError(
+        "unknown-step",
+        `Journey transitions reference unknown step "${fromKey}".`
+      );
     }
 
     if (!eventMap || typeof eventMap !== "object" || Array.isArray(eventMap)) {
-      throw new Error(`Journey transitions for "${fromKey}" must be an event map object.`);
+      throw new JourneyDefinitionError(
+        "invalid-shape",
+        `Journey transitions for "${fromKey}" must be an event map object.`
+      );
     }
 
     for (const [event, rawEdges] of Object.entries(eventMap) as Array<
@@ -432,12 +471,16 @@ export const resolveJourneyDefinition = <
           : rawEdges;
 
       if (!Array.isArray(edges)) {
-        throw new Error(`Journey transitions for "${fromKey}.${event}" must be an array.`);
+        throw new JourneyDefinitionError(
+          "invalid-shape",
+          `Journey transitions for "${fromKey}.${event}" must be an array.`
+        );
       }
 
       for (const [index, edge] of edges.entries()) {
         if (!edge || typeof edge !== "object") {
-          throw new Error(
+          throw new JourneyDefinitionError(
+            "invalid-shape",
             `Journey transition at "${fromKey}.${event}[${index}]" must be an object.`
           );
         }
@@ -449,26 +492,30 @@ export const resolveJourneyDefinition = <
         );
         for (const key of Object.keys(edge)) {
           if (!allowedKeys.has(key)) {
-            throw new Error(
+            throw new JourneyDefinitionError(
+              "invalid-transition",
               `Journey transition at "${fromKey}.${event}[${index}]" contains unsupported field "${key}".`
             );
           }
         }
 
         if (!isTerminal && typeof (edge as { to?: unknown }).to !== "string") {
-          throw new Error(
+          throw new JourneyDefinitionError(
+            "invalid-transition",
             `Journey transition at "${fromKey}.${event}[${index}]" must define string "to".`
           );
         }
 
         if (!isTerminal && fromKey !== "global" && (edge as { to?: unknown }).to === fromKey) {
-          throw new Error(
+          throw new JourneyDefinitionError(
+            "self-transition",
             `Journey transition "${fromKey}.${event}[${index}]" cannot target its own step "${fromKey}".`
           );
         }
 
         if ((edge as { when?: unknown }).when !== undefined && typeof edge.when !== "function") {
-          throw new Error(
+          throw new JourneyDefinitionError(
+            "invalid-transition",
             `Journey transition at "${fromKey}.${event}[${index}]" must define "when" as a function when provided.`
           );
         }
@@ -477,7 +524,8 @@ export const resolveJourneyDefinition = <
           (edge as { updateContext?: unknown }).updateContext !== undefined &&
           typeof edge.updateContext !== "function"
         ) {
-          throw new Error(
+          throw new JourneyDefinitionError(
+            "invalid-transition",
             `Journey transition at "${fromKey}.${event}[${index}]" must define "updateContext" as a function when provided.`
           );
         }
@@ -486,7 +534,8 @@ export const resolveJourneyDefinition = <
           (edge as { onEnter?: unknown }).onEnter !== undefined &&
           typeof edge.onEnter !== "function"
         ) {
-          throw new Error(
+          throw new JourneyDefinitionError(
+            "invalid-transition",
             `Journey transition at "${fromKey}.${event}[${index}]" must define "onEnter" as a function when provided.`
           );
         }
@@ -495,13 +544,15 @@ export const resolveJourneyDefinition = <
           (edge as { onLeave?: unknown }).onLeave !== undefined &&
           typeof edge.onLeave !== "function"
         ) {
-          throw new Error(
+          throw new JourneyDefinitionError(
+            "invalid-transition",
             `Journey transition at "${fromKey}.${event}[${index}]" must define "onLeave" as a function when provided.`
           );
         }
 
         if ((edge as { label?: unknown }).label !== undefined && typeof edge.label !== "string") {
-          throw new Error(
+          throw new JourneyDefinitionError(
+            "invalid-transition",
             `Journey transition at "${fromKey}.${event}[${index}]" must define "label" as a string when provided.`
           );
         }

@@ -30,6 +30,7 @@ import {
   withAbortSignal,
   withTimeout
 } from "./helpers";
+import { JourneyDefinitionError } from "./errors";
 import { resolveJourneyDefinition } from "./resolve-journey-definition";
 
 import type {
@@ -60,7 +61,7 @@ export function createJourneyMachine<
   options?: JourneyMachineOptions<TPlugins, THandlers>
 ): JourneyMachineWithPlugins<TContext, TStepId, TEventMap, TStepMeta, THandlers, TPlugins> {
   if (!journey.steps || typeof journey.steps !== "object") {
-    throw new Error("Journey steps must be a record object.");
+    throw new JourneyDefinitionError("invalid-shape", "Journey steps must be a record object.");
   }
 
   if (
@@ -68,17 +69,24 @@ export function createJourneyMachine<
     (journey.transitions === null ||
       (typeof journey.transitions !== "object" && !Array.isArray(journey.transitions)))
   ) {
-    throw new Error("Journey transitions must be an array or an object map when provided.");
+    throw new JourneyDefinitionError(
+      "invalid-shape",
+      "Journey transitions must be an array or an object map when provided."
+    );
   }
 
   for (const stepId of Object.keys(journey.steps)) {
     if (stepId === "*" || stepId === "global" || stepId === "COMPLETE" || stepId === "TERMINATED") {
-      throw new Error(`Step id "${stepId}" is reserved and cannot be used as a step name.`);
+      throw new JourneyDefinitionError(
+        "reserved-step-id",
+        `Step id "${stepId}" is reserved and cannot be used as a step name.`
+      );
     }
   }
 
   if (journey.initial === undefined && !Array.isArray(journey.transitions)) {
-    throw new Error(
+    throw new JourneyDefinitionError(
+      "missing-initial",
       'Journey "initial" is required for graph and headless definitions. ' +
         "For linear transitions, initial defaults to the first array element."
     );

@@ -6,6 +6,8 @@ import {
 } from "@rxova/journey-common/dev";
 import { isPlainObject, isPromiseLike } from "@rxova/journey-common/predicates";
 
+import { JourneyDefinitionError, JourneyDisposedError, JourneyTimeoutError } from "./errors";
+
 import type {
   JourneyAsyncState,
   JourneyEvent,
@@ -302,27 +304,14 @@ const isFiniteNumber = (value: unknown): value is number =>
 
 export const validateFiniteTimeout = (timeoutMs: unknown, label: string) => {
   if (timeoutMs !== undefined && !isFiniteNumber(timeoutMs)) {
-    throw new Error(`${label} must define a finite numeric "timeoutMs" when provided.`);
+    throw new JourneyDefinitionError(
+      "invalid-timeout",
+      `${label} must define a finite numeric "timeoutMs" when provided.`
+    );
   }
 };
 
-export class JourneyTimeoutError extends Error {
-  override name = "JourneyTimeoutError";
-
-  constructor(message: string) {
-    super(message);
-  }
-}
-
-export class JourneyDisposedError extends Error {
-  override name = "JourneyDisposedError";
-  readonly operation: string;
-
-  constructor(operation: string) {
-    super(`Journey machine has been disposed; "${operation}" can no longer be used.`);
-    this.operation = operation;
-  }
-}
+export { JourneyDisposedError, JourneyTimeoutError };
 
 export const buildIdleStepAsyncState = (): JourneyStepAsyncState => ({
   phase: "idle",
