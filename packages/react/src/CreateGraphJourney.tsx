@@ -1,6 +1,7 @@
 /* eslint-disable no-redeclare */
 import { createGraphJourney as coreCreateGraphJourney } from "@rxova/journey-core";
 import type {
+  AssertNoSelfTransitions,
   GraphJourneyDefinition,
   JourneyJsonObject,
   JourneyMachineOptions,
@@ -18,10 +19,10 @@ import type { JourneyEmpty } from "@rxova/journey-core";
  * a runtime with `useStepApi`.
  */
 export function createGraphJourney<
-  TDefinition,
+  const TDefinition,
   TPlugins extends readonly JourneyMachinePlugin[] = []
 >(
-  definition: TDefinition,
+  definition: TDefinition & AssertNoSelfTransitions<NoInfer<TDefinition>>,
   options?: JourneyOptionsInput<TPlugins, JourneyHandlersOfDefinition<TDefinition>>
 ): JourneyRuntimeFromDefinition<TDefinition, TPlugins>;
 export function createGraphJourney<

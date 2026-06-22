@@ -1,5 +1,6 @@
 ---
 "@rxova/journey-core": minor
+"@rxova/journey-react": minor
 ---
 
 Forbid self-transitions at creation: a transition, `after` delay, or `effect`
@@ -17,8 +18,11 @@ creation for a self-targeting graph edge, `after` delay, or `effect`
 `onResolved` / `onRejected` branch. To change context without navigating, call
 `api.updateContext(...)` instead.
 
-**Compile-time**: `createGraphJourney(...)` now rejects a graph transition that
-targets its own step, surfacing `Self-transition not allowed: step "X" cannot
-target its own step` at the call site. The check is an additive constraint on
-the argument (`NoInfer`-guarded), so step-id inference for consumers such as
-`getExecutionPaths` is unaffected and dynamic `to` targets keep working.
+**Compile-time**: the graph factories — core `createGraphJourney`, and React
+`createJourney` / `createGraphJourney` / `createJourneyFactory` — now reject an
+inline graph transition that targets its own step, surfacing `Self-transition
+not allowed: step "X" cannot target its own step`. The check is an additive,
+`NoInfer`-guarded constraint on the argument, so step-id inference for consumers
+such as `getExecutionPaths` is unaffected and dynamic `to` targets keep working.
+It fires for definitions written inline at the call; definitions passed as a
+pre-typed variable are covered by the runtime guard.
