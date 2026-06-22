@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createJourneyMachine,
   JourneyDisposedError,
+  JourneyStateError,
   type JourneyDefinition,
   type JourneyMachinePlugin
 } from "@rxova/journey-core";
@@ -220,6 +221,15 @@ describe("createJourneyMachine extra coverage", () => {
     expect(() =>
       createJourneyMachine(createJourney(), { plugins: [duplicateFeaturesPlugin] as const })
     ).toThrow(/feature "duplicate" is already registered/);
+
+    let stateError: unknown;
+    try {
+      createJourneyMachine(createJourney(), { plugins: [duplicateFeaturesPlugin] as const });
+    } catch (error) {
+      stateError = error;
+    }
+    expect(stateError).toBeInstanceOf(JourneyStateError);
+    expect((stateError as JourneyStateError).code).toBe("duplicate-registration");
 
     const duplicateOperationsPlugin: JourneyMachinePlugin = {
       name: "duplicate-operations",

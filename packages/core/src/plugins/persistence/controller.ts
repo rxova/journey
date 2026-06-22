@@ -21,6 +21,7 @@ import {
   buildVisitedFromTimeline,
   warnInDevelopment
 } from "../../journey-machine/helpers";
+import { JourneyPersistenceError } from "../../journey-machine/errors";
 
 const isStatusValue = (value: unknown): value is JourneyStatus =>
   value === "idled" || value === "running" || value === "completed" || value === "terminated";
@@ -32,12 +33,18 @@ const normalizePersistencePath = (
   optionName: "allowList" | "blockList"
 ): PersistencePath => {
   if (typeof path !== "string") {
-    throw new Error(`Persistence ${optionName} entries must be strings.`);
+    throw new JourneyPersistenceError(
+      "invalid-path",
+      `Persistence ${optionName} entries must be strings.`
+    );
   }
 
   const trimmedPath = path.trim();
   if (!trimmedPath) {
-    throw new Error(`Persistence ${optionName} entries must not be empty.`);
+    throw new JourneyPersistenceError(
+      "invalid-path",
+      `Persistence ${optionName} entries must not be empty.`
+    );
   }
 
   if (
@@ -48,7 +55,8 @@ const normalizePersistencePath = (
     trimmedPath.endsWith(".") ||
     trimmedPath.includes("..")
   ) {
-    throw new Error(
+    throw new JourneyPersistenceError(
+      "invalid-path",
       `Persistence ${optionName} entry "${trimmedPath}" must use exact dot-separated object keys.`
     );
   }
@@ -57,7 +65,8 @@ const normalizePersistencePath = (
   if (
     segments.some((segment) => !segment || segment.trim() !== segment || /^[0-9]+$/.test(segment))
   ) {
-    throw new Error(
+    throw new JourneyPersistenceError(
+      "invalid-path",
       `Persistence ${optionName} entry "${trimmedPath}" must use exact dot-separated object keys.`
     );
   }
@@ -74,7 +83,10 @@ const normalizePersistencePaths = (
   }
 
   if (!Array.isArray(paths)) {
-    throw new Error(`Persistence ${optionName} must be an array of dot-separated strings.`);
+    throw new JourneyPersistenceError(
+      "invalid-config",
+      `Persistence ${optionName} must be an array of dot-separated strings.`
+    );
   }
 
   const normalized = new Map<string, PersistencePath>();

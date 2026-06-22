@@ -17,6 +17,11 @@ programmatically.
   `invalid-timeout`, `invalid-effect`, `invalid-after`, `invalid-context`, or
   `self-transition`.
 
-All definition-validation throws now use `JourneyDefinitionError` — transition
-resolution, the `createJourneyMachine` shape checks, transition validation, and
-context JSON-serializability checks. Error messages are unchanged.
+- `JourneyStateError` (extends `JourneyError`, `JourneyStateErrorCode`:
+  `duplicate-registration`, `plugin-conflict`, `invalid-snapshot`) covers
+  runtime and plugin-wiring failures.
+- `JourneyPersistenceError` (extends `JourneyError`, `JourneyPersistenceErrorCode`:
+  `invalid-path`, `invalid-config`) covers invalid persistence configuration.
+
+Every `throw` in `@rxova/journey-core` now uses a `JourneyError` subclass; error
+messages are unchanged, so existing message-based assertions keep working.

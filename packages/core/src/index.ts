@@ -16,9 +16,15 @@ export {
   JourneyDefinitionError,
   JourneyDisposedError,
   JourneyError,
+  JourneyPersistenceError,
+  JourneyStateError,
   JourneyTimeoutError
 } from "./journey-machine/errors";
-export type { JourneyDefinitionErrorCode } from "./journey-machine/errors";
+export type {
+  JourneyDefinitionErrorCode,
+  JourneyPersistenceErrorCode,
+  JourneyStateErrorCode
+} from "./journey-machine/errors";
 export { isInternalEventType } from "./journey-machine/helpers";
 export type {
   JourneyBuilder,

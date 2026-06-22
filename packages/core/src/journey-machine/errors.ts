@@ -36,6 +36,45 @@ export class JourneyDefinitionError extends JourneyError {
   }
 }
 
+/** Discriminates the kind of runtime/plugin-state failure on {@link JourneyStateError}. */
+export type JourneyStateErrorCode =
+  | "duplicate-registration"
+  | "plugin-conflict"
+  | "invalid-snapshot";
+
+/**
+ * Thrown when the runtime or its plugin wiring reaches an invalid state — a
+ * duplicate devtools registration, a plugin extension collision, or a malformed
+ * snapshot. The `code` field categorizes the failure.
+ */
+export class JourneyStateError extends JourneyError {
+  override name = "JourneyStateError";
+  readonly code: JourneyStateErrorCode;
+
+  constructor(code: JourneyStateErrorCode, message: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
+/** Discriminates the kind of persistence-config failure on {@link JourneyPersistenceError}. */
+export type JourneyPersistenceErrorCode = "invalid-path" | "invalid-config";
+
+/**
+ * Thrown when persistence configuration is invalid — a malformed allow/block
+ * list path, or an option of the wrong shape. The `code` field categorizes the
+ * failure.
+ */
+export class JourneyPersistenceError extends JourneyError {
+  override name = "JourneyPersistenceError";
+  readonly code: JourneyPersistenceErrorCode;
+
+  constructor(code: JourneyPersistenceErrorCode, message: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
 /** Thrown when an async step effect or guard exceeds its configured `timeoutMs`. */
 export class JourneyTimeoutError extends JourneyError {
   override name = "JourneyTimeoutError";
