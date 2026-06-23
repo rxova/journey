@@ -34,7 +34,6 @@ export const journey = createLinearJourney<LoginContext, StepId, StepMeta>({
           void dispatch({ type: "terminateJourney" });
           return;
         }
-        alert("loggedIn");
         void dispatch({ type: "completeJourney" });
       }
     }

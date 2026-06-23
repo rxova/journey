@@ -17,15 +17,14 @@ export type LoginContext = {
   attempts: number;
 };
 
-export type EventMap = {
-  submitLogin: { username: string; password: string };
+export type EventMap =
+  | { type: "submitLogin"; payload: { username: string; password: string } }
   /** Submit a code for the machine to validate via the `verifyCode` handler. */
-  submitCode: { code: string };
-  verifyCodeSuccess: { code: string };
-  verifyCodeFailure: { code: string };
-  setup2fa: { code: string };
-  switchAuthMethod: unknown;
-};
+  | { type: "submitCode"; payload: { code: string } }
+  | { type: "verifyCodeSuccess"; payload: { code: string } }
+  | { type: "verifyCodeFailure"; payload: { code: string } }
+  | { type: "setup2fa"; payload: { code: string } }
+  | { type: "switchAuthMethod" };
 
 export type StepMeta = { label: string; icon: string };
 

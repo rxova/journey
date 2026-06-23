@@ -49,7 +49,6 @@ const definition = build({
           });
         },
         onEnter: ({ context, from, to }) => {
-          alert("now you are authenticad");
           console.log("[graph] global completeJourney onEnter", {
             from,
             to,
