@@ -253,7 +253,7 @@ importers:
   examples/core-plugin-analytics:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/core
     devDependencies:
       '@vitejs/plugin-react':
@@ -269,7 +269,7 @@ importers:
   examples/core-plugin-autosave:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/core
     devDependencies:
       '@vitejs/plugin-react':
@@ -285,7 +285,7 @@ importers:
   examples/core-plugin-diagnostics:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/core
     devDependencies:
       '@vitejs/plugin-react':
@@ -301,7 +301,7 @@ importers:
   examples/core-plugin-execution-paths:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/core
     devDependencies:
       '@vitejs/plugin-react':
@@ -317,7 +317,7 @@ importers:
   examples/core-plugin-persistence:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/core
     devDependencies:
       '@vitejs/plugin-react':
@@ -333,7 +333,7 @@ importers:
   examples/core-plugin-replay:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/core
     devDependencies:
       '@vitejs/plugin-react':
@@ -349,7 +349,7 @@ importers:
   examples/core-showcase-graph:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/core
     devDependencies:
       '@vitejs/plugin-react':
@@ -365,7 +365,7 @@ importers:
   examples/core-showcase-headless:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/core
     devDependencies:
       '@vitejs/plugin-react':
@@ -381,7 +381,7 @@ importers:
   examples/core-showcase-linear:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/core
     devDependencies:
       '@vitejs/plugin-react':
@@ -397,10 +397,10 @@ importers:
   examples/react-plugin-analytics:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/core
       '@rxova/journey-react':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/react
       react:
         specifier: ^19.2.7
@@ -428,10 +428,10 @@ importers:
   examples/react-plugin-autosave:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/core
       '@rxova/journey-react':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/react
       react:
         specifier: ^19.2.7
@@ -459,10 +459,10 @@ importers:
   examples/react-plugin-diagnostics:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/core
       '@rxova/journey-react':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/react
       react:
         specifier: ^19.2.7
@@ -490,10 +490,10 @@ importers:
   examples/react-plugin-execution-paths:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/core
       '@rxova/journey-react':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/react
       react:
         specifier: ^19.2.7
@@ -521,10 +521,10 @@ importers:
   examples/react-plugin-persistence:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/core
       '@rxova/journey-react':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/react
       react:
         specifier: ^19.2.7
@@ -552,10 +552,10 @@ importers:
   examples/react-plugin-replay:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/core
       '@rxova/journey-react':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/react
       react:
         specifier: ^19.2.7
@@ -583,13 +583,13 @@ importers:
   examples/react-showcase-graph:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/core
       '@rxova/journey-devtools-bridge':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/devtools-bridge
       '@rxova/journey-react':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/react
       react:
         specifier: ^19.2.7
@@ -617,13 +617,13 @@ importers:
   examples/react-showcase-headless:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/core
       '@rxova/journey-devtools-bridge':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/devtools-bridge
       '@rxova/journey-react':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/react
       react:
         specifier: ^19.2.7
@@ -651,13 +651,13 @@ importers:
   examples/react-showcase-linear:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/core
       '@rxova/journey-devtools-bridge':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/devtools-bridge
       '@rxova/journey-react':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:^
         version: link:../../packages/react
       react:
         specifier: ^19.2.7
