@@ -22,10 +22,7 @@ export type PluginContext = JourneyJsonObject & {
 
 export type StructureStepId = "start" | "address" | "review" | "blocked" | "done" | "orphan";
 
-export type StructureEventMap = {
-  next: Record<never, never>;
-  reject: Record<never, never>;
-};
+export type StructureEventMap = { type: "next" } | { type: "reject" };
 
 export const pluginStorageKey = (runtime: "core" | "react", kind: PluginDemoKind) =>
   `journey.example.${runtime}.${kind}`;
