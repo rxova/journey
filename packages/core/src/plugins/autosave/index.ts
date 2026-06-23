@@ -47,15 +47,18 @@ export const createAutosavePlugin = <TContext extends JourneyJsonObject, TStepId
   const debounceMs = normalizeDebounceMs(options.debounceMs);
   const hydrate = options.hydrate ?? true;
   const saveReasons = new Set(options.saveOn ?? DEFAULT_SAVE_REASONS);
-  let autosaveState: JourneyAutosaveState = { status: "idle" };
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  let pending: {
-    snapshot: JourneySnapshot<JourneyJsonObject, string>;
-    reason: JourneyMachineSnapshotReason;
-  } | null = null;
-  let lastSaveErrored = false;
 
+  // Per-instance state lives inside `setup()` (called once per machine) so a
+  // single plugin instance reused across machines never shares its timer/state.
   const setup = (({ resolvedJourney }) => {
+    let autosaveState: JourneyAutosaveState = { status: "idle" };
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let pending: {
+      snapshot: JourneySnapshot<JourneyJsonObject, string>;
+      reason: JourneyMachineSnapshotReason;
+    } | null = null;
+    let lastSaveErrored = false;
+
     const resolvedOptions = options as unknown as JourneyAutosavePluginOptions<TContext, TStepId>;
     const controller = createPersistenceController({
       initial: resolvedJourney.initial as unknown as TStepId,

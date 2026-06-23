@@ -218,4 +218,27 @@ describe("replay plugin", () => {
     });
     expect(parsed.entries[0]?.event.payload.circular.self).toBe("[circular]");
   });
+
+  it("isolates replay state per machine when one plugin instance is reused", async () => {
+    // setup() runs once per machine, so a single plugin instance shared across
+    // two machines must not share its buffer.
+    const plugin = createReplayPlugin();
+    const m1 = createJourneyMachine(createJourney(), { plugins: [plugin] as const });
+    const m2 = createJourneyMachine(createJourney(), { plugins: [plugin] as const });
+
+    await m1.startJourney();
+    await m1.send({ type: "goToNextStep" });
+
+    const sessionOne = m1.getReplaySession();
+    const sessionTwo = m2.getReplaySession();
+
+    expect(sessionOne.entries.length).toBeGreaterThan(0);
+    // m2 was never driven — its session must be empty and its own.
+    expect(sessionTwo.entries).toEqual([]);
+    expect(sessionTwo.initialSnapshot?.currentStepId).toBe("start");
+    expect(m2.getSnapshot().currentStepId).toBe("start");
+
+    m1.dispose();
+    m2.dispose();
+  });
 });

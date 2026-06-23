@@ -4,6 +4,7 @@ import React from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 
 import { createGraphJourneyBuilder } from "@rxova/journey-core";
+import { createReplayPlugin } from "@rxova/journey-core/replay";
 import { createJourney, createJourneyFactory, type JourneyViews } from "@rxova/journey-react";
 import type { JourneyDefinition } from "@rxova/journey-core";
 
@@ -348,6 +349,26 @@ describe("createJourney", () => {
 
     firstJourney.dispose();
     secondJourney.dispose();
+  });
+
+  it("gives each createJourneyFactory instance independent plugin state", async () => {
+    const makeJourney = createJourneyFactory(createDefinition(), {
+      plugins: [createReplayPlugin()] as const
+    });
+    const first = makeJourney();
+    const second = makeJourney();
+
+    await act(async () => {
+      await first.machine.startJourney();
+      await first.machine.goToNextStep();
+    });
+
+    // Only `first` was driven — `second`'s replay session must be empty and its own.
+    expect(first.machine.getReplaySession().entries.length).toBeGreaterThan(0);
+    expect(second.machine.getReplaySession().entries).toEqual([]);
+
+    first.dispose();
+    second.dispose();
   });
 
   it("lets hooks read snapshot, computed state, api, selectors, and events without a provider", async () => {

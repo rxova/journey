@@ -27,6 +27,36 @@ const myPlugin = {
 } satisfies JourneyMachinePlugin;
 ```
 
+### Keep per-instance state inside `setup()`
+
+The plugin object is a **stateless descriptor**. Because `setup()` runs once per machine, any state
+your plugin needs (buffers, timers, subscriptions, counters) must be created **inside `setup()`** —
+not in the factory closure around it:
+
+```ts
+const createCounterPlugin = () => ({
+  name: "counter",
+  setup: () => {
+    let count = 0; // ✅ per-machine — each setup() call gets its own
+    return { onSnapshotChange: () => void count++ };
+  }
+});
+
+// ❌ Don't do this — `count` is shared by every machine that uses the instance:
+const createCounterPlugin = () => {
+  let count = 0;
+  return { name: "counter", setup: () => ({ onSnapshotChange: () => void count++ }) };
+};
+```
+
+This is what makes a single plugin instance safe to reuse — including across the independent runtimes
+produced by [`createJourneyFactory`](/docs/react/overview), which calls `setup()` once per instance.
+The built-in `persistence` plugin is the reference model (it builds its controller inside `setup`).
+
+Per-instance _external_ resources are your responsibility to key apart: e.g. if you persist to storage,
+give each instance a distinct `key`, since two machines pointing at the same key will overwrite each
+other regardless of state scoping.
+
 ## The one TypeScript wrinkle
 
 `setup` is generic over your machine's `TContext`, `TStepId`, `TEvents`, and `TStepMeta` — but

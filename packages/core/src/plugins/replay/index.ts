@@ -110,28 +110,6 @@ export const createReplayPlugin = (options: JourneyReplayPluginOptions = {}) => 
   const captureSnapshots = options.captureSnapshots ?? true;
   const maxEntries = normalizeMaxEntries(options.maxEntries);
 
-  let initialSnapshot: JourneySnapshot<JourneyJsonObject, string> | null = null;
-  const entries: JourneyReplayEntry<JourneyJsonObject, string, JourneyBaseEvent>[] = [];
-  let truncated = false;
-  let unsubscribeEvents: (() => void) | undefined;
-
-  const pushEntry = (entry: JourneyReplayEntry<JourneyJsonObject, string, JourneyBaseEvent>) => {
-    if (entries.length >= maxEntries) {
-      entries.shift();
-      truncated = true;
-    }
-
-    entries.push(entry);
-  };
-
-  const buildSession = () =>
-    ({
-      version: 1 as const,
-      initialSnapshot,
-      entries: [...entries],
-      truncated
-    }) satisfies JourneyReplaySession<JourneyJsonObject, string, JourneyBaseEvent>;
-
   return {
     name: "replay",
     __extension__: undefined as unknown as JourneyReplayMachineExtension<
@@ -139,95 +117,123 @@ export const createReplayPlugin = (options: JourneyReplayPluginOptions = {}) => 
       string,
       JourneyBaseEvent
     >,
-    setup: () => ({
-      hydrateSnapshot: (snapshot) => {
-        initialSnapshot = snapshot as JourneySnapshot<JourneyJsonObject, string>;
-        return snapshot;
-      },
-      onSnapshotChange: ({ snapshot, reason }) => {
-        if (!captureSnapshots) {
-          return;
+    // Per-instance state lives inside `setup()` (called once per machine) so a
+    // single plugin instance reused across machines never shares its buffer.
+    setup: () => {
+      let initialSnapshot: JourneySnapshot<JourneyJsonObject, string> | null = null;
+      const entries: JourneyReplayEntry<JourneyJsonObject, string, JourneyBaseEvent>[] = [];
+      let truncated = false;
+      let unsubscribeEvents: (() => void) | undefined;
+
+      const pushEntry = (
+        entry: JourneyReplayEntry<JourneyJsonObject, string, JourneyBaseEvent>
+      ) => {
+        if (entries.length >= maxEntries) {
+          entries.shift();
+          truncated = true;
         }
 
-        pushEntry({
-          kind: "snapshot",
-          timestamp: Date.now(),
-          reason,
-          snapshot: snapshot as JourneySnapshot<JourneyJsonObject, string>
-        });
-      },
-      augmentMachine: ({ machine }) => {
-        if (captureEvents) {
-          unsubscribeEvents = machine.subscribeEvent((event) => {
-            pushEntry({
-              kind: "event",
-              timestamp: event.timestamp,
-              event: event as JourneyObservationEvent<string, JourneyBaseEvent>
-            });
+        entries.push(entry);
+      };
+
+      const buildSession = () =>
+        ({
+          version: 1 as const,
+          initialSnapshot,
+          entries: [...entries],
+          truncated
+        }) satisfies JourneyReplaySession<JourneyJsonObject, string, JourneyBaseEvent>;
+
+      return {
+        hydrateSnapshot: (snapshot) => {
+          initialSnapshot = snapshot as JourneySnapshot<JourneyJsonObject, string>;
+          return snapshot;
+        },
+        onSnapshotChange: ({ snapshot, reason }) => {
+          if (!captureSnapshots) {
+            return;
+          }
+
+          pushEntry({
+            kind: "snapshot",
+            timestamp: Date.now(),
+            reason,
+            snapshot: snapshot as JourneySnapshot<JourneyJsonObject, string>
           });
-        }
+        },
+        augmentMachine: ({ machine }) => {
+          if (captureEvents) {
+            unsubscribeEvents = machine.subscribeEvent((event) => {
+              pushEntry({
+                kind: "event",
+                timestamp: event.timestamp,
+                event: event as JourneyObservationEvent<string, JourneyBaseEvent>
+              });
+            });
+          }
 
-        return {
-          getReplaySession: () =>
-            buildSession() as JourneyReplaySession<JourneyJsonObject, string, JourneyBaseEvent>,
-          clearReplaySession: () => {
-            initialSnapshot = machine.getSnapshot() as JourneySnapshot<JourneyJsonObject, string>;
-            entries.length = 0;
-            truncated = false;
-          },
-          exportReplaySession: (exportOptions?: JourneyReplayExportOptions) =>
-            serializeReplaySession(buildSession(), exportOptions)
-        };
-      },
-      getDevtoolsFeatures: () => [
-        {
-          id: "replay",
-          label: "Replay",
-          operations: [
-            {
-              id: "replay.inspectSession",
-              label: "inspectSession",
-              mutates: false,
-              output: "data",
-              run: () => ({
-                kind: "data",
-                data: buildSession()
-              })
+          return {
+            getReplaySession: () =>
+              buildSession() as JourneyReplaySession<JourneyJsonObject, string, JourneyBaseEvent>,
+            clearReplaySession: () => {
+              initialSnapshot = machine.getSnapshot() as JourneySnapshot<JourneyJsonObject, string>;
+              entries.length = 0;
+              truncated = false;
             },
-            {
-              id: "replay.exportSession",
-              label: "exportSession",
-              mutates: false,
-              output: "text",
-              fields: [{ key: "pretty", label: "pretty", type: "boolean" }],
-              run: ({ input }) => ({
-                kind: "text",
-                text: serializeReplaySession(buildSession(), {
-                  pretty: input?.pretty === true
+            exportReplaySession: (exportOptions?: JourneyReplayExportOptions) =>
+              serializeReplaySession(buildSession(), exportOptions)
+          };
+        },
+        getDevtoolsFeatures: () => [
+          {
+            id: "replay",
+            label: "Replay",
+            operations: [
+              {
+                id: "replay.inspectSession",
+                label: "inspectSession",
+                mutates: false,
+                output: "data",
+                run: () => ({
+                  kind: "data",
+                  data: buildSession()
                 })
-              })
-            },
-            {
-              id: "replay.clearSession",
-              label: "clearSession",
-              mutates: true,
-              output: "void",
-              run: ({ machine }) => {
-                initialSnapshot = machine.getSnapshot() as JourneySnapshot<
-                  JourneyJsonObject,
-                  string
-                >;
-                entries.length = 0;
-                truncated = false;
-                return { kind: "void" };
+              },
+              {
+                id: "replay.exportSession",
+                label: "exportSession",
+                mutates: false,
+                output: "text",
+                fields: [{ key: "pretty", label: "pretty", type: "boolean" }],
+                run: ({ input }) => ({
+                  kind: "text",
+                  text: serializeReplaySession(buildSession(), {
+                    pretty: input?.pretty === true
+                  })
+                })
+              },
+              {
+                id: "replay.clearSession",
+                label: "clearSession",
+                mutates: true,
+                output: "void",
+                run: ({ machine }) => {
+                  initialSnapshot = machine.getSnapshot() as JourneySnapshot<
+                    JourneyJsonObject,
+                    string
+                  >;
+                  entries.length = 0;
+                  truncated = false;
+                  return { kind: "void" };
+                }
               }
-            }
-          ]
+            ]
+          }
+        ],
+        dispose: () => {
+          unsubscribeEvents?.();
         }
-      ],
-      dispose: () => {
-        unsubscribeEvents?.();
-      }
-    })
+      };
+    }
   } satisfies JourneyMachinePlugin;
 };

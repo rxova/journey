@@ -535,4 +535,33 @@ describe("autosave plugin", () => {
     expect(store.has("journey:autosave:dispose")).toBe(false);
     vi.useRealTimers();
   });
+
+  it("isolates autosave state per machine when one plugin instance is reused", async () => {
+    vi.useFakeTimers();
+    try {
+      const { storage } = createStorage();
+      const plugin = createAutosavePlugin<Context, StepId>({
+        key: "journey:autosave:iso",
+        storage,
+        debounceMs: 50
+      });
+      const m1 = createJourneyMachine(createJourney(), { plugins: [plugin] as const });
+      const m2 = createJourneyMachine(createJourney(), { plugins: [plugin] as const });
+
+      await m1.startJourney();
+
+      // m1 scheduled a debounced save; m2 was never started and stays independent.
+      expect(m1.getAutosaveState().status).toBe("pending");
+      expect(m2.getAutosaveState().status).toBe("idle");
+
+      await vi.advanceTimersByTimeAsync(60);
+      expect(m1.getAutosaveState().status).toBe("saved");
+      expect(m2.getAutosaveState().status).toBe("idle");
+
+      m1.dispose();
+      m2.dispose();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
