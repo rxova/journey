@@ -3,6 +3,7 @@ export { createHeadlessJourney } from "./CreateHeadlessJourney";
 export { createGraphJourney } from "./CreateGraphJourney";
 export { createJourney } from "./CreateJourney";
 export { createJourneyFactory } from "./CreateJourneyFactory";
+export { useJourney } from "./use-journey";
 export type {
   JourneyAsyncPhase,
   JourneyCompleteObservationEvent,

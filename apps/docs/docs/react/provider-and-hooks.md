@@ -16,10 +16,11 @@ One `createJourney(...)` call creates one machine instance immediately.
 
 - `JourneyProvider` does not create a machine. It only supplies `views`, lifecycle callbacks, and provider-owned startup for the already-created runtime.
 - Rendering the same runtime in multiple places shares one journey state.
-- Independent journeys require separate `createJourney(...)` calls.
-- `createJourneyFactory(...)` returns a typed helper for producing fresh runtimes from the same definition/options pair.
+- Independent journeys require separate runtimes.
+- For component-owned / per-instance / SSR-safe ownership, [`useJourney`](/docs/react/overview#usejourney) builds a runtime, keeps it stable, and disposes it on unmount — the recommended default outside a single app-level singleton.
+- `createJourneyFactory(...)` returns a typed `() => runtime` thunk for producing fresh runtimes (pass it to `useJourney`, or call it in non-React code).
 
-This is the tradeoff that keeps the React API fully typed without repeating generics at each hook callsite.
+This is the tradeoff that keeps the React API fully typed without repeating generics at each hook callsite. See [Runtime ownership](/docs/react/overview#runtime-ownership) for the full decision guide.
 
 ## `JourneyProvider` And `StepRenderer`
 
@@ -69,53 +70,47 @@ Hooks do not need a provider because they are closed over the created machine. W
 Server rendering still reads the initial `idled` snapshot. Provider-owned startup happens after hydration on the client.
 Use `@rxova/journey-react` for server-safe imports and `@rxova/journey-react/client` when a Next.js App Router client boundary should be explicit.
 
-If a component owns the runtime, memoize it and opt into provider-owned disposal:
+If a component owns the runtime, use [`useJourney`](/docs/react/overview#usejourney) — it builds the
+runtime once, survives StrictMode, and disposes it on unmount, so you never wire `useMemo` +
+`disposeOnUnmount` by hand:
 
 ```tsx
-const makeCheckoutJourney = createJourneyFactory(definition);
-
 const CheckoutCard = () => {
-  const checkout = React.useMemo(() => makeCheckoutJourney(), []);
+  const checkout = useJourney(() => createJourney(definition));
 
   return (
-    <checkout.JourneyProvider views={views} disposeOnUnmount>
+    <checkout.JourneyProvider views={views}>
       <checkout.StepRenderer />
     </checkout.JourneyProvider>
   );
 };
 ```
 
-For request-scoped or route-scoped SSR usage, put the runtime inside the owned client boundary instead of exporting a module singleton:
+For request-scoped or route-scoped SSR usage, put `useJourney` inside the owned `"use client"` boundary
+instead of exporting a module singleton (which would be shared across every request):
 
 ```tsx
 "use client";
 
 export function CheckoutFlow({ customerId }: { customerId: string }) {
-  const checkout = React.useMemo(
-    () =>
-      createJourney({
-        ...definition,
-        context: {
-          ...definition.context,
-          customerId
-        }
-      }),
-    [customerId]
+  const checkout = useJourney(() =>
+    createJourney({ ...definition, context: { ...definition.context, customerId } })
   );
 
   return (
-    <checkout.JourneyProvider views={views} disposeOnUnmount>
+    <checkout.JourneyProvider views={views}>
       <checkout.StepRenderer />
     </checkout.JourneyProvider>
   );
 }
 ```
 
-If you want two isolated journeys on one screen, create two runtimes:
+Two isolated journeys on one screen are just two `useJourney` calls — each mount owns and disposes its
+own runtime:
 
 ```tsx
 const CheckoutCard = () => {
-  const checkout = React.useMemo(() => createJourney(definition), []);
+  const checkout = useJourney(() => createJourney(definition));
 
   return (
     <checkout.JourneyProvider views={views}>
@@ -132,12 +127,13 @@ export const DualCheckout = () => (
 );
 ```
 
-:::caution Module singletons and conditional rendering
+:::caution Owning vs. sharing
 
-Module-level singletons are safe to show and hide with `JourneyProvider` because the provider does not dispose by default.
+A module-level singleton survives showing and hiding `JourneyProvider` — the provider does not dispose
+by default, so the journey keeps its state:
 
 ```tsx
-// ✅ Safe: hiding the provider does not dispose the shared runtime
+// ✅ Shared, persistent: hiding the provider does not dispose the runtime
 const journey = createJourney(definition);
 
 function App() {
@@ -146,18 +142,18 @@ function App() {
 }
 ```
 
-If the runtime is component-owned, opt into provider disposal so each mount gets a fresh machine:
+When each mount should get a **fresh, isolated** machine that cleans up after itself, make it
+component-owned with `useJourney`, and reset it by remounting the owner with a `key`:
 
 ```tsx
-// ✅ Each mount creates a fresh machine and disposes it on unmount
-function App() {
-  const [show, setShow] = React.useState(true);
-  const journey = React.useMemo(() => createJourney(definition), []);
-  return show ? (
-    <journey.JourneyProvider views={views} disposeOnUnmount>
-      ...
+// ✅ Owned: a fresh machine per mount, disposed on unmount
+function CheckoutCard() {
+  const journey = useJourney(() => createJourney(definition));
+  return (
+    <journey.JourneyProvider views={views}>
+      <journey.StepRenderer />
     </journey.JourneyProvider>
-  ) : null;
+  );
 }
 ```
 
