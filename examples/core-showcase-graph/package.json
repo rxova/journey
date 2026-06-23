@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@rxova/journey-core": "workspace:1.0.0-rc.2"
+    "@rxova/journey-core": "workspace:^"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.4",
