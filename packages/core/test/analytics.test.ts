@@ -445,4 +445,23 @@ describe("analytics plugin", () => {
     expect(findTracked(track, "journey_terminated")?.payload).not.toHaveProperty("durationMs");
     expect(findTracked(track, "transition_failed")?.payload).not.toHaveProperty("label");
   });
+
+  it("isolates analytics subscriptions per machine when one plugin instance is reused", async () => {
+    const track = vi.fn();
+    const plugin = createAnalyticsPlugin({ track });
+    const m1 = createJourneyMachine(createJourney(), { plugins: [plugin] as const });
+    const m2 = createJourneyMachine(createJourney(), { plugins: [plugin] as const });
+
+    await m1.startJourney();
+    await m2.startJourney();
+
+    // Disposing m1 must tear down only m1's subscription — m2 keeps tracking.
+    m1.dispose();
+    track.mockClear();
+
+    await m2.send({ type: "goToNextStep" });
+
+    expect(track).toHaveBeenCalled();
+    m2.dispose();
+  });
 });
