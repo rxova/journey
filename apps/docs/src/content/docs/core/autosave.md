@@ -72,6 +72,12 @@ Autosave schedules writes from committed snapshot changes. `async`-only changes 
 resets the status. With `hydrate` on, the last saved draft is restored into the initial snapshot
 before the runtime starts.
 
+A pending debounced write is **discarded on `dispose()`**, not flushed. In React this is rarely an
+issue — `JourneyProvider` keeps the machine alive across unmount by default (`disposeOnUnmount` is
+`false`), so a normal unmount never drops a pending draft. If you do tear a machine down with work
+pending (a manual `dispose()`, or opting into `disposeOnUnmount`), call `flushAutosave()` first to
+persist the last change.
+
 ```ts
 await machine.startJourney();
 await machine.updateContext((context) => ({ ...context, email: "ada@example.com" }));
