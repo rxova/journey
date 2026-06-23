@@ -50,6 +50,7 @@ const sidebars: SidebarsConfig = {
       collapsed: true,
       items: [
         "api/overview",
+        "api/machine-api",
         "api/transitions-syntax",
         "api/graph-builder",
         "typescript",
