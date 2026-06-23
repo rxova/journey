@@ -72,8 +72,8 @@ What it shows:
 
 What it shows:
 
-- `useMemo(() => createJourney(...), [])`
-- `disposeOnUnmount` for provider-owned cleanup
+- `useJourney(() => createJourney(...))` for component-owned runtimes
+- automatic disposal on unmount; reset by remounting with a `key`
 
 ## Full Integration Reference
 

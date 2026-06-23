@@ -13,7 +13,10 @@ Machine Architecture](../core/architecture.md).
 
 ## 1. Create The Journey Once
 
-Prefer creating the journey at module scope. If you create it inside a component, memoize it and decide explicitly whether the provider or the component owns disposal.
+For a single app-wide flow in a **client app**, create the journey once at module scope (shown below).
+For per-instance UI (cards, modals) or **any server-rendered / RSC app**, own it inside the component
+with [`useJourney`](#request-scoped-ownership) instead — a module singleton would be shared across
+requests. See [Runtime ownership](/docs/react/overview#runtime-ownership) for the full decision guide.
 
 The value returned from `createJourney(...)` is a `JourneyRuntime`.
 
@@ -104,49 +107,50 @@ Guard and `updateContext` failures resolve through `result.error` instead of rej
 
 ## Request-Scoped Ownership
 
-For server-rendered or request-scoped UI, create the runtime inside the owned client boundary instead of sharing one global runtime:
+For server-rendered or request-scoped UI (Next.js App Router, RSC, Remix, …), own the runtime inside a
+`"use client"` component with `useJourney` — a module-level `createJourney(...)` would be shared across
+every request. `useJourney` builds the runtime once, keeps it stable across StrictMode, and disposes it
+on unmount:
 
 ```tsx
 "use client";
 
-import React from "react";
-import { createJourney } from "@rxova/journey-react";
+import { createJourney, useJourney } from "@rxova/journey-react";
 
 export function CheckoutFlow({ customerId }: { customerId: string }) {
-  const checkout = React.useMemo(
-    () =>
-      createJourney({
-        ...definition,
-        context: {
-          ...definition.context,
-          customerId
-        }
-      }),
-    [customerId]
+  const checkout = useJourney(() =>
+    createJourney({
+      ...definition,
+      context: { ...definition.context, customerId }
+    })
   );
 
   return (
-    <checkout.JourneyProvider views={views} disposeOnUnmount>
+    <checkout.JourneyProvider views={views}>
       <checkout.StepRenderer />
     </checkout.JourneyProvider>
   );
 }
 ```
 
-This creates one runtime per mounted boundary. If a prop change should reset the journey, remount that boundary deliberately.
+This creates one isolated runtime per mounted boundary. To reset the journey when `customerId` changes,
+remount with a `key`:
+
+```tsx
+<CheckoutFlow key={customerId} customerId={customerId} />
+```
 
 ## Multiple Independent Instances
 
-Multiple isolated flows come from multiple runtimes, not from repeating the same provider:
+Multiple isolated flows come from multiple runtimes, not from repeating the same provider. `useJourney`
+owns one per mount:
 
 ```tsx
-const makeSignupJourney = createJourneyFactory(definition);
-
 const SignupCard = () => {
-  const signup = React.useMemo(() => makeSignupJourney(), []);
+  const signup = useJourney(() => createJourney(definition));
 
   return (
-    <signup.JourneyProvider views={views} disposeOnUnmount>
+    <signup.JourneyProvider views={views}>
       <signup.StepRenderer />
     </signup.JourneyProvider>
   );
@@ -159,6 +163,8 @@ export const ComparisonGrid = () => (
   </>
 );
 ```
+
+Each `<SignupCard />` gets its own runtime and disposes it on unmount.
 
 ## Where To Go Next
 

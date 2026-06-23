@@ -58,14 +58,16 @@ Hooks do not need the provider. The provider only supplies the view map and life
 
 ## Creating A Journey Inside A Component
 
-If you need dynamic journey creation in React, memoize it and opt into provider-owned disposal:
+When a component owns the journey — per-instance UI, or any server-rendered / RSC app — use
+[`useJourney`](/docs/react/overview#usejourney). It creates the runtime once, survives StrictMode, and
+disposes it on unmount; reset it by remounting the owner with a `key`:
 
 ```tsx
 function App() {
-  const journey = React.useMemo(() => createJourney(definition), []);
+  const journey = useJourney(() => createJourney(definition));
 
   return (
-    <journey.JourneyProvider views={views} disposeOnUnmount>
+    <journey.JourneyProvider views={views}>
       <journey.StepRenderer />
     </journey.JourneyProvider>
   );

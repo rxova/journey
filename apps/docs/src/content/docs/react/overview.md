@@ -1,14 +1,14 @@
 ---
-title: "React Overview"
-sidebar:
-  label: "Overview"
+id: overview
+title: React Overview
+sidebar_label: Overview
 ---
 
 `@rxova/journey-react` is a thin, typed React wrapper around `@rxova/journey-core`.
 
 ## Motivation
 
-See the Core motivation: [Core Motivation](../core/overview.md#motivation).
+See the Core motivation: [Core Motivation](/docs/core/overview#motivation).
 
 ## Architecture
 
@@ -45,21 +45,78 @@ The decision is the same as Core's — see [Choosing a mode](/docs/core/usage). 
 that choice; it only wraps the result in hooks and a provider.
 :::
 
-## Runtime Ownership
+## Runtime ownership
 
-`createJourney(...)` is stateful.
+A journey runtime is **stateful** — one runtime is one machine instance. Choosing who owns it is the
+one thing to get right in React, especially on the server. Pick by lifetime.
 
-- One call creates one machine instance immediately.
-- The returned hooks and components stay bound to that specific machine instance.
-- Reusing that returned runtime across multiple providers reuses the same journey state.
-- Creating a second independent journey means calling `createJourney(...)` again.
+### Component-owned (recommended) — `useJourney`
 
-This is also what keeps the API strongly typed. Once the journey is created, the returned React API already knows the valid step ids, event names, and payload shapes.
+For anything per-instance or request-scoped — a card, a modal, a route boundary, or any Next.js
+`"use client"` component — own the runtime with [`useJourney`](#usejourney). It builds the runtime
+**once**, keeps it stable across re-renders and React StrictMode, and **disposes it on unmount**:
 
-The compatibility promises for that model are documented in the shared [Stability Contract](../core/stability.md).
+```tsx
+"use client";
+import { createJourney, useJourney } from "@rxova/journey-react";
 
-For the runtime architecture model, read [Core Machine Architecture](../core/architecture.md), especially the
-file-level pages in that section.
+function CheckoutCard({ customerId }: { customerId: string }) {
+  const journey = useJourney(() =>
+    createJourney({ ...definition, context: { ...definition.context, customerId } })
+  );
+
+  return (
+    <journey.JourneyProvider views={views}>
+      <journey.StepRenderer />
+    </journey.JourneyProvider>
+  );
+}
+```
+
+Because the runtime is created **inside the component** (not at module scope), each mount gets its own
+isolated state and nothing leaks across server requests. To reset the journey when a prop changes,
+remount with a React `key` — the React way to reset owned state:
+
+```tsx
+<CheckoutCard key={customerId} customerId={customerId} />
+```
+
+### App-level singleton — module-scope `createJourney`
+
+For a single, app-wide flow in a **client-only** app (a classic SPA), creating the runtime once at
+module scope is fine and the least ceremony. The returned hooks and components stay bound to that one
+instance — which is also what keeps them fully typed without repeating generics:
+
+```tsx
+// checkout-journey.ts
+export const checkoutJourney = createJourney(definition);
+```
+
+:::warning Don't put a module singleton on the server path
+A module-scope `createJourney(...)` is created once per **process**, not per request. In any
+server-rendered or RSC setup (Next.js App Router, Remix, …) that one instance would be **shared across
+every user's request**. Use `useJourney` inside a `"use client"` component there instead.
+:::
+
+### Choosing
+
+| Situation                                                  | Use                             |
+| ---------------------------------------------------------- | ------------------------------- |
+| Per-instance UI (cards, modals, lists), or any SSR/RSC app | `useJourney(() => create…)`     |
+| One app-wide flow in a pure client SPA                     | module-scope `createJourney(…)` |
+| Bare runtime for tests or custom wiring                    | `createJourneyFactory(…)`       |
+
+`createJourneyFactory(definition)` returns a `() => runtime` thunk — pass it straight to `useJourney`,
+or call it directly in non-React code.
+
+### `useJourney`
+
+`useJourney(factory)` takes a thunk that builds a runtime (any `create*Journey` result) and returns
+that runtime, owned by the calling component. The factory runs once even under StrictMode's
+double-invoke, and the runtime is disposed when the component unmounts — so you never wire `useMemo` +
+`disposeOnUnmount` by hand, and never share state across requests. Reset by remounting with a `key`.
+
+The compatibility promises for this model are in the shared [Stability Contract](/docs/core/stability).
 
 ## TypeScript In React
 
@@ -67,12 +124,13 @@ TypeScript stays first-class here too.
 
 `createJourney(...)` captures journey types once, then the returned hooks and components stay typed without repeating generics at each callsite.
 
-For deeper type modeling such as events, payload maps, and snapshots, see [Core TypeScript](../core/typescript.md).
+For deeper type modeling such as events, payload maps, and snapshots, see [Core TypeScript](/docs/core/typescript).
 
 ## What The React Package Gives You
 
 - `createJourney(definition, options?)` plus the named `createLinearJourney` /
   `createHeadlessJourney` / `createGraphJourney` factories
+- `useJourney(factory)` to own a component-scoped runtime (auto-dispose, StrictMode/SSR safe)
 - hooks bound to the created machine
 - `useJourneyComputed()` for derived progress state and lifecycle flags
 - `useStepAsyncState(stepId)` for a step's async phase, driving loading and error UI
@@ -83,9 +141,12 @@ For deeper type modeling such as events, payload maps, and snapshots, see [Core 
 
 This keeps React ergonomic without moving runtime logic into components.
 
-Create the runtime outside render when possible. If a component must own it, memoize it and either set `disposeOnUnmount` on `JourneyProvider` or call `dispose()` manually so you do not recreate journey state on every render.
+For an app-level singleton, create the runtime once at module scope. For per-instance or SSR/RSC flows,
+own it inside the component with [`useJourney`](#usejourney) — it creates and disposes the runtime for
+you, so you never recreate journey state on every render or leak it across requests.
 
-If you need isolated state per request, per card, or per mounted route boundary, create a separate runtime in each owned boundary instead of reusing one module singleton.
+For isolated state per request, per card, or per route boundary, give each owned boundary its own
+runtime with `useJourney` rather than reusing one module singleton.
 
 ## React Example
 
@@ -284,13 +345,13 @@ React bindings do not redefine runtime behavior.
 
 Core docs remain the source of truth for:
 
-- architecture and transition model: [Core Architecture](../core/architecture.md)
-- snapshot shape and invariants: [Core Snapshot](../core/snapshot.md)
-- lifecycle events and ordering: [Core Lifecycle](../core/lifecycle.md)
-- async guard behavior: [Core Async Behavior](../core/async.md)
-- timeline navigation model: [Core Timeline Navigation](../core/history.md)
-- persistence and migration: [Core Persistence](../core/persistence.md)
-- full machine API semantics: [Core API](../core/api/overview.md)
+- architecture and transition model: [Core Architecture](/docs/core/architecture)
+- snapshot shape and invariants: [Core Snapshot](/docs/core/snapshot)
+- lifecycle events and ordering: [Core Lifecycle](/docs/core/lifecycle)
+- async guard behavior: [Core Async Behavior](/docs/core/async)
+- timeline navigation model: [Core Timeline Navigation](/docs/core/history)
+- persistence and migration: [Core Persistence](/docs/core/persistence)
+- full machine API semantics: [Core API](/docs/core/api)
 
 ## Why This Split Is Useful
 
