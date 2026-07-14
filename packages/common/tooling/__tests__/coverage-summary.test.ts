@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const scriptPath = resolve(__dirname, "coverage-summary.ts");
-const tsxLoaderPath = resolve(__dirname, "../../../node_modules/tsx/dist/loader.mjs");
+const scriptPath = resolve(__dirname, "../coverage-summary.ts");
+const tsxLoaderPath = resolve(__dirname, "../../../../node_modules/tsx/dist/loader.mjs");
 
 const SAMPLE_SUMMARY = JSON.stringify({
   total: {

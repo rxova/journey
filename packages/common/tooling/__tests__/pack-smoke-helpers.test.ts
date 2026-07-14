@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { assertIncludes, getExportEntries } from "./pack-smoke-helpers";
+import { assertIncludes, getExportEntries } from "../pack-smoke-helpers";
 
 /**
  * pack-smoke.ts itself is not spawn-tested: it derives `repoRoot` from its own
