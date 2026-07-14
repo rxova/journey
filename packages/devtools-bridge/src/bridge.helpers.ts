@@ -1,6 +1,10 @@
 import { cloneForTransport, serializeError } from "@rxova/journey-common/serialization";
 import type { NavigationResult } from "@rxova/journey-core";
-import type { LooseMachine, OperationRunner } from "./bridge.types";
+import type {
+  JourneyDevtoolsAttachableMachine,
+  LooseMachine,
+  OperationRunner
+} from "./bridge.types";
 import type {
   JourneyDevtoolsOperationResultPayload,
   JourneyDevtoolsSerializableSnapshot
@@ -82,7 +86,10 @@ const optionalIntegerField = (
 };
 
 /** Builds the operation set the bridge registers for a machine. */
-export function buildOperationRunners(machine: LooseMachine): OperationRunner[] {
+export function buildOperationRunners(
+  attachable: JourneyDevtoolsAttachableMachine
+): OperationRunner[] {
+  const machine = attachable as unknown as LooseMachine;
   const runners: OperationRunner[] = [
     {
       descriptor: {
