@@ -1,7 +1,14 @@
 export { attachJourneyDevtools } from "./bridge";
+export {
+  buildOperationRunners,
+  createJourneyMachineId,
+  OperationRateLimiter,
+  serializeSnapshot
+} from "./bridge.helpers";
 export type {
   JourneyDevtoolsAttachableMachine,
-  JourneyDevtoolsBridgeOptions
+  JourneyDevtoolsBridgeOptions,
+  OperationRunner
 } from "./bridge.types";
 
 export {

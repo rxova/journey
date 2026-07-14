@@ -65,7 +65,7 @@ export function attachJourneyDevtools(
     options.rateLimit?.windowMs
   );
   const runners = new Map<string, OperationRunner>(
-    buildOperationRunners(target).map((runner) => [runner.descriptor.id, runner])
+    buildOperationRunners(machine).map((runner) => [runner.descriptor.id, runner])
   );
   const targetOrigin = resolveWindowTargetOrigin();
   let detached = false;
