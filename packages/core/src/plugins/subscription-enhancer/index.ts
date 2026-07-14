@@ -1,73 +1,56 @@
-import type {
-  JourneyCompleteObservationEvent,
-  JourneyJsonObject,
-  JourneyMachine,
-  JourneyMachinePlugin,
-  JourneyResetObservationEvent,
-  JourneyStartObservationEvent,
-  JourneyTerminateObservationEvent
-} from "../../types";
+import type { JourneyPlugin, JourneyStatus, PluginHost, Unsubscribe } from "../../core/types";
 
-/** The lifecycle-filtered subscription helpers added by the subscription-enhancer plugin. */
-export type JourneySubscriptionEnhancerMachineExtension<TStepId extends string> = {
-  subscribeStart: (listener: (event: JourneyStartObservationEvent<TStepId>) => void) => () => void;
-  subscribeReset: (listener: (event: JourneyResetObservationEvent<TStepId>) => void) => () => void;
-  subscribeComplete: (
-    listener: (event: JourneyCompleteObservationEvent<TStepId>) => void
-  ) => () => void;
-  subscribeTerminate: (
-    listener: (event: JourneyTerminateObservationEvent<TStepId>) => void
-  ) => () => void;
-};
+type StatusChangeInfo = Parameters<Parameters<PluginHost["onStatusChange"]>[0]>[0];
+type StatusListener = (info: StatusChangeInfo) => void;
 
 /**
- * Adds lifecycle-filtered subscription conveniences — `subscribeStart`,
- * `subscribeReset`, `subscribeComplete`, `subscribeTerminate` — each a
- * filtered view over the machine's observation-event stream. Sugar over
- * `subscribeEvent`, kept out of the base machine surface by design; every
- * helper returns its unsubscribe function.
+ * Lifecycle-filtered subscription conveniences — sugar over `statusChange`,
+ * kept out of the base machine surface by design. Every helper returns its
+ * unsubscribe function.
  */
-export const createSubscriptionEnhancerPlugin = <TStepId extends string = string>() => {
+export type SubscriptionEnhancerApi = {
+  /** idle → running. */
+  subscribeStart(listener: StatusListener): Unsubscribe;
+  /** completed | terminated → running. */
+  subscribeRestart(listener: StatusListener): Unsubscribe;
+  subscribeComplete(listener: StatusListener): Unsubscribe;
+  subscribeTerminate(listener: StatusListener): Unsubscribe;
+  subscribePause(listener: StatusListener): Unsubscribe;
+  subscribeResume(listener: StatusListener): Unsubscribe;
+};
+
+export function createSubscriptionEnhancerPlugin(): JourneyPlugin<
+  "subscription-enhancer",
+  SubscriptionEnhancerApi,
+  never
+> {
   return {
     name: "subscription-enhancer",
-    __extension__: undefined as unknown as JourneySubscriptionEnhancerMachineExtension<TStepId>,
-    setup: () => ({
-      augmentMachine: ({ machine }) => {
-        const typedMachine = machine as JourneyMachine<
-          JourneyJsonObject,
-          TStepId,
-          never,
-          unknown,
-          Record<string, unknown>
-        >;
+    setup(host) {
+      const filtered =
+        (matches: (previous: JourneyStatus, current: JourneyStatus) => boolean) =>
+        (listener: StatusListener): Unsubscribe =>
+          host.onStatusChange((info) => {
+            if (matches(info.previous, info.current)) listener(info);
+          });
 
-        return {
-          subscribeStart: (listener) =>
-            typedMachine.subscribeEvent((event) => {
-              if (event.type === "journey.start") {
-                listener(event);
-              }
-            }),
-          subscribeReset: (listener) =>
-            typedMachine.subscribeEvent((event) => {
-              if (event.type === "journey.reset") {
-                listener(event);
-              }
-            }),
-          subscribeComplete: (listener) =>
-            typedMachine.subscribeEvent((event) => {
-              if (event.type === "journey.completed") {
-                listener(event);
-              }
-            }),
-          subscribeTerminate: (listener) =>
-            typedMachine.subscribeEvent((event) => {
-              if (event.type === "journey.terminated") {
-                listener(event);
-              }
-            })
-        } satisfies JourneySubscriptionEnhancerMachineExtension<TStepId>;
-      }
-    })
-  } satisfies JourneyMachinePlugin;
-};
+      return {
+        api: {
+          subscribeStart: filtered(
+            (previous, current) => previous === "idle" && current === "running"
+          ),
+          subscribeRestart: filtered(
+            (previous, current) =>
+              (previous === "completed" || previous === "terminated") && current === "running"
+          ),
+          subscribeComplete: filtered((_previous, current) => current === "completed"),
+          subscribeTerminate: filtered((_previous, current) => current === "terminated"),
+          subscribePause: filtered((_previous, current) => current === "paused"),
+          subscribeResume: filtered(
+            (previous, current) => previous === "paused" && current === "running"
+          )
+        }
+      };
+    }
+  };
+}

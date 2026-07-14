@@ -30,12 +30,6 @@ export default defineConfig({
         )
       },
       {
-        find: "@rxova/journey-core/execution-paths",
-        replacement: fileURLToPath(
-          new URL("./packages/core/src/plugins/execution-paths/index.ts", import.meta.url)
-        )
-      },
-      {
         find: "@rxova/journey-core/persistence",
         replacement: fileURLToPath(
           new URL("./packages/core/src/plugins/persistence/index.ts", import.meta.url)
@@ -51,6 +45,16 @@ export default defineConfig({
         find: "@rxova/journey-core/subscription-enhancer",
         replacement: fileURLToPath(
           new URL("./packages/core/src/plugins/subscription-enhancer/index.ts", import.meta.url)
+        )
+      },
+      {
+        find: "@rxova/journey-core/convert",
+        replacement: fileURLToPath(new URL("./packages/core/src/convert/index.ts", import.meta.url))
+      },
+      {
+        find: "@rxova/journey-core/execution-paths",
+        replacement: fileURLToPath(
+          new URL("./packages/core/src/plugins/execution-paths/index.ts", import.meta.url)
         )
       },
       {

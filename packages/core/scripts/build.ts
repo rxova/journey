@@ -11,6 +11,7 @@ const common = {
   legalComments: "none",
   entryPoints: [
     "src/index.ts",
+    "src/convert/index.ts",
     "src/plugins/analytics/index.ts",
     "src/plugins/autosave/index.ts",
     "src/plugins/diagnostics/index.ts",

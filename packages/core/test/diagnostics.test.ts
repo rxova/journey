@@ -1,309 +1,95 @@
 import { describe, expect, it } from "vitest";
+import { createGraphJourney, createLinearJourney } from "@rxova/journey-core";
+import { createDiagnosticsPlugin, getGraphDiagnostics } from "@rxova/journey-core/diagnostics";
 
-import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
-import { createDiagnosticsPlugin, getJourneyDiagnostics } from "@rxova/journey-core/diagnostics";
-
-type StepId = "start" | "review" | "dead" | "loop";
-type Context = { count: number };
-type EventMap = { type: "retry"; payload?: unknown };
-
-describe("diagnostics plugin", () => {
-  it("reports structural issues for graph journeys", () => {
-    const journey: JourneyDefinition<Context, StepId, EventMap> = {
-      initial: "start",
-      context: { count: 0 },
-      steps: {
-        start: {},
-        review: {},
-        dead: {},
-        loop: {}
-      },
+describe("getGraphDiagnostics", () => {
+  it("reports unreachable steps, shadowed transitions, cycles, and terminal facts", () => {
+    const result = getGraphDiagnostics({
+      steps: { a: {}, b: {}, orphan: {}, done: {} },
       transitions: {
-        start: {
-          goToNextStep: [
-            { label: "dup", to: "review" },
-            { label: "shadowed", to: "dead" }
-          ]
-        },
-        review: {
-          retry: [{ label: "dup", to: "loop" }]
-        },
-        loop: {
-          goToNextStep: [{ to: "review" }]
-        }
-      }
-    };
-
-    const diagnostics = getJourneyDiagnostics(journey);
-
-    expect(diagnostics.summary.unreachableStepCount).toBe(1);
-    expect(diagnostics.summary.shadowedTransitionCount).toBe(1);
-    expect(diagnostics.summary.cycleCount).toBe(1);
-    expect(diagnostics.summary.terminalPathExists).toBe(false);
-    expect(diagnostics.issues).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          code: "shadowed-transition",
-          transitionId: expect.any(String),
-          label: "shadowed"
-        }),
-        expect.objectContaining({
-          code: "unreachable-step",
-          stepId: "dead"
-        }),
-        expect.objectContaining({
-          code: "cycle-detected",
-          steps: ["review", "loop", "review"]
-        }),
-        expect.objectContaining({
-          code: "no-terminal-path"
-        })
-      ])
-    );
-  });
-
-  it("flags a linear final step when explicit completion is required", () => {
-    const journey: JourneyDefinition<Context, "start" | "review"> = {
-      initial: "start",
-      context: { count: 0 },
-      steps: {
-        start: {},
-        review: {}
+        GO: [
+          { from: "a", to: "b" },
+          { from: "a", to: "done" } // shadowed: unconditional a.GO above always wins
+        ],
+        BACK: { from: "b", to: "a" }, // a <-> b cycle
+        FINISH: { from: "b", to: "done" }
       },
-      transitions: ["start", "review"] as const
-    };
-
-    const diagnostics = getJourneyDiagnostics(journey, {
-      requireExplicitCompletion: true
+      initial: "a"
     });
 
-    expect(diagnostics.issues).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          code: "dead-end-step",
-          stepId: "review"
-        })
-      ])
-    );
-    expect(diagnostics.summary.terminalPathExists).toBe(false);
+    const codes = result.issues.map((issue) => issue.code);
+    expect(codes).toContain("unreachable-step");
+    expect(codes).toContain("shadowed-transition");
+    expect(codes).toContain("cycle-detected");
+    expect(codes).not.toContain("no-terminal-path");
+
+    expect(result.summary).toMatchObject({
+      kind: "graph",
+      stepCount: 4,
+      reachableStepCount: 3,
+      unreachableStepCount: 1,
+      terminalStepIds: ["orphan", "done"],
+      shadowedTransitionCount: 1,
+      terminalPathExists: true,
+      graphChecksSkipped: false
+    });
+    expect(result.summary.cycleCount).toBeGreaterThan(0);
   });
 
-  it("treats the last linear object entry as an implicit terminal step by default", () => {
-    const journey = {
-      initial: "start",
-      context: { count: 0 },
-      steps: {
-        start: {},
-        review: {}
-      },
-      transitions: ["start", { step: "review", label: "start-review" }] as const
-    } satisfies JourneyDefinition<Context, "start" | "review">;
-
-    const diagnostics = getJourneyDiagnostics(journey);
-
-    expect(diagnostics.summary.deadEndCount).toBe(0);
-    expect(diagnostics.summary.terminalPathExists).toBe(true);
-    expect(diagnostics.issues.some((issue) => issue.code === "dead-end-step")).toBe(false);
-    expect(diagnostics.issues.some((issue) => issue.code === "no-terminal-path")).toBe(false);
-  });
-
-  it("skips graph-only checks for headless journeys", () => {
-    const journey = {
-      initial: "start",
-      context: { count: 0 },
-      steps: {
-        start: {},
-        review: {},
-        done: {}
-      }
-    } satisfies JourneyDefinition<Context, "start" | "review" | "done">;
-
-    const diagnostics = getJourneyDiagnostics(journey);
-
-    expect(diagnostics.issues).toEqual([]);
-    expect(diagnostics.summary.graphChecksSkipped).toBe(true);
-  });
-
-  it("reports unnamed shadowing blockers and respects explicit terminal exits", () => {
-    const journey = {
-      initial: "start",
-      context: { count: 0 },
-      steps: {
-        start: {},
-        review: {},
-        dead: {}
-      },
+  it("flags journeys with no reachable terminal step", () => {
+    const result = getGraphDiagnostics({
+      steps: { a: {}, b: {} },
       transitions: {
-        start: {
-          goToNextStep: [{ to: "review" }, { label: "shadowed", to: "dead" }],
-          retry: [{ to: "dead" }]
-        },
-        review: {
-          completeJourney: [{}]
-        },
-        dead: {
-          terminateJourney: [{}]
-        }
-      }
-    } satisfies JourneyDefinition<Context, "start" | "review" | "dead", EventMap>;
-
-    const diagnostics = getJourneyDiagnostics(journey);
-
-    expect(diagnostics.summary.shadowedTransitionCount).toBe(1);
-    expect(diagnostics.summary.deadEndCount).toBe(0);
-    expect(diagnostics.summary.terminalPathExists).toBe(true);
-    expect(diagnostics.issues).toContainEqual(
-      expect.objectContaining({
-        code: "shadowed-transition",
-        transitionId: expect.any(String),
-        label: "shadowed",
-        message: expect.stringContaining("shadowed by unconditional transition")
-      })
-    );
-    expect(diagnostics.issues.some((issue) => issue.code === "no-terminal-path")).toBe(false);
-  });
-
-  it("memoizes non-terminal shared branches when checking terminal reachability", () => {
-    const journey = {
-      initial: "start",
-      context: { count: 0 },
-      steps: {
-        start: {},
-        left: {},
-        right: {},
-        loop: {}
+        GO: { from: "a", to: "b" },
+        BACK: { from: "b", to: "a" }
       },
-      transitions: {
-        start: {
-          goToNextStep: [{ to: "left" }],
-          retry: [{ to: "right" }]
-        },
-        left: {
-          goToNextStep: [{ to: "loop" }]
-        },
-        right: {
-          goToNextStep: [{ to: "loop" }]
-        },
-        loop: {
-          retry: [{ to: "left" }]
-        }
-      }
-    };
-
-    const diagnostics = getJourneyDiagnostics(journey);
-
-    expect(diagnostics.summary.reachableStepCount).toBe(4);
-    expect(diagnostics.summary.cycleCount).toBe(1);
-    expect(diagnostics.summary.terminalPathExists).toBe(false);
-    expect(diagnostics.issues).toContainEqual(
-      expect.objectContaining({
-        code: "no-terminal-path",
-        stepId: "start"
-      })
-    );
+      initial: "a"
+    });
+    expect(result.issues.map((issue) => issue.code)).toContain("no-terminal-path");
+    expect(result.summary.terminalPathExists).toBe(false);
   });
 
-  it("ignores conditional blockers, omits missing transition ids, and deduplicates cycles", () => {
-    const journey: JourneyDefinition<Context, "start" | "left" | "loop", EventMap> = {
-      initial: "start",
-      context: { count: 0 },
-      steps: {
-        start: {},
-        left: {},
-        loop: {}
+  it("a clean pipeline produces no issues", () => {
+    const result = getGraphDiagnostics({
+      steps: { a: {}, b: {}, done: {} },
+      transitions: {
+        NEXT: [
+          { from: "a", to: "b" },
+          { from: "b", to: "done" }
+        ]
       },
-      transitions: {
-        start: {
-          goToNextStep: [
-            { to: "left", when: ({ context }: { context: Context }) => context.count === 0 },
-            { to: "left" },
-            { to: "loop" }
-          ]
-        },
-        left: {
-          retry: [{ to: "loop" }]
-        },
-        loop: {
-          goToNextStep: [{ label: "loop-left", to: "left" }],
-          retry: [{ to: "left" }]
-        }
-      }
-    };
-
-    const diagnostics = getJourneyDiagnostics(journey);
-    const shadowedIssue = diagnostics.issues.find((issue) => issue.code === "shadowed-transition");
-    const cycleIssues = diagnostics.issues.filter((issue) => issue.code === "cycle-detected");
-
-    expect(diagnostics.summary.shadowedTransitionCount).toBe(1);
-    expect(diagnostics.summary.cycleCount).toBe(1);
-    expect(shadowedIssue).toBeDefined();
-    expect(shadowedIssue?.transitionId).toEqual(expect.any(String));
-    expect(shadowedIssue?.message).toContain("shadowed by unconditional transition");
-    expect(cycleIssues).toContainEqual(
-      expect.objectContaining({
-        transitionId: expect.any(String),
-        label: "loop-left",
-        steps: ["left", "loop", "left"]
-      })
-    );
+      initial: "a"
+    });
+    expect(result.issues).toEqual([]);
   });
+});
 
-  it("augments the machine with getDiagnostics()", () => {
-    const machine = createJourneyMachine(
+describe("diagnostics plugin", () => {
+  it("analyzes the running machine's structure through the host", () => {
+    const machine = createGraphJourney(
       {
-        initial: "start",
-        context: { count: 0 },
-        steps: {
-          start: {},
-          review: {}
-        },
-        transitions: ["start", "review"]
-      } satisfies JourneyDefinition<Context, "start" | "review">,
-      {
-        plugins: [createDiagnosticsPlugin()] as const
-      }
+        steps: { a: {}, b: {}, orphan: {} },
+        transitions: { GO: { from: "a", to: "b" } },
+        initial: "a",
+        context: {}
+      },
+      { plugins: [createDiagnosticsPlugin()] as const }
     );
 
-    const diagnostics = machine.getDiagnostics();
-
-    expect(diagnostics.summary.stepCount).toBe(2);
-    expect(diagnostics.summary.unreachableStepCount).toBe(0);
+    const result = machine.plugins.diagnostics.getDiagnostics();
+    expect(result.issues.map((issue) => issue.code)).toContain("unreachable-step");
+    expect(result.summary.terminalStepIds).toEqual(["b", "orphan"]);
+    // cached: same object identity on second call
+    expect(machine.plugins.diagnostics.getDiagnostics()).toBe(result);
   });
 
-  it("reports effect/after edges with public labels, never internal @@journey.* names", () => {
-    // The effect routes back to "start", forming a cycle through the effect edge.
-    const journey: JourneyDefinition<Record<string, never>, "start" | "loading"> = {
-      initial: "start",
-      context: {},
-      steps: {
-        start: {},
-        loading: {
-          effect: {
-            run: async () => "x",
-            onResolved: { to: "start" }
-          }
-        }
-      },
-      transitions: {
-        start: { goToNextStep: [{ to: "loading" }] },
-        loading: {}
-      }
-    };
-
-    const diagnostics = getJourneyDiagnostics(journey);
-
-    // No issue surfaces an internal synthetic event name.
-    expect(
-      diagnostics.issues.every(
-        (issue) =>
-          !String((issue as { eventType?: unknown }).eventType ?? "").startsWith("@@journey.")
-      )
-    ).toBe(true);
-    // The cycle closed by the effect edge is reported with a public label.
-    expect(
-      diagnostics.issues.some(
-        (issue) => issue.code === "cycle-detected" && String(issue.eventType) === "effect.resolved"
-      )
-    ).toBe(true);
+  it("skips graph checks for linear journeys", () => {
+    const machine = createLinearJourney(
+      { steps: ["a", "b"], context: {} },
+      { plugins: [createDiagnosticsPlugin()] as const }
+    );
+    const result = machine.plugins.diagnostics.getDiagnostics();
+    expect(result.issues).toEqual([]);
+    expect(result.summary.graphChecksSkipped).toBe(true);
   });
 });

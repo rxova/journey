@@ -1,244 +1,78 @@
 import { describe, expect, it } from "vitest";
-
-import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
+import { createLinearJourney } from "@rxova/journey-core";
 import { createReplayPlugin, serializeReplaySession } from "@rxova/journey-core/replay";
-
-type StepId = "start" | "review";
-type EventMap = { type: "fail"; payload?: { reason: string } };
-type Context = { count: number };
-
-const createJourney = (): JourneyDefinition<Context, StepId, EventMap> => ({
-  initial: "start",
-  context: { count: 0 },
-  steps: {
-    start: {},
-    review: {}
-  },
-  transitions: {
-    start: {
-      goToNextStep: [{ label: "start-review", to: "review" }],
-      fail: [
-        {
-          label: "fail-start",
-          to: "review",
-          when: () => {
-            throw new Error("boom");
-          }
-        }
-      ]
-    }
-  }
-});
+import { flush } from "./helpers";
 
 describe("replay plugin", () => {
-  it("captures snapshots and lifecycle events into a replay session", async () => {
-    const machine = createJourneyMachine(createJourney(), {
-      plugins: [createReplayPlugin()] as const
-    });
+  it("records lifecycle activity into an exportable session", async () => {
+    const machine = createLinearJourney(
+      { steps: ["a", "b"], context: { n: 0 } },
+      { plugins: [createReplayPlugin({ now: () => 7 })] as const }
+    );
+    machine.controls.start();
+    await flush();
+    await machine.navigate.goToNextStep();
+    machine.context.update((c) => ({ n: c.n + 1 }));
+    await machine.navigate.goToPreviousStep(9); // blocked? no — pointer clamps; use out-of-bounds below
+    await machine.navigate.goToPreviousStep();
 
-    await machine.controls.start();
-    await machine.send({ type: "goToNextStep" });
+    const session = machine.plugins.replay.getReplaySession();
+    const kinds = session.entries.map((entry) => entry.kind);
+    expect(kinds[0]).toBe("status");
+    expect(kinds).toContain("transition");
+    expect(kinds).toContain("context");
+    expect(kinds).toContain("navigationBlocked");
+    expect(session.entries[0]).toMatchObject({ at: 7, snapshot: expect.anything() });
 
-    const session = machine.getReplaySession();
-
-    expect(session.version).toBe(1);
-    expect(session.initialSnapshot?.currentStepId).toBe("start");
-    expect(
-      session.entries.some((entry) => entry.kind === "snapshot" && entry.reason === "start")
-    ).toBe(true);
-    expect(
-      session.entries.some(
-        (entry) =>
-          entry.kind === "event" &&
-          entry.event.type === "transition.success" &&
-          entry.event.label === "start-review" &&
-          typeof entry.event.transitionId === "string"
-      )
-    ).toBe(true);
+    const exported = machine.plugins.replay.exportReplaySession({ pretty: true });
+    expect(JSON.parse(exported)).toMatchObject({ startedAt: 7 });
   });
 
-  it("serializes replay sessions with safe error output", async () => {
-    const machine = createJourneyMachine(createJourney(), {
-      plugins: [createReplayPlugin()] as const
-    });
-
-    await machine.controls.start();
-    await machine.send({ type: "fail", payload: { reason: "test" } });
-
-    const exported = machine.exportReplaySession({ pretty: true });
-    const parsed = JSON.parse(exported) as {
-      entries: Array<{
-        kind: string;
-        event?: { type: string; error?: { message?: string } };
-      }>;
-    };
-
-    expect(parsed.entries.some((entry) => entry.kind === "event")).toBe(true);
-    expect(
-      parsed.entries.some(
-        (entry) => entry.event?.type === "transition.error" && entry.event.error?.message === "boom"
-      )
-    ).toBe(true);
-
-    expect(() => serializeReplaySession(machine.getReplaySession())).not.toThrow();
-  });
-
-  it("resets the replay buffer and honors maxEntries", async () => {
-    const machine = createJourneyMachine(createJourney(), {
-      plugins: [createReplayPlugin({ maxEntries: 2 })] as const
-    });
-
-    await machine.controls.start();
-    await machine.send({ type: "goToNextStep" });
-
-    const beforeClear = machine.getReplaySession();
-    expect(beforeClear.truncated).toBe(true);
-    expect(beforeClear.entries).toHaveLength(2);
-
-    machine.clearReplaySession();
-
-    const session = machine.getReplaySession();
-    expect(session.entries).toEqual([]);
-    expect(session.truncated).toBe(false);
-    expect(session.initialSnapshot?.currentStepId).toBe("review");
-  });
-
-  it("supports capture flags and cleans up replay subscriptions on dispose", async () => {
-    const snapshotsOnly = createJourneyMachine(createJourney(), {
-      plugins: [createReplayPlugin({ captureEvents: false, maxEntries: 0.25 })] as const
-    });
-
-    await snapshotsOnly.controls.start();
-    await snapshotsOnly.send({ type: "goToNextStep" });
-
-    const snapshotSession = snapshotsOnly.getReplaySession();
-    expect(snapshotSession.entries).toHaveLength(1);
-    expect(snapshotSession.truncated).toBe(true);
-    expect(snapshotSession.entries.every((entry) => entry.kind === "snapshot")).toBe(true);
-    expect(() => snapshotsOnly.dispose()).not.toThrow();
-
-    const eventsOnly = createJourneyMachine(createJourney(), {
-      plugins: [createReplayPlugin({ captureSnapshots: false })] as const
-    });
-
-    await eventsOnly.controls.start();
-    await eventsOnly.send({ type: "goToNextStep" });
-
-    const eventSession = eventsOnly.getReplaySession();
-    expect(eventSession.entries.length).toBeGreaterThan(0);
-    expect(eventSession.entries.every((entry) => entry.kind === "event")).toBe(true);
-    expect(() => eventsOnly.dispose()).not.toThrow();
-  });
-
-  it("falls back to the default replay buffer size for non-finite maxEntries", async () => {
-    const machine = createJourneyMachine(createJourney(), {
-      plugins: [
-        createReplayPlugin({
-          captureEvents: false,
-          maxEntries: Number.POSITIVE_INFINITY
-        })
-      ] as const
-    });
-
-    await machine.controls.start();
-
-    for (let index = 0; index < 505; index += 1) {
-      await machine.updateContext((context) => ({
-        ...context,
-        count: context.count + 1
-      }));
+  it("caps entries at maxEntries, dropping the oldest", async () => {
+    const machine = createLinearJourney(
+      { steps: ["a"], context: { n: 0 } },
+      { plugins: [createReplayPlugin({ maxEntries: 3, captureSnapshots: false })] as const }
+    );
+    machine.controls.start();
+    await flush();
+    for (let index = 0; index < 5; index += 1) {
+      machine.context.update((c) => ({ n: c.n + 1 }));
     }
 
-    const session = machine.getReplaySession();
-    expect(session.entries).toHaveLength(500);
-    expect(session.truncated).toBe(true);
+    const session = machine.plugins.replay.getReplaySession();
+    expect(session.entries).toHaveLength(3);
+    expect(session.entries.every((entry) => entry.kind === "context")).toBe(true);
+    expect(session.entries.every((entry) => !("snapshot" in entry))).toBe(true);
+    expect(machine.getSnapshot().plugins.replay).toEqual({ entryCount: 3 });
   });
 
-  it("serializes circular and unsupported replay values safely", () => {
+  it("clearReplaySession starts a fresh session", async () => {
+    const machine = createLinearJourney(
+      { steps: ["a"], context: {} },
+      { plugins: [createReplayPlugin()] as const }
+    );
+    machine.controls.start();
+    await flush();
+    machine.plugins.replay.clearReplaySession();
+    expect(machine.plugins.replay.getReplaySession().entries).toEqual([]);
+  });
+
+  it("serializeReplaySession survives errors, dates, and circular data", () => {
     const circular: Record<string, unknown> = {};
     circular.self = circular;
-
-    const error = new Error("boom");
-    Reflect.deleteProperty(error, "stack");
-
-    const serialized = serializeReplaySession(
-      {
-        version: 1,
-        initialSnapshot: null,
-        truncated: false,
-        entries: [
-          {
-            kind: "event",
-            timestamp: 0,
-            event: {
-              type: "debug",
-              payload: {
-                list: [1, undefined, 2n],
-                big: 12n,
-                missing: undefined,
-                fn: () => "ignored",
-                sym: Symbol("debug"),
-                date: new Date("2024-01-02T03:04:05.000Z"),
-                error,
-                circular
-              }
-            }
-          }
-        ]
-      } as never,
-      { pretty: true }
-    );
-
-    const parsed = JSON.parse(serialized) as {
-      entries: Array<{
-        event: {
-          payload: {
-            list: unknown[];
-            big: string;
-            missing: null;
-            fn: string;
-            sym: string;
-            date: string;
-            error: { name: string; message: string; stack?: string };
-            circular: { self: string };
-          };
-        };
-      }>;
+    const session = {
+      startedAt: 1,
+      entries: [
+        {
+          at: 2,
+          kind: "error" as const,
+          data: { error: new Error("boom"), when: new Date(0), circular }
+        }
+      ]
     };
-
-    expect(parsed.entries[0]?.event.payload.list).toEqual([1, null, "2"]);
-    expect(parsed.entries[0]?.event.payload.big).toBe("12");
-    expect(parsed.entries[0]?.event.payload.missing).toBeNull();
-    expect(parsed.entries[0]?.event.payload.fn).toBe("[unsupported:function]");
-    expect(parsed.entries[0]?.event.payload.sym).toBe("[unsupported:symbol]");
-    expect(parsed.entries[0]?.event.payload.date).toBe("2024-01-02T03:04:05.000Z");
-    expect(parsed.entries[0]?.event.payload.error).toEqual({
-      name: "Error",
-      message: "boom"
-    });
-    expect(parsed.entries[0]?.event.payload.circular.self).toBe("[circular]");
-  });
-
-  it("isolates replay state per machine when one plugin instance is reused", async () => {
-    // setup() runs once per machine, so a single plugin instance shared across
-    // two machines must not share its buffer.
-    const plugin = createReplayPlugin();
-    const m1 = createJourneyMachine(createJourney(), { plugins: [plugin] as const });
-    const m2 = createJourneyMachine(createJourney(), { plugins: [plugin] as const });
-
-    await m1.controls.start();
-    await m1.send({ type: "goToNextStep" });
-
-    const sessionOne = m1.getReplaySession();
-    const sessionTwo = m2.getReplaySession();
-
-    expect(sessionOne.entries.length).toBeGreaterThan(0);
-    // m2 was never driven — its session must be empty and its own.
-    expect(sessionTwo.entries).toEqual([]);
-    expect(sessionTwo.initialSnapshot?.currentStepId).toBe("start");
-    expect(m2.getSnapshot().currentStepId).toBe("start");
-
-    m1.dispose();
-    m2.dispose();
+    const parsed = JSON.parse(serializeReplaySession(session));
+    expect(parsed.entries[0].data.error).toMatchObject({ name: "Error", message: "boom" });
+    expect(parsed.entries[0].data.when).toBe("1970-01-01T00:00:00.000Z");
+    expect(parsed.entries[0].data.circular.self).toBe("[circular]");
   });
 });

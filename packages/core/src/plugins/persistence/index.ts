@@ -1,80 +1,74 @@
-import { resolveSnapshotShape } from "../../journey-machine/helpers";
-import { createPersistenceController } from "./controller";
+import { buildPersistedState, parsePersistedState } from "./state";
+import type { JourneyPersistedState, JourneyStorage } from "./state";
+import type { JourneyPlugin } from "../../core/types";
 
-import type {
-  JourneyJsonObject,
-  JourneyMachinePlugin,
-  JourneyPersistenceOptions
-} from "../../types";
+export type { JourneyPersistedState, JourneyStorage } from "./state";
 
-/**
- * Creates a machine plugin that hydrates snapshots from storage and persists
- * state changes without pulling persistence code into the base entrypoint.
- */
-export const createPersistencePlugin = <TContext extends JourneyJsonObject, TStepId extends string>(
-  options: JourneyPersistenceOptions<TContext, TStepId>
-) => {
-  const setup = (({ journey, resolvedJourney }) => {
-    const controller = createPersistenceController({
-      initial: resolvedJourney.initial as unknown as TStepId,
-      context: resolvedJourney.context as unknown as TContext,
-      steps: resolvedJourney.steps as unknown as Record<TStepId, unknown>,
-      // Shape comes from the ORIGINAL definition's transitions (array = linear);
-      // resolvedJourney.transitions is always a flat array and would misdetect.
-      shape: resolveSnapshotShape<TStepId>(journey.transitions),
-      options
-    });
-
-    return {
-      hydrateSnapshot: (snapshot) => controller.hydrateSnapshot(snapshot as never),
-      onSnapshotChange: ({ snapshot, reason }) => {
-        if (reason === "async") {
-          return;
-        }
-
-        if (reason === "reset" && controller.clearOnReset) {
-          controller.removePersistedSnapshot();
-          return;
-        }
-
-        controller.persistSnapshot(snapshot as never);
-      },
-      getDevtoolsFeatures: () => [
-        {
-          id: "persistence",
-          label: "Persistence",
-          operations: [
-            {
-              id: "persistence.inspect",
-              label: "inspect",
-              mutates: false,
-              output: "data",
-              run: () => ({
-                kind: "data",
-                data: controller.inspectPersistedState()
-              })
-            },
-            {
-              id: "persistence.clear",
-              label: "clear",
-              mutates: true,
-              output: "void",
-              run: () => {
-                controller.removePersistedSnapshot();
-                return { kind: "void" };
-              }
-            }
-          ]
-        }
-      ]
-    };
-  }) as JourneyMachinePlugin["setup"];
-
-  return {
-    name: "persistence",
-    setup
-  } satisfies JourneyMachinePlugin;
+export type PersistencePluginOptions = {
+  storage: JourneyStorage;
+  key: string;
+  /** Remove the persisted entry when the journey terminates. Defaults to `false`. */
+  clearOnTerminate?: boolean;
+  /** Injectable clock, mainly for tests. */
+  now?: () => number;
 };
 
-export { createPersistenceController };
-export type { JourneyPersistedState, JourneyPersistenceOptions, JourneyStorage } from "../../types";
+export type PersistenceApi = {
+  /** The last state written by this run (not re-read from storage). */
+  inspectPersistedState(): JourneyPersistedState | null;
+  /** Re-reads and parses storage; `null` when absent or malformed. */
+  readPersisted(): JourneyPersistedState | null;
+  clearPersisted(): void;
+};
+
+/**
+ * Persists a serializable slice of machine state (status, context, timeline)
+ * on every transition, status change, and context change.
+ *
+ * Rehydration into a running machine is a planned core feature (restore saved
+ * history); until then `readPersisted()` exposes the saved state so callers
+ * can seed a new journey's `context` themselves.
+ */
+export function createPersistencePlugin(
+  options: PersistencePluginOptions
+): JourneyPlugin<"persistence", PersistenceApi, { lastSavedAt: number | null }> {
+  const now = options.now ?? Date.now;
+  return {
+    name: "persistence",
+    setup(host) {
+      let lastWritten: JourneyPersistedState | null = null;
+
+      const save = () => {
+        const state = buildPersistedState(host.getSnapshot(), now());
+        lastWritten = state;
+        void options.storage.setItem(options.key, JSON.stringify(state));
+      };
+
+      host.onTransition(save);
+      host.onContextChange(save);
+      host.onStatusChange(({ current }) => {
+        if (current === "terminated" && options.clearOnTerminate) {
+          lastWritten = null;
+          options.storage.removeItem(options.key);
+          return;
+        }
+        save();
+      });
+
+      return {
+        api: {
+          inspectPersistedState: () => lastWritten,
+          readPersisted: () => parsePersistedState(options.storage.getItem(options.key)),
+          clearPersisted: () => {
+            lastWritten = null;
+            options.storage.removeItem(options.key);
+          }
+        },
+        deriveSnapshot: (_snapshot, previous) => {
+          const lastSavedAt = lastWritten?.savedAt ?? null;
+          return previous && previous.lastSavedAt === lastSavedAt ? previous : { lastSavedAt };
+        }
+      };
+    }
+  };
+}

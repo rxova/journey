@@ -83,6 +83,14 @@
       "import": "./dist/plugins/replay/index.js",
       "require": "./dist/plugins/replay/index.cjs"
     },
+    "./subscription-enhancer": {
+      "types": {
+        "import": "./dist/plugins/subscription-enhancer/index.d.ts",
+        "require": "./dist/plugins/subscription-enhancer/index.d.cts"
+      },
+      "import": "./dist/plugins/subscription-enhancer/index.js",
+      "require": "./dist/plugins/subscription-enhancer/index.cjs"
+    },
     "./execution-paths": {
       "types": {
         "import": "./dist/plugins/execution-paths/index.d.ts",
@@ -91,13 +99,13 @@
       "import": "./dist/plugins/execution-paths/index.js",
       "require": "./dist/plugins/execution-paths/index.cjs"
     },
-    "./subscription-enhancer": {
+    "./convert": {
       "types": {
-        "import": "./dist/plugins/subscription-enhancer/index.d.ts",
-        "require": "./dist/plugins/subscription-enhancer/index.d.cts"
+        "import": "./dist/convert/index.d.ts",
+        "require": "./dist/convert/index.d.cts"
       },
-      "import": "./dist/plugins/subscription-enhancer/index.js",
-      "require": "./dist/plugins/subscription-enhancer/index.cjs"
+      "import": "./dist/convert/index.js",
+      "require": "./dist/convert/index.cjs"
     }
   },
   "files": [
@@ -133,22 +141,22 @@
       "limit": "10 kB"
     },
     {
-      "name": "core/createHeadlessJourney",
-      "path": "dist/index.js",
-      "import": "{ createHeadlessJourney }",
-      "limit": "10 kB"
-    },
-    {
       "name": "core/createGraphJourneyBuilder",
       "path": "dist/index.js",
       "import": "{ createGraphJourneyBuilder }",
       "limit": "1 kB"
     },
     {
-      "name": "core/createPersistencePlugin",
-      "path": "dist/plugins/persistence/index.js",
-      "import": "{ createPersistencePlugin }",
-      "limit": "3.6 kB"
+      "name": "core/linearToGraphDefinition",
+      "path": "dist/convert/index.js",
+      "import": "{ linearToGraphDefinition }",
+      "limit": "1 kB"
+    },
+    {
+      "name": "core/createExecutionPathsPlugin",
+      "path": "dist/plugins/execution-paths/index.js",
+      "import": "{ createExecutionPathsPlugin }",
+      "limit": "2.7 kB"
     },
     {
       "name": "core/createAnalyticsPlugin",
@@ -169,10 +177,10 @@
       "limit": "3.3 kB"
     },
     {
-      "name": "core/createExecutionPathsPlugin",
-      "path": "dist/plugins/execution-paths/index.js",
-      "import": "{ createExecutionPathsPlugin }",
-      "limit": "2.7 kB"
+      "name": "core/createPersistencePlugin",
+      "path": "dist/plugins/persistence/index.js",
+      "import": "{ createPersistencePlugin }",
+      "limit": "3.6 kB"
     },
     {
       "name": "core/createReplayPlugin",

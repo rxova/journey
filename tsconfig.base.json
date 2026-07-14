@@ -22,14 +22,15 @@
       "@rxova/journey-core/analytics": ["./packages/core/src/plugins/analytics/index.ts"],
       "@rxova/journey-core/autosave": ["./packages/core/src/plugins/autosave/index.ts"],
       "@rxova/journey-core/diagnostics": ["./packages/core/src/plugins/diagnostics/index.ts"],
-      "@rxova/journey-core/execution-paths": [
-        "./packages/core/src/plugins/execution-paths/index.ts"
-      ],
       "@rxova/journey-core/persistence": ["./packages/core/src/plugins/persistence/index.ts"],
       "@rxova/journey-core/replay": ["./packages/core/src/plugins/replay/index.ts"],
       "@rxova/journey-core/subscription-enhancer": [
         "./packages/core/src/plugins/subscription-enhancer/index.ts"
       ],
+      "@rxova/journey-core/execution-paths": [
+        "./packages/core/src/plugins/execution-paths/index.ts"
+      ],
+      "@rxova/journey-core/convert": ["./packages/core/src/convert/index.ts"],
       "@rxova/journey-react": ["./packages/react/src/index.ts"],
       "@rxova/journey-react/headless": ["./packages/react/src/headless/index.ts"],
       "@rxova/journey-react/graph": ["./packages/react/src/graph/index.ts"],

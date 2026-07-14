@@ -1,78 +1,49 @@
-import { getJourneyDiagnostics } from "./diagnostics";
+import { analyzeStructure } from "./diagnostics";
+import { normalizeGraphDefinition } from "../../graph/index";
+import type { DiagnosticsResult } from "./diagnostics";
+import type { JourneyPlugin, JourneyStructure } from "../../core/types";
 
-import type {
-  JourneyBaseEvent,
-  JourneyDiagnosticsOptions,
-  JourneyDiagnosticsResult,
-  JourneyFullEventType,
-  JourneyJsonObject,
-  JourneyMachine,
-  JourneyMachinePlugin
-} from "../../types";
-import type { JourneyEmpty } from "../../types";
+export type { DiagnosticsIssue, DiagnosticsResult } from "./diagnostics";
 
-export type JourneyDiagnosticsMachineExtension<
-  TStepId extends string,
-  TEventType extends string
-> = {
-  getDiagnostics: (
-    options?: JourneyDiagnosticsOptions
-  ) => JourneyDiagnosticsResult<TStepId, TEventType>;
+export type DiagnosticsApi = {
+  /** Structural diagnostics of the running journey (computed once, cached). */
+  getDiagnostics(): DiagnosticsResult;
 };
 
-export type JourneyDiagnosticsMachine<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEvents extends JourneyBaseEvent = never,
-  TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = JourneyEmpty
-> = JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers> &
-  JourneyDiagnosticsMachineExtension<TStepId, JourneyFullEventType<TEvents>>;
+/** Analyzes a graph journey definition without creating a runtime. */
+export function getGraphDiagnostics(definition: {
+  readonly steps: object;
+  readonly transitions: object;
+  readonly initial: string;
+}): DiagnosticsResult {
+  const { stepIds, transitions } = normalizeGraphDefinition(
+    definition as Parameters<typeof normalizeGraphDefinition>[0]
+  );
+  const structure: JourneyStructure = {
+    kind: "graph",
+    stepIds,
+    initial: definition.initial,
+    transitions: transitions.map((transition) => ({
+      event: transition.event,
+      from: transition.from,
+      to: transition.to,
+      guarded: transition.when !== undefined
+    }))
+  };
+  return analyzeStructure(structure);
+}
 
-/** Creates a plugin that augments a machine with structural diagnostics helpers. */
-export const createDiagnosticsPlugin = () =>
-  ({
+/** Exposes `getDiagnostics()` on the machine via `machine.plugins.diagnostics`. */
+export function createDiagnosticsPlugin(): JourneyPlugin<"diagnostics", DiagnosticsApi, never> {
+  return {
     name: "diagnostics",
-    __extension__: undefined as unknown as JourneyDiagnosticsMachineExtension<string, string>,
-    setup: ({ journey, options }) => ({
-      augmentMachine: () => ({
-        getDiagnostics: (diagnosticsOptions?: JourneyDiagnosticsOptions) =>
-          getJourneyDiagnostics(journey, {
-            requireExplicitCompletion:
-              diagnosticsOptions?.requireExplicitCompletion ?? options.requireExplicitCompletion
-          })
-      }),
-      getDevtoolsFeatures: () => [
-        {
-          id: "diagnostics",
-          label: "Diagnostics",
-          operations: [
-            {
-              id: "diagnostics.inspect",
-              label: "inspect",
-              mutates: false,
-              output: "data",
-              fields: [
-                {
-                  key: "requireExplicitCompletion",
-                  label: "requireExplicitCompletion",
-                  type: "boolean"
-                }
-              ],
-              run: ({ input }) => ({
-                kind: "data",
-                data: getJourneyDiagnostics(journey, {
-                  requireExplicitCompletion:
-                    typeof input?.requireExplicitCompletion === "boolean"
-                      ? input.requireExplicitCompletion
-                      : options.requireExplicitCompletion
-                })
-              })
-            }
-          ]
+    setup(host) {
+      let cached: DiagnosticsResult | null = null;
+      return {
+        api: {
+          getDiagnostics: () => (cached ??= analyzeStructure(host.structure))
         }
-      ]
-    })
-  }) satisfies JourneyMachinePlugin;
-
-export { getJourneyDiagnostics } from "./diagnostics";
+      };
+    }
+  };
+}
