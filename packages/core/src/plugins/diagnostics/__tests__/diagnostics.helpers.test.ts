@@ -75,4 +75,19 @@ describe("analyzeStructure", () => {
     expect(result.summary.cycleCount).toBe(1);
     expect(result.summary.terminalPathExists).toBe(false);
   });
+
+  it("reports the same cycle only once when duplicate edges discover it twice", () => {
+    const result = analyzeStructure(
+      graphStructure(
+        [
+          { event: "GO", from: "a", to: "b", guarded: false },
+          { event: "BACK", from: "b", to: "a", guarded: false },
+          { event: "BACK_AGAIN", from: "b", to: "a", guarded: false }
+        ],
+        ["a", "b"]
+      )
+    );
+
+    expect(result.issues.filter((issue) => issue.code === "cycle-detected")).toHaveLength(1);
+  });
 });

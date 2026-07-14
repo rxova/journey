@@ -146,8 +146,14 @@ describe("lifecycle meta-state-machine", () => {
     machine.dispose();
 
     expect(machine.controls.start()).toBe(false);
+    expect(machine.controls.resume()).toBe(false);
     expect(machine.controls.terminate()).toBe(false);
     expect(await machine.navigate.goToNextStep()).toEqual({ ok: false, reason: "disposed" });
+    expect(await machine.navigate.goToStepById("a")).toEqual({ ok: false, reason: "disposed" });
+    expect(await machine.navigate.goToLastVisitedStep()).toEqual({
+      ok: false,
+      reason: "disposed"
+    });
     expect(() => machine.context.update((c) => c)).not.toThrow();
   });
 });

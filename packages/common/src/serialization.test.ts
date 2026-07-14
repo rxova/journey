@@ -1,8 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { cloneForTransport, serializeError, serializeTransportError } from "./serialization";
 
 describe("cloneForTransport", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("passes through primitives", () => {
     expect(cloneForTransport(42)).toBe(42);
     expect(cloneForTransport("hello")).toBe("hello");
@@ -31,6 +35,12 @@ describe("cloneForTransport", () => {
     expect(result.fn).toBe("[Function fn]");
   });
 
+  it("labels functions without a name as anonymous", () => {
+    const fn = () => undefined;
+    Object.defineProperty(fn, "name", { value: "" });
+    expect(cloneForTransport({ fn })).toEqual({ fn: "[Function anonymous]" });
+  });
+
   it("serializes symbols as strings", () => {
     const result = cloneForTransport({ s: Symbol("test") }) as { s: string };
     expect(result.s).toBe("Symbol(test)");
@@ -46,6 +56,21 @@ describe("cloneForTransport", () => {
 
   it("returns undefined for undefined input", () => {
     expect(cloneForTransport(undefined)).toBe(undefined);
+  });
+
+  it("falls back to String when an object cannot be cloned or serialized", () => {
+    const value = {
+      toJSON() {
+        throw new Error("cannot serialize");
+      },
+      toString: () => "fallback value"
+    };
+    expect(cloneForTransport(value)).toBe("fallback value");
+  });
+
+  it("serializes without structuredClone when it is unavailable", () => {
+    vi.stubGlobal("structuredClone", undefined);
+    expect(cloneForTransport({ value: 1 })).toEqual({ value: 1 });
   });
 });
 
@@ -64,6 +89,12 @@ describe("serializeError", () => {
     const error = Object.assign(new Error("outer"), { cause });
     const result = serializeError(error);
     expect(result.cause).toEqual(cause);
+  });
+
+  it("uses a null stack when an Error has no stack", () => {
+    const error = new Error("stackless");
+    delete error.stack;
+    expect(serializeError(error).stack).toBeNull();
   });
 
   it("serializes a thrown string", () => {
@@ -93,6 +124,12 @@ describe("serializeTransportError", () => {
     expect(result.cause).toBe(null);
   });
 
+  it("uses a null stack when a transport Error has no stack", () => {
+    const error = new Error("stackless");
+    delete error.stack;
+    expect(serializeTransportError(error).stack).toBeNull();
+  });
+
   it("extracts fields from a record", () => {
     const record = { name: "CustomError", message: "bad message", stack: "at foo:1", cause: "x" };
     const result = serializeTransportError(record);
@@ -102,6 +139,10 @@ describe("serializeTransportError", () => {
       stack: "at foo:1",
       cause: "x"
     });
+  });
+
+  it("normalizes an explicitly undefined record cause", () => {
+    expect(serializeTransportError({ message: "failed", cause: undefined }).cause).toBeNull();
   });
 
   it("falls back to Unknown transport error for records without message", () => {

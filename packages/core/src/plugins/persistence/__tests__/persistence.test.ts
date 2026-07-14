@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { parsePersistedState } from "@rxova/journey-core/persistence";
 import { createLinearJourney } from "@rxova/journey-core";
 import { createPersistencePlugin } from "@rxova/journey-core/persistence";
@@ -31,6 +31,20 @@ async function startedWithPersistence(options: { clearOnTerminate?: boolean } = 
 }
 
 describe("persistence plugin", () => {
+  it("uses Date.now when no clock is provided", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(123);
+    const storage = memoryStorage();
+    const machine = createLinearJourney(
+      { steps: ["a"], context: {} },
+      { plugins: [createPersistencePlugin({ storage, key: "journey" })] as const }
+    );
+    machine.controls.start();
+    await flush();
+
+    expect(machine.plugins.persistence.readPersisted()?.savedAt).toBe(123);
+    vi.restoreAllMocks();
+  });
+
   it("persists the state slice on transitions, status, and context changes", async () => {
     const { machine } = await startedWithPersistence();
     await machine.navigate.goToNextStep();

@@ -60,7 +60,7 @@ const createLinearJourneyMachine = (
   onError: (error: unknown, info: { phase: "start" | "navigate" | "step-handler" }) => void
 ): LinearJourneyMachineSetup => {
   const machine = createLinearJourney(
-    { steps: buildLinearSteps(steps) as never, context: props.context ?? {} },
+    { steps: buildLinearSteps(steps) as never, context: props.context },
     {
       autoStart: true,
       plugins: [
@@ -302,8 +302,7 @@ const LinearJourneyComponent = <TContext,>(
   let activeNode: React.ReactNode;
   if (activeStep) {
     const stepContent =
-      activeStep.element ??
-      (activeStep.component ? React.createElement(activeStep.component) : null);
+      activeStep.element ?? React.createElement(activeStep.component as React.ComponentType);
     activeNode = (
       <LinearJourneyActiveStepContext.Provider key={activeStep.id} value={activeStep.id}>
         {stepContent}

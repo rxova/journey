@@ -38,6 +38,14 @@ describe("linearToGraphDefinition", () => {
     expect(definition.transitions).toEqual({});
   });
 
+  it("a single-step journey also has no jump events", () => {
+    const definition = linearToGraphDefinition(
+      { steps: ["only"], context: {} },
+      { includeJumpEvents: true }
+    );
+    expect(definition.transitions).toEqual({});
+  });
+
   it("optionally generates jump transitions to preserve linear free jumps", () => {
     const definition = linearToGraphDefinition(
       { steps: ["a", "b", "c"], context: {} },

@@ -128,6 +128,21 @@ describe("createGraphJourneyBuilder", () => {
       })
     ).toThrow(/duplicate step id "login"/);
   });
+
+  it("ignores optional event entries that are explicitly undefined", () => {
+    const bag = createGraphJourneyBuilder<{
+      context: Record<string, never>;
+      stepId: "a";
+      events: { type: "GO" };
+    }>();
+    const definition = bag.build({
+      initial: "a",
+      context: {},
+      steps: [bag.createStep("a", { on: { GO: undefined } as never })]
+    });
+
+    expect(definition.transitions).toEqual({});
+  });
 });
 
 describe("builder step hooks", () => {
