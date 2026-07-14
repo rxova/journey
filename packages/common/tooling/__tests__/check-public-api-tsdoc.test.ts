@@ -12,7 +12,7 @@ import {
   parseTsConfig,
   resolveApiTSDocSources,
   toRepoPath
-} from "./check-public-api-tsdoc";
+} from "../check-public-api-tsdoc";
 
 const oneSource = [
   {

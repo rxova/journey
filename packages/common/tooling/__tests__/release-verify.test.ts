@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { releaseVerifySteps, runReleaseVerify } from "./release-verify";
+import { releaseVerifySteps, runReleaseVerify } from "../release-verify";
 
 describe("runReleaseVerify", () => {
   it("runs every verification step in order", () => {

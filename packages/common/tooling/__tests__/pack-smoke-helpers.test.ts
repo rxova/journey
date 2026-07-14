@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { assertIncludes, getExportEntries } from "./pack-smoke-helpers";
+import { assertIncludes, getExportEntries } from "../pack-smoke-helpers";
 
 describe("getExportEntries", () => {
   it("returns a package-prefixed path for a string starting with ./", () => {

@@ -19,10 +19,10 @@ import {
   syncDocVersionLabels,
   toRepoPath,
   writeIfChanged
-} from "./sync-doc-version-labels";
+} from "../sync-doc-version-labels";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const scriptPath = resolve(__dirname, "./sync-doc-version-labels.ts");
+const scriptPath = resolve(__dirname, "../sync-doc-version-labels.ts");
 
 const testSources = [
   { pluginId: "core", source: "packages/core/package.json" },

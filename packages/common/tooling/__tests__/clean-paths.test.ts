@@ -4,10 +4,10 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { cleanPaths } from "./clean-paths";
+import { cleanPaths } from "../clean-paths";
 
-const scriptPath = resolve(__dirname, "clean-paths.ts");
-const tsxLoaderPath = resolve(__dirname, "../../../node_modules/tsx/dist/loader.mjs");
+const scriptPath = resolve(__dirname, "../clean-paths.ts");
+const tsxLoaderPath = resolve(__dirname, "../../../../node_modules/tsx/dist/loader.mjs");
 
 const execNode = (args: string[]): { stdout: string; stderr: string; status: number } => {
   try {

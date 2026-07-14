@@ -7,8 +7,8 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const scriptPath = resolve(__dirname, "./check-changeset.ts");
-const tsxLoaderPath = resolve(__dirname, "../../../node_modules/tsx/dist/loader.mjs");
+const scriptPath = resolve(__dirname, "../check-changeset.ts");
+const tsxLoaderPath = resolve(__dirname, "../../../../node_modules/tsx/dist/loader.mjs");
 const sanitizedEnv = Object.fromEntries(
   Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_"))
 );
