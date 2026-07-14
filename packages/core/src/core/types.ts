@@ -420,6 +420,3 @@ export type JourneyRuntimeOptions<TPlugins extends readonly AnyJourneyPlugin[] =
   defaultTimeoutMs?: number;
   plugins?: TPlugins;
 };
-
-/** Hard cap on events processed from one raise cascade before it is dropped. */
-export const MAX_RAISED_EVENTS = 25;

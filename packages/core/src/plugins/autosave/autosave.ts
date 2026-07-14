@@ -1,41 +1,19 @@
-import { buildPersistedState, parsePersistedState } from "../persistence/state";
-import type { JourneyPersistedState, JourneyStorage } from "../persistence/state";
+import { DEFAULT_SAVE_REASONS, normalizeDebounceMs } from "./autosave.helpers";
+import { buildPersistedState, parsePersistedState } from "../persistence/persistence.helpers";
+import type {
+  AutosaveApi,
+  AutosavePluginOptions,
+  AutosaveReason,
+  AutosaveState
+} from "./autosave.types";
 import type { JourneyPlugin } from "../../core/types";
 
-export type AutosaveReason = "context" | "transition" | "status";
-
-export type AutosavePluginOptions = {
-  storage: JourneyStorage;
-  key: string;
-  /** Debounce window in milliseconds. Defaults to 300; clamped to >= 0. */
-  debounceMs?: number;
-  /** Which observations schedule a save. Defaults to all of them. */
-  saveOn?: readonly AutosaveReason[];
-  /** Injectable clock, mainly for tests. */
-  now?: () => number;
-};
-
-export type AutosaveState = {
-  readonly status: "idle" | "pending" | "saving" | "saved" | "error";
-  readonly lastSavedAt: number | null;
-  readonly error: unknown | null;
-};
-
-export type AutosaveApi = {
-  getAutosaveState(): AutosaveState;
-  /** Cancels the debounce and saves immediately. */
-  flushAutosave(): Promise<void>;
-  /** Cancels any pending save and removes the persisted entry. */
-  clearAutosave(): void;
-  readPersisted(): JourneyPersistedState | null;
-};
-
-const DEFAULT_SAVE_REASONS: readonly AutosaveReason[] = ["context", "transition", "status"];
-
-function normalizeDebounceMs(value: number | undefined): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) return 300;
-  return Math.max(0, Math.trunc(value));
-}
+export type {
+  AutosaveApi,
+  AutosavePluginOptions,
+  AutosaveReason,
+  AutosaveState
+} from "./autosave.types";
 
 /**
  * Debounced persistence: schedules a save after each observed change and

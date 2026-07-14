@@ -1,5 +1,8 @@
 import type { StepAsyncState } from "./types";
 
+/** Hard cap on events processed from one raise cascade before it is dropped. */
+export const MAX_RAISED_EVENTS = 25;
+
 export const SUCCESS_ASYNC: StepAsyncState = Object.freeze({
   isLoading: false,
   isSuccess: true,

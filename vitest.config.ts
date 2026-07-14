@@ -14,47 +14,47 @@ export default defineConfig({
       {
         find: "@rxova/journey-core/analytics",
         replacement: fileURLToPath(
-          new URL("./packages/core/src/plugins/analytics/index.ts", import.meta.url)
+          new URL("./packages/core/src/plugins/analytics/analytics.ts", import.meta.url)
         )
       },
       {
         find: "@rxova/journey-core/autosave",
         replacement: fileURLToPath(
-          new URL("./packages/core/src/plugins/autosave/index.ts", import.meta.url)
+          new URL("./packages/core/src/plugins/autosave/autosave.ts", import.meta.url)
         )
       },
       {
         find: "@rxova/journey-core/diagnostics",
         replacement: fileURLToPath(
-          new URL("./packages/core/src/plugins/diagnostics/index.ts", import.meta.url)
+          new URL("./packages/core/src/plugins/diagnostics/diagnostics.ts", import.meta.url)
         )
       },
       {
         find: "@rxova/journey-core/persistence",
         replacement: fileURLToPath(
-          new URL("./packages/core/src/plugins/persistence/index.ts", import.meta.url)
+          new URL("./packages/core/src/plugins/persistence/persistence.ts", import.meta.url)
         )
       },
       {
         find: "@rxova/journey-core/replay",
         replacement: fileURLToPath(
-          new URL("./packages/core/src/plugins/replay/index.ts", import.meta.url)
+          new URL("./packages/core/src/plugins/replay/replay.ts", import.meta.url)
         )
       },
       {
         find: "@rxova/journey-core/subscription-enhancer",
         replacement: fileURLToPath(
-          new URL("./packages/core/src/plugins/subscription-enhancer/index.ts", import.meta.url)
+          new URL("./packages/core/src/plugins/subscription-enhancer/subscription-enhancer.ts", import.meta.url)
         )
       },
       {
         find: "@rxova/journey-core/convert",
-        replacement: fileURLToPath(new URL("./packages/core/src/convert/index.ts", import.meta.url))
+        replacement: fileURLToPath(new URL("./packages/core/src/convert/convert.ts", import.meta.url))
       },
       {
         find: "@rxova/journey-core/execution-paths",
         replacement: fileURLToPath(
-          new URL("./packages/core/src/plugins/execution-paths/index.ts", import.meta.url)
+          new URL("./packages/core/src/plugins/execution-paths/execution-paths.ts", import.meta.url)
         )
       },
       {
@@ -139,7 +139,7 @@ export default defineConfig({
         lines: 95
       },
       include: coverageInclude,
-      exclude: ["**/*.d.ts", "packages/**/types.ts", "packages/*/src/types/**/*.ts"]
+      exclude: ["**/*.d.ts", "packages/**/types.ts", "packages/**/*.types.ts", "packages/*/src/types/**/*.ts"]
     }
   }
 });
