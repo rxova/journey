@@ -49,6 +49,14 @@
       },
       "import": "./dist/client.js",
       "require": "./dist/client.cjs"
+    },
+    "./headless": {
+      "types": {
+        "import": "./dist/headless/index.d.ts",
+        "require": "./dist/headless/index.d.cts"
+      },
+      "import": "./dist/headless/index.js",
+      "require": "./dist/headless/index.cjs"
     }
   },
   "files": [
@@ -84,6 +92,12 @@
       "path": "dist/index.js",
       "import": "{ createJourney }",
       "limit": "2 kB"
+    },
+    {
+      "name": "react/headless",
+      "path": "dist/headless/index.js",
+      "import": "{ useOwnedJourney, useJourneySnapshot, useJourneySelector }",
+      "limit": "1.5 kB"
     }
   ],
   "devDependencies": {

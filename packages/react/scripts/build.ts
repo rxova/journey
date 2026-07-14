@@ -16,7 +16,8 @@ const common = {
 
 for (const [entryPoint, outfile] of [
   ["src/index.ts", "dist/index.js"],
-  ["src/client.ts", "dist/client.js"]
+  ["src/client.ts", "dist/client.js"],
+  ["src/headless/index.ts", "dist/headless/index.js"]
 ] as const) {
   await build({
     ...common,
