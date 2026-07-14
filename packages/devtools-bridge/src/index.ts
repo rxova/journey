@@ -1,5 +1,8 @@
-export { attachJourneyDevtools, type JourneyDevtoolsBridgeOptions } from "./bridge";
-export { getJourneyMachineDevtoolsRegistry } from "@rxova/journey-core";
+export { attachJourneyDevtools } from "./bridge";
+export type {
+  JourneyDevtoolsAttachableMachine,
+  JourneyDevtoolsBridgeOptions
+} from "./bridge.types";
 
 export {
   JOURNEY_DEVTOOLS_CHANNEL,
@@ -12,24 +15,29 @@ export {
   isCompatibleInvokeProtocolVersion,
   isJourneyDevtoolsEnvelope,
   isJourneyDevtoolsBridgeEnvelope,
-  isJourneyDevtoolsExtensionEnvelope,
-  type JourneyDevtoolsBridgeEnvelope,
-  type JourneyDevtoolsBridgeOperationErrorEnvelope,
-  type JourneyDevtoolsBridgeOperationResultEnvelope,
-  type JourneyDevtoolsBridgeObservationEnvelope,
-  type JourneyDevtoolsBridgeRegisterEnvelope,
-  type JourneyDevtoolsBridgeSnapshotEnvelope,
-  type JourneyDevtoolsBridgeUnregisterEnvelope,
-  type JourneyDevtoolsEnvelope,
-  type JourneyDevtoolsExtensionEnvelope,
-  type JourneyDevtoolsExtensionInvokeEnvelope,
-  type JourneyDevtoolsMachineFeatureDescriptor,
-  type JourneyDevtoolsMachineMeta,
-  type JourneyDevtoolsMachineOperationDescriptor,
-  type JourneyDevtoolsOperationInvoke,
-  type JourneyDevtoolsOperationResultPayload,
-  type JourneyDevtoolsProtocolVersion,
-  type JourneyDevtoolsSerializableSnapshot,
-  type JourneyDevtoolsSerializedError,
-  type JourneyDevtoolsStepFeatureDescriptor
+  isJourneyDevtoolsExtensionEnvelope
 } from "./protocol";
+
+export type {
+  JourneyDevtoolsBridgeEnvelope,
+  JourneyDevtoolsBridgeOperationErrorEnvelope,
+  JourneyDevtoolsBridgeOperationResultEnvelope,
+  JourneyDevtoolsBridgeObservationEnvelope,
+  JourneyDevtoolsBridgeRegisterEnvelope,
+  JourneyDevtoolsBridgeSnapshotEnvelope,
+  JourneyDevtoolsBridgeUnregisterEnvelope,
+  JourneyDevtoolsEnvelope,
+  JourneyDevtoolsExtensionEnvelope,
+  JourneyDevtoolsExtensionInvokeEnvelope,
+  JourneyDevtoolsFieldSpec,
+  JourneyDevtoolsMachineFeatureDescriptor,
+  JourneyDevtoolsMachineMeta,
+  JourneyDevtoolsMachineOperationDescriptor,
+  JourneyDevtoolsOperationInvoke,
+  JourneyDevtoolsOperationResultKind,
+  JourneyDevtoolsOperationResultPayload,
+  JourneyDevtoolsProtocolVersion,
+  JourneyDevtoolsSerializableSnapshot,
+  JourneyDevtoolsSerializedError,
+  JourneyDevtoolsStepFeatureDescriptor
+} from "./protocol.types";
