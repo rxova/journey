@@ -6,7 +6,7 @@ import type {
 } from "./persistence.types";
 import type { JourneyPlugin } from "../../core/types";
 
-export { parsePersistedState } from "./persistence.helpers";
+export { buildPersistedState, parsePersistedState } from "./persistence.helpers";
 export type {
   JourneyPersistedState,
   JourneyStorage,

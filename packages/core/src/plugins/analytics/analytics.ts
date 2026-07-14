@@ -1,4 +1,6 @@
 import { RECENT_EVENT_CAPACITY } from "./analytics.helpers";
+
+export { RECENT_EVENT_CAPACITY } from "./analytics.helpers";
 import type {
   AnalyticsApi,
   AnalyticsPluginOptions,
