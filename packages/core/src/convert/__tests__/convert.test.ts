@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createGraphJourney } from "@rxova/journey-core";
 import { linearToGraphDefinition } from "@rxova/journey-core/convert";
-import { flush } from "../../__tests__/helpers";
+import { flush } from "@rxova/journey-core/testing";
 
 describe("linearToGraphDefinition", () => {
   it("converts declared order into NEXT/PREVIOUS transitions", () => {

@@ -8,6 +8,7 @@ import type {
 } from "./autosave.types";
 import type { JourneyPlugin } from "../../core/types";
 
+export { normalizeDebounceMs } from "./autosave.helpers";
 export type {
   AutosaveApi,
   AutosavePluginOptions,

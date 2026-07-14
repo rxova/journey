@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createLinearJourney } from "@rxova/journey-core";
 import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
 import type { AnalyticsTrackedEvent } from "@rxova/journey-core/analytics";
-import { flush } from "../../../__tests__/helpers";
+import { flush } from "@rxova/journey-core/testing";
 
 async function startedWithAnalytics(track: (event: AnalyticsTrackedEvent) => void) {
   const machine = createLinearJourney(

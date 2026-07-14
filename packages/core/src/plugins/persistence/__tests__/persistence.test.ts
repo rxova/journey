@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parsePersistedState } from "../persistence.helpers";
+import { parsePersistedState } from "@rxova/journey-core/persistence";
 import { createLinearJourney } from "@rxova/journey-core";
 import { createPersistencePlugin } from "@rxova/journey-core/persistence";
 import type { JourneyStorage } from "@rxova/journey-core/persistence";
-import { flush } from "../../../__tests__/helpers";
+import { flush } from "@rxova/journey-core/testing";
 
 function memoryStorage(): JourneyStorage & { dump(): Map<string, string> } {
   const data = new Map<string, string>();

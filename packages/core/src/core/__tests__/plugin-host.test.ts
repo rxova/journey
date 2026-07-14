@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createLinearJourney, type JourneyPlugin } from "@rxova/journey-core";
-import { flush } from "../../__tests__/helpers";
+import { flush } from "@rxova/journey-core/testing";
 
 describe("plugins — observe + extend, never intercept", () => {
   it("contributes a namespaced machine API and snapshot extension", async () => {

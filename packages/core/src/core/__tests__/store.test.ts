@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { startedLinear } from "../../__tests__/helpers";
+import { startedLinear } from "@rxova/journey-core/testing";
 
 describe("store subscriber isolation", () => {
   it("a throwing selector is isolated and other selectors still fire", async () => {

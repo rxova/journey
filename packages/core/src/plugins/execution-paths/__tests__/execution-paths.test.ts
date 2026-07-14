@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createLinearJourney } from "@rxova/journey-core";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
-import { flush } from "../../../__tests__/helpers";
+import { flush } from "@rxova/journey-core/testing";
 
 describe("execution-paths plugin", () => {
   it("tracks the committed step sequence of the current run", async () => {
