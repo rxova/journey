@@ -1,10 +1,4 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
-import {
-  createGraphJourneyBuilder,
-  type HeadlessJourneyDefinition,
-  type LinearJourneyDefinition
-} from "@rxova/journey-core";
+import { createGraphJourneyBuilder, type LinearJourneyDefinition } from "@rxova/journey-core";
 import { delay } from "./support";
 
 export type LoginStepId =
@@ -26,16 +20,15 @@ export type LoginContext = {
   attempts: number;
 };
 
-export type AuthEventMap = {
-  submitLogin: Record<never, never>;
-  setup2fa: Record<never, never>;
-  verifyCodeSuccess: Record<never, never>;
-  verifyCodeFailure: Record<never, never>;
-  verifyEmailSuccess: Record<never, never>;
-  verifyEmailFailure: Record<never, never>;
-  verifyAuthenticatorSuccess: Record<never, never>;
-  verifyAuthenticatorFailure: Record<never, never>;
-};
+export type AuthEvent =
+  | { type: "submitLogin" }
+  | { type: "setup2fa" }
+  | { type: "verifyCodeSuccess" }
+  | { type: "verifyCodeFailure" }
+  | { type: "verifyEmailSuccess" }
+  | { type: "verifyEmailFailure" }
+  | { type: "verifyAuthenticatorSuccess" }
+  | { type: "verifyAuthenticatorFailure" };
 
 export type StepMeta = { label: string; icon: string };
 
@@ -73,128 +66,134 @@ export const initialLoginContext = (): LoginContext => ({
   attempts: 0
 });
 
-export const linearDefinition: LinearJourneyDefinition<
-  LoginContext,
-  "login" | "setup2fa" | "verifyCode" | "loggedIn",
-  { label: string }
-> = {
-  context: {
-    username: "",
-    password: "",
-    twoFactorMethod: "no_2fa",
-    verificationCode: "",
-    qrCode: null,
-    error: null,
-    attempts: 0
-  },
+export const linearDefinition = {
+  context: { ...initialLoginContext(), twoFactorMethod: "no_2fa" as const },
   steps: [
-    { id: "login", meta: { label: "Login" } },
-    { id: "setup2fa", meta: { label: "Setup 2FA" } },
-    { id: "verifyCode", meta: { label: "Verify Code" } },
-    { id: "loggedIn", meta: { label: "Logged In" } }
+    { id: "login", metadata: { label: "Login" } },
+    { id: "setup2fa", metadata: { label: "Setup 2FA" } },
+    { id: "verifyCode", metadata: { label: "Verify Code" } },
+    { id: "loggedIn", metadata: { label: "Logged In" } }
   ]
-};
+} satisfies LinearJourneyDefinition<LoginContext>;
+
+/**
+ * The "headless" scenario: every auth step in one machine, navigated purely by
+ * ungated `goToStepById`. The dedicated headless tier is reserved in the
+ * rewritten core; linear minus its declared-order navigation is exactly that
+ * story (linear = headless + declared order).
+ */
+export const headlessDefinition = {
+  context: initialLoginContext(),
+  steps: [
+    { id: "login", metadata: { label: "Login" } },
+    { id: "setup2fa", metadata: { label: "Setup 2FA" } },
+    { id: "verifyCode", metadata: { label: "Verify Code" } },
+    { id: "emailCode", metadata: { label: "Email Code" } },
+    { id: "authenticatorCode", metadata: { label: "Authenticator" } },
+    { id: "loggedIn", metadata: { label: "Logged In" } },
+    { id: "blocked", metadata: { label: "Blocked" } }
+  ]
+} satisfies LinearJourneyDefinition<LoginContext>;
 
 const { createStep, to, build } = createGraphJourneyBuilder<{
   context: LoginContext;
   stepId: LoginStepId;
-  events: AuthEventMap;
+  events: AuthEvent;
   meta: StepMeta;
 }>();
 
+const clearError = (context: LoginContext): LoginContext => ({ ...context, error: null });
+
 const loginStep = createStep("login", {
-  meta: { label: "Login", icon: "🔐" },
+  metadata: { label: "Login", icon: "🔐" },
   on: {
     submitLogin: [
       to("setup2fa")
         .when(({ context }) => context.twoFactorMethod === "no_2fa")
-        .updateContext(({ context }) => ({ ...context, error: null })),
+        .onTransition(({ updateContext }) => updateContext(clearError)),
       to("emailCode")
         .when(({ context }) => context.twoFactorMethod === "email")
-        .updateContext(({ context }) => ({ ...context, password: "", error: null })),
+        .onTransition(({ updateContext }) =>
+          updateContext((context) => ({ ...clearError(context), password: "" }))
+        ),
       to("authenticatorCode")
         .when(({ context }) => context.twoFactorMethod === "authenticator")
-        .updateContext(({ context }) => ({ ...context, password: "", error: null }))
+        .onTransition(({ updateContext }) =>
+          updateContext((context) => ({ ...clearError(context), password: "" }))
+        )
     ]
   }
 });
 
 const setup2faStep = createStep("setup2fa", {
-  meta: { label: "Setup 2FA", icon: "📱" },
+  metadata: { label: "Setup 2FA", icon: "📱" },
   on: {
-    setup2fa: [to("verifyCode").label("setup-to-verify")]
+    setup2fa: [to("verifyCode")]
   }
 });
 
-const verifyCodeStep = createStep("verifyCode", {
-  meta: { label: "Verify Code", icon: "✅" },
-  on: {
-    verifyCodeSuccess: [to("loggedIn").label("verify-success")],
-    verifyCodeFailure: [
-      to("blocked")
-        .when(({ context }) => context.attempts >= 2)
-        .updateContext(({ context }) => ({
-          ...context,
-          attempts: context.attempts + 1,
-          error: "Too many failed attempts."
-        })),
-      to("verifyCode").updateContext(({ context }) => ({
+/** Failure candidates: first-enabled wins, so "blocked" guards the retry loop. */
+const failureCandidates = (retryTarget: "verifyCode" | "emailCode" | "authenticatorCode", blockedError: string, retryError: string) => [
+  to("blocked")
+    .when(({ context }) => context.attempts >= 2)
+    .onTransition(({ updateContext }) =>
+      updateContext((context) => ({
         ...context,
         attempts: context.attempts + 1,
-        error: "Invalid code. Try 123456."
+        error: blockedError
       }))
-    ]
+    ),
+  to(retryTarget).onTransition(({ updateContext }) =>
+    updateContext((context) => ({
+      ...context,
+      attempts: context.attempts + 1,
+      error: retryError
+    }))
+  )
+];
+
+const verifyCodeStep = createStep("verifyCode", {
+  metadata: { label: "Verify Code", icon: "✅" },
+  on: {
+    verifyCodeSuccess: [to("loggedIn")],
+    verifyCodeFailure: failureCandidates(
+      "verifyCode",
+      "Too many failed attempts.",
+      "Invalid code. Try 123456."
+    )
   }
 });
 
 const emailCodeStep = createStep("emailCode", {
-  meta: { label: "Email Code", icon: "✉️" },
+  metadata: { label: "Email Code", icon: "✉️" },
   on: {
-    verifyEmailSuccess: [to("loggedIn").label("email-success")],
-    verifyEmailFailure: [
-      to("blocked")
-        .when(({ context }) => context.attempts >= 2)
-        .updateContext(({ context }) => ({
-          ...context,
-          attempts: context.attempts + 1,
-          error: "Email verification failed too many times."
-        })),
-      to("emailCode").updateContext(({ context }) => ({
-        ...context,
-        attempts: context.attempts + 1,
-        error: "Use 123456 from the email."
-      }))
-    ]
+    verifyEmailSuccess: [to("loggedIn")],
+    verifyEmailFailure: failureCandidates(
+      "emailCode",
+      "Email verification failed too many times.",
+      "Use 123456 from the email."
+    )
   }
 });
 
 const authenticatorCodeStep = createStep("authenticatorCode", {
-  meta: { label: "Authenticator", icon: "🛡️" },
+  metadata: { label: "Authenticator", icon: "🛡️" },
   on: {
-    verifyAuthenticatorSuccess: [to("loggedIn").label("auth-success")],
-    verifyAuthenticatorFailure: [
-      to("blocked")
-        .when(({ context }) => context.attempts >= 2)
-        .updateContext(({ context }) => ({
-          ...context,
-          attempts: context.attempts + 1,
-          error: "Authenticator verification failed too many times."
-        })),
-      to("authenticatorCode").updateContext(({ context }) => ({
-        ...context,
-        attempts: context.attempts + 1,
-        error: "Use 123456 from the authenticator app."
-      }))
-    ]
+    verifyAuthenticatorSuccess: [to("loggedIn")],
+    verifyAuthenticatorFailure: failureCandidates(
+      "authenticatorCode",
+      "Authenticator verification failed too many times.",
+      "Use 123456 from the authenticator app."
+    )
   }
 });
 
 const loggedInStep = createStep("loggedIn", {
-  meta: { label: "Logged In", icon: "🎉" }
+  metadata: { label: "Logged In", icon: "🎉" }
 });
 
 const blockedStep = createStep("blocked", {
-  meta: { label: "Blocked", icon: "⛔" }
+  metadata: { label: "Blocked", icon: "⛔" }
 });
 
 export const graphDefinition = build({
@@ -210,17 +209,3 @@ export const graphDefinition = build({
     blockedStep
   ]
 });
-
-export const headlessDefinition: HeadlessJourneyDefinition<LoginContext, LoginStepId> = {
-  initial: "login",
-  context: initialLoginContext(),
-  steps: {
-    login: {},
-    setup2fa: {},
-    verifyCode: {},
-    emailCode: {},
-    authenticatorCode: {},
-    loggedIn: {},
-    blocked: {}
-  }
-};

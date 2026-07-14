@@ -1,17 +1,19 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
-// @ts-nocheck
+import { createGraphJourney, createLinearJourney } from "@rxova/journey-core";
+import { createAnalyticsPlugin, type AnalyticsApi } from "@rxova/journey-core/analytics";
+import { createAutosavePlugin, type AutosaveApi } from "@rxova/journey-core/autosave";
+import { createDiagnosticsPlugin, type DiagnosticsApi } from "@rxova/journey-core/diagnostics";
 import {
-  createGraphJourney,
-  createLinearJourney,
-  type JourneyMachine,
-  type JourneySnapshot
+  createExecutionPathsPlugin,
+  type ExecutionPathsApi
+} from "@rxova/journey-core/execution-paths";
+import { createPersistencePlugin, type PersistenceApi } from "@rxova/journey-core/persistence";
+import { createReplayPlugin, type ReplayApi } from "@rxova/journey-core/replay";
+import type {
+  GraphJourneyMachine,
+  JourneySnapshot,
+  JourneySubscriptionEvent,
+  LinearJourneyMachine
 } from "@rxova/journey-core";
-import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
-import { createAutosavePlugin } from "@rxova/journey-core/autosave";
-import { createDiagnosticsPlugin } from "@rxova/journey-core/diagnostics";
-import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
-import { createPersistencePlugin } from "@rxova/journey-core/persistence";
-import { createReplayPlugin } from "@rxova/journey-core/replay";
 import "../styles/demo.css";
 import {
   pluginDefinition,
@@ -19,13 +21,98 @@ import {
   pluginTitles,
   structureDefinition,
   type PluginContext,
-  type PluginDemoKind
+  type PluginDemoKind,
+  type PluginStepId,
+  type StructureEvent,
+  type StructureStepId
 } from "../fixtures/plugin-fixtures";
 import { createLogStore, createStoragePreview, formatJson } from "../fixtures/support";
 
-type AnyMachine = JourneyMachine<any, any, any, any>;
+type LinearDemoMachine = LinearJourneyMachine<PluginContext, PluginStepId>;
+type StructureDemoMachine = GraphJourneyMachine<
+  Record<string, never>,
+  StructureStepId,
+  StructureEvent
+>;
+type DemoMachine = LinearDemoMachine | StructureDemoMachine;
 
-const bindInputState = (root: HTMLElement, machine: AnyMachine) => {
+const OBSERVED_EVENTS: readonly JourneySubscriptionEvent[] = [
+  "stepEnter",
+  "stepLeave",
+  "statusChange",
+  "contextChange",
+  "navigationBlocked",
+  "error"
+];
+
+const isStructureDemo = (kind: PluginDemoKind) =>
+  kind === "diagnostics" || kind === "execution-paths";
+
+export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => {
+  const eventStore = createLogStore<{ name: string; payload: unknown }>();
+  const storageKey = pluginStorageKey("core", kind);
+
+  const machine: DemoMachine = (
+    kind === "diagnostics"
+      ? createGraphJourney(structureDefinition, {
+          autoStart: true,
+          plugins: [createDiagnosticsPlugin()] as const
+        })
+      : kind === "execution-paths"
+        ? createGraphJourney(structureDefinition, {
+            autoStart: true,
+            plugins: [createExecutionPathsPlugin()] as const
+          })
+        : kind === "analytics"
+          ? createLinearJourney(pluginDefinition, {
+              autoStart: true,
+              plugins: [
+                createAnalyticsPlugin({
+                  track: (event) => eventStore.push({ name: event.name, payload: event.payload })
+                })
+              ] as const
+            })
+          : kind === "autosave"
+            ? createLinearJourney(pluginDefinition, {
+                autoStart: true,
+                plugins: [
+                  createAutosavePlugin({
+                    storage: window.localStorage,
+                    key: storageKey,
+                    debounceMs: 250
+                  })
+                ] as const
+              })
+            : kind === "persistence"
+              ? createLinearJourney(pluginDefinition, {
+                  autoStart: true,
+                  plugins: [
+                    createPersistencePlugin({ storage: window.localStorage, key: storageKey })
+                  ] as const
+                })
+              : createLinearJourney(pluginDefinition, {
+                  autoStart: true,
+                  plugins: [createReplayPlugin({ maxEntries: 60 })] as const
+                })
+  ) as DemoMachine;
+
+  const pluginApi = machine.plugins as Partial<{
+    analytics: AnalyticsApi;
+    autosave: AutosaveApi;
+    diagnostics: DiagnosticsApi;
+    "execution-paths": ExecutionPathsApi;
+    persistence: PersistenceApi;
+    replay: ReplayApi;
+  }>;
+
+  if (kind !== "analytics") {
+    for (const eventName of OBSERVED_EVENTS) {
+      machine.subscriptions.subscribeEvent(eventName, () => {
+        eventStore.push({ name: eventName, payload: null });
+      });
+    }
+  }
+
   root.addEventListener("input", (event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) {
@@ -37,66 +124,15 @@ const bindInputState = (root: HTMLElement, machine: AnyMachine) => {
       return;
     }
 
-    void machine.updateContext((context: PluginContext) => ({
+    (machine as LinearDemoMachine).context.update((context) => ({
       ...context,
       [field]: target.value
     }));
   });
-};
 
-export const mountCorePluginDemo = async (kind: PluginDemoKind, root: HTMLElement) => {
-  const analyticsStore = createLogStore<{ name: string; payload: unknown }>();
-  const storageKey = pluginStorageKey("core", kind);
-
-  const machine =
-    kind === "diagnostics"
-      ? createGraphJourney(structureDefinition, {
-          plugins: [createDiagnosticsPlugin()] as const
-        })
-      : kind === "execution-paths"
-        ? createGraphJourney(structureDefinition, {
-            plugins: [createExecutionPathsPlugin()] as const
-          })
-        : kind === "analytics"
-          ? createLinearJourney(pluginDefinition, {
-              plugins: [
-                createAnalyticsPlugin({
-                  machineId: "core-plugin-analytics",
-                  includeStepMeta: true,
-                  track: (event) =>
-                    analyticsStore.push({ name: event.name, payload: event.payload })
-                })
-              ] as const
-            })
-          : kind === "autosave"
-            ? createLinearJourney(pluginDefinition, {
-                plugins: [
-                  createAutosavePlugin({
-                    key: storageKey,
-                    debounceMs: 250,
-                    hydrate: true
-                  })
-                ] as const
-              })
-            : kind === "persistence"
-              ? createLinearJourney(pluginDefinition, {
-                  plugins: [createPersistencePlugin({ key: storageKey, version: 1 })] as const
-                })
-              : createLinearJourney(pluginDefinition, {
-                  plugins: [createReplayPlugin({ maxEntries: 60 })] as const
-                });
-
-  machine.subscribeEvent((event) => {
-    if (kind !== "analytics") {
-      analyticsStore.push({ name: event.type, payload: event });
-    }
-  });
-
-  bindInputState(root, machine);
-
-  const renderPluginPanel = (snapshot: JourneySnapshot<any, any>) => {
+  const renderPluginPanel = () => {
     if (kind === "analytics") {
-      return analyticsStore
+      return eventStore
         .getSnapshot()
         .map(
           (entry) =>
@@ -106,83 +142,60 @@ export const mountCorePluginDemo = async (kind: PluginDemoKind, root: HTMLElemen
     }
 
     if (kind === "autosave") {
-      const autosaveMachine = machine as AnyMachine & {
-        getAutosaveState: () => unknown;
-      };
-      return `<pre class="json">${formatJson(autosaveMachine.getAutosaveState())}</pre><pre class="json">${
+      const autosave = pluginApi.autosave as AutosaveApi;
+      return `<pre class="json">${formatJson(autosave.getAutosaveState())}</pre><pre class="json">${
         createStoragePreview(storageKey) || "No draft persisted yet."
       }</pre>`;
     }
 
     if (kind === "persistence") {
-      return `<pre class="json">${createStoragePreview(storageKey) || "No persisted snapshot yet."}</pre>`;
+      const persistence = pluginApi.persistence as PersistenceApi;
+      return `<pre class="json">${formatJson(persistence.inspectPersistedState())}</pre><pre class="json">${
+        createStoragePreview(storageKey) || "No persisted snapshot yet."
+      }</pre>`;
     }
 
     if (kind === "replay") {
-      const replayMachine = machine as AnyMachine & {
-        getReplaySession: () => unknown;
-        exportReplaySession: (options?: { pretty?: boolean }) => string;
-      };
-      return `<pre class="json">${formatJson(replayMachine.getReplaySession())}</pre><pre class="json">${replayMachine.exportReplaySession(
-        { pretty: true }
-      )}</pre>`;
+      const replay = pluginApi.replay as ReplayApi;
+      return `<pre class="json">${replay.exportReplaySession({ pretty: true })}</pre>`;
     }
 
     if (kind === "diagnostics") {
-      const diagnostics = (
-        machine as AnyMachine & {
-          getDiagnostics: (options?: { requireExplicitCompletion?: boolean }) => {
-            issues: Array<{ code: string; severity: "warning" | "error"; stepId?: string }>;
-            summary: unknown;
-          };
-        }
-      ).getDiagnostics({
-        requireExplicitCompletion: true
-      });
-
+      const diagnostics = (pluginApi.diagnostics as DiagnosticsApi).getDiagnostics();
       return `<div class="log-list">${diagnostics.issues
         .map(
           (issue) =>
             `<div class="issue-item"><strong class="severity-${issue.severity}">${issue.code}</strong> ${
-              issue.stepId ?? "structural"
+              issue.stepId ?? issue.from ?? "structural"
             }</div>`
         )
         .join("")}</div><pre class="json">${formatJson(diagnostics.summary)}</pre>`;
     }
 
-    const executionPaths = (
-      machine as AnyMachine & {
-        getExecutionPaths: (options?: { maxDepth?: number; maxPaths?: number }) => {
-          paths: Array<{ steps: string[]; events: string[]; terminated: string }>;
-          truncated: boolean;
-          cyclesDetected: boolean;
-        };
-      }
-    ).getExecutionPaths({ maxDepth: 10, maxPaths: 20 });
-
-    return `<div class="status-row"><span class="token">paths: ${executionPaths.paths.length}</span><span class="token">truncated: ${String(
-      executionPaths.truncated
-    )}</span><span class="token">cycles: ${String(
-      executionPaths.cyclesDetected
-    )}</span></div><div class="path-list">${executionPaths.paths
-      .map(
-        (path, index) =>
-          `<div class="path-item"><strong>Path ${index + 1}</strong><div class="muted">${path.steps.join(
-            " -> "
-          )}</div><div class="muted">${path.events.join(" -> ") || "No events"}</div><div class="muted">terminated: ${
-            path.terminated
-          }</div></div>`
-      )
-      .join("")}</div>`;
+    const paths = pluginApi["execution-paths"] as ExecutionPathsApi;
+    const renderPath = (steps: readonly string[], label: string) =>
+      `<div class="path-item"><strong>${label}</strong><div class="muted">${steps.join(" -> ") || "(empty)"}</div></div>`;
+    return `<div class="path-list">${[
+      renderPath(paths.getCurrentPath(), "Current run"),
+      ...paths
+        .getCompletedPaths()
+        .map((steps, index) => renderPath(steps, `Finished run ${index + 1}`))
+    ].join("")}</div>`;
   };
 
-  const render = (snapshot = machine.getSnapshot()) => {
-    const statefulControls =
-      kind === "diagnostics" || kind === "execution-paths"
-        ? ""
-        : `<label class="field">Name<input data-field="name" value="${(snapshot.context as PluginContext).name}" /></label>
-           <label class="field">Email<input data-field="email" value="${(snapshot.context as PluginContext).email}" /></label>
-           <label class="field">Notes<textarea data-field="notes">${(snapshot.context as PluginContext).notes}</textarea></label>`;
+  const render = () => {
+    const snapshot = machine.getSnapshot() as JourneySnapshot;
+    const context = snapshot.context as PluginContext;
+    const statefulControls = isStructureDemo(kind)
+      ? ""
+      : `<label class="field">Name<input data-field="name" value="${context.name}" /></label>
+         <label class="field">Email<input data-field="email" value="${context.email}" /></label>
+         <label class="field">Notes<textarea data-field="notes">${context.notes}</textarea></label>`;
+
+    const structureButtons = isStructureDemo(kind)
+      ? `<button data-action="send-next">Send next</button>
+         <button class="secondary" data-action="send-reject">Send reject</button>`
+      : `<button data-action="next">Next</button>`;
 
     root.innerHTML = `
       <div class="app-shell">
@@ -192,7 +205,7 @@ export const mountCorePluginDemo = async (kind: PluginDemoKind, root: HTMLElemen
             <span class="badge badge-plugin">Plugin</span>
           </div>
           <h1>Core ${pluginTitles[kind]}</h1>
-          <p>Prefixed runnable Vite example for the ${pluginTitles[kind].toLowerCase()} using the named journey factories.</p>
+          <p>Runnable Vite example for the ${pluginTitles[kind].toLowerCase()} on the rewritten core.</p>
         </header>
         <div class="split">
           <div class="stack">
@@ -200,13 +213,17 @@ export const mountCorePluginDemo = async (kind: PluginDemoKind, root: HTMLElemen
               <h2>Controls</h2>
               <div class="status-row">
                 <span class="status-pill status-${snapshot.status}">${snapshot.status}</span>
-                <span class="token">step: ${snapshot.currentStepId}</span>
-                <span class="token">visited: ${snapshot.history.timeline.join(" -> ")}</span>
+                <span class="token">step: ${snapshot.currentStep?.id ?? "—"}</span>
+                <span class="token">timeline: ${snapshot.history.timeline.join(" -> ")}</span>
+                ${
+                  snapshot.type === "graph"
+                    ? `<span class="token">events: ${snapshot.availableEvents.join(", ") || "none"}</span>`
+                    : ""
+                }
               </div>
               <div style="margin-top: 1rem">${statefulControls}</div>
               <div class="actions">
-                <button data-action="start">Start</button>
-                <button data-action="next">Next</button>
+                ${structureButtons}
                 <button class="secondary" data-action="previous">Previous</button>
                 <button class="secondary" data-action="reset">Reset</button>
                 ${
@@ -228,7 +245,7 @@ export const mountCorePluginDemo = async (kind: PluginDemoKind, root: HTMLElemen
             </section>
             <section class="card">
               <h2>Plugin Output</h2>
-              <div class="stack">${renderPluginPanel(snapshot)}</div>
+              <div class="stack">${renderPluginPanel()}</div>
             </section>
           </div>
           <div class="stack">
@@ -238,7 +255,7 @@ export const mountCorePluginDemo = async (kind: PluginDemoKind, root: HTMLElemen
             </section>
             <section class="card">
               <h2>Observed Events</h2>
-              <div class="log-list">${analyticsStore
+              <div class="log-list">${eventStore
                 .getSnapshot()
                 .map((entry) => `<div class="log-item">${entry.name}</div>`)
                 .join("")}</div>
@@ -261,31 +278,39 @@ export const mountCorePluginDemo = async (kind: PluginDemoKind, root: HTMLElemen
     }
 
     void (async () => {
-      if (action === "start") await machine.startJourney();
-      if (action === "next") await machine.goToNextStep();
-      if (action === "previous") await machine.goToPreviousStep();
-      if (action === "reset") machine.resetJourney();
+      if (action === "next") await (machine as LinearDemoMachine).navigate.goToNextStep();
+      if (action === "send-next") await (machine as StructureDemoMachine).send("next");
+      if (action === "send-reject") await (machine as StructureDemoMachine).send("reject");
+      if (action === "previous") await machine.navigate.goToPreviousStep();
+      if (action === "reset") {
+        if (machine.getSnapshot().status !== "terminated") {
+          machine.controls.terminate();
+        }
+        machine.controls.restart();
+      }
       if (action === "marker") {
-        (
-          machine as AnyMachine & { trackAnalyticsEvent: (name: string, payload?: unknown) => void }
-        ).trackAnalyticsEvent("manual_marker", { stepId: machine.getSnapshot().currentStepId });
+        pluginApi.analytics?.trackAnalyticsEvent("manual_marker", {
+          stepId: machine.getSnapshot().currentStep?.id ?? null
+        });
       }
       if (action === "flush") {
-        await (machine as AnyMachine & { flushAutosave: () => Promise<void> }).flushAutosave();
+        await pluginApi.autosave?.flushAutosave();
       }
       if (action === "clear-draft") {
-        (machine as AnyMachine & { clearAutosave: () => void }).clearAutosave();
+        pluginApi.autosave?.clearAutosave();
       }
       if (action === "clear-replay") {
-        (machine as AnyMachine & { clearReplaySession: () => void }).clearReplaySession();
+        pluginApi.replay?.clearReplaySession();
       }
       render();
     })();
   });
 
-  machine.subscribe(() => render());
-  analyticsStore.subscribe(() => render());
+  machine.subscriptions.subscribeSelector(
+    (snapshot) => snapshot,
+    () => render()
+  );
+  eventStore.subscribe(() => render());
 
   render();
-  await machine.startJourney();
 };

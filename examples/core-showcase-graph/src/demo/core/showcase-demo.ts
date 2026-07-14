@@ -1,23 +1,37 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
-import {
-  createLinearJourney,
-  createGraphJourney,
-  createHeadlessJourney
-} from "@rxova/journey-core";
+import { createGraphJourney, createLinearJourney } from "@rxova/journey-core";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
+import type {
+  GraphJourneyMachine,
+  JourneySnapshot,
+  JourneySubscriptionEvent,
+  LinearJourneyMachine
+} from "@rxova/journey-core";
 import "../styles/demo.css";
 import {
   authApi,
   graphDefinition,
   headlessDefinition,
   linearDefinition,
+  type AuthEvent,
   type LoginContext,
   type LoginStepId
 } from "../fixtures/auth-fixtures";
 import { formatJson } from "../fixtures/support";
 
 type Mode = "linear" | "graph" | "headless";
+
+type ShowcaseMachine =
+  | LinearJourneyMachine<LoginContext, LoginStepId>
+  | GraphJourneyMachine<LoginContext, LoginStepId, AuthEvent>;
+
+const OBSERVED_EVENTS: readonly JourneySubscriptionEvent[] = [
+  "stepEnter",
+  "stepLeave",
+  "statusChange",
+  "contextChange",
+  "navigationBlocked",
+  "error"
+];
 
 const badgeClass: Record<Mode, string> = {
   linear: "badge-linear",
@@ -31,24 +45,41 @@ const titles: Record<Mode, string> = {
   headless: "Core Showcase Headless"
 };
 
-export const mountCoreShowcase = async (mode: Mode, root: HTMLElement) => {
-  const machine =
+const subtitles: Record<Mode, string> = {
+  linear: "Declared order drives goToNextStep; guards and hooks live on the steps.",
+  graph: "Event-driven transitions: send() is the primary verb, goToStepById is gated.",
+  headless:
+    "A linear machine navigated purely by ungated goToStepById — the reserved headless tier's story (linear = headless + declared order)."
+};
+
+export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
+  const machine: ShowcaseMachine = (
     mode === "linear"
-      ? createLinearJourney(linearDefinition)
+      ? createLinearJourney(linearDefinition, { autoStart: true })
       : mode === "graph"
         ? createGraphJourney(graphDefinition, {
+            autoStart: true,
             plugins: [createExecutionPathsPlugin()] as const
           })
-        : createHeadlessJourney(headlessDefinition);
+        : createLinearJourney(headlessDefinition, { autoStart: true })
+  ) as ShowcaseMachine;
+
+  const isGraph = (
+    candidate: ShowcaseMachine
+  ): candidate is GraphJourneyMachine<LoginContext, LoginStepId, AuthEvent> => "send" in candidate;
 
   const eventLog: string[] = [];
+  for (const eventName of OBSERVED_EVENTS) {
+    machine.subscriptions.subscribeEvent(eventName, () => {
+      eventLog.push(eventName);
+      if (eventLog.length > 30) {
+        eventLog.shift();
+      }
+    });
+  }
 
-  machine.subscribeEvent((event) => {
-    eventLog.push(event.type);
-    if (eventLog.length > 30) {
-      eventLog.shift();
-    }
-  });
+  const currentStepId = (): LoginStepId =>
+    (machine.getSnapshot().currentStep?.id ?? "login") as LoginStepId;
 
   root.addEventListener("input", (event) => {
     const target = event.target;
@@ -61,7 +92,7 @@ export const mountCoreShowcase = async (mode: Mode, root: HTMLElement) => {
       return;
     }
 
-    void machine.updateContext((context: LoginContext) => ({
+    machine.context.update((context) => ({
       ...context,
       [field]: target.value,
       error: field === "verificationCode" ? null : context.error
@@ -71,14 +102,11 @@ export const mountCoreShowcase = async (mode: Mode, root: HTMLElement) => {
   const submitLogin = async (context: LoginContext) => {
     const result = await authApi.login(context.username, context.password);
     if (!result.success) {
-      await machine.updateContext((current: LoginContext) => ({
-        ...current,
-        error: "Login failed"
-      }));
+      machine.context.update((current) => ({ ...current, error: "Login failed" }));
       return;
     }
 
-    await machine.updateContext((current: LoginContext) => ({
+    machine.context.update((current) => ({
       ...current,
       twoFactorMethod: result.method,
       error: null
@@ -86,24 +114,18 @@ export const mountCoreShowcase = async (mode: Mode, root: HTMLElement) => {
 
     if (mode === "linear") {
       const qr = await authApi.generateQrCode();
-      await machine.updateContext((current: LoginContext) => ({
-        ...current,
-        qrCode: qr.qrCode
-      }));
-      await machine.goToNextStep();
+      machine.context.update((current) => ({ ...current, qrCode: qr.qrCode }));
+      await machine.navigate.goToNextStep();
       return;
     }
 
-    if (mode === "graph") {
+    if (isGraph(machine)) {
       if (result.method === "no_2fa") {
         const qr = await authApi.generateQrCode();
-        await machine.updateContext((current: LoginContext) => ({
-          ...current,
-          qrCode: qr.qrCode
-        }));
+        machine.context.update((current) => ({ ...current, qrCode: qr.qrCode }));
       }
 
-      await machine.send({ type: "submitLogin" });
+      await machine.send("submitLogin");
       return;
     }
 
@@ -115,90 +137,84 @@ export const mountCoreShowcase = async (mode: Mode, root: HTMLElement) => {
     if (result.method === "authenticator") {
       nextStep = "authenticatorCode";
       const qr = await authApi.generateQrCode();
-      await machine.updateContext((current: LoginContext) => ({
-        ...current,
-        qrCode: qr.qrCode
-      }));
+      machine.context.update((current) => ({ ...current, qrCode: qr.qrCode }));
     }
 
-    await machine.goToStepById(nextStep);
+    await machine.navigate.goToStepById(nextStep);
   };
 
-  const submitVerification = async (currentStepId: LoginStepId, context: LoginContext) => {
+  const recordFailure = (context: LoginContext) => {
+    const attempts = context.attempts + 1;
+    machine.context.update((current) => ({
+      ...current,
+      attempts,
+      error: attempts >= 3 ? "Too many failed attempts." : "Use 123456."
+    }));
+    return attempts;
+  };
+
+  const submitVerification = async (stepId: LoginStepId, context: LoginContext) => {
     const result = await authApi.verifyCode(context.verificationCode);
 
-    if (mode === "linear") {
-      if (result.success) {
-        await machine.goToNextStep();
-      } else {
-        const attempts = context.attempts + 1;
-        await machine.updateContext((current: LoginContext) => ({
-          ...current,
-          attempts,
-          error: attempts >= 3 ? "Too many failed attempts." : "Use 123456."
-        }));
-        if (attempts >= 3) {
-          await machine.goToNextStep();
-        }
+    if (isGraph(machine)) {
+      const eventByStep: Partial<Record<LoginStepId, [AuthEvent["type"], AuthEvent["type"]]>> = {
+        verifyCode: ["verifyCodeSuccess", "verifyCodeFailure"],
+        emailCode: ["verifyEmailSuccess", "verifyEmailFailure"],
+        authenticatorCode: ["verifyAuthenticatorSuccess", "verifyAuthenticatorFailure"]
+      };
+      const pair = eventByStep[stepId];
+      if (pair) {
+        await machine.send(result.success ? pair[0] : pair[1]);
       }
       return;
     }
 
-    if (mode === "graph") {
-      if (currentStepId === "verifyCode") {
-        await machine.send({ type: result.success ? "verifyCodeSuccess" : "verifyCodeFailure" });
-      }
-      if (currentStepId === "emailCode") {
-        await machine.send({ type: result.success ? "verifyEmailSuccess" : "verifyEmailFailure" });
-      }
-      if (currentStepId === "authenticatorCode") {
-        await machine.send({
-          type: result.success ? "verifyAuthenticatorSuccess" : "verifyAuthenticatorFailure"
-        });
+    if (mode === "linear") {
+      if (result.success) {
+        await machine.navigate.goToNextStep();
+      } else if (recordFailure(context) >= 3) {
+        await machine.navigate.goToNextStep();
       }
       return;
     }
 
     if (result.success) {
-      await machine.goToStepById("loggedIn");
-      return;
-    }
-
-    const attempts = context.attempts + 1;
-    await machine.updateContext((current: LoginContext) => ({
-      ...current,
-      attempts,
-      error: attempts >= 3 ? "Too many failed attempts." : "Use 123456."
-    }));
-
-    if (attempts >= 3) {
-      await machine.goToStepById("blocked");
+      await machine.navigate.goToStepById("loggedIn");
+    } else if (recordFailure(context) >= 3) {
+      await machine.navigate.goToStepById("blocked");
     }
   };
 
-  const renderStep = (snapshot: ReturnType<typeof machine.getSnapshot>) => {
-    const context = snapshot.context as LoginContext;
-    const currentStepId = snapshot.currentStepId as LoginStepId;
+  const resetJourney = () => {
+    if (machine.getSnapshot().status !== "terminated") {
+      machine.controls.terminate();
+    }
+    machine.controls.restart();
+  };
 
-    if (currentStepId === "login") {
+  const renderStep = (snapshot: JourneySnapshot<LoginContext, LoginStepId>) => {
+    const context = snapshot.context;
+    const stepId = currentStepId();
+
+    if (stepId === "login") {
       return `
         <div class="step-view">
           <h3 class="step-title">Login</h3>
-          <p class="muted">Use a username with different lengths to branch between no_2fa, email, and authenticator.</p>
-          <label class="field">Username<input data-field="username" value="${context.username}" placeholder="alice" /></label>
-          <label class="field">Password<input data-field="password" value="${context.password}" placeholder="password" /></label>
+          <p class="muted">Password "blocked" fails; username length picks the 2FA method.</p>
+          <label class="field">Username<input data-field="username" value="${context.username}" /></label>
+          <label class="field">Password<input data-field="password" type="password" value="${context.password}" /></label>
           ${context.error ? `<div class="severity-error">${context.error}</div>` : ""}
           <div class="actions"><button data-action="login">Sign In</button></div>
         </div>
       `;
     }
 
-    if (currentStepId === "setup2fa") {
+    if (stepId === "setup2fa") {
       return `
         <div class="step-view">
           <h3 class="step-title">Setup 2FA</h3>
-          <p class="muted">Scan the QR code and continue.</p>
-          <pre class="json">${context.qrCode ?? "Generating QR code..."}</pre>
+          <p class="muted">Scan the code, then continue to verification.</p>
+          <pre class="json">${context.qrCode ?? "Generating…"}</pre>
           <div class="actions">
             <button class="secondary" data-action="back">Back</button>
             <button data-action="continue-setup">Continue</button>
@@ -207,14 +223,10 @@ export const mountCoreShowcase = async (mode: Mode, root: HTMLElement) => {
       `;
     }
 
-    if (
-      currentStepId === "verifyCode" ||
-      currentStepId === "emailCode" ||
-      currentStepId === "authenticatorCode"
-    ) {
+    if (stepId === "verifyCode" || stepId === "emailCode" || stepId === "authenticatorCode") {
       return `
         <div class="step-view">
-          <h3 class="step-title">${currentStepId}</h3>
+          <h3 class="step-title">${stepId}</h3>
           <p class="muted">Use 123456 to succeed.</p>
           <label class="field">Verification Code<input data-field="verificationCode" value="${context.verificationCode}" /></label>
           ${context.error ? `<div class="severity-error">${context.error}</div>` : ""}
@@ -227,7 +239,7 @@ export const mountCoreShowcase = async (mode: Mode, root: HTMLElement) => {
       `;
     }
 
-    if (currentStepId === "loggedIn") {
+    if (stepId === "loggedIn") {
       return `
         <div class="step-view">
           <h3 class="step-title">Logged In</h3>
@@ -246,18 +258,24 @@ export const mountCoreShowcase = async (mode: Mode, root: HTMLElement) => {
     `;
   };
 
+  const renderExecutionPaths = () => {
+    if (!isGraph(machine)) {
+      return "";
+    }
+    const api = machine.plugins["execution-paths" as never] as {
+      getCurrentPath(): readonly string[];
+      getCompletedPaths(): readonly (readonly string[])[];
+    };
+    const renderPath = (steps: readonly string[], label: string) =>
+      `<div class="path-item"><strong>${label}</strong><div class="muted">${steps.join(" -> ") || "(empty)"}</div></div>`;
+    return `<section class="card"><h2>Execution Paths</h2><div class="path-list">${[
+      renderPath(api.getCurrentPath(), "Current run"),
+      ...api.getCompletedPaths().map((steps, index) => renderPath(steps, `Finished run ${index + 1}`))
+    ].join("")}</div></section>`;
+  };
+
   const render = () => {
-    const snapshot = machine.getSnapshot();
-    const executionPaths =
-      mode === "graph" && "getExecutionPaths" in machine
-        ? (
-            machine as typeof machine & {
-              getExecutionPaths: (options?: { maxDepth?: number; maxPaths?: number }) => {
-                paths: Array<{ steps: string[]; events: string[]; terminated: string }>;
-              };
-            }
-          ).getExecutionPaths({ maxDepth: 12, maxPaths: 20 })
-        : null;
+    const snapshot = machine.getSnapshot() as JourneySnapshot<LoginContext, LoginStepId>;
 
     root.innerHTML = `
       <div class="app-shell">
@@ -267,7 +285,7 @@ export const mountCoreShowcase = async (mode: Mode, root: HTMLElement) => {
             <span class="badge ${badgeClass[mode]}">${mode}</span>
           </div>
           <h1>${titles[mode]}</h1>
-          <p>Framework-free Vite example that renders the same scenario shape without React.</p>
+          <p>${subtitles[mode]}</p>
         </header>
         <div class="split">
           <div class="stack">
@@ -275,25 +293,17 @@ export const mountCoreShowcase = async (mode: Mode, root: HTMLElement) => {
               <h2>Runtime</h2>
               <div class="status-row">
                 <span class="status-pill status-${snapshot.status}">${snapshot.status}</span>
-                <span class="token">step: ${snapshot.currentStepId}</span>
+                <span class="token">step: ${snapshot.currentStep?.id ?? "—"}</span>
                 <span class="token">timeline: ${snapshot.history.timeline.join(" -> ")}</span>
+                ${
+                  snapshot.type === "graph"
+                    ? `<span class="token">events: ${snapshot.availableEvents.join(", ") || "none"}</span>`
+                    : ""
+                }
               </div>
               <div style="margin-top: 1rem">${renderStep(snapshot)}</div>
             </section>
-            ${
-              executionPaths
-                ? `<section class="card"><h2>Execution Paths</h2><div class="path-list">${executionPaths.paths
-                    .map(
-                      (path, index) =>
-                        `<div class="path-item"><strong>Path ${index + 1}</strong><div class="muted">${path.steps.join(
-                          " -> "
-                        )}</div><div class="muted">${path.events.join(" -> ") || "No events"}</div><div class="muted">terminated: ${
-                          path.terminated
-                        }</div></div>`
-                    )
-                    .join("")}</div></section>`
-                : ""
-            }
+            ${renderExecutionPaths()}
           </div>
           <div class="stack">
             <section class="card">
@@ -323,25 +333,26 @@ export const mountCoreShowcase = async (mode: Mode, root: HTMLElement) => {
       return;
     }
 
-    const snapshot = machine.getSnapshot();
-    const context = snapshot.context as LoginContext;
-    const currentStepId = snapshot.currentStepId as LoginStepId;
+    const context = machine.getSnapshot().context;
+    const stepId = currentStepId();
 
     void (async () => {
       if (action === "login") await submitLogin(context);
-      if (action === "back") await machine.goToPreviousStep();
+      if (action === "back") await machine.navigate.goToPreviousStep();
       if (action === "continue-setup") {
-        if (mode === "graph") await machine.send({ type: "setup2fa" });
-        else if (mode === "headless") await machine.goToStepById("verifyCode");
-        else await machine.goToNextStep();
+        if (isGraph(machine)) await machine.send("setup2fa");
+        else if (mode === "headless") await machine.navigate.goToStepById("verifyCode");
+        else await machine.navigate.goToNextStep();
       }
-      if (action === "verify") await submitVerification(currentStepId, context);
-      if (action === "reset") machine.resetJourney();
+      if (action === "verify") await submitVerification(stepId, context);
+      if (action === "reset") resetJourney();
       render();
     })();
   });
 
-  machine.subscribe(() => render());
+  machine.subscriptions.subscribeSelector(
+    (snapshot) => snapshot,
+    () => render()
+  );
   render();
-  await machine.startJourney();
 };
