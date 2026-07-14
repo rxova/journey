@@ -115,10 +115,11 @@ export default defineConfig({
   },
   test: {
     include: [
-      "packages/**/src/**/__tests__/**/*.test.ts",
+      "packages/**/src/**/__tests__/**/*.test.{ts,tsx}",
       "packages/**/test/**/*.test.ts",
       "packages/**/test/**/*.test.tsx",
       "packages/common/**/*.test.ts",
+      "apps/**/src/**/__tests__/**/*.test.{ts,tsx}",
       "apps/**/test/**/*.test.ts",
       "apps/**/test/**/*.test.tsx",
       // The repo's own tooling. These sit next to the scripts they cover rather
