@@ -58,7 +58,7 @@
   "scripts": {
     "build": "pnpm run clean && node --import tsx ./scripts/build.ts && tsc -p tsconfig.build.json && node --import tsx ../common/tooling/copy-types.ts dist",
     "clean": "node --import tsx ../common/tooling/clean-paths.ts dist tsconfig.build.tsbuildinfo",
-    "coverage": "JOURNEY_COVERAGE_INCLUDE=packages/devtools-bridge/src/** pnpm --workspace-root vitest run packages/devtools-bridge/test --coverage --coverage.reporter=text-summary",
+    "coverage": "JOURNEY_COVERAGE_INCLUDE=packages/devtools-bridge/src/** pnpm --workspace-root vitest run packages/devtools-bridge/src --coverage --coverage.reporter=text-summary",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "publint": "publint",
     "attw": "attw --pack .",

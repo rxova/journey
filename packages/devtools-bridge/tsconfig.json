@@ -4,8 +4,8 @@
     "noEmit": true,
     "paths": {
       "@rxova/journey-core": ["../core/src/index.ts"],
-      "@rxova/journey-core/execution-paths": ["../core/src/plugins/execution-paths/index.ts"],
-      "@rxova/journey-core/persistence": ["../core/src/plugins/persistence/index.ts"],
+      "@rxova/journey-devtools-bridge": ["./src/index.ts"],
+      "@rxova/journey-devtools-bridge/testing": ["./src/__tests__/helpers.ts"],
       "@rxova/journey-common": ["../common/src/index.ts"],
       "@rxova/journey-common/*": ["../common/src/*.ts"]
     }
