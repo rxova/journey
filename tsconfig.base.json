@@ -29,6 +29,7 @@
       "@rxova/journey-core/replay": ["./packages/core/src/plugins/replay/index.ts"],
       "@rxova/journey-react": ["./packages/react/src/index.ts"],
       "@rxova/journey-react/headless": ["./packages/react/src/headless/index.ts"],
+      "@rxova/journey-react/graph": ["./packages/react/src/graph/index.ts"],
       "@rxova/journey-devtools-bridge": ["./packages/devtools-bridge/src/index.ts"],
       "@rxova/journey-common": ["./packages/common/src/index.ts"],
       "@rxova/journey-common/*": ["./packages/common/src/*.ts"]

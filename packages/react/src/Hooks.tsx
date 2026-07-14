@@ -185,6 +185,9 @@ export const createJourneyHooks = <
         clearStepError: runtimeMachine.clearStepError,
         updateContext: runtimeMachine.updateContext,
         getStepMeta: runtimeMachine.getStepMeta,
+        pauseJourney: runtimeMachine.pauseJourney,
+        resumeJourney: runtimeMachine.resumeJourney,
+        isPaused: runtimeMachine.isPaused,
         resetJourney: () => runtimeMachine.resetJourney()
       }),
       [runtimeMachine]
@@ -215,6 +218,9 @@ export const createJourneyHooks = <
         clearStepError: runtimeMachine.clearStepError,
         updateContext: runtimeMachine.updateContext,
         getStepMeta: runtimeMachine.getStepMeta,
+        pauseJourney: runtimeMachine.pauseJourney,
+        resumeJourney: runtimeMachine.resumeJourney,
+        isPaused: runtimeMachine.isPaused,
         resetJourney: () => runtimeMachine.resetJourney()
       }),
       [runtimeMachine]

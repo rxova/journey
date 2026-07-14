@@ -52,6 +52,10 @@ export default defineConfig({
         replacement: fileURLToPath(new URL("./packages/core/src/index.ts", import.meta.url))
       },
       {
+        find: "@rxova/journey-react/graph",
+        replacement: fileURLToPath(new URL("./packages/react/src/graph/index.ts", import.meta.url))
+      },
+      {
         find: "@rxova/journey-react/headless",
         replacement: fileURLToPath(
           new URL("./packages/react/src/headless/index.ts", import.meta.url)
