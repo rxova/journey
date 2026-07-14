@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { normalizeDebounceMs } from "../autosave.helpers";
+import { normalizeDebounceMs } from "@rxova/journey-core/autosave";
 import { createLinearJourney } from "@rxova/journey-core";
 import { createAutosavePlugin } from "@rxova/journey-core/autosave";
 import type { JourneyStorage } from "@rxova/journey-core/persistence";
-import { flush, wait } from "../../../__tests__/helpers";
+import { flush, wait } from "@rxova/journey-core/testing";
 
 function memoryStorage(): JourneyStorage & { dump(): Map<string, string> } {
   const data = new Map<string, string>();

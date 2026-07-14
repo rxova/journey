@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createGraphJourney, MAX_RAISED_EVENTS } from "@rxova/journey-core";
-import { flush, wait } from "../../__tests__/helpers";
+import { flush, wait } from "@rxova/journey-core/testing";
 
 type Ctx = { valid: boolean; confirmed: boolean; retries: number };
 

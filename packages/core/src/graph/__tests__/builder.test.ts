@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createGraphJourney, createGraphJourneyBuilder } from "@rxova/journey-core";
-import { flush } from "../../__tests__/helpers";
+import { flush } from "@rxova/journey-core/testing";
 
 type LoginContext = { attempts: number; error: string | null };
 type StepId = "login" | "verifyCode" | "loggedIn" | "blocked";

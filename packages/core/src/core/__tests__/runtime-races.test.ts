@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createGraphJourney, createLinearJourney, type JourneyPlugin } from "@rxova/journey-core";
-import { flush, wait } from "../../__tests__/helpers";
+import { flush, wait } from "@rxova/journey-core/testing";
 
 describe("runtime race branches", () => {
   it("dispose during a pending onLeave resolves the in-flight navigation as disposed", async () => {

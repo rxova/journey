@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createLinearJourney } from "@rxova/journey-core";
-import { flush, startedLinear, wait } from "../../__tests__/helpers";
+import { flush, startedLinear, wait } from "@rxova/journey-core/testing";
 
 describe("lifecycle meta-state-machine", () => {
   it("starts idle with no current step (autoStart defaults to false)", () => {

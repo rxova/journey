@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createLinearJourney } from "@rxova/journey-core";
 import { createReplayPlugin, serializeReplaySession } from "@rxova/journey-core/replay";
-import { flush } from "../../../__tests__/helpers";
+import { flush } from "@rxova/journey-core/testing";
 
 describe("replay plugin", () => {
   it("records lifecycle activity into an exportable session", async () => {

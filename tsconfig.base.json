@@ -19,6 +19,7 @@
     "resolveJsonModule": true,
     "paths": {
       "@rxova/journey-core": ["./packages/core/src/index.ts"],
+      "@rxova/journey-core/testing": ["./packages/core/src/__tests__/helpers.ts"],
       "@rxova/journey-core/analytics": ["./packages/core/src/plugins/analytics/analytics.ts"],
       "@rxova/journey-core/autosave": ["./packages/core/src/plugins/autosave/autosave.ts"],
       "@rxova/journey-core/diagnostics": ["./packages/core/src/plugins/diagnostics/diagnostics.ts"],
