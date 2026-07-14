@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createGraphJourney, createGraphJourneyBuilder } from "@rxova/journey-core";
-import { flush } from "./helpers";
+import { flush } from "../../__tests__/helpers";
 
 type LoginContext = { attempts: number; error: string | null };
 type StepId = "login" | "verifyCode" | "loggedIn" | "blocked";
@@ -127,5 +127,37 @@ describe("createGraphJourneyBuilder", () => {
         steps: [loginStep, loginStep]
       })
     ).toThrow(/duplicate step id "login"/);
+  });
+});
+
+describe("builder step hooks", () => {
+  it("onEnter/onLeave authored through the builder run in the runtime", async () => {
+    const bag = createGraphJourneyBuilder<{
+      context: { log: string[] };
+      stepId: "a" | "b";
+      events: { type: "GO" };
+    }>();
+
+    const definition = bag.build({
+      initial: "a",
+      context: { log: [] },
+      steps: [
+        bag.createStep("a", {
+          onLeave: ({ updateContext }) =>
+            void updateContext((c) => ({ log: [...c.log, "leave:a"] })),
+          on: { GO: [bag.to("b")] }
+        }),
+        bag.createStep("b", {
+          onEnter: ({ updateContext }) =>
+            void updateContext((c) => ({ log: [...c.log, "enter:b"] }))
+        })
+      ]
+    });
+
+    const machine = createGraphJourney(definition);
+    machine.controls.start();
+    await flush();
+    await machine.send("GO");
+    expect(machine.getSnapshot().context.log).toEqual(["leave:a", "enter:b"]);
   });
 });

@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { parsePersistedState } from "../persistence.helpers";
 import { createLinearJourney } from "@rxova/journey-core";
 import { createPersistencePlugin } from "@rxova/journey-core/persistence";
 import type { JourneyStorage } from "@rxova/journey-core/persistence";
-import { flush } from "./helpers";
+import { flush } from "../../../__tests__/helpers";
 
 function memoryStorage(): JourneyStorage & { dump(): Map<string, string> } {
   const data = new Map<string, string>();
@@ -68,5 +69,21 @@ describe("persistence plugin", () => {
     expect(machine.plugins.persistence.readPersisted()).toBeNull();
     storage.dump().set("journey", JSON.stringify({ foreign: true }));
     expect(machine.plugins.persistence.readPersisted()).toBeNull();
+  });
+});
+
+describe("parsePersistedState", () => {
+  it("rejects non-object and incomplete payloads", () => {
+    expect(parsePersistedState("42")).toBeNull();
+    expect(parsePersistedState("null")).toBeNull();
+    expect(parsePersistedState(JSON.stringify({ status: "running" }))).toBeNull();
+  });
+});
+
+describe("terminate without clearOnTerminate", () => {
+  it("keeps the entry and persists the terminated status", async () => {
+    const { machine } = await startedWithPersistence();
+    machine.controls.terminate();
+    expect(machine.plugins.persistence.readPersisted()).toMatchObject({ status: "terminated" });
   });
 });

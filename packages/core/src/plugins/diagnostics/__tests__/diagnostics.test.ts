@@ -93,3 +93,40 @@ describe("diagnostics plugin", () => {
     expect(result.summary.graphChecksSkipped).toBe(true);
   });
 });
+
+describe("diagnostics traversal edges", () => {
+  it("deduplicates cycles reached from multiple entry points", () => {
+    // a -> b -> c -> b (cycle entered twice: via b directly and via c)
+    const result = getGraphDiagnostics({
+      steps: { a: {}, b: {}, c: {}, done: {} },
+      transitions: {
+        START: { from: "a", to: "b" },
+        NEXT: { from: "b", to: "c" },
+        BACK: { from: "c", to: "b" },
+        SKIP: { from: "a", to: "c" },
+        FINISH: { from: "c", to: "done" }
+      },
+      initial: "a"
+    });
+    expect(result.summary.cycleCount).toBe(1);
+    expect(result.summary.terminalPathExists).toBe(true);
+  });
+});
+
+describe("guarded transitions", () => {
+  it("guarded candidates never shadow later ones", () => {
+    const result = getGraphDiagnostics({
+      steps: { a: {}, b: {}, done: {} },
+      transitions: {
+        GO: [
+          { from: "a", to: "done", when: () => false }, // guarded: not a shadow
+          { from: "a", to: "b" }
+        ],
+        FINISH: { from: "b", to: "done" }
+      },
+      initial: "a"
+    });
+    expect(result.summary.shadowedTransitionCount).toBe(0);
+    expect(result.issues).toEqual([]);
+  });
+});

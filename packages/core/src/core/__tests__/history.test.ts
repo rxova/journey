@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createLinearJourney } from "@rxova/journey-core";
-import { flush, startedLinear } from "./helpers";
+import { flush, startedLinear } from "../../__tests__/helpers";
 
 describe("timeline history (browser model)", () => {
   it("forward navigation appends to the timeline", async () => {

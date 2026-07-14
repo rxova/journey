@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { normalizeDebounceMs } from "../autosave.helpers";
 import { createLinearJourney } from "@rxova/journey-core";
 import { createAutosavePlugin } from "@rxova/journey-core/autosave";
 import type { JourneyStorage } from "@rxova/journey-core/persistence";
-import { flush, wait } from "./helpers";
+import { flush, wait } from "../../../__tests__/helpers";
 
 function memoryStorage(): JourneyStorage & { dump(): Map<string, string> } {
   const data = new Map<string, string>();
@@ -145,5 +146,15 @@ describe("autosave plugin", () => {
     machine.dispose();
     await wait(30);
     expect(storage.dump().size).toBe(0);
+  });
+});
+
+describe("normalizeDebounceMs", () => {
+  it("falls back for non-finite values and clamps negatives", () => {
+    expect(normalizeDebounceMs(Number.NaN)).toBe(300);
+    expect(normalizeDebounceMs(undefined)).toBe(300);
+    expect(normalizeDebounceMs(Number.POSITIVE_INFINITY)).toBe(300);
+    expect(normalizeDebounceMs(-5)).toBe(0);
+    expect(normalizeDebounceMs(12.7)).toBe(12);
   });
 });

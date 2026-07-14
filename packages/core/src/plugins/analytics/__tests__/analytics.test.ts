@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createLinearJourney } from "@rxova/journey-core";
 import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
 import type { AnalyticsTrackedEvent } from "@rxova/journey-core/analytics";
-import { flush } from "./helpers";
+import { flush } from "../../../__tests__/helpers";
 
 async function startedWithAnalytics(track: (event: AnalyticsTrackedEvent) => void) {
   const machine = createLinearJourney(
@@ -108,5 +108,20 @@ describe("analytics plugin", () => {
     expect(onError).toHaveBeenCalled();
     const recent = machine.plugins.analytics.getRecentEvents();
     expect(recent.every((entry) => entry.success === false)).toBe(true);
+  });
+});
+
+describe("analytics recent-events buffer", () => {
+  it("is capped at 100 entries, dropping the oldest", () => {
+    const machine = createLinearJourney(
+      { steps: ["a"], context: {} },
+      { plugins: [createAnalyticsPlugin({ track: () => undefined })] as const }
+    );
+    for (let index = 0; index < 130; index += 1) {
+      machine.plugins.analytics.trackAnalyticsEvent(`event-${index}`);
+    }
+    const recent = machine.plugins.analytics.getRecentEvents();
+    expect(recent).toHaveLength(100);
+    expect(recent[0]?.tracked.name).toBe("event-30");
   });
 });

@@ -115,6 +115,7 @@ export default defineConfig({
   },
   test: {
     include: [
+      "packages/**/src/**/__tests__/**/*.test.ts",
       "packages/**/test/**/*.test.ts",
       "packages/**/test/**/*.test.tsx",
       "packages/common/**/*.test.ts",
@@ -139,7 +140,7 @@ export default defineConfig({
         lines: 95
       },
       include: coverageInclude,
-      exclude: ["**/*.d.ts", "packages/**/types.ts", "packages/**/*.types.ts", "packages/*/src/types/**/*.ts"]
+      exclude: ["**/*.d.ts", "packages/**/types.ts", "packages/**/*.types.ts", "**/__tests__/**", "packages/*/src/types/**/*.ts"]
     }
   }
 });
