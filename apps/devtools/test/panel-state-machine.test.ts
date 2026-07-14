@@ -40,6 +40,7 @@ const createSnapshot = (
   context: JourneyJsonObject = {},
   status: "idled" | "running" | "completed" | "terminated" = "running"
 ): JourneyDevtoolsSerializableSnapshot => ({
+  type: "graph",
   currentStepId,
   history: { timeline: [currentStepId], index: 0 },
   context,

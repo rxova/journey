@@ -101,6 +101,7 @@ const createRegisterEnvelope = (
     features: []
   },
   snapshot: {
+    type: "graph",
     currentStepId: "start",
     history: { timeline: ["start"], index: 0 },
     context: {},

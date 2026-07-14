@@ -19,6 +19,7 @@ export type JourneyDefinitionErrorCode =
   | "invalid-effect"
   | "invalid-after"
   | "invalid-context"
+  | "invalid-initial-snapshot"
   | "self-transition";
 
 /**

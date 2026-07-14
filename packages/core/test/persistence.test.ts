@@ -776,6 +776,7 @@ describe("persistence", () => {
     const { storage } = createStorage();
     const controller = createPersistenceController({
       initial: "start" as StepId,
+      shape: { type: "graph" },
       context: { count: 0 },
       steps: {
         start: {},
@@ -797,6 +798,7 @@ describe("persistence", () => {
     const { storage } = createStorage();
     const controller = createPersistenceController({
       initial: "start" as StepId,
+      shape: { type: "graph" },
       context: { count: 0 },
       steps: {
         start: {},
@@ -810,6 +812,7 @@ describe("persistence", () => {
     });
 
     const baseSnapshot = {
+      type: "graph" as const,
       currentStepId: "details" as StepId,
       history: {
         timeline: ["start", "details"] as const,
@@ -842,6 +845,7 @@ describe("persistence", () => {
   it("createPersistenceController no-ops cleanly when persistence options are omitted", () => {
     const controller = createPersistenceController({
       initial: "start" as StepId,
+      shape: { type: "graph" },
       context: { count: 0 },
       steps: {
         start: {},
@@ -1438,6 +1442,7 @@ describe("persistence", () => {
 
     const nonArrayController = createPersistenceController({
       initial: "start" as StepId,
+      shape: { type: "graph" },
       context: { count: 0 },
       steps: {
         start: {},
@@ -1453,6 +1458,7 @@ describe("persistence", () => {
     });
     const wildcardController = createPersistenceController({
       initial: "start" as StepId,
+      shape: { type: "graph" },
       context: { count: 0 },
       steps: {
         start: {},
@@ -1488,6 +1494,7 @@ describe("persistence", () => {
 
     const nonStringController = createPersistenceController({
       initial: "start" as StepId,
+      shape: { type: "graph" },
       context: { count: 0 },
       steps: {
         start: {},
@@ -1503,6 +1510,7 @@ describe("persistence", () => {
     });
     const emptyController = createPersistenceController({
       initial: "start" as StepId,
+      shape: { type: "graph" },
       context: { count: 0 },
       steps: {
         start: {},
@@ -1584,6 +1592,7 @@ describe("persistence", () => {
 
     const controller = createPersistenceController({
       initial: "start" as StepId,
+      shape: { type: "graph" },
       context: { count: 0 },
       steps: {
         start: {},
@@ -1607,6 +1616,7 @@ describe("persistence", () => {
     const { storage, store } = createStorage();
     const controller = createPersistenceController({
       initial: "start" as StepId,
+      shape: { type: "graph" },
       context: { count: 0 },
       steps: {
         start: {},
@@ -1642,6 +1652,7 @@ describe("persistence", () => {
 
     const controller = createPersistenceController({
       initial: "start" as StepId,
+      shape: { type: "graph" },
       context: { count: 7 },
       steps: {
         start: {},
@@ -1682,6 +1693,7 @@ describe("persistence", () => {
 
     const controller = createPersistenceController({
       initial: "start" as StepId,
+      shape: { type: "graph" },
       context: { count: 0 },
       steps: {
         start: {},

@@ -11,6 +11,7 @@ type Context = { count: number };
 type Snapshot = JourneySnapshot<Context, StepId>;
 
 const createSnapshot = (currentStepId: StepId = "start"): Snapshot => ({
+  type: "graph",
   currentStepId,
   history: {
     timeline: currentStepId === "start" ? ["start"] : ["start", "review"],
@@ -158,6 +159,7 @@ describe("machine runtime", () => {
     type RichSnapshot = JourneySnapshot<RichContext, StepId>;
 
     const createRichSnapshot = (currentStepId: StepId = "start"): RichSnapshot => ({
+      type: "graph",
       currentStepId,
       history: {
         timeline: currentStepId === "start" ? ["start"] : ["start", "review"],

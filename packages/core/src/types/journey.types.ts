@@ -263,7 +263,19 @@ export type JourneyHistory<TStepId extends string> = {
   index: number;
 };
 
-/** Core snapshot state without async execution details. */
+/**
+ * Discriminator identifying which snapshot family a machine emits. Linear
+ * machines emit `"linear"`; graph AND headless machines emit `"graph"` —
+ * headless is the graph runtime without a rendering opinion, not a third
+ * snapshot format.
+ */
+export type JourneySnapshotType = "linear" | "graph";
+
+/**
+ * Core snapshot fields shared by every snapshot variant, without async
+ * execution details. These fields have identical semantics across the linear
+ * and graph families; the base only grows by agreement of both.
+ */
 export type JourneySnapshotStateBase<TContext extends JourneyJsonObject, TStepId extends string> = {
   currentStepId: TStepId;
   history: JourneyHistory<TStepId>;
@@ -272,13 +284,49 @@ export type JourneySnapshotStateBase<TContext extends JourneyJsonObject, TStepId
   status: JourneyStatus;
 };
 
-/** Serializable runtime snapshot of the journey state. */
-export type JourneySnapshot<
+/** Serializable snapshot state emitted by linear machines. */
+export type LinearJourneySnapshotState<
   TContext extends JourneyJsonObject,
   TStepId extends string
 > = JourneySnapshotStateBase<TContext, TStepId> & {
+  type: "linear";
+  /** Authoritative step order — makes a persisted linear snapshot self-describing. */
+  stepOrder: readonly TStepId[];
+};
+
+/** Serializable snapshot state emitted by graph and headless machines. */
+export type GraphJourneySnapshotState<
+  TContext extends JourneyJsonObject,
+  TStepId extends string
+> = JourneySnapshotStateBase<TContext, TStepId> & {
+  type: "graph";
+};
+
+/** Serializable snapshot state — the persisted form, discriminated on `type`. */
+export type JourneySnapshotState<TContext extends JourneyJsonObject, TStepId extends string> =
+  | LinearJourneySnapshotState<TContext, TStepId>
+  | GraphJourneySnapshotState<TContext, TStepId>;
+
+/** Runtime snapshot emitted by linear machines. */
+export type LinearJourneySnapshot<
+  TContext extends JourneyJsonObject,
+  TStepId extends string
+> = LinearJourneySnapshotState<TContext, TStepId> & {
   async: JourneyAsyncState<TStepId>;
 };
+
+/** Runtime snapshot emitted by graph and headless machines. */
+export type GraphJourneySnapshot<
+  TContext extends JourneyJsonObject,
+  TStepId extends string
+> = GraphJourneySnapshotState<TContext, TStepId> & {
+  async: JourneyAsyncState<TStepId>;
+};
+
+/** Runtime snapshot of the journey state, discriminated on `type`. */
+export type JourneySnapshot<TContext extends JourneyJsonObject, TStepId extends string> =
+  | LinearJourneySnapshot<TContext, TStepId>
+  | GraphJourneySnapshot<TContext, TStepId>;
 
 /** Common read-only computed state exposed by a machine instance. */
 export type JourneyComputedBase<TStepId extends string> = {
@@ -452,11 +500,16 @@ export type JourneyExecutionPathOptions = {
   maxPaths?: number;
 };
 
+/** Reasons a send/navigation call resolved as a deliberate no-op. */
+export type JourneySendNoOpReason = "paused";
+
 /** Result returned from send/navigation APIs. */
 export type JourneySendResult<TContext extends JourneyJsonObject, TStepId extends string> = {
   transitioned: boolean;
   transitionId?: string;
   label?: string;
   error?: unknown;
+  /** Present when the machine deliberately ignored the call (e.g. while paused). */
+  noOpReason?: JourneySendNoOpReason;
   snapshot: JourneySnapshot<TContext, TStepId>;
 };

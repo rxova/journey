@@ -20,6 +20,7 @@ type TestEvent = JourneyEvent<string, TestEventMap>;
 describe("machine helpers", () => {
   it("buildSnapshot clamps index and resolves current", () => {
     const snapshot = buildSnapshot(
+      { type: "graph" },
       ["a", "b", "c"],
       99,
       { count: 1 },
@@ -42,6 +43,7 @@ describe("machine helpers", () => {
 
   it("transitionSnapshot truncates future tail before appending", () => {
     const initial = buildSnapshot(
+      { type: "graph" },
       ["a", "b", "c", "d"],
       1,
       { count: 0 },
@@ -61,7 +63,14 @@ describe("machine helpers", () => {
 
   it("buildSnapshot throws for an empty timeline", () => {
     expect(() =>
-      buildSnapshot([], 0, { count: 0 }, "running", buildInitialAsyncState({ a: {}, b: {} }))
+      buildSnapshot(
+        { type: "graph" },
+        [],
+        0,
+        { count: 0 },
+        "running",
+        buildInitialAsyncState({ a: {}, b: {} })
+      )
     ).toThrow(/timeline cannot be empty/i);
   });
 
@@ -76,6 +85,7 @@ describe("machine helpers", () => {
 
   it("stabilizeSnapshot clones and freezes snapshot branches", () => {
     const source = buildSnapshot(
+      { type: "graph" },
       ["a", "b"],
       0,
       {
@@ -97,6 +107,7 @@ describe("machine helpers", () => {
 
   it("selectTransition calls async guard hooks on success and error", async () => {
     const snapshot = buildSnapshot(
+      { type: "graph" },
       ["a", "b"],
       0,
       { count: 0 },

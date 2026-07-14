@@ -9,6 +9,7 @@ import {
 
 import type { JourneyBaseEvent, JourneyJsonObject, JourneySnapshot } from "../types";
 import type { JourneyMachineAsyncStateController } from "./async-state";
+import type { JourneySnapshotShape } from "./helpers";
 import type { JourneyMachineRuntime } from "./runtime";
 
 /**
@@ -40,13 +41,15 @@ export const createJourneyMachineControls = <
   asyncState,
   initial,
   initialContext,
-  steps
+  steps,
+  snapshotShape
 }: {
   runtime: JourneyMachineRuntime<TContext, TStepId, TEvents>;
   asyncState: JourneyMachineAsyncStateController<TStepId>;
   initial: TStepId;
   initialContext: TContext;
   steps: Record<TStepId, unknown>;
+  snapshotShape: JourneySnapshotShape<TStepId>;
 }): JourneyMachineControls<TContext, TStepId> => {
   const warnDisposedNoop = (operation: string) => {
     warnInDevelopment(`Journey machine has been disposed; "${operation}" is a no-op.`);
@@ -58,6 +61,7 @@ export const createJourneyMachineControls = <
 
   const buildResetSnapshot = () =>
     buildSnapshot(
+      snapshotShape,
       [initial],
       0,
       cloneContext(initialContextSnapshot),

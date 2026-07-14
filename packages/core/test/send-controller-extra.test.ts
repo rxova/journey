@@ -18,6 +18,7 @@ type EventMap = { type: "custom"; payload?: { amount: number } };
 
 const createSnapshot = (status: "idled" | "running" = "running") =>
   buildSnapshot(
+    { type: "graph" },
     ["start"],
     0,
     { count: 0 },
@@ -68,6 +69,7 @@ const createNavigation = () =>
     commitTerminalTransition: vi.fn((_from, to) =>
       buildSendResult(
         buildSnapshot(
+          { type: "graph" },
           ["start"],
           0,
           { count: 0 },

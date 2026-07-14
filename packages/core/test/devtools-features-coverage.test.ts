@@ -396,6 +396,7 @@ describe("package devtools feature coverage", () => {
     expect(
       createPersistenceController({
         initial: "start" as "start" | "review",
+        shape: { type: "graph" },
         context: { count: 0 },
         steps: { start: {}, review: {} }
       }).inspectPersistedState()
@@ -403,6 +404,7 @@ describe("package devtools feature coverage", () => {
 
     const failingController = createPersistenceController({
       initial: "start" as "start" | "review",
+      shape: { type: "graph" },
       context: { count: 0 },
       steps: { start: {}, review: {} },
       options: {

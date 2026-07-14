@@ -11,6 +11,7 @@ import type {
   JourneySendEvent,
   JourneySendResult,
   JourneySnapshot,
+  JourneySnapshotStateBase,
   JourneyTerminal
 } from "./journey.types";
 import type {
@@ -274,6 +275,19 @@ export type JourneyMachineOptions<
   defaultTimeoutMs?: number;
   plugins?: TPlugins;
   /**
+   * Start the machine from this snapshot state instead of the definition's
+   * initial step. The seam for dynamic-step transplants, tests, and SSR resume.
+   *
+   * The machine's own shape is authoritative: any `type`/`stepOrder` on the
+   * value is ignored and re-stamped, `visited` is filtered to known steps,
+   * async state is rebuilt fresh, and `status` is preserved as given (unlike
+   * persistence hydration, which downgrades `"running"` — this option trusts
+   * its programmatic caller). Every timeline step must exist in the definition
+   * or a `JourneyDefinitionError` is thrown. Plugins still run their
+   * `hydrateSnapshot` hooks over the result, so configured persistence wins.
+   */
+  initialSnapshot?: JourneySnapshotStateBase<JourneyJsonObject, string>;
+  /**
    * Override or supply `handlers` at machine creation, shallow-merged over the
    * `handlers` declared on the definition (per-key; creation wins). This is the
    * dependency-injection seam for tests — Journey's typed equivalent of XState's
@@ -338,6 +352,18 @@ export type JourneyMachine<
   ) => Promise<JourneySnapshot<TContext, TStepId>>;
   clearStepError: (stepId?: TStepId) => Promise<JourneySnapshot<TContext, TStepId>>;
   resetJourney: () => Promise<JourneySnapshot<TContext, TStepId>>;
+  /**
+   * Pauses the machine: navigation and `send` resolve as no-ops carrying
+   * `noOpReason: "paused"` (including internal effect/after routing), while
+   * `updateContext`, `startJourney`, `resetJourney`, and `clearStepError`
+   * keep working. Transient runtime flag — never part of the snapshot, never
+   * persisted. Emits a `journey.paused` observation event.
+   */
+  pauseJourney: () => void;
+  /** Clears a pause set by {@link pauseJourney}. Emits `journey.resumed`. */
+  resumeJourney: () => void;
+  /** True while the machine is paused. Transient; not part of the snapshot. */
+  isPaused: () => boolean;
   dispose: () => void;
   subscribe: (listener: () => void) => () => void;
   subscribeSelector: <TSelected>(

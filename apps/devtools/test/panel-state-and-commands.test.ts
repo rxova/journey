@@ -167,6 +167,7 @@ const registerEnvelope = (
     features: coreFeatures
   },
   snapshot: {
+    type: "graph",
     currentStepId,
     history: { timeline: [currentStepId], index: 0 },
     context: {},
@@ -190,6 +191,7 @@ const snapshotEnvelope = (
   machineId,
   timestamp,
   snapshot: {
+    type: "graph",
     currentStepId,
     history: { timeline, index: timeline.length - 1 },
     context: {},

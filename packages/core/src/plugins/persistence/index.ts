@@ -1,3 +1,4 @@
+import { resolveSnapshotShape } from "../../journey-machine/helpers";
 import { createPersistenceController } from "./controller";
 
 import type {
@@ -13,11 +14,14 @@ import type {
 export const createPersistencePlugin = <TContext extends JourneyJsonObject, TStepId extends string>(
   options: JourneyPersistenceOptions<TContext, TStepId>
 ) => {
-  const setup = (({ resolvedJourney }) => {
+  const setup = (({ journey, resolvedJourney }) => {
     const controller = createPersistenceController({
       initial: resolvedJourney.initial as unknown as TStepId,
       context: resolvedJourney.context as unknown as TContext,
       steps: resolvedJourney.steps as unknown as Record<TStepId, unknown>,
+      // Shape comes from the ORIGINAL definition's transitions (array = linear);
+      // resolvedJourney.transitions is always a flat array and would misdetect.
+      shape: resolveSnapshotShape<TStepId>(journey.transitions),
       options
     });
 

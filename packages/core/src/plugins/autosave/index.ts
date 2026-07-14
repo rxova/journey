@@ -1,3 +1,4 @@
+import { resolveSnapshotShape } from "../../journey-machine/helpers";
 import { createPersistenceController } from "../persistence/controller";
 
 import type {
@@ -50,7 +51,7 @@ export const createAutosavePlugin = <TContext extends JourneyJsonObject, TStepId
 
   // Per-instance state lives inside `setup()` (called once per machine) so a
   // single plugin instance reused across machines never shares its timer/state.
-  const setup = (({ resolvedJourney }) => {
+  const setup = (({ journey, resolvedJourney }) => {
     let autosaveState: JourneyAutosaveState = { status: "idle" };
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let pending: {
@@ -64,6 +65,9 @@ export const createAutosavePlugin = <TContext extends JourneyJsonObject, TStepId
       initial: resolvedJourney.initial as unknown as TStepId,
       context: resolvedJourney.context as unknown as TContext,
       steps: resolvedJourney.steps as unknown as Record<TStepId, unknown>,
+      // Shape comes from the ORIGINAL definition's transitions (array = linear);
+      // resolvedJourney.transitions is always a flat array and would misdetect.
+      shape: resolveSnapshotShape<TStepId>(journey.transitions),
       options: {
         ...resolvedOptions,
         onError: (error) => {

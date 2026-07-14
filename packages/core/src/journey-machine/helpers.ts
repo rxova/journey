@@ -23,8 +23,10 @@ import type {
   JourneyPayloadFor,
   JourneyResolvedTransition,
   JourneySendEvent,
+  JourneySendNoOpReason,
   JourneySendResult,
   JourneySnapshot,
+  JourneySnapshotStateBase,
   JourneyStatus,
   JourneyStepAsyncState,
   JourneyTerminal,
@@ -350,6 +352,72 @@ export const buildInitialAsyncState = <TStepId extends string>(
   };
 };
 
+const isJourneyStatus = (value: unknown): value is JourneyStatus =>
+  value === "idled" || value === "running" || value === "completed" || value === "terminated";
+
+/**
+ * Validates and resolves the `initialSnapshot` machine option into a full
+ * runtime snapshot: the machine's own shape is stamped (any incoming
+ * `type`/`stepOrder` is ignored — the definition is authoritative), `visited`
+ * is filtered to known steps, async state is rebuilt fresh, and `status` is
+ * preserved as given. Invalid input throws `JourneyDefinitionError` — this is
+ * a programmer-supplied seam (dynamic-step transplant, tests, SSR resume), not
+ * untrusted storage; storage coercion belongs to the persistence plugin.
+ */
+export const resolveInitialSnapshotOption = <
+  TContext extends JourneyJsonObject,
+  TStepId extends string
+>(
+  value: JourneySnapshotStateBase<JourneyJsonObject, string>,
+  shape: JourneySnapshotShape<TStepId>,
+  steps: Record<TStepId, unknown>
+): JourneySnapshot<TContext, TStepId> => {
+  const fail = (reason: string): never => {
+    throw new JourneyDefinitionError(
+      "invalid-initial-snapshot",
+      `Journey "initialSnapshot" option is invalid: ${reason}`
+    );
+  };
+
+  if (!isPlainObject(value) || !isPlainObject(value.history)) {
+    fail("expected a snapshot state object with a history record.");
+  }
+
+  const timeline = value.history.timeline;
+  if (!Array.isArray(timeline) || timeline.length === 0) {
+    fail("history.timeline must be a non-empty array of step ids.");
+  }
+  for (const stepId of timeline as readonly string[]) {
+    if (typeof stepId !== "string" || !(stepId in steps)) {
+      fail(`history.timeline references unknown step "${String(stepId)}".`);
+    }
+  }
+
+  const index = value.history.index;
+  if (typeof index !== "number" || !Number.isFinite(index)) {
+    fail("history.index must be a finite number.");
+  }
+
+  if (!isJourneyStatus(value.status)) {
+    fail(`status "${String(value.status)}" is not a valid journey status.`);
+  }
+
+  const visitedSource = isPlainObject(value.visited) ? value.visited : {};
+  const visited = Object.fromEntries(
+    Object.keys(steps).map((stepId) => [stepId, visitedSource[stepId] === true])
+  ) as Record<TStepId, boolean>;
+
+  return buildSnapshot(
+    shape,
+    timeline as unknown as readonly TStepId[],
+    index,
+    assertSerializableContext(value.context as TContext, "Journey initialSnapshot context"),
+    value.status,
+    buildInitialAsyncState(steps),
+    visited
+  );
+};
+
 export const isGoToStepByIdEvent = <TStepId extends string, TEvents extends JourneyBaseEvent>(
   event: JourneySendEvent<TStepId, TEvents>
 ): event is JourneyGoToEvent<TStepId, JourneyPayloadFor<TEvents, "goToStepById">> =>
@@ -504,16 +572,57 @@ export const buildSendResult = <TContext extends JourneyJsonObject, TStepId exte
     transitionId?: string;
     label?: string;
     error?: unknown;
+    noOpReason?: JourneySendNoOpReason;
   } = {}
 ): JourneySendResult<TContext, TStepId> => ({
   transitioned,
   ...(options.transitionId !== undefined ? { transitionId: options.transitionId } : {}),
   ...(options.label !== undefined ? { label: options.label } : {}),
   ...("error" in options ? { error: options.error } : {}),
+  ...(options.noOpReason !== undefined ? { noOpReason: options.noOpReason } : {}),
   snapshot
 });
 
+/**
+ * The variant-specific snapshot fields a machine stamps onto every snapshot it
+ * builds: the `type` discriminator, plus `stepOrder` for the linear family.
+ */
+export type JourneySnapshotShape<TStepId extends string> =
+  | { type: "graph" }
+  | { type: "linear"; stepOrder: readonly TStepId[] };
+
+/**
+ * Derives the snapshot shape from a definition's `transitions` field: a linear
+ * transitions array yields the linear shape (with its step order); a graph map
+ * or absent transitions (headless) yields the graph shape.
+ */
+export const resolveSnapshotShape = <TStepId extends string>(
+  transitions: unknown
+): JourneySnapshotShape<TStepId> =>
+  Array.isArray(transitions)
+    ? {
+        type: "linear",
+        stepOrder: transitions.map((entry) =>
+          typeof entry === "string" ? entry : (entry as { step: TStepId }).step
+        ) as unknown as readonly TStepId[]
+      }
+    : { type: "graph" };
+
+/** Extracts the shape carried by an existing snapshot, for derived rebuilds. */
+export const snapshotShapeOf = <TContext extends JourneyJsonObject, TStepId extends string>(
+  snapshot: JourneySnapshot<TContext, TStepId>
+): JourneySnapshotShape<TStepId> =>
+  snapshot.type === "linear"
+    ? { type: "linear", stepOrder: snapshot.stepOrder }
+    : { type: "graph" };
+
+const applySnapshotShape = <TStepId extends string>(shape: JourneySnapshotShape<TStepId>) =>
+  shape.type === "linear"
+    ? ({ type: "linear", stepOrder: [...shape.stepOrder] } as const)
+    : ({ type: "graph" } as const);
+
 export const buildSnapshot = <TContext extends JourneyJsonObject, TStepId extends string>(
+  shape: JourneySnapshotShape<TStepId>,
   timeline: readonly TStepId[],
   index: number,
   context: TContext,
@@ -532,6 +641,7 @@ export const buildSnapshot = <TContext extends JourneyJsonObject, TStepId extend
   );
 
   return {
+    ...applySnapshotShape(shape),
     status,
     currentStepId,
     history: {
@@ -545,7 +655,7 @@ export const buildSnapshot = <TContext extends JourneyJsonObject, TStepId extend
     async: cloneSerializableValue(
       asyncState as unknown as JourneyJsonValue
     ) as JourneyAsyncState<TStepId>
-  };
+  } as JourneySnapshot<TContext, TStepId>;
 };
 
 export const stabilizeSnapshot = <TContext extends JourneyJsonObject, TStepId extends string>(
@@ -553,6 +663,7 @@ export const stabilizeSnapshot = <TContext extends JourneyJsonObject, TStepId ex
 ): JourneySnapshot<TContext, TStepId> => {
   const stableSnapshot: JourneySnapshot<TContext, TStepId> = {
     ...snapshot,
+    ...applySnapshotShape(snapshotShapeOf(snapshot)),
     history: {
       timeline: [...snapshot.history.timeline],
       index: snapshot.history.index
@@ -562,7 +673,7 @@ export const stabilizeSnapshot = <TContext extends JourneyJsonObject, TStepId ex
     async: cloneSerializableValue(
       snapshot.async as unknown as JourneyJsonValue
     ) as JourneyAsyncState<TStepId>
-  };
+  } as JourneySnapshot<TContext, TStepId>;
 
   freezeSnapshotValue(stableSnapshot);
   return stableSnapshot;
@@ -680,6 +791,7 @@ export const transitionSnapshot = <TContext extends JourneyJsonObject, TStepId e
   const visited = appendVisited(snapshot.visited, nextCurrent);
 
   return buildSnapshot(
+    snapshotShapeOf(snapshot),
     nextTimeline,
     nextIndex,
     nextContext,

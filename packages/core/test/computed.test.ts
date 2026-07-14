@@ -243,6 +243,7 @@ describe("journey computed state", () => {
         journey as JourneyDefinition<Record<string, never>, "start" | "details">
       ) as never,
       () => ({
+        type: "graph",
         currentStepId: "detached",
         history: {
           timeline: ["start", "detached"],

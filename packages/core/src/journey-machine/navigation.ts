@@ -4,6 +4,7 @@ import {
   buildSnapshot,
   normalizeStepCount,
   now,
+  snapshotShapeOf,
   transitionSnapshot
 } from "./helpers";
 
@@ -112,6 +113,7 @@ export const createJourneyMachineNavigationController = <
     runtime.emit({ type: "step.exit", stepId: from, timestamp: now() });
     const committedSnapshot = runtime.setSnapshot(
       buildSnapshot(
+        snapshotShapeOf(snapshot),
         snapshot.history.timeline,
         nextIndex,
         snapshot.context,
@@ -163,6 +165,7 @@ export const createJourneyMachineNavigationController = <
     runtime.emit({ type: "step.exit", stepId: from, timestamp: now() });
     const committedSnapshot = runtime.setSnapshot(
       buildSnapshot(
+        snapshotShapeOf(snapshot),
         snapshot.history.timeline,
         targetIndex,
         snapshot.context,

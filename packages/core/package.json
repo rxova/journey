@@ -151,7 +151,7 @@
       "name": "core/createAutosavePlugin",
       "path": "dist/plugins/autosave/index.js",
       "import": "{ createAutosavePlugin }",
-      "limit": "3.7 kB"
+      "limit": "3.8 kB"
     },
     {
       "name": "core/createDiagnosticsPlugin",
