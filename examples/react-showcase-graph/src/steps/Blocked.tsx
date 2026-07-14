@@ -4,8 +4,8 @@ import React from "react";
 import { journey } from "../journey";
 
 export const Blocked = () => {
-  const snapshot = journey.useJourneySnapshot();
-  const api = journey.useJourneyApi();
+  const snapshot = journey.useSnapshot();
+  const api = journey.useApi();
 
   React.useEffect(() => {
     void api.terminateJourney();

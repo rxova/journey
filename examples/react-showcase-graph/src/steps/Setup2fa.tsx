@@ -3,8 +3,8 @@
 import { journey } from "../journey";
 
 export const Setup2fa = () => {
-  const snapshot = journey.useJourneySnapshot();
-  const api = journey.useJourneyApi();
+  const snapshot = journey.useSnapshot();
+  const api = journey.useApi();
 
   return (
     <div className="step">

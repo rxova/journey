@@ -2,7 +2,24 @@
 // @ts-nocheck
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { createJourney, type JourneyRuntime } from "@rxova/journey-react";
+import { createJourneyMachine, type JourneyMachine } from "@rxova/journey-core";
+import {
+  useJourneyEvent as useEventOf,
+  useJourneySnapshot as useSnapshotOf
+} from "@rxova/journey-react/headless";
+
+// Minimal runtime adapter: the machine is created with core and consumed with
+// the headless machine-argument hooks (the old runtime-object API is gone).
+const createJourney = (definition, options) => {
+  const machine = createJourneyMachine(definition, options);
+  return {
+    machine,
+    useJourneySnapshot: () => useSnapshotOf(machine),
+    useJourneyApi: () => machine,
+    useJourneyEvent: (listener) => useEventOf(machine, listener)
+  };
+};
+type JourneyRuntime = JourneyMachine<never, never>;
 import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
 import { createAutosavePlugin } from "@rxova/journey-core/autosave";
 import { createDiagnosticsPlugin } from "@rxova/journey-core/diagnostics";
@@ -349,8 +366,14 @@ const makeApp = (kind: PluginDemoKind) => {
       }
     });
 
+    React.useLayoutEffect(() => {
+      if (runtime.machine.getSnapshot().status === "idled") {
+        void runtime.machine.startJourney();
+      }
+    }, []);
+
     return (
-      <runtime.JourneyProvider views={isStructural ? structureViews : pluginViews}>
+      <>
         <div className="app-shell">
           <header className="hero">
             <div className="hero-meta">
@@ -402,7 +425,7 @@ const makeApp = (kind: PluginDemoKind) => {
             </div>
           </div>
         </div>
-      </runtime.JourneyProvider>
+      </>
     );
   };
 

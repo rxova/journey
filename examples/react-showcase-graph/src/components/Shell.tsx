@@ -44,9 +44,9 @@ const pathHasExactCurrentPrefix = (
 
 const EventLog = () => {
   const [events, setEvents] = React.useState<string[]>([]);
-  const snapshot = journey.useJourneySnapshot();
+  const snapshot = journey.useSnapshot();
 
-  journey.useJourneyEvent((event) => {
+  journey.useEvent((event) => {
     setEvents((prev) => [...prev.slice(-29), `${new Date().toLocaleTimeString()} ${event.type}`]);
   });
 
@@ -69,8 +69,8 @@ const EventLog = () => {
 };
 
 const StepMetaDisplay = () => {
-  const snapshot = journey.useJourneySnapshot();
-  const api = journey.useJourneyApi();
+  const snapshot = journey.useSnapshot();
+  const api = journey.useApi();
   const meta = api.getStepMeta(snapshot.currentStepId) as
     | { label: string; icon: string }
     | undefined;
@@ -86,12 +86,12 @@ const StepMetaDisplay = () => {
 };
 
 const ExecutionPathsViewer = () => {
-  const snapshot = journey.useJourneySnapshot();
+  const snapshot = journey.useSnapshot();
   const timeline = snapshot.history.timeline;
   const [pathsResult, setPathsResult] = React.useState<ExecutionPathsResult | null>(null);
   const [matchedEventTypes, setMatchedEventTypes] = React.useState<string[]>([]);
 
-  journey.useJourneyEvent((event) => {
+  journey.useEvent((event) => {
     if (event.type === "journey.start") {
       setMatchedEventTypes([]);
       return;
@@ -108,13 +108,13 @@ const ExecutionPathsViewer = () => {
     }
   }, [snapshot.history.timeline.length, snapshot.status]);
 
+  const machine = journey.useMachine();
   React.useEffect(() => {
-    if ("getExecutionPaths" in journey.machine) {
-      const fn = (journey.machine as { getExecutionPaths: (opts?: unknown) => unknown })
-        .getExecutionPaths;
+    if ("getExecutionPaths" in machine) {
+      const fn = (machine as { getExecutionPaths: (opts?: unknown) => unknown }).getExecutionPaths;
       setPathsResult(fn({ maxPaths: 30, maxDepth: 20 }) as ExecutionPathsResult);
     }
-  }, []);
+  }, [machine]);
 
   if (!pathsResult) return null;
 
@@ -207,7 +207,7 @@ const ExecutionPathsViewer = () => {
 };
 
 const TimelineDisplay = () => {
-  const timeline = journey.useJourneySelector((s) => s.history.timeline);
+  const timeline = journey.useSelector((s) => s.history.timeline);
 
   return (
     <div style={{ fontSize: "0.8rem", color: "#888", marginBottom: "0.5rem" }}>
@@ -217,8 +217,8 @@ const TimelineDisplay = () => {
 };
 
 export const Shell = ({ children }: { children: React.ReactNode }) => {
-  const snapshot = journey.useJourneySnapshot();
-  const computed = journey.useJourneyComputed();
+  const snapshot = journey.useSnapshot();
+  const computed = journey.useComputed();
 
   return (
     <div className="layout">

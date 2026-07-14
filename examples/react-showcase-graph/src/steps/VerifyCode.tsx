@@ -4,8 +4,8 @@ import React from "react";
 import { journey } from "../journey";
 
 export const VerifyCode = () => {
-  const snapshot = journey.useJourneySnapshot();
-  const api = journey.useJourneyApi();
+  const snapshot = journey.useSnapshot();
+  const api = journey.useApi();
   const [code, setCode] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const isLoading = snapshot.async.isLoading;

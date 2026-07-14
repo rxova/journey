@@ -1,7 +1,7 @@
 import React from "react";
 import { journey } from "./journey";
 import type { StepId } from "./journey";
-import type { JourneyViews } from "@rxova/journey-react";
+import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 import { Shell } from "./components/Shell";
 import { Login } from "./steps/Login";
 import { Setup2fa } from "./steps/Setup2fa";
@@ -11,7 +11,7 @@ import { AuthenticatorCode } from "./steps/AuthenticatorCode";
 import { LoggedIn } from "./steps/LoggedIn";
 import { Blocked } from "./steps/Blocked";
 
-const views: JourneyViews<StepId> = {
+const views: Record<StepId, React.ComponentType> = {
   login: Login,
   setup2fa: Setup2fa,
   verifyCode: VerifyCode,
@@ -22,7 +22,7 @@ const views: JourneyViews<StepId> = {
 };
 
 const EventLogger = () => {
-  journey.useJourneyEvent((event) => {
+  journey.useEvent((event) => {
     if (
       event.type === "journey.start" ||
       event.type === "journey.reset" ||
@@ -36,12 +36,26 @@ const EventLogger = () => {
 };
 
 export default function App() {
+  const detachRef = React.useRef<(() => void) | null>(null);
+  const handleMachineRef = React.useCallback((machine: unknown) => {
+    detachRef.current?.();
+    detachRef.current = null;
+    if (machine) {
+      detachRef.current = attachJourneyDevtools(machine as never, {
+        label: "React Showcase Graph",
+        appName: "React Showcase Graph",
+        enabled: true,
+        commandsEnabled: true
+      });
+    }
+  }, []);
+
   return (
-    <journey.JourneyProvider views={views}>
+    <journey.Provider views={views} machineRef={handleMachineRef}>
       <EventLogger />
       <Shell>
         <journey.StepRenderer fallback={<p>Unknown step</p>} />
       </Shell>
-    </journey.JourneyProvider>
+    </journey.Provider>
   );
 }

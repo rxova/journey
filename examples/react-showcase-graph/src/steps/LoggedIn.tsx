@@ -3,12 +3,12 @@
 import { journey } from "../journey";
 
 export const LoggedIn = () => {
-  const snapshot = journey.useJourneySnapshot();
-  const api = journey.useJourneyApi();
+  const snapshot = journey.useSnapshot();
+  const api = journey.useApi();
 
   // React alternative to onEnter/onLeave on the step definition.
   // Useful when the callback needs access to component state or React context.
-  journey.useJourneyStepLifecycle("loggedIn", {
+  journey.useStepLifecycle("loggedIn", {
     onLeave: ({ context }) => {
       console.log("[journey] loggedIn: leaving session for", context.username);
     }

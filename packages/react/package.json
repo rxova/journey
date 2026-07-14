@@ -97,12 +97,6 @@
   },
   "size-limit": [
     {
-      "name": "react/createJourney",
-      "path": "dist/index.js",
-      "import": "{ createJourney }",
-      "limit": "4.5 kB"
-    },
-    {
       "name": "react/Wizard",
       "path": "dist/index.js",
       "import": "{ Wizard, useWizard, useWizardStep }",

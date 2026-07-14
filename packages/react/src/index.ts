@@ -20,46 +20,30 @@ export type {
   WizardStepProps,
   WizardStepsProp
 } from "./wizard";
-export { createLinearJourney } from "./CreateLinearJourney";
-export { createHeadlessJourney } from "./CreateHeadlessJourney";
-export { createGraphJourney } from "./CreateGraphJourney";
-export { createJourney } from "./CreateJourney";
-export { createJourneyFactory } from "./CreateJourneyFactory";
-export { useJourney } from "./use-journey";
+export type { JourneyApi, JourneyDefaultEvent, StepScopedJourneyApi } from "./types";
 export type {
+  GraphJourneySnapshot,
   JourneyAsyncPhase,
   JourneyCompleteObservationEvent,
   JourneyComputed,
   JourneyDefinition,
   JourneyEqualityFn,
+  JourneyLifecycleArgs,
   JourneyMachine,
   JourneyMachineOptions,
   JourneyMachinePlugin,
   JourneyMachineWithPlugins,
   JourneyObservationEvent,
+  JourneyPauseObservationEvent,
   JourneyResetObservationEvent,
+  JourneyResumeObservationEvent,
   JourneySelector,
+  JourneySendNoOpReason,
   JourneySendResult,
-  JourneyStartObservationEvent,
   JourneySnapshot,
+  JourneySnapshotType,
+  JourneyStartObservationEvent,
   JourneyStepAsyncState,
-  JourneyLifecycleArgs
+  LinearJourneyMachine,
+  LinearJourneySnapshot
 } from "@rxova/journey-core";
-export type {
-  JourneyApi,
-  JourneyBuilderRuntime,
-  LinearJourneyRuntime,
-  JourneyBuilderRuntimeFactory,
-  JourneyBuilderRuntimeFactoryFromDefinition,
-  JourneyBuilderRuntimeFromDefinition,
-  JourneyDefaultEvent,
-  JourneyProviderErrorContext,
-  JourneyProviderProps,
-  JourneyRuntime,
-  JourneyRuntimeFactory,
-  JourneyRuntimeFactoryFromDefinition,
-  JourneyRuntimeFromDefinition,
-  StepScopedJourneyApi,
-  JourneyRuntimeWithStepApi,
-  JourneyViews
-} from "./types";

@@ -5,70 +5,58 @@ import React from "react";
 import { act } from "react";
 import { render } from "@testing-library/react";
 
-import { createJourney, type JourneyApi } from "@rxova/journey-react";
-import type { JourneyDefinition } from "@rxova/journey-core";
+import { useWizard, Wizard } from "@rxova/journey-react";
+import type { UseWizardResult } from "@rxova/journey-react";
 
-type StepId = "start" | "details" | "review";
-type EventMap = { type: "back"; payload?: unknown };
 type Ctx = { count: number };
 
-const journeyDefinition: JourneyDefinition<Ctx, StepId, EventMap> = {
-  initial: "start",
-  context: { count: 0 },
-  steps: {
-    start: { meta: { label: "Start" } },
-    details: { meta: { label: "Details" } },
-    review: { meta: { label: "Review" } }
-  },
-  transitions: {
-    start: { goToNextStep: [{ to: "details" }] },
-    details: { goToNextStep: [{ to: "review" }] },
-    review: { goToNextStep: [{ to: "start" }] }
-  }
+let latestWizard: UseWizardResult<Ctx> | null = null;
+
+const Step = (props: { id?: string; label: string }) => {
+  void props;
+  return <div>{props.label}</div>;
 };
-
-const journey = createJourney(journeyDefinition);
-
-let latestApi: JourneyApi<Ctx, StepId, EventMap> | null = null;
 
 const Harness = () => {
-  const api = journey.useJourneyApi();
+  const wizard = useWizard<Ctx>();
 
   React.useLayoutEffect(() => {
-    latestApi = api;
-  }, [api]);
+    latestWizard = wizard;
+  });
 
-  return null;
+  return <output data-testid="active">{wizard.activeStepId}</output>;
 };
 
-describe("react performance budget", () => {
-  it("runs bindings-driven transitions within budget", async () => {
-    latestApi = null;
-
-    const { unmount } = render(<Harness />);
-
-    expect(latestApi).not.toBeNull();
-
-    const iterations = 400;
-    const budgetMs = 1500;
-
+describe("wizard perf budget", () => {
+  it("navigates a three-step loop within budget", async () => {
+    render(
+      <Wizard context={{ count: 0 }} header={<Harness />}>
+        <Step id="start" label="start" />
+        <Step id="details" label="details" />
+        <Step id="review" label="review" />
+      </Wizard>
+    );
     await act(async () => {
-      for (let i = 0; i < 50; i += 1) {
-        await latestApi?.goToNextStep();
-      }
+      await Promise.resolve();
     });
 
-    const start = performance.now();
-    await act(async () => {
-      for (let i = 0; i < iterations; i += 1) {
-        await latestApi?.goToNextStep();
-      }
-    });
-    const duration = performance.now() - start;
+    const iterations = 60;
+    const begin = performance.now();
+    for (let index = 0; index < iterations; index += 1) {
+      await act(async () => {
+        await latestWizard?.goToNextStep();
+      });
+      await act(async () => {
+        await latestWizard?.goToNextStep();
+      });
+      await act(async () => {
+        await latestWizard?.goToPreviousStep(2);
+      });
+    }
+    const elapsed = performance.now() - begin;
 
-    expect(duration).toBeLessThan(budgetMs);
-
-    unmount();
-    journey.dispose();
+    // Generous CI budget: ~3 navigations × 60 iterations.
+    expect(elapsed).toBeLessThan(5000);
+    expect(latestWizard?.activeStepId).toBe("start");
   });
 });
