@@ -1,0 +1,184 @@
+import React from "react";
+import { describe, expect, it, vi } from "vitest";
+import { render, screen, act } from "@testing-library/react";
+import { createLinearJourney } from "@rxova/journey-core";
+import {
+  useJourneyEvent,
+  useJourneySelector,
+  useJourneySnapshot,
+  useJourneyStepLifecycle,
+  useOwnedJourney,
+  useStepAsyncState
+} from "@rxova/journey-react/headless";
+import { flush } from "@rxova/journey-react/testing";
+
+const makeMachine = () =>
+  createLinearJourney({ steps: ["a", "b", "c"], context: { n: 0 } }, { autoStart: true });
+
+type Machine = ReturnType<typeof makeMachine>;
+
+describe("useOwnedJourney", () => {
+  it("creates the machine once under StrictMode and disposes on unmount", async () => {
+    const factory = vi.fn(makeMachine);
+    let owned: Machine | null = null;
+
+    const Owner = () => {
+      owned = useOwnedJourney(factory);
+      return <span>owned</span>;
+    };
+
+    const view = render(
+      <React.StrictMode>
+        <Owner />
+      </React.StrictMode>
+    );
+    await flush();
+    expect(factory).toHaveBeenCalledTimes(1);
+    expect(owned!.getSnapshot().status).toBe("running");
+
+    view.unmount();
+    await flush();
+    // disposed machines are safe no-ops
+    expect(await owned!.navigate.goToNextStep()).toEqual({ ok: false, reason: "disposed" });
+  });
+});
+
+describe("useJourneySnapshot / useJourneySelector", () => {
+  it("re-renders on navigation and exposes the live snapshot", async () => {
+    const machine = makeMachine();
+    const Probe = () => {
+      const snapshot = useJourneySnapshot(machine);
+      return <span data-testid="current">{snapshot.currentStep?.id}</span>;
+    };
+    render(<Probe />);
+    await flush();
+    expect(screen.getByTestId("current").textContent).toBe("a");
+
+    await act(async () => {
+      await machine.navigate.goToNextStep();
+    });
+    expect(screen.getByTestId("current").textContent).toBe("b");
+  });
+
+  it("selector subscribers only re-render when the selected value changes", async () => {
+    const machine = makeMachine();
+    const renders = vi.fn();
+    const Probe = () => {
+      const id = useJourneySelector(machine, (snapshot) => snapshot.currentStep?.id);
+      renders(id);
+      return <span>{id}</span>;
+    };
+    render(<Probe />);
+    const before = renders.mock.calls.length;
+
+    await act(async () => {
+      machine.context.update((c) => ({ n: c.n + 1 })); // id unchanged
+    });
+    expect(renders.mock.calls.length).toBe(before);
+
+    await act(async () => {
+      await machine.navigate.goToNextStep();
+    });
+    expect(renders).toHaveBeenLastCalledWith("b");
+  });
+});
+
+describe("useJourneySelector cache", () => {
+  it("reuses the cached selection when a custom equality declares it unchanged", async () => {
+    const machine = makeMachine();
+    const seen: unknown[] = [];
+    // cache reuse requires stable selector/equality references across renders
+    const idSelector = (snapshot: ReturnType<typeof machine.getSnapshot>) =>
+      snapshot.currentStep?.id;
+    const kindSelector = (snapshot: ReturnType<typeof machine.getSnapshot>) => ({
+      kind: snapshot.type
+    });
+    const kindEquals = (a: { kind: string }, b: { kind: string }) => a.kind === b.kind;
+    const Probe = () => {
+      // first hook re-renders the component on every step change
+      const id = useJourneySelector(machine, idSelector);
+      // second hook returns fresh objects that the custom equality collapses
+      const stable = useJourneySelector(machine, kindSelector, kindEquals);
+      seen.push(stable);
+      return <span>{id}</span>;
+    };
+    render(<Probe />);
+    await flush();
+
+    await act(async () => {
+      await machine.navigate.goToNextStep();
+    });
+    expect(seen.length).toBeGreaterThan(1);
+    // same object identity across re-renders: the cache reused the selection
+    expect(new Set(seen).size).toBe(1);
+  });
+});
+
+describe("useJourneyEvent / useJourneyStepLifecycle / useStepAsyncState", () => {
+  it("delivers subscription events and step lifecycle callbacks", async () => {
+    const machine = makeMachine();
+    const entered: string[] = [];
+    const lifecycle = { enter: vi.fn(), leave: vi.fn() };
+
+    const Probe = () => {
+      useJourneyEvent(machine, "stepEnter", ({ to }) => entered.push(to));
+      useJourneyStepLifecycle(machine, "b", {
+        onEnter: lifecycle.enter,
+        onLeave: lifecycle.leave
+      });
+      return null;
+    };
+    render(<Probe />);
+    await flush();
+
+    await act(async () => {
+      await machine.navigate.goToNextStep();
+      await machine.navigate.goToNextStep();
+    });
+
+    expect(entered).toEqual(["b", "c"]);
+    expect(lifecycle.enter).toHaveBeenCalledWith({ context: { n: 0 } });
+    expect(lifecycle.leave).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports the current step's async state and idle for the rest", async () => {
+    const machine = createLinearJourney(
+      {
+        steps: [
+          "a",
+          {
+            id: "b",
+            onEnter: () => {
+              throw new Error("enter failed");
+            }
+          }
+        ],
+        context: {}
+      },
+      { autoStart: true }
+    );
+    const Probe = ({ stepId }: { stepId: "a" | "b" }) => {
+      const state = useStepAsyncState(machine, stepId);
+      return (
+        <span data-testid={`async-${stepId}`}>
+          {state.isError ? "error" : state.isSuccess ? "success" : "idle"}
+        </span>
+      );
+    };
+    render(
+      <>
+        <Probe stepId="a" />
+        <Probe stepId="b" />
+      </>
+    );
+    await flush();
+    expect(screen.getByTestId("async-a").textContent).toBe("success");
+    expect(screen.getByTestId("async-b").textContent).toBe("idle");
+
+    await act(async () => {
+      await machine.navigate.goToNextStep();
+    });
+    expect(screen.getByTestId("async-a").textContent).toBe("idle");
+    expect(screen.getByTestId("async-b").textContent).toBe("error");
+  });
+});
