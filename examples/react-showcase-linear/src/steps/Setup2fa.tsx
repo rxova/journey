@@ -4,8 +4,7 @@ import React from "react";
 import { useWizard } from "@rxova/journey-react";
 import type { LoginContext } from "../context";
 
-export const Setup2fa = (props: { id?: string }) => {
-  void props;
+export const Setup2fa = () => {
   const { context, goToNextStep, goToPreviousStep } = useWizard<LoginContext>();
 
   return (

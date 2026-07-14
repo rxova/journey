@@ -5,8 +5,7 @@ import { useWizard } from "@rxova/journey-react";
 import { mockApi } from "../api";
 import type { LoginContext } from "../context";
 
-export const VerifyCode = (props: { id?: string }) => {
-  void props;
+export const VerifyCode = () => {
   const { context, updateContext, goToNextStep, goToPreviousStep } = useWizard<LoginContext>();
   const [loading, setLoading] = React.useState(false);
 

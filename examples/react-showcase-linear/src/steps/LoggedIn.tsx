@@ -4,8 +4,7 @@ import React from "react";
 import { useWizard } from "@rxova/journey-react";
 import type { LoginContext } from "../context";
 
-export const LoggedIn = (props: { id?: string }) => {
-  void props;
+export const LoggedIn = () => {
   const { context, status, resetJourney } = useWizard<LoginContext>();
   const isBlocked = context.attempts >= 3;
   void status;

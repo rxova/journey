@@ -15,7 +15,7 @@ Runtime semantics such as history, observability, persistence, and async behavio
 
 ## Linear: `<Wizard>`
 
-Steps are just components inside `<Wizard/>`. Every step declares a mandatory unique `id`. No factory, no views map, no provider, no dispose — the machine is created when `<Wizard>` mounts (StrictMode-safe) and disposed on unmount.
+Steps are just components inside `<Wizard/>`. Every step declares a mandatory unique `id` **on the element** — your components don't declare or receive an `id` prop; it's typed like React's `key` and the wizard strips it before rendering. No factory, no views map, no provider, no dispose — the machine is created when `<Wizard>` mounts (StrictMode-safe) and disposed on unmount.
 
 ```tsx
 import { Wizard, useWizard } from "@rxova/journey-react";

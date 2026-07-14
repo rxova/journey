@@ -10,10 +10,7 @@ type Ctx = { count: number };
 
 describe("SSR/RSC compatibility", () => {
   it("renders <Wizard> with header/footer hooks on the server", () => {
-    const Panel = (props: { id?: string; label: string }) => {
-      void props;
-      return <div>{`${props.label}-ssr`}</div>;
-    };
+    const Panel = (props: { label: string }) => <div>{`${props.label}-ssr`}</div>;
     const Footer = () => {
       const { activeStepId, stepCount } = useWizard<Ctx>();
       return <div>{`${activeStepId}/${stepCount}`}</div>;
@@ -58,8 +55,7 @@ describe("SSR/RSC compatibility", () => {
   });
 
   it("no module-scope machine: two server renders do not share state", () => {
-    const Probe = (props: { id?: string }) => {
-      void props;
+    const Probe = () => {
       const { context } = useWizard<Ctx>();
       return <div>{`count:${context.count}`}</div>;
     };
