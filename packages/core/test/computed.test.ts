@@ -43,6 +43,7 @@ describe("journey computed state", () => {
       stepCount: 3,
       journeyLength: 3,
       isFirstStep: true,
+      isFirstTimeVisit: true,
       isLastStep: false,
       stepOrder: ["start", "details", "review"]
     });
@@ -59,6 +60,7 @@ describe("journey computed state", () => {
       visitedStepCount: 2,
       isInitialStep: false,
       isFirstStep: false,
+      isFirstTimeVisit: true,
       isLastStep: false
     });
 
@@ -274,6 +276,7 @@ describe("journey computed state", () => {
       stepCount: 2,
       journeyLength: 2,
       isFirstStep: false,
+      isFirstTimeVisit: true,
       isLastStep: false,
       stepOrder: ["start", "details"]
     });

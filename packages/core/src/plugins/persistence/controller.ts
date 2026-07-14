@@ -325,6 +325,7 @@ const coercePersistedSnapshot = <TContext extends JourneyJsonObject, TStepId ext
   shape: JourneySnapshotShape<TStepId>
 ): {
   snapshot: JourneySnapshotStateBase<TContext, TStepId>;
+  visits?: Record<TStepId, number>;
   needsRewrite: boolean;
 } | null => {
   if (!isRecord(value)) {
@@ -396,6 +397,25 @@ const coercePersistedSnapshot = <TContext extends JourneyJsonObject, TStepId ext
     needsRewrite = true;
   }
 
+  let visits: Record<string, number> | undefined;
+  if (shape.type === "linear") {
+    if (isRecord(value.visits)) {
+      visits = {};
+      for (const stepId of Object.keys(steps)) {
+        const persisted = (value.visits as Record<string, unknown>)[stepId];
+        if (typeof persisted === "number" && Number.isFinite(persisted) && persisted >= 0) {
+          visits[stepId] = Math.trunc(persisted);
+        } else {
+          needsRewrite = true;
+        }
+      }
+    } else {
+      // Old envelope without counts: buildSnapshot derives them from the
+      // timeline (floored by `visited`) at hydrate time.
+      needsRewrite = true;
+    }
+  }
+
   const stepIds = Object.keys(steps) as TStepId[];
   const { visited, needsRewrite: visitedNeedsRewrite } = resolveVisitedFromPersistence(
     value.visited,
@@ -420,6 +440,7 @@ const coercePersistedSnapshot = <TContext extends JourneyJsonObject, TStepId ext
       status,
       visited
     },
+    ...(visits !== undefined ? { visits: visits as Record<TStepId, number> } : {}),
     needsRewrite
   };
 };
@@ -482,7 +503,13 @@ export const createPersistenceController = <
         version: persistence.version,
         snapshot: {
           ...(shape.type === "linear"
-            ? { type: "linear" as const, stepOrder: [...shape.stepOrder] }
+            ? {
+                type: "linear" as const,
+                stepOrder: [...shape.stepOrder],
+                visits: {
+                  ...(snapshot as { visits?: Record<string, number> }).visits
+                }
+              }
             : { type: "graph" as const }),
           currentStepId: snapshot.currentStepId,
           history: {
@@ -592,16 +619,19 @@ export const createPersistenceController = <
       }
 
       let persistedSnapshot: JourneySnapshotStateBase<TContext, TStepId> | null = null;
+      let persistedVisits: Record<TStepId, number> | undefined;
       let shouldRewritePersisted = false;
 
       if (persistedVersion === persistence.version) {
         const coerced = coercePersistedSnapshot(parsed.snapshot, steps, context, shape);
         persistedSnapshot = coerced?.snapshot ?? null;
+        persistedVisits = coerced?.visits;
         shouldRewritePersisted = Boolean(coerced?.needsRewrite);
       } else if (persistence.migrate) {
         const migrated = persistence.migrate(parsed.snapshot, persistedVersion);
         const coerced = coercePersistedSnapshot(migrated, steps, context, shape);
         persistedSnapshot = coerced?.snapshot ?? null;
+        persistedVisits = coerced?.visits;
         shouldRewritePersisted = persistedSnapshot !== null;
 
         if (!persistedSnapshot) {
@@ -630,7 +660,8 @@ export const createPersistenceController = <
         assertSerializableContext(hydratedContext, "Hydrated journey context"),
         persistedSnapshot.status === "running" ? "idled" : persistedSnapshot.status,
         resolvedBaseSnapshot.async,
-        persistedSnapshot.visited
+        persistedSnapshot.visited,
+        persistedVisits
       );
 
       if (shouldRewritePersisted || contextWasFiltered) {

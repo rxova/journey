@@ -570,6 +570,24 @@ Rules:
 - The React tiers add **zero durable state of their own** — the only React-side state is the transient `useWizardStep` handler registry (refs). Persistence, autosave, analytics, replay, and diagnostics operate on the base fields and work across tiers; anything type-specific must switch on `type`.
 - **Devtools:** the devtools bridge and UI discriminate on `snapshot.type` — a stepper/timeline presentation for `"linear"`, the graph/transition presentation for `"graph"` (and headless). The devtools registry payload carries the discriminator through unchanged.
 
+### 6.1 Amendment: the linear family has its own runtime (implemented)
+
+`createLinearJourney` no longer compiles to the graph engine. It is a dedicated
+linear runtime in core: navigation is index-based over `stepOrder` (arbitrary
+`goToStepById`/`goToStepByIndex` jumps are legal), the definition accepts
+`initial`/`startIndex`, per-step **`visits` entry counts are part of the linear
+snapshot** (persisted; `visited` stays as the derived base field with the
+invariant `visited[id] === visits[id] > 0`; every entry counts, including
+backward navigation), linear `getComputed()` gains `isFirstTimeVisit`, forward
+navigation is interceptable per step via `registerNextStepInterceptor` (the
+mechanism behind `useWizardStep`, reporting through the shared async-state
+phases), and `deriveLinearTransplantSnapshot` is the core seam for dynamic step
+changes. The React wizard is now a pure rendering wrapper: it derives steps
+from JSX, owns the machine lifecycle, and renders — all linear semantics live
+in core, shared with future Vue/Angular wrappers. Plugins, persistence,
+devtools, and the observation-event stream keep the shared machine contract
+(the graph-shaped definition remains available to structural tooling as data).
+
 ## 7. Linear→graph migration
 
 **Helpers (core, framework-agnostic):**

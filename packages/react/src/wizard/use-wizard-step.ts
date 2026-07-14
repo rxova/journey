@@ -11,10 +11,11 @@ const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : Re
  * Registers a forward-navigation interceptor for the step component calling
  * it — the react-use-wizard `handleStep` equivalent.
  *
- * When the user calls `goToNextStep()`, the handler is awaited first: a
+ * This is a thin binding over the core linear runtime's
+ * `registerNextStepInterceptor`: `goToNextStep()` awaits the handler first, a
  * throw/reject cancels the navigation and lands in `useWizard().error`, and
- * `useWizard().isLoading` is true while it runs. Forward-only — backward
- * navigation and jumps are never intercepted.
+ * `useWizard().isLoading` is true while it runs (the step's async state
+ * reports the `evaluating-when` phase). Forward-only.
  *
  * ```tsx
  * const Password = () => {
@@ -26,14 +27,11 @@ const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : Re
  *   return <PasswordForm />;
  * };
  * ```
- *
- * Purely React-layer state (a transient handler registry) — layered on top of,
- * not instead of, core `effect`/`onLeave`.
  */
 export const useWizardStep = <TContext extends JourneyJsonObject = JourneyJsonObject>(
   handler?: WizardStepHandler<TContext>
 ): void => {
-  const { gate } = useWizardContext("useWizardStep");
+  const { machine } = useWizardContext("useWizardStep");
   const stepId = React.useContext(WizardActiveStepContext);
 
   if (stepId === null) {
@@ -47,9 +45,8 @@ export const useWizardStep = <TContext extends JourneyJsonObject = JourneyJsonOb
   handlerRef.current = handler;
 
   useSafeLayoutEffect(() => {
-    gate.handlers.set(stepId, (args) => handlerRef.current?.(args as never));
-    return () => {
-      gate.handlers.delete(stepId);
-    };
-  }, [gate, stepId]);
+    return machine.registerNextStepInterceptor(stepId, (args) =>
+      handlerRef.current?.(args as never)
+    );
+  }, [machine, stepId]);
 };

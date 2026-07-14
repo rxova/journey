@@ -6,7 +6,7 @@ import { useWizardContext } from "./wizard-context";
 import type {
   JourneyEqualityFn,
   JourneyJsonObject,
-  JourneySendResult,
+  JourneyLinearComputed,
   LinearJourneyMachine,
   LinearJourneySnapshot
 } from "@rxova/journey-core";
@@ -15,9 +15,9 @@ import type { UseWizardResult } from "./types";
 const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
 
 /**
- * The wizard hook: position, visit tracking, status, navigation (existing
- * machine method names, verbatim), typed shared context, and per-step
- * metadata — bound to the enclosing `<Wizard>`.
+ * The wizard hook — a thin React binding over the core linear runtime:
+ * position and visit tracking come from `getComputed()`, loading/error from
+ * the machine's async state, navigation methods are the machine's own.
  *
  * The generic parameter is an unchecked assertion (`useWizard<MyContext>()`),
  * the same trade react-use-wizard makes; fully inferred typing comes from
@@ -27,9 +27,12 @@ export const useWizard = <
   TContext extends JourneyJsonObject = JourneyJsonObject,
   TStepId extends string = string
 >(): UseWizardResult<TContext, TStepId> => {
-  const { machine, gate, visitCounts, onError } = useWizardContext("useWizard");
+  const { machine } = useWizardContext("useWizard");
   const snapshot = useJourneySnapshot(machine) as LinearJourneySnapshot<TContext, TStepId>;
-  const gateState = React.useSyncExternalStore(gate.subscribe, gate.getState, gate.getState);
+  const computed = React.useMemo(() => {
+    void snapshot;
+    return machine.getComputed() as JourneyLinearComputed<TStepId>;
+  }, [machine, snapshot]);
 
   // isPaused is a transient machine flag outside the snapshot; observe it via
   // the journey.paused/journey.resumed observation events.
@@ -45,43 +48,9 @@ export const useWizard = <
     });
   }, [machine]);
 
-  const navigation = React.useMemo(() => {
-    const runStepHandler = async (): Promise<{ ok: boolean; error?: unknown }> => {
-      const activeStepId = machine.getSnapshot().currentStepId;
-      const handler = gate.handlers.get(activeStepId);
-      if (!handler) {
-        return { ok: true };
-      }
-
-      gate.setState({ pending: true, error: null });
-      try {
-        await handler({
-          context: machine.getSnapshot().context,
-          updateContext: machine.updateContext
-        });
-      } catch (error) {
-        gate.setState({ pending: false, error });
-        onError?.(error, { phase: "step-handler" });
-        return { ok: false, error };
-      }
-      gate.setState({ pending: false, error: null });
-      return { ok: true };
-    };
-
-    const goToNextStep = async () => {
-      const intercepted = await runStepHandler();
-      if (!intercepted.ok) {
-        return {
-          transitioned: false,
-          error: intercepted.error,
-          snapshot: machine.getSnapshot()
-        };
-      }
-      return machine.goToNextStep();
-    };
-
-    return {
-      goToNextStep,
+  const navigation = React.useMemo(
+    () => ({
+      goToNextStep: machine.goToNextStep,
       goToPreviousStep: machine.goToPreviousStep,
       goToStepById: machine.goToStepById,
       goToStepByIndex: machine.goToStepByIndex,
@@ -92,53 +61,28 @@ export const useWizard = <
       resumeJourney: machine.resumeJourney,
       clearStepError: machine.clearStepError,
       updateContext: machine.updateContext
-    };
-  }, [machine, gate, onError]);
-
-  const { stepOrder } = snapshot;
-  const activeStepId = snapshot.currentStepId;
-  const activeStepIndex = stepOrder.indexOf(activeStepId);
-  const stepCount = stepOrder.length;
-
-  // Normalize over the full step order so unvisited steps read as explicit
-  // `false` instead of being absent from the map.
-  const visited = React.useMemo(
-    () =>
-      Object.fromEntries(
-        stepOrder.map((stepId) => [stepId, snapshot.visited[stepId] === true])
-      ) as Record<TStepId, boolean>,
-    [stepOrder, snapshot.visited]
+    }),
+    [machine]
   );
 
-  // Backward navigation re-enters a step by moving the history index (no
-  // timeline append), so first-visit detection combines the session entry
-  // counter with timeline occurrences (which cover persisted history).
-  let timelineOccurrences = 0;
-  for (const stepId of snapshot.history.timeline) {
-    if (stepId === activeStepId) {
-      timelineOccurrences += 1;
-    }
-  }
-  const sessionVisits = visitCounts.get(activeStepId) ?? 1;
-  const isFirstTimeVisit = sessionVisits <= 1 && timelineOccurrences <= 1;
-
+  const activeStepId = snapshot.currentStepId;
   const activeAsync = snapshot.async.byStep[activeStepId];
 
   return {
     activeStepId,
-    activeStepIndex,
-    stepCount,
-    stepIds: stepOrder,
-    isFirstStep: activeStepIndex === 0,
-    isLastStep: activeStepIndex === stepCount - 1,
+    activeStepIndex: computed.activeStepIndex,
+    stepCount: computed.stepCount,
+    stepIds: computed.stepOrder,
+    isFirstStep: computed.isFirstStep,
+    isLastStep: computed.isLastStep,
 
-    visited,
-    isFirstTimeVisit,
+    visited: snapshot.visited,
+    isFirstTimeVisit: computed.isFirstTimeVisit,
 
     status: snapshot.status,
-    isLoading: gateState.pending || snapshot.async.isLoading,
+    isLoading: snapshot.async.isLoading,
     isPaused,
-    error: gateState.error ?? activeAsync?.error ?? null,
+    error: activeAsync?.error ?? null,
 
     ...(navigation as unknown as Pick<
       UseWizardResult<TContext, TStepId>,
@@ -190,8 +134,3 @@ export const useWizardSelector = <
     equalityFn
   );
 };
-
-export type WizardNavigationResult<
-  TContext extends JourneyJsonObject,
-  TStepId extends string
-> = JourneySendResult<TContext, TStepId>;

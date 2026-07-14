@@ -117,7 +117,8 @@ export type {
   JourneyMachinePluginSnapshotChange,
   JourneyMachineSnapshotReason,
   JourneyMachineWithPlugins,
-  LinearJourneyMachine
+  LinearJourneyMachine,
+  LinearNextStepInterceptor
 } from "./machine.types";
 
 export type {

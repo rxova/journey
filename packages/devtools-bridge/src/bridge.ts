@@ -151,7 +151,13 @@ const serializeSnapshot = <TContext extends JourneyJsonObject, TStepId extends s
     ...(snapshot.type === "linear"
       ? {
           type: "linear" as const,
-          stepOrder: snapshot.stepOrder.map((stepId) => String(stepId))
+          stepOrder: snapshot.stepOrder.map((stepId) => String(stepId)),
+          visits: Object.fromEntries(
+            Object.entries(snapshot.visits as Record<string, number>).map(([stepId, count]) => [
+              String(stepId),
+              typeof count === "number" ? count : 0
+            ])
+          )
         }
       : { type: "graph" as const }),
     currentStepId: String(snapshot.currentStepId),

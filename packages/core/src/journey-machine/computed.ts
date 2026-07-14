@@ -75,6 +75,8 @@ export const createJourneyMachineComputedGetter = <
       const stepCount = linearStepOrder.length;
       const linearIndex = linearStepOrder.indexOf(snapshot.currentStepId);
 
+      const visits = snapshot.type === "linear" ? snapshot.visits : ({} as Record<TStepId, number>);
+
       return {
         ...base,
         activeStepIndex: linearIndex === -1 ? activeStepIndex : linearIndex,
@@ -83,7 +85,8 @@ export const createJourneyMachineComputedGetter = <
         journeyLength: stepCount,
         isFirstStep: linearIndex === 0,
         isLastStep: linearIndex === stepCount - 1,
-        stepOrder: linearStepOrder
+        stepOrder: linearStepOrder,
+        isFirstTimeVisit: (visits[snapshot.currentStepId] ?? 0) <= 1
       };
     }
 

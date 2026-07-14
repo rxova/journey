@@ -1,4 +1,4 @@
-export { createLinearJourney } from "./create-linear-journey";
+export { createLinearJourney, deriveLinearTransplantSnapshot } from "./create-linear-journey";
 export { createHeadlessJourney } from "./create-headless-journey";
 export { createGraphJourney } from "./create-graph-journey";
 /**
@@ -56,6 +56,9 @@ export {
   type JourneyAutosaveState,
   type JourneyAutosaveStatus,
   type JourneyComputed,
+  type JourneyLinearComputed,
+  type JourneyGraphComputed,
+  type JourneyHeadlessComputed,
   type JourneyCompleteObservationEvent,
   type JourneyDiagnosticsIssue,
   type JourneyDiagnosticsIssueCode,
@@ -97,6 +100,7 @@ export {
   type JourneyMachinePluginHooks,
   type JourneyMachinePluginSetupContext,
   type JourneyMachineWithPlugins,
+  type LinearNextStepInterceptor,
   type JourneyMode,
   type JourneyObservationEvent,
   type JourneyPayloadFor,

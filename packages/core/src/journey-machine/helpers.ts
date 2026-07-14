@@ -407,6 +407,11 @@ export const resolveInitialSnapshotOption = <
     Object.keys(steps).map((stepId) => [stepId, visitedSource[stepId] === true])
   ) as Record<TStepId, boolean>;
 
+  const visitsSource = (value as { visits?: unknown }).visits;
+  const visits = isPlainObject(visitsSource)
+    ? (visitsSource as Record<TStepId, number>)
+    : undefined;
+
   return buildSnapshot(
     shape,
     timeline as unknown as readonly TStepId[],
@@ -414,7 +419,8 @@ export const resolveInitialSnapshotOption = <
     assertSerializableContext(value.context as TContext, "Journey initialSnapshot context"),
     value.status,
     buildInitialAsyncState(steps),
-    visited
+    visited,
+    visits
   );
 };
 
@@ -621,6 +627,36 @@ const applySnapshotShape = <TStepId extends string>(shape: JourneySnapshotShape<
     ? ({ type: "linear", stepOrder: [...shape.stepOrder] } as const)
     : ({ type: "graph" } as const);
 
+/**
+ * Normalizes per-step visit counts over the given step ids. Missing counts
+ * fall back to timeline occurrences, floored at 1 when `visited` marks the
+ * step true (a visited step was entered at least once).
+ */
+export const normalizeVisits = <TStepId extends string>(
+  stepIds: readonly TStepId[],
+  timeline: readonly TStepId[],
+  visits: Record<string, unknown> | undefined,
+  visited: Record<TStepId, boolean> | undefined
+): Record<TStepId, number> => {
+  const timelineCounts = new Map<TStepId, number>();
+  for (const stepId of timeline) {
+    timelineCounts.set(stepId, (timelineCounts.get(stepId) ?? 0) + 1);
+  }
+
+  return Object.fromEntries(
+    stepIds.map((stepId) => {
+      const provided = visits?.[stepId];
+      const fromTimeline = timelineCounts.get(stepId) ?? 0;
+      const floor = visited?.[stepId] === true ? 1 : 0;
+      const count =
+        typeof provided === "number" && Number.isFinite(provided) && provided >= 0
+          ? Math.trunc(provided)
+          : fromTimeline;
+      return [stepId, Math.max(count, floor)];
+    })
+  ) as Record<TStepId, number>;
+};
+
 export const buildSnapshot = <TContext extends JourneyJsonObject, TStepId extends string>(
   shape: JourneySnapshotShape<TStepId>,
   timeline: readonly TStepId[],
@@ -628,7 +664,8 @@ export const buildSnapshot = <TContext extends JourneyJsonObject, TStepId extend
   context: TContext,
   status: JourneyStatus,
   asyncState: JourneyAsyncState<TStepId>,
-  visited?: Record<TStepId, boolean>
+  visited?: Record<TStepId, boolean>,
+  visits?: Record<TStepId, number>
 ): JourneySnapshot<TContext, TStepId> => {
   if (timeline.length === 0) {
     throw new JourneyStateError("invalid-snapshot", "Journey timeline cannot be empty.");
@@ -637,11 +674,28 @@ export const buildSnapshot = <TContext extends JourneyJsonObject, TStepId extend
   const safeIndex = Math.max(0, Math.min(Math.trunc(index), timeline.length - 1));
   const currentStepId = timeline[safeIndex] as TStepId;
   const stepIds = unique(
-    visited ? ([...(Object.keys(visited) as TStepId[]), ...timeline] as const) : timeline
+    shape.type === "linear"
+      ? ([...shape.stepOrder, ...timeline] as const)
+      : visited
+        ? ([...(Object.keys(visited) as TStepId[]), ...timeline] as const)
+        : timeline
   );
+
+  // Linear invariant: visited[id] === visits[id] > 0. Counts win when given;
+  // otherwise they derive from the timeline (floored by `visited`).
+  const resolvedVisits =
+    shape.type === "linear" ? normalizeVisits(stepIds, timeline, visits, visited) : undefined;
+  const resolvedVisited = resolvedVisits
+    ? (Object.fromEntries(
+        stepIds.map((stepId) => [stepId, (resolvedVisits[stepId] ?? 0) > 0])
+      ) as Record<TStepId, boolean>)
+    : visited
+      ? normalizeVisited(visited, stepIds)
+      : buildVisitedFromTimeline(timeline, stepIds);
 
   return {
     ...applySnapshotShape(shape),
+    ...(resolvedVisits !== undefined ? { visits: resolvedVisits } : {}),
     status,
     currentStepId,
     history: {
@@ -649,9 +703,7 @@ export const buildSnapshot = <TContext extends JourneyJsonObject, TStepId extend
       index: safeIndex
     },
     context: cloneContext(context),
-    visited: visited
-      ? normalizeVisited(visited, stepIds)
-      : buildVisitedFromTimeline(timeline, stepIds),
+    visited: resolvedVisited,
     async: cloneSerializableValue(
       asyncState as unknown as JourneyJsonValue
     ) as JourneyAsyncState<TStepId>
@@ -664,6 +716,7 @@ export const stabilizeSnapshot = <TContext extends JourneyJsonObject, TStepId ex
   const stableSnapshot: JourneySnapshot<TContext, TStepId> = {
     ...snapshot,
     ...applySnapshotShape(snapshotShapeOf(snapshot)),
+    ...(snapshot.type === "linear" ? { visits: { ...snapshot.visits } } : {}),
     history: {
       timeline: [...snapshot.history.timeline],
       index: snapshot.history.index
