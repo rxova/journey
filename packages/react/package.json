@@ -57,6 +57,14 @@
       },
       "import": "./dist/headless/index.js",
       "require": "./dist/headless/index.cjs"
+    },
+    "./graph": {
+      "types": {
+        "import": "./dist/graph/index.d.ts",
+        "require": "./dist/graph/index.d.cts"
+      },
+      "import": "./dist/graph/index.js",
+      "require": "./dist/graph/index.cjs"
     }
   },
   "files": [
@@ -105,6 +113,12 @@
       "path": "dist/headless/index.js",
       "import": "{ useOwnedJourney, useJourneySnapshot, useJourneySelector }",
       "limit": "1.5 kB"
+    },
+    {
+      "name": "react/graph",
+      "path": "dist/graph/index.js",
+      "import": "{ createGraphJourney }",
+      "limit": "2.5 kB"
     }
   ],
   "devDependencies": {

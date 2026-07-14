@@ -55,6 +55,10 @@ export type JourneyApi<
     updater: (context: TContext) => TContext
   ) => Promise<JourneySnapshot<TContext, TStepId>>;
   getStepMeta: (stepId: TStepId) => TStepMeta | undefined;
+  /** Transient pause: while paused, navigation/send resolve as no-ops (`noOpReason: "paused"`). */
+  pauseJourney: () => void;
+  resumeJourney: () => void;
+  isPaused: () => boolean;
   resetJourney: () => Promise<JourneySnapshot<TContext, TStepId>>;
 };
 
