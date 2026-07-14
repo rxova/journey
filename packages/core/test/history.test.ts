@@ -1,245 +1,126 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { createLinearJourney } from "@rxova/journey-core";
+import { flush, startedLinear } from "./helpers";
 
-import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
-import type { JourneyTransitionGraph } from "../src/types";
+describe("timeline history (browser model)", () => {
+  it("forward navigation appends to the timeline", async () => {
+    const machine = await startedLinear();
+    await machine.navigate.goToNextStep();
+    await machine.navigate.goToNextStep();
 
-type StepId = "a" | "b" | "c" | "d";
-type EventMap = { type: "back"; payload?: unknown } | { type: "jump"; payload?: unknown };
-type Context = { count: number };
-
-const createJourney = (): JourneyDefinition<Context, StepId, EventMap> => ({
-  initial: "a",
-  context: { count: 0 },
-  steps: {
-    a: {},
-    b: {},
-    c: {},
-    d: {}
-  },
-  transitions: {
-    a: { goToNextStep: [{ label: "a-b", to: "b" }] },
-    b: {
-      goToNextStep: [{ label: "b-c", to: "c" }],
-      jump: [{ label: "b-d", to: "d" }]
-    },
-    c: { goToNextStep: [{ label: "c-d", to: "d" }] }
-  }
-});
-
-const createStartedMachine = () => {
-  const machine = createJourneyMachine(createJourney());
-  machine.controls.start();
-  return machine;
-};
-
-describe("timeline navigation", () => {
-  it("goToPreviousStep no-ops before the machine has started", async () => {
-    const machine = createJourneyMachine(createJourney());
-    const events: string[] = [];
-
-    machine.subscribeEvent((event) => {
-      events.push(event.type);
-    });
-
-    const result = await machine.goToPreviousStep(2);
-
-    expect(result.transitioned).toBe(false);
-    expect(machine.getSnapshot().currentStepId).toBe("a");
-    expect(machine.getSnapshot().history.index).toBe(0);
-    expect(events).toEqual([]);
+    const { history } = machine.getSnapshot();
+    expect(history.timeline).toEqual(["a", "b", "c"]);
+    expect(history.currentIndex).toBe(2);
+    expect(history.canGoBack).toBe(true);
+    expect(history.canGoForward).toBe(false);
   });
 
-  it("goToLastVisitedStep no-ops before the machine has started", async () => {
-    const machine = createJourneyMachine(createJourney());
-    const events: string[] = [];
+  it("goToPreviousStep moves the pointer without truncating", async () => {
+    const machine = await startedLinear();
+    await machine.navigate.goToNextStep();
+    await machine.navigate.goToNextStep();
+    const back = await machine.navigate.goToPreviousStep();
 
-    machine.subscribeEvent((event) => {
-      events.push(event.type);
-    });
-
-    const result = await machine.goToLastVisitedStep();
-
-    expect(result.transitioned).toBe(false);
-    expect(machine.getSnapshot().currentStepId).toBe("a");
-    expect(machine.getSnapshot().history.index).toBe(0);
-    expect(events).toEqual([]);
+    expect(back).toEqual({ ok: true, from: "c", to: "b" });
+    const { history } = machine.getSnapshot();
+    expect(history.timeline).toEqual(["a", "b", "c"]);
+    expect(history.currentIndex).toBe(1);
+    expect(history.canGoForward).toBe(true);
   });
 
-  it("keeps current as timeline[index]", async () => {
-    const machine = createStartedMachine();
+  it("goToNextStep with a forward entry walks the timeline, not the declared order", async () => {
+    const machine = await startedLinear();
+    await machine.navigate.goToStepById("d");
+    await machine.navigate.goToPreviousStep();
+    expect(machine.getSnapshot().currentStep?.id).toBe("a");
 
-    await machine.send({ type: "goToNextStep" });
-    await machine.send({ type: "goToNextStep" });
-
-    const snapshot = machine.getSnapshot();
-    expect(snapshot.history.timeline).toEqual(["a", "b", "c"]);
-    expect(snapshot.history.index).toBe(2);
-    expect(snapshot.currentStepId).toBe(snapshot.history.timeline[snapshot.history.index]);
+    const forward = await machine.navigate.goToNextStep();
+    expect(forward).toEqual({ ok: true, from: "a", to: "d" });
   });
 
-  it("goToPreviousStep clamps and defaults to one step", async () => {
-    const machine = createStartedMachine();
+  it("navigating somewhere new while back in the timeline truncates forward entries", async () => {
+    const machine = await startedLinear();
+    await machine.navigate.goToNextStep(); // a b
+    await machine.navigate.goToNextStep(); // a b c
+    await machine.navigate.goToPreviousStep(2); // pointer at a
+    await machine.navigate.goToStepById("d");
 
-    await machine.send({ type: "goToNextStep" });
-    await machine.send({ type: "goToNextStep" });
-    await machine.send({ type: "goToNextStep" });
-
-    await machine.goToPreviousStep();
-    expect(machine.getSnapshot().currentStepId).toBe("c");
-
-    await machine.goToPreviousStep(10);
-    const snapshot = machine.getSnapshot();
-    expect(snapshot.history.index).toBe(0);
-    expect(snapshot.currentStepId).toBe("a");
+    const { history } = machine.getSnapshot();
+    expect(history.timeline).toEqual(["a", "d"]);
+    expect(history.currentIndex).toBe(1);
+    expect(history.canGoForward).toBe(false);
   });
 
-  it("goToLastVisitedStep jumps to timeline tail", async () => {
-    const machine = createStartedMachine();
-
-    await machine.send({ type: "goToNextStep" });
-    await machine.send({ type: "goToNextStep" });
-    await machine.send({ type: "goToNextStep" });
-    await machine.goToPreviousStep(2);
-
-    expect(machine.getSnapshot().currentStepId).toBe("b");
-
-    await machine.goToLastVisitedStep();
-
-    const snapshot = machine.getSnapshot();
-    expect(snapshot.currentStepId).toBe("d");
-    expect(snapshot.history.index).toBe(snapshot.history.timeline.length - 1);
-  });
-
-  it("goToLastVisitedStep no-ops when already at the timeline tail", async () => {
-    const machine = createStartedMachine();
-
-    await machine.send({ type: "goToNextStep" });
-    await machine.send({ type: "goToNextStep" });
-    await machine.send({ type: "goToNextStep" });
-
-    const result = await machine.goToLastVisitedStep();
-
-    expect(result.transitioned).toBe(false);
-    expect(machine.getSnapshot().currentStepId).toBe("d");
-  });
-
-  it("send(back) without an explicit transition no-ops", async () => {
-    const machine = createStartedMachine();
-
-    await machine.send({ type: "goToNextStep" });
-    await machine.send({ type: "goToNextStep" });
-    const result = await machine.send({ type: "back" });
-
-    expect(result.transitioned).toBe(false);
-    expect(machine.getSnapshot().currentStepId).toBe("c");
-  });
-
-  it("send(goToPreviousStep) falls back to previous-step navigation", async () => {
-    const machine = createStartedMachine();
-
-    await machine.send({ type: "goToNextStep" });
-    await machine.send({ type: "goToNextStep" });
-
-    const result = await machine.send({ type: "goToPreviousStep" });
-
-    expect(result.transitioned).toBe(true);
-    expect(result.transitionId).toBe("goToPreviousStep");
-    expect(machine.getSnapshot().currentStepId).toBe("b");
-  });
-
-  it("goToPreviousStep no-ops at index zero after the machine has started", async () => {
-    const machine = createStartedMachine();
-
-    const result = await machine.goToPreviousStep(2);
-
-    expect(result.transitioned).toBe(false);
-    expect(machine.getSnapshot().currentStepId).toBe("a");
-    expect(machine.getSnapshot().history.index).toBe(0);
-  });
-
-  it("navigation APIs no-op after completion", async () => {
-    const machine = createStartedMachine();
-    const events: string[] = [];
-
-    machine.subscribeEvent((event) => {
-      events.push(event.type);
-    });
-
-    await machine.send({ type: "goToNextStep" });
-    await machine.send({ type: "goToNextStep" });
-    await machine.send({ type: "goToNextStep" });
-    await machine.controls.complete();
-
-    const previous = await machine.goToPreviousStep();
-    const lastVisited = await machine.goToLastVisitedStep();
-
-    expect(previous.transitioned).toBe(false);
-    expect(lastVisited.transitioned).toBe(false);
-    expect(machine.getSnapshot().status).toBe("completed");
-    expect(machine.getSnapshot().currentStepId).toBe("d");
-    expect(events).not.toContain("navigation.previous");
-    expect(events).not.toContain("navigation.lastVisited");
-  });
-
-  it("navigation APIs no-op after termination", async () => {
-    const machine = createStartedMachine();
-    const events: string[] = [];
-
-    machine.subscribeEvent((event) => {
-      events.push(event.type);
-    });
-
-    await machine.send({ type: "goToNextStep" });
-    await machine.controls.terminate();
-
-    const previous = await machine.goToPreviousStep();
-    const lastVisited = await machine.goToLastVisitedStep();
-
-    expect(previous.transitioned).toBe(false);
-    expect(lastVisited.transitioned).toBe(false);
-    expect(machine.getSnapshot().status).toBe("terminated");
-    expect(machine.getSnapshot().currentStepId).toBe("b");
-    expect(events).not.toContain("navigation.previous");
-    expect(events).not.toContain("navigation.lastVisited");
-  });
-
-  it("explicit custom back transition still works when declared", async () => {
-    const journey = createJourney();
-    const transitions = journey.transitions as JourneyTransitionGraph<Context, StepId, EventMap>;
-    journey.transitions = {
-      ...transitions,
-      c: {
-        ...transitions.c,
-        back: [{ label: "explicit-back", to: "d" }]
-      }
+  it("multi-entry jumps fire hooks once — leave current, enter target", async () => {
+    const hooks = {
+      aEnter: vi.fn(),
+      bEnter: vi.fn(),
+      bLeave: vi.fn(),
+      cLeave: vi.fn()
     };
-
-    const machine = createJourneyMachine(journey);
+    const machine = createLinearJourney({
+      steps: [
+        { id: "a", onEnter: hooks.aEnter },
+        { id: "b", onEnter: hooks.bEnter, onLeave: hooks.bLeave },
+        { id: "c", onLeave: hooks.cLeave }
+      ],
+      context: {}
+    });
     machine.controls.start();
+    await flush();
+    await machine.navigate.goToNextStep();
+    await machine.navigate.goToNextStep();
+    hooks.aEnter.mockClear();
+    hooks.bEnter.mockClear();
+    hooks.bLeave.mockClear();
 
-    await machine.send({ type: "goToNextStep" });
-    await machine.send({ type: "goToNextStep" });
-    const result = await machine.send({ type: "back" });
+    await machine.navigate.goToPreviousStep(2);
 
-    expect(result.transitioned).toBe(true);
-    expect(result.transitionId).toEqual(expect.any(String));
-    expect(result.label).toBe("explicit-back");
-    expect(machine.getSnapshot().currentStepId).toBe("d");
+    expect(hooks.cLeave).toHaveBeenCalledTimes(1);
+    expect(hooks.aEnter).toHaveBeenCalledTimes(1);
+    expect(hooks.bEnter).not.toHaveBeenCalled();
+    expect(hooks.bLeave).not.toHaveBeenCalled();
   });
 
-  it("truncates tail when moving forward after going back", async () => {
-    const machine = createStartedMachine();
+  it("goToPreviousStep clamps to the start and fails only at index 0", async () => {
+    const machine = await startedLinear();
+    await machine.navigate.goToNextStep();
+    const clamped = await machine.navigate.goToPreviousStep(99);
+    expect(clamped).toEqual({ ok: true, from: "b", to: "a" });
 
-    await machine.send({ type: "goToNextStep" });
-    await machine.send({ type: "goToNextStep" });
-    await machine.send({ type: "goToNextStep" });
+    const atStart = await machine.navigate.goToPreviousStep();
+    expect(atStart).toEqual({ ok: false, reason: "out-of-bounds" });
+  });
 
-    await machine.goToPreviousStep(2);
-    await machine.send({ type: "jump" });
+  it("goToLastVisitedStep jumps the pointer to the tip; fails if already there", async () => {
+    const machine = await startedLinear();
+    await machine.navigate.goToNextStep();
+    await machine.navigate.goToNextStep();
+    await machine.navigate.goToPreviousStep(2);
 
+    const jump = await machine.navigate.goToLastVisitedStep();
+    expect(jump).toEqual({ ok: true, from: "a", to: "c" });
+    expect(machine.getSnapshot().history.currentIndex).toBe(2);
+
+    const again = await machine.navigate.goToLastVisitedStep();
+    expect(again).toEqual({ ok: false, reason: "no-op" });
+  });
+
+  it("navigating to the current step is a no-op", async () => {
+    const machine = await startedLinear();
+    expect(await machine.navigate.goToStepById("a")).toEqual({ ok: false, reason: "no-op" });
+  });
+
+  it("tracks visited steps and first-time visits across revisits", async () => {
+    const machine = await startedLinear();
+    await machine.navigate.goToNextStep();
+    expect(machine.getSnapshot().currentStep?.isFirstTimeVisit).toBe(true);
+
+    await machine.navigate.goToPreviousStep();
     const snapshot = machine.getSnapshot();
-    expect(snapshot.currentStepId).toBe("d");
-    expect(snapshot.history.timeline).toEqual(["a", "b", "d"]);
-    expect(snapshot.history.index).toBe(2);
+    expect(snapshot.currentStep?.id).toBe("a");
+    expect(snapshot.currentStep?.isFirstTimeVisit).toBe(false);
+    expect(snapshot.history.visited).toEqual({ a: true, b: true, c: false, d: false });
+    expect(snapshot.steps.visitedStepCount).toBe(2);
   });
 });

@@ -1,26 +1,44 @@
-import type {
-  JourneyBaseEvent,
-  JourneyJsonObject,
-  JourneyMachine,
-  JourneyMachinePlugin,
-  JourneyObservationEvent,
-  JourneyReplayEntry,
-  JourneyReplayExportOptions,
-  JourneyReplayPluginOptions,
-  JourneyReplaySession,
-  JourneySnapshot
-} from "../../types";
-import type { JourneyEmpty } from "../../types";
+import type { JourneyPlugin } from "../../core/types";
 
-const normalizeMaxEntries = (value: number | undefined) => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return 500;
-  }
+export type ReplayEntryKind = "status" | "transition" | "context" | "navigationBlocked" | "error";
 
-  return Math.max(1, Math.trunc(value));
+export type ReplayEntry = {
+  readonly at: number;
+  readonly kind: ReplayEntryKind;
+  readonly data: unknown;
+  /** Present when `captureSnapshots` is enabled. */
+  readonly snapshot?: unknown;
 };
 
-const toSerializable = (value: unknown, seen = new WeakSet<object>()): unknown => {
+export type ReplaySession = {
+  readonly startedAt: number;
+  readonly entries: readonly ReplayEntry[];
+};
+
+export type ReplayPluginOptions = {
+  /** Ring-buffer capacity. Defaults to 500; clamped to >= 1. */
+  maxEntries?: number;
+  /** Attach a serialized snapshot to each entry. Defaults to `true`. */
+  captureSnapshots?: boolean;
+  /** Injectable clock, mainly for tests. */
+  now?: () => number;
+};
+
+export type ReplayExportOptions = { pretty?: boolean };
+
+export type ReplayApi = {
+  getReplaySession(): ReplaySession;
+  clearReplaySession(): void;
+  exportReplaySession(options?: ReplayExportOptions): string;
+};
+
+function normalizeMaxEntries(value: number | undefined): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 500;
+  return Math.max(1, Math.trunc(value));
+}
+
+/** Converts any value into a JSON-safe structure (circular refs, errors, dates). */
+function toSerializable(value: unknown, seen = new WeakSet<object>()): unknown {
   if (
     value === null ||
     typeof value === "string" ||
@@ -29,19 +47,11 @@ const toSerializable = (value: unknown, seen = new WeakSet<object>()): unknown =
   ) {
     return value;
   }
-
-  if (typeof value === "bigint") {
-    return value.toString();
-  }
-
-  if (typeof value === "undefined") {
-    return null;
-  }
-
+  if (typeof value === "bigint") return value.toString();
+  if (typeof value === "undefined") return null;
   if (typeof value === "function" || typeof value === "symbol") {
     return `[unsupported:${typeof value}]`;
   }
-
   if (value instanceof Error) {
     return {
       name: value.name,
@@ -49,20 +59,10 @@ const toSerializable = (value: unknown, seen = new WeakSet<object>()): unknown =
       ...(value.stack ? { stack: value.stack } : {})
     };
   }
-
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-
-  if (Array.isArray(value)) {
-    return value.map((item) => toSerializable(item, seen));
-  }
-
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map((item) => toSerializable(item, seen));
   if (typeof value === "object") {
-    if (seen.has(value)) {
-      return "[circular]";
-    }
-
+    if (seen.has(value)) return "[circular]";
     seen.add(value);
     const output: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(value)) {
@@ -71,169 +71,65 @@ const toSerializable = (value: unknown, seen = new WeakSet<object>()): unknown =
     seen.delete(value);
     return output;
   }
-
   return String(value);
-};
+}
 
 /** Serializes a replay session into a JSON string safe for logging or export. */
-export const serializeReplaySession = <
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEvents extends JourneyBaseEvent = never
->(
-  session: JourneyReplaySession<TContext, TStepId, TEvents>,
-  options?: JourneyReplayExportOptions
-) => JSON.stringify(toSerializable(session), null, options?.pretty ? 2 : undefined);
+export function serializeReplaySession(
+  session: ReplaySession,
+  options?: ReplayExportOptions
+): string {
+  return JSON.stringify(toSerializable(session), null, options?.pretty ? 2 : undefined);
+}
 
-export type JourneyReplayMachineExtension<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEvents extends JourneyBaseEvent = never
-> = {
-  getReplaySession: () => JourneyReplaySession<TContext, TStepId, TEvents>;
-  clearReplaySession: () => void;
-  exportReplaySession: (options?: JourneyReplayExportOptions) => string;
-};
-
-export type JourneyReplayMachine<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEvents extends JourneyBaseEvent = never,
-  TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = JourneyEmpty
-> = JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers> &
-  JourneyReplayMachineExtension<TContext, TStepId, TEvents>;
-
-/** Creates a plugin that records snapshot and lifecycle activity into a replay session. */
-export const createReplayPlugin = (options: JourneyReplayPluginOptions = {}) => {
-  const captureEvents = options.captureEvents ?? true;
-  const captureSnapshots = options.captureSnapshots ?? true;
+/** Records snapshot and lifecycle activity into an exportable replay session. */
+export function createReplayPlugin(
+  options: ReplayPluginOptions = {}
+): JourneyPlugin<"replay", ReplayApi, { entryCount: number }> {
   const maxEntries = normalizeMaxEntries(options.maxEntries);
+  const captureSnapshots = options.captureSnapshots ?? true;
+  const now = options.now ?? Date.now;
 
   return {
     name: "replay",
-    __extension__: undefined as unknown as JourneyReplayMachineExtension<
-      JourneyJsonObject,
-      string,
-      JourneyBaseEvent
-    >,
-    // Per-instance state lives inside `setup()` (called once per machine) so a
-    // single plugin instance reused across machines never shares its buffer.
-    setup: () => {
-      let initialSnapshot: JourneySnapshot<JourneyJsonObject, string> | null = null;
-      const entries: JourneyReplayEntry<JourneyJsonObject, string, JourneyBaseEvent>[] = [];
-      let truncated = false;
-      let unsubscribeEvents: (() => void) | undefined;
+    setup(host) {
+      let startedAt = now();
+      let entries: ReplayEntry[] = [];
 
-      const pushEntry = (
-        entry: JourneyReplayEntry<JourneyJsonObject, string, JourneyBaseEvent>
-      ) => {
-        if (entries.length >= maxEntries) {
-          entries.shift();
-          truncated = true;
-        }
-
+      const record = (kind: ReplayEntryKind, data: unknown) => {
+        const entry: ReplayEntry = {
+          at: now(),
+          kind,
+          data: toSerializable(data),
+          ...(captureSnapshots ? { snapshot: toSerializable(host.getSnapshot()) } : {})
+        };
         entries.push(entry);
+        if (entries.length > maxEntries) {
+          entries = entries.slice(entries.length - maxEntries);
+        }
       };
 
-      const buildSession = () =>
-        ({
-          version: 1 as const,
-          initialSnapshot,
-          entries: [...entries],
-          truncated
-        }) satisfies JourneyReplaySession<JourneyJsonObject, string, JourneyBaseEvent>;
+      host.onTransition(({ from, to }) => record("transition", { from, to }));
+      host.onStatusChange(({ previous, current }) => record("status", { previous, current }));
+      host.onContextChange(({ previous, current }) => record("context", { previous, current }));
+      host.onNavigationBlocked(({ reason, from, to }) =>
+        record("navigationBlocked", { reason, from, to })
+      );
+      host.onError(({ phase, stepId, error }) => record("error", { phase, stepId, error }));
 
       return {
-        hydrateSnapshot: (snapshot) => {
-          initialSnapshot = snapshot as JourneySnapshot<JourneyJsonObject, string>;
-          return snapshot;
+        api: {
+          getReplaySession: () => ({ startedAt, entries: [...entries] }),
+          clearReplaySession: () => {
+            startedAt = now();
+            entries = [];
+          },
+          exportReplaySession: (exportOptions) =>
+            serializeReplaySession({ startedAt, entries: [...entries] }, exportOptions)
         },
-        onSnapshotChange: ({ snapshot, reason }) => {
-          if (!captureSnapshots) {
-            return;
-          }
-
-          pushEntry({
-            kind: "snapshot",
-            timestamp: Date.now(),
-            reason,
-            snapshot: snapshot as JourneySnapshot<JourneyJsonObject, string>
-          });
-        },
-        augmentMachine: ({ machine }) => {
-          if (captureEvents) {
-            unsubscribeEvents = machine.subscribeEvent((event) => {
-              pushEntry({
-                kind: "event",
-                timestamp: event.timestamp,
-                event: event as JourneyObservationEvent<string, JourneyBaseEvent>
-              });
-            });
-          }
-
-          return {
-            getReplaySession: () =>
-              buildSession() as JourneyReplaySession<JourneyJsonObject, string, JourneyBaseEvent>,
-            clearReplaySession: () => {
-              initialSnapshot = machine.getSnapshot() as JourneySnapshot<JourneyJsonObject, string>;
-              entries.length = 0;
-              truncated = false;
-            },
-            exportReplaySession: (exportOptions?: JourneyReplayExportOptions) =>
-              serializeReplaySession(buildSession(), exportOptions)
-          };
-        },
-        getDevtoolsFeatures: () => [
-          {
-            id: "replay",
-            label: "Replay",
-            operations: [
-              {
-                id: "replay.inspectSession",
-                label: "inspectSession",
-                mutates: false,
-                output: "data",
-                run: () => ({
-                  kind: "data",
-                  data: buildSession()
-                })
-              },
-              {
-                id: "replay.exportSession",
-                label: "exportSession",
-                mutates: false,
-                output: "text",
-                fields: [{ key: "pretty", label: "pretty", type: "boolean" }],
-                run: ({ input }) => ({
-                  kind: "text",
-                  text: serializeReplaySession(buildSession(), {
-                    pretty: input?.pretty === true
-                  })
-                })
-              },
-              {
-                id: "replay.clearSession",
-                label: "clearSession",
-                mutates: true,
-                output: "void",
-                run: ({ machine }) => {
-                  initialSnapshot = machine.getSnapshot() as JourneySnapshot<
-                    JourneyJsonObject,
-                    string
-                  >;
-                  entries.length = 0;
-                  truncated = false;
-                  return { kind: "void" };
-                }
-              }
-            ]
-          }
-        ],
-        dispose: () => {
-          unsubscribeEvents?.();
-        }
+        deriveSnapshot: (_snapshot, previous) =>
+          previous?.entryCount === entries.length ? previous : { entryCount: entries.length }
       };
     }
-  } satisfies JourneyMachinePlugin;
-};
+  };
+}

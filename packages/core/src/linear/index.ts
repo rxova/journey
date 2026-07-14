@@ -1,0 +1,128 @@
+import { buildMachineSurface } from "../core/machine";
+import { JourneyRuntime } from "../core/runtime";
+import type { RuntimeStep } from "../core/runtime.types";
+import type {
+  AnyJourneyPlugin,
+  JourneyMachineBase,
+  JourneyRuntimeOptions,
+  LinearSnapshot,
+  OnEnterHook,
+  OnLeaveHook,
+  PluginApis
+} from "../core/types";
+
+/** Full linear step config; a bare string is shorthand for `{ id, metadata: {} }`. */
+export type LinearStepConfig<
+  TContext = unknown,
+  TStepId extends string = string,
+  TMeta = Record<string, unknown>
+> = {
+  readonly id: TStepId;
+  readonly metadata?: TMeta;
+  readonly onEnter?: OnEnterHook<
+    TContext,
+    TStepId,
+    never,
+    LinearSnapshot<TContext, TStepId, TMeta>
+  >;
+  readonly onLeave?: OnLeaveHook<
+    TContext,
+    TStepId,
+    never,
+    LinearSnapshot<TContext, TStepId, TMeta>
+  >;
+};
+
+export type LinearStepInput<TContext, TMeta> = string | LinearStepConfig<TContext, string, TMeta>;
+
+/**
+ * Pure-data linear definition: testable, reusable, and the unit
+ * `linearToGraphDefinition` operates on.
+ */
+export type LinearJourneyDefinition<TContext = unknown, TMeta = Record<string, unknown>> = {
+  readonly steps: readonly LinearStepInput<TContext, TMeta>[];
+  readonly context: TContext;
+};
+
+/** Step ids inferred as a literal union from the steps tuple. */
+export type LinearStepIdOf<TSteps extends readonly (string | { readonly id: string })[]> =
+  TSteps[number] extends infer TStep
+    ? TStep extends string
+      ? TStep
+      : TStep extends { readonly id: infer TId extends string }
+        ? TId
+        : never
+    : never;
+
+export type LinearJourneyMachine<
+  TContext,
+  TStepId extends string,
+  TMeta = Record<string, unknown>,
+  TPlugins extends readonly AnyJourneyPlugin[] = readonly []
+> = JourneyMachineBase<TContext, TStepId, LinearSnapshot<TContext, TStepId, TMeta>> & {
+  readonly plugins: PluginApis<TPlugins>;
+};
+
+/**
+ * Creates a linear journey runtime from a pure-data definition.
+ *
+ * Declared order drives `goToNextStep`'s fallback at the timeline tip and the
+ * order-based snapshot fields (`index`, `isFirstStep`, `isLastStep`,
+ * `stepOrder`). `goToNextStep` on the last step never auto-completes.
+ */
+export function createLinearJourney<
+  TContext,
+  const TSteps extends readonly LinearStepInput<TContext, TMeta>[],
+  TMeta = Record<string, unknown>,
+  const TPlugins extends readonly AnyJourneyPlugin[] = readonly []
+>(
+  definition: { readonly steps: TSteps; readonly context: TContext },
+  options: JourneyRuntimeOptions<TPlugins> = {}
+): LinearJourneyMachine<TContext, LinearStepIdOf<TSteps>, TMeta, TPlugins> {
+  if (definition.steps.length === 0) {
+    throw new Error("journey: a linear journey needs at least one step");
+  }
+
+  const stepIds: string[] = [];
+  const steps: Record<string, RuntimeStep> = {};
+  for (const input of definition.steps) {
+    const config: LinearStepConfig<TContext, string, TMeta> =
+      typeof input === "string" ? { id: input } : input;
+    if (config.id in steps) {
+      throw new Error(`journey: duplicate step id "${config.id}"`);
+    }
+    stepIds.push(config.id);
+    const runtimeStep: {
+      metadata: unknown;
+      onEnter?: NonNullable<RuntimeStep["onEnter"]>;
+      onLeave?: NonNullable<RuntimeStep["onLeave"]>;
+    } = { metadata: config.metadata ?? {} };
+    if (config.onEnter) {
+      runtimeStep.onEnter = config.onEnter as unknown as NonNullable<RuntimeStep["onEnter"]>;
+    }
+    if (config.onLeave) {
+      runtimeStep.onLeave = config.onLeave as unknown as NonNullable<RuntimeStep["onLeave"]>;
+    }
+    steps[config.id] = runtimeStep;
+  }
+
+  const runtime = new JourneyRuntime({
+    kind: "linear",
+    stepIds,
+    steps,
+    initial: stepIds[0] as string,
+    initialContext: definition.context,
+    transitions: [],
+    handlers: undefined,
+    autoStart: options.autoStart ?? false,
+    defaultTimeoutMs: options.defaultTimeoutMs,
+    plugins: options.plugins ?? []
+  });
+
+  return buildMachineSurface(runtime) as unknown as LinearJourneyMachine<
+    TContext,
+    LinearStepIdOf<TSteps>,
+    TMeta,
+    TPlugins
+  >;
+}

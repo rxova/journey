@@ -1,412 +1,104 @@
-import { warnInDevelopment } from "../../journey-machine/helpers";
+import type { JourneyPlugin } from "../../core/types";
 
-import type {
-  JourneyBaseEvent,
-  JourneyAnalyticsPluginOptions,
-  JourneyAnalyticsTrackedEvent,
-  JourneyJsonObject,
-  JourneyMachine,
-  JourneyMachinePlugin,
-  JourneyObservationEvent,
-  JourneyTerminal
-} from "../../types";
-import type { JourneyEmpty } from "../../types";
-
-const buildBasePayload = <TContext extends JourneyJsonObject>({
-  context
-}: {
-  context: TContext;
-}) => ({ context });
-
-export type JourneyAnalyticsMachineExtension<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TStepMeta
-> = {
-  trackAnalyticsEvent: (
-    name: string,
-    payload?: Record<string, unknown>
-  ) => JourneyAnalyticsTrackedEvent<TContext, TStepId, TStepMeta>;
+export type AnalyticsTrackedEvent = {
+  readonly name: string;
+  readonly timestamp: number;
+  readonly stepId: string | null;
+  readonly payload: Readonly<Record<string, unknown>>;
 };
 
-export type JourneyAnalyticsMachine<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEvents extends JourneyBaseEvent = never,
-  TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = JourneyEmpty
-> = JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers> &
-  JourneyAnalyticsMachineExtension<TContext, TStepId, TStepMeta>;
+export type AnalyticsRecentEvent = {
+  readonly source: "lifecycle" | "custom";
+  readonly tracked: AnalyticsTrackedEvent;
+  readonly success: boolean;
+  readonly error?: unknown;
+};
 
-/** Creates a plugin that converts journey observation events into analytics envelopes. */
-export const createAnalyticsPlugin = <
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEvents extends JourneyBaseEvent = never,
-  TStepMeta = unknown
->(
-  options: JourneyAnalyticsPluginOptions<TContext, TStepId, TEvents, TStepMeta>
-) => {
-  type RecentEvent = {
-    source: "lifecycle" | "custom";
-    timestamp: number;
-    tracked: JourneyAnalyticsTrackedEvent<TContext, TStepId, TStepMeta>;
-    success: boolean;
-    error?: unknown;
-  };
-  const RECENT_EVENT_CAPACITY = 100;
+export type AnalyticsPluginOptions = {
+  /** The analytics sink. Exceptions are captured, never rethrown. */
+  track(event: AnalyticsTrackedEvent): void;
+  /** Called when `track` throws; without it failures only land in the buffer. */
+  onError?(error: unknown, event: AnalyticsTrackedEvent): void;
+  /** Injectable clock, mainly for tests. */
+  now?: () => number;
+};
+
+export type AnalyticsApi = {
+  /** Tracks a custom event through the same safe pipeline. */
+  trackAnalyticsEvent(name: string, payload?: Record<string, unknown>): AnalyticsTrackedEvent;
+  /** The last 100 tracked events (successes and failures). */
+  getRecentEvents(): readonly AnalyticsRecentEvent[];
+  clearRecentEvents(): void;
+};
+
+const RECENT_EVENT_CAPACITY = 100;
+
+/**
+ * Converts journey observations (transitions, lifecycle, blocked navigations,
+ * errors) into analytics envelopes delivered to the configured sink.
+ */
+export function createAnalyticsPlugin(
+  options: AnalyticsPluginOptions
+): JourneyPlugin<"analytics", AnalyticsApi, never> {
+  const now = options.now ?? Date.now;
+
   return {
     name: "analytics",
-    __extension__: undefined as unknown as JourneyAnalyticsMachineExtension<
-      TContext,
-      TStepId,
-      TStepMeta
-    >,
     // Per-instance state lives inside `setup()` (called once per machine) so a
     // single plugin instance reused across machines never shares its buffer.
-    setup: () => {
-      const recentEventsBuffer: (RecentEvent | undefined)[] = new Array(RECENT_EVENT_CAPACITY);
-      let recentEventsWriteIndex = 0;
-      let recentEventsCount = 0;
-      const pushRecentEvent = (entry: RecentEvent) => {
-        recentEventsBuffer[recentEventsWriteIndex] = entry;
-        recentEventsWriteIndex = (recentEventsWriteIndex + 1) % RECENT_EVENT_CAPACITY;
-        if (recentEventsCount < RECENT_EVENT_CAPACITY) recentEventsCount++;
-      };
-      const snapshotRecentEvents = (): RecentEvent[] => {
-        if (recentEventsCount < RECENT_EVENT_CAPACITY) {
-          return recentEventsBuffer.slice(0, recentEventsCount) as RecentEvent[];
+    setup(host) {
+      let recent: AnalyticsRecentEvent[] = [];
+
+      const record = (entry: AnalyticsRecentEvent) => {
+        recent.push(entry);
+        if (recent.length > RECENT_EVENT_CAPACITY) {
+          recent = recent.slice(recent.length - RECENT_EVENT_CAPACITY);
         }
-        return [
-          ...recentEventsBuffer.slice(recentEventsWriteIndex),
-          ...recentEventsBuffer.slice(0, recentEventsWriteIndex)
-        ] as RecentEvent[];
       };
-      const clearRecentEvents = () => {
-        for (let index = 0; index < RECENT_EVENT_CAPACITY; index++) {
-          recentEventsBuffer[index] = undefined;
-        }
-        recentEventsWriteIndex = 0;
-        recentEventsCount = 0;
-      };
-      let unsubscribe: (() => void) | undefined;
-      let startedAt: number | null = null;
-      let activeStepEnteredAt: number | null = null;
 
       const trackSafely = (
-        event:
-          | JourneyObservationEvent<TStepId, TEvents>
-          | JourneyAnalyticsTrackedEvent<TContext, TStepId, TStepMeta>,
-        tracked: JourneyAnalyticsTrackedEvent<TContext, TStepId, TStepMeta>
-      ) => {
+        source: AnalyticsRecentEvent["source"],
+        name: string,
+        payload: Record<string, unknown>
+      ): AnalyticsTrackedEvent => {
+        const tracked: AnalyticsTrackedEvent = {
+          name,
+          timestamp: now(),
+          stepId: host.getSnapshot().currentStep?.id ?? null,
+          payload
+        };
         try {
           options.track(tracked);
-          pushRecentEvent({
-            source: "name" in event ? "custom" : "lifecycle",
-            timestamp: tracked.timestamp,
-            tracked,
-            success: true
-          });
+          record({ source, tracked, success: true });
         } catch (error) {
-          pushRecentEvent({
-            source: "name" in event ? "custom" : "lifecycle",
-            timestamp: tracked.timestamp,
-            tracked,
-            success: false,
-            error
-          });
-          if (options.onError) {
-            options.onError(error, event);
-            return;
-          }
-
-          warnInDevelopment("Journey analytics track() threw without an onError handler.", error);
+          record({ source, tracked, success: false, error });
+          options.onError?.(error, tracked);
         }
-      };
-
-      const trackCustomEvent = (name: string, payload: Record<string, unknown> = {}) => {
-        const tracked = {
-          name,
-          timestamp: Date.now(),
-          ...(options.machineId ? { machineId: options.machineId } : {}),
-          payload
-        } satisfies JourneyAnalyticsTrackedEvent<TContext, TStepId, TStepMeta>;
-        trackSafely(tracked, tracked);
         return tracked;
       };
 
+      host.onTransition(({ from, to }) => {
+        trackSafely("lifecycle", "journey.transition", { from, to });
+      });
+      host.onStatusChange(({ previous, current }) => {
+        trackSafely("lifecycle", `journey.${current}`, { previous });
+      });
+      host.onNavigationBlocked(({ reason, from, to }) => {
+        trackSafely("lifecycle", "journey.navigationBlocked", { reason, from, to });
+      });
+      host.onError(({ phase, stepId, error }) => {
+        trackSafely("lifecycle", "journey.error", { phase, stepId, error });
+      });
+
       return {
-        augmentMachine: ({ machine }) => {
-          const typedMachine = machine as JourneyMachine<
-            TContext,
-            TStepId,
-            TEvents,
-            TStepMeta,
-            Record<string, unknown>
-          >;
-
-          const emitTracked = (
-            sourceEvent: JourneyObservationEvent<TStepId, TEvents>,
-            tracked: JourneyAnalyticsTrackedEvent<TContext, TStepId, TStepMeta>
-          ) => {
-            trackSafely(sourceEvent, tracked);
-          };
-
-          const buildStepMetaPayload = (stepId: TStepId) => {
-            if (!options.includeStepMeta) {
-              return {};
-            }
-
-            const stepMeta = typedMachine.getStepMeta(stepId) as TStepMeta | undefined;
-            return stepMeta === undefined ? {} : { stepMeta };
-          };
-
-          const buildTransitionMetaPayload = ({
-            from,
-            to
-          }: {
-            from: TStepId;
-            to: TStepId | JourneyTerminal;
-          }) => {
-            if (!options.includeStepMeta) {
-              return {};
-            }
-
-            const fromStepMeta = typedMachine.getStepMeta(from) as TStepMeta | undefined;
-            const toStepMeta =
-              to === "COMPLETE" || to === "TERMINATED"
-                ? undefined
-                : (typedMachine.getStepMeta(to) as TStepMeta | undefined);
-
-            return {
-              ...(fromStepMeta === undefined ? {} : { fromStepMeta }),
-              ...(toStepMeta === undefined ? {} : { toStepMeta })
-            };
-          };
-
-          unsubscribe = typedMachine.subscribeEvent((event) => {
-            const typedEvent = event as JourneyObservationEvent<TStepId, TEvents>;
-            const snapshot = typedMachine.getSnapshot();
-            const basePayload = buildBasePayload({
-              context: snapshot.context as TContext
-            });
-
-            switch (typedEvent.type) {
-              case "journey.start":
-                startedAt = typedEvent.timestamp;
-                activeStepEnteredAt = typedEvent.timestamp;
-                emitTracked(typedEvent, {
-                  name: "journey_started",
-                  timestamp: typedEvent.timestamp,
-                  ...(options.machineId ? { machineId: options.machineId } : {}),
-                  payload: {
-                    stepId: typedEvent.stepId,
-                    ...buildStepMetaPayload(typedEvent.stepId),
-                    ...basePayload
-                  }
-                });
-                return;
-              case "step.enter":
-                activeStepEnteredAt = typedEvent.timestamp;
-                emitTracked(typedEvent, {
-                  name: "step_viewed",
-                  timestamp: typedEvent.timestamp,
-                  ...(options.machineId ? { machineId: options.machineId } : {}),
-                  payload: {
-                    stepId: typedEvent.stepId,
-                    ...buildStepMetaPayload(typedEvent.stepId),
-                    ...basePayload
-                  }
-                });
-                return;
-              case "step.exit":
-                emitTracked(typedEvent, {
-                  name: "step_exited",
-                  timestamp: typedEvent.timestamp,
-                  ...(options.machineId ? { machineId: options.machineId } : {}),
-                  payload: {
-                    stepId: typedEvent.stepId,
-                    ...(activeStepEnteredAt === null
-                      ? {}
-                      : { dwellMs: Math.max(0, typedEvent.timestamp - activeStepEnteredAt) }),
-                    ...buildStepMetaPayload(typedEvent.stepId),
-                    ...basePayload
-                  }
-                });
-                return;
-              case "transition.start":
-                emitTracked(typedEvent, {
-                  name: "transition_started",
-                  timestamp: typedEvent.timestamp,
-                  ...(options.machineId ? { machineId: options.machineId } : {}),
-                  payload: {
-                    from: typedEvent.from,
-                    eventType: typedEvent.event.type,
-                    ...basePayload
-                  }
-                });
-                return;
-              case "transition.success":
-                emitTracked(typedEvent, {
-                  name: "transition_succeeded",
-                  timestamp: typedEvent.timestamp,
-                  ...(options.machineId ? { machineId: options.machineId } : {}),
-                  payload: {
-                    from: typedEvent.from,
-                    to: typedEvent.to,
-                    eventType: typedEvent.eventType,
-                    transitionId: typedEvent.transitionId,
-                    ...(typedEvent.label !== undefined ? { label: typedEvent.label } : {}),
-                    ...buildTransitionMetaPayload({
-                      from: typedEvent.from,
-                      to: typedEvent.to as TStepId | JourneyTerminal
-                    }),
-                    ...basePayload
-                  }
-                });
-                return;
-              case "transition.error":
-                emitTracked(typedEvent, {
-                  name: "transition_failed",
-                  timestamp: typedEvent.timestamp,
-                  ...(options.machineId ? { machineId: options.machineId } : {}),
-                  payload: {
-                    from: typedEvent.from,
-                    eventType: typedEvent.eventType,
-                    transitionId: typedEvent.transitionId,
-                    ...(typedEvent.label !== undefined ? { label: typedEvent.label } : {}),
-                    error: typedEvent.error,
-                    ...basePayload
-                  }
-                });
-                return;
-              case "journey.completed":
-                emitTracked(typedEvent, {
-                  name: "journey_completed",
-                  timestamp: typedEvent.timestamp,
-                  ...(options.machineId ? { machineId: options.machineId } : {}),
-                  payload: {
-                    stepId: typedEvent.stepId,
-                    ...(startedAt === null
-                      ? {}
-                      : { durationMs: Math.max(0, typedEvent.timestamp - startedAt) }),
-                    ...buildStepMetaPayload(typedEvent.stepId),
-                    ...basePayload
-                  }
-                });
-                return;
-              case "journey.terminated":
-                emitTracked(typedEvent, {
-                  name: "journey_terminated",
-                  timestamp: typedEvent.timestamp,
-                  ...(options.machineId ? { machineId: options.machineId } : {}),
-                  payload: {
-                    stepId: typedEvent.stepId,
-                    ...(startedAt === null
-                      ? {}
-                      : { durationMs: Math.max(0, typedEvent.timestamp - startedAt) }),
-                    ...buildStepMetaPayload(typedEvent.stepId),
-                    ...basePayload
-                  }
-                });
-                return;
-              case "navigation.previous":
-                emitTracked(typedEvent, {
-                  name: "navigation_previous",
-                  timestamp: typedEvent.timestamp,
-                  ...(options.machineId ? { machineId: options.machineId } : {}),
-                  payload: {
-                    from: typedEvent.from,
-                    to: typedEvent.to,
-                    requestedSteps: typedEvent.requestedSteps,
-                    appliedSteps: typedEvent.appliedSteps,
-                    ...buildTransitionMetaPayload({
-                      from: typedEvent.from,
-                      to: typedEvent.to
-                    }),
-                    ...basePayload
-                  }
-                });
-                return;
-              case "navigation.lastVisited":
-                emitTracked(typedEvent, {
-                  name: "navigation_last_visited",
-                  timestamp: typedEvent.timestamp,
-                  ...(options.machineId ? { machineId: options.machineId } : {}),
-                  payload: {
-                    from: typedEvent.from,
-                    to: typedEvent.to,
-                    ...buildTransitionMetaPayload({
-                      from: typedEvent.from,
-                      to: typedEvent.to
-                    }),
-                    ...basePayload
-                  }
-                });
-                return;
-            }
-          });
-
-          return {
-            trackAnalyticsEvent: trackCustomEvent
-          };
-        },
-        getDevtoolsFeatures: () => [
-          {
-            id: "analytics",
-            label: "Analytics",
-            operations: [
-              {
-                id: "analytics.inspectRecentEvents",
-                label: "inspectRecentEvents",
-                mutates: false,
-                output: "data",
-                run: () => ({
-                  kind: "data",
-                  data: {
-                    machineId: options.machineId ?? null,
-                    includeStepMeta: options.includeStepMeta ?? false,
-                    bufferSize: RECENT_EVENT_CAPACITY,
-                    entries: snapshotRecentEvents()
-                  }
-                })
-              },
-              {
-                id: "analytics.trackCustomEvent",
-                label: "trackCustomEvent",
-                mutates: true,
-                output: "data",
-                fields: [
-                  { key: "name", label: "name", type: "text", required: true },
-                  { key: "payload", label: "payload", type: "json" }
-                ],
-                run: ({ input }) => ({
-                  kind: "data",
-                  data: trackCustomEvent(
-                    String(input?.name ?? ""),
-                    (input?.payload as Record<string, unknown> | undefined) ?? {}
-                  )
-                })
-              },
-              {
-                id: "analytics.clearRecentEvents",
-                label: "clearRecentEvents",
-                mutates: true,
-                output: "void",
-                run: () => {
-                  clearRecentEvents();
-                  return { kind: "void" };
-                }
-              }
-            ]
+        api: {
+          trackAnalyticsEvent: (name, payload = {}) => trackSafely("custom", name, payload),
+          getRecentEvents: () => [...recent],
+          clearRecentEvents: () => {
+            recent = [];
           }
-        ],
-        dispose: () => {
-          unsubscribe?.();
         }
       };
     }
-  } satisfies JourneyMachinePlugin;
-};
-
-export type { JourneyAnalyticsPluginOptions, JourneyAnalyticsTrackedEvent } from "../../types";
+  };
+}
