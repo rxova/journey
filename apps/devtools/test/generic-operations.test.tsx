@@ -162,6 +162,7 @@ const registerEnvelope = (): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "reg
     features
   },
   snapshot: {
+    type: "graph",
     currentStepId: "start",
     history: { timeline: ["start"], index: 0 },
     context: {},
@@ -186,6 +187,7 @@ const operationResultEnvelope = (): Extract<
   result: {
     kind: "snapshot",
     snapshot: {
+      type: "graph",
       currentStepId: "review",
       history: { timeline: ["start", "review"], index: 1 },
       context: {},
@@ -210,6 +212,7 @@ const liveSnapshotEnvelope = (
   machineId: "machine-1",
   timestamp,
   snapshot: {
+    type: "graph",
     currentStepId,
     history: {
       timeline: currentStepId === "start" ? ["start"] : ["start", currentStepId],
@@ -408,6 +411,7 @@ describe("generic devtools operations", () => {
         result: {
           kind: "snapshot",
           snapshot: {
+            type: "graph",
             currentStepId: "start",
             history: { timeline: ["start"], index: 0 },
             context: {},

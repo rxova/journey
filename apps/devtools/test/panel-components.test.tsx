@@ -93,6 +93,7 @@ const setInputValue = async (
 };
 
 const snapshot: JourneyDevtoolsSerializableSnapshot = {
+  type: "graph",
   currentStepId: "start",
   history: { timeline: ["start", "review"], index: 0 },
   context: { attempts: 1 },

@@ -62,6 +62,7 @@ class MockPort {
 }
 
 const createSnapshot = (currentStepId: string): JourneyDevtoolsSerializableSnapshot => ({
+  type: "graph",
   currentStepId,
   history: {
     timeline: currentStepId === "start" ? ["start"] : ["start", currentStepId],

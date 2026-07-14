@@ -357,6 +357,7 @@ describe("autosave plugin", () => {
         defaultTimeoutMs: undefined
       },
       buildInitialSnapshot: () => ({
+        type: "graph",
         currentStepId: "start",
         history: {
           timeline: ["start"],
@@ -380,6 +381,7 @@ describe("autosave plugin", () => {
       resolvedJourney
     }) as JourneyAutosaveMachineExtension | undefined;
     const snapshot = {
+      type: "graph" as const,
       currentStepId: "start" as StepId,
       history: {
         timeline: ["start"] as const,

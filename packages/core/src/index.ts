@@ -11,6 +11,7 @@ export { createGraphJourney } from "./create-graph-journey";
  */
 export { createJourneyMachine } from "./journey-machine";
 export { createGraphJourneyBuilder } from "./journey-builder";
+export { toGraphDefinition, toGraphSnapshot } from "./to-graph-definition";
 export { getJourneyMachineDevtoolsRegistry } from "./journey-machine/devtools-registry";
 export {
   JourneyDefinitionError,
@@ -108,10 +109,20 @@ export {
   type JourneyReplayPluginOptions,
   type JourneyReplaySession,
   type JourneyReplaySnapshotEntry,
+  type GraphJourneySnapshot,
+  type GraphJourneySnapshotState,
+  type LinearJourneySnapshot,
+  type LinearJourneySnapshotState,
+  type JourneyPauseObservationEvent,
+  type JourneyResumeObservationEvent,
   type JourneySelector,
   type JourneySendEvent,
+  type JourneySendNoOpReason,
   type JourneySendResult,
   type JourneySnapshot,
+  type JourneySnapshotState,
+  type JourneySnapshotStateBase,
+  type JourneySnapshotType,
   type JourneyStartObservationEvent,
   type JourneyStatus,
   type JourneyStepAsyncState,

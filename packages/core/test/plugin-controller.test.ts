@@ -34,6 +34,7 @@ const journey: JourneyDefinition<Context, StepId, never, StepMeta> = {
 const resolvedJourney = resolveJourneyDefinition(journey);
 
 const buildInitialSnapshot = (): Snapshot => ({
+  type: "graph",
   currentStepId: "start",
   history: {
     timeline: ["start"],

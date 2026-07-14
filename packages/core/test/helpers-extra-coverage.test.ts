@@ -130,6 +130,7 @@ describe("helpers extra coverage", () => {
     vi.useFakeTimers();
     const steps: Record<"a" | "b", unknown> = { a: {}, b: {} };
     const snapshot = buildSnapshot(
+      { type: "graph" },
       ["a"],
       0,
       { count: 0 },
@@ -189,6 +190,7 @@ describe("helpers extra coverage", () => {
 
   it("rejects aborted signals for async guards and direct promise waits", async () => {
     const snapshot = buildSnapshot(
+      { type: "graph" },
       ["a", "b"],
       0,
       { count: 0 },
@@ -218,6 +220,7 @@ describe("helpers extra coverage", () => {
   it("skips mismatches, returns null for blocked guards, and rejects invalid transition hooks", async () => {
     const steps: Record<"a" | "b", unknown> = { a: {}, b: {} };
     const snapshot = buildSnapshot(
+      { type: "graph" },
       ["a", "b"],
       0,
       { count: 0 },

@@ -87,6 +87,7 @@ export type JourneyPanelAction =
 export const MAX_MACHINE_TIMELINE_ENTRIES = 2000;
 
 export const INITIAL_SNAPSHOT: JourneyDevtoolsSerializableSnapshot = {
+  type: "graph",
   currentStepId: "unknown",
   history: { timeline: ["unknown"], index: 0 },
   context: {},

@@ -24,6 +24,8 @@ import {
   JOURNEY_EFFECT_RESOLVED_EVENT,
   JourneyTimeoutError,
   now,
+  resolveInitialSnapshotOption,
+  resolveSnapshotShape,
   validateFiniteTimeout,
   validateJourneyTransitions,
   warnInDevelopment,
@@ -121,14 +123,23 @@ export function createJourneyMachine<
     ])
   ) as Record<TStepId, TStepMeta>;
 
+  const snapshotShape = resolveSnapshotShape<TStepId>(journey.transitions);
+
   const buildInitialSnapshot = () =>
-    buildSnapshot(
-      [resolvedJourney.initial],
-      0,
-      cloneContext(initialContextTemplate),
-      "idled",
-      buildInitialAsyncState(resolvedJourney.steps)
-    );
+    options?.initialSnapshot
+      ? resolveInitialSnapshotOption<TContext, TStepId>(
+          options.initialSnapshot,
+          snapshotShape,
+          resolvedJourney.steps
+        )
+      : buildSnapshot(
+          snapshotShape,
+          [resolvedJourney.initial],
+          0,
+          cloneContext(initialContextTemplate),
+          "idled",
+          buildInitialAsyncState(resolvedJourney.steps)
+        );
 
   const pluginController = createJourneyMachinePluginController<
     TContext,
@@ -539,7 +550,8 @@ export function createJourneyMachine<
     asyncState,
     initial: resolvedJourney.initial,
     initialContext: initialContextTemplate,
-    steps: resolvedJourney.steps
+    steps: resolvedJourney.steps,
+    snapshotShape
   });
 
   const getComputed = createJourneyMachineComputedGetter(
@@ -547,6 +559,17 @@ export function createJourneyMachine<
     resolvedJourney,
     runtime.getSnapshot
   );
+
+  // Pause is a transient runtime flag — deliberately NOT part of the snapshot
+  // (and therefore never persisted). While paused, navigation and sends resolve
+  // as no-ops carrying `noOpReason: "paused"`; `updateContext`, `startJourney`,
+  // `resetJourney`, and `clearStepError` keep working. Only `resumeJourney()`
+  // clears it. Internal effect/after routing flows through `send` too, so a
+  // paused machine also holds effect-driven navigation.
+  let paused = false;
+
+  const buildPausedSendResult = () =>
+    buildSendResult(runtime.getSnapshot(), false, { noOpReason: "paused" as const });
 
   const machine: JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers> = {
     getSnapshot: runtime.getSnapshot,
@@ -595,18 +618,53 @@ export function createJourneyMachine<
     updateContext: controls.updateContext,
     clearStepError: controls.clearStepError,
     dispose: controls.dispose,
+    pauseJourney: () => {
+      if (runtime.isDisposed()) {
+        warnInDevelopment('Journey machine has been disposed; "pauseJourney" is a no-op.');
+        return;
+      }
+      if (paused) {
+        return;
+      }
+      paused = true;
+      runtime.emit({
+        type: "journey.paused",
+        stepId: runtime.peekSnapshot().currentStepId,
+        timestamp: now()
+      });
+    },
+    resumeJourney: () => {
+      if (runtime.isDisposed()) {
+        warnInDevelopment('Journey machine has been disposed; "resumeJourney" is a no-op.');
+        return;
+      }
+      if (!paused) {
+        return;
+      }
+      paused = false;
+      runtime.emit({
+        type: "journey.resumed",
+        stepId: runtime.peekSnapshot().currentStepId,
+        timestamp: now()
+      });
+    },
+    isPaused: () => paused,
     goToPreviousStep: (steps) =>
-      runtime.queue(
-        async (runVersion) =>
-          navigation.applyPreviousNavigation(steps, "goToPreviousStep", runVersion),
-        () => sendController.buildCanceledSendResult("goToPreviousStep")
-      ),
+      paused
+        ? Promise.resolve(buildPausedSendResult())
+        : runtime.queue(
+            async (runVersion) =>
+              navigation.applyPreviousNavigation(steps, "goToPreviousStep", runVersion),
+            () => sendController.buildCanceledSendResult("goToPreviousStep")
+          ),
     goToLastVisitedStep: () =>
-      runtime.queue(
-        async (runVersion) =>
-          navigation.applyLastVisitedNavigation("goToLastVisitedStep", runVersion),
-        () => sendController.buildCanceledSendResult("goToLastVisitedStep")
-      ),
+      paused
+        ? Promise.resolve(buildPausedSendResult())
+        : runtime.queue(
+            async (runVersion) =>
+              navigation.applyLastVisitedNavigation("goToLastVisitedStep", runVersion),
+            () => sendController.buildCanceledSendResult("goToLastVisitedStep")
+          ),
     goToNextStep: () =>
       machine.send({ type: "goToNextStep" } as JourneySendEvent<TStepId, TEvents>),
     goToStepById: (stepId: TStepId) =>
@@ -626,10 +684,12 @@ export function createJourneyMachine<
             payload
           } as JourneySendEvent<TStepId, TEvents>),
     send: (event) =>
-      runtime.queue(
-        (runVersion, signal) => sendController.executeSend(event, runVersion, signal),
-        () => sendController.buildCanceledSendResult(event.type)
-      )
+      paused
+        ? Promise.resolve(buildPausedSendResult())
+        : runtime.queue(
+            (runVersion, signal) => sendController.executeSend(event, runVersion, signal),
+            () => sendController.buildCanceledSendResult(event.type)
+          )
   };
 
   dispatchSend = machine.send;

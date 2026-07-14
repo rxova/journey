@@ -21,6 +21,7 @@ import {
   buildVisitedFromTimeline,
   warnInDevelopment
 } from "../../journey-machine/helpers";
+import type { JourneySnapshotShape } from "../../journey-machine/helpers";
 import { JourneyPersistenceError } from "../../journey-machine/errors";
 
 const isStatusValue = (value: unknown): value is JourneyStatus =>
@@ -320,7 +321,8 @@ const resolveVisitedFromPersistence = <TStepId extends string>(
 const coercePersistedSnapshot = <TContext extends JourneyJsonObject, TStepId extends string>(
   value: unknown,
   steps: Record<TStepId, unknown>,
-  fallbackContext: TContext
+  fallbackContext: TContext,
+  shape: JourneySnapshotShape<TStepId>
 ): {
   snapshot: JourneySnapshotStateBase<TContext, TStepId>;
   needsRewrite: boolean;
@@ -330,6 +332,22 @@ const coercePersistedSnapshot = <TContext extends JourneyJsonObject, TStepId ext
   }
 
   let needsRewrite = false;
+
+  // The machine's own shape is authoritative. A missing discriminator (old
+  // format), a family mismatch (e.g. a linear envelope hydrating a graph
+  // machine after a toGraphSnapshot-less migration), or a stale stepOrder all
+  // coerce to the machine's shape and rewrite the stored value.
+  if (value.type !== shape.type) {
+    needsRewrite = true;
+  }
+  if (
+    shape.type === "linear" &&
+    (!Array.isArray(value.stepOrder) ||
+      value.stepOrder.length !== shape.stepOrder.length ||
+      (value.stepOrder as unknown[]).some((stepId, i) => stepId !== shape.stepOrder[i]))
+  ) {
+    needsRewrite = true;
+  }
 
   const rawHistory = isRecord(value.history) ? value.history : null;
   if (!rawHistory) {
@@ -417,9 +435,10 @@ export const createPersistenceController = <
   initial: TStepId;
   context: TContext;
   steps: Record<TStepId, unknown>;
+  shape: JourneySnapshotShape<TStepId>;
   options?: JourneyPersistenceOptions<TContext, TStepId>;
 }) => {
-  const { initial, context, steps, options } = args;
+  const { initial, context, steps, shape, options } = args;
   const persistence = resolvePersistence(options);
   const allowList = persistence?.allowList
     ? persistence.allowList.map((path) => path.split("."))
@@ -462,6 +481,9 @@ export const createPersistenceController = <
       const persistedState: JourneyPersistedState<TContext, TStepId> = {
         version: persistence.version,
         snapshot: {
+          ...(shape.type === "linear"
+            ? { type: "linear" as const, stepOrder: [...shape.stepOrder] }
+            : { type: "graph" as const }),
           currentStepId: snapshot.currentStepId,
           history: {
             timeline: [...snapshot.history.timeline],
@@ -470,7 +492,7 @@ export const createPersistenceController = <
           context: persistedContext,
           status: snapshot.status,
           visited: { ...snapshot.visited }
-        }
+        } as JourneyPersistedState<TContext, TStepId>["snapshot"]
       };
       persistence.storage.setItem(persistence.key, persistence.serialize(persistedState));
     } catch (error) {
@@ -536,11 +558,12 @@ export const createPersistenceController = <
   };
 
   const buildBaseSnapshot = () =>
-    buildSnapshot([initial], 0, context, "idled", buildInitialAsyncState(steps));
+    buildSnapshot(shape, [initial], 0, context, "idled", buildInitialAsyncState(steps));
   const hydrateSnapshot = (
     baseSnapshot: JourneySnapshot<TContext, TStepId> = buildBaseSnapshot()
   ): JourneySnapshot<TContext, TStepId> => {
     const resolvedBaseSnapshot = buildSnapshot(
+      shape,
       baseSnapshot.history.timeline,
       baseSnapshot.history.index,
       baseSnapshot.context,
@@ -572,12 +595,12 @@ export const createPersistenceController = <
       let shouldRewritePersisted = false;
 
       if (persistedVersion === persistence.version) {
-        const coerced = coercePersistedSnapshot(parsed.snapshot, steps, context);
+        const coerced = coercePersistedSnapshot(parsed.snapshot, steps, context, shape);
         persistedSnapshot = coerced?.snapshot ?? null;
         shouldRewritePersisted = Boolean(coerced?.needsRewrite);
       } else if (persistence.migrate) {
         const migrated = persistence.migrate(parsed.snapshot, persistedVersion);
-        const coerced = coercePersistedSnapshot(migrated, steps, context);
+        const coerced = coercePersistedSnapshot(migrated, steps, context, shape);
         persistedSnapshot = coerced?.snapshot ?? null;
         shouldRewritePersisted = persistedSnapshot !== null;
 
@@ -601,6 +624,7 @@ export const createPersistenceController = <
       const hydratedContext = mergePersistedContext(resolvedBaseSnapshot.context, filteredContext);
 
       const hydratedSnapshot = buildSnapshot(
+        shape,
         persistedSnapshot.history.timeline,
         persistedSnapshot.history.index,
         assertSerializableContext(hydratedContext, "Hydrated journey context"),

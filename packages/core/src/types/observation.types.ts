@@ -84,6 +84,18 @@ export type JourneyTerminateObservationEvent<TStepId extends string> = {
   timestamp: number;
 };
 
+export type JourneyPauseObservationEvent<TStepId extends string> = {
+  type: "journey.paused";
+  stepId: TStepId;
+  timestamp: number;
+};
+
+export type JourneyResumeObservationEvent<TStepId extends string> = {
+  type: "journey.resumed";
+  stepId: TStepId;
+  timestamp: number;
+};
+
 export type JourneyPreviousNavigationObservationEvent<TStepId extends string> = {
   type: "navigation.previous";
   from: TStepId;
@@ -115,5 +127,7 @@ export type JourneyObservationEvent<
   | JourneyStepEnterObservationEvent<TStepId>
   | JourneyCompleteObservationEvent<TStepId>
   | JourneyTerminateObservationEvent<TStepId>
+  | JourneyPauseObservationEvent<TStepId>
+  | JourneyResumeObservationEvent<TStepId>
   | JourneyPreviousNavigationObservationEvent<TStepId>
   | JourneyLastVisitedNavigationObservationEvent<TStepId>;

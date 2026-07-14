@@ -1,8 +1,13 @@
-import type { JourneyJsonObject, JourneySnapshotStateBase } from "./journey.types";
+import type {
+  JourneyJsonObject,
+  JourneySnapshotState,
+  JourneySnapshotStateBase
+} from "./journey.types";
 
 export type JourneyPersistedState<TContext extends JourneyJsonObject, TStepId extends string> = {
   version: number;
-  snapshot: JourneySnapshotStateBase<TContext, TStepId>;
+  /** Persisted snapshot state, carrying the `type` discriminator (async is dropped). */
+  snapshot: JourneySnapshotState<TContext, TStepId>;
 };
 
 export type JourneyStorage = {

@@ -11,6 +11,7 @@ type Context = { count: number };
 
 const createSnapshot = (status: "idled" | "running" = "idled", step: StepId = "start") =>
   buildSnapshot(
+    { type: "graph" },
     step === "start" ? ["start"] : ["start", "review"],
     step === "start" ? 0 : 1,
     { count: step === "start" ? 0 : 1 },
@@ -62,6 +63,7 @@ describe("controls extra coverage", () => {
       runtime,
       asyncState,
       initial: "start",
+      snapshotShape: { type: "graph" },
       initialContext: { count: 0 },
       steps: { start: {}, review: {} }
     });
@@ -89,6 +91,7 @@ describe("controls extra coverage", () => {
       runtime,
       asyncState,
       initial: "start",
+      snapshotShape: { type: "graph" },
       initialContext: { count: 0 },
       steps: { start: {}, review: {} }
     });
@@ -122,6 +125,7 @@ describe("controls extra coverage", () => {
       runtime,
       asyncState,
       initial: "start",
+      snapshotShape: { type: "graph" },
       initialContext: { count: 0 },
       steps: { start: {}, review: {} }
     });

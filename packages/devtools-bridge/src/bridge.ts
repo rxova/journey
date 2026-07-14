@@ -148,6 +148,12 @@ const serializeSnapshot = <TContext extends JourneyJsonObject, TStepId extends s
   }
 
   return {
+    ...(snapshot.type === "linear"
+      ? {
+          type: "linear" as const,
+          stepOrder: snapshot.stepOrder.map((stepId) => String(stepId))
+        }
+      : { type: "graph" as const }),
     currentStepId: String(snapshot.currentStepId),
     context: cloneForTransport(snapshot.context) as JourneyJsonObject,
     history: {
@@ -165,7 +171,7 @@ const serializeSnapshot = <TContext extends JourneyJsonObject, TStepId extends s
       isLoading: snapshot.async.isLoading,
       byStep
     }
-  };
+  } as JourneyDevtoolsSerializableSnapshot;
 };
 
 const serializeObservationEvent = <TStepId extends string, TEvents extends JourneyBaseEvent>(
