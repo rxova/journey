@@ -1,175 +1,172 @@
 ---
-title: "Quickstart"
+title: Quickstart
+sidebar_position: 2
 ---
 
-This quickstart shows the React wiring.
+The React package has **three tiers**, each with its own API:
 
-Runtime semantics such as history, observability, persistence, and async behavior still come from Core: [Core Overview](../core/overview.md) and [Core API](../core/api/overview.md).
+| Tier         | Import                          | Shape                         | Use it for                           |
+| ------------ | ------------------------------- | ----------------------------- | ------------------------------------ |
+| **Linear**   | `@rxova/journey-react`          | `<Wizard>` + `useWizard()`    | Step-by-step flows (the 90% case)    |
+| **Graph**    | `@rxova/journey-react/graph`    | `createGraphJourney()` bundle | Non-linear, branching flows          |
+| **Headless** | `@rxova/journey-react/headless` | machine-argument hooks        | Full control; bring your own machine |
 
-Type modeling also comes from Core: [Core TypeScript](../core/typescript.md).
+Runtime semantics such as history, observability, persistence, and async behavior come from Core: [Core Overview](/docs/core/overview) and [Core API](/docs/core/api).
 
-If you want to understand how event sending, queueing, and navigation commits work under the hood, read [Core
-Machine Architecture](../core/architecture.md).
+## Linear: `<Wizard>`
 
-## 1. Create The Journey Once
-
-For a single app-wide flow in a **client app**, create the journey once at module scope (shown below).
-For per-instance UI (cards, modals) or **any server-rendered / RSC app**, own it inside the component
-with [`useJourney`](#request-scoped-ownership) instead — a module singleton would be shared across
-requests. See [Runtime ownership](/docs/react/overview#runtime-ownership) for the full decision guide.
-
-The value returned from `createJourney(...)` is a `JourneyRuntime`.
+Steps are just components inside `<Wizard/>`. Every step declares a mandatory unique `id`. No factory, no views map, no provider, no dispose — the machine is created when `<Wizard>` mounts (StrictMode-safe) and disposed on unmount.
 
 ```tsx
-// signup-journey.tsx
-import { createJourney, type JourneyViews } from "@rxova/journey-react";
-import type { JourneyDefinition } from "@rxova/journey-core";
-import { Start, Review } from "./steps";
+import { Wizard, useWizard } from "@rxova/journey-react";
 
-type StepId = "start" | "review";
-type Context = { name: string };
+const App = () => (
+  <Wizard context={{ email: "" }} footer={<Nav />}>
+    <Email id="email" />
+    <Password id="password" />
+    <Confirm id="confirm" />
+  </Wizard>
+);
 
-const definition: JourneyDefinition<Context, StepId> = {
-  initial: "start",
-  context: { name: "" },
-  steps: {
-    start: { meta: { title: "Start" } },
-    review: { meta: { title: "Review" } }
-  },
-  transitions: {
-    start: {
-      goToNextStep: [{ to: "review" }]
-    },
-    review: {}
-  }
-};
-
-export const signupJourney = createJourney(definition);
-
-export const signupViews: JourneyViews<StepId> = {
-  start: Start,
-  review: Review
-};
-```
-
-## 2. Build Step Components
-
-Hooks work without a provider because they close over the created machine.
-
-```tsx
-// steps.tsx
-import { signupJourney } from "./signup-journey";
-
-export const Start = () => {
-  const api = signupJourney.useJourneyApi();
-  return <button onClick={() => void api.goToNextStep()}>Next</button>;
-};
-
-export const Review = () => {
-  const api = signupJourney.useJourneyApi();
-  return <button onClick={() => void api.completeJourney()}>Submit</button>;
-};
-```
-
-## 3. Mount `JourneyProvider` And `StepRenderer`
-
-`JourneyProvider` only supplies the `views` record and lifecycle callbacks for `StepRenderer`.
-
-```tsx
-// App.tsx
-import { signupJourney, signupViews } from "./signup-journey";
-
-export const App = () => {
-  const JourneyProvider = signupJourney.JourneyProvider;
-  const StepRenderer = signupJourney.StepRenderer;
-
+const Nav = () => {
+  const { goToNextStep, goToPreviousStep, isFirstStep, isLastStep, isLoading } = useWizard();
   return (
-    <JourneyProvider views={signupViews}>
-      <StepRenderer />
-    </JourneyProvider>
+    <div>
+      <button disabled={isFirstStep} onClick={() => void goToPreviousStep()}>
+        Back
+      </button>
+      <button disabled={isLoading} onClick={() => void goToNextStep()}>
+        {isLastStep ? "Finish" : "Next"}
+      </button>
+    </div>
   );
 };
 ```
 
-## 4. Use Navigation Helpers
+That is the whole program.
+
+### Shared typed state
+
+Cross-step state is **core context** — typed, part of the snapshot, persisted by `persist`, visible in devtools. Never plain React state:
 
 ```tsx
-const api = signupJourney.useJourneyApi();
-
-await api.goToPreviousStep(1);
-await api.goToLastVisitedStep();
-await api.goToStepById("review");
+const { context, updateContext } = useWizard<{ email: string }>();
+await updateContext((ctx) => ({ ...ctx, email: "a@b.c" }));
 ```
 
-`api` is fully typed from your definition, so event names and payload shapes stay checked at compile time.
-
-Guard and `updateContext` failures resolve through `result.error` instead of rejecting, so `void api.goToNextStep()` is safe from unhandled promise rejections.
-
-## Request-Scoped Ownership
-
-For server-rendered or request-scoped UI (Next.js App Router, RSC, Remix, …), own the runtime inside a
-`"use client"` component with `useJourney` — a module-level `createJourney(...)` would be shared across
-every request. `useJourney` builds the runtime once, keeps it stable across StrictMode, and disposes it
-on unmount:
+For fully inferred typing (no generic at call sites), use the `createWizard` bundle:
 
 ```tsx
-"use client";
+const wizard = createWizard({
+  context: { email: "", attempts: 0 },
+  steps: { email: Email, password: Password, confirm: Confirm }
+});
 
-import { createJourney, useJourney } from "@rxova/journey-react";
+// wizard.Wizard, wizard.useWizard (fully typed), wizard.useWizardStep,
+// wizard.useWizardSelector, wizard.toGraphDefinition
+```
 
-export function CheckoutFlow({ customerId }: { customerId: string }) {
-  const checkout = useJourney(() =>
-    createJourney({
-      ...definition,
-      context: { ...definition.context, customerId }
+### The steps-object form
+
+When you need programmatic control (steps from data, per-step config), pass steps as an object — keys are ids, insertion order is step order:
+
+```tsx
+<Wizard
+  context={{ email: "" }}
+  steps={{
+    email: Email,
+    verify: { component: Verify, meta: { title: "2FA" }, onEnter: track }
+  }}
+/>
+```
+
+### Intercepting "Next": `useWizardStep`
+
+```tsx
+const Password = () => {
+  useWizardStep(async ({ context, updateContext }) => {
+    const ok = await validatePassword(context.password);
+    if (!ok) throw new Error("Invalid password"); // cancels navigation, lands in error
+  });
+  return <PasswordForm />;
+};
+```
+
+### Everything `useWizard()` gives you
+
+Position (`activeStepId`, `activeStepIndex`, `stepCount`, `stepIds`, `isFirstStep`, `isLastStep`), visit tracking (`visited`, `isFirstTimeVisit`), status (`status`, `isLoading`, `isPaused`, `error`), navigation with the standard names (`goToNextStep`, `goToPreviousStep`, `goToStepById`, `goToStepByIndex`, `goToLastVisitedStep`, `completeJourney`, `resetJourney`, `pauseJourney`, `resumeJourney`, `clearStepError`), shared state (`context`, `updateContext`), metadata (`activeStepMeta`, `getStepMeta`), and escape hatches (`snapshot`, `machine`).
+
+Persistence is one prop: `<Wizard persist={{ key: "signup" }}>…`.
+
+## Graph: `createGraphJourney`
+
+Non-linear flows keep the definition/views separation. No machine is created at module scope — one machine per `<Provider>` mount:
+
+```tsx
+import { createGraphJourney } from "@rxova/journey-react/graph";
+
+const checkout = createGraphJourney({
+  initial: "cart",
+  context: { items: [] },
+  steps: { cart: {}, shipping: {}, payment: {}, confirm: {} },
+  transitions: {
+    cart: { goToNextStep: [{ to: "shipping" }] },
+    shipping: {
+      goToNextStep: [{ to: "payment", when: ({ context }) => context.items.length > 0 }]
+    },
+    payment: { goToNextStep: [{ to: "confirm" }] }
+  }
+});
+
+export const CheckoutFlow = () => (
+  <checkout.Provider views={{ cart: Cart, shipping: Shipping, payment: Payment, confirm: Confirm }}>
+    <ProgressHeader />
+    <checkout.StepRenderer fallback={<Spinner />} />
+  </checkout.Provider>
+);
+
+const Cart = () => {
+  const api = checkout.useApi();
+  return <button onClick={() => void api.goToNextStep()}>Continue</button>;
+};
+```
+
+Bundle hooks: `useSnapshot`, `useComputed`, `useSelector`, `useApi`, `useStepApi(stepId)` (send narrowed to the step's declared events), `useStepAsyncState`, `useEvent`, `useStepLifecycle`, `useMachine`.
+
+## Headless: machine-argument hooks
+
+Create the machine with core and pass it to hooks — it can live in a module, a store, a prop, or be component-owned:
+
+```tsx
+import { createHeadlessJourney } from "@rxova/journey-core";
+import { useOwnedJourney, useJourneySelector } from "@rxova/journey-react/headless";
+
+function RiskBanner() {
+  const machine = useOwnedJourney(() =>
+    createHeadlessJourney({
+      initial: "watching",
+      context: { score: 0 },
+      steps: { watching: {}, flagged: {} }
     })
   );
-
-  return (
-    <checkout.JourneyProvider views={views}>
-      <checkout.StepRenderer />
-    </checkout.JourneyProvider>
-  );
+  const phase = useJourneySelector(machine, (s) => s.currentStepId);
+  return phase === "flagged" ? (
+    <Banner onAck={() => void machine.goToStepById("watching")} />
+  ) : null;
 }
 ```
 
-This creates one isolated runtime per mounted boundary. To reset the journey when `customerId` changes,
-remount with a `key`:
+`useOwnedJourney` runs the factory exactly once (StrictMode-safe) and disposes the machine on unmount.
 
-```tsx
-<CheckoutFlow key={customerId} customerId={customerId} />
+## Migrating linear → graph
+
+Step ids are stable, so persisted state survives the move:
+
+```ts
+import { toGraphDefinition, toGraphSnapshot } from "@rxova/journey-core";
+
+const graphDefinition = toGraphDefinition(linearDefinition); // same ids, forward chain
+const graphSnapshot = toGraphSnapshot(linearSnapshot); // flips the snapshot family
 ```
 
-## Multiple Independent Instances
-
-Multiple isolated flows come from multiple runtimes, not from repeating the same provider. `useJourney`
-owns one per mount:
-
-```tsx
-const SignupCard = () => {
-  const signup = useJourney(() => createJourney(definition));
-
-  return (
-    <signup.JourneyProvider views={views}>
-      <signup.StepRenderer />
-    </signup.JourneyProvider>
-  );
-};
-
-export const ComparisonGrid = () => (
-  <>
-    <SignupCard />
-    <SignupCard />
-  </>
-);
-```
-
-Each `<SignupCard />` gets its own runtime and disposes it on unmount.
-
-## Where To Go Next
-
-- Hook surface and provider behavior: [Provider and Hooks API](./provider-and-hooks.md)
-- React usage patterns: [React Patterns](./patterns.md)
-- Async UI states in React: [Async UI](./async-ui.md)
-- Runtime semantics: [Core API](../core/api/overview.md)
-- Compatibility promises: [Stability Contract](../core/stability.md)
+Or from a wizard bundle: `wizard.toGraphDefinition()`.

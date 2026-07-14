@@ -1,42 +1,56 @@
 // @vitest-environment node
-// This file exercises the module-level branch in Provider.tsx and Hooks.tsx:
+// This file exercises the module-level branch in the wizard/headless hooks:
 //   const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
 // In the jsdom environment (all other tests), typeof window !== "undefined", so React.useLayoutEffect
 // is always selected. This file runs in the Node environment where typeof window === "undefined",
 // forcing the React.useEffect branch.
 import { describe, expect, it } from "vitest";
 
-import { createJourney } from "@rxova/journey-react";
-import type { JourneyDefinition } from "@rxova/journey-core";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 
-type StepId = "start" | "end";
-type Context = Record<never, never>;
+import { useWizard, Wizard } from "../src";
+import { createGraphJourney } from "../src/graph";
 
-const definition: JourneyDefinition<Context, StepId> = {
-  initial: "start",
-  context: {},
-  steps: { start: {}, end: {} },
-  transitions: {
-    start: { goToNextStep: [{ to: "end" }] },
-    end: { completeJourney: true }
-  }
-};
+type Ctx = { count: number };
 
 describe("SSR / Node environment", () => {
-  it("createJourney creates a runtime without a DOM environment", () => {
-    const journey = createJourney(definition);
+  it("renders <Wizard> to static markup without a DOM (first step, pre-start)", () => {
+    const StepA = (props: { id?: string }) => {
+      void props;
+      const { activeStepId, status } = useWizard<Ctx>();
+      return React.createElement("div", null, `${activeStepId}:${status}`);
+    };
 
-    expect(typeof journey.machine).toBe("object");
-    expect(typeof journey.dispose).toBe("function");
-    expect(typeof journey.useJourneySnapshot).toBe("function");
-    expect(typeof journey.useJourneyComputed).toBe("function");
-    expect(typeof journey.useJourneySelector).toBe("function");
-    expect(typeof journey.useJourneyApi).toBe("function");
-    expect(typeof journey.useJourneyEvent).toBe("function");
-    expect(typeof journey.useJourneyStepLifecycle).toBe("function");
-    expect(typeof journey.JourneyProvider).toBe("function");
-    expect(typeof journey.StepRenderer).toBe("function");
+    const html = renderToStaticMarkup(
+      React.createElement(
+        Wizard as never,
+        { context: { count: 0 } },
+        React.createElement(StepA, { id: "a" }),
+        React.createElement(StepA, { id: "b" })
+      )
+    );
 
-    journey.dispose();
+    // Server render shows the initial step before startJourney (client-side).
+    expect(html).toContain("a:idled");
+  });
+
+  it("renders a graph bundle Provider to static markup without a DOM", () => {
+    const bundle = createGraphJourney({
+      initial: "start",
+      context: { count: 0 } as Ctx,
+      steps: { start: {}, end: {} },
+      transitions: { start: { goToNextStep: [{ to: "end" }] } }
+    });
+
+    const View = () => React.createElement("div", null, "start-node");
+    const html = renderToStaticMarkup(
+      React.createElement(bundle.Provider, {
+        views: { start: View, end: View },
+        children: React.createElement(bundle.StepRenderer)
+      })
+    );
+
+    expect(html).toContain("start-node");
   });
 });

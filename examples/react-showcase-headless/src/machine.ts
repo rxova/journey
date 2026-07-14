@@ -1,5 +1,10 @@
-import { createHeadlessJourney } from "@rxova/journey-react";
-import type { HeadlessJourneyDefinition } from "@rxova/journey-core";
+import { createHeadlessJourney } from "@rxova/journey-core";
+import type { HeadlessJourneyDefinition, JourneyObservationEvent } from "@rxova/journey-core";
+import {
+  useJourneyComputed as useComputedOf,
+  useJourneyEvent as useEventOf,
+  useJourneySnapshot as useSnapshotOf
+} from "@rxova/journey-react/headless";
 
 export type StepId =
   | "login"
@@ -51,12 +56,15 @@ const definition: HeadlessJourneyDefinition<LoginContext, StepId> = {
   // No transitions — headless mode. All navigation via goToStepById.
 };
 
-export const {
-  useJourneySnapshot,
-  useJourneyComputed,
-  useJourneyApi,
-  useJourneyEvent,
-  JourneyProvider,
-  StepRenderer,
-  machine
-} = createHeadlessJourney(definition);
+// The headless tier: the machine is created with core directly and can live
+// anywhere (module scope here, for the demo). The zero-arg hooks below are
+// thin app-local wrappers over the machine-argument headless hooks.
+export const machine = createHeadlessJourney(definition);
+
+export const useJourneySnapshot = () => useSnapshotOf(machine);
+export const useJourneyComputed = () => useComputedOf(machine);
+/** The machine IS the imperative API — no indirection needed. */
+export const useJourneyApi = () => machine;
+export const useJourneyEvent = (
+  listener: (event: JourneyObservationEvent<StepId, never>) => void
+) => useEventOf(machine, listener as never);

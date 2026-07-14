@@ -1,28 +1,21 @@
 import { expectTypeOf } from "expect-type";
 import type * as React from "react";
 
-import { createGraphJourneyBuilder } from "@rxova/journey-core";
+import { createLinearJourney } from "@rxova/journey-core";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
 import type {
   JourneyAsyncPhase,
   JourneyDefinition,
-  JourneyObservationEvent,
-  JourneyStepAsyncState
+  JourneySendResult,
+  JourneyStepAsyncState,
+  LinearJourneyMachine,
+  LinearJourneySnapshot
 } from "@rxova/journey-core";
-import type {
-  JourneyApi,
-  JourneyComputed,
-  JourneyBuilderRuntime,
-  JourneyBuilderRuntimeFromDefinition,
-  JourneyProviderErrorContext,
-  JourneyProviderProps,
-  JourneyRuntime,
-  JourneyRuntimeFromDefinition,
-  JourneyRuntimeFactoryFromDefinition,
-  JourneyViews,
-  StepScopedJourneyApi
-} from "@rxova/journey-react";
-import { createGraphJourney, createJourney, createJourneyFactory } from "@rxova/journey-react";
+
+import { createWizard, useWizard, useWizardSelector, Wizard } from "@rxova/journey-react";
+import type { JourneyApi, UseWizardResult, WizardProps } from "@rxova/journey-react";
+import { createGraphJourney } from "@rxova/journey-react/graph";
+import { useJourneySnapshot, useOwnedJourney } from "@rxova/journey-react/headless";
 
 type Context = { userId: string };
 type StepId = "start" | "review";
@@ -33,7 +26,54 @@ type EventMap =
 const Step: React.FC = () => null;
 const plugins = [createExecutionPathsPlugin()] as const;
 
-const journey: JourneyDefinition<Context, StepId, EventMap, { title: string }> = {
+// ─── Wizard tier ─────────────────────────────────────────────────────────────
+
+const bundle = createWizard({
+  context: { userId: "42" } as Context,
+  steps: { start: Step, review: Step }
+});
+void bundle;
+
+type BundleWizardResult = ReturnType<typeof bundle.useWizard>;
+expectTypeOf<BundleWizardResult["context"]>().toEqualTypeOf<Context>();
+expectTypeOf<BundleWizardResult["activeStepId"]>().toEqualTypeOf<"start" | "review">();
+expectTypeOf<BundleWizardResult["isFirstStep"]>().toEqualTypeOf<boolean>();
+expectTypeOf<BundleWizardResult["isFirstTimeVisit"]>().toEqualTypeOf<boolean>();
+expectTypeOf<BundleWizardResult["visited"]>().toEqualTypeOf<Record<"start" | "review", boolean>>();
+expectTypeOf<BundleWizardResult["pauseJourney"]>().toEqualTypeOf<() => void>();
+expectTypeOf<BundleWizardResult["snapshot"]>().toEqualTypeOf<
+  LinearJourneySnapshot<Context, "start" | "review">
+>();
+expectTypeOf<BundleWizardResult["machine"]>().toEqualTypeOf<
+  LinearJourneyMachine<Context, "start" | "review">
+>();
+expectTypeOf<ReturnType<BundleWizardResult["goToNextStep"]>>().toEqualTypeOf<
+  Promise<JourneySendResult<Context, "start" | "review">>
+>();
+
+// Zero-factory hook: generic assertion at the call site.
+type LooseWizardResult = ReturnType<typeof useWizard<Context>>;
+void useWizard;
+expectTypeOf<LooseWizardResult["context"]>().toEqualTypeOf<Context>();
+expectTypeOf<LooseWizardResult>().toMatchTypeOf<UseWizardResult<Context, string>>();
+
+// useWizardSelector infers the selected slice.
+const useSelectorProbe = () => useWizardSelector((snapshot) => snapshot.currentStepId);
+void useSelectorProbe;
+expectTypeOf<ReturnType<typeof useSelectorProbe>>().toEqualTypeOf<string>();
+
+// Wizard props: react-use-wizard parity knobs.
+type Props = WizardProps<Context>;
+expectTypeOf<Props["startIndex"]>().toEqualTypeOf<number | undefined>();
+expectTypeOf<Props["startStepId"]>().toEqualTypeOf<string | undefined>();
+expectTypeOf<Props["wrapper"]>().toEqualTypeOf<
+  React.ReactElement<{ children?: React.ReactNode }> | undefined
+>();
+void Wizard;
+
+// ─── Graph tier ──────────────────────────────────────────────────────────────
+
+const graphDefinition: JourneyDefinition<Context, StepId, EventMap, { title: string }> = {
   initial: "start",
   context: { userId: "42" },
   steps: {
@@ -46,251 +86,59 @@ const journey: JourneyDefinition<Context, StepId, EventMap, { title: string }> =
   }
 };
 
-const views = {
-  start: Step,
-  review: Step
-} satisfies JourneyViews<StepId>;
-
-const journeyRuntime = createJourney(journey, { plugins });
-const journeyFactory = createJourneyFactory(journey, { plugins });
-void journeyRuntime;
-void journeyFactory;
+const graph = createGraphJourney(graphDefinition, { plugins });
+void graph;
 
 type Api = JourneyApi<Context, StepId, EventMap, { title: string }>;
 type SendArg = Parameters<Api["send"]>[0];
-type ProviderProps = JourneyProviderProps<StepId>;
-type RuntimeDispose = JourneyRuntime<Context, StepId>["dispose"];
-type RuntimeFactoryFromDefinition = JourneyRuntimeFactoryFromDefinition<
-  typeof journey,
-  typeof plugins
->;
 
-const providerProps: ProviderProps = {
-  views,
-  onError: () => undefined,
-  disposeOnUnmount: true,
-  children: null
-};
-expectTypeOf(providerProps.views).toEqualTypeOf<JourneyViews<StepId>>();
-expectTypeOf<ProviderProps["disposeOnUnmount"]>().toEqualTypeOf<boolean | undefined>();
-expectTypeOf<ProviderProps["onError"]>().toEqualTypeOf<
-  ((error: unknown, context: JourneyProviderErrorContext) => void) | undefined
->();
-expectTypeOf<RuntimeDispose>().toEqualTypeOf<() => void>();
-expectTypeOf(journeyFactory).toEqualTypeOf<RuntimeFactoryFromDefinition>();
-expectTypeOf<ReturnType<typeof journeyFactory>>().toEqualTypeOf<
-  JourneyRuntimeFromDefinition<typeof journey, typeof plugins>
->();
-
-expectTypeOf<Api["startJourney"]>().returns.toEqualTypeOf<
-  Promise<ReturnType<typeof journeyRuntime.useJourneySnapshot>>
->();
-expectTypeOf<Api["goToNextStep"]>().parameters.toEqualTypeOf<[]>();
-expectTypeOf<Awaited<ReturnType<Api["send"]>>["error"]>().toEqualTypeOf<unknown | undefined>();
-expectTypeOf<ReturnType<Api["updateContext"]>>().toEqualTypeOf<
-  Promise<ReturnType<typeof journeyRuntime.useJourneySnapshot>>
->();
+expectTypeOf<ReturnType<typeof graph.useApi>>().toMatchTypeOf<Api>();
+expectTypeOf<ReturnType<typeof graph.useSnapshot>["context"]>().toEqualTypeOf<Context>();
+expectTypeOf<ReturnType<typeof graph.useSnapshot>["currentStepId"]>().toEqualTypeOf<StepId>();
+expectTypeOf<ReturnType<typeof graph.useSnapshot>["type"]>().toEqualTypeOf<"graph">();
+expectTypeOf<Parameters<typeof graph.useStepAsyncState>>().toEqualTypeOf<[StepId]>();
+expectTypeOf<ReturnType<typeof graph.useStepAsyncState>>().toEqualTypeOf<JourneyStepAsyncState>();
 expectTypeOf<
-  ReturnType<typeof journeyRuntime.useJourneySnapshot>["context"]
->().toEqualTypeOf<Context>();
-expectTypeOf<
-  ReturnType<typeof journeyRuntime.useJourneySnapshot>["currentStepId"]
->().toEqualTypeOf<StepId>();
-expectTypeOf<ReturnType<typeof journeyRuntime.useJourneyComputed>>().toEqualTypeOf<
-  JourneyComputed<StepId>
->();
-expectTypeOf<ReturnType<typeof journeyRuntime.useJourneyApi>>().toMatchTypeOf<Api>();
-expectTypeOf<Parameters<typeof journeyRuntime.useStepAsyncState>>().toEqualTypeOf<[StepId]>();
-expectTypeOf<
-  ReturnType<typeof journeyRuntime.useStepAsyncState>
->().toEqualTypeOf<JourneyStepAsyncState>();
-expectTypeOf<
-  ReturnType<typeof journeyRuntime.useStepAsyncState>["phase"]
+  ReturnType<typeof graph.useStepAsyncState>["phase"]
 >().toEqualTypeOf<JourneyAsyncPhase>();
-expectTypeOf<ReturnType<typeof journeyRuntime.dispose>>().toEqualTypeOf<void>();
-expectTypeOf(journeyRuntime.machine.getExecutionPaths).toBeFunction();
-expectTypeOf<
-  React.ComponentProps<typeof journeyRuntime.JourneyProvider>
->().toEqualTypeOf<ProviderProps>();
-type ObservationFromHook = Parameters<Parameters<typeof journeyRuntime.useJourneyEvent>[0]>[0];
-expectTypeOf<ObservationFromHook["type"]>().toEqualTypeOf<
-  JourneyObservationEvent<StepId, EventMap>["type"]
+expectTypeOf<Api["pauseJourney"]>().toEqualTypeOf<() => void>();
+expectTypeOf<Api["isPaused"]>().toEqualTypeOf<() => boolean>();
+
+// Provider requires a complete views record.
+type GraphProviderPropsOfBundle = React.ComponentProps<typeof graph.Provider>;
+expectTypeOf<GraphProviderPropsOfBundle["views"]>().toEqualTypeOf<
+  Record<StepId, React.ComponentType>
 >();
-type TransitionStartFromHook = Extract<ObservationFromHook, { type: "transition.start" }>;
-type StartEventTypeFromHook = TransitionStartFromHook["event"]["type"];
-const includesCustomApproveEventType: Extract<StartEventTypeFromHook, "approve"> = "approve";
-expectTypeOf<
-  Extract<ObservationFromHook, { type: "step.enter" }>["stepId"]
->().toEqualTypeOf<StepId>();
-void includesCustomApproveEventType;
+expectTypeOf<GraphProviderPropsOfBundle["context"]>().toEqualTypeOf<Partial<Context> | undefined>();
+expectTypeOf<GraphProviderPropsOfBundle["autoStart"]>().toEqualTypeOf<boolean | undefined>();
+
+// useStepApi narrows send() to the events the step declares.
+type ReviewStepApi = ReturnType<typeof graph.useStepApi<"review">>;
+type ReviewSendArg = Parameters<ReviewStepApi["send"]>[0];
+expectTypeOf<ReviewSendArg["type"]>().toEqualTypeOf<"approve">();
 
 // Negative checks.
 // @ts-expect-error invalid payload for approve
 const badPayload: SendArg = { type: "approve", payload: { approvedBy: 123 } };
+void badPayload;
 
 // @ts-expect-error missing required review view
-const missingView: JourneyViews<StepId> = {
-  start: Step
+const missingViews: GraphProviderPropsOfBundle["views"] = { start: Step };
+void missingViews;
+
+// ─── Headless tier ───────────────────────────────────────────────────────────
+
+const useHeadlessProbe = () => {
+  const machine = useOwnedJourney(() =>
+    createLinearJourney<Context, StepId>({
+      context: { userId: "42" },
+      steps: ["start", "review"]
+    })
+  );
+  return useJourneySnapshot(machine);
 };
+void useHeadlessProbe;
 
-const extraView: JourneyViews<StepId> = {
-  start: Step,
-  review: Step,
-  // @ts-expect-error extra view keys are not allowed
-  extra: Step
-};
-
-const badProviderProps: ProviderProps = {
-  views,
-  // @ts-expect-error JourneyProvider no longer accepts lifecycle callback props
-  onStart: () => undefined,
-  children: null
-};
-
-void badPayload;
-void missingView;
-void extraView;
-void badProviderProps;
-
-type BuilderStepId = "emailCode" | "authenticatorCode" | "loggedIn";
-type BuilderEventMap =
-  | { type: "verifyCodeSuccess"; payload?: { code: string } }
-  | { type: "verifyCodeFailure"; payload?: { code: string } }
-  | { type: "switchAuthMethod"; payload?: unknown }
-  | { type: "resendCode"; payload?: { channel: "email" } }
-  | { type: "submitLogin"; payload?: { username: string; password: string } };
-type BuilderContext = { attempts: number };
-
-const { createStep, to, build } = createGraphJourneyBuilder<{
-  context: BuilderContext;
-  stepId: BuilderStepId;
-  events: BuilderEventMap;
-  meta: { label: string };
-}>();
-
-const emailCodeStep = createStep("emailCode", {
-  meta: { label: "Email Code" },
-  on: {
-    verifyCodeSuccess: [to("loggedIn")],
-    verifyCodeFailure: [to("emailCode")],
-    switchAuthMethod: [to("authenticatorCode")]
-  }
-});
-expectTypeOf(emailCodeStep.id).toEqualTypeOf<"emailCode">();
-
-const authenticatorCodeStep = createStep("authenticatorCode", {
-  meta: { label: "Authenticator Code" },
-  on: {
-    verifyCodeSuccess: [to("loggedIn")]
-  }
-});
-
-const loggedInStep = createStep("loggedIn", {
-  meta: { label: "Logged In" }
-});
-
-const builderDefinition = build({
-  initial: "emailCode",
-  context: { attempts: 0 },
-  steps: [emailCodeStep, authenticatorCodeStep, loggedInStep],
-  global: {
-    resendCode: [to("emailCode")]
-  }
-});
-
-const builderJourney = createJourney(builderDefinition);
-type BuilderRuntime = JourneyBuilderRuntimeFromDefinition<typeof builderDefinition>;
-const builderApi = builderJourney.useStepApi(emailCodeStep.id);
-type BuilderApi = typeof builderApi;
-type BuilderSendArg = Parameters<typeof builderApi.send>[0];
-void builderApi;
-
-expectTypeOf(builderJourney).toMatchTypeOf<
-  JourneyBuilderRuntime<BuilderContext, BuilderStepId, BuilderEventMap, { label: string }>
->();
-expectTypeOf(builderJourney).toEqualTypeOf<BuilderRuntime>();
-
-// The named graph factory accepts builder output and infers the same builder
-// runtime (including `useStepApi`) as the generic createJourney.
-const graphBuilderJourney = createGraphJourney(builderDefinition, { plugins });
-expectTypeOf(graphBuilderJourney).toEqualTypeOf<
-  JourneyBuilderRuntimeFromDefinition<typeof builderDefinition, typeof plugins>
->();
-expectTypeOf(graphBuilderJourney.useStepApi).toBeFunction();
-
-expectTypeOf<BuilderApi>().toMatchTypeOf<
-  StepScopedJourneyApi<
-    BuilderContext,
-    BuilderStepId,
-    BuilderEventMap,
-    "verifyCodeSuccess" | "verifyCodeFailure" | "switchAuthMethod" | "resendCode",
-    { label: string }
-  >
->();
-expectTypeOf({} as BuilderSendArg).toExtend<
-  | { type: "verifyCodeSuccess"; payload?: { code: string } | undefined }
-  | { type: "verifyCodeFailure"; payload?: { code: string } | undefined }
-  | { type: "switchAuthMethod"; payload?: unknown }
-  | { type: "resendCode"; payload?: { channel: "email" } | undefined }
->();
-
-const invalidBuilderSendArg: BuilderSendArg = {
-  // @ts-expect-error step-scoped send rejects unrelated custom events
-  type: "submitLogin",
-  payload: { username: "demo", password: "secret" }
-};
-
-// @ts-expect-error step-scoped send rejects built-in machine events
-const invalidBuiltInBuilderSendArg: BuilderSendArg = { type: "goToStepById", stepId: "loggedIn" };
-
-void invalidBuilderSendArg;
-void invalidBuiltInBuilderSendArg;
-
-// The create*Journey factories reject an inline transition that targets its own step.
-const selfTransitionRuntime = createJourney({
-  initial: "start",
-  context: { userId: "42" },
-  steps: { start: {}, review: {} },
-  transitions: {
-    start: {
-      // @ts-expect-error a transition cannot target its own step "start"
-      goToNextStep: [{ to: "start" }]
-    }
-  }
-});
-void selfTransitionRuntime;
-
-const selfTransitionFactory = createJourneyFactory({
-  initial: "start",
-  context: { userId: "42" },
-  steps: { start: {}, review: {} },
-  transitions: {
-    start: {
-      // @ts-expect-error createJourneyFactory also rejects a self-transition
-      goToNextStep: [{ to: "start" }]
-    }
-  }
-});
-void selfTransitionFactory;
-
-const selfTransitionGraphRuntime = createGraphJourney({
-  initial: "start",
-  context: { userId: "42" },
-  steps: { start: {}, review: {} },
-  transitions: {
-    start: {
-      // @ts-expect-error react createGraphJourney also rejects a self-transition
-      goToNextStep: [{ to: "start" }]
-    }
-  }
-});
-void selfTransitionGraphRuntime;
-
-// A valid cross-step definition is accepted.
-const crossStepRuntime = createJourney({
-  initial: "start",
-  context: { userId: "42" },
-  steps: { start: {}, review: {} },
-  transitions: { start: { goToNextStep: [{ to: "review" }] } }
-});
-void crossStepRuntime;
+type HeadlessSnapshot = ReturnType<typeof useHeadlessProbe>;
+expectTypeOf<HeadlessSnapshot["context"]>().toEqualTypeOf<Context>();
+expectTypeOf<HeadlessSnapshot["currentStepId"]>().toEqualTypeOf<StepId>();

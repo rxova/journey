@@ -3,61 +3,75 @@ import { describe, expect, it } from "vitest";
 import React from "react";
 import { renderToString } from "react-dom/server";
 
-import { createJourney, type JourneyViews } from "@rxova/journey-react";
-import type { JourneyDefinition } from "@rxova/journey-core";
+import { useWizard, Wizard } from "@rxova/journey-react";
+import { createGraphJourney } from "@rxova/journey-react/graph";
 
-type StepId = "start" | "review";
 type Ctx = { count: number };
 
-const journeyDefinition: JourneyDefinition<Ctx, StepId> = {
-  initial: "start",
-  context: { count: 0 },
-  steps: {
-    start: { meta: { label: "Start" } },
-    review: { meta: { label: "Review" } }
-  },
-  transitions: {
-    start: { goToNextStep: [{ to: "review" }] }
-  }
-};
-
-const journey = createJourney(journeyDefinition);
-const views: JourneyViews<StepId> = {
-  start: () => <div>start-ssr</div>,
-  review: () => <div>review-ssr</div>
-};
-
 describe("SSR/RSC compatibility", () => {
-  it("renders provider-free hooks on the server", () => {
-    const CurrentStep = () => {
-      const snapshot = journey.useJourneySnapshot();
-      return <div>{snapshot.currentStepId}</div>;
+  it("renders <Wizard> with header/footer hooks on the server", () => {
+    const Panel = (props: { id?: string; label: string }) => {
+      void props;
+      return <div>{`${props.label}-ssr`}</div>;
+    };
+    const Footer = () => {
+      const { activeStepId, stepCount } = useWizard<Ctx>();
+      return <div>{`${activeStepId}/${stepCount}`}</div>;
     };
 
-    const html = renderToString(<CurrentStep />);
-
-    expect(html).toContain("start");
-  });
-
-  it("renders JourneyProvider and StepRenderer on the server", () => {
     const html = renderToString(
-      <journey.JourneyProvider views={views}>
-        <journey.StepRenderer />
-      </journey.JourneyProvider>
+      <Wizard context={{ count: 0 }} footer={<Footer />}>
+        <Panel id="start" label="start" />
+        <Panel id="review" label="review" />
+      </Wizard>
     );
 
     expect(html).toContain("start-ssr");
+    expect(html).toContain("start/2");
   });
 
-  it("does not auto-start the machine during server rendering", () => {
-    const ssrJourney = createJourney(journeyDefinition);
+  it("renders the graph Provider and StepRenderer on the server without auto-starting", () => {
+    const bundle = createGraphJourney({
+      initial: "start",
+      context: { count: 0 } as Ctx,
+      steps: { start: {}, review: {} },
+      transitions: { start: { goToNextStep: [{ to: "review" }] } }
+    });
+
+    const Status = () => {
+      const snapshot = bundle.useSnapshot();
+      return <div>{`status:${snapshot.status}`}</div>;
+    };
+
     const html = renderToString(
-      <ssrJourney.JourneyProvider views={views}>
-        <ssrJourney.StepRenderer />
-      </ssrJourney.JourneyProvider>
+      <bundle.Provider
+        views={{ start: () => <div>start-ssr</div>, review: () => <div>review-ssr</div> }}
+      >
+        <Status />
+        <bundle.StepRenderer />
+      </bundle.Provider>
     );
 
+    // Server render shows the pre-start snapshot; startJourney is a client-side layout effect.
     expect(html).toContain("start-ssr");
-    expect(ssrJourney.machine.getSnapshot().status).toBe("idled");
+    expect(html).toContain("status:idled");
+  });
+
+  it("no module-scope machine: two server renders do not share state", () => {
+    const Probe = (props: { id?: string }) => {
+      void props;
+      const { context } = useWizard<Ctx>();
+      return <div>{`count:${context.count}`}</div>;
+    };
+
+    const renderOnce = () =>
+      renderToString(
+        <Wizard context={{ count: 0 }}>
+          <Probe id="only" />
+        </Wizard>
+      );
+
+    expect(renderOnce()).toContain("count:0");
+    expect(renderOnce()).toContain("count:0");
   });
 });

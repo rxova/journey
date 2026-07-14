@@ -1,7 +1,7 @@
 import React from "react";
 import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
-import { createJourney, type JourneyViews } from "@rxova/journey-react";
+import { createGraphJourney } from "@rxova/journey-react/graph";
 import "./styles.css";
 
 type ReactStepId = "start" | "details" | "review" | "confirmExit";
@@ -11,7 +11,7 @@ type ReactContext = {
   dirty: boolean;
 };
 
-type ReactEventMap = { requestClose: unknown };
+type ReactEventMap = { type: "requestClose"; payload?: unknown };
 
 const reactJourneyDefinition: JourneyDefinition<ReactContext, ReactStepId, ReactEventMap> = {
   initial: "start",
@@ -57,21 +57,22 @@ const reactJourneyDefinition: JourneyDefinition<ReactContext, ReactStepId, React
   }
 };
 
-const reactJourney = createJourney(reactJourneyDefinition);
+const reactJourney = createGraphJourney(reactJourneyDefinition);
 
-const useReactJourneyApi = () => reactJourney.useJourneyApi();
-const useReactJourneySnapshot = () => reactJourney.useJourneySnapshot();
+const useReactJourneyApi = () => reactJourney.useApi();
+const useReactJourneySnapshot = () => reactJourney.useSnapshot();
 
 const ReactBridge = () => {
+  const machine = reactJourney.useMachine();
   React.useEffect(() => {
-    return attachJourneyDevtools(reactJourney.machine, {
+    return attachJourneyDevtools(machine as never, {
       machineId: "react-flow",
       label: "React Flow",
       appName: "Journey Demo",
       enabled: true,
       commandsEnabled: true
     });
-  }, []);
+  }, [machine]);
 
   return null;
 };
@@ -192,7 +193,7 @@ const ReactConfirmExit = () => {
   );
 };
 
-const reactViews: JourneyViews<ReactStepId> = {
+const reactViews: Record<ReactStepId, React.ComponentType> = {
   start: ReactStart,
   details: ReactDetails,
   review: ReactReview,
@@ -339,7 +340,7 @@ const CoreMachinePanel = () => {
 };
 
 export const App = () => {
-  const JourneyProvider = reactJourney.JourneyProvider;
+  const JourneyProvider = reactJourney.Provider;
   const coreStatus = useCoreStatus();
 
   React.useEffect(() => {

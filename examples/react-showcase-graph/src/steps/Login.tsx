@@ -5,8 +5,8 @@ import { journey } from "../journey";
 import { mockApi } from "../api";
 
 export const Login = () => {
-  const snapshot = journey.useJourneySnapshot();
-  const api = journey.useJourneyApi();
+  const snapshot = journey.useSnapshot();
+  const api = journey.useApi();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const isLoading = snapshot.async.isLoading;
   const isBusy = isLoading || isSubmitting;
