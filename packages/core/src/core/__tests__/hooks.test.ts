@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createLinearJourney } from "@rxova/journey-core";
-import { flush, wait } from "./helpers";
+import { flush, wait } from "../../__tests__/helpers";
 
 describe("step hooks", () => {
   it("onLeave returning false cancels navigation (sync and via promise)", async () => {

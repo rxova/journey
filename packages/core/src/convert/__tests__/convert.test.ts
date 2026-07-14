@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createGraphJourney } from "@rxova/journey-core";
 import { linearToGraphDefinition } from "@rxova/journey-core/convert";
-import { flush } from "./helpers";
+import { flush } from "../../__tests__/helpers";
 
 describe("linearToGraphDefinition", () => {
   it("converts declared order into NEXT/PREVIOUS transitions", () => {
@@ -64,5 +64,16 @@ describe("linearToGraphDefinition", () => {
     expect(await machine.send("NEXT")).toEqual({ ok: true, from: "b", to: "c" });
     expect(await machine.send("NEXT")).toEqual({ ok: false, reason: "no-enabled-transition" });
     expect(await machine.send("PREVIOUS")).toEqual({ ok: true, from: "c", to: "b" });
+  });
+});
+
+describe("hook carry-over", () => {
+  it("carries onLeave as well as onEnter", () => {
+    const onLeave = vi.fn();
+    const definition = linearToGraphDefinition({
+      steps: [{ id: "a", onLeave }, "b"],
+      context: {}
+    });
+    expect(definition.steps.a).toMatchObject({ onLeave });
   });
 });

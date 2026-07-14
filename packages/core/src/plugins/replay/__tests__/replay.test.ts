@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createLinearJourney } from "@rxova/journey-core";
 import { createReplayPlugin, serializeReplaySession } from "@rxova/journey-core/replay";
-import { flush } from "./helpers";
+import { flush } from "../../../__tests__/helpers";
 
 describe("replay plugin", () => {
   it("records lifecycle activity into an exportable session", async () => {
@@ -74,5 +74,38 @@ describe("replay plugin", () => {
     expect(parsed.entries[0].data.error).toMatchObject({ name: "Error", message: "boom" });
     expect(parsed.entries[0].data.when).toBe("1970-01-01T00:00:00.000Z");
     expect(parsed.entries[0].data.circular.self).toBe("[circular]");
+  });
+});
+
+describe("toSerializable edge cases", () => {
+  it("handles bigints, functions, and symbols", () => {
+    const session = {
+      startedAt: 1,
+      entries: [
+        {
+          at: 2,
+          kind: "context" as const,
+          data: { big: 10n, fn: () => undefined, sym: Symbol("x"), nested: [undefined] }
+        }
+      ]
+    };
+    const parsed = JSON.parse(serializeReplaySession(session));
+    expect(parsed.entries[0].data).toEqual({
+      big: "10",
+      fn: "[unsupported:function]",
+      sym: "[unsupported:symbol]",
+      nested: [null]
+    });
+  });
+});
+
+describe("stackless errors", () => {
+  it("serializes errors without a stack property", () => {
+    const error = new Error("bare");
+    delete (error as { stack?: string }).stack;
+    const parsed = JSON.parse(
+      serializeReplaySession({ startedAt: 1, entries: [{ at: 2, kind: "error", data: error }] })
+    );
+    expect(parsed.entries[0].data).toEqual({ name: "Error", message: "bare" });
   });
 });

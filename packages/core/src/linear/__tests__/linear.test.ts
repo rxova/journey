@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createLinearJourney } from "@rxova/journey-core";
-import { flush, startedLinear } from "./helpers";
+import { flush, startedLinear } from "../../__tests__/helpers";
 
 describe("createLinearJourney", () => {
   it("accepts string shorthand steps implying empty metadata", async () => {

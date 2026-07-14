@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createLinearJourney } from "@rxova/journey-core";
 import { createSubscriptionEnhancerPlugin } from "@rxova/journey-core/subscription-enhancer";
-import { flush } from "./helpers";
+import { flush } from "../../../__tests__/helpers";
 
 function machineWithEnhancer() {
   return createLinearJourney(
