@@ -31,7 +31,7 @@ describe("terminal transitions", () => {
     };
 
     const machine = createJourneyMachine(journey);
-    machine.startJourney();
+    machine.controls.start();
 
     await machine.send({ type: "completeJourney" });
 
@@ -53,7 +53,7 @@ describe("terminal transitions", () => {
     };
 
     const machine = createJourneyMachine(journey);
-    machine.startJourney();
+    machine.controls.start();
 
     await machine.send({ type: "terminateJourney" });
 
@@ -74,7 +74,7 @@ describe("terminal transitions", () => {
     };
 
     const machine = createJourneyMachine(journey);
-    machine.startJourney();
+    machine.controls.start();
 
     await machine.send({ type: "terminateJourney" });
 
@@ -87,9 +87,9 @@ describe("terminal transitions", () => {
     journey.transitions = {};
 
     const machine = createJourneyMachine(journey);
-    machine.startJourney();
+    machine.controls.start();
 
-    const result = await machine.completeJourney();
+    const result = await machine.controls.complete();
 
     expect(result.transitioned).toBe(true);
     expect(machine.getSnapshot().status).toBe("completed");
@@ -100,9 +100,9 @@ describe("terminal transitions", () => {
     journey.transitions = {};
 
     const machine = createJourneyMachine(journey);
-    machine.startJourney();
+    machine.controls.start();
 
-    const result = await machine.terminateJourney();
+    const result = await machine.controls.terminate();
 
     expect(result.transitioned).toBe(true);
     expect(machine.getSnapshot().status).toBe("terminated");
@@ -121,9 +121,9 @@ describe("terminal transitions", () => {
     };
 
     const machine = createJourneyMachine(journey);
-    machine.startJourney();
+    machine.controls.start();
 
-    await machine.completeJourney();
+    await machine.controls.complete();
 
     expect(machine.getSnapshot().status).toBe("completed");
     expect(machine.getSnapshot().context.count).toBe(42);
@@ -142,9 +142,9 @@ describe("terminal transitions", () => {
     };
 
     const machine = createJourneyMachine(journey);
-    machine.startJourney();
+    machine.controls.start();
 
-    await machine.terminateJourney();
+    await machine.controls.terminate();
 
     expect(machine.getSnapshot().status).toBe("terminated");
     expect(machine.getSnapshot().context.count).toBe(99);
@@ -155,12 +155,12 @@ describe("terminal transitions", () => {
     journey.transitions = {};
 
     const machine = createJourneyMachine(journey);
-    machine.startJourney();
+    machine.controls.start();
 
     const events: string[] = [];
     machine.subscribeEvent((event) => events.push(event.type));
 
-    await machine.completeJourney();
+    await machine.controls.complete();
 
     expect(events).toContain("transition.success");
     expect(events).toContain("journey.completed");
@@ -171,12 +171,12 @@ describe("terminal transitions", () => {
     journey.transitions = {};
 
     const machine = createJourneyMachine(journey);
-    machine.startJourney();
+    machine.controls.start();
 
     const events: string[] = [];
     machine.subscribeEvent((event) => events.push(event.type));
 
-    await machine.terminateJourney();
+    await machine.controls.terminate();
 
     expect(events).toContain("transition.success");
     expect(events).toContain("journey.terminated");
@@ -201,9 +201,9 @@ describe("terminal transitions", () => {
     };
 
     const machine = createJourneyMachine(journey);
-    machine.startJourney();
+    machine.controls.start();
 
-    await machine.terminateJourney();
+    await machine.controls.terminate();
 
     expect(machine.getSnapshot().status).toBe("terminated");
     expect(calls).toEqual(["leave:start->TERMINATED", "enter:start->TERMINATED"]);
@@ -222,9 +222,9 @@ describe("terminal transitions", () => {
     };
 
     const machine = createJourneyMachine(journey);
-    machine.startJourney();
+    machine.controls.start();
 
-    const result = await machine.completeJourney();
+    const result = await machine.controls.complete();
 
     // Explicit transition was declared but guard rejected — no fallback
     expect(result.transitioned).toBe(false);
@@ -245,7 +245,7 @@ describe("terminal transitions", () => {
     };
 
     const machine = createJourneyMachine(journey);
-    machine.startJourney();
+    machine.controls.start();
 
     await machine.send({ type: "goToNextStep" });
 

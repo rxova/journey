@@ -26,7 +26,7 @@ const createMachine = () =>
 describe("headless hooks", () => {
   it("useJourneySnapshot subscribes and re-renders on machine changes", async () => {
     const machine = createMachine();
-    await machine.startJourney();
+    await machine.controls.start();
 
     const Probe = () => {
       const snapshot = useJourneySnapshot(machine);
@@ -46,7 +46,7 @@ describe("headless hooks", () => {
 
   it("useJourneySelector re-renders only when the selected slice changes", async () => {
     const machine = createMachine();
-    await machine.startJourney();
+    await machine.controls.start();
     let renders = 0;
 
     const Probe = () => {
@@ -74,7 +74,7 @@ describe("headless hooks", () => {
 
   it("useJourneyComputed exposes linear wizard affordances", async () => {
     const machine = createMachine();
-    await machine.startJourney();
+    await machine.controls.start();
 
     const Probe = () => {
       const computed = useJourneyComputed(machine);
@@ -93,7 +93,7 @@ describe("headless hooks", () => {
 
   it("useJourneyEvent and useJourneyStepLifecycle observe navigation", async () => {
     const machine = createMachine();
-    await machine.startJourney();
+    await machine.controls.start();
     const events: string[] = [];
     const entered: number[] = [];
 
@@ -120,7 +120,7 @@ describe("headless hooks", () => {
 
   it("useStepAsyncState tracks a step's async phase", async () => {
     const machine = createMachine();
-    await machine.startJourney();
+    await machine.controls.start();
 
     const Probe = () => {
       const asyncState = useStepAsyncState(machine, "a");
@@ -139,7 +139,7 @@ describe("headless hooks", () => {
       context: { count: 0 },
       steps: { watching: {}, flagged: {} }
     });
-    await machine.startJourney();
+    await machine.controls.start();
 
     const Probe = () => {
       const snapshot = useJourneySnapshot(machine);

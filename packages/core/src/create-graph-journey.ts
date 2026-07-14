@@ -4,11 +4,11 @@ import type {
   JourneyBaseEvent,
   AssertNoSelfTransitions,
   GraphJourneyDefinition,
+  GraphJourneyMachine,
   JourneyDefinition,
   JourneyJsonObject,
   JourneyMachinePlugin,
-  JourneyMachineOptions,
-  JourneyMachineWithPlugins
+  JourneyMachineOptions
 } from "./types";
 import type { JourneyEmpty } from "./types";
 
@@ -37,7 +37,7 @@ export function createGraphJourney<
   infer TM,
   infer TH
 >
-  ? JourneyMachineWithPlugins<TC, TS, TE, TM, TH, TPlugins>
+  ? GraphJourneyMachine<TC, TS, TE, TM, TH, TPlugins>
   : never;
 export function createGraphJourney<
   TContext extends JourneyJsonObject,
@@ -49,7 +49,7 @@ export function createGraphJourney<
 >(
   def: GraphJourneyDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>,
   options?: JourneyMachineOptions<TPlugins, THandlers>
-): JourneyMachineWithPlugins<TContext, TStepId, TEvents, TStepMeta, THandlers, TPlugins>;
+): GraphJourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers, TPlugins>;
 /** Creates a graph journey machine from a builder definition or a plain `GraphJourneyDefinition` with an object-keyed `transitions` map. */
 export function createGraphJourney<
   TContext extends JourneyJsonObject,
@@ -61,9 +61,9 @@ export function createGraphJourney<
 >(
   def: JourneyDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>,
   options?: JourneyMachineOptions<TPlugins, THandlers>
-): JourneyMachineWithPlugins<TContext, TStepId, TEvents, TStepMeta, THandlers, TPlugins> {
+): GraphJourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers, TPlugins> {
   return createJourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers, TPlugins>(
     def,
     options
-  );
+  ) as GraphJourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers, TPlugins>;
 }

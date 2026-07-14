@@ -42,6 +42,7 @@ export type {
 export {
   type AssertNoSelfTransitions,
   type GraphJourneyDefinition,
+  type GraphJourneyMachine,
   type HeadlessJourneyDefinition,
   type LinearJourneyDefinition,
   type LinearJourneyMachine,
@@ -95,6 +96,7 @@ export {
   type JourneyMachineDevtoolsOperationResultKind,
   type JourneyMachineDevtoolsOperationSpec,
   type JourneyMachine,
+  type JourneyMachineControls,
   type JourneyMachineOptions,
   type JourneyMachinePlugin,
   type JourneyMachinePluginHooks,

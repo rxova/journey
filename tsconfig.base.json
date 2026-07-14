@@ -27,6 +27,9 @@
       ],
       "@rxova/journey-core/persistence": ["./packages/core/src/plugins/persistence/index.ts"],
       "@rxova/journey-core/replay": ["./packages/core/src/plugins/replay/index.ts"],
+      "@rxova/journey-core/subscription-enhancer": [
+        "./packages/core/src/plugins/subscription-enhancer/index.ts"
+      ],
       "@rxova/journey-react": ["./packages/react/src/index.ts"],
       "@rxova/journey-react/headless": ["./packages/react/src/headless/index.ts"],
       "@rxova/journey-react/graph": ["./packages/react/src/graph/index.ts"],

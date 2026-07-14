@@ -54,7 +54,7 @@ describe("step effects", () => {
       })
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
 
     await vi.waitFor(() => {
@@ -80,7 +80,7 @@ describe("step effects", () => {
       })
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
 
     await vi.waitFor(() => {
@@ -115,7 +115,7 @@ describe("step effects", () => {
       }
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep(); // start → loading; the effect then routes to done
 
     await vi.waitFor(() => {
@@ -137,7 +137,7 @@ describe("step effects", () => {
       })
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
 
     await vi.waitFor(() => {
@@ -173,7 +173,7 @@ describe("step effects", () => {
       transitions: { start: {}, loading: {}, done: {}, failed: {} }
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
 
     await vi.waitFor(() => {
       expect(machine.getSnapshot().currentStepId).toBe("done");
@@ -197,9 +197,9 @@ describe("step effects", () => {
       transitions: { start: {}, loading: {}, done: {}, failed: {} }
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     // A defensive second start must be a no-op — it cannot re-fire initial I/O.
-    await machine.startJourney();
+    await machine.controls.start();
 
     await vi.waitFor(() => expect(run).toHaveBeenCalledTimes(1));
     // Flush the macrotask queue so any erroneous duplicate effect would have run.
@@ -223,13 +223,13 @@ describe("step effects", () => {
       })
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
     await vi.waitFor(() => {
       expect(machine.getSnapshot().async.byStep.loading.phase).toBe("invoking");
     });
 
-    await machine.resetJourney();
+    await machine.controls.reset();
     expect(aborted).toBe(true);
 
     gate.resolve("late");
@@ -257,7 +257,7 @@ describe("step effects", () => {
       )
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
     await vi.waitFor(() => {
       expect(machine.getSnapshot().async.byStep.loading.phase).toBe("invoking");
@@ -287,7 +287,7 @@ describe("step effects", () => {
       })
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
 
     await vi.waitFor(() => {
@@ -303,7 +303,7 @@ describe("step effects", () => {
       })
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
 
     await vi.waitFor(() => {
@@ -321,7 +321,7 @@ describe("step effects", () => {
       })
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
 
     await vi.waitFor(() => {
@@ -345,7 +345,7 @@ describe("step effects", () => {
       }
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(machine.getSnapshot().currentStepId).toBe("loading");
@@ -383,7 +383,7 @@ describe("step effects via the builder and linear factory", () => {
       })
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
 
     await vi.waitFor(() => {
@@ -414,7 +414,7 @@ describe("step effects via the builder and linear factory", () => {
       ]
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
 
     await vi.waitFor(() => {
@@ -445,7 +445,7 @@ describe("step effects — disposal and interactions", () => {
       })
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep(); // → loading, effect in flight
     expect(machine.getSnapshot().async.byStep.loading.phase).toBe("invoking");
 
@@ -477,7 +477,7 @@ describe("step effects — disposal and interactions", () => {
     };
 
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
 
     await vi.waitFor(() => {
@@ -523,7 +523,7 @@ describe("step effects — disposal and interactions", () => {
     };
 
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
 
     await vi.waitFor(() => {
@@ -569,7 +569,7 @@ describe("step effects — disposal and interactions", () => {
     };
 
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep(); // → both; onEnter dispatches skip, effect is pending
 
     await vi.waitFor(() => {

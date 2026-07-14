@@ -36,9 +36,9 @@ export const useWizard = <
 
   // isPaused is a transient machine flag outside the snapshot; observe it via
   // the journey.paused/journey.resumed observation events.
-  const [isPaused, setIsPaused] = React.useState(() => machine.isPaused());
+  const [isPaused, setIsPaused] = React.useState(() => machine.controls.isPaused());
   useSafeLayoutEffect(() => {
-    setIsPaused(machine.isPaused());
+    setIsPaused(machine.controls.isPaused());
     return machine.subscribeEvent((event) => {
       if (event.type === "journey.paused") {
         setIsPaused(true);
@@ -55,10 +55,7 @@ export const useWizard = <
       goToStepById: machine.goToStepById,
       goToStepByIndex: machine.goToStepByIndex,
       goToLastVisitedStep: machine.goToLastVisitedStep,
-      completeJourney: machine.completeJourney,
-      resetJourney: () => machine.resetJourney(),
-      pauseJourney: machine.pauseJourney,
-      resumeJourney: machine.resumeJourney,
+      controls: machine.controls,
       clearStepError: machine.clearStepError,
       updateContext: machine.updateContext
     }),
@@ -77,7 +74,7 @@ export const useWizard = <
     isLastStep: computed.isLastStep,
 
     visited: snapshot.visited,
-    isFirstTimeVisit: computed.isFirstTimeVisit,
+    isStepFirstTimeVisit: computed.isStepFirstTimeVisit,
 
     status: snapshot.status,
     isLoading: snapshot.async.isLoading,
@@ -91,10 +88,7 @@ export const useWizard = <
       | "goToStepById"
       | "goToStepByIndex"
       | "goToLastVisitedStep"
-      | "completeJourney"
-      | "resetJourney"
-      | "pauseJourney"
-      | "resumeJourney"
+      | "controls"
       | "clearStepError"
       | "updateContext"
     >),

@@ -42,7 +42,7 @@ describe("snapshot family discriminator", () => {
       expect(snapshot.stepOrder).toEqual(["a", "b", "c"]);
     }
 
-    await machine.startJourney();
+    await machine.controls.start();
     const next = (await machine.goToNextStep()).snapshot;
     expect(next.type).toBe("linear");
     if (next.type === "linear") {
@@ -75,16 +75,16 @@ describe("snapshot family discriminator", () => {
 
   it("the discriminator survives navigation, reset, context updates, and terminal transitions", async () => {
     const machine = createLinearJourney(linearDefinition);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
     await machine.goToPreviousStep();
     await machine.updateContext((context) => ({ count: context.count + 1 }));
     expect(machine.getSnapshot().type).toBe("linear");
 
-    const completed = await machine.completeJourney();
+    const completed = await machine.controls.complete();
     expect(completed.snapshot.type).toBe("linear");
 
-    const reset = await machine.resetJourney();
+    const reset = await machine.controls.reset();
     expect(reset.type).toBe("linear");
   });
 
@@ -94,7 +94,7 @@ describe("snapshot family discriminator", () => {
       plugins: [createPersistencePlugin<Context, StepId>({ key: "family", storage })]
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
 
     const persisted = JSON.parse(store.get("family") ?? "{}") as {
@@ -144,11 +144,11 @@ describe("snapshot family discriminator", () => {
 describe("pauseJourney / resumeJourney", () => {
   it("holds navigation as a no-op with noOpReason 'paused' and resumes cleanly", async () => {
     const machine = createLinearJourney(linearDefinition);
-    await machine.startJourney();
+    await machine.controls.start();
 
-    expect(machine.isPaused()).toBe(false);
-    machine.pauseJourney();
-    expect(machine.isPaused()).toBe(true);
+    expect(machine.controls.isPaused()).toBe(false);
+    machine.controls.pause();
+    expect(machine.controls.isPaused()).toBe(true);
 
     const next = await machine.goToNextStep();
     expect(next.transitioned).toBe(false);
@@ -159,12 +159,12 @@ describe("pauseJourney / resumeJourney", () => {
     expect(previous.noOpReason).toBe("paused");
     const lastVisited = await machine.goToLastVisitedStep();
     expect(lastVisited.noOpReason).toBe("paused");
-    const completed = await machine.completeJourney();
+    const completed = await machine.controls.complete();
     expect(completed.noOpReason).toBe("paused");
     expect(machine.getSnapshot().status).toBe("running");
 
-    machine.resumeJourney();
-    expect(machine.isPaused()).toBe(false);
+    machine.controls.resume();
+    expect(machine.controls.isPaused()).toBe(false);
     const resumed = await machine.goToNextStep();
     expect(resumed.transitioned).toBe(true);
     expect(resumed.snapshot.currentStepId).toBe("b");
@@ -173,23 +173,23 @@ describe("pauseJourney / resumeJourney", () => {
 
   it("keeps updateContext, clearStepError, and resetJourney working while paused", async () => {
     const machine = createLinearJourney(linearDefinition);
-    await machine.startJourney();
-    machine.pauseJourney();
+    await machine.controls.start();
+    machine.controls.pause();
 
     const updated = await machine.updateContext((context) => ({ count: context.count + 5 }));
     expect(updated.context.count).toBe(5);
 
     await machine.clearStepError();
 
-    const reset = await machine.resetJourney();
+    const reset = await machine.controls.reset();
     expect(reset.status).toBe("idled");
     // Pause is independent of snapshot state: reset does not clear it.
-    expect(machine.isPaused()).toBe(true);
+    expect(machine.controls.isPaused()).toBe(true);
   });
 
   it("emits journey.paused / journey.resumed observation events", async () => {
     const machine = createLinearJourney(linearDefinition);
-    await machine.startJourney();
+    await machine.controls.start();
 
     const events: string[] = [];
     machine.subscribeEvent((event) => {
@@ -198,10 +198,10 @@ describe("pauseJourney / resumeJourney", () => {
       }
     });
 
-    machine.pauseJourney();
-    machine.pauseJourney(); // idempotent: no duplicate event
-    machine.resumeJourney();
-    machine.resumeJourney(); // idempotent
+    machine.controls.pause();
+    machine.controls.pause(); // idempotent: no duplicate event
+    machine.controls.resume();
+    machine.controls.resume(); // idempotent
 
     expect(events).toEqual(["journey.paused", "journey.resumed"]);
   });
@@ -211,8 +211,8 @@ describe("pauseJourney / resumeJourney", () => {
     const machine = createLinearJourney(linearDefinition, {
       plugins: [createPersistencePlugin<Context, StepId>({ key: "family:pause", storage })]
     });
-    await machine.startJourney();
-    machine.pauseJourney();
+    await machine.controls.start();
+    machine.controls.pause();
     await machine.updateContext((context) => ({ count: context.count + 1 }));
 
     expect("isPaused" in machine.getSnapshot()).toBe(false);
@@ -227,9 +227,9 @@ describe("pauseJourney / resumeJourney", () => {
     const machine = createLinearJourney(linearDefinition);
     machine.dispose();
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    machine.pauseJourney();
-    machine.resumeJourney();
-    expect(machine.isPaused()).toBe(false);
+    machine.controls.pause();
+    machine.controls.resume();
+    expect(machine.controls.isPaused()).toBe(false);
     warn.mockRestore();
   });
 });
@@ -381,7 +381,7 @@ describe("toGraphDefinition", () => {
     expect(graphDefinition.steps.b.meta).toEqual({ label: "B" });
 
     const machine = createJourneyMachine(graphDefinition);
-    await machine.startJourney();
+    await machine.controls.start();
 
     const toB = await machine.goToNextStep();
     expect(toB.snapshot.currentStepId).toBe("b");
@@ -410,7 +410,7 @@ describe("toGraphDefinition", () => {
 describe("toGraphSnapshot", () => {
   it("flips the discriminator and drops stepOrder, keeping base fields verbatim", async () => {
     const machine = createLinearJourney(linearDefinition);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
 
     const linearSnapshot = machine.getSnapshot() as LinearJourneySnapshot<Context, StepId>;
@@ -427,7 +427,7 @@ describe("toGraphSnapshot", () => {
 
   it("round-trips a live linear snapshot into a graph machine via initialSnapshot", async () => {
     const linearMachine = createLinearJourney(linearDefinition);
-    await linearMachine.startJourney();
+    await linearMachine.controls.start();
     await linearMachine.goToNextStep();
     await linearMachine.updateContext(() => ({ count: 42 }));
 

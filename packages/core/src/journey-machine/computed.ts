@@ -86,7 +86,7 @@ export const createJourneyMachineComputedGetter = <
         isFirstStep: linearIndex === 0,
         isLastStep: linearIndex === stepCount - 1,
         stepOrder: linearStepOrder,
-        isFirstTimeVisit: (visits[snapshot.currentStepId] ?? 0) <= 1
+        isStepFirstTimeVisit: (visits[snapshot.currentStepId] ?? 0) <= 1
       };
     }
 

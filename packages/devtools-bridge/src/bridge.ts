@@ -270,7 +270,7 @@ const createCoreFeature = <
       output: "snapshot",
       run: async () => ({
         kind: "snapshot",
-        snapshot: await machine.startJourney()
+        snapshot: await machine.controls.start()
       })
     },
     {
@@ -285,14 +285,14 @@ const createCoreFeature = <
       label: "terminateJourney",
       mutates: true,
       output: "snapshot",
-      run: async () => toSnapshotOperationResult(await machine.terminateJourney())
+      run: async () => toSnapshotOperationResult(await machine.controls.terminate())
     },
     {
       id: "core.completeJourney",
       label: "completeJourney",
       mutates: true,
       output: "snapshot",
-      run: async () => toSnapshotOperationResult(await machine.completeJourney())
+      run: async () => toSnapshotOperationResult(await machine.controls.complete())
     },
     {
       id: "core.goToStepById",
@@ -419,7 +419,7 @@ const createCoreFeature = <
       output: "snapshot",
       run: async () => ({
         kind: "snapshot",
-        snapshot: await machine.resetJourney()
+        snapshot: await machine.controls.reset()
       })
     },
     {

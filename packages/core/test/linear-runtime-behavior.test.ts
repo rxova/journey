@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createLinearJourney } from "@rxova/journey-core";
+import { createLinearJourney, JourneyDisposedError } from "@rxova/journey-core";
 import type { LinearJourneyDefinition } from "@rxova/journey-core";
 
 type Ctx = { count: number; note: string };
@@ -43,7 +43,7 @@ describe("linear runtime effects", () => {
       ]
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await flushMicrotasks();
     await machine.updateContext((context) => context); // drain the queue
 
@@ -74,7 +74,7 @@ describe("linear runtime effects", () => {
         "c"
       ]
     });
-    await withBranch.startJourney();
+    await withBranch.controls.start();
     await flushMicrotasks();
     await withBranch.updateContext((context) => context);
     expect(withBranch.getSnapshot().currentStepId).toBe("b");
@@ -95,7 +95,7 @@ describe("linear runtime effects", () => {
         "c"
       ]
     });
-    await withoutBranch.startJourney();
+    await withoutBranch.controls.start();
     await flushMicrotasks();
     expect(withoutBranch.getSnapshot().currentStepId).toBe("a");
     expect(withoutBranch.getSnapshot().async.byStep.a.phase).toBe("error");
@@ -121,7 +121,7 @@ describe("linear runtime effects", () => {
       ]
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await flushMicrotasks();
     expect(machine.getSnapshot().async.isLoading).toBe(true);
     expect(machine.getSnapshot().async.byStep.a.phase).toBe("invoking");
@@ -152,7 +152,7 @@ describe("linear runtime effects", () => {
       ]
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await flushMicrotasks();
     await machine.goToNextStep(); // leaves "a"; the pending effect is aborted
     release?.();
@@ -181,7 +181,7 @@ describe("linear runtime after timers", () => {
       ]
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await vi.advanceTimersByTimeAsync(60);
     expect(machine.getSnapshot().currentStepId).toBe("c");
     expect(machine.getSnapshot().context.note).toBe("timed");
@@ -191,7 +191,7 @@ describe("linear runtime after timers", () => {
       context: { count: 0, note: "" },
       steps: [{ id: "a", after: { 50: { to: "c" } } }, "b", "c"]
     });
-    await second.startJourney();
+    await second.controls.start();
     await second.goToNextStep();
     await vi.advanceTimersByTimeAsync(100);
     expect(second.getSnapshot().currentStepId).toBe("b");
@@ -227,7 +227,7 @@ describe("linear runtime lifecycle callbacks", () => {
       }
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
     await flushMicrotasks();
 
@@ -250,7 +250,7 @@ describe("linear runtime lifecycle callbacks", () => {
       ]
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
     await flushMicrotasks();
     await machine.updateContext((context) => context);
@@ -262,7 +262,7 @@ describe("linear runtime send routing & guards", () => {
   it("routes built-in events through send and drops unknown events via onNoMatch", async () => {
     const onNoMatch = vi.fn();
     const machine = createLinearJourney<Ctx, StepId>(baseDefinition, { onNoMatch });
-    await machine.startJourney();
+    await machine.controls.start();
 
     await machine.send({ type: "goToNextStep" });
     expect(machine.getSnapshot().currentStepId).toBe("b");
@@ -283,7 +283,7 @@ describe("linear runtime send routing & guards", () => {
   it("jumping to the current step is a no-match no-op", async () => {
     const onNoMatch = vi.fn();
     const machine = createLinearJourney<Ctx, StepId>(baseDefinition, { onNoMatch });
-    await machine.startJourney();
+    await machine.controls.start();
 
     const result = await machine.goToStepById("a");
     expect(result.transitioned).toBe(false);
@@ -297,15 +297,15 @@ describe("linear runtime send routing & guards", () => {
     expect((await machine.goToLastVisitedStep()).transitioned).toBe(false);
     expect((await machine.goToStepById("b")).transitioned).toBe(false);
 
-    await machine.startJourney();
-    await machine.completeJourney();
+    await machine.controls.start();
+    await machine.controls.complete();
     expect((await machine.goToNextStep()).transitioned).toBe(false);
-    expect((await machine.completeJourney()).transitioned).toBe(false);
+    expect((await machine.controls.complete()).transitioned).toBe(false);
   });
 
   it("goToLastVisitedStep returns to the front of the timeline; out-of-range byIndex no-ops", async () => {
     const machine = createLinearJourney<Ctx, StepId>(baseDefinition);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
     await machine.goToNextStep();
     await machine.goToPreviousStep(2);
@@ -317,7 +317,7 @@ describe("linear runtime send routing & guards", () => {
 
   it("backward goToStepByIndex jumps when the target was never visited", async () => {
     const machine = createLinearJourney<Ctx, StepId>({ ...baseDefinition, initial: "c" });
-    await machine.startJourney();
+    await machine.controls.start();
 
     const result = await machine.goToStepByIndex(1); // "b" — never visited
     expect(result.transitioned).toBe(true);
@@ -331,24 +331,24 @@ describe("linear runtime send routing & guards", () => {
       requireExplicitCompletion: true,
       onNoMatch
     });
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToStepById("c");
 
     const result = await machine.goToNextStep();
     expect(result.transitioned).toBe(false);
     expect(onNoMatch).toHaveBeenCalledWith({ from: "c", eventType: "goToNextStep" });
 
-    await machine.completeJourney();
+    await machine.controls.complete();
     expect(machine.getSnapshot().status).toBe("completed");
   });
 
   it("terminal transitions truncate the forward history tail", async () => {
     const machine = createLinearJourney<Ctx, StepId>(baseDefinition);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
     await machine.goToNextStep();
     await machine.goToPreviousStep(2); // back at "a" with a forward tail
-    await machine.completeJourney();
+    await machine.controls.complete();
 
     expect(machine.getSnapshot().history.timeline).toEqual(["a"]);
     expect(machine.getSnapshot().status).toBe("completed");
@@ -358,25 +358,44 @@ describe("linear runtime send routing & guards", () => {
 describe("linear runtime pause", () => {
   it("holds every navigation surface while paused and resumes cleanly", async () => {
     const machine = createLinearJourney<Ctx, StepId>(baseDefinition);
-    await machine.startJourney();
-    machine.pauseJourney();
-    machine.pauseJourney(); // idempotent
+    await machine.controls.start();
+    machine.controls.pause();
+    machine.controls.pause(); // idempotent
 
     expect((await machine.goToNextStep()).noOpReason).toBe("paused");
     expect((await machine.goToPreviousStep()).noOpReason).toBe("paused");
     expect((await machine.goToLastVisitedStep()).noOpReason).toBe("paused");
     expect((await machine.goToStepById("b")).noOpReason).toBe("paused");
     expect((await machine.goToStepByIndex(1)).noOpReason).toBe("paused");
-    expect((await machine.completeJourney()).noOpReason).toBe("paused");
-    expect((await machine.terminateJourney()).noOpReason).toBe("paused");
+    expect((await machine.controls.complete()).noOpReason).toBe("paused");
+    expect((await machine.controls.terminate()).noOpReason).toBe("paused");
     expect((await machine.send({ type: "goToNextStep" })).noOpReason).toBe("paused");
 
     const updated = await machine.updateContext((context) => ({ ...context, count: 5 }));
     expect(updated.context.count).toBe(5);
 
-    machine.resumeJourney();
-    machine.resumeJourney(); // idempotent
+    machine.controls.resume();
+    machine.controls.resume(); // idempotent
     expect((await machine.goToNextStep()).transitioned).toBe(true);
+  });
+});
+
+describe("linear runtime disposed contract", () => {
+  it("navigation after dispose resolves with JourneyDisposedError, matching the graph engine", async () => {
+    const machine = createLinearJourney<Ctx, StepId>(baseDefinition);
+    await machine.controls.start();
+    machine.dispose();
+
+    const next = await machine.goToNextStep();
+    const previous = await machine.goToPreviousStep();
+    const lastVisited = await machine.goToLastVisitedStep();
+    const byId = await machine.goToStepById("b");
+
+    expect(next.transitioned).toBe(false);
+    expect(next.error).toBeInstanceOf(JourneyDisposedError);
+    expect(previous.error).toBeInstanceOf(JourneyDisposedError);
+    expect(lastVisited.error).toBeInstanceOf(JourneyDisposedError);
+    expect(byId.error).toBeInstanceOf(JourneyDisposedError);
   });
 });
 
@@ -384,29 +403,37 @@ describe("linear runtime controls & subscriptions", () => {
   it("reset returns to the definition initial and emits journey.reset", async () => {
     const machine = createLinearJourney<Ctx, StepId>(baseDefinition);
     const seen: string[] = [];
-    machine.subscribeStart(() => void seen.push("start"));
-    machine.subscribeReset(() => void seen.push("reset"));
-    machine.subscribeComplete(() => void seen.push("complete"));
-    machine.subscribeTerminate(() => void seen.push("terminate"));
+    const lifecycleLabels: Partial<Record<string, string>> = {
+      "journey.start": "start",
+      "journey.reset": "reset",
+      "journey.completed": "complete",
+      "journey.terminated": "terminate"
+    };
+    machine.subscribeEvent((event) => {
+      const label = lifecycleLabels[event.type];
+      if (label) {
+        seen.push(label);
+      }
+    });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
-    await machine.resetJourney();
+    await machine.controls.reset();
     expect(machine.getSnapshot().currentStepId).toBe("a");
     expect(machine.getSnapshot().status).toBe("idled");
 
-    await machine.startJourney();
-    await machine.completeJourney();
-    await machine.resetJourney();
-    await machine.startJourney();
-    await machine.terminateJourney();
+    await machine.controls.start();
+    await machine.controls.complete();
+    await machine.controls.reset();
+    await machine.controls.start();
+    await machine.controls.terminate();
 
     expect(seen).toEqual(["start", "reset", "start", "complete", "reset", "start", "terminate"]);
   });
 
   it("clearStepError clears explicit and current-step errors; unknown ids are ignored", async () => {
     const machine = createLinearJourney<Ctx, StepId>(baseDefinition);
-    await machine.startJourney();
+    await machine.controls.start();
     machine.registerNextStepInterceptor("a", () => {
       throw new Error("nope");
     });
@@ -422,17 +449,17 @@ describe("linear runtime controls & subscriptions", () => {
 
   it("all controls warn and no-op after dispose", async () => {
     const machine = createLinearJourney<Ctx, StepId>(baseDefinition);
-    await machine.startJourney();
+    await machine.controls.start();
     machine.dispose();
 
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    await machine.startJourney();
-    await machine.resetJourney();
+    await machine.controls.start();
+    await machine.controls.reset();
     await machine.updateContext((context) => context);
     await machine.clearStepError();
-    machine.pauseJourney();
-    machine.resumeJourney();
-    expect(machine.isPaused()).toBe(false);
+    machine.controls.pause();
+    machine.controls.resume();
+    expect(machine.controls.isPaused()).toBe(false);
     warn.mockRestore();
   });
 
@@ -451,7 +478,7 @@ describe("linear runtime controls & subscriptions", () => {
 
   it("interceptors registered for inactive steps do not run", async () => {
     const machine = createLinearJourney<Ctx, StepId>(baseDefinition);
-    await machine.startJourney();
+    await machine.controls.start();
     const ran: string[] = [];
     machine.registerNextStepInterceptor("b", () => void ran.push("b"));
 
@@ -493,7 +520,7 @@ describe("linear runtime edge coverage", () => {
         "c"
       ]
     });
-    await machine.startJourney();
+    await machine.controls.start();
     await vi.advanceTimersByTimeAsync(30);
     expect(machine.getSnapshot().async.byStep.a.phase).toBe("error");
     expect(String(machine.getSnapshot().async.byStep.a.error)).toContain("timed out");
@@ -517,7 +544,7 @@ describe("linear runtime edge coverage", () => {
         "c"
       ]
     });
-    await machine.startJourney();
+    await machine.controls.start();
     await flushMicrotasks();
     await machine.updateContext((context) => context);
     expect(machine.getSnapshot().currentStepId).toBe("b");
@@ -543,7 +570,7 @@ describe("linear runtime edge coverage", () => {
       },
       { onLifecycleError }
     );
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
     await flushMicrotasks();
     expect(onLifecycleError).toHaveBeenCalledWith(
@@ -558,7 +585,7 @@ describe("linear runtime edge coverage", () => {
   it("exposes devtools force-step control for the linear machine", async () => {
     const { getJourneyMachineDevtoolsRegistry } = await import("@rxova/journey-core");
     const machine = createLinearJourney<Ctx, StepId>(baseDefinition);
-    await machine.startJourney();
+    await machine.controls.start();
 
     const entry = getJourneyMachineDevtoolsRegistry(machine as never);
     expect(entry).toBeDefined();
@@ -574,7 +601,7 @@ describe("linear runtime edge coverage", () => {
 
   it("send(goToStepById) and send(completeJourney) route through the linear runtime", async () => {
     const machine = createLinearJourney<Ctx, StepId>(baseDefinition);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.send({ type: "goToStepById", stepId: "b" });
     expect(machine.getSnapshot().currentStepId).toBe("b");
     await machine.send({ type: "completeJourney" });
@@ -607,14 +634,14 @@ describe("linear runtime remaining branches", () => {
         onListenerError: () => undefined
       }
     );
-    await machine.startJourney();
+    await machine.controls.start();
     await flushMicrotasks();
     expect(seen).toEqual(["override:ran"]);
   });
 
   it("drops unmatched events through the default no-match reporter", async () => {
     const machine = createLinearJourney<Ctx, StepId>(baseDefinition);
-    await machine.startJourney();
+    await machine.controls.start();
     const result = await machine.send({ type: "mystery" } as never);
     expect(result.transitioned).toBe(false);
     expect(machine.getSnapshot().currentStepId).toBe("a");
@@ -643,7 +670,7 @@ describe("linear runtime remaining branches", () => {
         "c"
       ]
     });
-    await machine.startJourney();
+    await machine.controls.start();
     await flushMicrotasks();
     await machine.updateContext((context) => context);
     await flushMicrotasks();
@@ -654,7 +681,7 @@ describe("linear runtime remaining branches", () => {
 
   it("history navigation landing on the current step id emits no step events", async () => {
     const machine = createLinearJourney<Ctx, StepId>(baseDefinition);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep(); // a → b
     await machine.goToStepById("a"); // jump back: timeline a,b,a
 
@@ -682,14 +709,14 @@ describe("linear runtime remaining branches", () => {
       },
       { defaultTimeoutMs: 25 }
     );
-    await machine.startJourney();
+    await machine.controls.start();
     await vi.advanceTimersByTimeAsync(40);
     expect(machine.getSnapshot().async.byStep.a.phase).toBe("error");
   });
 
   it("cancels the pending next-commit when an interceptor navigates elsewhere", async () => {
     const machine = createLinearJourney<Ctx, StepId>(baseDefinition);
-    await machine.startJourney();
+    await machine.controls.start();
     machine.registerNextStepInterceptor("a", async () => {
       await machine.goToStepById("c");
     });
@@ -701,7 +728,7 @@ describe("linear runtime remaining branches", () => {
 
   it("backward goToStepByIndex walks past non-matching history entries", async () => {
     const machine = createLinearJourney<Ctx, StepId>(baseDefinition);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
     await machine.goToNextStep(); // timeline a,b,c at c
 

@@ -28,7 +28,7 @@ const createJourney = (): JourneyDefinition<Context, StepId, EventMap> => ({
 
 const createStartedMachine = () => {
   const machine = createJourneyMachine(createJourney());
-  machine.startJourney();
+  machine.controls.start();
   return machine;
 };
 
@@ -168,7 +168,7 @@ describe("timeline navigation", () => {
     await machine.send({ type: "goToNextStep" });
     await machine.send({ type: "goToNextStep" });
     await machine.send({ type: "goToNextStep" });
-    await machine.completeJourney();
+    await machine.controls.complete();
 
     const previous = await machine.goToPreviousStep();
     const lastVisited = await machine.goToLastVisitedStep();
@@ -190,7 +190,7 @@ describe("timeline navigation", () => {
     });
 
     await machine.send({ type: "goToNextStep" });
-    await machine.terminateJourney();
+    await machine.controls.terminate();
 
     const previous = await machine.goToPreviousStep();
     const lastVisited = await machine.goToLastVisitedStep();
@@ -215,7 +215,7 @@ describe("timeline navigation", () => {
     };
 
     const machine = createJourneyMachine(journey);
-    machine.startJourney();
+    machine.controls.start();
 
     await machine.send({ type: "goToNextStep" });
     await machine.send({ type: "goToNextStep" });

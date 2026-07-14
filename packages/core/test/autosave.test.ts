@@ -70,7 +70,7 @@ describe("autosave plugin", () => {
       ] as const
     });
 
-    await machineA.startJourney();
+    await machineA.controls.start();
     await machineA.updateContext((context) => ({ ...context, count: 2 }));
     await machineA.goToNextStep();
 
@@ -188,7 +188,7 @@ describe("autosave plugin", () => {
       ] as const
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.updateContext((context) => ({ ...context, count: 4 }));
 
     expect(machine.getAutosaveState().status).toBe("pending");
@@ -233,7 +233,7 @@ describe("autosave plugin", () => {
       }
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.updateContext((context) => ({
       ...context,
       count: 7,
@@ -324,7 +324,7 @@ describe("autosave plugin", () => {
       context: { count: 0, injected: true }
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.updateContext((context) => ({ ...context, count: 5 }));
 
     expect(
@@ -463,7 +463,7 @@ describe("autosave plugin", () => {
       ] as const
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.updateContext((context) => ({ ...context, count: 2 }));
     expect(machine.getAutosaveState()).toMatchObject({
       status: "saved",
@@ -527,7 +527,7 @@ describe("autosave plugin", () => {
     });
 
     await machine.flushAutosave();
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.updateContext((context) => ({ ...context, count: 6 }));
     expect(machine.getAutosaveState().status).toBe("pending");
 
@@ -550,7 +550,7 @@ describe("autosave plugin", () => {
       const m1 = createJourneyMachine(createJourney(), { plugins: [plugin] as const });
       const m2 = createJourneyMachine(createJourney(), { plugins: [plugin] as const });
 
-      await m1.startJourney();
+      await m1.controls.start();
 
       // m1 scheduled a debounced save; m2 was never started and stays independent.
       expect(m1.getAutosaveState().status).toBe("pending");

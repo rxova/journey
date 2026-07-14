@@ -141,7 +141,7 @@ describe("persistence", () => {
       createJourney(),
       withPersistence({ key, storage, clearOnReset: false })
     );
-    await machineA.startJourney();
+    await machineA.controls.start();
 
     await machineA.send({ type: "goToNextStep" });
     await machineA.send({ type: "goToNextStep" });
@@ -406,14 +406,14 @@ describe("persistence", () => {
       createJourney(),
       withPersistence({ key: "clear", storage: clear.storage, clearOnReset: true })
     );
-    await machineKeep.startJourney();
-    await machineClear.startJourney();
+    await machineKeep.controls.start();
+    await machineClear.controls.start();
 
     await machineKeep.send({ type: "goToNextStep" });
     await machineClear.send({ type: "goToNextStep" });
 
-    await machineKeep.resetJourney();
-    await machineClear.resetJourney();
+    await machineKeep.controls.reset();
+    await machineClear.controls.reset();
 
     expect(keep.store.get("keep")).toBeTruthy();
     expect(clear.store.get("clear")).toBeUndefined();
@@ -445,7 +445,7 @@ describe("persistence", () => {
       withPersistence({ key, storage, clearOnReset: false })
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     expect(storage.setItem).toHaveBeenCalledTimes(1);
 
     const sendPromise = machine.goToNextStep();
@@ -477,7 +477,7 @@ describe("persistence", () => {
       })
     );
 
-    await machineA.startJourney();
+    await machineA.controls.start();
     await machineA.updateContext((context) => ({
       ...context,
       auth: {
@@ -525,7 +525,7 @@ describe("persistence", () => {
       })
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.updateContext((context) => ({
       ...context,
       profile: {
@@ -594,7 +594,7 @@ describe("persistence", () => {
       })
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.updateContext((context) => ({
       ...context,
       auth: {
@@ -715,7 +715,7 @@ describe("persistence", () => {
       })
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.updateContext((context) => ({
       ...context,
       auth: {
@@ -747,7 +747,7 @@ describe("persistence", () => {
       })
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.updateContext((context) => ({
       ...context,
       profile: {
@@ -1309,9 +1309,9 @@ describe("persistence", () => {
     );
 
     expect(machine.getSnapshot().currentStepId).toBe("start");
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.send({ type: "goToNextStep" });
-    await machine.resetJourney();
+    await machine.controls.reset();
 
     expect(onError).toHaveBeenCalled();
     const messages = onError.mock.calls.map(([error]) => (error as Error).message);
@@ -1362,7 +1362,7 @@ describe("persistence", () => {
       );
 
       expect(machine.getSnapshot().currentStepId).toBe("start");
-      await machine.startJourney();
+      await machine.controls.start();
       await machine.send({ type: "goToNextStep" });
       expect(machine.getSnapshot().currentStepId).toBe("details");
 
@@ -1391,7 +1391,7 @@ describe("persistence", () => {
         withPersistence({ key: "journey:no-default-storage" })
       );
 
-      await machine.startJourney();
+      await machine.controls.start();
       await machine.send({ type: "goToNextStep" });
       expect(machine.getSnapshot().currentStepId).toBe("details");
     } finally {
@@ -1417,7 +1417,7 @@ describe("persistence", () => {
       })
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.updateContext((context) => ({
       ...context,
       profile: {

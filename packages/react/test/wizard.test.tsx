@@ -178,13 +178,13 @@ describe("<Wizard> — steps-object form", () => {
 });
 
 describe("useWizard state surface", () => {
-  it("exposes visited, isFirstTimeVisit, metadata, and shared typed context", async () => {
+  it("exposes visited, isStepFirstTimeVisit, metadata, and shared typed context", async () => {
     const Probe = () => {
       const wizard = useWizard<Ctx>();
       return (
         <div>
           <output data-testid="visited">{JSON.stringify(wizard.visited)}</output>
-          <output data-testid="firstVisit">{String(wizard.isFirstTimeVisit)}</output>
+          <output data-testid="firstVisit">{String(wizard.isStepFirstTimeVisit)}</output>
           <output data-testid="meta">{JSON.stringify(wizard.activeStepMeta ?? null)}</output>
           <output data-testid="email">{wizard.context.email}</output>
           <button
@@ -236,18 +236,17 @@ describe("useWizard state surface", () => {
     expect(screen.getByTestId("firstVisit").textContent).toBe("false");
   });
 
-  it("exposes pauseJourney/resumeJourney with reactive isPaused", async () => {
+  it("exposes controls.pause/controls.resume with reactive isPaused", async () => {
     const Probe = () => {
-      const { pauseJourney, resumeJourney, isPaused, goToNextStep, activeStepId } =
-        useWizard<Ctx>();
+      const { controls, isPaused, goToNextStep, activeStepId } = useWizard<Ctx>();
       return (
         <div>
           <output data-testid="paused">{String(isPaused)}</output>
           <output data-testid="active">{activeStepId}</output>
-          <button data-testid="pause" onClick={pauseJourney}>
+          <button data-testid="pause" onClick={controls.pause}>
             pause
           </button>
-          <button data-testid="resume" onClick={resumeJourney}>
+          <button data-testid="resume" onClick={controls.resume}>
             resume
           </button>
           <button data-testid="next" onClick={() => void goToNextStep()}>

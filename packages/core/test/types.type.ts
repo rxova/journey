@@ -42,6 +42,7 @@ import { createDiagnosticsPlugin } from "@rxova/journey-core/diagnostics";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
 import { createPersistencePlugin } from "@rxova/journey-core/persistence";
 import { createReplayPlugin } from "@rxova/journey-core/replay";
+import { createSubscriptionEnhancerPlugin } from "@rxova/journey-core/subscription-enhancer";
 import type {
   JourneyBuiltInSendEvent,
   JourneyCustomSendEvent,
@@ -191,6 +192,9 @@ const replayMachine = createJourneyMachine(journey, {
 const persistenceMachine = createJourneyMachine(journey, {
   plugins: [createPersistencePlugin({ key: "journey:persistence" })] as const
 });
+const subscriptionEnhancedMachine = createJourneyMachine(journey, {
+  plugins: [createSubscriptionEnhancerPlugin<StepId>()] as const
+});
 const defaultedMachine = createJourneyMachine(defaultedJourney);
 const configuredMachine = createJourneyMachine<Context, StepId, EventMap>(journey, {
   requireExplicitCompletion: false,
@@ -206,16 +210,23 @@ const persistenceBlockList: readonly string[] | undefined = persistenceOptions.b
 const diagnosticsResult = diagnosticsMachine.getDiagnostics();
 const replaySession = replayMachine.getReplaySession();
 void persistenceMachine;
+void subscriptionEnhancedMachine;
 
 type SendArg = Parameters<typeof machine.send>[0];
 type ObsEvent = JourneyObservationEvent<StepId, EventMap>;
 type DefaultedSendArg = Parameters<typeof defaultedMachine.send>[0];
-type StartObservationFromMachine = Parameters<Parameters<typeof machine.subscribeStart>[0]>[0];
-type ResetObservationFromMachine = Parameters<Parameters<typeof machine.subscribeReset>[0]>[0];
-type CompleteObservationFromMachine = Parameters<
-  Parameters<typeof machine.subscribeComplete>[0]
+type StartObservationFromMachine = Parameters<
+  Parameters<typeof subscriptionEnhancedMachine.subscribeStart>[0]
 >[0];
-type CloseObservationFromMachine = Parameters<Parameters<typeof machine.subscribeTerminate>[0]>[0];
+type ResetObservationFromMachine = Parameters<
+  Parameters<typeof subscriptionEnhancedMachine.subscribeReset>[0]
+>[0];
+type CompleteObservationFromMachine = Parameters<
+  Parameters<typeof subscriptionEnhancedMachine.subscribeComplete>[0]
+>[0];
+type CloseObservationFromMachine = Parameters<
+  Parameters<typeof subscriptionEnhancedMachine.subscribeTerminate>[0]
+>[0];
 
 expectTypeOf(confirmExitJourney).toMatchTypeOf<JourneyDefinition<Context, StepId, EventMap>>();
 expectTypeOf(machine).toMatchTypeOf<JourneyMachine<Context, StepId, EventMap>>();

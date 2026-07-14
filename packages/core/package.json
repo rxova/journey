@@ -90,6 +90,14 @@
       },
       "import": "./dist/plugins/execution-paths/index.js",
       "require": "./dist/plugins/execution-paths/index.cjs"
+    },
+    "./subscription-enhancer": {
+      "types": {
+        "import": "./dist/plugins/subscription-enhancer/index.d.ts",
+        "require": "./dist/plugins/subscription-enhancer/index.d.cts"
+      },
+      "import": "./dist/plugins/subscription-enhancer/index.js",
+      "require": "./dist/plugins/subscription-enhancer/index.cjs"
     }
   },
   "files": [
@@ -170,6 +178,12 @@
       "path": "dist/plugins/replay/index.js",
       "import": "{ createReplayPlugin }",
       "limit": "2 kB"
+    },
+    {
+      "name": "core/createSubscriptionEnhancerPlugin",
+      "path": "dist/plugins/subscription-enhancer/index.js",
+      "import": "{ createSubscriptionEnhancerPlugin }",
+      "limit": "1 kB"
     }
   ],
   "devDependencies": {

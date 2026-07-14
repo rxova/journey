@@ -364,7 +364,7 @@ describe("createGraphJourneyBuilder", () => {
       });
 
       const machine = createJourneyMachine(definition);
-      await machine.startJourney();
+      await machine.controls.start();
       const result = await machine.send({ type: "submit" });
 
       expect(result.transitioned).toBe(true);
@@ -392,7 +392,7 @@ describe("createGraphJourneyBuilder", () => {
       });
 
       const machine = createJourneyMachine(definition);
-      await machine.startJourney();
+      await machine.controls.start();
       const result = await machine.send({ type: "submit" });
 
       expect(result.transitioned).toBe(true);
@@ -422,7 +422,7 @@ describe("createGraphJourneyBuilder", () => {
       });
 
       const machine = createJourneyMachine(definition);
-      await machine.startJourney();
+      await machine.controls.start();
       const result = await machine.send({ type: "submit" });
 
       expect(result.snapshot.currentStepId).toBe("review");
@@ -463,9 +463,9 @@ describe("createGraphJourneyBuilder", () => {
       });
 
       const machine = createJourneyMachine(definition);
-      await machine.startJourney();
+      await machine.controls.start();
       await machine.send({ type: "submit" });
-      const result = await machine.completeJourney();
+      const result = await machine.controls.complete();
 
       expect(result.transitioned).toBe(true);
       expect(result.transitionId).toEqual(expect.any(String));
@@ -493,7 +493,7 @@ describe("createGraphJourneyBuilder", () => {
       });
 
       const machine = createJourneyMachine(definition);
-      await machine.startJourney();
+      await machine.controls.start();
       const result = await machine.send({ type: "back" });
 
       expect(result.transitioned).toBe(true);

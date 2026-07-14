@@ -1,10 +1,13 @@
 import type {
+  GraphJourneySnapshot,
   JourneyBaseEvent,
   JourneyComputed,
   JourneyDefaultEventType,
   JourneyDefinition,
   JourneyEqualityFn,
+  JourneyGraphComputed,
   JourneyJsonObject,
+  JourneyLinearComputed,
   JourneyPayloadFor,
   JourneyResolvedDefinition,
   JourneySelector,
@@ -12,16 +15,10 @@ import type {
   JourneySendResult,
   JourneySnapshot,
   JourneySnapshotStateBase,
-  JourneyTerminal
+  JourneyTerminal,
+  LinearJourneySnapshot
 } from "./journey.types";
-import type {
-  JourneyCompleteObservationEvent,
-  JourneyLifecycleErrorPhase,
-  JourneyObservationEvent,
-  JourneyResetObservationEvent,
-  JourneyStartObservationEvent,
-  JourneyTerminateObservationEvent
-} from "./observation.types";
+import type { JourneyLifecycleErrorPhase, JourneyObservationEvent } from "./observation.types";
 import type { JourneyEmpty } from "./journey.types";
 
 /** Reasons why a machine snapshot changed. */
@@ -322,6 +319,42 @@ type JourneyPayloadForDefaultEvent<
   TDefaultEvent extends JourneyDefaultEventType
 > = JourneyPayloadFor<TEvents, TDefaultEvent>;
 
+/**
+ * Lifecycle command surface, grouped under `machine.controls` to keep the
+ * machine's top level focused on reading state and navigating. Everything
+ * here changes the journey's run status rather than its position.
+ */
+export type JourneyMachineControls<
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TEvents extends JourneyBaseEvent = never
+> = {
+  /** Starts an idled journey (`idled → running`); a no-op on any other status. */
+  start: () => Promise<JourneySnapshot<TContext, TStepId>>;
+  /** Cancels in-flight work and restores the fresh initial snapshot. */
+  reset: () => Promise<JourneySnapshot<TContext, TStepId>>;
+  /**
+   * Pauses the machine: navigation and `send` resolve as no-ops carrying
+   * `noOpReason: "paused"` (including internal effect/after routing), while
+   * `updateContext`, `controls.start`, `controls.reset`, and `clearStepError`
+   * keep working. Transient runtime flag — never part of the snapshot, never
+   * persisted. Emits a `journey.paused` observation event.
+   */
+  pause: () => void;
+  /** Clears a pause set by {@link pause}. Emits `journey.resumed`. */
+  resume: () => void;
+  /** True while the machine is paused. Transient; not part of the snapshot. */
+  isPaused: () => boolean;
+  /** Completes the journey (dispatches the default `completeJourney` event). */
+  complete: (
+    payload?: JourneyPayloadForDefaultEvent<TEvents, "completeJourney">
+  ) => Promise<JourneySendResult<TContext, TStepId>>;
+  /** Terminates the journey (dispatches the default `terminateJourney` event). */
+  terminate: (
+    payload?: JourneyPayloadForDefaultEvent<TEvents, "terminateJourney">
+  ) => Promise<JourneySendResult<TContext, TStepId>>;
+};
+
 /** Runtime machine API for reading snapshots, sending events, and controlling flow. */
 export type JourneyMachine<
   TContext extends JourneyJsonObject,
@@ -333,37 +366,19 @@ export type JourneyMachine<
   getSnapshot: () => JourneySnapshot<TContext, TStepId>;
   getStepMeta: (stepId: TStepId) => TStepMeta | undefined;
   getComputed: () => JourneyComputed<TStepId>;
-  startJourney: () => Promise<JourneySnapshot<TContext, TStepId>>;
+  /** Lifecycle commands: start/reset/pause/resume/complete/terminate. */
+  controls: JourneyMachineControls<TContext, TStepId, TEvents>;
   send: (
     event: JourneySendEvent<TStepId, TEvents>
   ) => Promise<JourneySendResult<TContext, TStepId>>;
   goToNextStep: () => Promise<JourneySendResult<TContext, TStepId>>;
   goToStepById: (stepId: TStepId) => Promise<JourneySendResult<TContext, TStepId>>;
-  terminateJourney: (
-    payload?: JourneyPayloadForDefaultEvent<TEvents, "terminateJourney">
-  ) => Promise<JourneySendResult<TContext, TStepId>>;
-  completeJourney: (
-    payload?: JourneyPayloadForDefaultEvent<TEvents, "completeJourney">
-  ) => Promise<JourneySendResult<TContext, TStepId>>;
   goToPreviousStep: (steps?: number) => Promise<JourneySendResult<TContext, TStepId>>;
   goToLastVisitedStep: () => Promise<JourneySendResult<TContext, TStepId>>;
   updateContext: (
     updater: (context: TContext) => TContext
   ) => Promise<JourneySnapshot<TContext, TStepId>>;
   clearStepError: (stepId?: TStepId) => Promise<JourneySnapshot<TContext, TStepId>>;
-  resetJourney: () => Promise<JourneySnapshot<TContext, TStepId>>;
-  /**
-   * Pauses the machine: navigation and `send` resolve as no-ops carrying
-   * `noOpReason: "paused"` (including internal effect/after routing), while
-   * `updateContext`, `startJourney`, `resetJourney`, and `clearStepError`
-   * keep working. Transient runtime flag — never part of the snapshot, never
-   * persisted. Emits a `journey.paused` observation event.
-   */
-  pauseJourney: () => void;
-  /** Clears a pause set by {@link pauseJourney}. Emits `journey.resumed`. */
-  resumeJourney: () => void;
-  /** True while the machine is paused. Transient; not part of the snapshot. */
-  isPaused: () => boolean;
   dispose: () => void;
   subscribe: (listener: () => void) => () => void;
   subscribeSelector: <TSelected>(
@@ -373,14 +388,6 @@ export type JourneyMachine<
   ) => () => void;
   subscribeEvent: (
     listener: (event: JourneyObservationEvent<TStepId, TEvents>) => void
-  ) => () => void;
-  subscribeStart: (listener: (event: JourneyStartObservationEvent<TStepId>) => void) => () => void;
-  subscribeReset: (listener: (event: JourneyResetObservationEvent<TStepId>) => void) => () => void;
-  subscribeComplete: (
-    listener: (event: JourneyCompleteObservationEvent<TStepId>) => void
-  ) => () => void;
-  subscribeTerminate: (
-    listener: (event: JourneyTerminateObservationEvent<TStepId>) => void
   ) => () => void;
 };
 
@@ -397,14 +404,23 @@ export type LinearNextStepInterceptor<TContext extends JourneyJsonObject> = (arg
   ) => Promise<JourneySnapshot<TContext, string>>;
 }) => void | Promise<void>;
 
-/** Linear journey machine — base machine plus index-based navigation. */
+/**
+ * Linear journey machine — base machine plus index-based navigation, with
+ * `getSnapshot`/`getComputed` narrowed to the linear variants (no cast needed
+ * to reach `visits`, `stepOrder`, or `isStepFirstTimeVisit`).
+ */
 export type LinearJourneyMachine<
   TContext extends JourneyJsonObject,
   TStepId extends string,
   TStepMeta = unknown,
   THandlers extends Record<string, unknown> = JourneyEmpty,
   TPlugins extends readonly JourneyMachinePlugin[] = readonly JourneyMachinePlugin[]
-> = JourneyMachineWithPlugins<TContext, TStepId, never, TStepMeta, THandlers, TPlugins> & {
+> = Omit<
+  JourneyMachineWithPlugins<TContext, TStepId, never, TStepMeta, THandlers, TPlugins>,
+  "getSnapshot" | "getComputed"
+> & {
+  getSnapshot: () => LinearJourneySnapshot<TContext, TStepId>;
+  getComputed: () => JourneyLinearComputed<TStepId>;
   goToStepByIndex: (index: number) => Promise<JourneySendResult<TContext, TStepId>>;
   /**
    * Registers a forward-navigation interceptor for `stepId`: awaited by
@@ -416,6 +432,26 @@ export type LinearJourneyMachine<
     stepId: TStepId,
     interceptor: LinearNextStepInterceptor<TContext>
   ) => () => void;
+};
+
+/**
+ * Graph journey machine — the plugin-extended machine with
+ * `getSnapshot`/`getComputed` narrowed to the graph variants. The exact
+ * mirror of {@link LinearJourneyMachine} for `createGraphJourney`.
+ */
+export type GraphJourneyMachine<
+  TContext extends JourneyJsonObject,
+  TStepId extends string,
+  TEvents extends JourneyBaseEvent = never,
+  TStepMeta = unknown,
+  THandlers extends Record<string, unknown> = JourneyEmpty,
+  TPlugins extends readonly JourneyMachinePlugin[] = readonly JourneyMachinePlugin[]
+> = Omit<
+  JourneyMachineWithPlugins<TContext, TStepId, TEvents, TStepMeta, THandlers, TPlugins>,
+  "getSnapshot" | "getComputed"
+> & {
+  getSnapshot: () => GraphJourneySnapshot<TContext, TStepId>;
+  getComputed: () => JourneyGraphComputed<TStepId>;
 };
 
 /** Journey machine API augmented by plugin-provided extensions. */

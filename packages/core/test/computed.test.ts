@@ -43,12 +43,12 @@ describe("journey computed state", () => {
       stepCount: 3,
       journeyLength: 3,
       isFirstStep: true,
-      isFirstTimeVisit: true,
+      isStepFirstTimeVisit: true,
       isLastStep: false,
       stepOrder: ["start", "details", "review"]
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     expect(machine.getComputed().isRunning).toBe(true);
 
     await machine.goToNextStep();
@@ -60,7 +60,7 @@ describe("journey computed state", () => {
       visitedStepCount: 2,
       isInitialStep: false,
       isFirstStep: false,
-      isFirstTimeVisit: true,
+      isStepFirstTimeVisit: true,
       isLastStep: false
     });
 
@@ -97,7 +97,7 @@ describe("journey computed state", () => {
       transitions: ["start", "details", "review"]
     };
     const machine = createJourneyMachine(journey);
-    await machine.startJourney();
+    await machine.controls.start();
 
     await machine.goToNextStep(); // start → details
     await machine.goToNextStep(); // details → review
@@ -122,7 +122,7 @@ describe("journey computed state", () => {
       transitions: ["start", "details", "review"]
     };
     const machine = createJourneyMachine(journey);
-    await machine.startJourney();
+    await machine.controls.start();
 
     await machine.goToNextStep(); // start → details
 
@@ -182,7 +182,7 @@ describe("journey computed state", () => {
       isInitialStep: true
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.send({ type: "goToStepById", stepId: "review" });
 
     expect(machine.getComputed()).toEqual({
@@ -223,7 +223,7 @@ describe("journey computed state", () => {
       isInitialStep: true
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     expect(machine.getComputed().isRunning).toBe(true);
     expect(machine.getComputed().isInitialStep).toBe(true);
   });
@@ -276,7 +276,7 @@ describe("journey computed state", () => {
       stepCount: 2,
       journeyLength: 2,
       isFirstStep: false,
-      isFirstTimeVisit: true,
+      isStepFirstTimeVisit: true,
       isLastStep: false,
       stepOrder: ["start", "details"]
     });

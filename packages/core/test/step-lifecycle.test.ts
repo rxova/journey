@@ -23,7 +23,7 @@ describe("step lifecycle callbacks (onEnter / onLeave)", () => {
     def.steps.s1 = { onEnter };
 
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
 
     expect(onEnter).toHaveBeenCalledTimes(1);
@@ -35,7 +35,7 @@ describe("step lifecycle callbacks (onEnter / onLeave)", () => {
     def.steps.s0 = { onLeave };
 
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
 
     expect(onLeave).toHaveBeenCalledTimes(1);
@@ -59,7 +59,7 @@ describe("step lifecycle callbacks (onEnter / onLeave)", () => {
     };
 
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
 
     expect(onEnter).toHaveBeenCalledWith(expect.objectContaining({ context: { value: 42 } }));
@@ -71,7 +71,7 @@ describe("step lifecycle callbacks (onEnter / onLeave)", () => {
     def.steps.s0 = { onLeave };
 
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.updateContext(() => ({ value: 7 }));
     await machine.goToNextStep();
 
@@ -101,7 +101,7 @@ describe("step lifecycle callbacks (onEnter / onLeave)", () => {
     };
 
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
 
     expect(machine.getSnapshot().context.nested.value).toBe(1);
@@ -111,7 +111,7 @@ describe("step lifecycle callbacks (onEnter / onLeave)", () => {
     const def = baseDefinition();
     // s1 has no onEnter
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
+    await machine.controls.start();
 
     await expect(machine.goToNextStep()).resolves.toMatchObject({ transitioned: true });
   });
@@ -120,7 +120,7 @@ describe("step lifecycle callbacks (onEnter / onLeave)", () => {
     const def = baseDefinition();
     // s0 has no onLeave
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
+    await machine.controls.start();
 
     await expect(machine.goToNextStep()).resolves.toMatchObject({ transitioned: true });
   });
@@ -133,7 +133,7 @@ describe("step lifecycle callbacks (onEnter / onLeave)", () => {
     def.steps.s2 = { onEnter: onEnterS2 };
 
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep(); // enters s1
 
     expect(onEnterS0).not.toHaveBeenCalled();
@@ -148,7 +148,7 @@ describe("step lifecycle callbacks (onEnter / onLeave)", () => {
     def.steps.s2 = { onLeave: onLeaveS2 };
 
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep(); // exits s0, not s1 or s2
 
     expect(onLeaveS1).not.toHaveBeenCalled();
@@ -161,7 +161,7 @@ describe("step lifecycle callbacks (onEnter / onLeave)", () => {
     def.steps.s0 = { onEnter };
 
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
+    await machine.controls.start();
 
     // startJourney() emits journey.start, not step.enter — onEnter should not fire
     expect(onEnter).not.toHaveBeenCalled();
@@ -174,7 +174,7 @@ describe("step lifecycle callbacks (onEnter / onLeave)", () => {
     def.steps.s1 = { onEnter, onLeave };
 
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep(); // s0 → s1: onEnter(s1)
     await machine.goToNextStep(); // s1 → s2: onLeave(s1)
 
@@ -205,7 +205,7 @@ describe("step lifecycle callbacks (onEnter / onLeave)", () => {
     };
 
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep(); // s0 → s1
     await machine.goToNextStep(); // s1 → s2
 

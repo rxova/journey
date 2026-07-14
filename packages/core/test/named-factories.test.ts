@@ -22,7 +22,7 @@ describe("createLinearJourney", () => {
       steps: ["a", "b", "c"]
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     expect(machine.getSnapshot().currentStepId).toBe("a");
     const result = await machine.goToNextStep();
     expect(result.transitioned).toBe(true);
@@ -45,7 +45,7 @@ describe("createLinearJourney", () => {
       ]
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
     expect(entered).toContain("two");
     expect(machine.getStepMeta("two")).toEqual({ label: "Two" });
@@ -57,7 +57,7 @@ describe("createLinearJourney", () => {
       steps: ["x", "y", "z"]
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     // index 1 is the next step from index 0 → same as goToNextStep
     const result = await machine.goToStepByIndex(1);
     expect(result.transitioned).toBe(true);
@@ -70,7 +70,7 @@ describe("createLinearJourney", () => {
       steps: ["x", "y", "z"]
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep(); // x → y
     const result = await machine.goToStepByIndex(0); // y → x (back 1)
     expect(result.transitioned).toBe(true);
@@ -83,7 +83,7 @@ describe("createLinearJourney", () => {
       steps: ["a", "b"]
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     const result = await machine.goToStepByIndex(99);
     expect(result.transitioned).toBe(false);
     expect(result.snapshot.currentStepId).toBe("a");
@@ -95,7 +95,7 @@ describe("createLinearJourney", () => {
       steps: ["p", "q", "r"]
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     const computed = machine.getComputed();
     expect(computed.mode).toBe("linear");
     if (computed.mode === "linear") {
@@ -124,7 +124,7 @@ describe("createHeadlessJourney", () => {
       steps: { start: {}, end: {} }
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     expect(machine.getSnapshot().currentStepId).toBe("start");
     const result = await machine.goToStepById("end");
     expect(result.transitioned).toBe(true);
@@ -138,7 +138,7 @@ describe("createHeadlessJourney", () => {
       steps: { s1: {} }
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     expect(machine.getComputed().mode).toBe("headless");
   });
 
@@ -174,7 +174,7 @@ describe("createGraphJourney", () => {
     });
 
     const machine = createGraphJourney(definition);
-    await machine.startJourney();
+    await machine.controls.start();
     const result = await machine.send({ type: "submit" });
     expect(result.transitioned).toBe(true);
     expect(result.snapshot.currentStepId).toBe("dashboard");
@@ -192,7 +192,7 @@ describe("createGraphJourney", () => {
     });
 
     const machine = createGraphJourney(definition);
-    await machine.startJourney();
+    await machine.controls.start();
     expect(machine.getComputed().mode).toBe("graph");
   });
 

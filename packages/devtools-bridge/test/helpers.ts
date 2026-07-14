@@ -40,7 +40,7 @@ export const createTestMachine = async (
         : ([createExecutionPathsPlugin()] as const)
   });
 
-  await machine.startJourney();
+  await machine.controls.start();
   return machine;
 };
 

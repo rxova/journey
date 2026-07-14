@@ -38,9 +38,9 @@ type BundleWizardResult = ReturnType<typeof bundle.useWizard>;
 expectTypeOf<BundleWizardResult["context"]>().toEqualTypeOf<Context>();
 expectTypeOf<BundleWizardResult["activeStepId"]>().toEqualTypeOf<"start" | "review">();
 expectTypeOf<BundleWizardResult["isFirstStep"]>().toEqualTypeOf<boolean>();
-expectTypeOf<BundleWizardResult["isFirstTimeVisit"]>().toEqualTypeOf<boolean>();
+expectTypeOf<BundleWizardResult["isStepFirstTimeVisit"]>().toEqualTypeOf<boolean>();
 expectTypeOf<BundleWizardResult["visited"]>().toEqualTypeOf<Record<"start" | "review", boolean>>();
-expectTypeOf<BundleWizardResult["pauseJourney"]>().toEqualTypeOf<() => void>();
+expectTypeOf<BundleWizardResult["controls"]["pause"]>().toEqualTypeOf<() => void>();
 expectTypeOf<BundleWizardResult["snapshot"]>().toEqualTypeOf<
   LinearJourneySnapshot<Context, "start" | "review">
 >();
@@ -101,8 +101,8 @@ expectTypeOf<ReturnType<typeof graph.useStepAsyncState>>().toEqualTypeOf<Journey
 expectTypeOf<
   ReturnType<typeof graph.useStepAsyncState>["phase"]
 >().toEqualTypeOf<JourneyAsyncPhase>();
-expectTypeOf<Api["pauseJourney"]>().toEqualTypeOf<() => void>();
-expectTypeOf<Api["isPaused"]>().toEqualTypeOf<() => boolean>();
+expectTypeOf<Api["controls"]["pause"]>().toEqualTypeOf<() => void>();
+expectTypeOf<Api["controls"]["isPaused"]>().toEqualTypeOf<() => boolean>();
 
 // Provider requires a complete views record.
 type GraphProviderPropsOfBundle = React.ComponentProps<typeof graph.Provider>;
