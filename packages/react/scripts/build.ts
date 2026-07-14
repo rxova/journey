@@ -16,15 +16,16 @@ const common = {
     "react/jsx-runtime",
     "react/jsx-dev-runtime",
     "@rxova/journey-core",
-    "@rxova/journey-core/persistence"
+    "@rxova/journey-core/persistence",
+    "@rxova/journey-core/convert"
   ]
 };
 
 for (const [entryPoint, outfile] of [
   ["src/index.ts", "dist/index.js"],
   ["src/client.ts", "dist/client.js"],
-  ["src/headless/index.ts", "dist/headless/index.js"],
-  ["src/graph/index.ts", "dist/graph/index.js"]
+  ["src/headless/headless.ts", "dist/headless/headless.js"],
+  ["src/graph/graph.tsx", "dist/graph/graph.js"]
 ] as const) {
   await build({
     ...common,

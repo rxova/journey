@@ -52,19 +52,19 @@
     },
     "./headless": {
       "types": {
-        "import": "./dist/headless/index.d.ts",
-        "require": "./dist/headless/index.d.cts"
+        "import": "./dist/headless/headless.d.ts",
+        "require": "./dist/headless/headless.d.cts"
       },
-      "import": "./dist/headless/index.js",
-      "require": "./dist/headless/index.cjs"
+      "import": "./dist/headless/headless.js",
+      "require": "./dist/headless/headless.cjs"
     },
     "./graph": {
       "types": {
-        "import": "./dist/graph/index.d.ts",
-        "require": "./dist/graph/index.d.cts"
+        "import": "./dist/graph/graph.d.ts",
+        "require": "./dist/graph/graph.d.cts"
       },
-      "import": "./dist/graph/index.js",
-      "require": "./dist/graph/index.cjs"
+      "import": "./dist/graph/graph.js",
+      "require": "./dist/graph/graph.cjs"
     }
   },
   "files": [
@@ -96,20 +96,20 @@
   },
   "size-limit": [
     {
-      "name": "react/Wizard",
+      "name": "react/LinearJourney",
       "path": "dist/index.js",
-      "import": "{ Wizard, useWizard, useWizardStep }",
+      "import": "{ LinearJourney, useLinearJourney, useLinearJourneyStep }",
       "limit": "5 kB"
     },
     {
       "name": "react/headless",
-      "path": "dist/headless/index.js",
+      "path": "dist/headless/headless.js",
       "import": "{ useOwnedJourney, useJourneySnapshot, useJourneySelector }",
       "limit": "1.5 kB"
     },
     {
       "name": "react/graph",
-      "path": "dist/graph/index.js",
+      "path": "dist/graph/graph.js",
       "import": "{ createGraphJourney }",
       "limit": "2.5 kB"
     }
