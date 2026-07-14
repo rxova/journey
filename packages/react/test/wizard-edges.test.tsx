@@ -22,18 +22,9 @@ type Ctx = { count: number };
 
 const initialContext: Ctx = { count: 0 };
 
-const A = (props: { id?: string }) => {
-  void props;
-  return <output data-testid="panel">A</output>;
-};
-const B = (props: { id?: string }) => {
-  void props;
-  return <output data-testid="panel">B</output>;
-};
-const C = (props: { id?: string }) => {
-  void props;
-  return <output data-testid="panel">C</output>;
-};
+const A = () => <output data-testid="panel">A</output>;
+const B = () => <output data-testid="panel">B</output>;
+const C = () => <output data-testid="panel">C</output>;
 
 const Nav = () => {
   const { goToNextStep, goToPreviousStep, activeStepId } = useWizard<Ctx>();
@@ -152,6 +143,29 @@ describe("wizard guard rails", () => {
       )
     ).toThrowError(/does not match any step id/);
     consoleError.mockRestore();
+  });
+
+  it("strips the wizard id before rendering — components never receive it", async () => {
+    const receivedProps: Record<string, unknown>[] = [];
+    const Echo = (props: Record<string, unknown>) => {
+      receivedProps.push(props);
+      return <output data-testid="panel">echo</output>;
+    };
+
+    render(
+      <Wizard context={initialContext}>
+        <Echo id="echo-step" data-extra="kept" />
+      </Wizard>
+    );
+    await flush();
+
+    expect(screen.getByTestId("panel").textContent).toBe("echo");
+    expect(receivedProps.length).toBeGreaterThan(0);
+    for (const props of receivedProps) {
+      expect("id" in props).toBe(false);
+      // Other props pass through untouched.
+      expect(props["data-extra"]).toBe("kept");
+    }
   });
 
   it("starts from startIndex and supports an object machineRef", async () => {

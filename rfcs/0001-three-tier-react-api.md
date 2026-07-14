@@ -189,7 +189,7 @@ This maps 1:1 onto core's `LinearJourneyStep` object entries (`packages/core/src
 </Wizard>
 ```
 
-`Wizard` reads `element.props.id`. The prop is also forwarded to the component (harmless if ignored).
+`Wizard` reads `element.props.id` and **strips it before rendering** — the component never receives it and never has to declare it. This is typed the way React types `key`: the package augments `React.Attributes` with an optional `id`, so `<Login id="login" />` typechecks even when `Login` declares no props (the same mechanism Emotion uses for its `css` prop). A component that wants its own `id` prop for its own purposes should be declared via `<Wizard.Step id="...">` instead, keeping its props untouched.
 
 **Full config — a `<Wizard.Step>` wrapper**, for when a step needs meta/lifecycle inline. `Wizard.Step` is a config-only marker (renders nothing itself; `Wizard` detects `element.type === Wizard.Step` and unwraps):
 

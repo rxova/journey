@@ -1,5 +1,23 @@
 import type React from "react";
 
+/**
+ * Make `id` a valid attribute on ANY component element — the same mechanism
+ * React uses for `key` (which lives on `React.Attributes`, the base of
+ * `JSX.IntrinsicAttributes`). This lets a step declare its wizard id inline
+ * (`<Login id="login" />`) without the component having to add an `id` prop
+ * to its own props type. `<Wizard>` reads the id off the element and strips
+ * it before rendering, so it never reaches the component.
+ *
+ * Scope note: like Emotion's `css` prop, this augmentation is global for any
+ * project that imports `@rxova/journey-react`.
+ */
+declare module "react" {
+  interface Attributes {
+    /** Step id when this element is a direct child of `<Wizard>`. */
+    id?: string;
+  }
+}
+
 import type {
   JourneyAfterTransition,
   JourneyEqualityFn,

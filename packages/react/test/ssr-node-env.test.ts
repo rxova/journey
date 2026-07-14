@@ -16,8 +16,7 @@ type Ctx = { count: number };
 
 describe("SSR / Node environment", () => {
   it("renders <Wizard> to static markup without a DOM (first step, pre-start)", () => {
-    const StepA = (props: { id?: string }) => {
-      void props;
+    const StepA = () => {
       const { activeStepId, status } = useWizard<Ctx>();
       return React.createElement("div", null, `${activeStepId}:${status}`);
     };

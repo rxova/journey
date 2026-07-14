@@ -15,9 +15,9 @@ const StepPanel = ({ label }: { label: string }) => {
   return <section data-testid="panel">{label}</section>;
 };
 
-const Email = (props: { id?: string }) => <StepPanel label="email" {...(void props, {})} />;
-const Password = (props: { id?: string }) => <StepPanel label="password" {...(void props, {})} />;
-const Confirm = (props: { id?: string }) => <StepPanel label="confirm" {...(void props, {})} />;
+const Email = () => <StepPanel label="email" />;
+const Password = () => <StepPanel label="password" />;
+const Confirm = () => <StepPanel label="confirm" />;
 
 const Nav = () => {
   const { goToNextStep, goToPreviousStep, isFirstStep, isLastStep, activeStepId, isLoading } =

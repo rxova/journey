@@ -12,10 +12,7 @@ type Ctx = { count: number };
 
 let latestWizard: UseWizardResult<Ctx> | null = null;
 
-const Step = (props: { id?: string; label: string }) => {
-  void props;
-  return <div>{props.label}</div>;
-};
+const Step = (props: { label: string }) => <div>{props.label}</div>;
 
 const Harness = () => {
   const wizard = useWizard<Ctx>();
