@@ -133,67 +133,67 @@
       "name": "core/createLinearJourney",
       "path": "dist/index.js",
       "import": "{ createLinearJourney }",
-      "limit": "10 kB"
+      "limit": "4.5 kB"
     },
     {
       "name": "core/createGraphJourney",
       "path": "dist/index.js",
       "import": "{ createGraphJourney }",
-      "limit": "10 kB"
+      "limit": "4.5 kB"
     },
     {
       "name": "core/createGraphJourneyBuilder",
       "path": "dist/index.js",
       "import": "{ createGraphJourneyBuilder }",
-      "limit": "1 kB"
+      "limit": "500 B"
     },
     {
       "name": "core/linearToGraphDefinition",
       "path": "dist/convert/convert.js",
       "import": "{ linearToGraphDefinition }",
-      "limit": "1 kB"
+      "limit": "450 B"
     },
     {
       "name": "core/createExecutionPathsPlugin",
       "path": "dist/plugins/execution-paths/execution-paths.js",
       "import": "{ createExecutionPathsPlugin }",
-      "limit": "2.7 kB"
+      "limit": "300 B"
     },
     {
       "name": "core/createAnalyticsPlugin",
       "path": "dist/plugins/analytics/analytics.js",
       "import": "{ createAnalyticsPlugin }",
-      "limit": "2 kB"
+      "limit": "500 B"
     },
     {
       "name": "core/createAutosavePlugin",
       "path": "dist/plugins/autosave/autosave.js",
       "import": "{ createAutosavePlugin }",
-      "limit": "4 kB"
+      "limit": "750 B"
     },
     {
       "name": "core/createDiagnosticsPlugin",
       "path": "dist/plugins/diagnostics/diagnostics.js",
       "import": "{ createDiagnosticsPlugin }",
-      "limit": "3.3 kB"
+      "limit": "850 B"
     },
     {
       "name": "core/createPersistencePlugin",
       "path": "dist/plugins/persistence/persistence.js",
       "import": "{ createPersistencePlugin }",
-      "limit": "3.6 kB"
+      "limit": "500 B"
     },
     {
       "name": "core/createReplayPlugin",
       "path": "dist/plugins/replay/replay.js",
       "import": "{ createReplayPlugin }",
-      "limit": "2 kB"
+      "limit": "850 B"
     },
     {
       "name": "core/createSubscriptionEnhancerPlugin",
       "path": "dist/plugins/subscription-enhancer/subscription-enhancer.js",
       "import": "{ createSubscriptionEnhancerPlugin }",
-      "limit": "1 kB"
+      "limit": "250 B"
     }
   ]
 }
