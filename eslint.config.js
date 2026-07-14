@@ -223,5 +223,28 @@ export default [
       }
     }
   },
+  {
+    // Colocated tests must exercise the public entrypoints: import via the
+    // package name (or its internal /testing alias), never by reaching into
+    // src with parent-relative paths. Sibling imports (./fixtures) stay legal.
+    files: [
+      "packages/*/src/**/__tests__/**/*.{ts,tsx,mts,cts}",
+      "apps/*/src/**/__tests__/**/*.{ts,tsx,mts,cts}"
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["../**"],
+              message:
+                "Import via the package name (@rxova/…) instead of a parent-relative path; use the package's /testing alias for shared test helpers."
+            }
+          ]
+        }
+      ]
+    }
+  },
   prettierConfig
 ];
