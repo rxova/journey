@@ -139,7 +139,7 @@
       "name": "core/createPersistencePlugin",
       "path": "dist/plugins/persistence/index.js",
       "import": "{ createPersistencePlugin }",
-      "limit": "3.4 kB"
+      "limit": "3.6 kB"
     },
     {
       "name": "core/createAnalyticsPlugin",
@@ -151,7 +151,7 @@
       "name": "core/createAutosavePlugin",
       "path": "dist/plugins/autosave/index.js",
       "import": "{ createAutosavePlugin }",
-      "limit": "3.8 kB"
+      "limit": "4 kB"
     },
     {
       "name": "core/createDiagnosticsPlugin",

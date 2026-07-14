@@ -1,16 +1,12 @@
 import React from "react";
 
 import { errorInDevelopment } from "@rxova/journey-common/dev";
+import { deriveLinearTransplantSnapshot } from "@rxova/journey-core";
 
 import { useJourneySnapshot } from "../headless/hooks";
-import { buildStartSnapshot, buildTransplantSnapshot, createWizardMachine } from "./build-machine";
+import { createWizardMachine } from "./build-machine";
 import { deriveStepsFromChildren, deriveStepsFromObject, stepListSignature } from "./derive-steps";
-import {
-  attachVisitCounter,
-  createWizardStepGate,
-  WizardActiveStepContext,
-  WizardContext
-} from "./wizard-context";
+import { WizardActiveStepContext, WizardContext } from "./wizard-context";
 import { WizardStep } from "./wizard-step";
 
 import type {
@@ -92,6 +88,8 @@ const WizardComponent = <TContext extends JourneyJsonObject = JourneyEmpty>(
 
   const machineConfigRef = React.useRef({
     context: (context ?? {}) as JourneyJsonObject,
+    initial: startStepId,
+    startIndex,
     persist,
     plugins,
     handlers,
@@ -101,19 +99,9 @@ const WizardComponent = <TContext extends JourneyJsonObject = JourneyEmpty>(
   // Machine ownership: lazy ref init so StrictMode's double render creates
   // exactly one machine (the useOwnedJourney pattern), with a re-render bump
   // when a dynamic step change transplants to a fresh machine.
-  const visitCountsRef = React.useRef<Map<string, number> | null>(null);
-  if (visitCountsRef.current === null) {
-    visitCountsRef.current = new Map();
-  }
-
   const machineRefInternal = React.useRef<WizardMachine | null>(null);
   if (machineRefInternal.current === null) {
-    machineRefInternal.current = createWizardMachine(
-      steps,
-      machineConfigRef.current,
-      buildStartSnapshot(steps, machineConfigRef.current.context, startStepId, startIndex)
-    );
-    attachVisitCounter(machineRefInternal.current, visitCountsRef.current);
+    machineRefInternal.current = createWizardMachine(steps, machineConfigRef.current);
   }
   const machine = machineRefInternal.current;
   const [, forceRender] = React.useReducer((count: number) => count + 1, 0);
@@ -158,13 +146,12 @@ const WizardComponent = <TContext extends JourneyJsonObject = JourneyEmpty>(
     const nextMachine = createWizardMachine(
       stepsRef.current,
       { ...machineConfigRef.current, context: previousSnapshot.context },
-      buildTransplantSnapshot(previousSnapshot, stepsRef.current)
+      deriveLinearTransplantSnapshot(
+        previousSnapshot,
+        stepsRef.current.map((step) => step.id)
+      )
     );
     machineRefInternal.current = nextMachine;
-    // Visit counts survive the transplant: the entries already happened.
-    if (visitCountsRef.current) {
-      attachVisitCounter(nextMachine, visitCountsRef.current);
-    }
     previousMachine.dispose();
     forceRender();
   }, [signature]);
@@ -180,7 +167,11 @@ const WizardComponent = <TContext extends JourneyJsonObject = JourneyEmpty>(
     }
 
     const unsubscribeEvents = machine.subscribeEvent((event) => {
-      if (event.type === "step.enter") {
+      if (event.type === "transition.error") {
+        callbacksRef.current.onError?.(event.error, {
+          phase: event.transitionId === "next-interceptor" ? "step-handler" : "navigate"
+        });
+      } else if (event.type === "step.enter") {
         callbacksRef.current.onStepEnter?.({
           stepId: event.stepId,
           context: machine.getSnapshot().context as TContext
@@ -227,12 +218,9 @@ const WizardComponent = <TContext extends JourneyJsonObject = JourneyEmpty>(
     // machineRef identity changes are deliberately not resubscribed on.
   }, [machine]);
 
-  const gateRef = React.useRef(createWizardStepGate());
   const contextValue = React.useMemo<WizardContextValue>(
     () => ({
       machine,
-      gate: gateRef.current,
-      visitCounts: visitCountsRef.current ?? new Map(),
       onError: (error, info) => callbacksRef.current.onError?.(error, info)
     }),
     [machine]

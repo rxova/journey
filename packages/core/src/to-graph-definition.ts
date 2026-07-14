@@ -81,13 +81,18 @@ export function toGraphDefinition<
  * `visited` remain valid — feed the result through the graph machine's
  * `initialSnapshot` option or a persistence `migrate` step.
  */
-export function toGraphSnapshot<TSnapshot extends { type: "linear"; stepOrder: readonly string[] }>(
-  snapshot: TSnapshot
-): Omit<TSnapshot, "type" | "stepOrder"> & { type: "graph" } {
+export function toGraphSnapshot<
+  TSnapshot extends {
+    type: "linear";
+    stepOrder: readonly string[];
+    visits?: Record<string, number>;
+  }
+>(snapshot: TSnapshot): Omit<TSnapshot, "type" | "stepOrder" | "visits"> & { type: "graph" } {
   const rest = { ...snapshot } as Partial<TSnapshot>;
   delete rest.type;
   delete rest.stepOrder;
-  return { ...rest, type: "graph" as const } as Omit<TSnapshot, "type" | "stepOrder"> & {
+  delete rest.visits;
+  return { ...rest, type: "graph" as const } as Omit<TSnapshot, "type" | "stepOrder" | "visits"> & {
     type: "graph";
   };
 }

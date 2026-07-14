@@ -292,6 +292,13 @@ export type LinearJourneySnapshotState<
   type: "linear";
   /** Authoritative step order — makes a persisted linear snapshot self-describing. */
   stepOrder: readonly TStepId[];
+  /**
+   * Entry count per step. Every entry counts — first arrival, forward
+   * navigation, jumps, AND backward navigation (returning to a step is a
+   * visit). Persisted, so repeat-visit knowledge survives reloads and
+   * transplants. Invariant: `visited[id] === visits[id] > 0`.
+   */
+  visits: Record<TStepId, number>;
 };
 
 /** Serializable snapshot state emitted by graph and headless machines. */
@@ -350,6 +357,8 @@ export type JourneyLinearComputed<TStepId extends string> = JourneyComputedBase<
   isFirstStep: boolean;
   isLastStep: boolean;
   stepOrder: readonly TStepId[];
+  /** True while the active step is on its first visit (`visits[active] <= 1`). */
+  isFirstTimeVisit: boolean;
 };
 
 /** Computed state available when transitions use graph object syntax. */
@@ -414,6 +423,10 @@ export type LinearJourneyDefinition<
 > = {
   context: TContext;
   handlers?: THandlers;
+  /** Starting step id. Wins over `startIndex`. Defaults to the first step. */
+  initial?: TStepId;
+  /** Zero-based starting position. Ignored when `initial` is set. */
+  startIndex?: number;
   steps: readonly [
     LinearJourneyStep<TContext, TStepId, TStepMeta, THandlers>,
     ...LinearJourneyStep<TContext, TStepId, TStepMeta, THandlers>[]

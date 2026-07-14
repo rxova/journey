@@ -141,7 +141,7 @@ describe("wizard guard rails", () => {
           <A id="a" />
         </Wizard>
       )
-    ).toThrowError(/does not match any step id/);
+    ).toThrowError(/does not exist in the steps array/);
     consoleError.mockRestore();
   });
 

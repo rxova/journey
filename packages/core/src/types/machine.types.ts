@@ -384,6 +384,19 @@ export type JourneyMachine<
   ) => () => void;
 };
 
+/**
+ * Async interceptor awaited before `goToNextStep` commits, registered per
+ * step via {@link LinearJourneyMachine.registerNextStepInterceptor}. A
+ * throw/reject cancels the navigation; while pending, the step's async state
+ * reports the `evaluating-when` phase.
+ */
+export type LinearNextStepInterceptor<TContext extends JourneyJsonObject> = (args: {
+  context: TContext;
+  updateContext: (
+    updater: (context: TContext) => TContext
+  ) => Promise<JourneySnapshot<TContext, string>>;
+}) => void | Promise<void>;
+
 /** Linear journey machine — base machine plus index-based navigation. */
 export type LinearJourneyMachine<
   TContext extends JourneyJsonObject,
@@ -393,6 +406,16 @@ export type LinearJourneyMachine<
   TPlugins extends readonly JourneyMachinePlugin[] = readonly JourneyMachinePlugin[]
 > = JourneyMachineWithPlugins<TContext, TStepId, never, TStepMeta, THandlers, TPlugins> & {
   goToStepByIndex: (index: number) => Promise<JourneySendResult<TContext, TStepId>>;
+  /**
+   * Registers a forward-navigation interceptor for `stepId`: awaited by
+   * `goToNextStep` while that step is active; a throw cancels the navigation
+   * (the result carries the error and the step's async state reports it).
+   * Returns an unregister function. Interceptors run in registration order.
+   */
+  registerNextStepInterceptor: (
+    stepId: TStepId,
+    interceptor: LinearNextStepInterceptor<TContext>
+  ) => () => void;
 };
 
 /** Journey machine API augmented by plugin-provided extensions. */
