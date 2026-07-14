@@ -45,67 +45,67 @@
     },
     "./analytics": {
       "types": {
-        "import": "./dist/plugins/analytics/index.d.ts",
-        "require": "./dist/plugins/analytics/index.d.cts"
+        "import": "./dist/plugins/analytics/analytics.d.ts",
+        "require": "./dist/plugins/analytics/analytics.d.cts"
       },
-      "import": "./dist/plugins/analytics/index.js",
-      "require": "./dist/plugins/analytics/index.cjs"
+      "import": "./dist/plugins/analytics/analytics.js",
+      "require": "./dist/plugins/analytics/analytics.cjs"
     },
     "./autosave": {
       "types": {
-        "import": "./dist/plugins/autosave/index.d.ts",
-        "require": "./dist/plugins/autosave/index.d.cts"
+        "import": "./dist/plugins/autosave/autosave.d.ts",
+        "require": "./dist/plugins/autosave/autosave.d.cts"
       },
-      "import": "./dist/plugins/autosave/index.js",
-      "require": "./dist/plugins/autosave/index.cjs"
+      "import": "./dist/plugins/autosave/autosave.js",
+      "require": "./dist/plugins/autosave/autosave.cjs"
     },
     "./diagnostics": {
       "types": {
-        "import": "./dist/plugins/diagnostics/index.d.ts",
-        "require": "./dist/plugins/diagnostics/index.d.cts"
+        "import": "./dist/plugins/diagnostics/diagnostics.d.ts",
+        "require": "./dist/plugins/diagnostics/diagnostics.d.cts"
       },
-      "import": "./dist/plugins/diagnostics/index.js",
-      "require": "./dist/plugins/diagnostics/index.cjs"
+      "import": "./dist/plugins/diagnostics/diagnostics.js",
+      "require": "./dist/plugins/diagnostics/diagnostics.cjs"
     },
     "./persistence": {
       "types": {
-        "import": "./dist/plugins/persistence/index.d.ts",
-        "require": "./dist/plugins/persistence/index.d.cts"
+        "import": "./dist/plugins/persistence/persistence.d.ts",
+        "require": "./dist/plugins/persistence/persistence.d.cts"
       },
-      "import": "./dist/plugins/persistence/index.js",
-      "require": "./dist/plugins/persistence/index.cjs"
+      "import": "./dist/plugins/persistence/persistence.js",
+      "require": "./dist/plugins/persistence/persistence.cjs"
     },
     "./replay": {
       "types": {
-        "import": "./dist/plugins/replay/index.d.ts",
-        "require": "./dist/plugins/replay/index.d.cts"
+        "import": "./dist/plugins/replay/replay.d.ts",
+        "require": "./dist/plugins/replay/replay.d.cts"
       },
-      "import": "./dist/plugins/replay/index.js",
-      "require": "./dist/plugins/replay/index.cjs"
+      "import": "./dist/plugins/replay/replay.js",
+      "require": "./dist/plugins/replay/replay.cjs"
     },
     "./subscription-enhancer": {
       "types": {
-        "import": "./dist/plugins/subscription-enhancer/index.d.ts",
-        "require": "./dist/plugins/subscription-enhancer/index.d.cts"
+        "import": "./dist/plugins/subscription-enhancer/subscription-enhancer.d.ts",
+        "require": "./dist/plugins/subscription-enhancer/subscription-enhancer.d.cts"
       },
-      "import": "./dist/plugins/subscription-enhancer/index.js",
-      "require": "./dist/plugins/subscription-enhancer/index.cjs"
+      "import": "./dist/plugins/subscription-enhancer/subscription-enhancer.js",
+      "require": "./dist/plugins/subscription-enhancer/subscription-enhancer.cjs"
     },
     "./execution-paths": {
       "types": {
-        "import": "./dist/plugins/execution-paths/index.d.ts",
-        "require": "./dist/plugins/execution-paths/index.d.cts"
+        "import": "./dist/plugins/execution-paths/execution-paths.d.ts",
+        "require": "./dist/plugins/execution-paths/execution-paths.d.cts"
       },
-      "import": "./dist/plugins/execution-paths/index.js",
-      "require": "./dist/plugins/execution-paths/index.cjs"
+      "import": "./dist/plugins/execution-paths/execution-paths.js",
+      "require": "./dist/plugins/execution-paths/execution-paths.cjs"
     },
     "./convert": {
       "types": {
-        "import": "./dist/convert/index.d.ts",
-        "require": "./dist/convert/index.d.cts"
+        "import": "./dist/convert/convert.d.ts",
+        "require": "./dist/convert/convert.d.cts"
       },
-      "import": "./dist/convert/index.js",
-      "require": "./dist/convert/index.cjs"
+      "import": "./dist/convert/convert.js",
+      "require": "./dist/convert/convert.cjs"
     }
   },
   "files": [
@@ -148,49 +148,49 @@
     },
     {
       "name": "core/linearToGraphDefinition",
-      "path": "dist/convert/index.js",
+      "path": "dist/convert/convert.js",
       "import": "{ linearToGraphDefinition }",
       "limit": "1 kB"
     },
     {
       "name": "core/createExecutionPathsPlugin",
-      "path": "dist/plugins/execution-paths/index.js",
+      "path": "dist/plugins/execution-paths/execution-paths.js",
       "import": "{ createExecutionPathsPlugin }",
       "limit": "2.7 kB"
     },
     {
       "name": "core/createAnalyticsPlugin",
-      "path": "dist/plugins/analytics/index.js",
+      "path": "dist/plugins/analytics/analytics.js",
       "import": "{ createAnalyticsPlugin }",
       "limit": "2 kB"
     },
     {
       "name": "core/createAutosavePlugin",
-      "path": "dist/plugins/autosave/index.js",
+      "path": "dist/plugins/autosave/autosave.js",
       "import": "{ createAutosavePlugin }",
       "limit": "4 kB"
     },
     {
       "name": "core/createDiagnosticsPlugin",
-      "path": "dist/plugins/diagnostics/index.js",
+      "path": "dist/plugins/diagnostics/diagnostics.js",
       "import": "{ createDiagnosticsPlugin }",
       "limit": "3.3 kB"
     },
     {
       "name": "core/createPersistencePlugin",
-      "path": "dist/plugins/persistence/index.js",
+      "path": "dist/plugins/persistence/persistence.js",
       "import": "{ createPersistencePlugin }",
       "limit": "3.6 kB"
     },
     {
       "name": "core/createReplayPlugin",
-      "path": "dist/plugins/replay/index.js",
+      "path": "dist/plugins/replay/replay.js",
       "import": "{ createReplayPlugin }",
       "limit": "2 kB"
     },
     {
       "name": "core/createSubscriptionEnhancerPlugin",
-      "path": "dist/plugins/subscription-enhancer/index.js",
+      "path": "dist/plugins/subscription-enhancer/subscription-enhancer.js",
       "import": "{ createSubscriptionEnhancerPlugin }",
       "limit": "1 kB"
     }

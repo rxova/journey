@@ -1,20 +1,5 @@
-import type { JourneySnapshot, JourneyStatus } from "../../core/types";
-
-/** localStorage-compatible adapter; `setItem` may be async. */
-export type JourneyStorage = {
-  getItem(key: string): string | null;
-  setItem(key: string, value: string): void | Promise<void>;
-  removeItem(key: string): void;
-};
-
-/** The serializable slice of machine state persisted to storage. */
-export type JourneyPersistedState = {
-  readonly status: JourneyStatus;
-  readonly context: unknown;
-  readonly timeline: readonly string[];
-  readonly currentIndex: number;
-  readonly savedAt: number;
-};
+import type { JourneyPersistedState } from "./persistence.types";
+import type { JourneySnapshot } from "../../core/types";
 
 export function buildPersistedState(snapshot: JourneySnapshot, now: number): JourneyPersistedState {
   return {

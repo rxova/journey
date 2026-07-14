@@ -19,18 +19,18 @@
     "resolveJsonModule": true,
     "paths": {
       "@rxova/journey-core": ["./packages/core/src/index.ts"],
-      "@rxova/journey-core/analytics": ["./packages/core/src/plugins/analytics/index.ts"],
-      "@rxova/journey-core/autosave": ["./packages/core/src/plugins/autosave/index.ts"],
-      "@rxova/journey-core/diagnostics": ["./packages/core/src/plugins/diagnostics/index.ts"],
-      "@rxova/journey-core/persistence": ["./packages/core/src/plugins/persistence/index.ts"],
-      "@rxova/journey-core/replay": ["./packages/core/src/plugins/replay/index.ts"],
+      "@rxova/journey-core/analytics": ["./packages/core/src/plugins/analytics/analytics.ts"],
+      "@rxova/journey-core/autosave": ["./packages/core/src/plugins/autosave/autosave.ts"],
+      "@rxova/journey-core/diagnostics": ["./packages/core/src/plugins/diagnostics/diagnostics.ts"],
+      "@rxova/journey-core/persistence": ["./packages/core/src/plugins/persistence/persistence.ts"],
+      "@rxova/journey-core/replay": ["./packages/core/src/plugins/replay/replay.ts"],
       "@rxova/journey-core/subscription-enhancer": [
-        "./packages/core/src/plugins/subscription-enhancer/index.ts"
+        "./packages/core/src/plugins/subscription-enhancer/subscription-enhancer.ts"
       ],
       "@rxova/journey-core/execution-paths": [
-        "./packages/core/src/plugins/execution-paths/index.ts"
+        "./packages/core/src/plugins/execution-paths/execution-paths.ts"
       ],
-      "@rxova/journey-core/convert": ["./packages/core/src/convert/index.ts"],
+      "@rxova/journey-core/convert": ["./packages/core/src/convert/convert.ts"],
       "@rxova/journey-react": ["./packages/react/src/index.ts"],
       "@rxova/journey-react/headless": ["./packages/react/src/headless/index.ts"],
       "@rxova/journey-react/graph": ["./packages/react/src/graph/index.ts"],

@@ -11,14 +11,14 @@ const common = {
   legalComments: "none",
   entryPoints: [
     "src/index.ts",
-    "src/convert/index.ts",
-    "src/plugins/analytics/index.ts",
-    "src/plugins/autosave/index.ts",
-    "src/plugins/diagnostics/index.ts",
-    "src/plugins/persistence/index.ts",
-    "src/plugins/replay/index.ts",
-    "src/plugins/execution-paths/index.ts",
-    "src/plugins/subscription-enhancer/index.ts"
+    "src/convert/convert.ts",
+    "src/plugins/analytics/analytics.ts",
+    "src/plugins/autosave/autosave.ts",
+    "src/plugins/diagnostics/diagnostics.ts",
+    "src/plugins/persistence/persistence.ts",
+    "src/plugins/replay/replay.ts",
+    "src/plugins/execution-paths/execution-paths.ts",
+    "src/plugins/subscription-enhancer/subscription-enhancer.ts"
   ],
   outdir: "dist",
   outbase: "src",
