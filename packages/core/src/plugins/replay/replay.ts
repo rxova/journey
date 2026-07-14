@@ -2,7 +2,7 @@ import { normalizeMaxEntries, serializeReplaySession, toSerializable } from "./r
 import type { ReplayApi, ReplayEntry, ReplayEntryKind, ReplayPluginOptions } from "./replay.types";
 import type { JourneyPlugin } from "../../core/types";
 
-export { serializeReplaySession } from "./replay.helpers";
+export { normalizeMaxEntries, serializeReplaySession, toSerializable } from "./replay.helpers";
 export type {
   ReplayApi,
   ReplayEntry,
