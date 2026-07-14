@@ -119,7 +119,7 @@ const ReactStart = () => {
           onClick={() =>
             void (snapshot.context.dirty
               ? api.send({ type: "requestClose" })
-              : api.terminateJourney())
+              : api.controls.terminate())
           }
         >
           Close
@@ -165,12 +165,12 @@ const ReactReview = () => {
           onClick={() =>
             void (snapshot.context.dirty
               ? api.send({ type: "requestClose" })
-              : api.terminateJourney())
+              : api.controls.terminate())
           }
         >
           Close
         </button>
-        <button onClick={() => void api.completeJourney()}>Submit</button>
+        <button onClick={() => void api.controls.complete()}>Submit</button>
       </div>
     </div>
   );
@@ -187,7 +187,7 @@ const ReactConfirmExit = () => {
         <button className="secondary" onClick={() => void api.goToPreviousStep()}>
           Keep editing
         </button>
-        <button onClick={() => void api.terminateJourney()}>Confirm close</button>
+        <button onClick={() => void api.controls.terminate()}>Confirm close</button>
       </div>
     </div>
   );
@@ -216,7 +216,7 @@ const ReactMachinePanel = () => {
       </p>
       <StepRenderer fallback={<p>Missing step component.</p>} />
       <div className="actions card-actions">
-        <button className="secondary" onClick={() => api.resetJourney()}>
+        <button className="secondary" onClick={() => api.controls.reset()}>
           Reset
         </button>
         <button className="secondary" onClick={() => void api.goToLastVisitedStep()}>

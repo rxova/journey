@@ -112,6 +112,8 @@ export type {
   JourneyMachine,
   JourneyMachineOptions,
   JourneyMachinePlugin,
+  GraphJourneyMachine,
+  JourneyMachineControls,
   JourneyMachinePluginHooks,
   JourneyMachinePluginSetupContext,
   JourneyMachinePluginSnapshotChange,

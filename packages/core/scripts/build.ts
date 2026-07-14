@@ -16,7 +16,8 @@ const common = {
     "src/plugins/diagnostics/index.ts",
     "src/plugins/persistence/index.ts",
     "src/plugins/replay/index.ts",
-    "src/plugins/execution-paths/index.ts"
+    "src/plugins/execution-paths/index.ts",
+    "src/plugins/subscription-enhancer/index.ts"
   ],
   outdir: "dist",
   outbase: "src",

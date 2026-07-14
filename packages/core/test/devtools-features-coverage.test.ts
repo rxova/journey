@@ -100,7 +100,7 @@ describe("package devtools feature coverage", () => {
     const inspect = getOperation(feature, "analytics.inspectRecentEvents");
     const clear = getOperation(feature, "analytics.clearRecentEvents");
 
-    await machine.startJourney();
+    await machine.controls.start();
     for (let index = 0; index < 101; index += 1) {
       await trackCustom.run({
         machine,
@@ -230,7 +230,7 @@ describe("package devtools feature coverage", () => {
     const flush = getOperation(feature, "autosave.flush");
     const clear = getOperation(feature, "autosave.clear");
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.updateContext((context) => ({ ...context, count: 2 }));
 
     const inspected = await inspect.run({
@@ -276,7 +276,7 @@ describe("package devtools feature coverage", () => {
     const exportSession = getOperation(feature, "replay.exportSession");
     const clear = getOperation(feature, "replay.clearSession");
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
 
     const inspected = await inspect.run({
@@ -373,7 +373,7 @@ describe("package devtools feature coverage", () => {
     const inspect = getOperation(feature, "persistence.inspect");
     const clear = getOperation(feature, "persistence.clear");
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.updateContext((context) => ({ ...context, count: 4 }));
     expect(store.has("journey:devtools:persistence")).toBe(true);
 
@@ -435,7 +435,7 @@ describe("package devtools feature coverage", () => {
     expect(idled?.transitioned).toBe(false);
     expect(idled?.snapshot.currentStepId).toBe("start");
 
-    await machine.startJourney();
+    await machine.controls.start();
     const forced = await forceStepTransition?.("review");
     expect(forced?.transitioned).toBe(true);
     expect(forced?.transitionId).toBe("devtools.forceStep");

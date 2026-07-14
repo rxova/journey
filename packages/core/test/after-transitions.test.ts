@@ -33,7 +33,7 @@ describe("after (delayed transitions)", () => {
     };
 
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
 
     expect(machine.getSnapshot().currentStepId).toBe("waiting");
@@ -63,7 +63,7 @@ describe("after (delayed transitions)", () => {
     };
 
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
+    await machine.controls.start();
 
     await vi.waitFor(() => {
       expect(machine.getSnapshot().currentStepId).toBe("next");
@@ -90,7 +90,7 @@ describe("after (delayed transitions)", () => {
     };
 
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
     await machine.goToStepById("elsewhere");
 
@@ -114,8 +114,8 @@ describe("after (delayed transitions)", () => {
     };
 
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
-    await machine.resetJourney();
+    await machine.controls.start();
+    await machine.controls.reset();
 
     await sleep(40);
     expect(machine.getSnapshot().status).toBe("idled");
@@ -141,7 +141,7 @@ describe("after (delayed transitions)", () => {
     };
 
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
+    await machine.controls.start();
 
     await vi.waitFor(() => {
       expect(machine.getSnapshot().currentStepId).toBe("next");
@@ -166,7 +166,7 @@ describe("after (delayed transitions)", () => {
     };
 
     const machine = createJourneyMachine(def);
-    await machine.startJourney();
+    await machine.controls.start();
     expect(machine.getSnapshot().currentStepId).toBe("waiting");
 
     machine.dispose();
@@ -196,7 +196,7 @@ describe("after (delayed transitions)", () => {
         ]
       })
     );
-    await graph.startJourney();
+    await graph.controls.start();
     await vi.waitFor(() => {
       expect(graph.getSnapshot().currentStepId).toBe("home");
     });
@@ -206,7 +206,7 @@ describe("after (delayed transitions)", () => {
       context: { x: 0 },
       steps: ["a", { id: "b", after: { 20: { to: "c" } } }, "c"]
     });
-    await linear.startJourney();
+    await linear.controls.start();
     await linear.goToNextStep(); // a -> b (timer starts)
     await vi.waitFor(() => {
       expect(linear.getSnapshot().currentStepId).toBe("c");

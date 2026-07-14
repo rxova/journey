@@ -23,6 +23,7 @@ import type {
   JourneyEqualityFn,
   JourneyJsonObject,
   JourneyJsonValue,
+  JourneyMachineControls,
   JourneyMachinePlugin,
   JourneySendResult,
   JourneyStatus,
@@ -144,7 +145,7 @@ export type UseWizardResult<
   // visit tracking
   visited: Record<TStepId, boolean>;
   /** True while the active step is on its first visit. */
-  isFirstTimeVisit: boolean;
+  isStepFirstTimeVisit: boolean;
 
   // status
   status: JourneyStatus;
@@ -160,10 +161,8 @@ export type UseWizardResult<
   goToStepById: (stepId: TStepId) => Promise<JourneySendResult<TContext, TStepId>>;
   goToStepByIndex: (index: number) => Promise<JourneySendResult<TContext, TStepId>>;
   goToLastVisitedStep: () => Promise<JourneySendResult<TContext, TStepId>>;
-  completeJourney: () => Promise<JourneySendResult<TContext, TStepId>>;
-  resetJourney: () => Promise<unknown>;
-  pauseJourney: () => void;
-  resumeJourney: () => void;
+  /** The machine's lifecycle command group, passed through verbatim. */
+  controls: JourneyMachineControls<TContext, TStepId, never>;
   clearStepError: (stepId?: TStepId) => Promise<unknown>;
 
   // shared state

@@ -153,7 +153,7 @@ describe("graph tier", () => {
     expect(screen.getByTestId("state").textContent).toBe("graph:payment:2");
   });
 
-  it("useApi exposes pauseJourney/resumeJourney and useStepApi/useEvent/useStepLifecycle work", async () => {
+  it("useApi exposes controls.pause/controls.resume and useStepApi/useEvent/useStepLifecycle work", async () => {
     const bundle = createGraphJourney({
       initial: "a",
       context: { items: 0 } as Ctx,
@@ -174,10 +174,10 @@ describe("graph tier", () => {
       return (
         <div>
           <output data-testid="phase">{asyncState.phase}</output>
-          <button data-testid="pause" onClick={() => api.pauseJourney()}>
+          <button data-testid="pause" onClick={() => api.controls.pause()}>
             pause
           </button>
-          <button data-testid="resume" onClick={() => api.resumeJourney()}>
+          <button data-testid="resume" onClick={() => api.controls.resume()}>
             resume
           </button>
           <button data-testid="next" onClick={() => void api.goToNextStep()}>

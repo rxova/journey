@@ -95,8 +95,8 @@ describe("determinism fuzz", () => {
               break;
             }
             case "resetJourney":
-              machineA.resetJourney();
-              machineB.resetJourney();
+              machineA.controls.reset();
+              machineB.controls.reset();
               break;
           }
 

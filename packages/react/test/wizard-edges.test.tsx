@@ -185,7 +185,7 @@ describe("wizard guard rails", () => {
 });
 
 describe("useWizard escape hatches", () => {
-  it("resetJourney, getStepMeta, goToStepById/ByIndex, and useWizardSelector work", async () => {
+  it("controls.reset, getStepMeta, goToStepById/ByIndex, and useWizardSelector work", async () => {
     const Probe = () => {
       const wizard = useWizard<Ctx>();
       const active = useWizardSelector((snapshot) => snapshot.currentStepId);
@@ -196,7 +196,7 @@ describe("useWizard escape hatches", () => {
           <button data-testid="byIndex" onClick={() => void wizard.goToStepByIndex(1)}>
             byIndex
           </button>
-          <button data-testid="reset" onClick={() => void wizard.resetJourney()}>
+          <button data-testid="reset" onClick={() => void wizard.controls.reset()}>
             reset
           </button>
         </div>
@@ -329,7 +329,7 @@ describe("headless branch coverage", () => {
           <button
             data-testid="go"
             onClick={() => {
-              void machine.startJourney().then(() => machine.goToNextStep());
+              void machine.controls.start().then(() => machine.goToNextStep());
             }}
           >
             go

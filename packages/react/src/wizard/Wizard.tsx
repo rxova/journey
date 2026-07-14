@@ -139,10 +139,7 @@ const WizardComponent = <TContext extends JourneyJsonObject = JourneyEmpty>(
     if (!previousMachine) {
       return;
     }
-    const previousSnapshot = previousMachine.getSnapshot() as LinearJourneySnapshot<
-      JourneyJsonObject,
-      string
-    >;
+    const previousSnapshot = previousMachine.getSnapshot();
     const nextMachine = createWizardMachine(
       stepsRef.current,
       { ...machineConfigRef.current, context: previousSnapshot.context },
@@ -161,7 +158,7 @@ const WizardComponent = <TContext extends JourneyJsonObject = JourneyEmpty>(
     assignMachineRef(machineRef as WizardProps["machineRef"], machine);
 
     if (machine.getSnapshot().status === "idled") {
-      machine.startJourney().catch((error: unknown) => {
+      machine.controls.start().catch((error: unknown) => {
         callbacksRef.current.onError?.(error, { phase: "start" });
       });
     }
@@ -190,7 +187,7 @@ const WizardComponent = <TContext extends JourneyJsonObject = JourneyEmpty>(
     const unsubscribeStepChange = machine.subscribeSelector(
       (snapshot) => snapshot.currentStepId,
       (toStepId, fromStepId) => {
-        const snapshot = machine.getSnapshot() as LinearJourneySnapshot<JourneyJsonObject, string>;
+        const snapshot = machine.getSnapshot();
         const fromIndex = fromStepId === undefined ? -1 : snapshot.stepOrder.indexOf(fromStepId);
         const toIndex = snapshot.stepOrder.indexOf(toStepId);
         const change: WizardStepChange<TContext> = {

@@ -48,6 +48,12 @@ export default defineConfig({
         )
       },
       {
+        find: "@rxova/journey-core/subscription-enhancer",
+        replacement: fileURLToPath(
+          new URL("./packages/core/src/plugins/subscription-enhancer/index.ts", import.meta.url)
+        )
+      },
+      {
         find: "@rxova/journey-core",
         replacement: fileURLToPath(new URL("./packages/core/src/index.ts", import.meta.url))
       },

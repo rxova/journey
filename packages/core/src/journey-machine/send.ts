@@ -2,7 +2,7 @@ import {
   assertSerializableContext,
   assertStepExists,
   buildSendResult,
-  JourneyDisposedError,
+  createCanceledSendResultBuilder,
   isGoToStepByIdEvent,
   isInternalEventType,
   isTerminalTarget,
@@ -74,10 +74,7 @@ export const createJourneyMachineSendController = <
   defaultTimeoutMs: number | undefined,
   reportNoMatch: (context: JourneyNoMatchContext<TStepId>) => void
 ): JourneyMachineSendController<TContext, TStepId, TEvents> => {
-  const buildCanceledSendResult = (operation = "send"): JourneySendResult<TContext, TStepId> =>
-    buildSendResult(runtime.getSnapshot(), false, {
-      ...(runtime.isDisposed() ? { error: new JourneyDisposedError(operation) } : {})
-    });
+  const buildCanceledSendResult = createCanceledSendResultBuilder<TContext, TStepId>(runtime);
 
   // The event reached the runtime but produced no transition. Surface it as a
   // dropped event (skipping internal synthetic effect/after events), then return

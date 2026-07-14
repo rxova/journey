@@ -185,7 +185,7 @@ describe("robustness", () => {
   it("calls onListenerError when a snapshot listener throws, without blocking other listeners", async () => {
     const onListenerError = vi.fn();
     const machine = createJourneyMachine(baseJourney(), { onListenerError });
-    await machine.startJourney();
+    await machine.controls.start();
 
     const listener1 = vi.fn(() => {
       throw new Error("listener1 failed");
@@ -203,7 +203,7 @@ describe("robustness", () => {
   it("calls onListenerError when an event listener throws, without blocking other listeners", async () => {
     const onListenerError = vi.fn();
     const machine = createJourneyMachine(baseJourney(), { onListenerError });
-    await machine.startJourney();
+    await machine.controls.start();
 
     const listener1 = vi.fn(() => {
       throw new Error("event-listener failed");
@@ -222,7 +222,7 @@ describe("robustness", () => {
     await withNodeEnv("development", async () => {
       const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
       const machine = createJourneyMachine(baseJourney());
-      await machine.startJourney();
+      await machine.controls.start();
 
       machine.subscribe(() => {
         throw new Error("listener failed");
@@ -242,7 +242,7 @@ describe("robustness", () => {
     await withNodeEnv("production", async () => {
       const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
       const machine = createJourneyMachine(baseJourney());
-      await machine.startJourney();
+      await machine.controls.start();
 
       machine.subscribe(() => {
         throw new Error("listener failed");
@@ -257,7 +257,7 @@ describe("robustness", () => {
 
   it("leaves explicit custom back sends as no-ops after terminal status when no transition exists", async () => {
     const machine = createJourneyMachine(baseJourney());
-    machine.startJourney();
+    machine.controls.start();
 
     await machine.send({ type: "goToNextStep" });
     await machine.send({ type: "goToNextStep" });

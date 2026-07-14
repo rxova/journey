@@ -22,6 +22,7 @@ export type {
 } from "./wizard";
 export type { JourneyApi, JourneyDefaultEvent, StepScopedJourneyApi } from "./types";
 export type {
+  GraphJourneyMachine,
   GraphJourneySnapshot,
   JourneyAsyncPhase,
   JourneyCompleteObservationEvent,

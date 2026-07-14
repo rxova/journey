@@ -399,7 +399,7 @@ describe("attachJourneyDevtools v5", () => {
     const machine = createJourneyMachine(journey, {
       plugins: [createExecutionPathsPlugin()] as const
     });
-    await machine.startJourney();
+    await machine.controls.start();
 
     const collector = collectBridgeMessages();
     const detach = attachJourneyDevtools(machine, {
@@ -710,7 +710,7 @@ describe("attachJourneyDevtools v5", () => {
       });
     }
 
-    await machine.resetJourney();
+    await machine.controls.reset();
     await waitForCollector(() =>
       collector.messages.some(
         (message) => message.kind === "observation" && message.machineId === "m-serialize"
@@ -1416,7 +1416,7 @@ describe("attachJourneyDevtools v6", () => {
   it("surfaces per-step feature descriptors in the register envelope", async () => {
     const collector = collectBridgeMessages();
     const machine = createJourneyMachine(createEffectJourney(), { plugins: [] as const });
-    await machine.startJourney();
+    await machine.controls.start();
 
     const detach = attachJourneyDevtools(machine, {
       machineId: "m-v6-steps",
@@ -1468,7 +1468,7 @@ describe("attachJourneyDevtools v6", () => {
   it("serializes the `invoking` async phase for a step running an effect", async () => {
     const collector = collectBridgeMessages();
     const machine = createJourneyMachine(createEffectJourney(), { plugins: [] as const });
-    await machine.startJourney();
+    await machine.controls.start();
 
     const detach = attachJourneyDevtools(machine, {
       machineId: "m-v6-invoking",
@@ -1497,7 +1497,7 @@ describe("attachJourneyDevtools v6", () => {
   it("excludes internal effect/after events from the invokable event metadata", async () => {
     const collector = collectBridgeMessages();
     const machine = createJourneyMachine(createEffectJourney(), { plugins: [] as const });
-    await machine.startJourney();
+    await machine.controls.start();
 
     const detach = attachJourneyDevtools(machine, {
       machineId: "m-v6-events",

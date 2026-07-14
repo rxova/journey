@@ -6,9 +6,11 @@ import {
   createJourneyMachineNavigationController,
   type JourneyLifecycleScheduler
 } from "./navigation";
+import { createJourneyMachinePauseController } from "./pause";
 import { createJourneyMachinePluginController } from "./plugin-controller";
 import { createJourneyMachineRuntime } from "./runtime";
 import { createJourneyMachineSendController } from "./send";
+import { createJourneyMachineStepWorkController } from "./step-work";
 import {
   assertSerializableContext,
   assertStepExists,
@@ -17,20 +19,16 @@ import {
   buildSnapshot,
   cloneContext,
   cloneMetaValue,
-  isPromiseLike,
   isTerminalTarget,
   JOURNEY_AFTER_EVENT_PREFIX,
   JOURNEY_EFFECT_REJECTED_EVENT,
   JOURNEY_EFFECT_RESOLVED_EVENT,
-  JourneyTimeoutError,
   now,
+  reportNoMatchInDevelopment,
   resolveInitialSnapshotOption,
   resolveSnapshotShape,
   validateFiniteTimeout,
-  validateJourneyTransitions,
-  warnInDevelopment,
-  withAbortSignal,
-  withTimeout
+  validateJourneyTransitions
 } from "./helpers";
 import { JourneyDefinitionError } from "./errors";
 import { resolveJourneyDefinition } from "./resolve-journey-definition";
@@ -44,8 +42,7 @@ import type {
   JourneyMachineOptions,
   JourneyMachineWithPlugins,
   JourneySendEvent,
-  JourneySendResult,
-  JourneyNoMatchContext
+  JourneySendResult
 } from "../types";
 import type { JourneyEmpty } from "../types";
 
@@ -180,159 +177,38 @@ export function createJourneyMachine<
   ) => Promise<JourneySendResult<TContext, TStepId>> = () =>
     Promise.resolve(buildSendResult(runtime.getSnapshot(), false));
 
-  // Step effects: declarative async work that runs on step entry. The runner
-  // reuses the serialized send pipeline by dispatching a synthetic event that
-  // the resolver wired to onResolved/onRejected transitions. One effect is
-  // in-flight at a time; its lifecycle controller cancels it on step exit
-  // (via `cancelActiveEffect`), reset, or dispose.
-  let activeEffectController: AbortController | null = null;
-
-  const cancelActiveEffect = () => {
-    const controller = activeEffectController;
-    if (!controller) {
-      return;
+  // Step effects and `after` timers: declarative async work that runs on step
+  // entry. The graph engine routes every outcome back through the serialized
+  // send pipeline by dispatching a synthetic event that the resolver wired to
+  // onResolved/onRejected/after transitions. Work is cancelled on step exit
+  // (via `cancelStepWork` in `scheduleLifecycle`), reset, or dispose.
+  const stepWork = createJourneyMachineStepWorkController<TContext, TStepId, TEvents, THandlers>({
+    runtime,
+    asyncState,
+    handlers,
+    defaultTimeoutMs,
+    getEffect: (stepId) => resolvedJourney.steps[stepId]?.effect,
+    getAfter: (stepId) => resolvedJourney.steps[stepId]?.after,
+    effectLoadingEventType: JOURNEY_EFFECT_RESOLVED_EVENT,
+    effectErrorEventType: JOURNEY_EFFECT_REJECTED_EVENT,
+    routeEffectResolved: ({ output }) => {
+      void dispatchSend({
+        type: JOURNEY_EFFECT_RESOLVED_EVENT,
+        payload: output
+      } as unknown as JourneySendEvent<TStepId, TEvents>);
+    },
+    routeEffectRejected: ({ error }) => {
+      void dispatchSend({
+        type: JOURNEY_EFFECT_REJECTED_EVENT,
+        payload: error
+      } as unknown as JourneySendEvent<TStepId, TEvents>);
+    },
+    routeAfterElapsed: ({ delayMs }) => {
+      void dispatchSend({
+        type: `${JOURNEY_AFTER_EVENT_PREFIX}${delayMs}`
+      } as unknown as JourneySendEvent<TStepId, TEvents>);
     }
-    activeEffectController = null;
-    if (!controller.signal.aborted) {
-      controller.abort();
-    }
-    runtime.closeLifecycle(controller);
-  };
-
-  // Delayed (`after`) transitions: timers started on entry, cancelled on step
-  // exit / reset / dispose. The abort signal clears any pending timers.
-  let activeAfterController: AbortController | null = null;
-
-  const cancelActiveAfter = () => {
-    const controller = activeAfterController;
-    if (!controller) {
-      return;
-    }
-    activeAfterController = null;
-    if (!controller.signal.aborted) {
-      controller.abort();
-    }
-    runtime.closeLifecycle(controller);
-  };
-
-  const runStepTimers = (stepId: TStepId, runVersion: number) => {
-    const after = resolvedJourney.steps[stepId]?.after;
-    if (!after || !runtime.isRunActive(runVersion)) {
-      return;
-    }
-
-    const controller = runtime.openLifecycle(runVersion);
-    if (!controller) {
-      return;
-    }
-    activeAfterController = controller;
-    const { signal } = controller;
-
-    for (const delayKey of Object.keys(after)) {
-      const delayMs = Number(delayKey);
-      const handle = setTimeout(() => {
-        if (
-          signal.aborted ||
-          !runtime.isRunActive(runVersion) ||
-          runtime.peekSnapshot().currentStepId !== stepId
-        ) {
-          return;
-        }
-        void dispatchSend({
-          type: `${JOURNEY_AFTER_EVENT_PREFIX}${delayMs}`
-        } as unknown as JourneySendEvent<TStepId, TEvents>);
-      }, delayMs);
-      signal.addEventListener("abort", () => clearTimeout(handle), { once: true });
-    }
-  };
-
-  const runStepEffect = (stepId: TStepId, runVersion: number) => {
-    const effect = resolvedJourney.steps[stepId]?.effect;
-    if (!effect || !runtime.isRunActive(runVersion)) {
-      return;
-    }
-
-    const controller = runtime.openLifecycle(runVersion);
-    if (!controller) {
-      return;
-    }
-    activeEffectController = controller;
-    const { signal } = controller;
-
-    asyncState.setStepLoading(
-      stepId,
-      "invoking",
-      JOURNEY_EFFECT_RESOLVED_EVENT,
-      undefined,
-      runVersion
-    );
-
-    void (async () => {
-      let output: unknown;
-      let failure: { error: unknown } | null = null;
-      try {
-        const result = effect.run({
-          snapshot: runtime.getSnapshot(),
-          context: runtime.peekSnapshot().context,
-          from: stepId,
-          handlers,
-          signal
-        });
-        output = isPromiseLike(result)
-          ? await withTimeout(
-              withAbortSignal(result as PromiseLike<unknown>, signal),
-              effect.timeoutMs ?? defaultTimeoutMs,
-              () =>
-                new JourneyTimeoutError(
-                  `Step effect timed out after ${effect.timeoutMs ?? defaultTimeoutMs}ms (step: ${String(stepId)}).`
-                )
-            )
-          : result;
-      } catch (error) {
-        failure = { error };
-      } finally {
-        if (activeEffectController === controller) {
-          activeEffectController = null;
-        }
-        runtime.closeLifecycle(controller);
-      }
-
-      if (
-        signal.aborted ||
-        !runtime.isRunActive(runVersion) ||
-        runtime.peekSnapshot().currentStepId !== stepId
-      ) {
-        return;
-      }
-
-      if (failure) {
-        if (effect.onRejected) {
-          void dispatchSend({
-            type: JOURNEY_EFFECT_REJECTED_EVENT,
-            payload: failure.error
-          } as unknown as JourneySendEvent<TStepId, TEvents>);
-        } else {
-          asyncState.setStepError(
-            stepId,
-            JOURNEY_EFFECT_REJECTED_EVENT,
-            failure.error,
-            undefined,
-            runVersion
-          );
-        }
-        return;
-      }
-
-      if (effect.onResolved) {
-        void dispatchSend({
-          type: JOURNEY_EFFECT_RESOLVED_EVENT,
-          payload: output
-        } as unknown as JourneySendEvent<TStepId, TEvents>);
-      } else {
-        asyncState.setStepIdle(stepId, runVersion);
-      }
-    })();
-  };
+  });
 
   const scheduleLifecycle: JourneyLifecycleScheduler<TContext, TStepId, TEvents, THandlers> = ({
     previousSnapshot,
@@ -346,8 +222,7 @@ export function createJourneyMachine<
     transition
   }) => {
     // Leaving the current step cancels its in-flight effect and timers.
-    cancelActiveEffect();
-    cancelActiveAfter();
+    stepWork.cancelStepWork();
     const sourceStep = resolvedJourney.steps[from];
     const targetStep = isTerminalTarget(to) ? null : resolvedJourney.steps[to];
     const dispatch = (nextEvent: JourneySendEvent<TStepId, TEvents>) => {
@@ -490,11 +365,11 @@ export function createJourneyMachine<
 
         // Entering a step with an effect starts it after entry callbacks settle.
         if (runtime.isRunActive(runVersion) && targetStep?.effect) {
-          runStepEffect(to as TStepId, runVersion);
+          stepWork.runStepEffect(to as TStepId, runVersion);
         }
         // Entering a step with `after` timers starts them.
         if (runtime.isRunActive(runVersion) && targetStep?.after) {
-          runStepTimers(to as TStepId, runVersion);
+          stepWork.runStepTimers(to as TStepId, runVersion);
         }
       } finally {
         runtime.closeLifecycle(lifecycleAbortController);
@@ -524,13 +399,7 @@ export function createJourneyMachine<
   // A dropped event (no matching/passing transition) reports through the
   // `onNoMatch` hook when provided, otherwise a development-only warning — the
   // same "hook, or dev fallback" shape as `onListenerError`.
-  const reportNoMatch =
-    options?.onNoMatch ??
-    ((context: JourneyNoMatchContext<string>) => {
-      warnInDevelopment(
-        `Journey event "${context.eventType}" matched no enabled transition from step "${context.from}" and was dropped.`
-      );
-    });
+  const reportNoMatch = options?.onNoMatch ?? reportNoMatchInDevelopment;
 
   const sendController = createJourneyMachineSendController<TContext, TStepId, TEvents, THandlers>(
     runtime,
@@ -545,7 +414,7 @@ export function createJourneyMachine<
     reportNoMatch
   );
 
-  const controls = createJourneyMachineControls<TContext, TStepId, TEvents>({
+  const coreControls = createJourneyMachineControls<TContext, TStepId, TEvents>({
     runtime,
     asyncState,
     initial: resolvedJourney.initial,
@@ -560,106 +429,61 @@ export function createJourneyMachine<
     runtime.getSnapshot
   );
 
-  // Pause is a transient runtime flag — deliberately NOT part of the snapshot
-  // (and therefore never persisted). While paused, navigation and sends resolve
-  // as no-ops carrying `noOpReason: "paused"`; `updateContext`, `startJourney`,
-  // `resetJourney`, and `clearStepError` keep working. Only `resumeJourney()`
-  // clears it. Internal effect/after routing flows through `send` too, so a
-  // paused machine also holds effect-driven navigation.
-  let paused = false;
-
-  const buildPausedSendResult = () =>
-    buildSendResult(runtime.getSnapshot(), false, { noOpReason: "paused" as const });
+  const pause = createJourneyMachinePauseController<TContext, TStepId, TEvents>({ runtime });
 
   const machine: JourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers> = {
     getSnapshot: runtime.getSnapshot,
     getStepMeta: (stepId) => cloneMetaValue(stepMeta[stepId]),
     getComputed,
-    startJourney: async () => {
-      const { snapshot, started } = await controls.startJourney();
-      // The initial step is not "entered" via a transition, so trigger its
-      // effect/timers here — but only when this call actually performed the
-      // idled→running transition, so a repeated (defensive) startJourney() can
-      // never duplicate initial-step I/O or schedule duplicate `after` timers.
-      if (started && !runtime.isDisposed()) {
-        runStepEffect(runtime.peekSnapshot().currentStepId, runtime.getRunVersion());
-        runStepTimers(runtime.peekSnapshot().currentStepId, runtime.getRunVersion());
-      }
-      return snapshot;
+    controls: {
+      start: async () => {
+        const { snapshot, started } = await coreControls.startJourney();
+        // The initial step is not "entered" via a transition, so trigger its
+        // effect/timers here — but only when this call actually performed the
+        // idled→running transition, so a repeated (defensive) start() can
+        // never duplicate initial-step I/O or schedule duplicate `after` timers.
+        if (started && !runtime.isDisposed()) {
+          stepWork.runStepEffect(runtime.peekSnapshot().currentStepId, runtime.getRunVersion());
+          stepWork.runStepTimers(runtime.peekSnapshot().currentStepId, runtime.getRunVersion());
+        }
+        return snapshot;
+      },
+      reset: coreControls.resetJourney,
+      pause: pause.pause,
+      resume: pause.resume,
+      isPaused: pause.isPaused,
+      terminate: (payload) =>
+        payload === undefined
+          ? machine.send({ type: "terminateJourney" } as JourneySendEvent<TStepId, TEvents>)
+          : machine.send({
+              type: "terminateJourney",
+              payload
+            } as JourneySendEvent<TStepId, TEvents>),
+      complete: (payload) =>
+        payload === undefined
+          ? machine.send({ type: "completeJourney" } as JourneySendEvent<TStepId, TEvents>)
+          : machine.send({
+              type: "completeJourney",
+              payload
+            } as JourneySendEvent<TStepId, TEvents>)
     },
     subscribe: runtime.subscribe,
     subscribeSelector: runtime.subscribeSelector,
     subscribeEvent: runtime.subscribeEvent,
-    subscribeStart: (listener) =>
-      runtime.subscribeEvent((event) => {
-        if (event.type === "journey.start") {
-          listener(event);
-        }
-      }),
-    subscribeReset: (listener) =>
-      runtime.subscribeEvent((event) => {
-        if (event.type === "journey.reset") {
-          listener(event);
-        }
-      }),
-    subscribeComplete: (listener) =>
-      runtime.subscribeEvent((event) => {
-        if (event.type === "journey.completed") {
-          listener(event);
-        }
-      }),
-    subscribeTerminate: (listener) =>
-      runtime.subscribeEvent((event) => {
-        if (event.type === "journey.terminated") {
-          listener(event);
-        }
-      }),
-    resetJourney: controls.resetJourney,
-    updateContext: controls.updateContext,
-    clearStepError: controls.clearStepError,
-    dispose: controls.dispose,
-    pauseJourney: () => {
-      if (runtime.isDisposed()) {
-        warnInDevelopment('Journey machine has been disposed; "pauseJourney" is a no-op.');
-        return;
-      }
-      if (paused) {
-        return;
-      }
-      paused = true;
-      runtime.emit({
-        type: "journey.paused",
-        stepId: runtime.peekSnapshot().currentStepId,
-        timestamp: now()
-      });
-    },
-    resumeJourney: () => {
-      if (runtime.isDisposed()) {
-        warnInDevelopment('Journey machine has been disposed; "resumeJourney" is a no-op.');
-        return;
-      }
-      if (!paused) {
-        return;
-      }
-      paused = false;
-      runtime.emit({
-        type: "journey.resumed",
-        stepId: runtime.peekSnapshot().currentStepId,
-        timestamp: now()
-      });
-    },
-    isPaused: () => paused,
+    updateContext: coreControls.updateContext,
+    clearStepError: coreControls.clearStepError,
+    dispose: coreControls.dispose,
     goToPreviousStep: (steps) =>
-      paused
-        ? Promise.resolve(buildPausedSendResult())
+      pause.isPaused()
+        ? Promise.resolve(pause.buildPausedSendResult())
         : runtime.queue(
             async (runVersion) =>
               navigation.applyPreviousNavigation(steps, "goToPreviousStep", runVersion),
             () => sendController.buildCanceledSendResult("goToPreviousStep")
           ),
     goToLastVisitedStep: () =>
-      paused
-        ? Promise.resolve(buildPausedSendResult())
+      pause.isPaused()
+        ? Promise.resolve(pause.buildPausedSendResult())
         : runtime.queue(
             async (runVersion) =>
               navigation.applyLastVisitedNavigation("goToLastVisitedStep", runVersion),
@@ -669,23 +493,9 @@ export function createJourneyMachine<
       machine.send({ type: "goToNextStep" } as JourneySendEvent<TStepId, TEvents>),
     goToStepById: (stepId: TStepId) =>
       machine.send({ type: "goToStepById", stepId } as JourneySendEvent<TStepId, TEvents>),
-    terminateJourney: (payload) =>
-      payload === undefined
-        ? machine.send({ type: "terminateJourney" } as JourneySendEvent<TStepId, TEvents>)
-        : machine.send({
-            type: "terminateJourney",
-            payload
-          } as JourneySendEvent<TStepId, TEvents>),
-    completeJourney: (payload) =>
-      payload === undefined
-        ? machine.send({ type: "completeJourney" } as JourneySendEvent<TStepId, TEvents>)
-        : machine.send({
-            type: "completeJourney",
-            payload
-          } as JourneySendEvent<TStepId, TEvents>),
     send: (event) =>
-      paused
-        ? Promise.resolve(buildPausedSendResult())
+      pause.isPaused()
+        ? Promise.resolve(pause.buildPausedSendResult())
         : runtime.queue(
             (runVersion, signal) => sendController.executeSend(event, runVersion, signal),
             () => sendController.buildCanceledSendResult(event.type)

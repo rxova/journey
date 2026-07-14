@@ -24,7 +24,7 @@ const linearSnapshot = (machine: ReturnType<typeof createMachine>) =>
 describe("linear runtime navigation", () => {
   it("supports arbitrary forward jumps via goToStepById (no graph edges needed)", async () => {
     const machine = createMachine();
-    await machine.startJourney();
+    await machine.controls.start();
 
     const jump = await machine.goToStepById("d");
     expect(jump.transitioned).toBe(true);
@@ -34,7 +34,7 @@ describe("linear runtime navigation", () => {
 
   it("goToStepByIndex: +1 advances, backward walks history, larger jumps go direct", async () => {
     const machine = createMachine();
-    await machine.startJourney();
+    await machine.controls.start();
 
     await machine.goToStepByIndex(1); // next
     expect(machine.getSnapshot().currentStepId).toBe("b");
@@ -51,9 +51,11 @@ describe("linear runtime navigation", () => {
 
   it("tracks visits on every entry, including backward navigation", async () => {
     const machine = createMachine();
-    await machine.startJourney();
+    await machine.controls.start();
     expect(linearSnapshot(machine).visits).toEqual({ a: 1, b: 0, c: 0, d: 0 });
-    expect((machine.getComputed() as { isFirstTimeVisit?: boolean }).isFirstTimeVisit).toBe(true);
+    expect((machine.getComputed() as { isStepFirstTimeVisit?: boolean }).isStepFirstTimeVisit).toBe(
+      true
+    );
 
     await machine.goToNextStep();
     await machine.goToPreviousStep();
@@ -61,7 +63,9 @@ describe("linear runtime navigation", () => {
     expect(snapshot.visits.a).toBe(2);
     expect(snapshot.visits.b).toBe(1);
     expect(snapshot.visited).toEqual({ a: true, b: true, c: false, d: false });
-    expect((machine.getComputed() as { isFirstTimeVisit?: boolean }).isFirstTimeVisit).toBe(false);
+    expect((machine.getComputed() as { isStepFirstTimeVisit?: boolean }).isStepFirstTimeVisit).toBe(
+      false
+    );
   });
 
   it("supports initial and startIndex in the definition", async () => {
@@ -84,7 +88,7 @@ describe("linear runtime navigation", () => {
 describe("linear runtime next-step interceptors", () => {
   it("awaits interceptors before advancing and can update context", async () => {
     const machine = createMachine();
-    await machine.startJourney();
+    await machine.controls.start();
 
     const unregister = machine.registerNextStepInterceptor("a", async ({ updateContext }) => {
       await updateContext((context) => ({ count: context.count + 1 }));
@@ -103,7 +107,7 @@ describe("linear runtime next-step interceptors", () => {
 
   it("a rejecting interceptor cancels navigation and reports through async state", async () => {
     const machine = createMachine();
-    await machine.startJourney();
+    await machine.controls.start();
     const errors: unknown[] = [];
     machine.subscribeEvent((event) => {
       if (event.type === "transition.error") {
@@ -127,7 +131,7 @@ describe("linear runtime next-step interceptors", () => {
 describe("deriveLinearTransplantSnapshot", () => {
   it("filters state to surviving steps and preserves visits", async () => {
     const machine = createMachine();
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep(); // a → b
     await machine.goToNextStep(); // b → c
     await machine.goToPreviousStep(); // back to b
@@ -156,7 +160,7 @@ describe("deriveLinearTransplantSnapshot", () => {
 
   it("returns undefined when nothing survives", async () => {
     const machine = createMachine();
-    await machine.startJourney();
+    await machine.controls.start();
     expect(
       deriveLinearTransplantSnapshot(linearSnapshot(machine), [
         "x",
@@ -182,7 +186,7 @@ describe("linear runtime persistence of visits", () => {
     const machine = createLinearJourney(definition, {
       plugins: [createPersistencePlugin<Ctx, StepId>({ key: "lin", storage })] as const
     });
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
     await machine.goToPreviousStep();
     machine.dispose();
@@ -197,7 +201,9 @@ describe("linear runtime persistence of visits", () => {
     });
     const snapshot = restored.getSnapshot() as LinearJourneySnapshot<Ctx, StepId>;
     expect(snapshot.visits).toEqual({ a: 2, b: 1, c: 0, d: 0 });
-    expect((restored.getComputed() as { isFirstTimeVisit?: boolean }).isFirstTimeVisit).toBe(false);
+    expect(
+      (restored.getComputed() as { isStepFirstTimeVisit?: boolean }).isStepFirstTimeVisit
+    ).toBe(false);
   });
 
   it("derives visits from the timeline for old envelopes without counts", async () => {

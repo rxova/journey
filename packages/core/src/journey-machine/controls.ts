@@ -4,7 +4,7 @@ import {
   buildSnapshot,
   cloneContext,
   now,
-  warnInDevelopment
+  warnDisposedNoop
 } from "./helpers";
 
 import type { JourneyBaseEvent, JourneyJsonObject, JourneySnapshot } from "../types";
@@ -51,10 +51,6 @@ export const createJourneyMachineControls = <
   steps: Record<TStepId, unknown>;
   snapshotShape: JourneySnapshotShape<TStepId>;
 }): JourneyMachineControls<TContext, TStepId> => {
-  const warnDisposedNoop = (operation: string) => {
-    warnInDevelopment(`Journey machine has been disposed; "${operation}" is a no-op.`);
-  };
-
   // Snapshot the initial context once at machine creation so later mutations
   // to the caller-owned reference cannot leak into subsequent resets.
   const initialContextSnapshot = cloneContext(initialContext);
@@ -72,7 +68,7 @@ export const createJourneyMachineControls = <
   return {
     startJourney: () => {
       if (runtime.isDisposed()) {
-        warnDisposedNoop("startJourney");
+        warnDisposedNoop("controls.start");
         return Promise.resolve({ snapshot: runtime.getSnapshot(), started: false });
       }
 
@@ -102,7 +98,7 @@ export const createJourneyMachineControls = <
     },
     resetJourney: () => {
       if (runtime.isDisposed()) {
-        warnDisposedNoop("resetJourney");
+        warnDisposedNoop("controls.reset");
         return Promise.resolve(runtime.getSnapshot());
       }
 

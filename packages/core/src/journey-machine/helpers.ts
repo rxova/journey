@@ -20,6 +20,7 @@ import type {
   JourneyGoToEvent,
   JourneyJsonObject,
   JourneyJsonValue,
+  JourneyNoMatchContext,
   JourneyPayloadFor,
   JourneyResolvedTransition,
   JourneySendEvent,
@@ -588,6 +589,34 @@ export const buildSendResult = <TContext extends JourneyJsonObject, TStepId exte
   ...(options.noOpReason !== undefined ? { noOpReason: options.noOpReason } : {}),
   snapshot
 });
+
+/** Development-only warning for machine methods called after `dispose()`. */
+export const warnDisposedNoop = (operation: string) => {
+  warnInDevelopment(`Journey machine has been disposed; "${operation}" is a no-op.`);
+};
+
+/** Default `onNoMatch` reporter: a development-only warning naming the dropped event. */
+export const reportNoMatchInDevelopment = (context: JourneyNoMatchContext<string>): void => {
+  warnInDevelopment(
+    `Journey event "${context.eventType}" matched no enabled transition from step "${context.from}" and was dropped.`
+  );
+};
+
+/**
+ * Builds the canceled/no-op send result returned when a queued call never ran
+ * (superseded by reset, or the machine was disposed). Disposal is an error the
+ * caller can act on, so the result carries a `JourneyDisposedError` then —
+ * this is the shared contract for every engine's queue-cancel fallback.
+ */
+export const createCanceledSendResultBuilder =
+  <TContext extends JourneyJsonObject, TStepId extends string>(runtime: {
+    getSnapshot: () => JourneySnapshot<TContext, TStepId>;
+    isDisposed: () => boolean;
+  }) =>
+  (operation = "send"): JourneySendResult<TContext, TStepId> =>
+    buildSendResult(runtime.getSnapshot(), false, {
+      ...(runtime.isDisposed() ? { error: new JourneyDisposedError(operation) } : {})
+    });
 
 /**
  * The variant-specific snapshot fields a machine stamps onto every snapshot it

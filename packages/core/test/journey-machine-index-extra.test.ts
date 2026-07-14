@@ -49,7 +49,7 @@ describe("createJourneyMachine extra coverage", () => {
     const onLeave = vi.fn();
     const machine = createJourneyMachine(createJourney({ onEnter, onLeave }));
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
 
     expect(onLeave).toHaveBeenCalledWith(
@@ -71,7 +71,7 @@ describe("createJourneyMachine extra coverage", () => {
   it("returns disposed errors for previous and last-visited navigation after dispose", async () => {
     const machine = createJourneyMachine(createJourney());
 
-    await machine.startJourney();
+    await machine.controls.start();
     machine.dispose();
 
     const previous = await machine.goToPreviousStep();
@@ -97,7 +97,7 @@ describe("createJourneyMachine extra coverage", () => {
         done: {}
       }
     });
-    await dispatchMachine.startJourney();
+    await dispatchMachine.controls.start();
     await dispatchMachine.goToNextStep();
     await flushAsync();
 
@@ -153,7 +153,7 @@ describe("createJourneyMachine extra coverage", () => {
       enterMachine,
       transitionEnterMachine
     ]) {
-      await machine.startJourney();
+      await machine.controls.start();
       await machine.goToNextStep();
       await flushAsync();
       expect(machine.getSnapshot().status).toBe("running");

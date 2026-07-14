@@ -63,13 +63,13 @@ describe("lifecycle safety", () => {
       })
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
     await started;
     expect(signalRef).not.toBeNull();
     expect(signalRef!.aborted).toBe(false);
 
-    await machine.resetJourney();
+    await machine.controls.reset();
 
     expect(signalRef!.aborted).toBe(true);
   });
@@ -98,7 +98,7 @@ describe("lifecycle safety", () => {
       })
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
     await started;
     expect(signalRef).not.toBeNull();

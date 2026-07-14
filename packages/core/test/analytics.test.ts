@@ -77,9 +77,9 @@ describe("analytics plugin", () => {
       ] as const
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
-    await machine.completeJourney();
+    await machine.controls.complete();
 
     const names = track.mock.calls.map(([event]) => event.name);
     expect(names).toEqual(
@@ -149,7 +149,7 @@ describe("analytics plugin", () => {
       ] as const
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
 
     expect(onError).toHaveBeenCalled();
@@ -171,7 +171,7 @@ describe("analytics plugin", () => {
         ] as const
       });
 
-      await machine.startJourney();
+      await machine.controls.start();
 
       vi.setSystemTime(new Date("2026-03-29T00:00:02.000Z"));
       await machine.goToNextStep();
@@ -183,7 +183,7 @@ describe("analytics plugin", () => {
       await machine.goToLastVisitedStep();
 
       vi.setSystemTime(new Date("2026-03-29T00:00:12.000Z"));
-      await machine.terminateJourney();
+      await machine.controls.terminate();
 
       const eventNames = track.mock.calls.map(([event]) => event.name);
       expect(eventNames).toEqual(
@@ -253,7 +253,7 @@ describe("analytics plugin", () => {
     });
 
     try {
-      await machine.startJourney();
+      await machine.controls.start();
       await machine.goToNextStep();
 
       const failed = findTracked(track, "transition_failed");
@@ -286,10 +286,10 @@ describe("analytics plugin", () => {
       ] as const
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
     await machine.goToPreviousStep();
-    await machine.completeJourney();
+    await machine.controls.complete();
 
     const started = findTracked(track, "journey_started");
     const viewed = findTracked(track, "step_viewed");
@@ -316,7 +316,7 @@ describe("analytics plugin", () => {
       ] as const
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     expect(track).toHaveBeenCalled();
 
     track.mockClear();
@@ -341,9 +341,9 @@ describe("analytics plugin", () => {
       ] as const
     });
 
-    await withoutMachineId.startJourney();
+    await withoutMachineId.controls.start();
     await withoutMachineId.goToNextStep();
-    await withoutMachineId.completeJourney({ reason: "done" });
+    await withoutMachineId.controls.complete({ reason: "done" });
 
     const withoutMachineIdEvents = trackWithoutMachineId.mock.calls.map(([event]) => event);
     expect(withoutMachineIdEvents.every((event) => event.machineId === undefined)).toBe(true);
@@ -361,11 +361,11 @@ describe("analytics plugin", () => {
       ] as const
     });
 
-    await withMachineId.startJourney();
+    await withMachineId.controls.start();
     await withMachineId.goToNextStep();
     await withMachineId.goToPreviousStep();
     await withMachineId.goToLastVisitedStep();
-    await withMachineId.terminateJourney({ reason: "abandoned" });
+    await withMachineId.controls.terminate({ reason: "abandoned" });
 
     expect(findTracked(trackWithMachineId, "navigation_previous")?.machineId).toBe("checkout");
     expect(findTracked(trackWithMachineId, "navigation_last_visited")?.machineId).toBe("checkout");
@@ -452,8 +452,8 @@ describe("analytics plugin", () => {
     const m1 = createJourneyMachine(createJourney(), { plugins: [plugin] as const });
     const m2 = createJourneyMachine(createJourney(), { plugins: [plugin] as const });
 
-    await m1.startJourney();
-    await m2.startJourney();
+    await m1.controls.start();
+    await m2.controls.start();
 
     // Disposing m1 must tear down only m1's subscription — m2 keeps tracking.
     m1.dispose();

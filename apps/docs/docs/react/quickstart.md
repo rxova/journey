@@ -94,7 +94,7 @@ const Password = () => {
 
 ### Everything `useWizard()` gives you
 
-Position (`activeStepId`, `activeStepIndex`, `stepCount`, `stepIds`, `isFirstStep`, `isLastStep`), visit tracking (`visited`, `isFirstTimeVisit`), status (`status`, `isLoading`, `isPaused`, `error`), navigation with the standard names (`goToNextStep`, `goToPreviousStep`, `goToStepById`, `goToStepByIndex`, `goToLastVisitedStep`, `completeJourney`, `resetJourney`, `pauseJourney`, `resumeJourney`, `clearStepError`), shared state (`context`, `updateContext`), metadata (`activeStepMeta`, `getStepMeta`), and escape hatches (`snapshot`, `machine`).
+Position (`activeStepId`, `activeStepIndex`, `stepCount`, `stepIds`, `isFirstStep`, `isLastStep`), visit tracking (`visited`, `isStepFirstTimeVisit`), status (`status`, `isLoading`, `isPaused`, `error`), navigation with the standard names (`goToNextStep`, `goToPreviousStep`, `goToStepById`, `goToStepByIndex`, `goToLastVisitedStep`, `clearStepError`), the machine's lifecycle command group passed through verbatim (`controls.start`, `controls.reset`, `controls.pause`, `controls.resume`, `controls.complete`, `controls.terminate`), shared state (`context`, `updateContext`), metadata (`activeStepMeta`, `getStepMeta`), and escape hatches (`snapshot`, `machine`).
 
 Persistence is one prop: `<Wizard persist={{ key: "signup" }}>…`.
 

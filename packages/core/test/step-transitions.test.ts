@@ -6,8 +6,8 @@ type StepId = "welcome" | "verify" | "dashboard" | "blocked";
 type EventMap = { type: "requestClose"; payload?: unknown };
 type Context = { needsVerification: boolean; count: number };
 
-const startJourney = <T extends { startJourney: () => unknown }>(machine: T): T => {
-  machine.startJourney();
+const startJourney = <T extends { controls: { start: () => unknown } }>(machine: T): T => {
+  machine.controls.start();
   return machine;
 };
 

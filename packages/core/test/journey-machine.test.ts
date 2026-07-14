@@ -53,7 +53,7 @@ const createMachine = () => createJourneyMachine<Context, StepId, EventMap, Meta
 
 const createStartedMachine = async () => {
   const machine = createMachine();
-  await machine.startJourney();
+  await machine.controls.start();
   return machine;
 };
 
@@ -119,7 +119,7 @@ describe("createJourneyMachine", () => {
     });
 
     // A throwing plugin observer must not block the transition.
-    await expect(machine.startJourney()).resolves.toMatchObject({ status: "running" });
+    await expect(machine.controls.start()).resolves.toMatchObject({ status: "running" });
     expect(machine.getSnapshot()).toMatchObject({
       status: "running",
       currentStepId: "start",
@@ -145,7 +145,7 @@ describe("createJourneyMachine", () => {
         }
       ] as const
     });
-    await machine.startJourney();
+    await machine.controls.start();
 
     await expect(
       machine.updateContext((context) => ({
@@ -230,7 +230,7 @@ describe("createJourneyMachine", () => {
 
     await machine.goToNextStep();
     await machine.goToNextStep();
-    const result = await machine.completeJourney();
+    const result = await machine.controls.complete();
 
     expect(result.transitioned).toBe(true);
     expect(result.transitionId).toEqual(expect.any(String));
@@ -241,7 +241,7 @@ describe("createJourneyMachine", () => {
   it("terminateJourney convenience API behaves like send(terminateJourney)", async () => {
     const machine = await createStartedMachine();
 
-    const result = await machine.terminateJourney();
+    const result = await machine.controls.terminate();
 
     expect(result.transitioned).toBe(true);
     expect(result.transitionId).toEqual(expect.any(String));
@@ -257,7 +257,7 @@ describe("createJourneyMachine", () => {
     await completeMachine.goToNextStep();
     const completeSpy = vi.spyOn(completeMachine, "send");
 
-    await completeMachine.completeJourney(payload);
+    await completeMachine.controls.complete(payload);
 
     expect(completeSpy).toHaveBeenLastCalledWith({
       type: "completeJourney",
@@ -267,7 +267,7 @@ describe("createJourneyMachine", () => {
     const terminateJourney = await createStartedMachine();
     const terminateSpy = vi.spyOn(terminateJourney, "send");
 
-    await terminateJourney.terminateJourney(payload);
+    await terminateJourney.controls.terminate(payload);
 
     expect(terminateSpy).toHaveBeenLastCalledWith({
       type: "terminateJourney",
@@ -388,7 +388,7 @@ describe("createJourneyMachine", () => {
       events.push(event);
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.send({ type: "goToNextStep" });
     unsubscribe();
 
@@ -420,7 +420,7 @@ describe("createJourneyMachine", () => {
 
     expect(events).toEqual([]);
 
-    await machine.startJourney();
+    await machine.controls.start();
 
     expect(events).toEqual([
       {
@@ -429,48 +429,6 @@ describe("createJourneyMachine", () => {
         timestamp: expect.any(Number)
       }
     ]);
-  });
-
-  it("subscribeStart filters to startup events", async () => {
-    const machine = createMachine();
-    const events: Array<{ stepId: StepId; timestamp: number }> = [];
-
-    machine.subscribeStart((event) => {
-      events.push({ stepId: event.stepId, timestamp: event.timestamp });
-    });
-
-    await machine.startJourney();
-    await machine.goToNextStep();
-
-    expect(events).toEqual([
-      {
-        stepId: "start",
-        timestamp: expect.any(Number)
-      }
-    ]);
-  });
-
-  it("subscribeReset filters to reset events and respects unsubscribe", async () => {
-    const machine = await createStartedMachine();
-    const events: Array<{ stepId: StepId; timestamp: number }> = [];
-    const unsubscribe = machine.subscribeReset((event) => {
-      events.push({ stepId: event.stepId, timestamp: event.timestamp });
-    });
-
-    await machine.resetJourney();
-
-    expect(events).toEqual([
-      {
-        stepId: "start",
-        timestamp: expect.any(Number)
-      }
-    ]);
-
-    unsubscribe();
-    await machine.startJourney();
-    await machine.resetJourney();
-
-    expect(events).toHaveLength(1);
   });
 
   it("emits lifecycle.error events and calls onLifecycleError when lifecycle handlers throw", async () => {
@@ -496,7 +454,7 @@ describe("createJourneyMachine", () => {
       events.push(event);
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
     await Promise.resolve();
     await Promise.resolve();
@@ -551,7 +509,7 @@ describe("createJourneyMachine", () => {
       events.push(event);
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
     await Promise.resolve();
     await Promise.resolve();
@@ -620,7 +578,7 @@ describe("createJourneyMachine", () => {
       events.push(event);
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToNextStep();
     await Promise.resolve();
     await Promise.resolve();
@@ -676,55 +634,6 @@ describe("createJourneyMachine", () => {
     expect(before).toEqual({ title: "Details" });
     expect(after).toEqual({ title: "Details" });
     expect(after).not.toBe(before);
-  });
-
-  it("subscribeComplete filters to terminal completion events", async () => {
-    const machine = await createStartedMachine();
-    const events: Array<{ stepId: StepId; timestamp: number }> = [];
-
-    machine.subscribeComplete((event) => {
-      events.push({ stepId: event.stepId, timestamp: event.timestamp });
-    });
-
-    await machine.goToNextStep();
-    await machine.goToNextStep();
-
-    expect(events).toEqual([]);
-
-    await machine.completeJourney();
-
-    expect(events).toHaveLength(1);
-    expect(events[0]).toEqual({
-      stepId: "review",
-      timestamp: expect.any(Number)
-    });
-  });
-
-  it("subscribeTerminate filters to terminal close events and respects unsubscribe", async () => {
-    const machine = await createStartedMachine();
-    const events: Array<{ stepId: StepId; timestamp: number }> = [];
-    const unsubscribe = machine.subscribeTerminate((event) => {
-      events.push({ stepId: event.stepId, timestamp: event.timestamp });
-    });
-
-    unsubscribe();
-    await machine.terminateJourney();
-
-    expect(events).toEqual([]);
-
-    const activeMachine = await createStartedMachine();
-    const activeEvents: Array<{ stepId: StepId; timestamp: number }> = [];
-    activeMachine.subscribeTerminate((event) => {
-      activeEvents.push({ stepId: event.stepId, timestamp: event.timestamp });
-    });
-
-    await activeMachine.terminateJourney();
-
-    expect(activeEvents).toHaveLength(1);
-    expect(activeEvents[0]).toEqual({
-      stepId: "start",
-      timestamp: expect.any(Number)
-    });
   });
 
   it("subscribeSelector notifies only when selected value changes", async () => {
@@ -792,7 +701,7 @@ describe("createJourneyMachine", () => {
     expect(prev.transitioned).toBe(false);
     expect(last.transitioned).toBe(false);
 
-    await machine.resetJourney();
+    await machine.controls.reset();
     expect(machine.getSnapshot().status).toBe("idled");
     expect(machine.getSnapshot().currentStepId).toBe("start");
   });

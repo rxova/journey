@@ -42,7 +42,7 @@ describe("handler overrides at machine creation", () => {
       { handlers: { allow: () => true } }
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.send({ type: "submit" });
 
     // Definition would have blocked (allow → false); the override let it through.
@@ -60,7 +60,7 @@ describe("handler overrides at machine creation", () => {
       { handlers: { track: () => (overrideTrackCalls += 1) } }
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.send({ type: "submit" });
 
     // `allow` came from the definition (transition fired); `track` was overridden.
@@ -74,14 +74,14 @@ describe("handler overrides at machine creation", () => {
     const definition = buildDefinition({ allow: () => false, track: () => undefined });
 
     const overridden = createGraphJourney(definition, { handlers: { allow: () => true } });
-    await overridden.startJourney();
+    await overridden.controls.start();
     await overridden.send({ type: "submit" });
     expect(overridden.getSnapshot().currentStepId).toBe("approved");
     overridden.dispose();
 
     // Same definition, no override: the original `allow` (false) must still gate.
     const pristine = createGraphJourney(definition);
-    await pristine.startJourney();
+    await pristine.controls.start();
     await pristine.send({ type: "submit" });
     expect(pristine.getSnapshot().currentStepId).toBe("verify");
     pristine.dispose();
@@ -110,7 +110,7 @@ describe("no-match observability", () => {
     const onNoMatch = vi.fn();
     const machine = createGraphJourney(guardedDefinition, { onNoMatch });
 
-    await machine.startJourney();
+    await machine.controls.start();
     const result = await machine.send({ type: "submit" });
 
     expect(result.transitioned).toBe(false);
@@ -131,7 +131,7 @@ describe("no-match observability", () => {
       { onNoMatch }
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.send({ type: "submit" });
 
     expect(onNoMatch).toHaveBeenCalledWith({ from: "verify", eventType: "submit" });
@@ -150,7 +150,7 @@ describe("no-match observability", () => {
       { onNoMatch }
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.send({ type: "submit" });
 
     expect(machine.getSnapshot().currentStepId).toBe("approved");
@@ -162,7 +162,7 @@ describe("no-match observability", () => {
     const onNoMatch = vi.fn();
     const machine = createGraphJourney(guardedDefinition, { onNoMatch });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToStepById("approved");
 
     expect(onNoMatch).toHaveBeenCalledWith({ from: "verify", eventType: "goToStepById" });
@@ -177,7 +177,7 @@ describe("no-match observability", () => {
 
     try {
       const machine = createGraphJourney(guardedDefinition);
-      await machine.startJourney();
+      await machine.controls.start();
       await machine.send({ type: "submit" });
 
       expect(warn).toHaveBeenCalledTimes(1);
@@ -200,7 +200,7 @@ describe("no-match observability", () => {
       { onNoMatch }
     );
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.goToStepById("approved");
 
     expect(machine.getSnapshot().currentStepId).toBe("approved");

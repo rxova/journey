@@ -358,7 +358,7 @@ export type JourneyLinearComputed<TStepId extends string> = JourneyComputedBase<
   isLastStep: boolean;
   stepOrder: readonly TStepId[];
   /** True while the active step is on its first visit (`visits[active] <= 1`). */
-  isFirstTimeVisit: boolean;
+  isStepFirstTimeVisit: boolean;
 };
 
 /** Computed state available when transitions use graph object syntax. */

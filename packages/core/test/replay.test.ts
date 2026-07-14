@@ -36,7 +36,7 @@ describe("replay plugin", () => {
       plugins: [createReplayPlugin()] as const
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.send({ type: "goToNextStep" });
 
     const session = machine.getReplaySession();
@@ -62,7 +62,7 @@ describe("replay plugin", () => {
       plugins: [createReplayPlugin()] as const
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.send({ type: "fail", payload: { reason: "test" } });
 
     const exported = machine.exportReplaySession({ pretty: true });
@@ -88,7 +88,7 @@ describe("replay plugin", () => {
       plugins: [createReplayPlugin({ maxEntries: 2 })] as const
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
     await machine.send({ type: "goToNextStep" });
 
     const beforeClear = machine.getReplaySession();
@@ -108,7 +108,7 @@ describe("replay plugin", () => {
       plugins: [createReplayPlugin({ captureEvents: false, maxEntries: 0.25 })] as const
     });
 
-    await snapshotsOnly.startJourney();
+    await snapshotsOnly.controls.start();
     await snapshotsOnly.send({ type: "goToNextStep" });
 
     const snapshotSession = snapshotsOnly.getReplaySession();
@@ -121,7 +121,7 @@ describe("replay plugin", () => {
       plugins: [createReplayPlugin({ captureSnapshots: false })] as const
     });
 
-    await eventsOnly.startJourney();
+    await eventsOnly.controls.start();
     await eventsOnly.send({ type: "goToNextStep" });
 
     const eventSession = eventsOnly.getReplaySession();
@@ -140,7 +140,7 @@ describe("replay plugin", () => {
       ] as const
     });
 
-    await machine.startJourney();
+    await machine.controls.start();
 
     for (let index = 0; index < 505; index += 1) {
       await machine.updateContext((context) => ({
@@ -226,7 +226,7 @@ describe("replay plugin", () => {
     const m1 = createJourneyMachine(createJourney(), { plugins: [plugin] as const });
     const m2 = createJourneyMachine(createJourney(), { plugins: [plugin] as const });
 
-    await m1.startJourney();
+    await m1.controls.start();
     await m1.send({ type: "goToNextStep" });
 
     const sessionOne = m1.getReplaySession();

@@ -15,6 +15,7 @@ import {
 import type {
   AssertNoSelfTransitions,
   GraphJourneyDefinition,
+  GraphJourneyMachine,
   GraphJourneySnapshot,
   JourneyBaseEvent,
   JourneyBuilderCustomEventKey,
@@ -92,14 +93,7 @@ export type GraphJourneyBundle<
       onLeave?: (args: { context: TContext }) => void;
     }
   ) => void;
-  useMachine: () => JourneyMachineWithPlugins<
-    TContext,
-    TStepId,
-    TEvents,
-    TStepMeta,
-    THandlers,
-    TPlugins
-  >;
+  useMachine: () => GraphJourneyMachine<TContext, TStepId, TEvents, TStepMeta, THandlers, TPlugins>;
 };
 
 export type GraphJourneyBundleFromDefinition<
@@ -143,21 +137,15 @@ type AnyGraphMachine = JourneyMachineWithPlugins<
 >;
 
 const bindApi = (machine: AnyGraphMachine) => ({
-  startJourney: machine.startJourney,
+  controls: machine.controls,
   send: machine.send,
   goToNextStep: machine.goToNextStep,
   goToStepById: machine.goToStepById,
-  terminateJourney: machine.terminateJourney,
-  completeJourney: machine.completeJourney,
   goToPreviousStep: machine.goToPreviousStep,
   goToLastVisitedStep: machine.goToLastVisitedStep,
   clearStepError: machine.clearStepError,
   updateContext: machine.updateContext,
-  getStepMeta: machine.getStepMeta,
-  pauseJourney: machine.pauseJourney,
-  resumeJourney: machine.resumeJourney,
-  isPaused: machine.isPaused,
-  resetJourney: () => machine.resetJourney()
+  getStepMeta: machine.getStepMeta
 });
 
 /**
@@ -264,7 +252,7 @@ export function createGraphJourney<
       }
 
       if (autoStart && machine.getSnapshot().status === "idled") {
-        machine.startJourney().catch((error: unknown) => {
+        machine.controls.start().catch((error: unknown) => {
           if (onErrorRef.current) {
             onErrorRef.current(error, { phase: "start" });
             return;
@@ -332,7 +320,7 @@ export function createGraphJourney<
     useStepLifecycle: (stepId, callbacks) =>
       useHeadlessStepLifecycle(useMachine(), stepId, callbacks as never),
     useMachine: () =>
-      useMachine() as unknown as JourneyMachineWithPlugins<
+      useMachine() as unknown as GraphJourneyMachine<
         TContext,
         TStepId,
         TEvents,
