@@ -725,3 +725,117 @@ export default function App() {
 // Login.tsx
 const { context, updateContext, goToNextStep } = useWizard<LoginContext>();
 ```
+
+```ts
+
+
+const machine = createLinearMachine({
+  steps: [{
+    id:'',
+    metadata: { } // whatever, lets say that here we have free form but that all the steps need to be with it
+    onEnter?: ()=>{} // should be able to inspect the snapshot
+    onLeave?: ()=>{} // should be able to inspect the snapshot
+  }], // could just be an array of ids too.
+  context: {} // starting sharing data layer. might even be a boolean.
+}, options: {
+  autoStart: false // default is true ,
+  defaultTimeoutMs?: number; // for Async
+  plugins?: TPlugins;
+  initialSnapshot?: JourneySnapshotStateBase<JourneyJsonObject, string>;
+  onListenerError?: (error: unknown, context: "snapshot" | "event") => void;
+  onLifecycleError?: (error: unknown, context: JourneyLifecycleErrorContext<string>) => void;
+  onNoMatch?: (context: JourneyNoMatchContext<string>) => void; // relevant for graph
+})
+
+const machineResult = {
+  controls: {
+    pause(),
+    terminate(),
+    resume(),
+    restart(),
+    start(),
+    complete(),
+  },
+  dispose,
+  navigate: {
+    goToStepById(),
+    goToPreviousStep(n: amountOfSteps),
+    goToNextStep(),
+    goToLastVisitedStep() // rehydrates histroy, does nothing is currrentStep is the last step
+  },
+  history: {
+    visited:{
+      TStepId: Boolean
+    },
+    timeline: TStepId[],
+    currentIndex: number, // pointer in the timeline, not currentIndex of the step.
+  },
+  computed: => {
+    type: 'linear' | 'graph' | 'headless',
+    state: 'idle' | 'running' | 'paused' | 'completed' | 'terminated',
+    async: {
+        transitioning: boolean,          // true while onLeave/onEnter promises are pending
+    }
+    currentStep: {
+      id: string,
+      index: number,
+      isLastStep: boolean,
+      isFirstStep: boolean,
+      isFirstTimeVisit: boolean, // if it is true in history.visited
+      metadata: // the metadata on the declaration
+      async: {isLoading, isError, error, ...etc} // to be designed. Related to onEnter and onLeave.
+    },
+    steps: {
+      totalSteps: number,
+      stepOrder: readonly TStepId[],
+      visitedStepCount,
+    },
+    machine:{
+      isLoading, // TBD
+      isIdle: snapshot.status === "idled",
+      isRunning: snapshot.status === "running",
+      isComplete: snapshot.status === "completed",
+      isTerminated: snapshot.status === "terminated",
+    }
+  },
+  subscriptions: {
+    subscribeSelector(),
+    subscribeEvent(), // this one can do when a step enters, a step leaves.
+     on(event, listener): Unsubscribe, // events: 'stepEnter' | 'stepLeave' | 'statusChange' | 'contextChange' | 'navigationBlocked'
+
+  },
+  context: {
+    update();
+    value: TData, // open to suggestions.
+  }
+}
+
+
+type NavigationResult =
+  | { ok: true; from: TStepId | null; to: TStepId }
+  | { ok: false; reason: 'blocked'         // an onLeave guard returned false
+              | 'transitioning'            // nav requested while hooks pending → rejected, not queued
+              | 'not-running'              // paused / idle / completed / terminated
+              | 'invalid-target' }         // unknown id, or graph edge doesn't exist
+
+
+// snapshot-level — "is any hook chain in flight"
+transition: {
+  pending: boolean,
+  phase: 'leaving' | 'entering' | null,
+  from: TStepId | null,
+  to: TStepId | null,
+}
+
+
+// snapshot.currentStep.async — the state of THIS step's onEnter
+{ isLoading: boolean, isSuccess: boolean, isError: boolean, error: unknown | null }
+
+
+export type JourneyBaseEvent = {
+  type: string;
+  payload?: unknown;
+};
+```
+
+notes: autostart triggers the onEnter on the first step, doesn't matter if it is async. User problem. if they don't want an async on the first step, they can just not use it, and trigger stuff inside the component.
