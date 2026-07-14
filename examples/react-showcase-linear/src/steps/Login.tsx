@@ -1,24 +1,25 @@
 "use client";
 
 import React from "react";
+import { useWizard } from "@rxova/journey-react";
 import { mockApi } from "../api";
-import { journey } from "../journey";
+import type { LoginContext } from "../context";
 
-export const Login = () => {
-  const snapshot = journey.useJourneySnapshot();
-  const api = journey.useJourneyApi();
+export const Login = (props: { id?: string }) => {
+  void props;
+  const { context, updateContext, goToNextStep } = useWizard<LoginContext>();
   const [loading, setLoading] = React.useState(false);
 
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const result = await mockApi.login(snapshot.context.username, snapshot.context.password);
+      const result = await mockApi.login(context.username, context.password);
       if (result.success) {
         const qrResult = await mockApi.generateQrCode();
-        await api.updateContext((ctx) => ({ ...ctx, qrCode: qrResult.qrCode, error: null }));
-        await api.goToNextStep();
+        await updateContext((ctx) => ({ ...ctx, qrCode: qrResult.qrCode, error: null }));
+        await goToNextStep();
       } else {
-        await api.updateContext((ctx) => ({ ...ctx, error: "Login failed" }));
+        await updateContext((ctx) => ({ ...ctx, error: "Login failed" }));
       }
     } finally {
       setLoading(false);
@@ -33,10 +34,10 @@ export const Login = () => {
         Username
         <input
           type="text"
-          value={snapshot.context.username}
+          value={context.username}
           onChange={(e) => {
             const username = e.target.value;
-            void api.updateContext((ctx) => ({ ...ctx, username }));
+            void updateContext((ctx) => ({ ...ctx, username }));
           }}
           placeholder="alice"
         />
@@ -45,16 +46,16 @@ export const Login = () => {
         Password
         <input
           type="password"
-          value={snapshot.context.password}
+          value={context.password}
           onChange={(e) => {
             const password = e.target.value;
-            void api.updateContext((ctx) => ({ ...ctx, password }));
+            void updateContext((ctx) => ({ ...ctx, password }));
           }}
           placeholder="password"
         />
       </label>
       <p className="hint">Hint: any password will work.</p>
-      {snapshot.context.error && <div className="error">{snapshot.context.error}</div>}
+      {context.error && <div className="error">{context.error}</div>}
       <div className="actions">
         <button onClick={() => void handleSubmit()} disabled={loading}>
           {loading ? "Signing in..." : "Sign In"}

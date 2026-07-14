@@ -1,23 +1,24 @@
 "use client";
 
 import React from "react";
+import { useWizard } from "@rxova/journey-react";
 import { mockApi } from "../api";
-import { journey } from "../journey";
+import type { LoginContext } from "../context";
 
-export const VerifyCode = () => {
-  const snapshot = journey.useJourneySnapshot();
-  const api = journey.useJourneyApi();
+export const VerifyCode = (props: { id?: string }) => {
+  void props;
+  const { context, updateContext, goToNextStep, goToPreviousStep } = useWizard<LoginContext>();
   const [loading, setLoading] = React.useState(false);
 
   const handleVerify = async () => {
     setLoading(true);
     try {
-      const result = await mockApi.verifyCode(snapshot.context.verificationCode);
+      const result = await mockApi.verifyCode(context.verificationCode);
       if (result.success) {
-        await api.goToNextStep();
+        await goToNextStep();
       } else {
-        const nextAttempts = snapshot.context.attempts + 1;
-        await api.updateContext((ctx) => ({
+        const nextAttempts = context.attempts + 1;
+        await updateContext((ctx) => ({
           ...ctx,
           error:
             nextAttempts >= 3
@@ -27,7 +28,7 @@ export const VerifyCode = () => {
         }));
 
         if (nextAttempts >= 3) {
-          await api.goToNextStep();
+          await goToNextStep();
         }
       }
     } finally {
@@ -45,10 +46,10 @@ export const VerifyCode = () => {
         Verification Code
         <input
           type="text"
-          value={snapshot.context.verificationCode}
+          value={context.verificationCode}
           onChange={(e) => {
             const verificationCode = e.target.value;
-            void api.updateContext((ctx) => ({
+            void updateContext((ctx) => ({
               ...ctx,
               verificationCode,
               error: null
@@ -58,12 +59,12 @@ export const VerifyCode = () => {
           maxLength={6}
         />
       </label>
-      {snapshot.context.error && <div className="error">{snapshot.context.error}</div>}
+      {context.error && <div className="error">{context.error}</div>}
       <div className="step-info">
-        <span>Attempts: {snapshot.context.attempts}</span>
+        <span>Attempts: {context.attempts}</span>
       </div>
       <div className="actions">
-        <button className="secondary" onClick={() => void api.goToPreviousStep()}>
+        <button className="secondary" onClick={() => void goToPreviousStep()}>
           Back
         </button>
         <button onClick={() => void handleVerify()} disabled={loading}>
