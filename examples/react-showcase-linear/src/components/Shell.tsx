@@ -1,20 +1,24 @@
 "use client";
 
 import React from "react";
-import { journey } from "../journey";
-const EventLog = () => {
-  const [events, setEvents] = React.useState<string[]>([]);
-  const snapshot = journey.useJourneySnapshot();
+import { useWizard } from "@rxova/journey-react";
+import { useJourneyEvent } from "@rxova/journey-react/headless";
 
-  journey.useJourneyEvent((event) => {
+import type { LoginContext } from "../context";
+
+const EventLog = () => {
+  const { machine, status, snapshot } = useWizard<LoginContext>();
+  const [events, setEvents] = React.useState<string[]>([]);
+
+  useJourneyEvent(machine, (event) => {
     setEvents((prev) => [...prev.slice(-19), `${new Date().toLocaleTimeString()} ${event.type}`]);
   });
 
   React.useEffect(() => {
-    if (snapshot.status === "idled" && snapshot.history.timeline.length === 1) {
+    if (status === "idled" && snapshot.history.timeline.length === 1) {
       setEvents([]);
     }
-  }, [snapshot.history.timeline.length, snapshot.status]);
+  }, [snapshot.history.timeline.length, status]);
 
   return (
     <div className="event-log">
@@ -29,9 +33,8 @@ const EventLog = () => {
 };
 
 const ProgressBar = () => {
-  const computed = journey.useJourneyComputed();
-  const length = computed.mode === "linear" ? computed.journeyLength : 1;
-  const pct = length > 1 ? (computed.activeStepIndex / (length - 1)) * 100 : 0;
+  const { activeStepIndex, stepCount } = useWizard<LoginContext>();
+  const pct = stepCount > 1 ? (activeStepIndex / (stepCount - 1)) * 100 : 0;
 
   return (
     <div className="progress-bar">
@@ -40,9 +43,9 @@ const ProgressBar = () => {
   );
 };
 
-export const Shell = ({ children }: { children: React.ReactNode }) => {
-  const snapshot = journey.useJourneySnapshot();
-  const computed = journey.useJourneyComputed();
+export const Shell = ({ children }: { children?: React.ReactNode }) => {
+  const { snapshot, status, activeStepIndex, stepCount, isFirstStep, isLastStep } =
+    useWizard<LoginContext>();
 
   return (
     <div className="layout">
@@ -50,19 +53,16 @@ export const Shell = ({ children }: { children: React.ReactNode }) => {
         <h1>
           React Showcase: Linear Mode <span className="badge badge-linear">LINEAR</span>
         </h1>
-        <p>
-          React linear Vite example for the no_2fa happy path. Each step advances with goToNextStep.
-        </p>
+        <p>Steps are just components inside &lt;Wizard/&gt;; each advances with goToNextStep.</p>
       </header>
 
       <div className="card">
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.75rem" }}>
-          <span className={`status status-${snapshot.status}`}>{snapshot.status}</span>
+          <span className={`status status-${status}`}>{status}</span>
           <span style={{ fontSize: "0.8rem", color: "#888" }}>
-            Step {computed.activeStepIndex + 1} of{" "}
-            {computed.mode === "linear" ? computed.stepCount : "?"}
-            {computed.mode === "linear" && computed.isFirstStep && " (first)"}
-            {computed.mode === "linear" && computed.isLastStep && " (last)"}
+            Step {activeStepIndex + 1} of {stepCount}
+            {isFirstStep && " (first)"}
+            {isLastStep && " (last)"}
           </span>
         </div>
 

@@ -91,7 +91,13 @@
       "name": "react/createJourney",
       "path": "dist/index.js",
       "import": "{ createJourney }",
-      "limit": "2 kB"
+      "limit": "4.5 kB"
+    },
+    {
+      "name": "react/Wizard",
+      "path": "dist/index.js",
+      "import": "{ Wizard, useWizard, useWizardStep }",
+      "limit": "5 kB"
     },
     {
       "name": "react/headless",

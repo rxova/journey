@@ -1,3 +1,25 @@
+export {
+  Wizard,
+  WizardStep,
+  createWizard,
+  useWizard,
+  useWizardSelector,
+  useWizardStep
+} from "./wizard";
+export type {
+  CreateWizardConfig,
+  UseWizardResult,
+  UseWizardSelector,
+  WizardBundle,
+  WizardBundleProps,
+  WizardPersistProp,
+  WizardProps,
+  WizardStepChange,
+  WizardStepConfig,
+  WizardStepHandler,
+  WizardStepProps,
+  WizardStepsProp
+} from "./wizard";
 export { createLinearJourney } from "./CreateLinearJourney";
 export { createHeadlessJourney } from "./CreateHeadlessJourney";
 export { createGraphJourney } from "./CreateGraphJourney";

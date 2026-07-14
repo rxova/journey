@@ -11,7 +11,13 @@ const common = {
   legalComments: "none",
   platform: "neutral",
   format: "esm",
-  external: ["react", "react/jsx-runtime", "react/jsx-dev-runtime", "@rxova/journey-core"]
+  external: [
+    "react",
+    "react/jsx-runtime",
+    "react/jsx-dev-runtime",
+    "@rxova/journey-core",
+    "@rxova/journey-core/persistence"
+  ]
 };
 
 for (const [entryPoint, outfile] of [
