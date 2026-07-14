@@ -102,6 +102,20 @@ describe("children flattening", () => {
     expect(() => render(<LinearJourney>{null}</LinearJourney>)).toThrow(/at least one step/);
     consoleError.mockRestore();
   });
+
+  it("describes intrinsic and anonymous components in missing-id errors", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const Anonymous = () => null;
+    Object.defineProperty(Anonymous, "name", { value: undefined });
+
+    expect(() => render(<LinearJourney>{React.createElement("div")}</LinearJourney>)).toThrow(
+      /child #0 \(div\)/
+    );
+    expect(() => render(<LinearJourney>{React.createElement(Anonymous)}</LinearJourney>)).toThrow(
+      /anonymous component/
+    );
+    consoleError.mockRestore();
+  });
 });
 
 describe("navigation edges", () => {
@@ -144,6 +158,29 @@ describe("navigation edges", () => {
     await flush();
     expect(onError).toHaveBeenCalledWith(expect.any(Error), { phase: "start" });
     expect(screen.getByTestId("step-a")).toBeTruthy();
+  });
+
+  it("reports rejected start navigation through onError", async () => {
+    const boom = new Error("initial step refused to leave");
+    const onError = vi.fn();
+    render(
+      <LinearJourney
+        startStepId="b"
+        onError={onError}
+        steps={{
+          a: {
+            component: StepA,
+            onLeave: () => {
+              throw boom;
+            }
+          },
+          b: StepB
+        }}
+      />
+    );
+    await flush();
+
+    expect(onError).toHaveBeenCalledWith(boom, { phase: "start" });
   });
 
   it("falls back to the first step when a dynamic change removes the current step", async () => {

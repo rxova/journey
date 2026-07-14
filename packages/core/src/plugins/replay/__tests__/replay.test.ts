@@ -57,6 +57,31 @@ describe("replay plugin", () => {
     expect(machine.plugins.replay.getReplaySession().entries).toEqual([]);
   });
 
+  it("records step hook errors", async () => {
+    const machine = createLinearJourney(
+      {
+        steps: [
+          "a",
+          {
+            id: "b",
+            onEnter: () => {
+              throw new Error("boom");
+            }
+          }
+        ],
+        context: {}
+      },
+      { plugins: [createReplayPlugin()] as const }
+    );
+    machine.controls.start();
+    await flush();
+    await machine.navigate.goToNextStep();
+
+    expect(machine.plugins.replay.getReplaySession().entries).toContainEqual(
+      expect.objectContaining({ kind: "error" })
+    );
+  });
+
   it("serializeReplaySession survives errors, dates, and circular data", () => {
     const circular: Record<string, unknown> = {};
     circular.self = circular;

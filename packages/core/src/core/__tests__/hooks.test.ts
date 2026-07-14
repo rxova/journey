@@ -184,6 +184,22 @@ describe("step hooks", () => {
     expect(machine.getSnapshot().currentStep?.id).toBe("a");
   });
 
+  it("defaultTimeoutMs preserves a rejected onLeave error", async () => {
+    const boom = new Error("leave rejected");
+    const machine = createLinearJourney(
+      { steps: [{ id: "a", onLeave: () => Promise.reject(boom) }, "b"], context: {} },
+      { defaultTimeoutMs: 100 }
+    );
+    machine.controls.start();
+    await flush();
+
+    expect(await machine.navigate.goToNextStep()).toEqual({
+      ok: false,
+      reason: "error",
+      error: boom
+    });
+  });
+
   it("defaultTimeoutMs surfaces a slow onEnter as a step error", async () => {
     const machine = createLinearJourney(
       { steps: ["a", { id: "b", onEnter: () => wait(200) }], context: {} },

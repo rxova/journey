@@ -5,6 +5,7 @@ import { isExpectedWindowOrigin, resolveWindowTargetOrigin } from "./origin";
 describe("resolveWindowTargetOrigin", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("returns the window origin when it is a real origin", () => {
@@ -19,11 +20,17 @@ describe("resolveWindowTargetOrigin", () => {
     vi.spyOn(window, "location", "get").mockReturnValue({ ...window.location, origin: "null" });
     expect(resolveWindowTargetOrigin()).toBe("*");
   });
+
+  it("returns '*' outside a browser", () => {
+    vi.stubGlobal("window", undefined);
+    expect(resolveWindowTargetOrigin()).toBe("*");
+  });
 });
 
 describe("isExpectedWindowOrigin", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("returns true when origin matches window.location.origin", () => {
@@ -57,5 +64,10 @@ describe("isExpectedWindowOrigin", () => {
 
   it("returns false for empty string origin", () => {
     expect(isExpectedWindowOrigin("")).toBe(false);
+  });
+
+  it("rejects origins outside a browser", () => {
+    vi.stubGlobal("window", undefined);
+    expect(isExpectedWindowOrigin("https://example.com")).toBe(false);
   });
 });

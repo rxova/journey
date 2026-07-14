@@ -84,4 +84,28 @@ describe("plugins — observe + extend, never intercept", () => {
     expect(await machine.navigate.goToNextStep()).toEqual({ ok: true, from: "a", to: "b" });
     consoleError.mockRestore();
   });
+
+  it("step lifecycle taps can be unsubscribed independently", async () => {
+    const events: string[] = [];
+    let stopTransition: () => void = () => undefined;
+    const observer: JourneyPlugin = {
+      name: "step-observer",
+      setup(host) {
+        host.onStepEnter(({ to }) => events.push(`enter:${to}`));
+        host.onStepLeave(({ from }) => events.push(`leave:${from}`));
+        stopTransition = host.onTransition(({ to }) => events.push(`transition:${to}`));
+        return {};
+      }
+    };
+    const machine = createLinearJourney(
+      { steps: ["a", "b"], context: {} },
+      { plugins: [observer] as const }
+    );
+    machine.controls.start();
+    await flush();
+    stopTransition();
+    await machine.navigate.goToNextStep();
+
+    expect(events).toEqual(["enter:a", "transition:a", "leave:a", "enter:b"]);
+  });
 });

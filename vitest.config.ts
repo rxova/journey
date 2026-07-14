@@ -44,16 +44,23 @@ export default defineConfig({
       {
         find: "@rxova/journey-core/subscription-enhancer",
         replacement: fileURLToPath(
-          new URL("./packages/core/src/plugins/subscription-enhancer/subscription-enhancer.ts", import.meta.url)
+          new URL(
+            "./packages/core/src/plugins/subscription-enhancer/subscription-enhancer.ts",
+            import.meta.url
+          )
         )
       },
       {
         find: "@rxova/journey-core/testing",
-        replacement: fileURLToPath(new URL("./packages/core/src/__tests__/helpers.ts", import.meta.url))
+        replacement: fileURLToPath(
+          new URL("./packages/core/src/__tests__/helpers.ts", import.meta.url)
+        )
       },
       {
         find: "@rxova/journey-core/convert",
-        replacement: fileURLToPath(new URL("./packages/core/src/convert/convert.ts", import.meta.url))
+        replacement: fileURLToPath(
+          new URL("./packages/core/src/convert/convert.ts", import.meta.url)
+        )
       },
       {
         find: "@rxova/journey-core/execution-paths",
@@ -151,13 +158,20 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "text-summary", "html", "json-summary", "lcov"],
       thresholds: {
+        perFile: true,
         statements: 95,
         branches: 95,
         functions: 95,
         lines: 95
       },
       include: coverageInclude,
-      exclude: ["**/*.d.ts", "packages/**/types.ts", "packages/**/*.types.ts", "**/__tests__/**", "packages/*/src/types/**/*.ts"]
+      exclude: [
+        "**/*.d.ts",
+        "packages/**/types.ts",
+        "packages/**/*.types.ts",
+        "**/__tests__/**",
+        "packages/*/src/types/**/*.ts"
+      ]
     }
   }
 });

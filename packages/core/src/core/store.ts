@@ -31,7 +31,6 @@ export class JourneyStore<TContext, TStepId extends string> {
   /** Replaces the snapshot and notifies selector subscribers whose value changed. */
   publish(next: JourneySnapshot<TContext, TStepId>): void {
     this.snapshot = next;
-    if (this.disposed) return;
     for (const entry of [...this.selectorEntries]) {
       let selected: unknown;
       try {
@@ -88,7 +87,6 @@ export class JourneyStore<TContext, TStepId extends string> {
     event: TEvent,
     payload: JourneyEventPayloads<TContext, TStepId>[TEvent]
   ): void {
-    if (this.disposed) return;
     const listeners = this.eventListeners.get(event);
     if (!listeners) return;
     for (const listener of [...listeners]) {
