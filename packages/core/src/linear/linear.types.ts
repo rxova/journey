@@ -7,6 +7,24 @@ import type {
   PluginApis
 } from "../core/types";
 
+/** Optional type-only declarations for terminal outcome payloads. */
+export type JourneyOutcomeTypes = {
+  readonly complete?: unknown;
+  readonly terminate?: unknown;
+};
+
+export type CompletePayloadOf<TTypes extends JourneyOutcomeTypes> = TTypes extends {
+  readonly complete: infer TPayload;
+}
+  ? TPayload
+  : unknown;
+
+export type TerminatePayloadOf<TTypes extends JourneyOutcomeTypes> = TTypes extends {
+  readonly terminate: infer TPayload;
+}
+  ? TPayload
+  : unknown;
+
 /** Full linear step config; a bare string is shorthand for `{ id, metadata: {} }`. */
 export type LinearStepConfig<
   TContext = unknown,
@@ -35,9 +53,15 @@ export type LinearStepInput<TContext, TMeta> = string | LinearStepConfig<TContex
  * Pure-data linear definition: testable, reusable, and the unit
  * `linearToGraphDefinition` operates on.
  */
-export type LinearJourneyDefinition<TContext = unknown, TMeta = Record<string, unknown>> = {
+export type LinearJourneyDefinition<
+  TContext = unknown,
+  TMeta = Record<string, unknown>,
+  TOutcomeTypes extends JourneyOutcomeTypes = JourneyOutcomeTypes
+> = {
   readonly steps: readonly LinearStepInput<TContext, TMeta>[];
   readonly context: TContext;
+  /** Compile-time only; the factory does not read or retain this object. */
+  readonly types?: TOutcomeTypes;
 };
 
 /** Step ids inferred as a literal union from the steps tuple. */
@@ -54,7 +78,15 @@ export type LinearJourneyMachine<
   TContext,
   TStepId extends string,
   TMeta = Record<string, unknown>,
-  TPlugins extends readonly AnyJourneyPlugin[] = readonly []
-> = JourneyMachineBase<TContext, TStepId, LinearSnapshot<TContext, TStepId, TMeta>> & {
+  TPlugins extends readonly AnyJourneyPlugin[] = readonly [],
+  TCompletePayload = unknown,
+  TTerminatePayload = unknown
+> = JourneyMachineBase<
+  TContext,
+  TStepId,
+  LinearSnapshot<TContext, TStepId, TMeta, TCompletePayload, TTerminatePayload>,
+  TCompletePayload,
+  TTerminatePayload
+> & {
   readonly plugins: PluginApis<TPlugins>;
 };

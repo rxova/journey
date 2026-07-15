@@ -65,6 +65,34 @@ export function linearTypes() {
   return machine;
 }
 
+export function linearOutcomeTypes() {
+  const machine = createLinearJourney({
+    steps: ["form", "result"],
+    context: {},
+    types: {} as {
+      complete: { receiptId: string };
+      terminate: { reason: "blocked" | "cancelled" };
+    }
+  });
+
+  machine.controls.complete({ receiptId: "receipt-1" });
+  machine.controls.terminate({ reason: "blocked" });
+  // @ts-expect-error completion payloads use the declared shape
+  machine.controls.complete({ reason: "blocked" });
+  // @ts-expect-error termination reasons use the declared union
+  machine.controls.terminate({ reason: "expired" });
+
+  const outcome = machine.getSnapshot().machine.outcome;
+  if (outcome?.type === "completed") {
+    type _complete = Expect<Equal<typeof outcome.payload, { receiptId: string } | undefined>>;
+  }
+  if (outcome?.type === "terminated") {
+    type _terminate = Expect<
+      Equal<typeof outcome.payload, { reason: "blocked" | "cancelled" } | undefined>
+    >;
+  }
+}
+
 // ── graph: declared events type send exactly; no order fields ──────────────
 
 type LoginEvents = { type: "submit"; payload: { code: string } } | { type: "reset" };

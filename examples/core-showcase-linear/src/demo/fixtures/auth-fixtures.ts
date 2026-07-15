@@ -6,7 +6,7 @@ export type LoginStepId = "login" | "setup2fa" | "verifyCode" | "loggedIn";
 export type LoginContext = {
   username: string;
   password: string;
-  twoFactorMethod: "no_2fa" | "email" | "authenticator" | null;
+  sessionId: string | null;
   verificationCode: string;
   qrCode: string | null;
   error: string | null;
@@ -18,11 +18,13 @@ export const authApi = {
   login: async (username: string, password: string) => {
     await delay(1200);
     if (password === "blocked") {
-      return { success: false as const, method: null };
+      return { success: false as const, sessionId: null };
     }
 
-    const methods = ["no_2fa", "email", "authenticator"] as const;
-    return { success: true as const, method: methods[username.length % 3] ?? "no_2fa" };
+    return {
+      success: true as const,
+      sessionId: `session-${username.trim().toLowerCase() || "anonymous"}`
+    };
   },
   generateQrCode: async () => {
     await delay(700);
@@ -45,7 +47,7 @@ export const authApi = {
 export const initialLoginContext = (): LoginContext => ({
   username: "",
   password: "",
-  twoFactorMethod: null,
+  sessionId: null,
   verificationCode: "",
   qrCode: null,
   error: null,
@@ -53,13 +55,12 @@ export const initialLoginContext = (): LoginContext => ({
   loggedInStatus: null
 });
 
-const linearInitialContext: LoginContext = {
-  ...initialLoginContext(),
-  twoFactorMethod: "no_2fa"
-};
-
 export const linearDefinition = {
-  context: linearInitialContext,
+  context: initialLoginContext(),
+  types: {} as {
+    complete: { loggedInStatus: "loggedIn" };
+    terminate: { loggedInStatus: "blocked" };
+  },
   steps: [
     { id: "login", metadata: { label: "Login" } },
     {

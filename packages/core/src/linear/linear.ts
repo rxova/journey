@@ -2,10 +2,13 @@ import { buildMachineSurface } from "../core/machine";
 import { JourneyRuntime } from "../core/runtime";
 import type { RuntimeStep } from "../core/runtime.types";
 import type {
+  CompletePayloadOf,
+  JourneyOutcomeTypes,
   LinearJourneyMachine,
   LinearStepConfig,
   LinearStepIdOf,
-  LinearStepInput
+  LinearStepInput,
+  TerminatePayloadOf
 } from "./linear.types";
 import type { AnyJourneyPlugin, JourneyRuntimeOptions } from "../core/types";
 
@@ -20,11 +23,23 @@ export function createLinearJourney<
   TContext,
   const TSteps extends readonly LinearStepInput<TContext, TMeta>[],
   TMeta = Record<string, unknown>,
+  const TOutcomeTypes extends JourneyOutcomeTypes = JourneyOutcomeTypes,
   const TPlugins extends readonly AnyJourneyPlugin[] = readonly []
 >(
-  definition: { readonly steps: TSteps; readonly context: TContext },
+  definition: {
+    readonly steps: TSteps;
+    readonly context: TContext;
+    readonly types?: TOutcomeTypes;
+  },
   options: JourneyRuntimeOptions<TPlugins> = {}
-): LinearJourneyMachine<TContext, LinearStepIdOf<TSteps>, TMeta, TPlugins> {
+): LinearJourneyMachine<
+  TContext,
+  LinearStepIdOf<TSteps>,
+  TMeta,
+  TPlugins,
+  CompletePayloadOf<TOutcomeTypes>,
+  TerminatePayloadOf<TOutcomeTypes>
+> {
   if (definition.steps.length === 0) {
     throw new Error("journey: a linear journey needs at least one step");
   }
@@ -69,6 +84,8 @@ export function createLinearJourney<
     TContext,
     LinearStepIdOf<TSteps>,
     TMeta,
-    TPlugins
+    TPlugins,
+    CompletePayloadOf<TOutcomeTypes>,
+    TerminatePayloadOf<TOutcomeTypes>
   >;
 }

@@ -1,246 +1,225 @@
 # @rxova/journey-core
 
-Typed state machine for multi-step UI flows.
+Typed, framework-independent state machines for multi-step product flows.
 
 <p>
   <a href="https://www.npmjs.com/package/@rxova/journey-core">
     <img src="https://img.shields.io/npm/v/@rxova/journey-core?color=0f8f6a" alt="npm" />
   </a>
-  <img src="https://img.shields.io/badge/8.06%20kB-brotli-0f8f6a" alt="size" />
-  <img src="https://img.shields.io/badge/zero%20dependencies-black" alt="zero deps" />
+  <img src="https://img.shields.io/badge/zero%20dependencies-black" alt="zero dependencies" />
   <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
 </p>
 
-`@rxova/journey-core` is approaching a `1.0.0-rc` contract freeze. The current public model is:
-
-- JSON-only runtime `context`
-- static step `meta`
-- transition-side state updates through `updateContext(...)`
-- documented lifecycle callbacks and events as the supported extension surface
+Journey owns current position, context, realized history, lifecycle status, terminal outcomes, and
+observable async transition state. Linear and graph definitions run on the same small runtime.
 
 ## Install
 
 ```bash
-npm i @rxova/journey-core
+npm install @rxova/journey-core
 ```
 
-## Quickstart
+## Linear quickstart
 
 ```ts
-import { createJourneyMachine } from "@rxova/journey-core";
+import { createLinearJourney } from "@rxova/journey-core";
 
-const machine = createJourneyMachine({
-  initial: "account",
-  context: { name: "" },
-  steps: { account: {}, details: {}, review: {} },
-  transitions: ["account", "details", "review"]
-});
-
-machine.startJourney();
-
-await machine.send({ type: "goToNextStep" }); // account → details
-await machine.send({ type: "goToNextStep" }); // details → review
-await machine.goToPreviousStep(); // review → details
-
-const snap = machine.getSnapshot();
-console.log(snap.currentStepId); // "details"
-console.log(snap.history.timeline); // ["account", "details"]
-console.log(snap.status); // "running"
-```
-
-## Three Transition Modes
-
-Reserved step ids: `*`, `global`, `COMPLETE`, and `TERMINATED`. They are used by the runtime and cannot be used as real step names.
-
-### Linear
-
-Array shorthand for sequential flows. Steps can carry synchronous `updateContext` transitions and timeouts.
-
-```ts
-transitions: [
-  "account",
-  {
-    step: "details",
-    updateContext: ({ context }) => ({ ...context, step: 2 }),
-    timeoutMs: 5000
+const checkout = createLinearJourney({
+  steps: [
+    { id: "account", metadata: { title: "Account" } },
+    { id: "shipping", metadata: { title: "Shipping" } },
+    { id: "review", metadata: { title: "Review" } }
+  ],
+  context: {
+    email: "",
+    shippingId: null as string | null
   },
-  "payment",
-  "review"
-];
-```
-
-### Graph
-
-Step-keyed transitions with guards, `updateContext`, and branching.
-
-```ts
-transitions: {
-  login: {
-    goToNextStep: [
-      { to: "admin", when: ({ context }) => context.role === "admin" },
-      { to: "setup2fa", when: ({ context }) => context.requires2fa },
-      { to: "dashboard" }
-    ]
-  },
-  setup2fa: {
-    goToNextStep: [{ to: "dashboard" }]
-  },
-  blocked: {
-    retry: [{ to: "login" }]
-  },
-}
-```
-
-#### Graph Builder
-
-For larger flows, `createGraphJourneyBuilder` lets each step declare its own transitions co-located with its component. It compiles to the same `JourneyDefinition` — no new runtime concepts.
-
-```ts
-// builder.ts — typed singleton
-const { createStep, to, build } = createGraphJourneyBuilder<{
-  context: Context;
-  stepId: StepId;
-  events: EventMap;
-}>();
-
-// steps/login.step.ts — co-located with Login.tsx
-export const loginStep = createStep("login", {
-  on: {
-    submit: [to("admin").when(({ context }) => context.role === "admin"), to("dashboard")]
+  types: {} as {
+    complete: { orderId: string };
+    terminate: { reason: "cancelled" | "expired" };
   }
 });
 
-// journey.ts — one-screen assembly
-const definition = build({
-  initial: "login",
-  context: { role: "user" },
-  steps: [loginStep, adminStep, dashboardStep]
+checkout.controls.start();
+
+checkout.context.update((context) => ({
+  ...context,
+  email: "ada@example.com"
+}));
+
+await checkout.navigate.goToNextStep();
+```
+
+The first declared step is initial. String steps are shorthand when metadata and hooks are not
+needed:
+
+```ts
+createLinearJourney({
+  steps: ["account", "shipping", "review"],
+  context: {}
 });
 ```
 
-Use the **factory form** when you need `event.payload` narrowed to the specific event type:
+The optional `types` object is a compile-time carrier. It types payloads passed to
+`controls.complete` / `controls.terminate` and the corresponding `snapshot.machine.outcome`; the
+runtime does not read or retain it.
+
+## Transactional navigation
+
+Pass work to next or previous navigation when an operation must succeed before movement:
 
 ```ts
-submit: ({ to }) => [to("admin").when(({ context, event }) => event.payload?.username !== "")];
-```
-
-Each transition modifier is single-use at the type level. Calling `.when()`, `.updateContext()`,
-`.onEnter()`, `.onLeave()`, `.label()`, or `.timeoutMs()` twice on the same builder is a TypeScript error. If you bypass the type system, runtime keeps the existing last-call-wins behavior.
-
-### Headless
-
-Omit `transitions` entirely. The machine holds state, history, and context, but the caller decides where to go. Useful for custom renderers, server-driven flows, or when the navigation logic lives outside the definition.
-
-```ts
-const machine = createJourneyMachine({
-  initial: "start",
-  context: {},
-  steps: { start: {}, configure: {}, confirm: {} }
-  // no transitions — the caller drives the flow
+const result = await checkout.navigate.goToNextStep({
+  run: async ({ snapshot }) => submitShipping(snapshot.context),
+  commit: ({ result: shipping, updateContext }) => {
+    updateContext((context) => ({
+      ...context,
+      shippingId: shipping.id
+    }));
+  }
 });
 
-machine.startJourney();
-await machine.goToStepById("configure");
-await machine.goToStepById("confirm");
-await machine.goToPreviousStep(); // back to configure
-await machine.completeJourney();
+if (!result.ok) {
+  console.error(result.reason, result.error);
+}
 ```
 
-In headless mode, `goToStepById(...)` is the navigation primitive. `goToNextStep()` and custom events are explicit no-ops until you define transitions and move into linear or graph mode.
+`run` is awaited while the source remains current. If it throws, rejects, or times out, neither
+position nor context changes. `commit` is synchronous; its context updates publish atomically with
+the destination.
 
-After `dispose()`, send-style APIs resolve with `transitioned: false` and `error: JourneyDisposedError`. Control APIs such as `startJourney()` and `updateContext()` stay no-op and emit a development warning.
+`goToPreviousStep()` accepts the same work contract.
 
-`updateContext()` is the ordered context-write API. It runs through the same queue as `send()`, so it applies against the latest committed snapshot when it executes.
+## Async state
 
-## Step Lifecycle
-
-Run side effects when a step is entered or left by attaching `onEnter` / `onLeave` directly to the step definition. Both callbacks receive the current `context` and are observational. They do not change transition selection or mutate context. Use transition `updateContext` for synchronous state commits that belong to the transition itself.
+Use `snapshot.machine.isLoading` as the normal UI-level loading flag:
 
 ```ts
-const machine = createJourneyMachine({
-  context: { username: "" },
-  steps: {
-    login: {
-      onLeave: ({ context }) => analytics.track("login_left", { user: context.username })
+const snapshot = checkout.getSnapshot();
+continueButton.disabled = snapshot.machine.isLoading;
+```
+
+For diagnostics and richer feedback, `snapshot.transition` identifies the `working`, `leaving`, or
+`entering` phase, source, and destination. `snapshot.currentStep.async` records loading, success,
+and error state for the current entry.
+
+Only one navigation settles at a time. Concurrent calls resolve with
+`{ ok: false, reason: "transitioning" }`.
+
+## Lifecycle effects
+
+`onLeave` and `onEnter` are awaited post-commit effects. They cannot cancel or roll back movement:
+
+```ts
+const machine = createLinearJourney({
+  context: { receiptId: null as string | null },
+  steps: [
+    {
+      id: "payment",
+      onLeave: ({ snapshot }) => analytics.track("payment_left", snapshot.context)
     },
-    dashboard: {
-      onEnter: ({ context }) => analytics.track("dashboard_entered"),
-      onLeave: ({ context }) => console.log("leaving dashboard")
+    {
+      id: "receipt",
+      onEnter: async ({ snapshot, updateContext }) => {
+        const receipt = await loadReceipt(snapshot.context);
+        updateContext((context) => ({ ...context, receiptId: receipt.id }));
+      }
     }
-  },
-  transitions: ["login", "dashboard"]
-});
-```
-
-With the graph builder, callbacks sit alongside transitions on the step:
-
-```ts
-const dashboardStep = createStep("dashboard", {
-  onEnter: ({ context }) => analytics.track("dashboard_entered"),
-  onLeave: ({ context }) => console.log("leaving dashboard"),
-  on: { submit: [to("review")] }
-});
-```
-
-React-specific lifecycle hooks live in `@rxova/journey-react`. `@rxova/journey-core` only exposes the runtime callbacks and observation events shown above.
-
-## Features
-
-- **Async guards** — `when` can be async, with per-transition `timeoutMs` and `AbortSignal`-based cancellation. Step async state is tracked in `snapshot.async.byStep[stepId]` (`idle`, `evaluating-when`, `error`)
-- **Timeline history** — `goToPreviousStep()`, `goToLastVisitedStep()`, deterministic back/forward. Snapshot exposes `history.timeline` and `history.index` so you always know where the user has been
-- **Computed state** — `getComputed()` returns derived flags: `isFirstStep`, `isLastStep`, `isLoading`, `isComplete`, `isTerminated`, `activeStepIndex`, `stepCount`, `mode` (`linear` | `graph` | `headless`)
-- **Observability** — `subscribeEvent()` streams typed lifecycle events: `journey.start`, `transition.start`, `transition.success`, `step.enter`, `step.exit`, `journey.completed`, `journey.terminated`, and more
-- **Step metadata** — attach typed metadata per step and read it with `getStepMeta(stepId)`. Metadata is definition data, not mutable runtime state
-- **Terminal events** — `completeJourney()` and `terminateJourney()` with typed payloads. Once terminal, all navigation no-ops until `resetJourney()`
-- **Snapshot** — one object holds everything that changes at runtime: `currentStepId`, `context`, `history`, `visited`, `status` (`idled`, `running`, `completed`, `terminated`), and `async`
-- **Global transitions** — cross-cutting handlers via the `global` key, useful for close-confirmation or abort flows
-
-## Persistence
-
-```ts
-import { createPersistencePlugin } from "@rxova/journey-core/persistence";
-
-const machine = createJourneyMachine(definition, {
-  plugins: [
-    createPersistencePlugin({
-      key: "checkout",
-      version: 2,
-      blockList: ["payment.cardNumber"]
-    })
   ]
 });
 ```
 
-Versioned snapshot storage with migrations, context allow/block lists, and configurable reset behavior. Defaults to `localStorage` when available.
+Use navigation work for validation or submission that must prevent movement. Use hooks for cleanup,
+analytics, and destination setup after the move has committed.
 
-If `migrate(...)` returns data that no longer matches a valid snapshot, Journey reports the error through `onError` (or a development warning when `onError` is omitted) and falls back to the initial snapshot.
-
-## Autosave
+## Navigation and history
 
 ```ts
-import { createAutosavePlugin } from "@rxova/journey-core/autosave";
-
-const machine = createJourneyMachine(definition, {
-  plugins: [
-    createAutosavePlugin({
-      key: "checkout-draft",
-      debounceMs: 300,
-      allowList: ["profile", "shipping"]
-    })
-  ]
-});
-
-await machine.flushAutosave();
+await checkout.navigate.goToNextStep();
+await checkout.navigate.goToPreviousStep();
+await checkout.navigate.goToPreviousStep(2);
+await checkout.navigate.goToLastVisitedStep();
 ```
 
-Autosave adds debounced draft persistence, hydration, `getAutosaveState()`, `flushAutosave()`, and `clearAutosave()` without requiring the persistence plugin as a separate public dependency.
+Linear history behaves like a browser timeline. Going back preserves the future; appending a new
+destination from an older position replaces the abandoned future.
 
-## Analytics
+`goToStepById(id)` is an intentional escape hatch for occasional direct jumps in an otherwise
+ordered flow:
 
 ```ts
+await checkout.navigate.goToStepById("review");
+```
+
+It is ungated and can reach any declared linear step. When named jumps, branching, or guarded
+destinations become normal flow behavior, move the definition to graph mode. The optional
+`@rxova/journey-core/convert` entry can convert linear adjacency into graph events.
+
+## Completion and termination
+
+Reaching the last linear step does not complete the machine. A final screen is a position;
+completion is an explicit product outcome:
+
+```ts
+checkout.controls.complete({ orderId: "order-42" });
+
+checkout.getSnapshot().machine.outcome;
+// { type: "completed", payload: { orderId: "order-42" } }
+```
+
+Use `controls.terminate(payload?)` for an unsuccessful or cancelled terminal outcome. Navigation is
+rejected after either terminal state until `controls.restart()` begins a fresh run.
+
+## Snapshot and subscriptions
+
+All changing state lives in one immutable snapshot:
+
+```ts
+const snapshot = checkout.getSnapshot();
+
+snapshot.status; // "idle" | "running" | "paused" | "completed" | "terminated"
+snapshot.context;
+snapshot.currentStep?.id;
+snapshot.currentStep?.index;
+snapshot.history.timeline;
+snapshot.history.canGoBack;
+snapshot.machine.isLoading;
+snapshot.machine.outcome;
+```
+
+Subscribe to a selected value or a named lifecycle event:
+
+```ts
+const stop = checkout.subscriptions.subscribeSelector(
+  (snapshot) => snapshot.currentStep?.id,
+  (stepId) => render(stepId)
+);
+
+checkout.subscriptions.subscribeEvent("navigationBlocked", ({ reason, error }) => {
+  reportNavigationFailure(reason, error);
+});
+
+stop();
+```
+
+## Graph mode
+
+Use `createGraphJourney` when named events, guards, or branches choose destinations. Graph machines
+add typed `send(type, payload?)`, available events and targets in the snapshot, and transition-level
+post-commit effects.
+
+For larger graphs, `createGraphJourneyBuilder` co-locates typed transitions with each step. See the
+[Graph guide](https://rxova.org/docs/core/usage/graph).
+
+## Plugins
+
+Built-in plugins are separately imported and observe the machine through a read-only host:
+
+```ts
+import { createLinearJourney } from "@rxova/journey-core";
 import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
 
-const machine = createJourneyMachine(definition, {
+const machine = createLinearJourney(definition, {
   plugins: [
     createAnalyticsPlugin({
       machineId: "checkout",
@@ -250,28 +229,18 @@ const machine = createJourneyMachine(definition, {
 });
 ```
 
-Analytics normalizes Journey lifecycle events into a stable event envelope and adds `trackAnalyticsEvent(...)` for custom markers.
-
-## DevTools
-
-```ts
-import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
-
-const detach = attachJourneyDevtools(machine, { label: "Checkout" });
-```
+Persistence, autosave, analytics, diagnostics, replay, execution paths, and subscription enhancer
+plugins each have dedicated export paths and documentation.
 
 ## Documentation
 
-- [Pre-1.0 Migration](https://rxova.org/docs/core/pre-1-0-migration)
-- [Stability Contract](https://rxova.org/docs/core/stability)
 - [Quickstart](https://rxova.org/docs/core/getting-started)
-- [Usage Modes](https://rxova.org/docs/core/usage)
-- [Async Lifecycle](https://rxova.org/docs/core/async)
-- [Persistence](https://rxova.org/docs/core/persistence)
-- [Autosave](https://rxova.org/docs/core/autosave)
-- [Analytics Plugin](https://rxova.org/docs/core/plugins/analytics-plugin)
-- [Plugins](https://rxova.org/docs/core/plugins/overview)
-- [API Reference](https://rxova.org/docs/core/api/overview)
+- [Linear journeys](https://rxova.org/docs/core/usage/linear)
+- [Async behavior](https://rxova.org/docs/core/async)
+- [Machine API](https://rxova.org/docs/core/api/machine-api)
+- [Snapshot](https://rxova.org/docs/core/snapshot)
+- [Pre-1.0 migration](https://rxova.org/docs/core/pre-1-0-migration)
+- [Stability contract](https://rxova.org/docs/core/stability)
 
 ## License
 

@@ -31,7 +31,9 @@ Release the final V1 Core API on a new, smaller shared runtime. This is a full r
   methods and graph `send` return `Promise<NavigationResult>` with explicit failure reasons instead
   of relying on thrown errors or implicit no-ops.
 - Rename lifecycle status `idled` to `idle`, add first-class `paused` state, make completion
-  explicit, and store optional completion/termination payloads in `snapshot.outcome`.
+  explicit, and store optional completion/termination payloads in `snapshot.machine.outcome`.
+- Allow linear definitions to declare compile-time `complete` and `terminate` payload shapes,
+  typing both lifecycle control arguments and the discriminated terminal outcome in snapshots.
 - Default `autoStart` to `false`. `start()` is accepted only from `idle`; `restart()` is accepted
   only after completion or termination and restores the initial context and timeline. Termination
   wins over an in-flight transition.
@@ -63,6 +65,8 @@ Release the final V1 Core API on a new, smaller shared runtime. This is a full r
   `updateContext`, and FIFO `raise`. Raised graph events run only after the current transition
   settles and are capped by the exported `MAX_RAISED_EVENTS` guard. Hook context updates remain
   immediate side effects after commit.
+- Keep linear `goToStepById` as an ungated direct-jump escape hatch. Occasional exceptional jumps
+  can stay linear; named jumps, guards, and routine branches belong in graph definitions.
 
 ## Graph events
 

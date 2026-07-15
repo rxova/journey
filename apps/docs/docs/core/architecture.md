@@ -122,6 +122,7 @@ the pointer, then appends the new id.
 
 The runtime exposes two related views:
 
+- `snapshot.machine.isLoading` is the canonical UI-level pending flag;
 - `snapshot.transition` describes the whole pending operation (`working`, `leaving`, or `entering`);
 - `snapshot.currentStep.async` describes navigation work or lifecycle effects.
 

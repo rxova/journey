@@ -27,6 +27,10 @@ const checkout = createLinearJourney({
   context: {
     email: "",
     country: ""
+  },
+  types: {} as {
+    complete: { orderId: string };
+    terminate: { reason: "cancelled" };
   }
 });
 ```
@@ -86,6 +90,9 @@ type NavigationResult<StepId extends string> =
   | { ok: false; reason: NavigationFailureReason; error?: unknown };
 ```
 
+Use `snapshot.machine.isLoading` as the default flag for disabling UI controls while navigation
+work or lifecycle effects settle.
+
 ## Read the snapshot
 
 ```ts
@@ -133,6 +140,10 @@ checkout.controls.restart();
 
 `restart()` is accepted only from `completed` or `terminated`. It restores the initial context,
 clears history and outcome, and enters the initial step again.
+
+Reaching `review` did not complete the journey automatically. The last screen is a position;
+`controls.complete()` records the separate product outcome. The optional `types` object above makes
+both terminal control payloads and `snapshot.machine.outcome` type-safe.
 
 Call `checkout.dispose()` when the runtime is no longer needed.
 

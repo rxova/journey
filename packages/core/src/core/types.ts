@@ -85,30 +85,42 @@ export type JourneyHistoryState<TStepId extends string> = {
 };
 
 /** Derived lifecycle booleans (`isLoading === transition.pending`), plus the recorded outcome. */
-export type MachineState = {
+export type MachineState<TCompletePayload = unknown, TTerminatePayload = unknown> = {
   readonly isLoading: boolean;
   readonly isIdle: boolean;
   readonly isRunning: boolean;
   readonly isPaused: boolean;
   readonly isCompleted: boolean;
   readonly isTerminated: boolean;
-  readonly outcome: JourneyOutcome | null;
+  readonly outcome: JourneyOutcome<TCompletePayload, TTerminatePayload> | null;
 };
 
 /** Fields shared by every snapshot kind (discriminated on `type`). */
-export type JourneySnapshotBase<TContext, TStepId extends string, TMeta> = {
+export type JourneySnapshotBase<
+  TContext,
+  TStepId extends string,
+  TMeta,
+  TCompletePayload = unknown,
+  TTerminatePayload = unknown
+> = {
   readonly status: JourneyStatus;
   readonly context: TContext;
   readonly transition: TransitionState<TStepId>;
   readonly history: JourneyHistoryState<TStepId>;
-  readonly machine: MachineState;
+  readonly machine: MachineState<TCompletePayload, TTerminatePayload>;
   readonly plugins: Readonly<Record<string, unknown>>;
   readonly currentStep: CurrentStepBase<TStepId, TMeta> | null;
 };
 
 /** Linear snapshots carry declared-order derivations; graph fields don't exist. */
-export type LinearSnapshot<TContext, TStepId extends string, TMeta> = Omit<
-  JourneySnapshotBase<TContext, TStepId, TMeta>,
+export type LinearSnapshot<
+  TContext,
+  TStepId extends string,
+  TMeta,
+  TCompletePayload = unknown,
+  TTerminatePayload = unknown
+> = Omit<
+  JourneySnapshotBase<TContext, TStepId, TMeta, TCompletePayload, TTerminatePayload>,
   "currentStep"
 > & {
   readonly type: "linear";
@@ -132,8 +144,13 @@ export type GraphSnapshot<
   TContext,
   TStepId extends string,
   TMeta,
-  TEvents extends JourneyEventObject = JourneyEventObject
-> = Omit<JourneySnapshotBase<TContext, TStepId, TMeta>, "currentStep"> & {
+  TEvents extends JourneyEventObject = JourneyEventObject,
+  TCompletePayload = unknown,
+  TTerminatePayload = unknown
+> = Omit<
+  JourneySnapshotBase<TContext, TStepId, TMeta, TCompletePayload, TTerminatePayload>,
+  "currentStep"
+> & {
   readonly type: "graph";
   readonly currentStep:
     | (CurrentStepBase<TStepId, TMeta> & {
@@ -155,8 +172,12 @@ export type JourneySnapshot<
   TContext = unknown,
   TStepId extends string = string,
   TMeta = unknown,
-  TEvents extends JourneyEventObject = JourneyEventObject
-> = LinearSnapshot<TContext, TStepId, TMeta> | GraphSnapshot<TContext, TStepId, TMeta, TEvents>;
+  TEvents extends JourneyEventObject = JourneyEventObject,
+  TCompletePayload = unknown,
+  TTerminatePayload = unknown
+> =
+  | LinearSnapshot<TContext, TStepId, TMeta, TCompletePayload, TTerminatePayload>
+  | GraphSnapshot<TContext, TStepId, TMeta, TEvents, TCompletePayload, TTerminatePayload>;
 
 /** Context updater used by `machine.context.update` and hook args. */
 export type ContextUpdater<TContext> = (previous: TContext) => TContext;
@@ -275,7 +296,7 @@ export type JourneySubscriptions<
  * Lifecycle verbs. Each returns `true` when the lifecycle change applied and
  * `false` when rejected (wrong source status, pending transition, disposed).
  */
-export type JourneyControls = {
+export type JourneyControls<TCompletePayload = unknown, TTerminatePayload = unknown> = {
   /** idle → running; enters the first/initial step. */
   start(): boolean;
   /** running → paused; navigation is rejected while paused. */
@@ -283,9 +304,9 @@ export type JourneyControls = {
   /** paused → running. */
   resume(): boolean;
   /** running → completed. Explicit only — never fired by navigation. */
-  complete(payload?: unknown): boolean;
+  complete(payload?: TCompletePayload): boolean;
   /** any → terminated. Wins over a pending transition. */
-  terminate(payload?: unknown): boolean;
+  terminate(payload?: TTerminatePayload): boolean;
   /** completed | terminated → running; resets timeline + context to initial. */
   restart(): boolean;
 };
@@ -343,10 +364,12 @@ export type JourneyNavigation<TContext, TStepId extends string, TSnap> = {
 export type JourneyMachineBase<
   TContext,
   TStepId extends string,
-  TSnap = JourneySnapshot<TContext, TStepId>
+  TSnap = JourneySnapshot<TContext, TStepId>,
+  TCompletePayload = unknown,
+  TTerminatePayload = unknown
 > = {
   getSnapshot(): TSnap;
-  controls: JourneyControls;
+  controls: JourneyControls<TCompletePayload, TTerminatePayload>;
   navigate: JourneyNavigation<TContext, TStepId, TSnap>;
   subscriptions: JourneySubscriptions<TContext, TStepId, TSnap>;
   context: { update(updater: ContextUpdater<TContext>): void };
@@ -449,9 +472,8 @@ export type JourneyRuntimeOptions<TPlugins extends readonly AnyJourneyPlugin[] =
    */
   autoStart?: boolean;
   /**
-   * Applied to every async hook invocation; a timeout is treated as that hook
-   * throwing (an `onLeave` timeout cancels navigation, an `onEnter` timeout
-   * surfaces as a step error).
+   * Applied to navigation work and every async hook invocation. Work timeouts
+   * block movement; post-commit hook timeouts surface as step errors.
    */
   defaultTimeoutMs?: number;
   plugins?: TPlugins;

@@ -40,6 +40,15 @@ moving; source `onLeave` is a post-commit side effect.
 
 </DocAccordionItem>
 
+<DocAccordionItem title="Can a linear journey jump to another step?">
+
+Yes. `machine.navigate.goToStepById(id)` is an ungated escape hatch that can reach any declared
+linear step. It is appropriate for occasional exceptional jumps. When named jumps, guards, or
+branches become routine domain behavior, convert the definition to graph mode so movement policy is
+explicit.
+
+</DocAccordionItem>
+
 <DocAccordionItem title="What happens when I branch after going back?">
 
 The runtime removes timeline entries after the pointer and appends the new destination. The visited

@@ -1,5 +1,6 @@
 export { createLinearJourney } from "./linear/linear";
 export type {
+  JourneyOutcomeTypes,
   LinearJourneyDefinition,
   LinearJourneyMachine,
   LinearStepConfig,
