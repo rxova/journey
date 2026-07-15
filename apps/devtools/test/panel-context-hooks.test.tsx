@@ -3,9 +3,16 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION } from "@rxova/journey-devtools-bridge";
+import {
+  JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
+  JOURNEY_DEVTOOLS_PROTOCOL_VERSION
+} from "@rxova/journey-devtools-bridge";
 import type { JourneyDevtoolsSerializableSnapshot } from "@rxova/journey-devtools-bridge";
-import type { JourneyPanelMachineState, JourneyPanelState } from "../src/panel/store";
+import {
+  INITIAL_SNAPSHOT,
+  type JourneyPanelMachineState,
+  type JourneyPanelState
+} from "../src/panel/store";
 import {
   PanelProvider,
   useActiveMachine,
@@ -47,13 +54,35 @@ const mount = async (node: React.ReactElement): Promise<MountedView> => {
 };
 
 const snapshot: JourneyDevtoolsSerializableSnapshot = {
+  ...INITIAL_SNAPSHOT,
   type: "graph",
-  currentStepId: "start",
-  history: { timeline: ["start"], index: 0 },
+  currentStep: {
+    id: "start",
+    metadata: null,
+    isFirstTimeVisit: true,
+    async: { isLoading: false, isSuccess: true, isError: false, error: null },
+    isTerminal: false
+  },
+  history: {
+    timeline: ["start"],
+    currentIndex: 0,
+    visited: { start: true },
+    canGoBack: false,
+    canGoForward: false
+  },
   context: { attempts: 1 },
-  visited: { start: true },
   status: "running",
-  async: { isLoading: false, byStep: {} }
+  machine: {
+    isLoading: false,
+    isIdle: false,
+    isRunning: true,
+    isPaused: false,
+    isCompleted: false,
+    isTerminated: false
+  },
+  steps: { totalSteps: 2, visitedStepCount: 1 },
+  availableEvents: ["submitLogin"],
+  availableSteps: ["review"]
 };
 
 const machine: JourneyPanelMachineState = {
@@ -65,11 +94,9 @@ const machine: JourneyPanelMachineState = {
     mode: "graph",
     stepIds: ["start", "review"],
     eventTypes: ["submitLogin"],
-    eventTypesBySource: { start: ["submitLogin"] },
-    goToStepTargetsBySource: { start: ["review"] },
     features: []
   },
-  protocolVersion: 5,
+  protocolVersion: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
   snapshot,
   timelineEntries: [],
   selectedTimelineIndex: 0,
@@ -102,7 +129,7 @@ const HookProbe = () => {
           isCommandChannelReady: connection.isCommandChannelReady
         },
         active: {
-          currentStepId: active.displayedSnapshot?.currentStepId ?? null,
+          currentStepId: active.displayedSnapshot?.currentStep?.id ?? null,
           disabled: active.areCommandsDisabled,
           reason: active.commandDisabledReason
         },

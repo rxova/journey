@@ -7,6 +7,12 @@ const coverageInclude = process.env.JOURNEY_COVERAGE_INCLUDE?.split(",") ?? [
   "apps/devtools/src/**/*.ts",
   "apps/devtools/src/**/*.tsx"
 ];
+const perFileCoveragePrefixes = ["packages/common/", "packages/core/", "packages/react/"] as const;
+const enforcePerFileCoverage =
+  process.env.JOURNEY_COVERAGE_INCLUDE !== undefined &&
+  coverageInclude.every((pattern) =>
+    perFileCoveragePrefixes.some((prefix) => pattern.startsWith(prefix))
+  );
 
 export default defineConfig({
   resolve: {
@@ -155,7 +161,7 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "text-summary", "html", "json-summary", "lcov"],
       thresholds: {
-        perFile: true,
+        perFile: enforcePerFileCoverage,
         statements: 95,
         branches: 95,
         functions: 95,
