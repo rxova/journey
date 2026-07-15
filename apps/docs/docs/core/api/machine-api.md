@@ -46,8 +46,9 @@ until `snapshot.transition.pending` becomes false before issuing the first navig
 
 Completion is always explicit. Navigation never auto-completes.
 
-Linear definitions may include a type-only `types` object with `complete` and `terminate` payload
-shapes. Those shapes constrain the control arguments and narrow `snapshot.machine.outcome`.
+The optional third `createLinearJourney<StepId, Context, TerminationPayloads>` generic groups
+`complete` and `terminate` payload shapes. Those shapes constrain the control arguments and narrow
+`snapshot.machine.outcome`.
 
 ## Navigation
 

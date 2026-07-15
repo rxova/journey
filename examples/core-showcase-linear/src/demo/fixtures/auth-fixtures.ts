@@ -3,6 +3,11 @@ import { delay } from "./support";
 
 export type LoginStepId = "login" | "setup2fa" | "verifyCode" | "loggedIn";
 
+export type LoginTerminationPayloads = {
+  complete: { loggedInStatus: "loggedIn" };
+  terminate: { loggedInStatus: "blocked" };
+};
+
 export type LoginContext = {
   username: string;
   password: string;
@@ -57,10 +62,6 @@ export const initialLoginContext = (): LoginContext => ({
 
 export const linearDefinition = {
   context: initialLoginContext(),
-  types: {} as {
-    complete: { loggedInStatus: "loggedIn" };
-    terminate: { loggedInStatus: "blocked" };
-  },
   steps: [
     { id: "login", metadata: { label: "Login" } },
     {
@@ -74,4 +75,9 @@ export const linearDefinition = {
     { id: "verifyCode", metadata: { label: "Verify Code" } },
     { id: "loggedIn", metadata: { label: "Status" } }
   ]
-} satisfies LinearJourneyDefinition<LoginContext>;
+} satisfies LinearJourneyDefinition<
+  LoginStepId,
+  LoginContext,
+  LoginTerminationPayloads,
+  Record<string, unknown>
+>;

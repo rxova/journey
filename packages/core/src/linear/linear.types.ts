@@ -7,19 +7,19 @@ import type {
   PluginApis
 } from "../core/types";
 
-/** Optional type-only declarations for terminal outcome payloads. */
-export type JourneyOutcomeTypes = {
+/** Completion and termination payload types supplied to a journey factory. */
+export type JourneyTerminationPayloads = {
   readonly complete?: unknown;
   readonly terminate?: unknown;
 };
 
-export type CompletePayloadOf<TTypes extends JourneyOutcomeTypes> = TTypes extends {
+export type CompletePayloadOf<TTypes extends JourneyTerminationPayloads> = TTypes extends {
   readonly complete: infer TPayload;
 }
   ? TPayload
   : unknown;
 
-export type TerminatePayloadOf<TTypes extends JourneyOutcomeTypes> = TTypes extends {
+export type TerminatePayloadOf<TTypes extends JourneyTerminationPayloads> = TTypes extends {
   readonly terminate: infer TPayload;
 }
   ? TPayload
@@ -29,7 +29,9 @@ export type TerminatePayloadOf<TTypes extends JourneyOutcomeTypes> = TTypes exte
 export type LinearStepConfig<
   TContext = unknown,
   TStepId extends string = string,
-  TMeta = Record<string, unknown>
+  TMeta = Record<string, unknown>,
+  TCompletePayload = unknown,
+  TTerminatePayload = unknown
 > = {
   readonly id: TStepId;
   readonly metadata?: TMeta;
@@ -37,31 +39,42 @@ export type LinearStepConfig<
     TContext,
     TStepId,
     never,
-    LinearSnapshot<TContext, TStepId, TMeta>
+    LinearSnapshot<TContext, TStepId, TMeta, TCompletePayload, TTerminatePayload>
   >;
   readonly onLeave?: OnLeaveHook<
     TContext,
     TStepId,
     never,
-    LinearSnapshot<TContext, TStepId, TMeta>
+    LinearSnapshot<TContext, TStepId, TMeta, TCompletePayload, TTerminatePayload>
   >;
 };
 
-export type LinearStepInput<TContext, TMeta> = string | LinearStepConfig<TContext, string, TMeta>;
+export type LinearStepInput<
+  TContext,
+  TMeta,
+  TStepId extends string = string,
+  TCompletePayload = unknown,
+  TTerminatePayload = unknown
+> = TStepId | LinearStepConfig<TContext, TStepId, TMeta, TCompletePayload, TTerminatePayload>;
 
 /**
  * Pure-data linear definition: testable, reusable, and the unit
  * `linearToGraphDefinition` operates on.
  */
 export type LinearJourneyDefinition<
+  TStepId extends string = string,
   TContext = unknown,
-  TMeta = Record<string, unknown>,
-  TOutcomeTypes extends JourneyOutcomeTypes = JourneyOutcomeTypes
+  TTerminationPayloads extends JourneyTerminationPayloads = JourneyTerminationPayloads,
+  TMeta = Record<string, unknown>
 > = {
-  readonly steps: readonly LinearStepInput<TContext, TMeta>[];
+  readonly steps: readonly LinearStepInput<
+    TContext,
+    TMeta,
+    TStepId,
+    CompletePayloadOf<TTerminationPayloads>,
+    TerminatePayloadOf<TTerminationPayloads>
+  >[];
   readonly context: TContext;
-  /** Compile-time only; the factory does not read or retain this object. */
-  readonly types?: TOutcomeTypes;
 };
 
 /** Step ids inferred as a literal union from the steps tuple. */

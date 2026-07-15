@@ -12,7 +12,14 @@ A linear journey uses declared step order as its default forward path.
 ```ts
 import { createLinearJourney } from "@rxova/journey-core";
 
-const machine = createLinearJourney({
+type StepId = "account" | "shipping" | "review";
+type Context = { address: string };
+type TerminationPayloads = {
+  complete: { orderId: string };
+  terminate: { reason: "cancelled" };
+};
+
+const machine = createLinearJourney<StepId, Context, TerminationPayloads>({
   steps: [
     "account",
     {
@@ -27,11 +34,7 @@ const machine = createLinearJourney({
       }
     }
   ] as const,
-  context: { address: "" },
-  types: {} as {
-    complete: { orderId: string };
-    terminate: { reason: "cancelled" };
-  }
+  context: { address: "" }
 });
 ```
 
@@ -73,8 +76,8 @@ Reaching the last step does not complete the journey:
 machine.controls.complete();
 ```
 
-The optional `types` object in the definition types completion and termination payloads plus
-`snapshot.machine.outcome`. It is a compile-time carrier and is not retained by the runtime.
+The optional third factory generic groups completion and termination payload types and narrows
+`snapshot.machine.outcome`. Omit it when terminal payload typing is not needed.
 
 ## Linear snapshot fields
 

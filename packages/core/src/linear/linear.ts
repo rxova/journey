@@ -3,11 +3,10 @@ import { JourneyRuntime } from "../core/runtime";
 import type { RuntimeStep } from "../core/runtime.types";
 import type {
   CompletePayloadOf,
-  JourneyOutcomeTypes,
+  JourneyTerminationPayloads,
+  LinearJourneyDefinition,
   LinearJourneyMachine,
   LinearStepConfig,
-  LinearStepIdOf,
-  LinearStepInput,
   TerminatePayloadOf
 } from "./linear.types";
 import type { AnyJourneyPlugin, JourneyRuntimeOptions } from "../core/types";
@@ -20,25 +19,21 @@ import type { AnyJourneyPlugin, JourneyRuntimeOptions } from "../core/types";
  * `stepOrder`). `goToNextStep` on the last step never auto-completes.
  */
 export function createLinearJourney<
+  const TStepId extends string,
   TContext,
-  const TSteps extends readonly LinearStepInput<TContext, TMeta>[],
-  TMeta = Record<string, unknown>,
-  const TOutcomeTypes extends JourneyOutcomeTypes = JourneyOutcomeTypes,
-  const TPlugins extends readonly AnyJourneyPlugin[] = readonly []
+  TTerminationPayloads extends JourneyTerminationPayloads = JourneyTerminationPayloads,
+  const TPlugins extends readonly AnyJourneyPlugin[] = readonly AnyJourneyPlugin[],
+  TMeta = Record<string, unknown>
 >(
-  definition: {
-    readonly steps: TSteps;
-    readonly context: TContext;
-    readonly types?: TOutcomeTypes;
-  },
+  definition: LinearJourneyDefinition<TStepId, TContext, TTerminationPayloads, TMeta>,
   options: JourneyRuntimeOptions<TPlugins> = {}
 ): LinearJourneyMachine<
   TContext,
-  LinearStepIdOf<TSteps>,
+  TStepId,
   TMeta,
   TPlugins,
-  CompletePayloadOf<TOutcomeTypes>,
-  TerminatePayloadOf<TOutcomeTypes>
+  CompletePayloadOf<TTerminationPayloads>,
+  TerminatePayloadOf<TTerminationPayloads>
 > {
   if (definition.steps.length === 0) {
     throw new Error("journey: a linear journey needs at least one step");
@@ -47,8 +42,13 @@ export function createLinearJourney<
   const stepIds: string[] = [];
   const steps: Record<string, RuntimeStep> = {};
   for (const input of definition.steps) {
-    const config: LinearStepConfig<TContext, string, TMeta> =
-      typeof input === "string" ? { id: input } : input;
+    const config: LinearStepConfig<
+      TContext,
+      TStepId,
+      TMeta,
+      CompletePayloadOf<TTerminationPayloads>,
+      TerminatePayloadOf<TTerminationPayloads>
+    > = typeof input === "string" ? { id: input } : input;
     if (config.id in steps) {
       throw new Error(`journey: duplicate step id "${config.id}"`);
     }
@@ -82,10 +82,10 @@ export function createLinearJourney<
 
   return buildMachineSurface(runtime) as unknown as LinearJourneyMachine<
     TContext,
-    LinearStepIdOf<TSteps>,
+    TStepId,
     TMeta,
     TPlugins,
-    CompletePayloadOf<TOutcomeTypes>,
-    TerminatePayloadOf<TOutcomeTypes>
+    CompletePayloadOf<TTerminationPayloads>,
+    TerminatePayloadOf<TTerminationPayloads>
   >;
 }

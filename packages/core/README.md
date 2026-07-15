@@ -24,7 +24,17 @@ npm install @rxova/journey-core
 ```ts
 import { createLinearJourney } from "@rxova/journey-core";
 
-const checkout = createLinearJourney({
+type CheckoutStepId = "account" | "shipping" | "review";
+type CheckoutContext = {
+  email: string;
+  shippingId: string | null;
+};
+type CheckoutTerminationPayloads = {
+  complete: { orderId: string };
+  terminate: { reason: "cancelled" | "expired" };
+};
+
+const checkout = createLinearJourney<CheckoutStepId, CheckoutContext, CheckoutTerminationPayloads>({
   steps: [
     { id: "account", metadata: { title: "Account" } },
     { id: "shipping", metadata: { title: "Shipping" } },
@@ -32,11 +42,7 @@ const checkout = createLinearJourney({
   ],
   context: {
     email: "",
-    shippingId: null as string | null
-  },
-  types: {} as {
-    complete: { orderId: string };
-    terminate: { reason: "cancelled" | "expired" };
+    shippingId: null
   }
 });
 
@@ -60,9 +66,9 @@ createLinearJourney({
 });
 ```
 
-The optional `types` object is a compile-time carrier. It types payloads passed to
-`controls.complete` / `controls.terminate` and the corresponding `snapshot.machine.outcome`; the
-runtime does not read or retain it.
+The optional third generic groups payloads passed to `controls.complete` and
+`controls.terminate`. It also types the corresponding `snapshot.machine.outcome`. Omit it when
+terminal payload typing is not needed.
 
 ## Transactional navigation
 

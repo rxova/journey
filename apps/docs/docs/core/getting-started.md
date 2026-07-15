@@ -18,7 +18,14 @@ pnpm add @rxova/journey-core
 ```ts
 import { createLinearJourney } from "@rxova/journey-core";
 
-const checkout = createLinearJourney({
+type CheckoutStepId = "account" | "shipping" | "review";
+type CheckoutContext = { email: string; country: string };
+type CheckoutTerminationPayloads = {
+  complete: { orderId: string };
+  terminate: { reason: "cancelled" };
+};
+
+const checkout = createLinearJourney<CheckoutStepId, CheckoutContext, CheckoutTerminationPayloads>({
   steps: [
     { id: "account", metadata: { title: "Account" } },
     { id: "shipping", metadata: { title: "Shipping" } },
@@ -27,10 +34,6 @@ const checkout = createLinearJourney({
   context: {
     email: "",
     country: ""
-  },
-  types: {} as {
-    complete: { orderId: string };
-    terminate: { reason: "cancelled" };
   }
 });
 ```
@@ -142,8 +145,8 @@ checkout.controls.restart();
 clears history and outcome, and enters the initial step again.
 
 Reaching `review` did not complete the journey automatically. The last screen is a position;
-`controls.complete()` records the separate product outcome. The optional `types` object above makes
-both terminal control payloads and `snapshot.machine.outcome` type-safe.
+`controls.complete()` records the separate product outcome. The optional third factory generic
+above makes both terminal control payloads and `snapshot.machine.outcome` type-safe.
 
 Call `checkout.dispose()` when the runtime is no longer needed.
 
