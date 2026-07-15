@@ -50,7 +50,7 @@ export type {
   JourneySubscriptionEvent,
   JourneySubscriptions,
   LinearSnapshot,
-  MachineFlags,
+  MachineState,
   NavigationFailureReason,
   NavigationResult,
   OnEnterHook,

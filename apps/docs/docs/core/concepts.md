@@ -100,7 +100,6 @@ snapshot.context;
 snapshot.currentStep;
 snapshot.transition;
 snapshot.history;
-snapshot.outcome;
 snapshot.machine;
 snapshot.plugins;
 ```
@@ -129,8 +128,8 @@ new branch and drops the abandoned future.
 | `completed`  | Explicitly completed.                          |
 | `terminated` | Explicitly terminated.                         |
 
-Completion and termination set `snapshot.outcome`. Only `restart()` starts a fresh run from a
-terminal status.
+Completion and termination set `snapshot.machine.outcome`. Only `restart()` starts a fresh run from
+a terminal status.
 
 ## Plugins
 

@@ -575,14 +575,14 @@ export class JourneyRuntime {
         canGoBack: this.currentIndex > 0,
         canGoForward: this.currentIndex >= 0 && this.currentIndex < this.timeline.length - 1
       }),
-      outcome: this.outcome,
       machine: Object.freeze({
         isLoading: this.pending !== null,
         isIdle: this.status === "idle",
         isRunning: this.status === "running",
         isPaused: this.status === "paused",
         isCompleted: this.status === "completed",
-        isTerminated: this.status === "terminated"
+        isTerminated: this.status === "terminated",
+        outcome: this.outcome
       })
     };
 

@@ -28,14 +28,14 @@ export const createGraphSnapshot = (
       canGoBack: timeline.length > 1,
       canGoForward: false
     },
-    outcome: null,
     machine: {
       isLoading: false,
       isIdle: status === "idle",
       isRunning: status === "running",
       isPaused: status === "paused",
       isCompleted: status === "completed",
-      isTerminated: status === "terminated"
+      isTerminated: status === "terminated",
+      outcome: null
     },
     plugins: {},
     currentStep:

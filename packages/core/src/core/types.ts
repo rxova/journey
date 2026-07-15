@@ -86,14 +86,15 @@ export type JourneyHistoryState<TStepId extends string> = {
   readonly canGoForward: boolean;
 };
 
-/** Derived lifecycle booleans (`isLoading === transition.pending`). */
-export type MachineFlags = {
+/** Derived lifecycle booleans (`isLoading === transition.pending`), plus the recorded outcome. */
+export type MachineState = {
   readonly isLoading: boolean;
   readonly isIdle: boolean;
   readonly isRunning: boolean;
   readonly isPaused: boolean;
   readonly isCompleted: boolean;
   readonly isTerminated: boolean;
+  readonly outcome: JourneyOutcome | null;
 };
 
 /** Fields shared by every snapshot kind (discriminated on `type`). */
@@ -102,8 +103,7 @@ export type JourneySnapshotBase<TContext, TStepId extends string, TMeta> = {
   readonly context: TContext;
   readonly transition: TransitionState<TStepId>;
   readonly history: JourneyHistoryState<TStepId>;
-  readonly outcome: JourneyOutcome | null;
-  readonly machine: MachineFlags;
+  readonly machine: MachineState;
   readonly plugins: Readonly<Record<string, unknown>>;
   readonly currentStep: CurrentStepBase<TStepId, TMeta> | null;
 };

@@ -125,7 +125,7 @@ returns an unsubscribe function.
 await checkout.navigate.goToNextStep();
 checkout.controls.complete({ orderId: "order-42" });
 
-checkout.getSnapshot().outcome;
+checkout.getSnapshot().machine.outcome;
 // { type: "completed", payload: { orderId: "order-42" } }
 
 checkout.controls.restart();

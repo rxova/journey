@@ -18,7 +18,6 @@ snapshot.context;
 snapshot.currentStep;
 snapshot.transition;
 snapshot.history;
-snapshot.outcome;
 snapshot.machine;
 snapshot.plugins;
 ```
@@ -62,10 +61,16 @@ snapshot.history = {
 
 `visited` has an entry for every declared step.
 
-### Machine flags
+### Machine state
 
-`snapshot.machine` provides `isLoading`, `isIdle`, `isRunning`, `isPaused`, `isCompleted`, and
-`isTerminated`. `isLoading` mirrors `snapshot.transition.pending`.
+`snapshot.machine` provides `isLoading`, `isIdle`, `isRunning`, `isPaused`, `isCompleted`,
+`isTerminated`, and `outcome`. `isLoading` mirrors `snapshot.transition.pending`.
+
+```ts
+snapshot.machine.outcome = null; // or { type: "completed" | "terminated", payload }
+```
+
+Completion and termination set `snapshot.machine.outcome`; only `restart()` clears it back to `null`.
 
 ## Linear snapshot
 
