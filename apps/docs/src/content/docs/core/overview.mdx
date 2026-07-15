@@ -58,8 +58,8 @@ The machine object is stable. Changing state lives in `getSnapshot()`.
   a runtime exists.
 - **Navigation is explicit.** Reaching a final step does not complete the journey; call
   `machine.controls.complete()` when the product flow is done.
-- **Hooks have clear timing.** `onLeave` can block before commit. `onTransition` and `onEnter` run
-  after commit.
+- **Work and effects have clear timing.** Next/previous work can stop before commit. `onLeave`,
+  `onTransition`, and `onEnter` are awaited after commit.
 - **Plugins observe.** They receive a read-only host and add namespaced machine and snapshot data.
 
 ## Where to next

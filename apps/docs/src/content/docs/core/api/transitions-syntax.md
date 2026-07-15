@@ -17,7 +17,7 @@ const definition = {
     {
       id: "form",
       metadata: { title: "Form" },
-      onLeave: ({ snapshot }) => snapshot.context.valid
+      onLeave: ({ snapshot }) => analytics.track("form_left", snapshot.context)
     },
     {
       id: "done",

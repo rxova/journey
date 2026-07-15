@@ -25,7 +25,7 @@ Release the final V1 Core API on a new, smaller shared runtime. This is a full r
 - Move commands into stable, purpose-specific namespaces:
   `machine.controls.{start,pause,resume,complete,terminate,restart}`,
   `machine.navigate.{goToStepById,goToPreviousStep,goToNextStep,goToLastVisitedStep}`,
-  `machine.context.update`, and
+  `machine.context.update`, `machine.async.clearError`, and
   `machine.subscriptions.{subscribeSelector,subscribeEvent}`.
 - Lifecycle controls now return a boolean indicating whether the state change applied. Navigation
   methods and graph `send` return `Promise<NavigationResult>` with explicit failure reasons instead
@@ -36,7 +36,7 @@ Release the final V1 Core API on a new, smaller shared runtime. This is a full r
   only after completion or termination and restores the initial context and timeline. Termination
   wins over an in-flight transition.
 - Remove `requireExplicitCompletion`, `onLifecycleError`, and `onListenerError` options. Completion
-  is always explicit; hook failures are represented by navigation results and typed error events;
+  is always explicit; work failures use navigation results and hook failures use typed error events;
   subscriber failures are isolated from the machine and reported through `console.error`.
 - Make `dispose()` irreversible but safe: listeners are dropped and subsequent machine operations
   become no-ops or rejected results instead of throwing a dedicated disposed error.
@@ -53,13 +53,16 @@ Release the final V1 Core API on a new, smaller shared runtime. This is a full r
 - Use a browser-like timeline: moving backward or forward preserves existing entries, while a new
   navigation from the middle truncates the abandoned forward branch. Multi-step timeline jumps run
   leave/enter hooks once for the actual source and destination.
-- Make `onLeave` the asynchronous pre-commit guard. Returning `false`, throwing, or timing out
-  rejects navigation with a structured result. `onEnter` runs after commit, cannot roll navigation
-  back, and reports failures through snapshot async state and the `error` subscription event.
+- Add transactional work to `goToNextStep` and `goToPreviousStep`. Its asynchronous `run` must
+  succeed before movement; its synchronous `commit` stages context updates that publish atomically
+  with the destination. Failure keeps both source and context unchanged and returns `reason: error`.
+- Make `onLeave`, graph `onTransition`, and `onEnter` awaited post-commit effects. They run in that
+  order, cannot roll navigation back, do not skip later effects after failure, and report failures
+  through snapshot async state plus the typed `error` subscription event.
 - Give hook arguments the current snapshot, source, destination, causing graph event, immediate
   `updateContext`, and FIFO `raise`. Raised graph events run only after the current transition
-  settles and are capped by the exported `MAX_RAISED_EVENTS` guard. Context updates made by a hook
-  are committed immediately and remain even if that hook later blocks navigation.
+  settles and are capped by the exported `MAX_RAISED_EVENTS` guard. Hook context updates remain
+  immediate side effects after commit.
 
 ## Graph events
 
@@ -107,14 +110,14 @@ snapshot/event runtime. Current minified+Brotli measurements against the `rc.2` 
 
 | Export                             | Before  | After   | Change |
 | ---------------------------------- | ------- | ------- | ------ |
-| `createLinearJourney`              | 9.35 kB | 3.47 kB | -63%   |
-| `createGraphJourney`               | 9.98 kB | 3.61 kB | -64%   |
+| `createLinearJourney`              | 9.35 kB | 3.77 kB | -60%   |
+| `createGraphJourney`               | 9.98 kB | 3.93 kB | -61%   |
 | `createPersistencePlugin`          | 3.58 kB | 413 B   | -88%   |
 | `createExecutionPathsPlugin`       | 2.61 kB | 223 B   | -91%   |
 | `createAutosavePlugin`             | 3.98 kB | 616 B   | -85%   |
 | `createDiagnosticsPlugin`          | 3.19 kB | 702 B   | -78%   |
 | `createAnalyticsPlugin`            | 1.24 kB | 377 B   | -70%   |
-| `createGraphJourneyBuilder`        | 675 B   | 409 B   | -39%   |
+| `createGraphJourneyBuilder`        | 675 B   | 410 B   | -39%   |
 | `createReplayPlugin`               | 816 B   | 686 B   | -16%   |
 | `createSubscriptionEnhancerPlugin` | 168 B   | 175 B   | ~flat  |
 

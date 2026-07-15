@@ -3,7 +3,20 @@ import { createGraphJourney, createLinearJourney, type JourneyPlugin } from "@rx
 import { flush, wait } from "@rxova/journey-core/testing";
 
 describe("runtime race branches", () => {
-  it("dispose during a pending onLeave resolves the in-flight navigation as disposed", async () => {
+  it("terminate during pre-commit work keeps the source and invalidates the operation", async () => {
+    const machine = createLinearJourney({ steps: ["a", "b"], context: {} });
+    machine.controls.start();
+    await flush();
+
+    const navigation = machine.navigate.goToNextStep({ run: () => wait(30) });
+    expect(machine.controls.terminate()).toBe(true);
+
+    expect(await navigation).toEqual({ ok: false, reason: "not-running" });
+    expect(machine.getSnapshot().currentStep?.id).toBe("a");
+    expect(machine.getSnapshot().currentStep?.async.isLoading).toBe(false);
+  });
+
+  it("dispose during a post-commit onLeave keeps the committed navigation successful", async () => {
     const machine = createLinearJourney({
       steps: [{ id: "a", onLeave: () => wait(30) }, "b"],
       context: {}
@@ -13,10 +26,10 @@ describe("runtime race branches", () => {
 
     const navigation = machine.navigate.goToNextStep();
     machine.dispose();
-    expect(await navigation).toEqual({ ok: false, reason: "disposed" });
+    expect(await navigation).toEqual({ ok: true, from: "a", to: "b" });
   });
 
-  it("terminate during a pending onEnter resolves the navigation as not-running", async () => {
+  it("terminate during a pending onEnter keeps the committed navigation successful", async () => {
     const machine = createLinearJourney({
       steps: ["a", { id: "b", onEnter: () => wait(30) }],
       context: {}
@@ -27,7 +40,7 @@ describe("runtime race branches", () => {
     const navigation = machine.navigate.goToNextStep();
     await wait(5); // let the commit land, onEnter still pending
     expect(machine.controls.terminate()).toBe(true);
-    expect(await navigation).toEqual({ ok: false, reason: "not-running" });
+    expect(await navigation).toEqual({ ok: true, from: "a", to: "b" });
     expect(machine.getSnapshot().status).toBe("terminated");
   });
 

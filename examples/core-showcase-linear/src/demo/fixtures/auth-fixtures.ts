@@ -91,8 +91,7 @@ export const linearDefinition = {
       onEnter: async ({ updateContext }) => {
         const enrollment = await authApi.generateQrCode();
         updateContext((context) => ({ ...context, qrCode: enrollment.qrCode }));
-      },
-      onLeave: async ({ snapshot }) => authApi.confirmTwoFactorSetup(snapshot.context.qrCode)
+      }
     },
     { id: "verifyCode", metadata: { label: "Verify Code" } },
     { id: "loggedIn", metadata: { label: "Status" } }

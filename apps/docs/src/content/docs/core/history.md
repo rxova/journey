@@ -56,8 +56,8 @@ those `true` entries.
 
 ## Hooks still apply
 
-Timeline moves bypass graph transition gating, but source `onLeave` still runs and can block. Their
-hook `event` is `null`.
+Timeline moves bypass graph transition gating. Optional next/previous work may stop before commit;
+source `onLeave` runs only after commit and cannot block. The hook `event` is `null`.
 
 ## Where to next
 

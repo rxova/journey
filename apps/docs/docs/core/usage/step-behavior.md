@@ -13,10 +13,8 @@ Step configs keep static UI metadata and lifecycle behavior beside the step they
 const step = {
   id: "review",
   metadata: { title: "Review order" },
-  onLeave: async ({ snapshot, to, updateContext }) => {
-    const valid = await validate(snapshot.context);
-    updateContext((context) => ({ ...context, validated: valid }));
-    return valid;
+  onLeave: async ({ snapshot, to }) => {
+    await analytics.track("review_left", { order: snapshot.context.orderId, to });
   },
   onEnter: ({ from, event, raise }) => {
     if (event?.type === "SUBMIT") raise({ type: "AUDIT" });
@@ -38,16 +36,31 @@ config does not repeat it.
 | `updateContext` | Synchronous immutable context update.                                   |
 | `raise`         | Queue a graph event after the current move settles; a no-op in linear.  |
 
-## `onLeave`: pre-commit gate
+## Work that can stop navigation
 
-`onLeave` may be sync or async. Navigation is cancelled when it returns `false`, throws, rejects,
-or exceeds `defaultTimeoutMs`.
+Attach transactional work to next or previous navigation:
 
-While it runs, `snapshot.transition` has `pending: true` and `phase: "leaving"`. A second navigation
-returns `reason: "transitioning"`.
+```ts
+await machine.navigate.goToNextStep({
+  run: async ({ snapshot }) => {
+    const validation = await validate(snapshot.context);
+    if (!validation.valid) throw new Error("Review is invalid");
+    return validation;
+  },
+  commit: ({ result, updateContext }) => {
+    updateContext((context) => ({ ...context, validatedAt: result.checkedAt }));
+  }
+});
+```
 
-Context updates made by the hook are not transactional: they remain even when navigation is
-cancelled.
+While `run` executes, phase is `"working"` and the source remains current. `commit` is synchronous;
+its updates and navigation publish atomically. A work failure returns `reason: "error"` without
+changing position or context.
+
+## `onLeave`: post-commit source effect
+
+`onLeave` runs after position commits. It is awaited, but returning a value has no navigation
+meaning and a failure cannot undo the move. Use it for cleanup, analytics, and other source effects.
 
 ## `onEnter`: post-commit effect
 
@@ -60,12 +73,12 @@ The machine remains on the committed destination.
 
 ## Graph transition effects
 
-Graph transitions may declare `onTransition`. It runs after commit and before destination
-`onEnter`. If it fails, `onEnter` is skipped and the failure is reported with phase `"transition"`.
+Graph transitions may declare `onTransition`. It runs after `onLeave` and before destination
+`onEnter`. A failure is reported with phase `"transition"`, and `onEnter` still runs.
 
 ## Timeouts
 
-The runtime option applies one timeout to every async hook invocation:
+The runtime option applies one timeout to navigation `run` and every async hook invocation:
 
 ```ts
 createGraphJourney(definition, { defaultTimeoutMs: 5_000 });

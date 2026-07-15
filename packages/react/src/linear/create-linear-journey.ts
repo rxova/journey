@@ -29,7 +29,9 @@ export type LinearJourneyBundle<TContext, TStepId extends string> = {
     selector: (snapshot: LinearJourneySnapshot<TContext, TStepId>) => TSelected,
     equalityFn?: (a: TSelected, b: TSelected) => boolean
   ) => TSelected;
-  useLinearJourneyStep: (handler?: LinearJourneyStepHandler<TContext>) => void;
+  useLinearJourneyStep: <TResult = void>(
+    handler?: LinearJourneyStepHandler<TContext, TResult>
+  ) => void;
   /** Emits the equivalent core graph definition (linear→graph migration). */
   toGraphDefinition: (context: TContext) => GraphJourneyDefinition<TContext, TStepId>;
 };
@@ -85,7 +87,8 @@ export const createLinearJourney =
       useLinearJourney: () => useLinearJourney<TContext, TStepId>(),
       useLinearJourneySelector: (selector, equalityFn) =>
         useLinearJourneySelector(selector as never, equalityFn) as ReturnType<typeof selector>,
-      useLinearJourneyStep: (handler) => useLinearJourneyStep<TContext>(handler),
+      useLinearJourneyStep: <TResult>(handler?: LinearJourneyStepHandler<TContext, TResult>) =>
+        useLinearJourneyStep<TContext, TResult>(handler),
       toGraphDefinition: (context) =>
         linearToGraphDefinition({
           steps: stepIds.map((id) => ({ id })),

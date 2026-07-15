@@ -20,8 +20,7 @@ export type JourneyEventPayload<TEvents extends JourneyEventObject, TType extend
 /**
  * Why a navigation was rejected.
  *
- * - `blocked` — an `onLeave` guard returned `false`.
- * - `error` — an `onLeave` guard threw (or timed out).
+ * - `error` — navigation work threw, rejected, timed out, or failed to commit.
  * - `transitioning` — another navigation's hook chain is still pending.
  * - `not-running` — the machine is idle, paused, completed, or terminated.
  * - `invalid-target` — unknown step id, or (graph) no transition targets it.
@@ -31,7 +30,6 @@ export type JourneyEventPayload<TEvents extends JourneyEventObject, TType extend
  * - `disposed` — the machine was disposed; all methods are safe no-ops.
  */
 export type NavigationFailureReason =
-  | "blocked"
   | "error"
   | "transitioning"
   | "not-running"
@@ -54,12 +52,12 @@ export type JourneyOutcome<TCompletePayload = unknown, TTerminatePayload = unkno
 /** Machine-level async transition state (a snapshot source of truth). */
 export type TransitionState<TStepId extends string = string> = {
   readonly pending: boolean;
-  readonly phase: "leaving" | "entering" | null;
+  readonly phase: "working" | "leaving" | "entering" | null;
   readonly from: TStepId | null;
   readonly to: TStepId | null;
 };
 
-/** Async state of the current step's `onEnter`. */
+/** Async state of the current navigation work or lifecycle effect chain. */
 export type StepAsyncState = {
   readonly isLoading: boolean;
   readonly isSuccess: boolean;
@@ -168,8 +166,8 @@ export type ContextUpdater<TContext> = (previous: TContext) => TContext;
  *
  * `event` is the graph event that caused the transition; `null` for timeline
  * moves, linear navigation, and the initial entry on `start()`.
- * Context updates made inside hooks apply immediately and stick even when the
- * navigation is later cancelled.
+ * Hooks run after navigation commits. Context updates made inside hooks apply
+ * immediately and are side effects; hook failures never roll navigation back.
  */
 export type StepHookArgs<
   TContext,
@@ -189,17 +187,15 @@ export type StepHookArgs<
   readonly raise: (event: TEvents) => void;
 };
 
-/** `onLeave` may return `false` (sync or via promise) to cancel navigation. */
+/** `onLeave` is an awaited post-commit side effect and cannot block navigation. */
 export type OnLeaveHook<
   TContext,
   TStepId extends string,
   TEvents extends JourneyEventObject = never,
   TSnap = JourneySnapshot<TContext, TStepId>
-> = (
-  args: StepHookArgs<TContext, TStepId, TEvents, TSnap>
-) => boolean | void | Promise<boolean | void>;
+> = (args: StepHookArgs<TContext, TStepId, TEvents, TSnap>) => void | Promise<void>;
 
-/** `onEnter` is effect-only: fires after commit and cannot block. */
+/** `onEnter` is an awaited post-commit side effect and cannot block navigation. */
 export type OnEnterHook<
   TContext,
   TStepId extends string,
@@ -252,7 +248,7 @@ export type JourneyEventPayloads<
     readonly snapshot: TSnap;
     readonly error: unknown;
     /** Which pipeline stage threw. */
-    readonly phase: "enter" | "transition" | "raise";
+    readonly phase: "work" | "leave" | "enter" | "transition" | "raise";
     readonly stepId: TStepId | null;
   };
 };
@@ -294,12 +290,51 @@ export type JourneyControls = {
   restart(): boolean;
 };
 
-export type JourneyNavigation<TStepId extends string> = {
+export type NavigationDirection = "forward" | "backward";
+
+/** Read-only arguments for work that must succeed before navigation commits. */
+export type NavigationWorkArgs<TStepId extends string, TSnap> = {
+  readonly snapshot: TSnap;
+  readonly from: TStepId;
+  readonly to: TStepId;
+  readonly direction: NavigationDirection;
+};
+
+/**
+ * Transactional work attached to next/previous navigation.
+ *
+ * `run` is awaited before movement. If it throws, rejects, or times out, the
+ * machine stays on the current step. `commit` runs synchronously after `run`
+ * succeeds; its context updates are staged and published atomically with the
+ * position change.
+ */
+export type NavigationWork<TContext, TStepId extends string, TSnap, TResult = void> = {
+  readonly run: (args: NavigationWorkArgs<TStepId, TSnap>) => TResult | Promise<TResult>;
+  readonly commit?: (
+    args: NavigationWorkArgs<TStepId, TSnap> & {
+      readonly result: TResult;
+      readonly updateContext: (updater: ContextUpdater<TContext>) => void;
+    }
+  ) => void;
+};
+
+export type JourneyNavigation<TContext, TStepId extends string, TSnap> = {
   goToStepById(id: TStepId): Promise<NavigationResult<TStepId>>;
   /** Timeline pointer back `n`; clamps to start; fails only at index 0. */
-  goToPreviousStep(n?: number): Promise<NavigationResult<TStepId>>;
+  goToPreviousStep: {
+    (n?: number): Promise<NavigationResult<TStepId>>;
+    <TResult = void>(
+      work?: NavigationWork<TContext, TStepId, TSnap, TResult>
+    ): Promise<NavigationResult<TStepId>>;
+    <TResult = void>(
+      n: number,
+      work?: NavigationWork<TContext, TStepId, TSnap, TResult>
+    ): Promise<NavigationResult<TStepId>>;
+  };
   /** Timeline forward; linear falls back to next-in-declared-order at tip. */
-  goToNextStep(): Promise<NavigationResult<TStepId>>;
+  goToNextStep<TResult = void>(
+    work?: NavigationWork<TContext, TStepId, TSnap, TResult>
+  ): Promise<NavigationResult<TStepId>>;
   /** Pointer → timeline tip; fails if already there. */
   goToLastVisitedStep(): Promise<NavigationResult<TStepId>>;
 };
@@ -312,9 +347,10 @@ export type JourneyMachineBase<
 > = {
   getSnapshot(): TSnap;
   controls: JourneyControls;
-  navigate: JourneyNavigation<TStepId>;
+  navigate: JourneyNavigation<TContext, TStepId, TSnap>;
   subscriptions: JourneySubscriptions<TContext, TStepId, TSnap>;
   context: { update(updater: ContextUpdater<TContext>): void };
+  async: { clearError(): void };
   /** Irreversible teardown: drops listeners; all methods become safe no-ops. */
   dispose(): void;
 };

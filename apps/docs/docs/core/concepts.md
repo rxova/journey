@@ -27,7 +27,7 @@ Every step has an id. A full step config can add static `metadata`, `onLeave`, a
 {
   id: "profile",
   metadata: { title: "Your profile" },
-  onLeave: ({ snapshot }) => snapshot.context.name.length > 0
+  onLeave: ({ snapshot }) => analytics.track("profile_left", snapshot.context)
 }
 ```
 
@@ -45,7 +45,8 @@ machine.context.update((context) => ({ ...context, name: "Ada" }));
 updateContext((context) => ({ ...context, submitted: true }));
 ```
 
-Hook updates apply immediately. An `onLeave` update remains even if that hook later blocks the move.
+Hook updates apply immediately after navigation has committed. Navigation-work updates are staged
+separately and publish atomically with the move.
 
 ## Events and transitions
 
@@ -73,17 +74,18 @@ handlers. Guards are evaluated both during sends and during graph snapshot deriv
 when: ({ context, handlers }) => context.accepted && handlers.isAllowed();
 ```
 
-Use `onLeave` for asynchronous validation.
+For caller-driven next/previous movement, pass asynchronous validation as navigation work.
 
 ## Hooks
 
-The runtime has three effect points:
+The runtime has one transactional work point and three effect points:
 
-| Hook                      | Timing               | Can block?                           | Available on     |
-| ------------------------- | -------------------- | ------------------------------------ | ---------------- |
-| Step `onLeave`            | Before commit        | Yes, by returning `false` or failing | Linear and graph |
-| Transition `onTransition` | After commit         | No                                   | Graph            |
-| Step `onEnter`            | After `onTransition` | No                                   | Linear and graph |
+| Work/effect               | Timing               | Can block? | Available on      |
+| ------------------------- | -------------------- | ---------- | ----------------- |
+| Navigation `run`/`commit` | Before commit        | Yes        | Next and previous |
+| Step `onLeave`            | After commit         | No         | Linear and graph  |
+| Transition `onTransition` | After `onLeave`      | No         | Graph             |
+| Step `onEnter`            | After `onTransition` | No         | Linear and graph  |
 
 Hook arguments include `snapshot`, `from`, `to`, `event`, `updateContext`, and `raise`. `event` is
 `null` for linear and timeline moves. `raise` queues graph events after the current move settles.

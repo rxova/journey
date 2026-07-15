@@ -38,6 +38,22 @@ export function linearTypes() {
   >;
   type _context = Expect<Equal<typeof snapshot.context, { n: number }>>;
 
+  void machine.navigate.goToNextStep({
+    run: ({ snapshot: current, from, to, direction }) => {
+      type _workContext = Expect<Equal<typeof current.context, { n: number }>>;
+      type _workFrom = Expect<Equal<typeof from, "intro" | "details" | "done">>;
+      type _workTo = Expect<Equal<typeof to, "intro" | "details" | "done">>;
+      type _direction = Expect<Equal<typeof direction, "forward" | "backward">>;
+      return { amount: current.context.n };
+    },
+    commit: ({ result, updateContext }) => {
+      type _result = Expect<Equal<typeof result, { amount: number }>>;
+      updateContext((context) => ({ n: context.n + result.amount }));
+    }
+  });
+  void machine.navigate.goToPreviousStep({ run: () => Promise.resolve() });
+  void machine.navigate.goToPreviousStep(2, { run: () => Promise.resolve() });
+
   // linear machines have no events — send's absence is the discriminant
   // @ts-expect-error linear machines expose no send verb
   machine.send;

@@ -5,29 +5,31 @@ import type { LinearJourneyStepHandler } from "./linear.types";
 const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
 
 /**
- * Registers a forward-navigation handler for the step component calling it —
+ * Registers forward-navigation work for the step component calling it —
  * the react-use-wizard `handleStep` equivalent.
  *
- * `useLinearJourney().goToNextStep()` awaits the handler first; a throw/reject
+ * `useLinearJourney().goToNextStep()` delegates the work to Core; a throw/reject
  * cancels the navigation and lands in `useLinearJourney().error`, and
  * `useLinearJourney().isLoading` is true while it runs. Forward-only: timeline moves
- * and `goToStepById` bypass it (guards belong in step `onLeave`).
+ * and `goToStepById` bypass it. `onLeave` and `onEnter` remain post-commit effects.
  *
  * ```tsx
  * const Password = () => {
- *   useLinearJourneyStep(async ({ context, updateContext }) => {
- *     const ok = await validatePassword(context.password);
- *     if (!ok) throw new Error("Invalid password");
- *     updateContext((ctx) => ({ ...ctx, validatedAt: Date.now() }));
+ *   useLinearJourneyStep({
+ *     run: async ({ snapshot }) => validatePassword(snapshot.context.password),
+ *     commit: ({ result, updateContext }) => {
+ *       if (!result) throw new Error("Invalid password");
+ *       updateContext((ctx) => ({ ...ctx, password: "" }));
+ *     }
  *   });
  *   return <PasswordForm />;
  * };
  * ```
  */
-export const useLinearJourneyStep = <TContext = unknown>(
-  handler?: LinearJourneyStepHandler<TContext>
+export const useLinearJourneyStep = <TContext = unknown, TResult = void>(
+  handler?: LinearJourneyStepHandler<TContext, TResult>
 ): void => {
-  const { machine, interceptors } = useLinearJourneyContext("useLinearJourneyStep");
+  const { interceptors } = useLinearJourneyContext("useLinearJourneyStep");
   const stepId = React.useContext(LinearJourneyActiveStepContext);
 
   if (stepId === null) {
@@ -45,13 +47,11 @@ export const useLinearJourneyStep = <TContext = unknown>(
     return interceptors.register(
       stepId,
       hasHandler
-        ? () =>
-            handlerRef.current?.({
-              context: machine.getSnapshot().context as TContext,
-              updateContext: (updater) =>
-                machine.context.update(updater as (prev: unknown) => unknown)
-            })
+        ? ({
+            run: (args: never) => handlerRef.current?.run(args),
+            commit: (args: never) => handlerRef.current?.commit?.(args)
+          } as never)
         : undefined
     );
-  }, [machine, interceptors, stepId, hasHandler]);
+  }, [interceptors, stepId, hasHandler]);
 };

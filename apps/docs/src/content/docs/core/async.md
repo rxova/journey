@@ -5,29 +5,35 @@ title: Async behavior
 
 # Async behavior
 
-Async work lives in `onLeave`, graph `onTransition`, and `onEnter`. The snapshot separates the
-machine-wide transition phase from the destination step's entry result.
+Async work can run before a next/previous move and in post-commit lifecycle effects. The snapshot
+keeps both paths in the machine's transition state.
 
-## Leaving phase
+## Working phase
 
-While `onLeave` is pending:
+Pass work when an operation must succeed before the step changes:
 
 ```ts
-snapshot.transition.pending; // true
-snapshot.transition.phase; // "leaving"
-snapshot.machine.isLoading; // true
+const result = await machine.navigate.goToNextStep({
+  run: async ({ snapshot }) => authenticate(snapshot.context.credentials),
+  commit: ({ result, updateContext }) => {
+    updateContext((context) => ({ ...context, user: result.user, password: "" }));
+  }
+});
 ```
 
-Returning `false` produces `reason: "blocked"`. Throwing, rejecting, or timing out produces
-`reason: "error"` and includes the error on the navigation result. The source step remains current.
+While `run` is pending, the source remains current and `transition.phase` is `"working"`. Throwing,
+rejecting, timing out, or throwing from `commit` returns `reason: "error"`; neither position nor
+staged context changes. `commit` must be synchronous.
 
-## Entering phase
+`goToPreviousStep(work)` and `goToPreviousStep(n, work)` use the same contract.
 
-The destination is already current while `onTransition` and `onEnter` run:
+## Lifecycle-effect phases
+
+The destination is already current while `onLeave`, `onTransition`, and `onEnter` run:
 
 ```ts
-snapshot.transition.phase; // "entering"
-snapshot.currentStep?.async.isLoading; // true when onEnter exists
+snapshot.transition.phase; // "leaving" or "entering"
+snapshot.currentStep?.async.isLoading; // true while effects settle
 ```
 
 After settling, current-step async state is either successful or contains the post-commit failure:
@@ -41,8 +47,8 @@ snapshot.currentStep?.async = {
 };
 ```
 
-An `onTransition` error skips `onEnter`. Both failure types emit the named `error` event and leave
-the committed destination in place.
+Each effect is attempted even when an earlier effect fails. Failures emit the named `error` event
+and leave the committed destination in place.
 
 ## Concurrent calls
 
@@ -64,7 +70,7 @@ const machine = createLinearJourney(definition, {
 });
 ```
 
-The timeout applies to each async hook invocation. Terminating, restarting, or disposing increments
+The timeout applies to navigation `run` and each async hook invocation. Terminating, restarting, or disposing increments
 the runtime generation so stale continuations cannot settle machine state. Journey does not supply
 an `AbortSignal`; cancel underlying I/O in your own integration when needed.
 

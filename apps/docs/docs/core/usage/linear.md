@@ -18,7 +18,7 @@ const machine = createLinearJourney({
     {
       id: "shipping",
       metadata: { title: "Shipping" },
-      onLeave: async ({ snapshot }) => validateShipping(snapshot.context)
+      onLeave: async ({ snapshot }) => analytics.track("shipping_left", snapshot.context)
     },
     {
       id: "review",
@@ -81,29 +81,26 @@ snapshot.currentStep?.isLastStep;
 
 Metadata is available on the current step as `snapshot.currentStep.metadata`.
 
-## Hooks
+## Transactional navigation work
 
-`onLeave` runs before a move commits. Returning `false`, rejecting, or timing out prevents the move.
-`onEnter` runs after commit and cannot roll it back.
+Both directions accept work that must succeed before movement. The optional `commit` applies staged
+context updates atomically with the destination:
 
 ```ts
-const machine = createLinearJourney(
-  {
-    steps: [
-      {
-        id: "form",
-        onLeave: ({ snapshot }) => snapshot.context.valid
-      },
-      {
-        id: "done",
-        onEnter: async ({ snapshot }) => audit(snapshot.context)
-      }
-    ] as const,
-    context: { valid: false }
-  },
-  { defaultTimeoutMs: 5_000 }
-);
+await machine.navigate.goToNextStep({
+  run: async ({ snapshot }) => submitShipping(snapshot.context),
+  commit: ({ result, updateContext }) => {
+    updateContext((context) => ({ ...context, shippingId: result.id }));
+  }
+});
+
+await machine.navigate.goToPreviousStep({
+  run: async () => saveDraft()
+});
 ```
+
+Step `onLeave` and `onEnter` are awaited post-commit effects. Their failures are reported but cannot
+roll navigation back.
 
 ## Convert to a graph
 

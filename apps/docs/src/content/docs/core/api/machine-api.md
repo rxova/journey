@@ -55,14 +55,31 @@ All navigation methods return `Promise<NavigationResult<TStepId>>`.
 Linear journeys may jump to any declared id. Graph journeys require an enabled outgoing transition
 whose destination is that id.
 
-### `navigate.goToPreviousStep(n?)`
+### `navigate.goToPreviousStep(work?)` / `navigate.goToPreviousStep(n, work?)`
 
-Move the timeline pointer back by at least one entry, clamping to the beginning.
+Move the timeline pointer back by at least one entry, clamping to the beginning. Optional work uses
+the same pre-commit contract as next navigation.
 
-### `navigate.goToNextStep()`
+### `navigate.goToNextStep(work?)`
 
 Move through an existing forward timeline entry. At the timeline tip, linear journeys move to the
 next declared step; graph journeys return `"out-of-bounds"`.
+
+### Navigation work
+
+```ts
+await machine.navigate.goToNextStep({
+  run: async ({ snapshot, from, to, direction }) => {
+    return api.submit(snapshot.context);
+  },
+  commit: ({ result, updateContext }) => {
+    updateContext((context) => ({ ...context, submissionId: result.id }));
+  }
+});
+```
+
+`run` is awaited while the source remains current. If it fails, navigation returns `reason:
+"error"`. `commit` must be synchronous; its context updates publish atomically with movement.
 
 ### `navigate.goToLastVisitedStep()`
 
@@ -80,7 +97,7 @@ type NavigationResult<TStepId extends string> =
     };
 ```
 
-Failure reasons are `blocked`, `error`, `transitioning`, `not-running`, `invalid-target`,
+Failure reasons are `error`, `transitioning`, `not-running`, `invalid-target`,
 `no-enabled-transition`, `out-of-bounds`, `no-op`, and `disposed`.
 
 ## Graph `send(type, payload?)`
@@ -107,6 +124,11 @@ machine.context.update((context) => ({ ...context, name: "Ada" }));
 
 After disposal it is a no-op. The runtime does not enforce serializability, though persistence and
 replay integrations require serializable values.
+
+### `async.clearError()`
+
+Clears the current step's navigation-work or lifecycle-effect error. It is a no-op when no error is
+present.
 
 ## Subscriptions
 
@@ -139,7 +161,7 @@ Both methods return an idempotent unsubscribe function.
 
 ### Step `onLeave(args)`
 
-Runs before commit and may return `false` to block. It may be asynchronous.
+Runs after commit as an awaited source-step side effect. It may be asynchronous and cannot block.
 
 ### Graph transition `when(args)`
 
@@ -148,7 +170,8 @@ evaluates it.
 
 ### Graph transition `onTransition(args)`
 
-Runs post-commit before the destination `onEnter`. It may be asynchronous and cannot block.
+Runs post-commit after source `onLeave` and before destination `onEnter`. It may be asynchronous and
+cannot block.
 
 ### Step `onEnter(args)`
 

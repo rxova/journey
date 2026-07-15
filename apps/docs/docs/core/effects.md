@@ -8,26 +8,29 @@ title: Effects
 V1 models side effects with step hooks and graph transition hooks. There is no separate `effect`
 object or delayed `after` transition.
 
-## Work before a move
+## Transactional work before a move
 
-Use `onLeave` when work must decide whether navigation may commit:
+Pass work to next or previous navigation when it must succeed before movement:
 
 ```ts
-{
-  id: "payment",
-  onLeave: async ({ snapshot, updateContext }) => {
-    const result = await authorize(snapshot.context.cardToken);
+await machine.navigate.goToNextStep({
+  run: async ({ snapshot }) => {
+    const authorization = await authorize(snapshot.context.cardToken);
+    if (!authorization.approved) throw new Error("Payment declined");
+    return authorization;
+  },
+  commit: ({ result, updateContext }) => {
     updateContext((context) => ({ ...context, authorizationId: result.id }));
-    return result.approved;
   }
-}
+});
 ```
 
-Returning `false` blocks. Throwing or timing out returns a navigation failure with reason `"error"`.
+`run` may be asynchronous. `commit` is synchronous and its updates publish atomically with the
+step change. A failure leaves both the current step and context unchanged.
 
 ## Work after a move
 
-Use step `onEnter` for destination work:
+Use `onLeave` for source cleanup and `onEnter` for destination setup:
 
 ```ts
 {
@@ -50,8 +53,8 @@ SUBMIT: {
 }
 ```
 
-Post-commit failures do not roll navigation back. They set the destination step's async error and
-emit the `error` subscription event.
+These hooks are awaited in `onLeave` -> `onTransition` -> `onEnter` order. Failures do not roll
+navigation back or skip later effects; they set async error state and emit the `error` event.
 
 ## Chain graph work with `raise`
 

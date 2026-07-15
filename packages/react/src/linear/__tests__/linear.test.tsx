@@ -156,11 +156,16 @@ describe("<LinearJourney> step meta and start position", () => {
 
 describe("useLinearJourneyStep", () => {
   const Guarded = () => {
-    useLinearJourneyStep<{ n: number }>(async ({ context, updateContext }) => {
-      if (context.n < 1) {
-        throw new Error("n too small");
+    useLinearJourneyStep<{ n: number }, number>({
+      run: async ({ snapshot }) => {
+        if (snapshot.context.n < 1) {
+          throw new Error("n too small");
+        }
+        return 10;
+      },
+      commit: ({ result, updateContext }) => {
+        updateContext((context) => ({ ...context, n: context.n + result }));
       }
-      updateContext((c) => ({ ...c, n: c.n + 10 }));
     });
     return <span data-testid="guarded">guarded</span>;
   };

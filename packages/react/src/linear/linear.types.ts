@@ -24,6 +24,7 @@ import type {
   JourneyStatus,
   LinearJourneyMachine as CoreLinearJourneyMachine,
   LinearSnapshot,
+  NavigationWork,
   NavigationResult,
   OnEnterHook,
   OnLeaveHook
@@ -62,11 +63,13 @@ export type LinearJourneyPersistProp = {
   storage?: JourneyStorage;
 };
 
-/** Handler registered by `useLinearJourneyStep`: awaited before forward navigation. */
-export type LinearJourneyStepHandler<TContext = unknown> = (args: {
-  context: TContext;
-  updateContext: (updater: (context: TContext) => TContext) => void;
-}) => void | Promise<void>;
+/** Transactional Core work registered for this step's forward navigation. */
+export type LinearJourneyStepHandler<TContext = unknown, TResult = void> = NavigationWork<
+  TContext,
+  string,
+  LinearJourneySnapshot<TContext>,
+  TResult
+>;
 
 export type LinearJourneyProps<TContext = unknown, TStepId extends string = string> = {
   /**
@@ -136,17 +139,28 @@ export type UseLinearJourneyResult<TContext = unknown, TStepId extends string = 
 
   // status
   status: JourneyStatus;
-  /** True while a `useLinearJourneyStep` handler or a navigation hook chain is pending. */
+  /** True while navigation work or a lifecycle effect chain is pending. */
   isLoading: boolean;
   isPaused: boolean;
-  /** A rejected `useLinearJourneyStep` handler or the active step's async error, else null. */
+  /** The active step's navigation-work or lifecycle-effect error, else null. */
   error: unknown;
-  /** Clears a rejected `useLinearJourneyStep` handler error. */
+  /** Clears the active step's async error. */
   clearError: () => void;
 
   // navigation — the machine's own verbs; goToNextStep awaits step handlers first
-  goToNextStep: () => Promise<NavigationResult<TStepId>>;
-  goToPreviousStep: (steps?: number) => Promise<NavigationResult<TStepId>>;
+  goToNextStep: <TResult = void>(
+    work?: NavigationWork<TContext, TStepId, LinearJourneySnapshot<TContext, TStepId>, TResult>
+  ) => Promise<NavigationResult<TStepId>>;
+  goToPreviousStep: {
+    (steps?: number): Promise<NavigationResult<TStepId>>;
+    <TResult = void>(
+      work?: NavigationWork<TContext, TStepId, LinearJourneySnapshot<TContext, TStepId>, TResult>
+    ): Promise<NavigationResult<TStepId>>;
+    <TResult = void>(
+      steps: number,
+      work?: NavigationWork<TContext, TStepId, LinearJourneySnapshot<TContext, TStepId>, TResult>
+    ): Promise<NavigationResult<TStepId>>;
+  };
   goToStepById: (stepId: TStepId) => Promise<NavigationResult<TStepId>>;
   goToStepByIndex: (index: number) => Promise<NavigationResult<TStepId>>;
   goToLastVisitedStep: () => Promise<NavigationResult<TStepId>>;

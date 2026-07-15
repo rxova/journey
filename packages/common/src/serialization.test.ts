@@ -3,6 +3,18 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cloneForTransport, serializeError, serializeTransportError } from "./serialization";
 
 describe("cloneForTransport", () => {
+  it("preserves nested Error details", () => {
+    const error = Object.assign(new TypeError("nested failure"), { cause: "upstream" });
+
+    expect(cloneForTransport({ error })).toMatchObject({
+      error: {
+        name: "TypeError",
+        message: "nested failure",
+        cause: "upstream"
+      }
+    });
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
   });

@@ -76,7 +76,7 @@ export function normalizeGraphDefinition(definition: LooseGraphDefinition): {
  * `send(event, payload?)` is the primary verb; `goToStepById` is
  * transition-gated sugar (fires only if an enabled transition targets that
  * id). Timeline moves bypass transition gating — retracing a walked path is
- * always legal — but step `onLeave` guards still run.
+ * always legal. Step `onLeave` effects still run after those moves commit.
  */
 export function createGraphJourney<
   TContext,

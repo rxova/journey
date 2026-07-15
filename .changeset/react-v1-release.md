@@ -19,7 +19,8 @@ final Core machine contract.
   component owns and disposes its machine.
 - Add `useLinearJourney` for snapshot-derived position, visit, lifecycle, navigation, control,
   context, metadata, and machine access. Add `useLinearJourneySelector` for focused subscriptions
-  and `useLinearJourneyStep` for per-step async work before forward navigation.
+  and `useLinearJourneyStep` for per-step Core navigation work before forward movement. Its `run`
+  and transactional `commit` use the same machine-owned pending/error state as direct navigation.
 - Add the types-only curried `createLinearJourney<TContext>()([stepIds])` helper. It returns a typed
   `LinearJourney`, attached `LinearJourney.Step`, hooks, and `toGraphDefinition` bundle; it does not
   create or share a machine.

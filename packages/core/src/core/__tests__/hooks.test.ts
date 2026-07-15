@@ -3,40 +3,135 @@ import { createLinearJourney } from "@rxova/journey-core";
 import { flush, wait } from "@rxova/journey-core/testing";
 
 describe("step hooks", () => {
-  it("onLeave returning false cancels navigation (sync and via promise)", async () => {
-    let allow = false;
-    const machine = createLinearJourney({
-      steps: [{ id: "a", onLeave: () => allow }, "b"],
-      context: {}
-    });
+  it("keeps the current step when forward work rejects and exposes the work phase", async () => {
+    const boom = new Error("login failed");
+    const machine = createLinearJourney({ steps: ["a", "b"], context: {} });
     machine.controls.start();
     await flush();
 
-    const blockedEvents: string[] = [];
-    machine.subscriptions.subscribeEvent("navigationBlocked", ({ reason }) =>
-      blockedEvents.push(reason)
-    );
-
-    expect(await machine.navigate.goToNextStep()).toEqual({ ok: false, reason: "blocked" });
+    const navigation = machine.navigate.goToNextStep({
+      run: async () => {
+        await wait(20);
+        throw boom;
+      }
+    });
+    await wait(5);
+    expect(machine.getSnapshot().transition).toMatchObject({
+      pending: true,
+      phase: "working",
+      from: "a",
+      to: "b"
+    });
     expect(machine.getSnapshot().currentStep?.id).toBe("a");
-    expect(machine.getSnapshot().transition.pending).toBe(false);
-    expect(blockedEvents).toEqual(["blocked"]);
 
-    allow = true;
-    expect(await machine.navigate.goToNextStep()).toEqual({ ok: true, from: "a", to: "b" });
+    expect(await navigation).toEqual({ ok: false, reason: "error", error: boom });
+    expect(machine.getSnapshot().currentStep?.id).toBe("a");
+    expect(machine.getSnapshot().currentStep?.async.error).toBe(boom);
   });
 
-  it("async onLeave guard blocks until resolved", async () => {
-    const machine = createLinearJourney({
-      steps: [{ id: "a", onLeave: async () => wait(10).then(() => false) }, "b"],
-      context: {}
-    });
+  it("applies defaultTimeoutMs to navigation work", async () => {
+    const machine = createLinearJourney(
+      { steps: ["a", "b"], context: {} },
+      { defaultTimeoutMs: 10 }
+    );
     machine.controls.start();
     await flush();
-    expect(await machine.navigate.goToNextStep()).toEqual({ ok: false, reason: "blocked" });
+
+    const result = await machine.navigate.goToNextStep({ run: () => wait(100) });
+    expect(result).toMatchObject({ ok: false, reason: "error" });
+    if (!result.ok) expect(String((result.error as Error).message)).toContain("timed out");
+    expect(machine.getSnapshot().currentStep?.id).toBe("a");
   });
 
-  it("onLeave throwing cancels with reason error and carries the error", async () => {
+  it("publishes staged context and forward navigation atomically", async () => {
+    const machine = createLinearJourney({ steps: ["a", "b"], context: { password: "secret" } });
+    machine.controls.start();
+    await flush();
+    const snapshots: unknown[] = [];
+    machine.subscriptions.subscribeEvent("contextChange", ({ snapshot }) =>
+      snapshots.push(snapshot)
+    );
+    machine.subscriptions.subscribeEvent("stepEnter", ({ snapshot, to }) => {
+      if (to === "b") snapshots.push(snapshot);
+    });
+
+    expect(
+      await machine.navigate.goToNextStep({
+        run: ({ direction }) => {
+          expect(direction).toBe("forward");
+          return { userId: "user-1" };
+        },
+        commit: ({ result, updateContext }) => {
+          updateContext(() => ({ password: "", userId: result.userId }));
+        }
+      })
+    ).toEqual({ ok: true, from: "a", to: "b" });
+
+    expect(snapshots).toHaveLength(2);
+    expect(snapshots[0]).toBe(snapshots[1]);
+    expect(machine.getSnapshot()).toMatchObject({
+      context: { password: "", userId: "user-1" },
+      currentStep: { id: "b" }
+    });
+  });
+
+  it("runs the same work contract before backward navigation", async () => {
+    const machine = createLinearJourney({ steps: ["a", "b"], context: { saved: false } });
+    machine.controls.start();
+    await flush();
+    await machine.navigate.goToNextStep();
+
+    expect(
+      await machine.navigate.goToPreviousStep({
+        run: ({ direction, from, to }) => ({ direction, from, to }),
+        commit: ({ result, updateContext }) => {
+          expect(result).toEqual({ direction: "backward", from: "b", to: "a" });
+          updateContext((context) => ({ ...context, saved: true }));
+        }
+      })
+    ).toEqual({ ok: true, from: "b", to: "a" });
+    expect(machine.getSnapshot().context.saved).toBe(true);
+  });
+
+  it("does not move or publish staged context when commit throws", async () => {
+    const boom = new Error("invalid result");
+    const machine = createLinearJourney({ steps: ["a", "b"], context: { value: 0 } });
+    machine.controls.start();
+    await flush();
+
+    expect(
+      await machine.navigate.goToNextStep({
+        run: () => 1,
+        commit: ({ updateContext }) => {
+          updateContext(() => ({ value: 1 }));
+          throw boom;
+        }
+      })
+    ).toEqual({ ok: false, reason: "error", error: boom });
+    expect(machine.getSnapshot()).toMatchObject({
+      context: { value: 0 },
+      currentStep: { id: "a" }
+    });
+  });
+
+  it("rejects an asynchronous commit before navigation", async () => {
+    const machine = createLinearJourney({ steps: ["a", "b"], context: { value: 0 } });
+    machine.controls.start();
+    await flush();
+
+    const result = await machine.navigate.goToNextStep({
+      run: () => 1,
+      commit: (async () => wait(1)) as never
+    });
+
+    expect(result).toMatchObject({ ok: false, reason: "error" });
+    expect(machine.getSnapshot()).toMatchObject({
+      context: { value: 0 },
+      currentStep: { id: "a" }
+    });
+  });
+
+  it("onLeave throwing lets navigation stand and reports a leave effect error", async () => {
     const boom = new Error("no leaving");
     const machine = createLinearJourney({
       steps: [
@@ -53,12 +148,12 @@ describe("step hooks", () => {
     machine.controls.start();
     await flush();
 
-    expect(await machine.navigate.goToNextStep()).toEqual({
-      ok: false,
-      reason: "error",
-      error: boom
-    });
-    expect(machine.getSnapshot().currentStep?.id).toBe("a");
+    const errors: unknown[] = [];
+    machine.subscriptions.subscribeEvent("error", (payload) => errors.push(payload));
+
+    expect(await machine.navigate.goToNextStep()).toEqual({ ok: true, from: "a", to: "b" });
+    expect(machine.getSnapshot().currentStep?.id).toBe("b");
+    expect(errors).toMatchObject([{ error: boom, phase: "leave", stepId: "a" }]);
   });
 
   it("onEnter throwing lets navigation stand, sets async.isError, fires error event", async () => {
@@ -125,25 +220,24 @@ describe("step hooks", () => {
     expect(snapshot.transition.pending).toBe(false);
   });
 
-  it("context updates made inside a cancelled onLeave stick", async () => {
+  it("context updates made inside onLeave are post-commit side effects", async () => {
     const machine = createLinearJourney({
       steps: [
         {
           id: "a",
           onLeave: ({ updateContext }) => {
-            updateContext(() => ({ error: "cannot leave yet" }));
-            return false;
+            updateContext(() => ({ message: "left a" }));
           }
         },
         "b"
       ],
-      context: { error: "" }
+      context: { message: "" }
     });
     machine.controls.start();
     await flush();
 
-    expect(await machine.navigate.goToNextStep()).toEqual({ ok: false, reason: "blocked" });
-    expect(machine.getSnapshot().context).toEqual({ error: "cannot leave yet" });
+    expect(await machine.navigate.goToNextStep()).toEqual({ ok: true, from: "a", to: "b" });
+    expect(machine.getSnapshot().context).toEqual({ message: "left a" });
   });
 
   it("hooks receive from, to, a null event, and the live snapshot", async () => {
@@ -167,7 +261,7 @@ describe("step hooks", () => {
     expect(seen).toEqual([{ from: "a", to: "b", event: null, phase: "leaving" }]);
   });
 
-  it("defaultTimeoutMs treats a slow onLeave as throwing (navigation cancelled)", async () => {
+  it("defaultTimeoutMs surfaces a slow onLeave without rolling navigation back", async () => {
     const machine = createLinearJourney(
       { steps: [{ id: "a", onLeave: () => wait(200) }, "b"], context: {} },
       { defaultTimeoutMs: 20 }
@@ -175,16 +269,14 @@ describe("step hooks", () => {
     machine.controls.start();
     await flush();
 
-    const result = await machine.navigate.goToNextStep();
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.reason).toBe("error");
-      expect(String((result.error as Error).message)).toContain("timed out");
-    }
-    expect(machine.getSnapshot().currentStep?.id).toBe("a");
+    expect(await machine.navigate.goToNextStep()).toEqual({ ok: true, from: "a", to: "b" });
+    expect(machine.getSnapshot().currentStep?.id).toBe("b");
+    expect(String((machine.getSnapshot().currentStep?.async.error as Error).message)).toContain(
+      "timed out"
+    );
   });
 
-  it("defaultTimeoutMs preserves a rejected onLeave error", async () => {
+  it("defaultTimeoutMs preserves a rejected onLeave error as an effect error", async () => {
     const boom = new Error("leave rejected");
     const machine = createLinearJourney(
       { steps: [{ id: "a", onLeave: () => Promise.reject(boom) }, "b"], context: {} },
@@ -193,11 +285,8 @@ describe("step hooks", () => {
     machine.controls.start();
     await flush();
 
-    expect(await machine.navigate.goToNextStep()).toEqual({
-      ok: false,
-      reason: "error",
-      error: boom
-    });
+    expect(await machine.navigate.goToNextStep()).toEqual({ ok: true, from: "a", to: "b" });
+    expect(machine.getSnapshot().currentStep?.async.error).toBe(boom);
   });
 
   it("defaultTimeoutMs surfaces a slow onEnter as a step error", async () => {

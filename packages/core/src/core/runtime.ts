@@ -2,12 +2,14 @@ import { LOADING_ASYNC, MAX_RAISED_EVENTS, SUCCESS_ASYNC } from "./helpers";
 import { JourneyStore } from "./store";
 import type {
   AnyHookArgs,
+  AnyNavigationWork,
   AnyOnEffect,
   NavigationFailure,
   RuntimeConfig,
   RuntimeTransition,
   TimelineOp,
-  TransitionListener
+  TransitionListener,
+  WorkDirection
 } from "./runtime.types";
 import type {
   ContextUpdater,
@@ -33,7 +35,11 @@ export class JourneyRuntime {
   private outcome: JourneyOutcome | null = null;
   private visitCounts = new Map<string, number>();
   private entryAsync: StepAsyncState = SUCCESS_ASYNC;
-  private pending: { phase: "leaving" | "entering"; from: string | null; to: string } | null = null;
+  private pending: {
+    phase: "working" | "leaving" | "entering";
+    from: string | null;
+    to: string;
+  } | null = null;
   private disposed = false;
   /** Bumped by terminate/restart/dispose so stale hook continuations bail out. */
   private generation = 0;
@@ -88,6 +94,7 @@ export class JourneyRuntime {
     if (this.disposed || this.status === "terminated") return false;
     this.generation += 1;
     this.pending = null;
+    this.entryAsync = SUCCESS_ASYNC;
     this.raiseQueue = [];
     this.outcome = Object.freeze({ type: "terminated", payload }) as JourneyOutcome;
     this.setStatus("terminated");
@@ -139,6 +146,12 @@ export class JourneyRuntime {
     this.store.emit("contextChange", { snapshot, previous, current: this.context });
   }
 
+  clearAsyncError(): void {
+    if (this.disposed || !this.entryAsync.isError) return;
+    this.entryAsync = SUCCESS_ASYNC;
+    this.publish();
+  }
+
   // ── navigation ───────────────────────────────────────────────────────────
 
   goToStepById(id: string): Promise<NavigationResult> {
@@ -161,28 +174,33 @@ export class JourneyRuntime {
     return this.runNavigation(id, { kind: "append" }, null, null);
   }
 
-  goToPreviousStep(n = 1): Promise<NavigationResult> {
+  goToPreviousStep(
+    nOrWork: number | AnyNavigationWork = 1,
+    suppliedWork?: AnyNavigationWork
+  ): Promise<NavigationResult> {
     const rejected = this.checkNavigable();
     if (rejected) return this.blocked(rejected, null);
     if (this.currentIndex <= 0) return this.blocked({ ok: false, reason: "out-of-bounds" }, null);
+    const n = typeof nOrWork === "number" ? nOrWork : 1;
+    const work = typeof nOrWork === "number" ? suppliedWork : nOrWork;
     const index = Math.max(0, this.currentIndex - Math.max(1, Math.floor(n)));
     const target = this.timeline[index] as string;
-    return this.runNavigation(target, { kind: "pointer", index }, null, null);
+    return this.runNavigation(target, { kind: "pointer", index }, null, null, work, "backward");
   }
 
-  goToNextStep(): Promise<NavigationResult> {
+  goToNextStep(work?: AnyNavigationWork): Promise<NavigationResult> {
     const rejected = this.checkNavigable();
     if (rejected) return this.blocked(rejected, null);
     if (this.currentIndex < this.timeline.length - 1) {
       const index = this.currentIndex + 1;
       const target = this.timeline[index] as string;
-      return this.runNavigation(target, { kind: "pointer", index }, null, null);
+      return this.runNavigation(target, { kind: "pointer", index }, null, null, work, "forward");
     }
     if (this.config.kind === "linear") {
       const orderIndex = this.config.stepIds.indexOf(this.currentStepId() ?? "");
       const target = this.config.stepIds[orderIndex + 1];
       if (target === undefined) return this.blocked({ ok: false, reason: "out-of-bounds" }, null);
-      return this.runNavigation(target, { kind: "append" }, null, null);
+      return this.runNavigation(target, { kind: "append" }, null, null, work, "forward");
     }
     return this.blocked({ ok: false, reason: "out-of-bounds" }, null);
   }
@@ -387,63 +405,98 @@ export class JourneyRuntime {
     to: string,
     op: TimelineOp,
     event: JourneyEventObject | null,
-    transition: RuntimeTransition | null
+    transition: RuntimeTransition | null,
+    work?: AnyNavigationWork,
+    direction?: WorkDirection
   ): Promise<NavigationResult> {
     const generation = this.generation;
     const from = this.currentStepId();
-    this.pending = { phase: "leaving", from, to };
-    this.publish();
+    let stagedContext = this.context;
+    let contextWasUpdated = false;
 
-    // onLeave — async + blocking: `false` (sync or via promise) cancels.
-    const fromStep = from === null ? undefined : this.config.steps[from];
-    if (fromStep?.onLeave) {
-      let leaveResult: boolean | void;
+    if (work && from !== null && direction) {
+      this.pending = { phase: "working", from, to };
+      this.entryAsync = LOADING_ASYNC;
+      this.publish();
+
       try {
-        leaveResult = await this.withTimeout(
-          Promise.resolve(fromStep.onLeave(this.hookArgs(from, to, event))),
-          `onLeave(${from ?? ""})`
+        const args = {
+          snapshot: this.store.getSnapshot(),
+          from,
+          to,
+          direction
+        };
+        const result = await this.withTimeout(
+          Promise.resolve(work.run(args)),
+          `${direction} navigation work(${from} -> ${to})`
         );
+        if (!this.isCurrent(generation)) return this.staleResult();
+        const commitResult = (work.commit as ((value: unknown) => unknown) | undefined)?.({
+          ...args,
+          result,
+          updateContext: (updater: ContextUpdater<unknown>) => {
+            stagedContext = updater(stagedContext);
+            contextWasUpdated = true;
+          }
+        });
+        if (typeof commitResult === "object" && commitResult !== null && "then" in commitResult) {
+          throw new Error("journey: navigation work commit must be synchronous");
+        }
       } catch (error) {
         if (!this.isCurrent(generation)) return this.staleResult();
         this.pending = null;
-        this.publish();
+        this.entryAsync = Object.freeze({
+          isLoading: false,
+          isSuccess: false,
+          isError: true,
+          error
+        });
+        const snapshot = this.publish();
+        this.store.emit("error", { snapshot, error, phase: "work", stepId: from });
         return this.blocked({ ok: false, reason: "error", error }, to);
-      }
-      if (!this.isCurrent(generation)) return this.staleResult();
-      if (leaveResult === false) {
-        this.pending = null;
-        this.publish();
-        return this.blocked({ ok: false, reason: "blocked" }, to);
       }
     }
     if (!this.isCurrent(generation)) return this.staleResult();
 
-    // Commit: timeline updates, snapshot emission, stepLeave/stepEnter events.
+    // Commit position and staged context in one snapshot.
+    const previousContext = this.context;
     if (op.kind === "pointer") {
       this.currentIndex = op.index;
     } else {
       this.timeline = [...this.timeline.slice(0, this.currentIndex + 1), to];
       this.currentIndex = this.timeline.length - 1;
     }
-    this.pending = { phase: "entering", from, to };
-    this.commitEntry(from, to);
+    if (contextWasUpdated) this.context = stagedContext;
+    const fromStep = from === null ? undefined : this.config.steps[from];
+    this.pending = { phase: fromStep?.onLeave ? "leaving" : "entering", from, to };
+    this.commitEntry(
+      from,
+      to,
+      contextWasUpdated ? { previous: previousContext, current: stagedContext } : undefined,
+      fromStep?.onLeave !== undefined || transition?.onTransition !== undefined
+    );
 
     await this.runEntryEffects(from, to, event, transition, generation);
-    if (!this.isCurrent(generation)) return this.staleResult();
     return { ok: true, from, to };
   }
 
   /** Shared commit bookkeeping for navigations and the initial entry. */
-  private commitEntry(from: string | null, to: string): void {
+  private commitEntry(
+    from: string | null,
+    to: string,
+    contextChange?: { previous: unknown; current: unknown },
+    hasPreEnterEffect = false
+  ): void {
     this.visitCounts.set(to, (this.visitCounts.get(to) ?? 0) + 1);
     const toStep = this.config.steps[to];
-    this.entryAsync = toStep?.onEnter ? LOADING_ASYNC : SUCCESS_ASYNC;
+    this.entryAsync = hasPreEnterEffect || toStep?.onEnter ? LOADING_ASYNC : SUCCESS_ASYNC;
     const snapshot = this.publish();
+    if (contextChange) this.store.emit("contextChange", { snapshot, ...contextChange });
     if (from !== null) this.store.emit("stepLeave", { snapshot, from, to });
     this.store.emit("stepEnter", { snapshot, from, to });
   }
 
-  /** Post-commit effects: transition `onTransition`, then step `onEnter`. */
+  /** Post-commit effects: step `onLeave`, transition effect, then step `onEnter`. */
   private async runEntryEffects(
     from: string | null,
     to: string,
@@ -451,8 +504,23 @@ export class JourneyRuntime {
     transition: RuntimeTransition | null,
     generation: number
   ): Promise<void> {
+    const fromStep = from === null ? undefined : this.config.steps[from];
     const toStep = this.config.steps[to];
-    let failure: { error: unknown; phase: "enter" | "transition" } | null = null;
+    const failures: { error: unknown; phase: "leave" | "enter" | "transition"; stepId: string }[] =
+      [];
+
+    const leaveFailure = await this.invokeEffect(
+      fromStep?.onLeave,
+      this.hookArgs(from, to, event),
+      `onLeave(${from ?? ""})`
+    );
+    if (!this.isCurrent(generation)) return;
+    if (leaveFailure && from !== null) {
+      failures.push({ error: leaveFailure.error, phase: "leave", stepId: from });
+    }
+
+    this.pending = { phase: "entering", from, to };
+    this.publish();
 
     const transitionFailure = await this.invokeEffect(
       transition?.onTransition,
@@ -461,28 +529,33 @@ export class JourneyRuntime {
     );
     if (!this.isCurrent(generation)) return;
     if (transitionFailure) {
-      failure = { error: transitionFailure.error, phase: "transition" };
-    } else {
-      const enterFailure = await this.invokeEffect(
-        toStep?.onEnter,
-        this.hookArgs(from, to, event),
-        `onEnter(${to})`
-      );
-      if (!this.isCurrent(generation)) return;
-      if (enterFailure) failure = { error: enterFailure.error, phase: "enter" };
+      failures.push({ error: transitionFailure.error, phase: "transition", stepId: to });
     }
 
-    this.entryAsync = failure
-      ? Object.freeze({ isLoading: false, isSuccess: false, isError: true, error: failure.error })
+    const enterFailure = await this.invokeEffect(
+      toStep?.onEnter,
+      this.hookArgs(from, to, event),
+      `onEnter(${to})`
+    );
+    if (!this.isCurrent(generation)) return;
+    if (enterFailure) failures.push({ error: enterFailure.error, phase: "enter", stepId: to });
+
+    this.entryAsync = failures[0]
+      ? Object.freeze({
+          isLoading: false,
+          isSuccess: false,
+          isError: true,
+          error: failures[0].error
+        })
       : SUCCESS_ASYNC;
     this.pending = null;
     const snapshot = this.publish();
-    if (failure) {
+    for (const failure of failures) {
       this.store.emit("error", {
         snapshot,
         error: failure.error,
         phase: failure.phase,
-        stepId: to
+        stepId: failure.stepId
       });
     }
     for (const listener of [...this.transitionListeners]) {

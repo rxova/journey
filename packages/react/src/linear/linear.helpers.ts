@@ -1,5 +1,10 @@
 import { createPersistencePlugin } from "@rxova/journey-core/persistence";
-import type { AnyJourneyPlugin, LinearStepConfig } from "@rxova/journey-core";
+import type {
+  AnyJourneyPlugin,
+  LinearSnapshot,
+  LinearStepConfig,
+  NavigationWork
+} from "@rxova/journey-core";
 import type { JourneyStorage } from "@rxova/journey-core/persistence";
 import type { DerivedLinearJourneyStep } from "./derive-steps";
 import type { LinearJourneyPersistProp } from "./linear.types";
@@ -30,42 +35,29 @@ export const buildPersistPlugin = (persist: LinearJourneyPersistProp): AnyJourne
     storage: persist.storage ?? (globalThis.localStorage as JourneyStorage)
   });
 
-export type InterceptorState = {
-  readonly pending: boolean;
-  readonly error: unknown;
-};
-
 /**
- * Per-journey registry for `useLinearJourneyStep` handlers, with an observable
- * pending/error state. The core dropped navigation interceptors — cancellation
- * belongs to `onLeave` — so the linear journey tier awaits the active step's handler
- * before forwarding `goToNextStep` to the machine.
+ * Per-journey registry for `useLinearJourneyStep` work. Core owns execution,
+ * pending state, errors, and transactional context commits.
  */
 export type InterceptorStore = {
-  register(stepId: string, handler: (() => void | Promise<void>) | undefined): () => void;
-  /** Runs the handler for `stepId`; returns false when it threw (navigation must not proceed). */
-  run(stepId: string): Promise<boolean>;
-  getState(): InterceptorState;
-  clearError(): void;
-  subscribe(listener: () => void): () => void;
+  register(stepId: string, work: RegisteredNavigationWork | undefined): () => void;
+  get(stepId: string): RegisteredNavigationWork | undefined;
 };
 
-export const createInterceptorStore = (
-  onHandlerError?: (error: unknown) => void
-): InterceptorStore => {
-  const handlers = new Map<string, () => void | Promise<void>>();
-  const listeners = new Set<() => void>();
-  let state: InterceptorState = { pending: false, error: null };
+export type RegisteredNavigationWork = NavigationWork<
+  unknown,
+  string,
+  LinearSnapshot<unknown, string, unknown>,
+  never
+>;
 
-  const setState = (next: InterceptorState) => {
-    state = next;
-    for (const listener of [...listeners]) listener();
-  };
+export const createInterceptorStore = (): InterceptorStore => {
+  const handlers = new Map<string, RegisteredNavigationWork>();
 
   return {
-    register(stepId, handler) {
-      if (handler) {
-        handlers.set(stepId, handler);
+    register(stepId, work) {
+      if (work) {
+        handlers.set(stepId, work);
       } else {
         handlers.delete(stepId);
       }
@@ -73,27 +65,6 @@ export const createInterceptorStore = (
         handlers.delete(stepId);
       };
     },
-    async run(stepId) {
-      const handler = handlers.get(stepId);
-      if (!handler) return true;
-      setState({ pending: true, error: null });
-      try {
-        await handler();
-        setState({ pending: false, error: null });
-        return true;
-      } catch (error) {
-        setState({ pending: false, error });
-        onHandlerError?.(error);
-        return false;
-      }
-    },
-    getState: () => state,
-    clearError: () => {
-      if (state.error !== null) setState({ ...state, error: null });
-    },
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    }
+    get: (stepId) => handlers.get(stepId)
   };
 };

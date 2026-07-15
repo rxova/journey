@@ -94,7 +94,7 @@ const createLinearJourneyMachine = (
     }, 0);
   }
 
-  const interceptors = createInterceptorStore((error) => onError(error, { phase: "step-handler" }));
+  const interceptors = createInterceptorStore();
   return {
     machine,
     interceptors,
@@ -281,8 +281,10 @@ const LinearJourneyComponent = <TContext,>(
           });
         }
       }),
-      subscriptions.subscribeEvent("error", ({ error }) => {
-        callbacksRef.current.onError?.(error, { phase: "navigate" });
+      subscriptions.subscribeEvent("error", ({ error, phase }) => {
+        callbacksRef.current.onError?.(error, {
+          phase: phase === "work" ? "step-handler" : "navigate"
+        });
       })
     ];
 
