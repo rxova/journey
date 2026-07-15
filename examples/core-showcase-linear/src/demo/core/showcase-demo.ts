@@ -435,17 +435,23 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
           ? `<section class="card"><h2>Progress</h2><div class="stepper" data-role="stepper"></div></section>`
           : ""
       }
+      <section class="card">
+        <h2>Runtime</h2>
+        <p class="hint">
+          <strong>Simulated async:</strong> Login authenticates before forward navigation and clears
+          the password only when it commits. Setup 2FA waits 700 ms on entry to generate a QR code,
+          then runs a 6-second confirmation before continuing. Back navigation has no artificial work.
+        </p>
+        <div class="status-row" data-role="status-row"></div>
+      </section>
       <div class="split">
-        <section class="card">
-          <h2>Runtime</h2>
-          <p class="hint">
-            <strong>Simulated async:</strong> Login authenticates before forward navigation and clears
-            the password only when it commits. Setup 2FA waits 700 ms on entry to generate a QR code,
-            then runs a 6-second confirmation before continuing. Back navigation has no artificial work.
-          </p>
-          <div class="status-row" data-role="status-row"></div>
-          <div style="margin-top: 1rem" data-role="step-slot"></div>
+        <section class="card card-relative">
+          <h2>Component</h2>
+          <div data-role="step-slot"></div>
           ${isGraph(machine) ? `<div style="margin-top: 1rem"><h3>Execution Paths</h3><div class="path-list" data-role="execution-paths"></div></div>` : ""}
+          <div class="pending-overlay" data-role="pending-overlay" hidden>
+            <span class="spinner" aria-label="Loading"></span>
+          </div>
         </section>
         <section class="card">
           <h2>Snapshot</h2>
@@ -462,6 +468,7 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
   const statusRow = root.querySelector<HTMLElement>('[data-role="status-row"]')!;
   const stepperEl = root.querySelector<HTMLElement>('[data-role="stepper"]');
   const stepSlot = root.querySelector<HTMLElement>('[data-role="step-slot"]')!;
+  const pendingOverlayEl = root.querySelector<HTMLElement>('[data-role="pending-overlay"]')!;
   const executionPathsEl = root.querySelector<HTMLElement>('[data-role="execution-paths"]');
   const snapshotEl = root.querySelector<HTMLElement>('[data-role="snapshot"]')!;
   const eventLogEl = root.querySelector<HTMLElement>('[data-role="event-log"]')!;
@@ -505,6 +512,7 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
       mountedStepId = stepId;
     }
     updateStepContent(stepSlot, stepId, context);
+    pendingOverlayEl.hidden = !isPending;
 
     if (stepperEl) {
       const currentIndex = stepOrder.findIndex((step) => step.id === stepId);
