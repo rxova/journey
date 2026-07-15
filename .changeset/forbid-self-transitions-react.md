@@ -1,5 +1,5 @@
 ---
-"@rxova/journey-core": minor
+"@rxova/journey-react": minor
 ---
 
 Forbid self-transitions at creation: a transition, `after` delay, or `effect`

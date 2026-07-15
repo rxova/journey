@@ -1,5 +1,5 @@
 ---
-"@rxova/journey-core": major
+"@rxova/journey-devtools-bridge": patch
 ---
 
 Model custom events as a discriminated union instead of a keyed payload map.

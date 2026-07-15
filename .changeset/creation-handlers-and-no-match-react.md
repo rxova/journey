@@ -1,5 +1,5 @@
 ---
-"@rxova/journey-core": minor
+"@rxova/journey-react": minor
 ---
 
 Add two creation-time machine options.

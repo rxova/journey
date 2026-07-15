@@ -10,6 +10,7 @@ import type {
   JourneyDevtoolsSerializableSnapshot
 } from "./protocol.types";
 
+/** Creates a collision-resistant default id for a machine attached to DevTools. */
 export const createJourneyMachineId = (): string =>
   `journey-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -33,6 +34,7 @@ export class OperationRateLimiter {
   }
 }
 
+/** Clones a machine snapshot into the transport-safe DevTools snapshot shape. */
 export const serializeSnapshot = (snapshot: unknown): JourneyDevtoolsSerializableSnapshot =>
   cloneForTransport(snapshot) as JourneyDevtoolsSerializableSnapshot;
 

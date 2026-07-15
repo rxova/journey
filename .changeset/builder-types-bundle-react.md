@@ -1,5 +1,5 @@
 ---
-"@rxova/journey-core": minor
+"@rxova/journey-react": patch
 ---
 
 Bundle the graph builder's type parameters into a single `JourneyTypes` object.
