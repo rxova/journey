@@ -72,6 +72,12 @@ const describeContextChange = (previous: LoginContext, current: LoginContext): s
     .join(", ");
 };
 
+// Verbs are grouped by namespace on the machine:
+//   navigate.*  – move between steps (goToNextStep/goToPreviousStep), optionally
+//                 transactional via { run, commit }
+//   controls.*  – lifecycle (complete/terminate/restart), not step-to-step movement
+//   context.*   – read/write journey context directly (e.g. form field edits)
+//   async.*     – transition-level loading/error state (e.g. clearError)
 export const mountCoreShowcase = (root: HTMLElement) => {
   const machine = createLinearJourney<LoginStepId, LoginContext, LoginTerminationPayloads>(
     linearDefinition,
@@ -86,6 +92,11 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     }
   };
 
+  // subscribeEvent is for "something happened" (audit/log style, one-shot payloads
+  // like a phase transition or a raw context diff); subscribeSelector further down
+  // is for "render when this derived value changes" (a live view over the snapshot).
+  // Reach for subscribeEvent when logging/side-effecting on discrete occurrences,
+  // subscribeSelector when driving UI off derived state.
   for (const eventName of OBSERVED_EVENTS) {
     machine.subscriptions.subscribeEvent(eventName, () => {
       pushLogEntry({ label: eventName });
@@ -157,6 +168,10 @@ export const mountCoreShowcase = (root: HTMLElement) => {
   };
 
   const submitVerification = async () => {
+    // Linear journeys have no separate "guard" concept — step order is exhaustive
+    // by construction, so conditional branching (e.g. rejecting a bad code) is just
+    // a throw inside run(), surfaced as navigation.reason === "error" below. Guards
+    // proper belong to the graph tier, where a step can have multiple transitions.
     const navigation = await machine.navigate.goToNextStep({
       run: async ({ snapshot }) => {
         const result = await authApi.verifyCode(
