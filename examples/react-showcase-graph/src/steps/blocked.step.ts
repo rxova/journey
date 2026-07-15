@@ -1,9 +1,12 @@
 import { createStep } from "../builder";
 
 export const blockedStep = createStep("blocked", {
-  meta: { label: "Blocked", icon: "🚫" },
-  onEnter: ({ context }) => {
-    // {    snapshot, context, from, to, event, transitionId, handlers, signal, dispatch  }
-    console.warn("[journey] blocked: account locked after", context.attempts, "failed attempts");
+  metadata: { label: "Blocked", icon: "🚫" },
+  onEnter: ({ snapshot }) => {
+    console.warn(
+      "[journey] blocked: account locked after",
+      snapshot.context.attempts,
+      "failed attempts"
+    );
   }
 });

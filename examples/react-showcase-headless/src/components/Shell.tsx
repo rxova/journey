@@ -13,7 +13,7 @@ const EventLog = () => {
   });
 
   React.useEffect(() => {
-    if (snapshot.status === "idled" && snapshot.history.timeline.length === 1) {
+    if (snapshot.status === "idle") {
       setEvents([]);
     }
   }, [snapshot.history.timeline.length, snapshot.status]);
@@ -115,7 +115,7 @@ export const Shell = ({ children }: { children: React.ReactNode }) => {
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.75rem" }}>
           <span className={`status status-${snapshot.status}`}>{snapshot.status}</span>
           <span style={{ fontSize: "0.8rem", color: "#888" }}>
-            Step: {snapshot.currentStepId} (visited {computed.visitedStepCount} steps)
+            Step: {snapshot.currentStep?.id ?? "none"} (visited {computed.visitedStepCount} steps)
           </span>
         </div>
 

@@ -2,13 +2,14 @@
 
 import React from "react";
 import { journey } from "../journey";
+import { mockApi } from "../api";
 
 export const VerifyCode = () => {
   const snapshot = journey.useSnapshot();
   const api = journey.useApi();
   const [code, setCode] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const isLoading = snapshot.async.isLoading;
+  const isLoading = snapshot.currentStep?.async.isLoading ?? false;
   const isBusy = isLoading || isSubmitting;
 
   const handleVerify = async () => {
@@ -19,8 +20,15 @@ export const VerifyCode = () => {
     setIsSubmitting(true);
     try {
       api.updateContext((ctx) => ({ ...ctx, error: null }));
-      // The machine validates the code via the injected `verifyCode` handler.
-      await api.send({ type: "submitCode", payload: { code } });
+      const result = await mockApi.verifyCode(code);
+      if (!result.success) {
+        api.updateContext((context) => ({
+          ...context,
+          attempts: context.attempts + 1,
+          error: context.attempts + 1 >= 3 ? "Too many failed attempts." : "Invalid code."
+        }));
+      }
+      await api.send(result.success ? "verifyCodeSuccess" : "verifyCodeFailure", { code });
     } finally {
       setIsSubmitting(false);
     }

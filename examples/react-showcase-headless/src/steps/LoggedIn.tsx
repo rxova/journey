@@ -1,10 +1,15 @@
 "use client";
 
+import React from "react";
 import { useJourneySnapshot, useJourneyApi } from "../machine";
 
 export const LoggedIn = () => {
   const snapshot = useJourneySnapshot();
   const api = useJourneyApi();
+
+  React.useEffect(() => {
+    api.completeJourney();
+  }, [api]);
 
   return (
     <div className="step">

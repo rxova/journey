@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { journey } from "../journey";
 
 export const LoggedIn = () => {
@@ -14,6 +15,10 @@ export const LoggedIn = () => {
     }
   });
 
+  React.useEffect(() => {
+    api.controls.complete();
+  }, [api]);
+
   return (
     <div className="step">
       <div className="success-message">
@@ -23,7 +28,7 @@ export const LoggedIn = () => {
         </p>
       </div>
       <div className="actions" style={{ justifyContent: "center" }}>
-        <button className="secondary" onClick={() => api.resetJourney()}>
+        <button className="secondary" onClick={() => api.controls.restart()}>
           Start Over
         </button>
       </div>

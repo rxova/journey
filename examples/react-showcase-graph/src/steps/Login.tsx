@@ -8,7 +8,7 @@ export const Login = () => {
   const snapshot = journey.useSnapshot();
   const api = journey.useApi();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const isLoading = snapshot.async.isLoading;
+  const isLoading = snapshot.currentStep?.async.isLoading ?? false;
   const isBusy = isLoading || isSubmitting;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,10 +48,7 @@ export const Login = () => {
         error: null
       }));
 
-      await api.send({
-        type: "submitLogin",
-        payload: { username, password }
-      });
+      await api.send("submitLogin", { username, password });
     } finally {
       setIsSubmitting(false);
     }
@@ -108,7 +105,7 @@ export const Login = () => {
             type="button"
             className="secondary"
             disabled={isBusy}
-            onClick={() => void api.terminateJourney()}
+            onClick={() => void api.controls.terminate()}
           >
             Cancel
           </button>
