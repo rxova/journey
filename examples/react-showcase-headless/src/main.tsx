@@ -13,7 +13,7 @@ attachJourneyDevtools(machine, {
   label: "React Showcase Headless",
   appName: "React Showcase Headless",
   enabled: true,
-  commandsEnabled: true
+  mutationsEnabled: true
 });
 
 ReactDOM.createRoot(root).render(

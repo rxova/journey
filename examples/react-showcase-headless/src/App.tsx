@@ -1,5 +1,5 @@
 import React from "react";
-import { machine, useJourneyEvent, useJourneySnapshot } from "./machine";
+import { useJourneyEvent, useJourneySnapshot } from "./machine";
 import type { StepId } from "./machine";
 import { Shell } from "./components/Shell";
 import { Login } from "./steps/Login";
@@ -22,12 +22,7 @@ const views = {
 
 const EventLogger = () => {
   useJourneyEvent((event) => {
-    if (
-      event.type === "journey.start" ||
-      event.type === "journey.reset" ||
-      event.type === "journey.completed" ||
-      event.type === "journey.terminated"
-    ) {
+    if (event.type === "statusChange") {
       console.log(`[react headless] ${event.type}`, event);
     }
   });
@@ -37,17 +32,12 @@ const EventLogger = () => {
 // Headless tier: no Provider or StepRenderer — the app owns rendering.
 const ActiveStep = ({ fallback }: { fallback: React.ReactNode }) => {
   const snapshot = useJourneySnapshot();
-  const StepComponent = views[snapshot.currentStepId as StepId];
-  return StepComponent ? <StepComponent key={snapshot.currentStepId} /> : <>{fallback}</>;
+  const currentStepId = snapshot.currentStep?.id as StepId | undefined;
+  const StepComponent = currentStepId ? views[currentStepId] : undefined;
+  return StepComponent ? <StepComponent key={currentStepId} /> : <>{fallback}</>;
 };
 
 export default function App() {
-  React.useLayoutEffect(() => {
-    if (machine.getSnapshot().status === "idled") {
-      void machine.startJourney();
-    }
-  }, []);
-
   return (
     <>
       <EventLogger />

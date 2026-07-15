@@ -29,7 +29,7 @@ export const Setup2fa = () => {
         <div className="loading">Generating QR code...</div>
       )}
       <div className="actions">
-        <button onClick={() => void api.send({ type: "setup2fa", payload: { code: "" } })}>
+        <button onClick={() => void api.send("setup2fa", { code: "" })}>
           I&apos;ve scanned it — continue
         </button>
       </div>

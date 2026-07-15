@@ -1,8 +1,4 @@
-import {
-  createGraphJourneyBuilder,
-  type JourneyDefinition,
-  type JourneyJsonObject
-} from "@rxova/journey-core";
+import { createGraphJourneyBuilder, type LinearJourneyDefinition } from "@rxova/journey-core";
 
 export type PluginDemoKind =
   | "analytics"
@@ -14,7 +10,7 @@ export type PluginDemoKind =
 
 export type PluginStepId = "profile" | "review" | "done";
 
-export type PluginContext = JourneyJsonObject & {
+export type PluginContext = {
   name: string;
   email: string;
   notes: string;
@@ -22,71 +18,67 @@ export type PluginContext = JourneyJsonObject & {
 
 export type StructureStepId = "start" | "address" | "review" | "blocked" | "done" | "orphan";
 
-export type StructureEventMap = { type: "next" } | { type: "reject" };
+export type StructureEvent = { type: "next" } | { type: "reject" };
 
 export const pluginStorageKey = (runtime: "core" | "react", kind: PluginDemoKind) =>
   `journey.example.${runtime}.${kind}`;
 
-export const pluginDefinition: JourneyDefinition<PluginContext, PluginStepId> = {
+export const pluginDefinition = {
   context: {
     name: "",
     email: "",
     notes: ""
   },
-  steps: {
-    profile: {
-      meta: { label: "Profile" }
-    },
-    review: {
-      meta: { label: "Review" }
-    },
-    done: {
-      meta: { label: "Done" }
-    }
-  },
-  transitions: ["profile", "review", "done"]
-};
+  steps: [
+    { id: "profile", metadata: { label: "Profile" } },
+    { id: "review", metadata: { label: "Review" } },
+    { id: "done", metadata: { label: "Done" } }
+  ]
+} satisfies LinearJourneyDefinition<PluginContext>;
 
 const { createStep, to, build } = createGraphJourneyBuilder<{
-  context: JourneyJsonObject;
+  context: Record<string, never>;
   stepId: StructureStepId;
-  events: StructureEventMap;
+  events: StructureEvent;
   meta: { label: string };
 }>();
 
+// The structure is intentionally imperfect so the diagnostics plugin has
+// something to report: the second "next" candidates are shadowed by earlier
+// unconditional ones, "orphan" is unreachable, and review ⇄ address cycles.
 const start = createStep("start", {
-  meta: { label: "Start" },
+  metadata: { label: "Start" },
   on: {
-    next: [to("address").label("to-address"), to("review").label("shadowed-direct-review")]
+    next: [to("address"), to("review")]
   }
 });
 
 const address = createStep("address", {
-  meta: { label: "Address" },
+  metadata: { label: "Address" },
   on: {
-    next: [to("review").label("to-review"), to("done").label("shadowed-done")],
-    reject: [to("blocked").label("address-reject")]
+    next: [to("review"), to("done")],
+    reject: [to("blocked")]
   }
 });
 
 const review = createStep("review", {
-  meta: { label: "Review" },
+  metadata: { label: "Review" },
   on: {
-    next: [to("done").label("finish")],
-    reject: [to("address").label("review-cycle")]
+    next: [to("done")],
+    reject: [to("address")]
   }
 });
 
 const blocked = createStep("blocked", {
-  meta: { label: "Blocked" }
+  metadata: { label: "Blocked" }
 });
 
 const done = createStep("done", {
-  meta: { label: "Done" }
+  metadata: { label: "Done" }
 });
 
 const orphan = createStep("orphan", {
-  meta: { label: "Orphan" }
+  metadata: { label: "Orphan" }
 });
 
 export const structureDefinition = build({

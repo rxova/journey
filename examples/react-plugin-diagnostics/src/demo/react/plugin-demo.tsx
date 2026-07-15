@@ -2,7 +2,7 @@
 // @ts-nocheck
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { createJourneyMachine, type JourneyMachine } from "@rxova/journey-core";
+import { createGraphJourney, createLinearJourney } from "@rxova/journey-core";
 import {
   useJourneyEvent as useEventOf,
   useJourneySnapshot as useSnapshotOf
@@ -11,15 +11,29 @@ import {
 // Minimal runtime adapter: the machine is created with core and consumed with
 // the headless machine-argument hooks (the old runtime-object API is gone).
 const createJourney = (definition, options) => {
-  const machine = createJourneyMachine(definition, options);
-  return {
+  const machine = Array.isArray(definition.steps)
+    ? createLinearJourney(definition, { ...options, autoStart: true })
+    : createGraphJourney(definition, { ...options, autoStart: true });
+  const api = Object.assign(
     machine,
+    {
+      startJourney: () => machine.controls.start(),
+      resetJourney: () => machine.controls.restart(),
+      updateContext: (updater) => machine.context.update(updater),
+      goToNextStep: () => machine.navigate.goToNextStep(),
+      goToPreviousStep: () => machine.navigate.goToPreviousStep()
+    },
+    ...Object.values(machine.plugins)
+  );
+
+  return {
+    machine: api,
     useJourneySnapshot: () => useSnapshotOf(machine),
-    useJourneyApi: () => machine,
+    useJourneyApi: () => api,
     useJourneyEvent: (listener) => useEventOf(machine, listener)
   };
 };
-type JourneyRuntime = JourneyMachine<never, never>;
+type JourneyRuntime = ReturnType<typeof createJourney>["machine"];
 import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
 import { createAutosavePlugin } from "@rxova/journey-core/autosave";
 import { createDiagnosticsPlugin } from "@rxova/journey-core/diagnostics";
@@ -67,11 +81,9 @@ const createRuntime = (kind: PluginDemoKind) => {
             ? createJourney(pluginDefinition, {
                 plugins: [
                   createAutosavePlugin({
+                    storage: window.localStorage,
                     key: storageKey,
-                    debounceMs: 250,
-                    hydrate: true,
-                    onSaved: ({ timestamp }) =>
-                      analyticsStore.push({ name: "autosave_saved", payload: { timestamp } })
+                    debounceMs: 250
                   })
                 ] as const
               })
@@ -79,8 +91,8 @@ const createRuntime = (kind: PluginDemoKind) => {
               ? createJourney(pluginDefinition, {
                   plugins: [
                     createPersistencePlugin({
-                      key: storageKey,
-                      version: 1
+                      storage: window.localStorage,
+                      key: storageKey
                     })
                   ] as const
                 })
@@ -186,7 +198,7 @@ const makeApp = (kind: PluginDemoKind) => {
                     trackAnalyticsEvent: (name: string, payload?: Record<string, unknown>) => void;
                   }
                 ).trackAnalyticsEvent("manual_marker", {
-                  stepId: snapshot.currentStepId
+                  stepId: snapshot.currentStep?.id
                 })
               }
             >
@@ -326,29 +338,21 @@ const makeApp = (kind: PluginDemoKind) => {
     }
 
     const pathsMachine = runtime.machine as JourneyRuntime & {
-      getExecutionPaths: (options?: { maxDepth?: number; maxPaths?: number }) => {
-        paths: Array<{ steps: string[]; events: string[]; terminated: string }>;
-        truncated: boolean;
-        cyclesDetected: boolean;
-      };
+      getCurrentPath: () => readonly string[];
+      getCompletedPaths: () => readonly (readonly string[])[];
     };
-
-    const result = pathsMachine.getExecutionPaths({ maxDepth: 10, maxPaths: 20 });
+    const paths = [pathsMachine.getCurrentPath(), ...pathsMachine.getCompletedPaths()];
 
     return (
       <div className="stack">
         <div className="status-row">
-          <span className="token">paths: {result.paths.length}</span>
-          <span className="token">truncated: {String(result.truncated)}</span>
-          <span className="token">cycles: {String(result.cyclesDetected)}</span>
+          <span className="token">paths: {paths.length}</span>
         </div>
         <div className="path-list">
-          {result.paths.map((path, index) => (
+          {paths.map((path, index) => (
             <div className="path-item" key={index}>
-              <strong>Path {index + 1}</strong>
-              <div className="muted">{path.steps.join(" -> ")}</div>
-              <div className="muted">{path.events.join(" -> ") || "No events"}</div>
-              <div className="muted">terminated: {path.terminated}</div>
+              <strong>{index === 0 ? "Current run" : `Completed ${index}`}</strong>
+              <div className="muted">{path.join(" -> ") || "(empty)"}</div>
             </div>
           ))}
         </div>
@@ -367,7 +371,7 @@ const makeApp = (kind: PluginDemoKind) => {
     });
 
     React.useLayoutEffect(() => {
-      if (runtime.machine.getSnapshot().status === "idled") {
+      if (runtime.machine.getSnapshot().status === "idle") {
         void runtime.machine.startJourney();
       }
     }, []);
@@ -393,7 +397,7 @@ const makeApp = (kind: PluginDemoKind) => {
                 <h2>Controls</h2>
                 <div className="status-row">
                   <span className={`status-pill status-${snapshot.status}`}>{snapshot.status}</span>
-                  <span className="token">step: {snapshot.currentStepId}</span>
+                  <span className="token">step: {snapshot.currentStep?.id ?? "none"}</span>
                   <span className="token">visited: {snapshot.history.timeline.join(" -> ")}</span>
                 </div>
                 <div style={{ marginTop: "1rem" }}>

@@ -22,15 +22,8 @@ const views: Record<StepId, React.ComponentType> = {
 };
 
 const EventLogger = () => {
-  journey.useEvent((event) => {
-    if (
-      event.type === "journey.start" ||
-      event.type === "journey.reset" ||
-      event.type === "journey.completed" ||
-      event.type === "journey.terminated"
-    ) {
-      console.log(`[react graph] ${event.type}`, event);
-    }
+  journey.useEvent("statusChange", (event) => {
+    console.log(`[react graph] ${event.previous} -> ${event.current}`, event);
   });
   return null;
 };
@@ -45,7 +38,7 @@ export default function App() {
         label: "React Showcase Graph",
         appName: "React Showcase Graph",
         enabled: true,
-        commandsEnabled: true
+        mutationsEnabled: true
       });
     }
   }, []);

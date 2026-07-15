@@ -8,7 +8,7 @@ export const Blocked = () => {
   const api = journey.useApi();
 
   React.useEffect(() => {
-    void api.terminateJourney();
+    api.controls.terminate();
   }, [api]);
 
   return (
@@ -20,7 +20,7 @@ export const Blocked = () => {
         <p style={{ marginTop: "0.5rem", color: "#888" }}>Journey closed automatically.</p>
       </div>
       <div className="actions" style={{ justifyContent: "center" }}>
-        <button className="secondary" onClick={() => api.resetJourney()}>
+        <button className="secondary" onClick={() => api.controls.restart()}>
           Try Again
         </button>
       </div>

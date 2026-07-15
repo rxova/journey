@@ -1,5 +1,4 @@
 import { createGraphJourney } from "@rxova/journey-react/graph";
-import type { GraphJourneyBundleFromDefinition } from "@rxova/journey-react/graph";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
 import { build } from "./builder";
 import { mockApi } from "./api";
@@ -38,49 +37,12 @@ const definition = build({
     authenticatorCodeStep,
     loggedInStep,
     blockedStep
-  ],
-  global: {
-    completeJourney: [
-      {
-        onLeave: ({ context, from }) => {
-          console.log("[graph] global completeJourney onLeave", {
-            from,
-            attempts: context.attempts
-          });
-        },
-        onEnter: ({ context, from, to }) => {
-          console.log("[graph] global completeJourney onEnter", {
-            from,
-            to,
-            attempts: context.attempts
-          });
-        }
-      }
-    ],
-    terminateJourney: [
-      {
-        onLeave: ({ context, from }) => {
-          console.log("[graph] global terminateJourney onLeave", {
-            from,
-            attempts: context.attempts
-          });
-        },
-        onEnter: ({ context, from, to }) => {
-          console.log("[graph] global terminateJourney onEnter", {
-            from,
-            to,
-            attempts: context.attempts
-          });
-        }
-      }
-    ]
-  }
+  ]
 });
 
 const plugins = [createExecutionPathsPlugin()] as const;
 
-export const journey: GraphJourneyBundleFromDefinition<typeof definition, typeof plugins> =
-  createGraphJourney(definition, {
-    defaultTimeoutMs: 15000,
-    plugins
-  });
+export const journey = createGraphJourney(definition, {
+  defaultTimeoutMs: 15000,
+  plugins
+});

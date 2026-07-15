@@ -9,7 +9,7 @@ export const AuthenticatorCode = () => {
   const api = journey.useApi();
   const [code, setCode] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const isLoading = snapshot.async.isLoading;
+  const isLoading = snapshot.currentStep?.async.isLoading ?? false;
   const isBusy = isLoading || isSubmitting;
 
   const handleVerify = async () => {
@@ -21,10 +21,14 @@ export const AuthenticatorCode = () => {
     try {
       api.updateContext((ctx) => ({ ...ctx, error: null }));
       const result = await mockApi.verifyCode(code);
-      await api.send({
-        type: result.success ? "verifyCodeSuccess" : "verifyCodeFailure",
-        payload: { code }
-      });
+      if (!result.success) {
+        api.updateContext((context) => ({
+          ...context,
+          attempts: context.attempts + 1,
+          error: context.attempts + 1 >= 3 ? "Too many failed attempts." : "Invalid code."
+        }));
+      }
+      await api.send(result.success ? "verifyCodeSuccess" : "verifyCodeFailure", { code });
     } finally {
       setIsSubmitting(false);
     }
@@ -66,7 +70,7 @@ export const AuthenticatorCode = () => {
         <button
           className="secondary"
           disabled={isBusy}
-          onClick={() => void api.send({ type: "switchAuthMethod" })}
+          onClick={() => void api.send("switchAuthMethod")}
         >
           Switch to Email
         </button>
