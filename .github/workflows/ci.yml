@@ -52,6 +52,19 @@ jobs:
       - name: Run test suite
         run: pnpm run test
 
+  examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck examples
+        run: pnpm run examples:typecheck
+      - name: Lint examples
+        run: pnpm run examples:lint
+      - name: Build examples
+        run: pnpm run examples:build
+
   release-verify:
     runs-on: ubuntu-latest
     steps:
