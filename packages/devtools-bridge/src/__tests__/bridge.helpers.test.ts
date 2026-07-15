@@ -104,7 +104,10 @@ describe("buildOperationRunners", () => {
     expect(
       await runnerById(runners, "lifecycle.complete").run({ payload: { done: true } })
     ).toMatchObject({ transitioned: true });
-    expect(machine.getSnapshot().outcome).toEqual({ type: "completed", payload: { done: true } });
+    expect(machine.getSnapshot().machine.outcome).toEqual({
+      type: "completed",
+      payload: { done: true }
+    });
     expect(await runnerById(runners, "lifecycle.restart").run(undefined)).toMatchObject({
       transitioned: true
     });

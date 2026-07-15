@@ -180,7 +180,10 @@ describe("operation invokes", () => {
       buildInvokeEnvelope("test-machine", "lifecycle.complete", { payload: { score: 9 } })
     );
     expect(machine.getSnapshot().status).toBe("completed");
-    expect(machine.getSnapshot().outcome).toEqual({ type: "completed", payload: { score: 9 } });
+    expect(machine.getSnapshot().machine.outcome).toEqual({
+      type: "completed",
+      payload: { score: 9 }
+    });
     expect(capture.ofKind("operationResult")[0]?.result).toMatchObject({ transitioned: true });
   });
 
@@ -293,7 +296,7 @@ describe("remaining operations", () => {
     await postToBridge(
       buildInvokeEnvelope("test-machine", "lifecycle.terminate", { payload: "why" })
     );
-    expect(machine.getSnapshot().outcome).toEqual({ type: "terminated", payload: "why" });
+    expect(machine.getSnapshot().machine.outcome).toEqual({ type: "terminated", payload: "why" });
     await postToBridge(buildInvokeEnvelope("test-machine", "lifecycle.restart"));
     expect(machine.getSnapshot().status).toBe("running");
 

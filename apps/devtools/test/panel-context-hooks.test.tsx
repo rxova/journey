@@ -78,7 +78,8 @@ const snapshot: JourneyDevtoolsSerializableSnapshot = {
     isRunning: true,
     isPaused: false,
     isCompleted: false,
-    isTerminated: false
+    isTerminated: false,
+    outcome: null
   },
   steps: { totalSteps: 2, visitedStepCount: 1 },
   availableEvents: ["submitLogin"],

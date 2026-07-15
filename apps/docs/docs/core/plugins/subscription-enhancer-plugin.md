@@ -17,7 +17,7 @@ const machine = createLinearJourney(definition, {
 
 const lifecycle = machine.plugins["subscription-enhancer"];
 const stop = lifecycle.subscribeComplete(({ snapshot }) => {
-  console.log(snapshot.outcome);
+  console.log(snapshot.machine.outcome);
 });
 ```
 

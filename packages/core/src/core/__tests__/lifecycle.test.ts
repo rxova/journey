@@ -58,7 +58,7 @@ describe("lifecycle meta-state-machine", () => {
     expect(machine.controls.complete({ score: 10 })).toBe(true);
     const snapshot = machine.getSnapshot();
     expect(snapshot.status).toBe("completed");
-    expect(snapshot.outcome).toEqual({ type: "completed", payload: { score: 10 } });
+    expect(snapshot.machine.outcome).toEqual({ type: "completed", payload: { score: 10 } });
     expect(snapshot.machine.isCompleted).toBe(true);
   });
 
@@ -74,7 +74,7 @@ describe("lifecycle meta-state-machine", () => {
   it("terminate works from any status and wins only once", async () => {
     const idle = createLinearJourney({ steps: ["a"], context: {} });
     expect(idle.controls.terminate("why")).toBe(true);
-    expect(idle.getSnapshot().outcome).toEqual({ type: "terminated", payload: "why" });
+    expect(idle.getSnapshot().machine.outcome).toEqual({ type: "terminated", payload: "why" });
     expect(idle.controls.terminate()).toBe(false);
 
     const machine = await startedLinear();
@@ -96,7 +96,7 @@ describe("lifecycle meta-state-machine", () => {
     const snapshot = machine.getSnapshot();
     expect(snapshot.status).toBe("running");
     expect(snapshot.context).toEqual({ n: 1 });
-    expect(snapshot.outcome).toBeNull();
+    expect(snapshot.machine.outcome).toBeNull();
     expect(snapshot.history.timeline).toEqual(["a"]);
     expect(snapshot.currentStep?.isFirstTimeVisit).toBe(true);
     expect(snapshot.steps.visitedStepCount).toBe(1);
