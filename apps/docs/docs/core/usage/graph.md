@@ -54,8 +54,8 @@ candidate is enabled, `send` returns `{ ok: false, reason: "no-enabled-transitio
 
 ## Guards and handlers
 
-Guards are synchronous and pure because the runtime also evaluates them while deriving
-`availableEvents` and `availableSteps`.
+Guards are synchronous and pure because the runtime also evaluates them while deriving graph
+transition introspection.
 
 ```ts
 const definition = {
@@ -117,12 +117,19 @@ Step `onLeave` still runs for all of these moves.
 const snapshot = machine.getSnapshot();
 
 snapshot.type; // "graph"
+snapshot.declaredEvents; // all event names declared from the current step
 snapshot.availableEvents; // enabled event names from the current step
 snapshot.availableSteps; // enabled target ids from the current step
+snapshot.outgoingTransitions; // every candidate with priority and evaluated guard state
 snapshot.currentStep?.isTerminal; // no outgoing transitions are declared
 snapshot.steps.totalSteps;
 snapshot.steps.visitedStepCount;
 ```
+
+`outgoingTransitions` keeps guarded-out candidates visible. Each descriptor contains `event`, `to`,
+`priority`, `guard` (`"none"`, `"passed"`, or `"failed"`), `enabled`, and `selected`. `selected` marks
+the first enabled candidate that `send(event)` would choose; a later candidate may be enabled but
+not selected. The snapshot exposes evaluated state only, never the guard function.
 
 ## Where to next
 

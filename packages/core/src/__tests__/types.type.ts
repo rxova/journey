@@ -153,6 +153,18 @@ export function graphTypes() {
   const snapshot = machine.getSnapshot();
   type _kind = Expect<Equal<typeof snapshot.type, "graph">>;
   type _events = Expect<Equal<typeof snapshot.availableEvents, readonly ("submit" | "reset")[]>>;
+  type _declaredEvents = Expect<
+    Equal<typeof snapshot.declaredEvents, readonly ("submit" | "reset")[]>
+  >;
+  type _transitionEvent = Expect<
+    Equal<(typeof snapshot.outgoingTransitions)[number]["event"], "submit" | "reset">
+  >;
+  type _transitionTarget = Expect<
+    Equal<(typeof snapshot.outgoingTransitions)[number]["to"], "form" | "done">
+  >;
+  type _guardState = Expect<
+    Equal<(typeof snapshot.outgoingTransitions)[number]["guard"], "none" | "passed" | "failed">
+  >;
 
   // linear-only fields don't exist on graph snapshots (absent, not undefined)
   // @ts-expect-error graph snapshots have no stepOrder

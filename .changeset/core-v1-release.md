@@ -38,6 +38,8 @@ Release the final V1 Core API on a new, smaller shared runtime. This is a full r
 - Default `autoStart` to `false`. `start()` is accepted only from `idle`; `restart()` is accepted
   only after completion or termination and restores the initial context and timeline. Termination
   wins over an in-flight transition.
+- Expose declared graph events and serializable outgoing transition descriptors in snapshots,
+  including candidate priority, evaluated guard state, enabled state, and first-enabled selection.
 - Remove `requireExplicitCompletion`, `onLifecycleError`, and `onListenerError` options. Completion
   is always explicit; work failures use navigation results and hook failures use typed error events;
   subscriber failures are isolated from the machine and reported through `console.error`.
