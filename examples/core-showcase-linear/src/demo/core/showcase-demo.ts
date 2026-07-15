@@ -405,14 +405,24 @@ export const mountCoreShowcase = (root: HTMLElement) => {
         : stepAsync?.isSuccess
           ? "success"
           : "idle";
+    const stepAsyncStateClass = stepAsync?.isLoading
+      ? "token-pending"
+      : stepAsync?.isError
+        ? "token-error"
+        : stepAsync?.isSuccess
+          ? "token-success"
+          : "";
+
+    const token = (label: string, value: string, stateClass = "") =>
+      `<span class="token ${stateClass}"><span class="token-label">${label}</span><span class="token-value">${value}</span></span>`;
 
     statusRow.innerHTML = `
       <span class="status-pill status-${snapshot.status}">${snapshot.status}</span>
-      ${isLoading ? `<span class="token token-pending">machine: loading</span>` : ""}
-      <span class="token ${transition.pending ? "token-pending" : ""}">transition: ${transitionLabel}</span>
-      <span class="token ${stepAsync?.isLoading ? "token-pending" : ""}">step async: ${stepAsyncLabel}</span>
-      <span class="token">step: ${snapshot.currentStep?.id ?? "—"}</span>
-      <span class="token">timeline: ${snapshot.history.timeline.join(" -> ")}</span>
+      ${isLoading ? token("machine", "loading", "token-pending") : ""}
+      ${token("transition", transitionLabel, transition.pending ? "token-pending" : "")}
+      ${token("step async", stepAsyncLabel, stepAsyncStateClass)}
+      ${token("step", snapshot.currentStep?.id ?? "—")}
+      ${token("timeline", snapshot.history.timeline.join(" -> "))}
     `;
 
     if (mountedStepId !== stepId) {

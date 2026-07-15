@@ -352,18 +352,73 @@ textarea {
 }
 
 .token {
-  display: inline-block;
-  padding: 0.15rem 0.45rem;
-  margin-right: 0.35rem;
-  margin-bottom: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem 0.25rem 0.7rem;
   border-radius: 999px;
-  background: #1c1c1c;
+  border: 1px solid #2a2a2a;
+  background: #161616;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.token-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6b7280;
+}
+
+.token-value {
+  font-size: 0.78rem;
+  font-weight: 600;
   color: #d1d5db;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
 }
 
 .token-pending {
-  background: #422006;
+  background: rgba(250, 204, 21, 0.12);
+  border-color: rgba(250, 204, 21, 0.35);
+}
+
+.token-pending .token-label {
+  color: #eab308;
+}
+
+.token-pending .token-value {
   color: #fde68a;
+}
+
+.token-success {
+  background: rgba(74, 222, 128, 0.12);
+  border-color: rgba(74, 222, 128, 0.35);
+}
+
+.token-success .token-label {
+  color: #22c55e;
+}
+
+.token-success .token-value {
+  color: #86efac;
+}
+
+.token-error {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+.token-error .token-label {
+  color: #ef4444;
+}
+
+.token-error .token-value {
+  color: #fca5a5;
 }
 
 .stepper {
