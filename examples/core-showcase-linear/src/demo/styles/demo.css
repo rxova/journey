@@ -91,6 +91,9 @@ textarea {
 }
 
 .app-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
   max-width: 1100px;
   margin: 0 auto;
   padding: 2rem 1rem 4rem;
@@ -308,6 +311,74 @@ textarea {
   border-radius: 999px;
   background: #1c1c1c;
   color: #d1d5db;
+}
+
+.token-pending {
+  background: #422006;
+  color: #fde68a;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.stepper-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stepper-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: #1c1c1c;
+  color: #9ca3af;
+  border: 1px solid #2f2f2f;
+}
+
+.stepper-label {
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.stepper-connector {
+  width: 2rem;
+  height: 2px;
+  margin: 0 0.6rem;
+  background: #2f2f2f;
+}
+
+.stepper-connector-done {
+  background: #4ade80;
+}
+
+.stepper-done .stepper-dot {
+  background: rgba(74, 222, 128, 0.16);
+  color: #86efac;
+  border-color: rgba(74, 222, 128, 0.4);
+}
+
+.stepper-done .stepper-label {
+  color: #d1d5db;
+}
+
+.stepper-current .stepper-dot {
+  background: #4ade80;
+  color: #0a0a0a;
+  border-color: #4ade80;
+}
+
+.stepper-current .stepper-label {
+  color: #ededed;
+  font-weight: 700;
 }
 
 @media (max-width: 900px) {
