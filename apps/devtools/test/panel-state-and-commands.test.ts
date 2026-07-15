@@ -348,8 +348,8 @@ describe("panel state and command helpers", () => {
   it("disables lifecycle operations by snapshot status", () => {
     expect(isLifecycleOperationDisabled("core.startJourney", "running")).toBe(true);
     expect(isLifecycleOperationDisabled("core.resetJourney", "running")).toBe(false);
-    expect(isLifecycleOperationDisabled("core.completeJourney", "idled")).toBe(true);
-    expect(isLifecycleOperationDisabled("core.startJourney", "idled")).toBe(false);
+    expect(isLifecycleOperationDisabled("core.completeJourney", "idle")).toBe(true);
+    expect(isLifecycleOperationDisabled("core.startJourney", "idle")).toBe(false);
     expect(isLifecycleOperationDisabled("core.terminateJourney", "terminated")).toBe(true);
     expect(isLifecycleOperationDisabled("core.resetJourney", "terminated")).toBe(false);
     expect(isLifecycleOperationDisabled("custom.inspect", "loading" as never)).toBe(false);

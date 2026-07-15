@@ -15,6 +15,7 @@ import type {
   TimelineEnvelopeKind
 } from "./types";
 import { MAX_MACHINE_TIMELINE_ENTRIES } from "./types";
+import { getSnapshotCurrentStepId } from "../utils/snapshot";
 
 export const buildJourneyMachineState = (
   machineId: string,
@@ -140,7 +141,10 @@ export const buildTimelineEntry = (
         id: buildEntryId(envelope.machineId, envelope.kind, envelope.timestamp, nextSequence),
         timestamp: envelope.timestamp,
         kind: "snapshot",
-        label: buildOperationLabel(envelope.snapshot.currentStepId, "SNAPSHOT"),
+        label: buildOperationLabel(
+          getSnapshotCurrentStepId(envelope.snapshot) ?? envelope.snapshot.status,
+          "SNAPSHOT"
+        ),
         requestId: null,
         invocation: null,
         envelopeKind: envelope.kind,
@@ -180,7 +184,9 @@ export const buildTimelineEntry = (
           ...(envelope.result.kind === "snapshot" && envelope.result.transitioned !== undefined
             ? { transitioned: envelope.result.transitioned }
             : {}),
-          ...(envelope.result.kind === "snapshot" && envelope.result.transitionId !== undefined
+          ...(envelope.result.kind === "snapshot" &&
+          "transitionId" in envelope.result &&
+          typeof envelope.result.transitionId === "string"
             ? { transitionId: envelope.result.transitionId }
             : {})
         }

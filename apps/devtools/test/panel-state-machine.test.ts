@@ -850,6 +850,6 @@ describe("panel selectors", () => {
     expect(selectDisplayedSnapshot({ ...createMachine("start"), followLatest: true })).toEqual(
       createSnapshot("start")
     );
-    expect(INITIAL_SNAPSHOT.status).toBe("idled");
+    expect(INITIAL_SNAPSHOT.status).toBe("idle");
   });
 });

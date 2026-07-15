@@ -88,10 +88,28 @@ export const MAX_MACHINE_TIMELINE_ENTRIES = 2000;
 
 export const INITIAL_SNAPSHOT: JourneyDevtoolsSerializableSnapshot = {
   type: "graph",
-  currentStepId: "unknown",
-  history: { timeline: ["unknown"], index: 0 },
+  currentStep: null,
+  history: {
+    timeline: [],
+    currentIndex: -1,
+    visited: {},
+    canGoBack: false,
+    canGoForward: false
+  },
   context: {},
-  visited: {},
-  status: "idled",
-  async: { isLoading: false, byStep: {} }
+  status: "idle",
+  transition: { pending: false, phase: null, from: null, to: null },
+  outcome: null,
+  machine: {
+    isLoading: false,
+    isIdle: true,
+    isRunning: false,
+    isPaused: false,
+    isCompleted: false,
+    isTerminated: false
+  },
+  plugins: {},
+  steps: { totalSteps: 0, visitedStepCount: 0 },
+  availableEvents: [],
+  availableSteps: []
 };

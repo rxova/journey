@@ -149,7 +149,7 @@ export const isLifecycleOperationDisabled = (
     case "completed":
     case "terminated":
       return operationId !== "core.resetJourney";
-    case "idled":
+    case "idle":
       return operationId === "core.terminateJourney" || operationId === "core.completeJourney";
     default:
       return false;

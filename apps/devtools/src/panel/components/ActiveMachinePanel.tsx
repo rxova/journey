@@ -7,6 +7,12 @@ import {
   usePanelState,
   usePanelTimelineRetention
 } from "../context/PanelProvider";
+import { getSnapshotCurrentStepId } from "../utils/snapshot";
+
+type LegacyMachineMeta = {
+  eventTypesBySource?: Record<string, readonly string[]>;
+  goToStepTargetsBySource?: Record<string, readonly string[]>;
+};
 
 export const ActiveMachinePanel = () => {
   const {
@@ -25,6 +31,22 @@ export const ActiveMachinePanel = () => {
   if (!activeMachine) {
     return null;
   }
+
+  const snapshot = activeMachine.snapshot;
+  const currentStepId = getSnapshotCurrentStepId(snapshot) ?? "unknown";
+  const legacyMeta = activeMachine.meta as typeof activeMachine.meta & LegacyMachineMeta;
+  const eventTypesBySource =
+    snapshot.type === "graph"
+      ? { [currentStepId]: snapshot.availableEvents }
+      : legacyMeta.eventTypesBySource;
+  const goToStepTargetsBySource =
+    snapshot.type === "graph"
+      ? { [currentStepId]: snapshot.availableSteps }
+      : (legacyMeta.goToStepTargetsBySource ?? {
+          [currentStepId]: (activeMachine.meta.stepIds ?? []).filter(
+            (stepId) => stepId !== currentStepId
+          )
+        });
 
   return (
     <>
@@ -50,16 +72,16 @@ export const ActiveMachinePanel = () => {
       <SectionErrorBoundary section="Controls">
         <CommandControls
           features={activeMachine.meta.features}
-          snapshotStatus={activeMachine.snapshot.status}
-          currentStepId={activeMachine.snapshot.currentStepId}
+          snapshotStatus={snapshot.status}
+          currentStepId={currentStepId}
           disabled={areCommandsDisabled}
           disabledReason={commandDisabledReason}
           mutationsEnabled={activeMachine.meta.mutationsEnabled}
           mode={activeMachine.meta.mode}
           stepIds={activeMachine.meta.stepIds}
           eventTypes={activeMachine.meta.eventTypes}
-          eventTypesBySource={activeMachine.meta.eventTypesBySource}
-          goToStepTargetsBySource={activeMachine.meta.goToStepTargetsBySource}
+          eventTypesBySource={eventTypesBySource}
+          goToStepTargetsBySource={goToStepTargetsBySource}
           onInvoke={(invocation) => invokeOperation(activeMachine.meta.machineId, invocation)}
         />
       </SectionErrorBoundary>
