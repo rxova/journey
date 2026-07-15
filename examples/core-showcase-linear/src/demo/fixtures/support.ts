@@ -22,11 +22,3 @@ export const createLogStore = <T>() => {
 };
 
 export const formatJson = (value: unknown) => JSON.stringify(value, null, 2);
-
-export const createStoragePreview = (key: string) => {
-  if (typeof window === "undefined") {
-    return "";
-  }
-
-  return window.localStorage.getItem(key) ?? "";
-};
