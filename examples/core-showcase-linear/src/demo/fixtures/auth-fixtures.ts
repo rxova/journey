@@ -48,7 +48,7 @@ export const authApi = {
     return { qrCode: "otpauth://totp/Rxova:user?secret=BASE32SECRET" };
   },
   confirmTwoFactorSetup: async (qrCode: string | null) => {
-    await delay(450);
+    await delay(6_000);
     return qrCode !== null;
   },
   sendEmailCode: async () => {
