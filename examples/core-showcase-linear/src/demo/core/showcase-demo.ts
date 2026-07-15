@@ -155,8 +155,6 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
     }));
 
     if (mode === "linear") {
-      const qr = await authApi.generateQrCode();
-      machine.context.update((current) => ({ ...current, qrCode: qr.qrCode }));
       await machine.navigate.goToNextStep();
       return;
     }
