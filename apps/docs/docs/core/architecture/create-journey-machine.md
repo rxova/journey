@@ -1,5 +1,5 @@
 ---
-title: createJourneyMachine Assembly
+title: Machine Surface Assembly
 ---
 
 import { Redirect } from "@docusaurus/router";

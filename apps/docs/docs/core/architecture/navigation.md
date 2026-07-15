@@ -1,5 +1,5 @@
 ---
-title: Navigation Commit Logic
+title: Navigation Commit Pipeline
 ---
 
 import { Redirect } from "@docusaurus/router";

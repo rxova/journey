@@ -1,201 +1,82 @@
 ---
 id: effects
 title: Effects
-sidebar_label: Effects
 ---
 
 # Effects
 
-Most flows have to _do_ something when they reach a step — call an API, load a record, verify a
-token — and then branch on the result. An **effect** declares that work right on the step: the
-runtime runs it on entry, tracks a loading phase you can render, cancels it if you leave, and routes
-the result to the next step.
+V1 models side effects with step hooks and graph transition hooks. There is no separate `effect`
+object or delayed `after` transition.
 
-It's the piece that lets you keep async work _in the flow_ instead of scattering `useEffect`s and
-loading flags across your components.
+## Work before a move
 
-## The shape
-
-Add an `effect` to a step. It has a `run` function and two branches — `onResolved` and `onRejected`:
+Use `onLeave` when work must decide whether navigation may commit:
 
 ```ts
-createStep("verify", {
-  effect: {
-    run: ({ context, handlers, signal }) => handlers.verifyToken(context.token, { signal }),
-    timeoutMs: 5_000,
-    onResolved: {
-      to: "approved",
-      // `output` is the resolved value of `run`
-      updateContext: ({ context, output }) => ({ ...context, plan: output.plan })
-    },
-    onRejected: {
-      to: "blocked",
-      updateContext: ({ context, error }) => ({ ...context, reason: String(error) })
-    }
+{
+  id: "payment",
+  onLeave: async ({ snapshot, updateContext }) => {
+    const result = await authorize(snapshot.context.cardToken);
+    updateContext((context) => ({ ...context, authorizationId: result.id }));
+    return result.approved;
   }
-});
-```
-
-When the machine enters `verify`, it runs `run`. On success it moves to `approved` with the
-resolved `output` available to `updateContext`; on failure it moves to `blocked` with the thrown
-`error`. That's the whole loop:
-
-```mermaid
-sequenceDiagram
-  participant M as machine
-  participant E as effect.run
-  Note over M: enter "verify" → phase: invoking
-  M->>E: run({ context, handlers, signal })
-  alt resolves
-    E-->>M: output
-    Note over M: → "approved" (output in updateContext)
-  else rejects / times out
-    E-->>M: error
-    Note over M: → "blocked" (error in updateContext)
-  end
-```
-
-## When it runs
-
-An effect runs when its step is **entered** — including the initial step on `startJourney()`, and
-again on every later entry (so a back-step into the step re-runs it). Both branches are optional: a
-resolved effect with no `onResolved` simply settles to idle; a rejected effect with no `onRejected`
-leaves the step in the `error` phase (see [Async behavior](/docs/core/async)).
-
-## The loading phase
-
-While `run` is in flight, the step's async phase is `invoking`, and `async.isLoading` is `true`.
-Render it exactly like a guard's `evaluating-when` phase:
-
-```ts
-const phase = machine.getSnapshot().async.byStep.verify.phase;
-// "invoking" → show a spinner; "error" → show the failure; "idle" → done
-```
-
-## Cancellation
-
-The `run` function receives an `AbortSignal` that fires when the step is left, or the machine is
-reset or disposed. Forward it to your fetch/work so abandoned effects stop cleanly:
-
-```ts
-run: ({ context, handlers, signal }) => handlers.search(context.query, { signal });
-```
-
-If the effect settles after you've already left the step, its result is ignored — it can't move a
-flow you're no longer on.
-
-:::tip
-[`handlers`](/docs/core/handlers) are the dependency-injected functions you pass to the definition
-(`handlers` on `build()` or the definition object). Keep your I/O there — `verifyToken`, `search`,
-`loadProfile` — and effects become trivially testable: swap the handlers in a test and the flow's
-wiring is unchanged.
-:::
-
-## Timeouts
-
-`timeoutMs` caps the async `run`. If it doesn't settle in time, the effect rejects with a
-`JourneyTimeoutError`, which flows to `onRejected` (or the `error` phase):
-
-```ts
-effect: {
-  run: ({ context, handlers, signal }) => handlers.poll(context.jobId, { signal }),
-  timeoutMs: 10_000,
-  onRejected: { to: "timedOut" }
 }
 ```
 
-## Output is typed (in the builder)
+Returning `false` blocks. Throwing or timing out returns a navigation failure with reason `"error"`.
 
-With the [graph builder](/docs/core/api/graph-builder), the type of `output` is inferred from what
-`run` returns — no annotation, no cast:
+## Work after a move
+
+Use step `onEnter` for destination work:
 
 ```ts
-const { createStep, to, build } = createGraphJourneyBuilder<{ context: Context; stepId: StepId }>();
-
-createStep("loadProfile", {
-  effect: {
-    run: async (): Promise<{ name: string; tier: "free" | "pro" }> => api.profile(),
-    onResolved: {
-      to: "ready",
-      // output: { name: string; tier: "free" | "pro" } — fully inferred
-      updateContext: ({ context, output }) => ({ ...context, tier: output.tier })
-    }
+{
+  id: "receipt",
+  onEnter: async ({ snapshot }) => {
+    await sendReceipt(snapshot.context.orderId);
   }
-});
+}
 ```
 
-In plain (non-builder) definitions, `output` is typed as `unknown` — narrow or cast it as you read
-it.
-
-## Effects in linear and graph; not headless
-
-Effects work on **linear** and **graph** machines. They're ignored in **headless** mode, where the
-caller drives navigation and there are no transitions for the effect's result to flow through.
+Use graph `onTransition` when the work belongs to a specific event edge:
 
 ```ts
-// Linear — an effect on a step object
-createLinearJourney({
-  context: { token: null },
-  steps: [
-    "intro",
-    {
-      id: "fetch",
-      effect: {
-        run: () => api.token(),
-        onResolved: {
-          to: "ready",
-          updateContext: ({ context, output }) => ({ ...context, token: output as string })
-        }
-      }
-    },
-    "ready"
-  ]
-});
+SUBMIT: {
+  from: "review",
+  to: "done",
+  onTransition: async ({ event }) => {
+    await auditSubmission(event?.payload);
+  }
+}
 ```
 
-## Effect vs. guard
+Post-commit failures do not roll navigation back. They set the destination step's async error and
+emit the `error` subscription event.
 
-Both can be async, so it's worth being clear on which to reach for:
+## Chain graph work with `raise`
 
-| You want to…                                    | Use                                                                     |
-| ----------------------------------------------- | ----------------------------------------------------------------------- |
-| Decide whether a user-triggered move is allowed | a guard ([`when`](/docs/core/usage/graph#guards-decide-updates-derive)) |
-| Do work on arrival and branch on its result     | an **effect** on the step                                               |
-
-A guard answers "may this transition fire?"; an effect answers "I just arrived — go do the work and
-route me based on how it went."
-
-## Delayed transitions (`after`)
-
-A close cousin of effects: instead of running async work, `after` moves the flow once a step has
-been active for a given number of milliseconds. The timer starts on entry and cancels the moment you
-leave (or reset, or dispose) — so it's safe for idle timeouts, auto-advancing splash screens, and
-resend cooldowns.
+Hooks can enqueue a follow-up graph event without re-entering `send` during a pending transition:
 
 ```ts
-createStep("otp", {
-  after: {
-    30_000: { to: "expired" } // 30s with no input → expire
-  },
-  on: { submit: [to("verify")] }
-});
+onEnter: ({ raise }) => {
+  raise({ type: "LOAD_COMPLETE", payload: { cached: true } });
+};
 ```
 
-Keyed by delay, so a step can have more than one:
+Raised events run FIFO after the current move settles. Directly calling `send()` from a pending hook
+returns `reason: "transitioning"`.
+
+## Delays
+
+Schedule delayed domain events in application code and dispose the timer with the owning UI or a
+custom plugin:
 
 ```ts
-createStep("splash", {
-  after: { 2_000: { to: "home", updateContext: ({ context }) => ({ ...context, seen: true }) } }
-});
+const timer = setTimeout(() => void machine.send("TIMEOUT"), 10_000);
 ```
-
-Like effects, `after` works in linear and graph modes (ignored in headless), runs on the initial
-step too, and re-arms each time the step is entered. If the user acts before the timer fires, your
-event transition wins and the timer is cancelled.
 
 ## Where to next
 
-- [Step behavior](/docs/core/usage/step-behavior) — where `effect` and `after` sit among the other step hooks, and which modes honor each.
-- [Async behavior](/docs/core/async) — the `invoking` phase alongside guards and timeouts.
-- [Coming from XState](/docs/core/coming-from-xstate) — effects vs. `invoke` and `after`, side by side.
-- [Recipes](/docs/core/recipes) — short patterns, including retry and error handling.
+- [Step behavior](./usage/step-behavior)
+- [Async behavior](./async)
+- [Writing a plugin](./plugins/authoring)

@@ -1,141 +1,81 @@
 ---
 id: async
 title: Async behavior
-sidebar_label: Async behavior
 ---
 
 # Async behavior
 
-Most flows have to wait on something — validate a card, check eligibility, confirm a coupon. In
-Journey, that waiting is part of the model: a transition's guard can be async, and while it runs the
-step carries a visible loading phase you can render. The writes themselves stay synchronous and
-queued, so async work never produces a half-applied state.
+Async work lives in `onLeave`, graph `onTransition`, and `onEnter`. The snapshot separates the
+machine-wide transition phase from the destination step's entry result.
 
-## Guard vs. update
+## Leaving phase
 
-A transition has two distinct jobs, and only one of them can be async:
-
-| Part            | Job                                      | Runs                           | Async? | Can change context? |
-| --------------- | ---------------------------------------- | ------------------------------ | ------ | ------------------- |
-| `when`          | decide whether the transition is allowed | before the commit              | yes    | no                  |
-| `updateContext` | derive the next context                  | only for the chosen transition | no     | yes                 |
-
-Think of `when` as a permission check and `updateContext` as the synchronous write that follows once
-permission is granted.
-
-```mermaid
-stateDiagram-v2
-  [*] --> idle
-  idle --> evaluating_when: send(event), async when runs
-  evaluating_when --> idle: when resolves → commit (or no-match)
-  evaluating_when --> error: when throws / rejects / times out
-  error --> evaluating_when: re-send the event
-  error --> idle: clearStepError()
-```
-
-The active step's phase lives in `snapshot.async.byStep[stepId]`, and `snapshot.async.isLoading`
-answers the machine-wide question "is any async transition work in flight right now?"
-
-There's a fourth phase, `invoking`, used while a step [effect](/docs/core/effects) runs on entry. It
-behaves like `evaluating-when` for rendering — both mean "async work in flight, `isLoading` is
-true" — but it comes from arriving at a step rather than from a guard you triggered.
-
-## Async guards
-
-Use `when` to decide whether a transition may fire. It receives one args object and may return a
-boolean or a promise of one:
+While `onLeave` is pending:
 
 ```ts
-{
-  from: "payment",
-  event: "goToNextStep",
-  to: "review",
-  when: async ({ context, handlers, signal }) => {
-    return handlers.validateCard(context.cardToken, { signal });
-  }
-}
+snapshot.transition.pending; // true
+snapshot.transition.phase; // "leaving"
+snapshot.machine.isLoading; // true
 ```
 
-The full args:
+Returning `false` produces `reason: "blocked"`. Throwing, rejecting, or timing out produces
+`reason: "error"` and includes the error on the navigation result. The source step remains current.
+
+## Entering phase
+
+The destination is already current while `onTransition` and `onEnter` run:
 
 ```ts
-when: async ({ snapshot, context, from, timeline, index, event, signal, handlers }) => true;
+snapshot.transition.phase; // "entering"
+snapshot.currentStep?.async.isLoading; // true when onEnter exists
 ```
 
-`signal` is a run-scoped `AbortSignal` — when the run is cancelled (say, a `resetJourney()` lands),
-the signal aborts so your guard can stop waiting instead of resolving into a stale run.
-
-## Synchronous context updates
-
-`updateContext` derives the next context from the current one and the triggering event. It's
-synchronous on purpose:
+After settling, current-step async state is either successful or contains the post-commit failure:
 
 ```ts
-{
-  from: "details",
-  event: "draftSaved",
-  to: "review",
-  updateContext: ({ context, event }) => ({
-    ...context,
-    draftId: event.payload?.draftId ?? null
-  })
-}
+snapshot.currentStep?.async = {
+  isLoading: false,
+  isSuccess: false,
+  isError: true,
+  error
+};
 ```
 
-If you need async work to _produce_ data for the next state, do that work before `send(...)` and
-pass the resolved data in the event payload. Keep this rhythm in mind:
+An `onTransition` error skips `onEnter`. Both failure types emit the named `error` event and leave
+the committed destination in place.
 
-> Async work **decides**. Events **carry** resolved data. `updateContext` **commits** the next
-> context, synchronously.
+## Concurrent calls
 
-## Phases and how to render them
-
-Per-step phases map cleanly onto UI states:
-
-| Phase             | Render as                                   |
-| ----------------- | ------------------------------------------- |
-| `idle`            | normal, interactive                         |
-| `evaluating-when` | disable controls / show a validating state  |
-| `invoking`        | a loading state while a step effect runs    |
-| `error`           | a recoverable error with a retry affordance |
-
-## Timeouts
-
-Cap an async guard with `timeoutMs`:
+Only one navigation hook chain runs at a time. Another navigation or graph send resolves with:
 
 ```ts
-{
-  id: "payment-review",
-  from: "payment",
-  event: "goToNextStep",
-  to: "review",
-  timeoutMs: 5_000,
-  when: async ({ context, handlers, signal }) => {
-    return handlers.validateCard(context.cardToken, { signal });
-  }
-}
+{ ok: false, reason: "transitioning" }
 ```
 
-If the work doesn't settle in time, Journey resolves the send with `transitioned: false`, emits
-`transition.error`, and moves the source step into the `error` phase. Re-sending the event retries
-from `idle`.
+Context updates are synchronous and can occur while hooks are pending. Hooks receive the snapshot
+captured when their argument object is created; call the provided updater to apply against the
+runtime's current context.
 
-## Updates during in-flight async work
+## Timeouts and invalidation
 
-Every write shares one queue, which removes a whole category of race conditions:
+```ts
+const machine = createLinearJourney(definition, {
+  defaultTimeoutMs: 5_000
+});
+```
 
-- A running async `when` keeps the args it started with — it won't see a context change mid-flight.
-- An external `updateContext()` call waits in the same queue rather than racing a second write lane.
-- If a context change must affect the _current_ decision, apply it before `send(...)` or include it
-  in the event payload.
+The timeout applies to each async hook invocation. Terminating, restarting, or disposing increments
+the runtime generation so stale continuations cannot settle machine state. Journey does not supply
+an `AbortSignal`; cancel underlying I/O in your own integration when needed.
 
-Lifecycle helpers (`handlers`, `onEnter`, `onLeave`) may also do async work, but they're
-observational — they don't define a phase in `snapshot.async`, and failures there are logged as
-diagnostics rather than surfaced as `transition.error`. See
-[How it works → Async state](/docs/core/architecture#async-state) for the runtime side.
+## Raised events
+
+Graph hooks should use `raise(event)` to enqueue follow-up work. The queue runs only after the
+current transition settles, preventing re-entrant navigation. A cascade beyond
+`MAX_RAISED_EVENTS` is dropped and emitted as an `error` with phase `"raise"`.
 
 ## Where to next
 
-- [Lifecycle & events](/docs/core/lifecycle) — `transition.error` and the event ordering around failures.
-- [Snapshot](/docs/core/snapshot) — the `async` branch in the read model.
-- [Graph mode](/docs/core/usage/graph) — guards and updates in a worked flow.
+- [Effects](./effects)
+- [Snapshot](./snapshot)
+- [How it works](./architecture)

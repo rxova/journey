@@ -1,115 +1,60 @@
 ---
+id: stability
 title: Stability contract
-sidebar_label: Stability
 ---
 
 # Stability contract
 
-Journey has a typed runtime surface, optional plugins, and a browser-devtools transport — and they
-don't all carry the same compatibility promise. This page is the support contract for long-term
-adopters.
-
-Journey is preparing the `1.0.0-rc` line, which is the contract freeze point for the current runtime
-model:
-
-- RC builds are feature-complete and close to final;
-- during the RC line, only bug fixes, docs fixes, and release-blocking contract fixes should land;
-- if an RC-breaking change is unavoidable, it ships with explicit migration guidance.
-
-Once `1.0.0` is out, documented public APIs follow semver: additive changes in minors, breaking
-changes in majors.
+The documented V1 public surface follows semantic versioning after `1.0.0`.
 
 ## Core runtime
 
-`@rxova/journey-core` is the primary stability surface. For the RC line and later, treat these as
-stable:
+The supported Core surface is:
 
-- the journey factories — `createLinearJourney`, `createGraphJourney`, `createHeadlessJourney`, and
-  the `createGraphJourneyBuilder` authoring helper;
-- `JourneyMachine` methods and the snapshot shape;
-- the documented transition syntax, lifecycle events, and async timeout/error behavior;
-- the published entry points: `@rxova/journey-core`, `@rxova/journey-core/persistence`,
-  `@rxova/journey-core/execution-paths`.
+- `createLinearJourney`, `createGraphJourney`, and `createGraphJourneyBuilder`;
+- exported public types and `MAX_RAISED_EVENTS` from the main entry;
+- the grouped machine API and graph `send`;
+- linear and graph snapshot contracts;
+- documented step hooks, graph transitions, results, and named subscription events;
+- `linearToGraphDefinition` from the convert entry;
+- documented plugin entry points, options, APIs, helpers, and plugin host contract.
 
-Expectations:
+Files and classes under `packages/core/src` are implementation details even when their architecture
+is explained in these docs. Import only from package export paths.
 
-- additive APIs and bug fixes belong in minor/patch releases;
-- RC-only breaking changes should be rare and reserved for release-blocking contract problems;
-- undocumented internals under `src/journey-machine/*` are implementation details, not extension
-  points;
-- runtime context stays JSON-only, step `meta` stays static definition data, and `updateContext()`
-  stays the state-write API.
+## Behavioral guarantees
 
-### `createJourneyMachine` deprecation contract
+- Graph candidates are selected in declaration order, first enabled match wins.
+- `onLeave` runs before commit and may block.
+- `onTransition` runs after commit and before destination `onEnter`.
+- Timeline pointer moves retrace realized history; appends from the past replace the old future.
+- Reaching a last or terminal step does not implicitly complete a journey.
+- Plugin contributions remain namespaced and plugins remain observe-only throughout V1.
+- Disposal is irreversible and later calls are safe.
 
-`createJourneyMachine` is the original generic factory and the shared implementation the three named
-factories adapt. It is **soft-deprecated**:
+## Not guaranteed
 
-- it stays **exported and behavior-stable for the entire 1.x line** — no removal in any 1.x release;
-- it is **scheduled for removal in 2.0**;
-- new code should use `createLinearJourney`, `createGraphJourney`, or `createHeadlessJourney`, which
-  pick the right mode and give tighter types.
+- Internal module layout, class names, private state, or number of snapshot publications per
+  operation.
+- Object identity for newly derived snapshots, except where a documented selector equality function
+  controls notification.
+- Automatic cancellation of user-created promises or I/O.
+- Automatic hydration of persisted runtime history.
+- Undocumented details in generated declarations or source files.
 
-In other words, existing `createJourneyMachine` code keeps working through 1.x; migrate at your
-convenience before 2.0. See [Pre-1.0 migration](/docs/core/pre-1-0-migration#migrating-from-createjourneymachine).
+## Plugin compatibility
 
-## React bindings
+Custom plugins should use only `JourneyPlugin`, `PluginHost`, documented host taps, and the returned
+`api`/`deriveSnapshot` contract. Plugin setup order follows the supplied tuple, but plugins should not
+depend on another plugin's private state or uncommitted observation timing.
 
-`@rxova/journey-react` is a stable public package, but its ownership model is part of the contract:
+## Devtools
 
-- one `createJourney(...)` call creates one machine instance, immediately;
-- the returned hooks and components stay bound to that instance;
-- `JourneyProvider` wires `views`, lifecycle callbacks, and startup around that runtime — it doesn't
-  create isolation.
+The bridge protocol has its own explicit protocol version. Core semver and bridge wire compatibility
+are related but separate boundaries; use the bridge documentation for command and envelope support.
 
-The stable React surface is the `JourneyRuntime` shape, the documented hooks, `JourneyProvider`, and
-`StepRenderer`. For request-scoped or boundary-scoped isolation, use `createJourneyFactory(...)` and
-create a runtime per request or per owned boundary.
+## Migration
 
-## Plugins
-
-Plugins are stable public extensions, with narrower guarantees than the base runtime.
-
-**Contract:** the built-in plugin entry points and documented options, plus the documented setup
-hooks — `setup`, `hydrateSnapshot`, `onSnapshotChange`, `augmentMachine`, `dispose`.
-
-**Not contract:** internal machine controller structure, undocumented runtime fields, and any
-assumption about setup ordering beyond what the docs describe.
-
-Custom plugins should depend only on documented public types and hook timing. Augmenting the machine
-is supported, but don't treat injected fields as if they were part of the base machine API.
-
-## Devtools bridge protocol
-
-The devtools bridge is a public integration surface with explicit versioning. The contract is the
-published API in `@rxova/journey-devtools-bridge`, the documented operation and envelope shapes for
-the current protocol version, and the protocol version number as the compatibility boundary.
-
-Incompatible wire-shape changes require a protocol version bump; panel and bridge consumers upgrade
-together. Treat the bridge and panel as tooling, and gate production use explicitly through `enabled`
-and `mutationsEnabled`.
-
-## Migration notes
-
-The current runtime differs from older 0.x material in a few ways that matter:
-
-- runtime `context` must be JSON-serializable;
-- step `meta` is static definition data, not mutable runtime state;
-- transition-side state updates happen through `updateContext(...)`;
-- React runtimes are instance-bound — use `createJourneyFactory(...)` when isolation matters.
-
-See [Pre-1.0 migration](/docs/core/pre-1-0-migration) for the upgrade steps.
-
-## Release verification
-
-The release process proves these surfaces separately:
-
-```bash
-pnpm run packages:typecheck
-pnpm run docs:check
-pnpm run packaging:check
-pnpm run pack:smoke
-pnpm run size:check
-```
-
-`pnpm run release:verify` runs the full chain from one command.
+Code written against the pre-V1 controller API must migrate; there is no V1 compatibility promise
+for `createJourneyMachine`, `createHeadlessJourney`, flat machine methods, or old snapshot fields.
+See [Pre-1.0 migration](./pre-1-0-migration).

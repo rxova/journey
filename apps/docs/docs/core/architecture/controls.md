@@ -1,5 +1,5 @@
 ---
-title: Controls And Out-of-Band Mutations
+title: Lifecycle And Context Changes
 ---
 
 import { Redirect } from "@docusaurus/router";

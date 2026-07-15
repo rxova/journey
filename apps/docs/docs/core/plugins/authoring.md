@@ -1,210 +1,121 @@
 ---
 title: Writing a plugin
-sidebar_label: Writing a plugin
 sidebar_position: 2
 ---
 
 # Writing a plugin
 
-The built-in plugins cover the common cases, but the plugin API is public — when you need a custom
-capability, you can write one in a few lines. This page walks through the hooks, the one TypeScript
-wrinkle to know about, and disposal behavior.
+A plugin has a unique name and one `setup(host)` method. Setup returns a namespaced API, a snapshot
+deriver, or both.
 
-## The minimal shape
-
-A plugin is a plain object with a `name` and a `setup` function. `setup` runs once per machine at
-construction, before `startJourney()`, and returns a hooks object. Every hook is optional.
+## Minimal plugin
 
 ```ts
-import type { JourneyMachinePlugin } from "@rxova/journey-core";
+import type { JourneyPlugin } from "@rxova/journey-core";
 
-const myPlugin = {
-  name: "my-plugin",
-  setup: (context) => {
-    // …read context, wire things up…
-    return {}; // return hooks
-  }
-} satisfies JourneyMachinePlugin;
+type CounterApi = { count(): number };
+type CounterSnapshot = { transitions: number };
+
+export function createCounterPlugin(): JourneyPlugin<"counter", CounterApi, CounterSnapshot> {
+  return {
+    name: "counter",
+    setup(host) {
+      let transitions = 0;
+
+      host.onTransition(() => {
+        transitions += 1;
+      });
+
+      return {
+        api: {
+          count: () => transitions
+        },
+        deriveSnapshot: (_snapshot, previous) =>
+          previous?.transitions === transitions ? previous : { transitions }
+      };
+    }
+  };
+}
 ```
 
-### Keep per-instance state inside `setup()`
+State belongs inside `setup`. Reusing one plugin object across machines must not share counters,
+buffers, timers, or subscriptions.
 
-The plugin object is a **stateless descriptor**. Because `setup()` runs once per machine, any state
-your plugin needs (buffers, timers, subscriptions, counters) must be created **inside `setup()`** —
-not in the factory closure around it:
+## Plugin host
+
+### Reads
 
 ```ts
-const createCounterPlugin = () => ({
-  name: "counter",
-  setup: () => {
-    let count = 0; // ✅ per-machine — each setup() call gets its own
-    return { onSnapshotChange: () => void count++ };
-  }
-});
-
-// ❌ Don't do this — `count` is shared by every machine that uses the instance:
-const createCounterPlugin = () => {
-  let count = 0;
-  return { name: "counter", setup: () => ({ onSnapshotChange: () => void count++ }) };
-};
+host.getSnapshot();
+host.structure;
 ```
 
-This is what makes a single plugin instance safe to reuse — including across the independent runtimes
-produced by [`createJourneyFactory`](/docs/react/overview), which calls `setup()` once per instance.
-The built-in `persistence` plugin is the reference model (it builds its controller inside `setup`).
+`structure` is a frozen view with `kind`, `stepIds`, `initial`, and flattened transitions. Each
+transition exposes `event`, `from`, `to`, and whether it is guarded.
 
-Per-instance _external_ resources are your responsibility to key apart: e.g. if you persist to storage,
-give each instance a distinct `key`, since two machines pointing at the same key will overwrite each
-other regardless of state scoping.
-
-## The one TypeScript wrinkle
-
-`setup` is generic over your machine's `TContext`, `TStepId`, `TEvents`, and `TStepMeta` — but
-TypeScript can't infer those from a plugin factory that has its own, narrower types. The idiomatic
-fix is to assert `setup`'s type:
+### Observation taps
 
 ```ts
-import type { JourneyMachinePlugin } from "@rxova/journey-core";
-
-const createMyPlugin = <TContext extends { userId: string }>() => {
-  const setup = (({ resolvedJourney, buildInitialSnapshot }) => {
-    return {
-      onSnapshotChange: ({ snapshot }) => {
-        // snapshot is typed loosely here — narrow to your known shape if you need to
-      }
-    };
-  }) as JourneyMachinePlugin["setup"]; // ← the cast
-
-  return { name: "my-plugin", setup } satisfies JourneyMachinePlugin;
-};
+host.onTransition(listener);
+host.onStepEnter(listener);
+host.onStepLeave(listener);
+host.onNavigationBlocked(listener);
+host.onStatusChange(listener);
+host.onContextChange(listener);
+host.onError(listener);
 ```
 
-The cast is safe — the hooks you return are structurally compatible with what Journey expects. The
-alternative, making the plugin itself generic, pushes type parameters onto every caller and makes
-for a worse API.
+Each returns an unsubscribe function. `onTransition` runs after post-commit hooks settle; the named
+event taps follow the same payloads as machine subscriptions.
 
-## What setup receives
-
-| Field                               | Type                    | What it is                                                   |
-| ----------------------------------- | ----------------------- | ------------------------------------------------------------ |
-| `journey`                           | `JourneyDefinition`     | The original definition, as the caller passed it             |
-| `resolvedJourney`                   | resolved definition     | Normalized definition with transitions flattened to an array |
-| `options.requireExplicitCompletion` | `boolean`               | Whether the machine needs an explicit `completeJourney`      |
-| `options.defaultTimeoutMs`          | `number \| undefined`   | Machine-level async timeout                                  |
-| `buildInitialSnapshot`              | `() => JourneySnapshot` | A fresh initial snapshot (handy for reset hydration)         |
-
-## The hooks
-
-### `hydrateSnapshot`
-
-Runs once at construction, your chance to override the starting snapshot. Plugins run in order, each
-receiving the previous one's output — this is the seam persistence and server-side hydration use.
+### Disposal
 
 ```ts
-hydrateSnapshot: (snapshot) => {
-  const persisted = localStorage.getItem("my-key");
-  if (!persisted) return snapshot;
-  return { ...snapshot, ...JSON.parse(persisted) };
-};
+host.onDispose(() => clearTimeout(timer));
 ```
 
-### `onSnapshotChange`
+Register cleanup for resources owned by the plugin. Disposal callbacks are run once and isolated
+from one another.
 
-Runs synchronously on every snapshot change, with the previous snapshot, the new one, and the
-reason:
+## API contribution
+
+The returned `api` appears only under the plugin name:
 
 ```ts
-onSnapshotChange: ({ previousSnapshot, snapshot, reason }) => {
-  if (reason === "async") return; // ignore async-phase-only updates
-
-  analytics.track("journey_step_changed", {
-    from: previousSnapshot.currentStepId,
-    to: snapshot.currentStepId
-  });
-};
+machine.plugins.counter.count();
 ```
 
-:::warning
-This hook must be synchronous. Don't return a promise or mark it `async` — Journey won't await it,
-and it'll log a warning and drop the result. Do async work elsewhere (kick it off here, but don't
-make the machine wait).
-:::
+Do not expose mutable plugin internals. Return snapshots, copies, or readonly data from read APIs.
 
-Reasons you'll see: `"async"`, `"context"`, `"navigation"`, `"reset"`, `"start"`, `"transition"`.
+## Snapshot contribution
 
-### `augmentMachine`
-
-Runs once after construction to add methods to the machine. Return an object and its keys merge onto
-the machine; trying to overwrite an existing property throws.
+`deriveSnapshot(snapshot, previousExtension)` runs during snapshot construction. Keep it pure and
+return the previous object when its visible value has not changed:
 
 ```ts
-augmentMachine: ({ machine, resolvedJourney }) => ({
-  inspect: () => ({
-    stepCount: Object.keys(resolvedJourney.steps).length,
-    currentStep: machine.getSnapshot().currentStepId
-  })
-});
+deriveSnapshot: (_snapshot, previous) =>
+  previous?.transitions === transitions ? previous : { transitions };
 ```
 
-TypeScript infers the extension's type from the return value, so callers get
-`machine.inspect()` fully typed when the plugin is passed through the `plugins` option.
+The value appears at `snapshot.plugins.counter` and can be observed with `subscribeSelector`.
 
-### `dispose`
+Snapshot derivation may run more than once around one lifecycle operation because the runtime
+refreshes plugin-derived state after observation taps.
 
-Runs at teardown — `machine.dispose()`, or in React when the provider unmounts. Clean up
-subscriptions, timers, and storage here.
+## Boundaries
 
-```ts
-dispose: () => {
-  subscription.unsubscribe();
-  localStorage.removeItem("draft-key");
-};
-```
+The V1 host is deliberately observe-only. A plugin cannot:
 
-## Ordering and errors
+- cancel or rewrite navigation;
+- mutate the core snapshot;
+- dispatch graph events through the host;
+- add unnamespaced methods to the machine.
 
-Plugins initialize in array order and dispose in that same order. Two behaviors are worth knowing:
-
-- **Setup failure rolls back.** If a plugin's `setup` throws, already-initialized plugins are
-  disposed in reverse order, and the error is re-thrown tagged with the plugin name:
-  `Journey plugin "my-plugin" setup failed: …`.
-- **Dispose is best-effort.** Every plugin's `dispose` runs even if an earlier one threw; the first
-  error is re-thrown after the full pass, so one bad teardown can't strand the others.
-
-## A complete plugin
-
-A small analytics plugin that fires on real step changes and on teardown:
-
-```ts
-import type { JourneyMachinePlugin } from "@rxova/journey-core";
-
-export const createStepTracker = (tracker: { track: (name: string, data: object) => void }) => {
-  const setup = (({ resolvedJourney }) => {
-    const stepCount = Object.keys(resolvedJourney.steps).length;
-
-    return {
-      onSnapshotChange: ({ snapshot, reason }) => {
-        if (reason !== "transition") return;
-        tracker.track("step_changed", { step: snapshot.currentStepId, stepCount });
-      },
-      dispose: () => tracker.track("journey_disposed", {})
-    };
-  }) as JourneyMachinePlugin["setup"];
-
-  return { name: "step-tracker", setup } satisfies JourneyMachinePlugin;
-};
-```
-
-```ts
-import { createLinearJourney } from "@rxova/journey-core";
-
-const machine = createLinearJourney(checkout, {
-  plugins: [createStepTracker(myTracker)]
-});
-```
+Put domain transition behavior in the definition. Use plugins for recording, persistence, analysis,
+and integrations driven by observations.
 
 ## Where to next
 
-- [Plugins overview](/docs/core/plugins/overview) — the model and the built-ins.
-- [Snapshot](/docs/core/snapshot#why-a-snapshot-changes) — the `reason` values your hooks receive.
-- [How it works → Plugins](/docs/core/architecture#plugins) — the controller that calls your hooks.
+- [Plugins overview](./overview)
+- [Lifecycle and events](../lifecycle)
+- [Architecture](../architecture#plugins)
