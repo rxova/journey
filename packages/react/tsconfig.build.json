@@ -11,21 +11,11 @@
     "tsBuildInfoFile": "tsconfig.build.tsbuildinfo",
     "noEmit": false,
     "paths": {
-      "@rxova/journey-core": [
-        "../core/dist/index.d.ts"
-      ],
-      "@rxova/journey-core/execution-paths": [
-        "../core/dist/plugins/execution-paths/index.d.ts"
-      ],
-      "@rxova/journey-core/persistence": [
-        "../core/dist/plugins/persistence/index.d.ts"
-      ],
-      "@rxova/journey-common": [
-        "../common/dist/index.d.ts"
-      ],
-      "@rxova/journey-common/*": [
-        "../common/dist/*.d.ts"
-      ]
+      "@rxova/journey-core": ["../core/dist/index.d.ts"],
+      "@rxova/journey-core/execution-paths": ["../core/dist/plugins/execution-paths/index.d.ts"],
+      "@rxova/journey-core/persistence": ["../core/dist/plugins/persistence/index.d.ts"],
+      "@rxova/journey-common": ["../common/dist/index.d.ts"],
+      "@rxova/journey-common/*": ["../common/dist/*.d.ts"]
     }
   },
   "references": [
@@ -36,14 +26,6 @@
       "path": "../core/tsconfig.build.json"
     }
   ],
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "dist",
-    "**/__tests__/**",
-    "**/*.d.ts",
-    "**/*.d.ts.map",
-    "node_modules"
-  ]
+  "include": ["src"],
+  "exclude": ["dist", "**/__tests__/**", "**/*.d.ts", "**/*.d.ts.map", "node_modules"]
 }

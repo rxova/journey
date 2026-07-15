@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { normalizeMaxEntries, serializeReplaySession, toSerializable } from "@rxova/journey-core/replay";
+import {
+  normalizeMaxEntries,
+  serializeReplaySession,
+  toSerializable
+} from "@rxova/journey-core/replay";
 
 describe("normalizeMaxEntries", () => {
   it("defaults non-finite values and clamps to at least one entry", () => {

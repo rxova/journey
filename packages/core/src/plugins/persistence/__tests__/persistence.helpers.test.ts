@@ -37,7 +37,10 @@ describe("parsePersistedState", () => {
     ["json null", "null"],
     ["missing status", JSON.stringify({ timeline: [], currentIndex: 0, savedAt: 1 })],
     ["missing timeline", JSON.stringify({ status: "running", currentIndex: 0, savedAt: 1 })],
-    ["string index", JSON.stringify({ status: "running", timeline: [], currentIndex: "0", savedAt: 1 })],
+    [
+      "string index",
+      JSON.stringify({ status: "running", timeline: [], currentIndex: "0", savedAt: 1 })
+    ],
     ["missing savedAt", JSON.stringify({ status: "running", timeline: [], currentIndex: 0 })]
   ])("rejects %s", (_label, raw) => {
     expect(parsePersistedState(raw as string | null)).toBeNull();

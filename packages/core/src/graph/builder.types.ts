@@ -59,7 +59,7 @@ export type ToFactory<TBag extends JourneyTypeBag, TType extends TBag["events"][
  * so `onTransition` sees the narrowed event payload.
  */
 export type JourneyStepTransitions<TBag extends JourneyTypeBag> = {
-  readonly [TType in TBag["events"]["type"]]?: // array form: wide event type; the callback form's scoped `to` narrows it
+  readonly [TType in TBag["events"]["type"]]?:  // array form: wide event type; the callback form's scoped `to` narrows it
     | readonly JourneyToBuilder<TBag, TBag["events"]["type"]>[]
     | ((helpers: { to: ToFactory<TBag, TType> }) => readonly JourneyToBuilder<TBag, TType>[]);
 };

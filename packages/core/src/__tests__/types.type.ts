@@ -4,7 +4,11 @@
  * Unused aliases and bare expressions are the assertion mechanism here.
  */
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-unused-expressions */
-import { createGraphJourney, createGraphJourneyBuilder, createLinearJourney } from "@rxova/journey-core";
+import {
+  createGraphJourney,
+  createGraphJourneyBuilder,
+  createLinearJourney
+} from "@rxova/journey-core";
 import type {
   GraphSnapshot,
   JourneyPlugin,
@@ -103,7 +107,9 @@ export function graphTypes() {
 // ── snapshot union discriminates on `type`; results discriminate on `ok` ───
 
 export function discriminants(
-  snapshot: LinearSnapshot<{ n: number }, "a" | "b", unknown> | GraphSnapshot<{ n: number }, "a" | "b", unknown>,
+  snapshot:
+    | LinearSnapshot<{ n: number }, "a" | "b", unknown>
+    | GraphSnapshot<{ n: number }, "a" | "b", unknown>,
   result: NavigationResult<"a" | "b">
 ) {
   if (snapshot.type === "linear") {
