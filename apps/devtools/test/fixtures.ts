@@ -1,11 +1,18 @@
 import type { JourneyDevtoolsSerializableSnapshot } from "@rxova/journey-devtools-bridge";
 
+type SerializableGraphSnapshot = Extract<
+  JourneyDevtoolsSerializableSnapshot,
+  { readonly type: "graph" }
+>;
+
 type GraphSnapshotOptions = {
   context?: unknown;
   status?: JourneyDevtoolsSerializableSnapshot["status"];
   timeline?: readonly string[];
+  declaredEvents?: SerializableGraphSnapshot["declaredEvents"];
   availableEvents?: readonly string[];
   availableSteps?: readonly string[];
+  outgoingTransitions?: SerializableGraphSnapshot["outgoingTransitions"];
 };
 
 export const createGraphSnapshot = (
@@ -49,7 +56,9 @@ export const createGraphSnapshot = (
             isTerminal: false
           },
     steps: { totalSteps: new Set(timeline).size, visitedStepCount: new Set(timeline).size },
+    declaredEvents: options.declaredEvents ?? [],
     availableEvents: options.availableEvents ?? [],
-    availableSteps: options.availableSteps ?? []
+    availableSteps: options.availableSteps ?? [],
+    outgoingTransitions: options.outgoingTransitions ?? []
   };
 };

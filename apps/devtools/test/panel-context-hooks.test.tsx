@@ -82,8 +82,19 @@ const snapshot: JourneyDevtoolsSerializableSnapshot = {
     outcome: null
   },
   steps: { totalSteps: 2, visitedStepCount: 1 },
+  declaredEvents: ["submitLogin"],
   availableEvents: ["submitLogin"],
-  availableSteps: ["review"]
+  availableSteps: ["review"],
+  outgoingTransitions: [
+    {
+      event: "submitLogin",
+      to: "review",
+      priority: 0,
+      guard: "none",
+      enabled: true,
+      selected: true
+    }
+  ]
 };
 
 const machine: JourneyPanelMachineState = {

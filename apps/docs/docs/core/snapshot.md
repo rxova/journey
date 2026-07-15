@@ -91,17 +91,21 @@ if (snapshot.type === "linear") {
 
 ```ts
 if (snapshot.type === "graph") {
+  snapshot.declaredEvents;
   snapshot.availableEvents;
   snapshot.availableSteps;
+  snapshot.outgoingTransitions;
   snapshot.steps.totalSteps;
   snapshot.steps.visitedStepCount;
   snapshot.currentStep?.isTerminal;
 }
 ```
 
-Available events and targets include candidates whose `from` matches the current step and whose
-guard currently passes. A terminal step has no declared outgoing transitions, regardless of guard
-results.
+`declaredEvents` includes every event declared from the current step. `availableEvents` and
+`availableSteps` include only candidates whose guard currently passes. `outgoingTransitions`
+explains both projections with each candidate's target, priority, guard result, enabled state, and
+whether first-enabled event dispatch would select it. A terminal step has no declared outgoing
+transitions, regardless of guard results.
 
 ## Update rules
 

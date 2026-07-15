@@ -139,7 +139,26 @@ export type LinearSnapshot<
   };
 };
 
-/** Graph snapshots carry enabled-transition derivations; order fields don't exist. */
+/** Guard evaluation recorded for an outgoing graph transition candidate. */
+export type GraphGuardState = "none" | "passed" | "failed";
+
+/** Serializable routing state for one candidate declared from the current graph step. */
+export type GraphTransitionSnapshot<TStepId extends string, TEventType extends string> = {
+  /** Event that evaluates this candidate. */
+  readonly event: TEventType;
+  /** Candidate destination. */
+  readonly to: TStepId;
+  /** Zero-based declaration order among candidates for the same event. */
+  readonly priority: number;
+  /** Current result of the candidate's guard, or `none` when no guard is declared. */
+  readonly guard: GraphGuardState;
+  /** Whether the candidate's guard currently permits routing. */
+  readonly enabled: boolean;
+  /** Whether sending this event would select this candidate under first-enabled semantics. */
+  readonly selected: boolean;
+};
+
+/** Graph snapshots carry declared and enabled transition derivations; order fields don't exist. */
 export type GraphSnapshot<
   TContext,
   TStepId extends string,
@@ -162,10 +181,14 @@ export type GraphSnapshot<
     readonly totalSteps: number;
     readonly visitedStepCount: number;
   };
+  /** Event names declared by outgoing candidates from the current step. */
+  readonly declaredEvents: readonly TEvents["type"][];
   /** Events with at least one enabled candidate from the current step. */
   readonly availableEvents: readonly TEvents["type"][];
   /** Targets of enabled candidates from the current step. */
   readonly availableSteps: readonly TStepId[];
+  /** Guard and selection state for every outgoing candidate from the current step. */
+  readonly outgoingTransitions: readonly GraphTransitionSnapshot<TStepId, TEvents["type"]>[];
 };
 
 export type JourneySnapshot<

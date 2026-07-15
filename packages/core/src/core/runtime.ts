@@ -15,6 +15,7 @@ import type {
   ContextUpdater,
   CurrentStepBase,
   JourneyEventObject,
+  GraphTransitionSnapshot,
   JourneyOutcome,
   JourneySnapshot,
   JourneyStatus,
@@ -692,16 +693,39 @@ export class JourneyRuntime {
         plugins: {}
       } as JourneySnapshot;
     } else {
+      const declaredEvents: string[] = [];
       const availableEvents: string[] = [];
       const availableSteps: string[] = [];
+      const outgoingTransitions: GraphTransitionSnapshot<string, string>[] = [];
+      const priorities = new Map<string, number>();
+      const selectedEvents = new Set<string>();
       let hasOutgoing = false;
       if (currentId !== null) {
         for (const transition of this.config.transitions) {
           if (transition.from !== currentId) continue;
           hasOutgoing = true;
-          if (!this.isEnabled(transition)) continue;
-          if (!availableEvents.includes(transition.event)) availableEvents.push(transition.event);
-          if (!availableSteps.includes(transition.to)) availableSteps.push(transition.to);
+          if (!declaredEvents.includes(transition.event)) declaredEvents.push(transition.event);
+
+          const priority = priorities.get(transition.event) ?? 0;
+          priorities.set(transition.event, priority + 1);
+          const enabled = this.isEnabled(transition);
+          const selected = enabled && !selectedEvents.has(transition.event);
+          if (selected) selectedEvents.add(transition.event);
+          outgoingTransitions.push(
+            Object.freeze({
+              event: transition.event,
+              to: transition.to,
+              priority,
+              guard: transition.when === undefined ? "none" : enabled ? "passed" : "failed",
+              enabled,
+              selected
+            })
+          );
+
+          if (enabled) {
+            if (!availableEvents.includes(transition.event)) availableEvents.push(transition.event);
+            if (!availableSteps.includes(transition.to)) availableSteps.push(transition.to);
+          }
         }
       }
       snapshot = {
@@ -710,8 +734,10 @@ export class JourneyRuntime {
         currentStep:
           currentBase === null ? null : Object.freeze({ ...currentBase, isTerminal: !hasOutgoing }),
         steps: Object.freeze({ totalSteps: this.config.stepIds.length, visitedStepCount }),
+        declaredEvents: Object.freeze(declaredEvents) as readonly string[],
         availableEvents: Object.freeze(availableEvents) as readonly string[],
         availableSteps: Object.freeze(availableSteps) as readonly string[],
+        outgoingTransitions: Object.freeze(outgoingTransitions),
         plugins: {}
       } as JourneySnapshot;
     }

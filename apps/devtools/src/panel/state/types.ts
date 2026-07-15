@@ -110,6 +110,8 @@ export const INITIAL_SNAPSHOT: JourneyDevtoolsSerializableSnapshot = {
   },
   plugins: {},
   steps: { totalSteps: 0, visitedStepCount: 0 },
+  declaredEvents: [],
   availableEvents: [],
-  availableSteps: []
+  availableSteps: [],
+  outgoingTransitions: []
 };

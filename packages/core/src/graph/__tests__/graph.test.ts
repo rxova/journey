@@ -171,27 +171,97 @@ describe("createGraphJourney — event-driven transitions", () => {
     expect(await machine.navigate.goToNextStep()).toEqual({ ok: false, reason: "out-of-bounds" });
   });
 
-  it("derives availableEvents, availableSteps, and isTerminal from enabled transitions", async () => {
+  it("describes declared, guarded, enabled, and selected outgoing transitions", async () => {
     const machine = await startedGraph({ valid: false });
     let snapshot = machine.getSnapshot();
     expect(snapshot.type).toBe("graph");
+    expect(snapshot.declaredEvents).toEqual(["SUBMIT"]);
     expect(snapshot.availableEvents).toEqual([]);
     expect(snapshot.availableSteps).toEqual([]);
+    expect(snapshot.outgoingTransitions).toEqual([
+      {
+        event: "SUBMIT",
+        to: "review",
+        priority: 0,
+        guard: "failed",
+        enabled: false,
+        selected: false
+      }
+    ]);
     expect(snapshot.currentStep?.isTerminal).toBe(false);
 
     machine.context.update((c) => ({ ...(c as Ctx), valid: true }));
     snapshot = machine.getSnapshot();
     expect(snapshot.availableEvents).toEqual(["SUBMIT"]);
     expect(snapshot.availableSteps).toEqual(["review"]);
+    expect(snapshot.outgoingTransitions[0]).toEqual({
+      event: "SUBMIT",
+      to: "review",
+      priority: 0,
+      guard: "passed",
+      enabled: true,
+      selected: true
+    });
 
     await machine.send("SUBMIT");
     snapshot = machine.getSnapshot();
+    expect(snapshot.declaredEvents).toEqual(["EDIT", "CONFIRM"]);
     expect(snapshot.availableEvents).toEqual(["EDIT", "CONFIRM"]);
     expect(snapshot.availableSteps).toEqual(["form"]);
+    expect(snapshot.outgoingTransitions).toEqual([
+      {
+        event: "EDIT",
+        to: "form",
+        priority: 0,
+        guard: "none",
+        enabled: true,
+        selected: true
+      },
+      {
+        event: "CONFIRM",
+        to: "done",
+        priority: 0,
+        guard: "failed",
+        enabled: false,
+        selected: false
+      },
+      {
+        event: "CONFIRM",
+        to: "form",
+        priority: 1,
+        guard: "none",
+        enabled: true,
+        selected: true
+      }
+    ]);
 
     machine.context.update((c) => ({ ...(c as Ctx), confirmed: true }));
+    snapshot = machine.getSnapshot();
+    expect(snapshot.availableSteps).toEqual(["form", "done"]);
+    expect(snapshot.outgoingTransitions.slice(1)).toEqual([
+      {
+        event: "CONFIRM",
+        to: "done",
+        priority: 0,
+        guard: "passed",
+        enabled: true,
+        selected: true
+      },
+      {
+        event: "CONFIRM",
+        to: "form",
+        priority: 1,
+        guard: "none",
+        enabled: true,
+        selected: false
+      }
+    ]);
+
     await machine.send("CONFIRM");
-    expect(machine.getSnapshot().currentStep?.isTerminal).toBe(true);
+    snapshot = machine.getSnapshot();
+    expect(snapshot.currentStep?.isTerminal).toBe(true);
+    expect(snapshot.declaredEvents).toEqual([]);
+    expect(snapshot.outgoingTransitions).toEqual([]);
   });
 
   it("graph snapshots have no linear-only fields", async () => {
