@@ -14,6 +14,7 @@ import {
 } from "@rxova/journey-devtools-bridge";
 import { PanelProvider, usePanelActions, usePanelState } from "../src/panel/context/PanelProvider";
 import { JOURNEY_DEVTOOLS_PANEL_PORT, type PanelWarning } from "../src/shared";
+import { createGraphSnapshot } from "./fixtures";
 
 type PortListener = (message?: unknown) => void;
 
@@ -100,15 +101,7 @@ const createRegisterEnvelope = (
     mode: "graph",
     features: []
   },
-  snapshot: {
-    type: "graph",
-    currentStepId: "start",
-    history: { timeline: ["start"], index: 0 },
-    context: {},
-    visited: { start: true },
-    status: "running",
-    async: { isLoading: false, byStep: {} }
-  }
+  snapshot: createGraphSnapshot("start")
 });
 
 describe("PanelProvider bridge lifecycle", () => {
