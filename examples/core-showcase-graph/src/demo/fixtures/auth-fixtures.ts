@@ -133,7 +133,11 @@ const setup2faStep = createStep("setup2fa", {
 });
 
 /** Failure candidates: first-enabled wins, so "blocked" guards the retry loop. */
-const failureCandidates = (retryTarget: "verifyCode" | "emailCode" | "authenticatorCode", blockedError: string, retryError: string) => [
+const failureCandidates = (
+  retryTarget: "verifyCode" | "emailCode" | "authenticatorCode",
+  blockedError: string,
+  retryError: string
+) => [
   to("blocked")
     .when(({ context }) => context.attempts >= 2)
     .onTransition(({ updateContext }) =>

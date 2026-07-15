@@ -270,7 +270,9 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
       `<div class="path-item"><strong>${label}</strong><div class="muted">${steps.join(" -> ") || "(empty)"}</div></div>`;
     return `<section class="card"><h2>Execution Paths</h2><div class="path-list">${[
       renderPath(api.getCurrentPath(), "Current run"),
-      ...api.getCompletedPaths().map((steps, index) => renderPath(steps, `Finished run ${index + 1}`))
+      ...api
+        .getCompletedPaths()
+        .map((steps, index) => renderPath(steps, `Finished run ${index + 1}`))
     ].join("")}</div></section>`;
   };
 
