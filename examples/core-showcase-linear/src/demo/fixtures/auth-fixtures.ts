@@ -18,6 +18,7 @@ export type LoginContext = {
   qrCode: string | null;
   error: string | null;
   attempts: number;
+  loggedInStatus: "loggedIn" | "blocked" | null;
 };
 
 export type AuthEvent =
@@ -50,9 +51,13 @@ export const authApi = {
     await delay(300);
     return { sent: true as const };
   },
-  verifyCode: async (code: string) => {
+  verifyCode: async (code: string, attempts: number) => {
     await delay(400);
-    return { success: code === "123456" };
+    if (code === "123456") {
+      return { success: true as const, loggedInStatus: "loggedIn" as const };
+    }
+    const loggedInStatus = attempts + 1 >= 3 ? ("blocked" as const) : null;
+    return { success: false as const, loggedInStatus };
   }
 };
 
@@ -63,7 +68,8 @@ export const initialLoginContext = (): LoginContext => ({
   verificationCode: "",
   qrCode: null,
   error: null,
-  attempts: 0
+  attempts: 0,
+  loggedInStatus: null
 });
 
 export const linearDefinition = {
@@ -72,7 +78,7 @@ export const linearDefinition = {
     { id: "login", metadata: { label: "Login" } },
     { id: "setup2fa", metadata: { label: "Setup 2FA" } },
     { id: "verifyCode", metadata: { label: "Verify Code" } },
-    { id: "loggedIn", metadata: { label: "Logged In" } }
+    { id: "loggedIn", metadata: { label: "Status" } }
   ]
 } satisfies LinearJourneyDefinition<LoginContext>;
 
