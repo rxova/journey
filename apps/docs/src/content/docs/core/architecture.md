@@ -1,212 +1,186 @@
 ---
 id: architecture
 title: How it works
-sidebar_label: How it works
 ---
 
 # How it works
 
-You can use Journey without reading any of this. But when you're debugging something subtle —
-why a guard didn't fire, why two updates landed in a surprising order, why a back-step kept its
-history — it helps to know what the runtime does on your behalf. So let's follow a flow from the
-moment you author it to the moment an event commits a new snapshot.
-
-Everything here lives in `packages/core/src/journey-machine`. The [Source map](#source-map) at the
-bottom links each part to its file if you want to read along.
-
-## The shape of a machine
-
-When you call a factory, Journey assembles a small set of cooperating pieces and hands you one
-object. The assembly happens in a deliberate order.
+V1 has one runtime for linear and graph journeys. Factories normalize their definition shape into a
+small shared configuration, `JourneyRuntime` owns changing state, `JourneyStore` distributes
+snapshots and named events, and a stable machine surface delegates to the runtime.
 
 ```mermaid
-flowchart TD
-  F["createLinearJourney /<br/>createGraphJourney /<br/>createHeadlessJourney"] --> M["createJourneyMachine"]
-  M --> V["1 · validate + resolve<br/>the definition"]
-  V --> P["2 · plugin setup +<br/>snapshot hydration"]
-  P --> R["3 · runtime<br/>(snapshot, queue, listeners)"]
-  R --> C["4 · controllers<br/>async · navigation · send · controls"]
-  C --> A["5 · assemble the public API"]
-  A --> X["6 · let plugins augment it"]
+flowchart LR
+  L[createLinearJourney] --> N[normalized runtime config]
+  G[createGraphJourney] --> N
+  N --> R[JourneyRuntime]
+  R --> S[JourneyStore]
+  R --> P[PluginHost]
+  M[stable machine surface] --> R
+  S --> C[selectors and named events]
 ```
 
-The order isn't arbitrary — each step depends on the one before it:
+## The shape of a machine {#the-shape-of-a-machine}
 
-- The **resolver** has to run first, because nothing can evaluate transitions until they're in the
-  runtime's single normalized shape.
-- **Plugin hydration** has to happen before the runtime owns its first snapshot, so a plugin like
-  persistence can load saved state _into_ the initial snapshot rather than racing it afterward.
-- The **runtime** has to exist before the async, navigation, send, and controls controllers can
-  commit anything through it.
-- **Plugin augmentation** comes last, so the machine you get back is already complete when a plugin
-  adds methods to it.
+`buildMachineSurface` creates the public object once. Its grouped methods close over a runtime; they
+do not hold independent copies of journey state.
 
-That ordering is what keeps every controller small and free of hidden initialization
-dependencies. The three public factories each normalize their input into one `JourneyDefinition`
-before any of this runs, so everything below is the shared layer underneath all three modes.
-
-## Resolving the definition {#resolving-the-definition}
-
-You can author transitions in a few shapes — an ordered array for linear, an event-keyed object
-for graph, or nothing at all for headless. The runtime executes only one shape: **an ordered list
-of transitions**. The resolver's job is to flatten whatever you wrote into that list.
-
-- An **array** is read as a linear declaration: each entry must be a known step, the first must
-  match `initial`, and the array expands into implicit `goToNextStep` edges between neighbors.
-- An **object graph** is validated layer by layer (`from → event → edges[]`) and flattened into
-  ordered transition objects.
-- The **`global`** branch is resolved last and rewritten to `from: "*"`, so global handlers act as
-  a fallback _after_ a step's own transitions for the same event.
-
-The guarantee that matters here is **order**. The send pipeline scans transitions top to bottom and
-takes the first match, so the resolver preserves your authoring order while giving the runtime one
-deterministic structure to evaluate. (The public authoring shapes are documented in
-[Transitions syntax](/docs/core/api/transitions-syntax).)
-
-## The runtime queue {#the-runtime-queue}
-
-The runtime is the mutable heart of the machine. It owns the current snapshot, the subscription
-sets, the lifecycle event stream, and — the part worth understanding — a **serialized execution
-queue**.
-
-Every send and every navigation helper is chained onto one queue. Each operation runs to a stable
-result before the next one is allowed to mutate the machine. That single rule is why you never see
-a half-applied state: no two events overlap.
-
-:::tip
-When you `await machine.goToNextStep()` and then `await machine.updateContext(...)`, the context
-update doesn't race the navigation — it waits its turn in the same queue and rebases on whatever
-snapshot the navigation committed.
-:::
-
-The queue also handles **cancellation**. Each queued operation captures a run version. If the
-machine resets (or otherwise cancels in-flight work), the version increments — and any older async
-work that's still running locally will finish, but its writes are ignored because they belong to a
-stale run. This is how a `resetJourney()` in the middle of an async guard doesn't get clobbered by
-that guard resolving a moment later.
-
-Listeners are isolated too: if one subscriber throws, the runtime reports it (through your
-`onListenerError`, or a dev-only `console.error`) rather than letting it break the machine or the
-other listeners.
-
-## Sending an event {#sending-an-event}
-
-Here's the interesting part — what happens between `machine.send(...)` and a new snapshot. Inside
-the queue, one event takes this trip:
-
-```mermaid
-sequenceDiagram
-  participant You
-  participant Send as send pipeline
-  participant Async as async state
-  participant Nav as navigation
-  You->>Send: send(event)
-  Note over Send: emit transition.start
-  Send->>Send: select first matching transition (in order)
-  opt async guard (when)
-    Send->>Async: phase → evaluating-when
-    Async-->>Send: true / false / error
-    Send->>Async: phase → idle (or error)
-  end
-  alt a transition matched
-    Send->>Send: run synchronous updateContext
-    Send->>Nav: commit step / terminal transition
-    Nav-->>You: transition.success + new snapshot
-  else no match
-    Send-->>You: fallback (history, auto-complete) or transitioned: false
-  end
+```text
+machine
+  getSnapshot()
+  controls.*
+  navigate.*
+  subscriptions.*
+  context.update()
+  plugins.*
+  send()              graph only
 ```
 
-Walking through it:
+Everything that changes is rebuilt into an immutable linear or graph snapshot.
 
-1. The pipeline confirms the machine is still `running` and emits `transition.start`. (If the
-   machine was disposed, the send resolves with a `JourneyDisposedError` instead of throwing.)
-2. **Headless** definitions short-circuit: `goToStepById` commits a direct jump, while
-   `goToNextStep` and custom events resolve as no-ops because there are no transitions to match.
-3. Transition selection scans the ordered list filtered by `from` and `event`, evaluating guards
-   in order and taking the first that passes. While an async guard runs, the source step's
-   `async` phase is set to `evaluating-when`, and a run-scoped `AbortSignal` is passed into the
-   guard so it can bail if the run is cancelled.
-4. If selection throws or times out, the pipeline records step error state, emits
-   `transition.error`, and resolves the send result with `error` — it does **not** reject the
-   promise. Failure is a value you inspect, not an exception you catch.
-5. If nothing matched, built-in fallbacks apply: `goToPreviousStep` falls back to history
-   navigation, and `goToNextStep` can auto-complete the journey (unless
-   `requireExplicitCompletion` is set).
-6. If a transition matched, its synchronous `updateContext` runs to derive the next context, and
-   the commit is delegated to navigation.
+## Resolving definitions {#resolving-the-definition}
 
-Notice what the send pipeline does _not_ do: it doesn't own the queue, it doesn't build the
-snapshot, and it doesn't store async state. It orchestrates; other pieces commit. That separation
-is what keeps each one readable on its own.
+`createLinearJourney` validates a non-empty, duplicate-free step tuple, normalizes string shorthand,
+and uses the first id as `initial`.
+
+`createGraphJourney` validates a non-empty step record, the initial id, and every transition source
+and target. It flattens the event-keyed transition map in declaration order. That order determines
+which enabled candidate wins.
+
+Both factories pass the runtime:
+
+- kind, step ids, and normalized step configs;
+- initial id and context;
+- flattened graph transitions, or an empty list for linear;
+- handlers, options, and plugins.
+
+The graph builder is an authoring transform. Its `build()` result enters the same graph normalizer.
+
+## Runtime state {#runtime-state}
+
+`JourneyRuntime` owns status, context, outcome, timeline, pointer, visit counts, current entry async
+state, pending transition state, raised events, generation, and plugin contributions.
+
+No controller-per-concern layer sits between this state and the operation changing it. A lifecycle
+control, context update, navigation, or graph send updates runtime state and publishes a new
+snapshot at its defined boundaries.
+
+## The store {#the-store}
+
+`JourneyStore` has two jobs:
+
+1. Hold the latest snapshot and notify selector listeners when their selected value changes.
+2. Deliver named lifecycle payloads to listeners for that event.
+
+Selector and event-listener failures are caught and reported so one subscriber cannot interrupt the
+runtime or other subscribers.
+
+## Sending a graph event {#sending-an-event}
+
+`send(type, payload?)` follows this selection path:
+
+1. Reject if disposed, not running, or already transitioning.
+2. Scan flattened transitions in declaration order.
+3. Match event type and current `from` id.
+4. Evaluate the synchronous guard, if present.
+5. Run navigation with the first enabled candidate.
+
+No match returns `no-enabled-transition`. A throwing guard is treated as disabled because guards are
+also evaluated during snapshot derivation.
 
 ## Committing a move {#committing-a-move}
 
-Once a target is known, navigation turns that decision into a new snapshot and the right lifecycle
-events. The key idea is that **history is a realized path plus a pointer**, not a single index into
-your authored steps.
+```mermaid
+sequenceDiagram
+  participant Caller
+  participant Runtime
+  participant Store
+  participant Hooks
 
-- A **step transition** validates the target, emits `step.exit` (if the step actually changes),
-  commits the snapshot, emits `transition.success`, then emits `step.enter`.
-- **Previous-step navigation** moves the pointer backward without destroying the timeline — it
-  emits `step.exit`, commits with reason `"navigation"`, emits `navigation.previous`, then
-  `step.enter`.
-- A **terminal transition** keeps the realized timeline up to the pointer, flips status to
-  `completed` or `terminated`, and emits the matching event.
+  Caller->>Runtime: send / navigate
+  Runtime->>Store: publish leaving
+  Runtime->>Hooks: await source onLeave
+  alt blocked or failed
+    Runtime->>Store: publish settled source
+    Runtime-->>Caller: failed NavigationResult
+  else accepted
+    Runtime->>Runtime: update timeline and visits
+    Runtime->>Store: publish committed destination
+    Runtime->>Store: emit stepLeave, stepEnter
+    Runtime->>Hooks: await onTransition, then onEnter
+    Runtime->>Store: publish settled destination
+    Runtime-->>Caller: successful NavigationResult
+  end
+```
 
-Because back is a pointer move rather than a rewrite, you keep both the true history of what
-happened and a current position within it. [Timeline & history](/docs/core/history) covers the
-user-facing side, including what happens when you move forward after stepping back.
+Pointer moves update only `currentIndex`. Appending a destination truncates timeline entries after
+the pointer, then appends the new id.
 
 ## Async state {#async-state}
 
-Async truth lives in the snapshot, not in a hidden flag. A dedicated controller owns
-`snapshot.async`, exposing three phases per step — `idle`, `evaluating-when`, and `error` — plus a
-machine-wide `isLoading` derived from how many steps are currently loading.
+The runtime exposes two related views:
 
-Every async write is run-version aware: before committing, the controller checks that the run is
-still active, so cancelled work can't mutate a newer run. Because the state lives in the snapshot,
-your UI, your plugins, and your devtools all read the same async truth.
-[Async behavior](/docs/core/async) is the user-facing guide.
+- `snapshot.transition` describes the whole pending move (`leaving` or `entering`);
+- `snapshot.currentStep.async` describes entry work for the current destination.
 
-## Out-of-band changes {#out-of-band-changes}
+`onLeave` runs before commit and may cancel. Graph `onTransition` and destination `onEnter` run after
+commit. Their failure is stored on the destination and emitted as an `error` event.
 
-Not every change is a transition. Resetting the machine, updating context directly, and clearing a
-step error all bypass transition matching — but they still go through the same queue, so they apply
-in order and rebase on the latest snapshot. `resetJourney()` cancels in-flight work and rebuilds a
-clean idle snapshot; `updateContext(...)` commits a new context with reason `"context"`;
-`clearStepError(...)` hands off to the async controller. Keeping these out of the send pipeline is
-what lets transition-driven movement stay honest.
+`defaultTimeoutMs` wraps each hook promise. Terminate, restart, and dispose increment a generation
+counter so stale continuations cannot settle a newer run.
+
+## Raised events {#raised-events}
+
+Hook `raise(event)` appends to a graph-only FIFO. The runtime starts draining only after the current
+transition settles. One cascade is capped at `MAX_RAISED_EVENTS` (25); exceeding it drops the queue
+and emits an error with phase `raise`.
+
+## Lifecycle and context changes {#out-of-band-changes}
+
+Controls update status directly and publish a snapshot plus `statusChange`. Context updates replace
+context synchronously and publish a snapshot plus `contextChange`.
+
+Pause, complete, and normal navigation reject while a hook chain is pending. Terminate deliberately
+wins: it invalidates pending work and clears raised events. Restart is available only after complete
+or terminate and rebuilds the initial run state.
 
 ## Plugins {#plugins}
 
-Plugins are wired in by a narrow controller that runs each `plugin.setup(...)` once, organizes the
-hooks it returns, and calls them at the right moments: hydrating the initial snapshot, fanning out
-every committed change, and augmenting the public machine. If a plugin's setup throws, already-set-up
-plugins are disposed in reverse order and the error is re-thrown tagged with the plugin name. The
-controller also refuses method collisions, so one plugin can't silently shadow the machine's API or
-another plugin's. [Plugins](/docs/core/plugins/overview) is the full extension guide.
+Plugins are initialized once with an observe-only `PluginHost`. The host exposes the current
+snapshot, a frozen structural definition view, observation taps, and disposal registration.
 
-## Source map
+A plugin setup may return:
 
-If you want to read the implementation, here's where each responsibility lives under
-[`packages/core/src/journey-machine`](https://github.com/rxova/journey/tree/main/packages/core/src/journey-machine):
+- `api`, exposed at `machine.plugins[name]`;
+- `deriveSnapshot`, exposed at `snapshot.plugins[name]`.
 
-| File                            | Owns                                                                                    |
-| ------------------------------- | --------------------------------------------------------------------------------------- |
-| `index.ts`                      | Validates and resolves the definition, builds the controllers in order, exposes the API |
-| `resolve-journey-definition.ts` | Normalizes authored transitions into the single ordered list the runtime executes       |
-| `runtime.ts`                    | The live snapshot, listeners, selector listeners, and the serialized async queue        |
-| `send.ts`                       | Resolves an event into a transition, runs guards and context updates, delegates commit  |
-| `navigation.ts`                 | Commits step changes, terminal states, and history-pointer moves                        |
-| `async-state.ts`                | Owns `snapshot.async` and keeps `isLoading` in sync                                     |
-| `controls.ts`                   | Out-of-band mutations: reset, context updates, error clearing, disposal                 |
-| `plugin-controller.ts`          | Plugin setup, hydration, snapshot-change hooks, augmentation, disposal                  |
-| `helpers.ts`                    | Pure utilities: validation, snapshot construction, transition selection, timeouts       |
+Extensions are namespaced. Duplicate names fail creation. Plugin observer exceptions are isolated,
+and plugins cannot intercept or replace core transitions.
+
+## Snapshot derivation {#snapshot-derivation}
+
+Every publish rebuilds shared fields, then adds kind-specific fields:
+
+- linear derives order index, first/last flags, step order, and totals;
+- graph re-evaluates guards to derive unique available events and targets plus terminal state;
+- plugin snapshot derivers run last and receive their previous extension for memoization.
+
+The completed object and its nested runtime-owned records/arrays are frozen.
+
+## Source map {#source-map}
+
+| File                   | Responsibility                                                         |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `src/linear/linear.ts` | Linear definition normalization and factory.                           |
+| `src/graph/graph.ts`   | Graph normalization, factory, and `send` surface.                      |
+| `src/graph/builder.ts` | Colocated graph authoring transform.                                   |
+| `src/core/runtime.ts`  | Lifecycle, navigation, hooks, history, events, plugins, and snapshots. |
+| `src/core/machine.ts`  | Stable grouped public machine object.                                  |
+| `src/core/store.ts`    | Snapshot holder, selectors, and named event delivery.                  |
+| `src/core/types.ts`    | Shared public contracts.                                               |
 
 ## Where to next
 
-- [Snapshot](/docs/core/snapshot) — the object every commit produces.
-- [Lifecycle & events](/docs/core/lifecycle) — the event stream this pipeline emits, in order.
-- [Async behavior](/docs/core/async) — guards, timeouts, and the `async` phases up close.
-- [Timeline & history](/docs/core/history) — the realized-path model behind back and revisit.
+- [Machine API](./api/machine-api)
+- [Snapshot](./snapshot)
+- [Writing a plugin](./plugins/authoring)

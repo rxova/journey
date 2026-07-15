@@ -1,124 +1,113 @@
 ---
+id: pre-1-0-migration
 title: Pre-1.0 migration
-sidebar_label: Pre-1.0 migration
 ---
 
 # Pre-1.0 migration
 
-If you're upgrading from older 0.x material — early examples, internal notes, a previous runtime
-model — this page covers the contract changes that matter before the final `1.0.0`.
+V1 replaces the previous generic/controller runtime with two factories over one shared snapshot and
+event engine. This is a breaking API migration, not a compatibility alias.
 
-## The current runtime model
+## Factory changes
 
-Today's runtime is built around:
+| Before                             | V1                                                           |
+| ---------------------------------- | ------------------------------------------------------------ |
+| `createJourneyMachine(...)`        | `createLinearJourney(...)` or `createGraphJourney(...)`      |
+| `createHeadlessJourney(...)`       | Usually `createLinearJourney(...)` plus direct id navigation |
+| Linear order in `transitions`      | Linear order in `steps`                                      |
+| Graph transitions nested by source | Event-keyed transition map with explicit `from` and `to`     |
 
-- JSON-only runtime `context`;
-- static step `meta`;
-- transition-scoped `updateContext(...)`;
-- async `when(...)` guards;
-- definition-scoped `handlers`;
-- step and transition lifecycle callbacks.
-
-If an older example mentions mutable runtime metadata or duplicate context-write APIs, prefer the
-model above.
-
-## Contract changes to know
-
-### Context must be JSON-serializable
-
-Allowed in runtime `context`: `string`, `number`, `boolean`, `null`, arrays of JSON values, and plain
-objects of JSON values.
-
-Rejected: `Date`, `Map`, `Set`, functions, class instances, `symbol`, `bigint`, `undefined`, and
-circular references.
-
-Step `meta` can still carry richer, definition-only values — that's separate from runtime `context`.
-
-### Step `meta` is definition data
-
-Treat `meta` as authored configuration: labels, icons, static UI metadata, definition-level
-annotations. It isn't mutable runtime state — that belongs in `context`.
-
-### React runtime ownership is explicit
-
-`createJourney(...)` creates one machine immediately and binds the returned hooks and components to
-that instance. Use `createJourneyFactory(...)` when you need request-scoped isolation, route-boundary
-isolation, or one runtime per mounted card or widget.
-
-### The graph builder takes one type object
-
-`createGraphJourneyBuilder` now takes a single `JourneyTypes` object instead of positional generics —
-named fields read more clearly and you can omit what you don't use:
+### Linear
 
 ```ts
-// Before
-const { createStep, to, build } = createGraphJourneyBuilder<Context, StepId, Events>();
-// After
-const { createStep, to, build } = createGraphJourneyBuilder<{
-  context: Context;
-  stepId: StepId;
-  events: Events;
-}>();
-```
-
-Omitted fields default (`events`/`handlers` to an empty record, `meta` to `unknown`). The factory
-functions — `createGraphJourney`, `createLinearJourney`, `createHeadlessJourney` — are unchanged:
-they still infer types from the definition you pass, so they keep positional generics.
-
-## Migrating from `createJourneyMachine`
-
-`createJourneyMachine` still works and stays stable through all of 1.x (removed in 2.0 — see the
-[deprecation contract](/docs/core/stability#createjourneymachine-deprecation-contract)). Migrating to
-the named factories is mechanical, and the shapes barely change.
-
-**Graph** — pass the same object; the factory just fixes the mode:
-
-```ts
-// Before
-const machine = createJourneyMachine({ initial, context, steps, transitions });
-// After
-const machine = createGraphJourney({ initial, context, steps, transitions });
-```
-
-**Headless** — same object, minus the (absent) `transitions`:
-
-```ts
-// Before
-const machine = createJourneyMachine({ initial, context, steps }); // no transitions
-// After
-const machine = createHeadlessJourney({ initial, context, steps });
-```
-
-**Linear** — the array of step ids that used to live in `transitions` becomes the `steps` array, so
-order and per-step config live in one place (and there's no separate `transitions`):
-
-```ts
-// Before
-const machine = createJourneyMachine({
-  context,
-  steps: { intro: {}, details: { meta }, done: {} },
-  transitions: ["intro", "details", "done"]
-});
-// After
 const machine = createLinearJourney({
   context,
-  steps: ["intro", { id: "details", meta }, "done"]
+  steps: ["intro", { id: "details", metadata: { title: "Details" } }, "done"] as const
 });
 ```
 
-That last form also unlocks `goToStepByIndex(...)` on the returned machine. Using the
-[graph builder](/docs/core/api/graph-builder)? `build(...)` output passes straight into
-`createGraphJourney(...)` — no other change.
+### Graph
 
-## RC guidance
+```ts
+const machine = createGraphJourney({
+  initial: "form",
+  context,
+  steps: { form: {}, review: {}, done: {} },
+  transitions: {
+    SUBMIT: { from: "form", to: "review" },
+    APPROVE: { from: "review", to: "done" }
+  }
+});
+```
 
-The `1.0.0-rc` line freezes the public contract for this runtime model. Expect new RCs to be mostly
-bug fixes; treat any RC-breaking change as a release blocker; and expect migration guidance with every
-public contract change.
+## Machine method changes
 
-## Upgrade steps
+| Before                                     | V1                                             |
+| ------------------------------------------ | ---------------------------------------------- |
+| `startJourney()`                           | `controls.start()`                             |
+| `pauseJourney()` / `resumeJourney()`       | `controls.pause()` / `controls.resume()`       |
+| `completeJourney()` / `terminateJourney()` | `controls.complete()` / `controls.terminate()` |
+| `resetJourney()`                           | `controls.restart()` from a terminal status    |
+| `goToNextStep()`                           | `navigate.goToNextStep()`                      |
+| `goToPreviousStep(n)`                      | `navigate.goToPreviousStep(n)`                 |
+| `goToStepById(id)`                         | `navigate.goToStepById(id)`                    |
+| `goToLastVisitedStep()`                    | `navigate.goToLastVisitedStep()`               |
+| `updateContext(updater)`                   | `context.update(updater)`                      |
+| `subscribeSelector(...)`                   | `subscriptions.subscribeSelector(...)`         |
+| `subscribeEvent(listener)`                 | `subscriptions.subscribeEvent(name, listener)` |
+| `send({ type, payload })`                  | `send(type, payload)` on graph machines        |
 
-1. Move non-JSON runtime data out of `context`.
-2. Move mutable step-state usage into `context`.
-3. Audit React integration points and switch to `createJourneyFactory(...)` where isolation matters.
-4. Re-read the [Stability contract](/docs/core/stability) before adopting the RC line in production.
+Controls now return booleans. Navigation and graph sends return the `ok`-discriminated
+`NavigationResult`.
+
+## Snapshot changes
+
+| Before                 | V1                                                         |
+| ---------------------- | ---------------------------------------------------------- |
+| `currentStepId`        | `currentStep?.id`                                          |
+| `meta` / `getStepMeta` | Current `currentStep.metadata`; definition for other steps |
+| `history.index`        | `history.currentIndex`                                     |
+| separate `visited`     | `history.visited`                                          |
+| `getComputed()`        | Derived fields in the discriminated snapshot               |
+| per-step async map     | Current entry state at `currentStep.async`                 |
+| `idled`                | `idle`                                                     |
+
+Narrow `snapshot.type` before reading linear order fields or graph availability fields.
+
+## Hook and transition changes
+
+- `when` is now synchronous and receives only `{ context, handlers }`.
+- Async pre-commit validation belongs in step `onLeave`.
+- `onLeave` can block; `onTransition` and `onEnter` are post-commit effects.
+- Transition `updateContext`, `effect`, `after`, labels, ids, and per-transition timeouts are gone.
+- Use hook `updateContext` for writes associated with a hook.
+- Use hook `raise` for graph follow-up events after settle.
+- The runtime option `defaultTimeoutMs` applies to every async hook.
+
+## Plugin changes
+
+Old hydrate/intercept/augment hooks are gone. V1 plugins receive an observe-only `PluginHost` and
+return namespaced contributions:
+
+```ts
+{
+  name: "example",
+  setup(host) {
+    return {
+      api: { /* machine.plugins.example */ },
+      deriveSnapshot(snapshot, previous) { /* snapshot.plugins.example */ }
+    };
+  }
+}
+```
+
+Built-in plugin methods now live under `machine.plugins.<name>`.
+
+## Upgrade order
+
+1. Choose linear or graph and migrate the definition shape.
+2. Move machine calls into their V1 groups and change graph send syntax.
+3. Replace old snapshot selectors with the new discriminated shape.
+4. Move async guards to `onLeave` and post-commit work to `onTransition`/`onEnter`.
+5. Update plugin access and any custom plugin implementation.
+6. Re-test completion, history branching, and restore behavior; none are implicit.

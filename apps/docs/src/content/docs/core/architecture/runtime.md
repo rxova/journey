@@ -1,7 +1,7 @@
 ---
-title: Runtime Queue And Observation Hub
+title: Shared Runtime
 ---
 
 import { Redirect } from "@docusaurus/router";
 
-<Redirect to="/docs/core/architecture#the-runtime-queue" />
+<Redirect to="/docs/core/architecture#runtime-state" />

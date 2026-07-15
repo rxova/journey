@@ -1,173 +1,144 @@
 ---
 id: getting-started
 title: Quickstart
-sidebar_label: Quickstart
 ---
-
-import Tabs from "@theme/Tabs";
-import TabItem from "@theme/TabItem";
 
 # Quickstart
 
-Let's build a working checkout flow in a few minutes. We'll define it, start it, move through it,
-read its state, and react to changes — the same loop you'll use for every Journey machine. By the
-end you'll have run all five of the core moves and know where to go deeper.
+This page builds a typed linear journey, starts it, observes it, and completes it.
 
 ## Install
-
-`@rxova/journey-core` runs in any standard ESM runtime and needs no UI framework. It has zero
-dependencies.
-
-<Tabs groupId="package-managers" defaultValue="pnpm">
-  <TabItem value="pnpm" label="pnpm">
 
 ```bash
 pnpm add @rxova/journey-core
 ```
 
-  </TabItem>
-  <TabItem value="yarn" label="yarn">
-
-```bash
-yarn add @rxova/journey-core
-```
-
-  </TabItem>
-  <TabItem value="npm" label="npm">
-
-```bash
-npm install @rxova/journey-core
-```
-
-  </TabItem>
-  <TabItem value="bun" label="bun">
-
-```bash
-bun add @rxova/journey-core
-```
-
-  </TabItem>
-</Tabs>
-
 ## Define a flow
 
-Our checkout has four steps in a fixed order, so we'll reach for `createLinearJourney`. You hand it
-a starting context and an ordered list of steps; Journey wires up "next" and "back" for you.
-
-```ts title="checkout.ts"
+```ts
 import { createLinearJourney } from "@rxova/journey-core";
 
-type StepId = "account" | "details" | "payment" | "review";
-type Context = { email: string; plan: string | null };
-
-export const checkout = createLinearJourney<Context, StepId>({
-  context: { email: "", plan: null },
-  steps: ["account", "details", "payment", "review"]
+const checkout = createLinearJourney({
+  steps: [
+    { id: "account", metadata: { title: "Account" } },
+    { id: "shipping", metadata: { title: "Shipping" } },
+    { id: "review", metadata: { title: "Review" } }
+  ] as const,
+  context: {
+    email: "",
+    country: ""
+  }
 });
 ```
 
-That's a complete, type-safe flow. `StepId` keeps every navigation call honest — misspell a step
-and TypeScript stops you — and `Context` types the data the flow carries.
+String steps are valid shorthand when a step has no metadata or hooks:
+
+```ts
+const compact = createLinearJourney({
+  steps: ["account", "shipping", "review"] as const,
+  context: { email: "", country: "" }
+});
+```
 
 ## Start and drive it
 
-A fresh machine sits in the `idled` status until you start it. After that, you move through the
-steps and patch context as you go.
+Machines start with `status: "idle"`. Starting is synchronous; an async initial `onEnter` may
+continue after `start()` returns.
 
 ```ts
-await checkout.startJourney(); // status: idled → running, on "account"
+checkout.controls.start();
 
-await checkout.updateContext((ctx) => ({ ...ctx, email: "ada@example.com" }));
-await checkout.goToNextStep(); // account → details
-await checkout.goToNextStep(); // details → payment
+function waitUntilSettled(machine: typeof checkout): Promise<void> {
+  if (!machine.getSnapshot().transition.pending) return Promise.resolve();
 
-await checkout.goToPreviousStep(); // back to details
+  return new Promise((resolve) => {
+    const stop = machine.subscriptions.subscribeSelector(
+      (snapshot) => snapshot.transition.pending,
+      (pending) => {
+        if (!pending) {
+          stop();
+          resolve();
+        }
+      }
+    );
+  });
+}
+
+await waitUntilSettled(checkout);
+
+checkout.context.update((context) => ({
+  ...context,
+  email: "ada@example.com"
+}));
+
+const result = await checkout.navigate.goToNextStep();
+
+if (!result.ok) {
+  console.error(result.reason);
+}
 ```
 
-Every navigation call returns a result you can inspect — whether it `transitioned`, the new
-`snapshot`, and any `error`. For a linear flow the happy path rarely fails, but in graph mode
-(where guards can reject a move) that result is how you find out what happened.
+Every navigation method resolves to a `NavigationResult`:
+
+```ts
+type NavigationResult<StepId extends string> =
+  | { ok: true; from: StepId | null; to: StepId }
+  | { ok: false; reason: NavigationFailureReason; error?: unknown };
+```
 
 ## Read the snapshot
-
-At any moment, one object describes the whole flow. This is what your UI renders from.
 
 ```ts
 const snapshot = checkout.getSnapshot();
 
-snapshot.currentStepId; // "details"
-snapshot.history.timeline; // ["account", "details", "payment", "details"]
-snapshot.context; // { email: "ada@example.com", plan: null }
+snapshot.type; // "linear"
 snapshot.status; // "running"
-```
-
-Need derived values like "which step number is this" or "is this the last step"? Ask `getComputed()`
-instead of calculating by hand:
-
-```ts
-const computed = checkout.getComputed();
-if (computed.mode === "linear") {
-  const progress = (computed.activeStepIndex + 1) / computed.stepCount;
-}
+snapshot.currentStep?.id; // "shipping"
+snapshot.currentStep?.metadata.title; // "Shipping"
+snapshot.currentStep?.index; // 1
+snapshot.history.timeline; // ["account", "shipping"]
+snapshot.machine.isLoading; // false
+snapshot.steps.totalSteps; // 3
 ```
 
 ## Subscribe
 
-Your UI re-renders by subscribing. Subscribe to every change, or to one slice of state with a
-selector so you only react when that slice changes.
+Subscriptions are grouped under `machine.subscriptions`.
 
 ```ts
-// Fires on any snapshot change.
-const unsubscribe = checkout.subscribe(() => {
-  render(checkout.getSnapshot());
-});
-
-// Fires only when the current step changes.
-checkout.subscribeSelector(
-  (snapshot) => snapshot.currentStepId,
-  (next, previous) => console.log(`${previous} → ${next}`)
+const stopStepSubscription = checkout.subscriptions.subscribeSelector(
+  (snapshot) => snapshot.currentStep?.id,
+  (stepId) => renderStep(stepId)
 );
+
+const stopErrors = checkout.subscriptions.subscribeEvent("error", ({ error, phase }) => {
+  reportError(error, phase);
+});
 ```
 
-When you're done with a machine, call `unsubscribe()` and `checkout.dispose()` to tear it down.
+Selectors run when their selected value changes. `subscribeEvent` listens to one named event and
+returns an unsubscribe function.
 
-## Finish it
-
-When the user reaches the end, move the flow to a terminal status:
+## Complete and restart
 
 ```ts
-await checkout.completeJourney(); // status → "completed"
-// or, if they bail out:
-await checkout.terminateJourney(); // status → "terminated"
+await checkout.navigate.goToNextStep();
+checkout.controls.complete({ orderId: "order-42" });
+
+checkout.getSnapshot().outcome;
+// { type: "completed", payload: { orderId: "order-42" } }
+
+checkout.controls.restart();
 ```
 
-Terminal flows stay put — further navigation does nothing until you call `resetJourney()`. That's
-on purpose: a finished checkout shouldn't quietly accept another "next."
+`restart()` is accepted only from `completed` or `terminated`. It restores the initial context,
+clears history and outcome, and enters the initial step again.
 
-## The other two modes
-
-We used linear because checkout is a fixed sequence. When your flow branches or its path is decided
-elsewhere, the same runtime has two more factories — same snapshot, same API, different way of
-choosing the next step.
-
-```ts
-// Graph: branching with guards and custom events.
-import { createGraphJourney, createGraphJourneyBuilder } from "@rxova/journey-core";
-
-// Headless: the caller picks each step at runtime.
-import { createHeadlessJourney } from "@rxova/journey-core";
-```
-
-[Choosing a mode](/docs/core/usage) helps you pick, and each mode has its own guide.
-
-:::note
-Reserved step ids — `*`, `global`, `COMPLETE`, and `TERMINATED` — are used by the runtime and can't
-be step names of your own.
-:::
+Call `checkout.dispose()` when the runtime is no longer needed.
 
 ## Where to next
 
-- [Core concepts](/docs/core/concepts) — the vocabulary behind everything you just ran.
-- [Choosing a mode](/docs/core/usage) — linear vs. graph vs. headless.
-- [Snapshot](/docs/core/snapshot) — the full field guide to the object you render from.
-- [Plugins](/docs/core/plugins/overview) — add persistence, autosave, analytics, and more.
+- [Linear journeys](./usage/linear) covers every linear navigation rule.
+- [Graph journeys](./usage/graph) adds typed events, guards, and branching.
+- [Snapshot](./snapshot) documents the complete read model.
+- [Machine API](./api/machine-api) lists every method and result.

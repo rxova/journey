@@ -1,153 +1,110 @@
 ---
 id: typescript
 title: TypeScript
-sidebar_label: TypeScript
 ---
 
 # TypeScript
 
-Journey is TypeScript-first. Each factory has its own generic signature that enforces the mode's
-contract at compile time, and most of the time you'll let inference do the work. This page covers the
-patterns you'll reach for day to day.
+Journey infers linear step ids from tuples and supports explicit graph event unions for exact send
+payloads.
 
-:::tip
-The [API reference](/docs/core/api/reference) has the full generated types for every export. This
-page is the practical guide; that's the exhaustive one.
-:::
-
-## Factory signatures
+## Linear inference
 
 ```ts
-// Linear — steps is an ordered array, no transitions field
-createLinearJourney<TContext, TStepId, TStepMeta, THandlers, TPlugins>(
-  def: LinearJourneyDefinition<TContext, TStepId, TStepMeta, THandlers>,
-  options?: JourneyMachineOptions<TPlugins>
-): LinearJourneyMachine<TContext, TStepId, TStepMeta, THandlers, TPlugins>;
-
-// Graph — transitions required (builder output or plain definition)
-createGraphJourney<TContext, TStepId, TEvents, TStepMeta, THandlers, TPlugins>(
-  def: GraphJourneyDefinition<TContext, TStepId, TEvents, TStepMeta, THandlers>,
-  options?: JourneyMachineOptions<TPlugins>
-): JourneyMachineWithPlugins<TContext, TStepId, TEvents, TStepMeta, THandlers, TPlugins>;
-
-// Headless — initial required, no transitions
-createHeadlessJourney<TContext, TStepId, TStepMeta, THandlers, TPlugins>(
-  def: HeadlessJourneyDefinition<TContext, TStepId, TStepMeta, THandlers>,
-  options?: JourneyMachineOptions<TPlugins>
-): JourneyMachineWithPlugins<TContext, TStepId, never, TStepMeta, THandlers, TPlugins>;
-```
-
-## The four generics
-
-All three factories share the same primary generics:
-
-| Generic     | Models                                                                              |
-| ----------- | ----------------------------------------------------------------------------------- |
-| `TContext`  | Shared runtime data available to guards and transition callbacks                    |
-| `TStepId`   | The union of valid step ids — keeps ids consistent across definition and navigation |
-| `TStepMeta` | Per-step static metadata (labels, icons, descriptions)                              |
-| `TEvents`   | Discriminated union of `{ type; payload? }` event members (graph mode only)         |
-
-## Defining types
-
-```ts
-import { createLinearJourney } from "@rxova/journey-core";
-
-type StepId = "contact" | "details" | "review";
-type Context = { email: string; dirty: boolean };
-type StepMeta = { title: string };
-
-const machine = createLinearJourney<Context, StepId, StepMeta>({
-  context: { email: "", dirty: false },
+const machine = createLinearJourney({
   steps: [
-    { id: "contact", meta: { title: "Contact" } },
-    { id: "details", meta: { title: "Details" } },
-    { id: "review", meta: { title: "Review" } }
-  ]
+    { id: "account", metadata: { title: "Account" } },
+    { id: "review", metadata: { title: "Review" } }
+  ] as const,
+  context: { email: "" }
 });
+
+await machine.navigate.goToStepById("review");
+// await machine.navigate.goToStepById("missing"); // TypeScript error
 ```
 
-## Custom events (graph)
+Keep the step array literal or use `as const` so ids do not widen to `string`.
 
-`TEvents` is a discriminated union of `{ type; payload? }` members — this is what makes event payloads type-safe end to end:
+## Typed graph events
 
 ```ts
-import { createGraphJourneyBuilder, createGraphJourney } from "@rxova/journey-core";
+type Context = { code: string };
+type StepId = "form" | "done";
+type Event = { type: "SUBMIT"; payload: { code: string } } | { type: "RESET" };
 
-type StepId = "form" | "confirm";
-type Context = { email: string };
-type Events =
-  | { type: "saveDraft"; payload: { autosave: boolean } }
-  | { type: "requestClose"; payload: { source: "button" | "shortcut" } };
+const machine = createGraphJourney<Context, StepId, Event>({
+  initial: "form",
+  context: { code: "" },
+  steps: { form: {}, done: {} },
+  transitions: {
+    SUBMIT: { from: "form", to: "done" },
+    RESET: { from: "done", to: "form" }
+  }
+});
 
-const { createStep, to, build } = createGraphJourneyBuilder<{
+await machine.send("SUBMIT", { code: "1234" });
+await machine.send("RESET");
+```
+
+Payload arguments are required only for union members that declare `payload`.
+
+## Type bag builder
+
+For definitions split across files, declare all domain types once:
+
+```ts
+const builder = createGraphJourneyBuilder<{
   context: Context;
   stepId: StepId;
-  events: Events;
+  events: Event;
+  meta: StepMetadata;
+  handlers: Handlers;
 }>();
-
-const machine = createGraphJourney(
-  build({
-    initial: "form",
-    context: { email: "" },
-    steps: [
-      createStep("form", { on: { saveDraft: [to("form")], requestClose: [to("confirm")] } }),
-      createStep("confirm", {})
-    ]
-  })
-);
-
-await machine.send({ type: "saveDraft", payload: { autosave: true } });
-// await machine.send({ type: "saveDraft", payload: { autosave: "yes" } }); // ← TS error
 ```
 
-## Typing snapshots and selectors
+The builder narrows callback-form transition payloads and validates source/target ids at compile
+time.
 
-You rarely annotate `machine` directly — inference handles it. Explicit types earn their keep at the
-edges: selectors, shared utilities, external adapters.
+## Snapshot narrowing
 
 ```ts
-import type { JourneySnapshot, JourneySendResult } from "@rxova/journey-core";
+type Snapshot = ReturnType<typeof machine.getSnapshot>;
 
-type CheckoutSnapshot = JourneySnapshot<Context, StepId>;
-
-const selectStep = (snap: CheckoutSnapshot) => snap.currentStepId;
-
-const result: JourneySendResult<Context, StepId> = await machine.send({ type: "submit" });
-if (!result.transitioned) {
-  console.error(result.error);
+function progress(snapshot: JourneySnapshot) {
+  if (snapshot.type === "linear") {
+    return snapshot.currentStep?.index ?? 0;
+  }
+  return snapshot.availableSteps.length;
 }
 ```
 
-## Context immutability
+Prefer concrete machine snapshot types in application selectors; use exported generic snapshot
+types for reusable helpers.
 
-Journey can't enforce `Readonly` for you, but you can opt into compile-time protection by typing
-context as `Readonly<T>`:
+## Plugin tuples
 
-```ts
-type Context = Readonly<{ email: string; step: number }>;
-```
-
-Now a stray mutation in a callback is a type error:
+Plugin API inference depends on preserving the plugin tuple:
 
 ```ts
-updateContext: ({ context }) => {
-  context.email = "x"; // ← TS error: read-only property
-  return { ...context, email: "x" }; // ok
-};
+const plugins = [createReplayPlugin(), createDiagnosticsPlugin()] as const;
+const machine = createLinearJourney(definition, { plugins });
+
+machine.plugins.replay.getReplaySession();
+machine.plugins.diagnostics.getDiagnostics();
 ```
 
-:::note
-`Readonly<T>` is shallow. For deep protection, reach for a recursive `DeepReadonly<T>` utility, or
-keep context flat.
-:::
+## Context updates
 
-## When to annotate, when to infer
+`ContextUpdater<T>` receives and returns the complete context type:
 
-- **Be explicit** for shared step-id unions, shared event unions, and reusable snapshot/result helpers.
-- **Let inference win** for most `machine` variables, inline selectors, and transition callback args.
+```ts
+machine.context.update((previous) => ({ ...previous, code: "5678" }));
+```
+
+Journey does not merge partial objects.
 
 ## Where to next
 
-- [Graph builder](/docs/core/api/graph-builder) — typed per-step transitions and payload narrowing.
-- [API overview](/docs/core/api) — the runtime surface these types describe.
+- [Graph builder](./api/graph-builder)
+- [Snapshot](./snapshot)
+- [Writing a plugin](./plugins/authoring)

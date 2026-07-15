@@ -1,142 +1,80 @@
 ---
 id: coming-from-xstate
 title: Coming from XState
-sidebar_label: Coming from XState
 ---
 
 # Coming from XState
 
-If you've used XState, Journey will feel familiar — guards, context, transitions, async work on
-entry — but aimed squarely at **product flows** rather than general statecharts. This page maps the
-concepts and shows where Journey trades surface area for ergonomics.
+Journey borrows familiar ideas such as context, events, guards, and entry/exit work, but it targets
+step-based product flows rather than general statecharts.
 
-## The headline: effects vs. `invoke`
+## Concept map
 
-The most common flow pattern is "load on entry, branch on the result." Here's the same machine in
-both libraries.
+| XState concept           | Journey V1                                                |
+| ------------------------ | --------------------------------------------------------- |
+| Machine states           | Journey steps                                             |
+| Initial state            | Graph `initial`, or first linear step                     |
+| Context                  | Snapshot `context`                                        |
+| Event union              | `{ type; payload? }` union sent as `send(type, payload?)` |
+| Guard                    | Graph transition `when({ context, handlers })`            |
+| Exit action / async gate | Step `onLeave`                                            |
+| Transition action        | Graph `onTransition`                                      |
+| Entry action             | Step `onEnter`                                            |
+| `assign`                 | `context.update` or hook `updateContext`                  |
+| Actor snapshot           | `machine.getSnapshot()`                                   |
+| Actor subscription       | Named events or selector subscriptions                    |
+| Raised/internal event    | Hook `raise(event)`                                       |
+| Final state              | Explicit `controls.complete(payload?)`                    |
 
-**XState v5:**
+## Different async model
+
+Journey does not have actors or `invoke`. Put asynchronous validation that must block a move in
+`onLeave`. Put post-commit work in `onTransition` or `onEnter`, then raise a domain event if the
+result should cause another graph transition.
 
 ```ts
-import { setup, assign, fromPromise } from "xstate";
-
-const machine = setup({
-  types: { context: {} as { id: string; user: User | null; error: string | null } },
-  actors: {
-    loadUser: fromPromise(({ input }: { input: { id: string } }) => api.user(input.id))
-  }
-}).createMachine({
-  initial: "loading",
-  context: { id: "", user: null, error: null },
-  states: {
-    loading: {
-      invoke: {
-        src: "loadUser",
-        input: ({ context }) => ({ id: context.id }),
-        onDone: { target: "ready", actions: assign({ user: ({ event }) => event.output }) },
-        onError: {
-          target: "failed",
-          actions: assign({ error: ({ event }) => String(event.error) })
-        }
-      }
-    },
-    ready: {},
-    failed: {}
+const loading = createStep("loading", {
+  onEnter: async ({ snapshot, updateContext, raise }) => {
+    try {
+      const user = await loadUser(snapshot.context.id);
+      updateContext((context) => ({ ...context, user }));
+      raise({ type: "LOADED" });
+    } catch (error) {
+      updateContext((context) => ({ ...context, error }));
+      raise({ type: "FAILED" });
+    }
+  },
+  on: {
+    LOADED: [to("ready")],
+    FAILED: [to("failed")]
   }
 });
 ```
 
-**Journey:**
+The current step remains `loading` while `onEnter` runs, and its async state is visible in the
+snapshot. Raised events run after entry settles.
 
-```ts
-import { createGraphJourneyBuilder, createGraphJourney } from "@rxova/journey-core";
+## What Journey adds for product flows
 
-const { createStep, build } = createGraphJourneyBuilder<{
-  context: Context;
-  stepId: StepId;
-  events: Events;
-  meta: unknown;
-  handlers: Handlers;
-}>();
+- A realized browser-like timeline with back/forward pointer semantics.
+- Linear and event-driven definitions over the same runtime.
+- Current-step metadata and first-visit state in the snapshot.
+- Explicit completed/terminated outcomes.
+- Small, separately imported observation plugins.
 
-const machine = createGraphJourney(
-  build({
-    initial: "loading",
-    context: { id: "", user: null, error: null },
-    handlers: { loadUser: (id: string) => api.user(id) },
-    steps: [
-      createStep("loading", {
-        effect: {
-          run: ({ context, handlers }) => handlers.loadUser(context.id),
-          onResolved: {
-            to: "ready",
-            updateContext: ({ context, output }) => ({ ...context, user: output })
-          },
-          onRejected: {
-            to: "failed",
-            updateContext: ({ context, error }) => ({ ...context, error: String(error) })
-          }
-        }
-      }),
-      createStep("ready", {}),
-      createStep("failed", {})
-    ]
-  })
-);
-```
+## What Journey intentionally leaves out
 
-What changed:
+- hierarchical and parallel states;
+- actor spawning and actor messaging;
+- delayed-transition syntax;
+- statechart history nodes;
+- transition interception by plugins.
 
-- **No actor registration.** No `setup({ actors })`, no string `src`, no `input` mapping function —
-  the work is inline on the step.
-- **`output` is inferred.** It's the return type of `run`; no `event.output`, no `assertEvent`, no
-  cast.
-- **Targets are inferred step ids.** `to: "ready"` is checked against your `StepId` union.
-
-See [Effects](/docs/core/effects) for the full API.
-
-## Concept map
-
-| XState v5                    | Journey                                                                                    |
-| ---------------------------- | ------------------------------------------------------------------------------------------ |
-| `createMachine` / `states`   | a journey definition / `steps`                                                             |
-| `context` (typed in `setup`) | `TContext` generic (inferred from your definition)                                         |
-| events (discriminated union) | `TEvents` (a `{ type; payload? }` union; payloads narrowed via the builder's factory form) |
-| `invoke` + `fromPromise`     | a step [effect](/docs/core/effects) (`effect.run`)                                         |
-| `onDone` / `onError`         | `onResolved` / `onRejected`                                                                |
-| `after` (delayed transition) | a step's [`after`](/docs/core/effects#delayed-transitions-after)                           |
-| `assign(...)`                | a transition's [`updateContext`](/docs/core/async)                                         |
-| guards (named in `setup`)    | [`when`](/docs/core/usage/graph) (inline, inferred)                                        |
-| `and` / `or` / `not`         | ordered candidates, first match wins                                                       |
-| entry / exit actions         | step `onEnter` / `onLeave` (which can `dispatch` to chain)                                 |
-| `actor.send`                 | `machine.send`                                                                             |
-| `actor.subscribe` / snapshot | `subscribe` / `getSnapshot` (one serializable snapshot)                                    |
-
-## Where Journey is stronger
-
-- **Authoring + types.** The builder co-locates transitions with steps, makes each modifier
-  single-use at the type level, and infers payloads and effect output — none of `setup()`'s
-  string-keyed registration or hand-annotated action/guard params.
-- **One read model.** A single serializable snapshot carries the step, the **realized history
-  timeline**, context, visited map, status, and per-step async phase. History is the path actually
-  taken, not a separate "history state" concept.
-- **Async is visible.** Guards (`evaluating-when`) and effects (`invoking`) surface a per-step phase
-  in the snapshot — render loading directly instead of modeling it as extra states.
-
-## What Journey doesn't do (by design)
-
-Journey is a flow runtime, not a general statechart engine. It intentionally leaves out:
-
-- hierarchical / nested states and parallel regions;
-- history states (Journey tracks a realized timeline instead);
-- spawned actor networks and `sendTo` / `sendParent` messaging.
-
-If your problem is genuinely a statechart — traffic lights, nested regions, a network of
-communicating actors — XState is the right tool. If it's a product flow that branches, gates on
-async work, and needs to be inspected and persisted, Journey gives you that with far less ceremony.
+Choose Journey when the domain is a user journey with steps and a meaningful realized path. Choose a
+general statechart when the missing semantics above are part of the actual model.
 
 ## Where to next
 
-- [Effects](/docs/core/effects) — the full effect API.
-- [Choosing a mode](/docs/core/usage) — linear, graph, or headless.
-- [Comparison](/docs/core/comparison) — feature-by-feature table.
+- [Effects](./effects)
+- [Graph](./usage/graph)
+- [Comparison](./comparison)

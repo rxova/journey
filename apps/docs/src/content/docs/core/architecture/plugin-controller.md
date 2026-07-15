@@ -1,5 +1,5 @@
 ---
-title: Plugin Controller Lifecycle
+title: Plugin Host
 ---
 
 import { Redirect } from "@docusaurus/router";

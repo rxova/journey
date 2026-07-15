@@ -1,193 +1,72 @@
 ---
 id: handlers
 title: Handlers
-sidebar_label: Handlers
 ---
 
 # Handlers
 
-A guard, a step effect, or a lifecycle callback almost always needs to call _your_ code — hit an API,
-validate a code, check a feature flag. You could `import` those functions straight into your step
-definitions, but then the flow is welded to a specific implementation and awkward to test.
-**Handlers** are the seam that fixes that: a typed bag of your functions, declared once on the
-definition and handed to every guard, effect, and lifecycle callback as an argument.
+Graph guards can call injected handlers without closing over application services. This keeps graph
+definitions reusable and makes guard decisions straightforward to test.
 
-It's dependency injection for a flow — keep your I/O in `handlers`, call it from the step, and swap
-it wholesale in a test.
-
-## Declare them, then call them
-
-Put your functions under `handlers` on the definition (or `build({ handlers })` with the builder).
-They arrive on the args object as `handlers`:
+## Declare handlers
 
 ```ts
-import { createGraphJourney, createGraphJourneyBuilder } from "@rxova/journey-core";
-
-type Context = { token: string; plan: string | null };
-type StepId = "verify" | "approved" | "blocked";
-
-// Declare the handler shape so calls to it are fully typed.
 type Handlers = {
-  verifyToken: (token: string, opts: { signal: AbortSignal }) => Promise<{ plan: string }>;
+  canApprove(role: string): boolean;
 };
 
-const { createStep, build } = createGraphJourneyBuilder<{
-  context: Context;
-  stepId: StepId;
-  handlers: Handlers;
-}>();
-
-const machine = createGraphJourney(
-  build({
-    initial: "verify",
-    context: { token: "abc", plan: null },
-    handlers: {
-      // your I/O lives here
-      verifyToken: (token: string, opts: { signal: AbortSignal }) => api.verify(token, opts)
-    },
-    steps: [
-      createStep("verify", {
-        effect: {
-          // …and you call it here, instead of importing `api` directly
-          run: ({ context, handlers, signal }) => handlers.verifyToken(context.token, { signal }),
-          onResolved: {
-            to: "approved",
-            updateContext: ({ context, output }) => ({ ...context, plan: output.plan })
-          },
-          onRejected: { to: "blocked" }
-        }
-      }),
-      createStep("approved", {}),
-      createStep("blocked", {})
-    ]
-  })
-);
-```
-
-You declare the handler shape as the `handlers` field of the builder's type bundle, and the value you
-pass to `build({ handlers })` must match it. From there `handlers` is fully typed everywhere it's
-injected — `handlers.verifyToken` has the exact signature you wrote, and a typo or wrong argument is a
-compile error. (Omit the `handlers` field and it defaults to an empty record — there's simply nothing
-to call.)
-
-## Where `handlers` is available
-
-The runtime reads `handlers` once at creation (defaulting to `{}` if you omit it) and injects it into
-the args of the callbacks that run _your_ logic:
-
-| Callback                          | Gets `handlers`?                                                               |
-| --------------------------------- | ------------------------------------------------------------------------------ |
-| `effect.run`                      | ✅                                                                             |
-| `when` (guard)                    | ✅                                                                             |
-| `onEnter` / `onLeave` (lifecycle) | ✅                                                                             |
-| `updateContext`                   | ⛔ — context updates are pure; derive from `context`/`event`/`output`, not I/O |
-
-```ts
-// In a guard:
-to("approved").when(({ context, handlers, signal }) =>
-  handlers.isEligible(context.userId, { signal })
-);
-
-// In a lifecycle callback:
-createStep("review", {
-  onEnter: ({ context, handlers }) => handlers.track("review_opened", { userId: context.userId })
-});
-```
-
-:::note Handlers are passive
-The machine never calls your handlers for you — _your_ guard/effect/callback code does. Handlers are
-a dependency-injection slot, not an event system. The runtime's job is just to hand them to you,
-typed, at the right moment.
-:::
-
-## Why bother — testability
-
-Because the implementations live in one place and arrive as an argument, a test swaps them without
-touching the flow:
-
-```ts
-const machine = createGraphJourney(
-  build({
-    /* …same steps… */
-    handlers: { verifyToken: async () => ({ plan: "pro" }) } // fake, no network
-  })
-);
-```
-
-The transitions, guards, and effects are identical; only the injected functions change. No mocking
-of modules, no intercepting `fetch`.
-
-### Override at creation, reuse one definition
-
-You don't have to rebuild the definition per test. Pass `handlers` in the options argument of any
-`create*Journey` factory and it is **shallow-merged over the definition's handlers, per key**, so a
-test can swap just the I/O it cares about and reuse the exact same definition everywhere:
-
-```ts
-import { definition } from "./checkout-flow"; // the real, shared definition
-
-const machine = createGraphJourney(definition, {
-  handlers: { verifyToken: async () => ({ plan: "pro" }) } // override one; the rest fall back
-});
-```
-
-Keys you omit keep the definition's implementation. This is Journey's direct equivalent of XState's
-`.provide()` (see below) — and it's fully typed: the override must match the definition's handler
-shape.
-
-## Coming from XState
-
-XState solves the same problem with **named registration**. You register implementations in
-`setup({ actors, actions, guards })` and refer to them by **string** in the machine, then override
-them with `.provide(...)`:
-
-```ts
-// XState v5
-const machine = setup({
-  actors: { verifyToken: fromPromise(({ input }) => api.verify(input.token)) }
-}).createMachine({
-  states: {
-    verify: {
-      invoke: {
-        src: "verifyToken",
-        input: ({ context }) => ({ token: context.token }),
-        onDone: "approved",
-        onError: "blocked"
-      }
+const definition = {
+  initial: "review" as const,
+  context: { role: "member" },
+  handlers: {
+    canApprove: (role: string) => role === "admin"
+  } satisfies Handlers,
+  steps: {
+    review: {},
+    approved: {}
+  },
+  transitions: {
+    APPROVE: {
+      from: "review" as const,
+      to: "approved" as const,
+      when: ({ context, handlers }: { context: { role: string }; handlers: Handlers }) =>
+        handlers.canApprove(context.role)
     }
   }
-});
-// tests:
-const test = machine.provide({
-  actors: { verifyToken: fromPromise(async () => ({ plan: "pro" })) }
-});
+};
 ```
+
+## Override at creation
+
+Creation options take precedence over handlers stored in the definition:
 
 ```ts
-// Journey
-build({
-  handlers: { verifyToken: (token, { signal }) => api.verify(token, { signal }) },
-  steps: [
-    createStep("verify", {
-      effect: {
-        run: ({ context, handlers, signal }) =>
-          handlers.verifyToken(context.token, { signal }) /* … */
-      }
-    })
-  ]
+const production = createGraphJourney(definition);
+
+const test = createGraphJourney(definition, {
+  handlers: { canApprove: () => true }
 });
-// tests: createGraphJourney(definition, { handlers: { verifyToken: async () => ({ plan: "pro" }) } })
 ```
 
-The difference is indirection. XState decouples through **string keys** (`src: "verifyToken"`) and a
-separate registry, which is what powers its visualizer and `.provide()`. Journey passes the **actual
-function**, so the call is direct and fully inferred — `handlers.verifyToken(...)` with no string to
-keep in sync — and you "provide" by handing a `handlers` object to the factory's options
-(`create*Journey(def, { handlers })`), shallow-merged over the definition. You trade the
-tooling/indirection for inference and fewer moving parts.
+## Scope
+
+Handlers are passed only to graph `when` guards. Step hooks and `onTransition` receive the current
+snapshot instead. Keep asynchronous work in `onLeave`, `onTransition`, or `onEnter`; guards must stay
+synchronous because they are used to derive available transitions.
+
+The graph builder's type bag can declare handler types:
+
+```ts
+const { createStep, to, build } = createGraphJourneyBuilder<{
+  context: Context;
+  stepId: StepId;
+  events: Event;
+  handlers: Handlers;
+}>();
+```
 
 ## Where to next
 
-- [Effects](/docs/core/effects) — the most common place a handler is called (`effect.run`).
-- [Graph](/docs/core/usage/graph) — guards (`when`) that gate on a handler.
-- [Coming from XState](/docs/core/coming-from-xstate) — the broader side-by-side.
+- [Graph](./usage/graph)
+- [Graph builder](./api/graph-builder)
+- [Transitions syntax](./api/transitions-syntax)

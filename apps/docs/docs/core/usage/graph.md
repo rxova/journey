@@ -1,246 +1,131 @@
 ---
 id: graph
 title: Graph
-sidebar_label: Graph
 ---
 
 # Graph
 
-Reach for graph mode when "next" stops meaning one thing. Here you declare, per step, which events
-lead where — with guards deciding between candidates and `updateContext` deriving new state as part
-of the move. The path stays explicit and reviewable, because the routing rules live on the
-transitions instead of scattered across button handlers.
-
-:::info Good fit
-Verification flows, approval pipelines, support tooling, anything with retries or recovery paths —
-flows where the next step depends on what just happened.
-:::
+A graph journey moves through named events. Each event can have one transition candidate or an
+ordered list of guarded candidates.
 
 ## Define a graph journey
 
-The builder, `createGraphJourneyBuilder`, is the recommended way in. It infers types across steps,
-guards, and event payloads, and reads like a decision tree:
-
 ```ts
-import { createGraphJourneyBuilder, createGraphJourney } from "@rxova/journey-core";
+import { createGraphJourney } from "@rxova/journey-core";
 
-type StepId = "login" | "setup2fa" | "verify" | "loggedIn" | "blocked";
-type Context = { role: "admin" | "user" | null; attempts: number };
-type Events = { type: "submit" } | { type: "verifySuccess" } | { type: "verifyFailure" };
+type Event =
+  | { type: "SUBMIT"; payload: { email: string } }
+  | { type: "APPROVE" }
+  | { type: "EDIT" };
 
-const { createStep, to, build } = createGraphJourneyBuilder<{
-  context: Context;
-  stepId: StepId;
-  events: Events;
-}>();
-
-const machine = createGraphJourney(
-  build({
-    initial: "login",
-    context: { role: null, attempts: 0 },
-    steps: [
-      createStep("login", {
-        on: {
-          submit: [to("setup2fa").when(({ context }) => context.role === "admin"), to("verify")]
-        }
-      }),
-      createStep("setup2fa", {
-        on: { submit: [to("verify")] }
-      }),
-      createStep("verify", {
-        on: {
-          verifySuccess: [to("loggedIn")],
-          verifyFailure: [
-            to("blocked").when(({ context }) => context.attempts >= 2),
-            to("verify").updateContext(({ context }) => ({
-              ...context,
-              attempts: context.attempts + 1
-            }))
-          ]
-        }
-      }),
-      createStep("loggedIn", {}),
-      createStep("blocked", {})
-    ]
-  })
-);
-
-await machine.startJourney();
+const machine = createGraphJourney<{ valid: boolean }, "form" | "review" | "done", Event>({
+  initial: "form",
+  context: { valid: false },
+  steps: {
+    form: {},
+    review: {},
+    done: {}
+  },
+  transitions: {
+    SUBMIT: { from: "form", to: "review", when: ({ context }) => context.valid },
+    APPROVE: { from: "review", to: "done" },
+    EDIT: { from: "review", to: "form" }
+  }
+});
 ```
 
-Read the `verifyFailure` handler top to bottom: it's an ordered list of candidates, and the **first
-one whose guard passes wins**. After two failures you're blocked; otherwise you loop back to
-`verify` with the attempt count bumped.
+## Send typed events
 
-### Without the builder
-
-If you'd rather author a plain object, pass a `GraphJourneyDefinition` directly. Here `transitions`
-is required and must be an object map:
+`send` takes an event type and, when the declared event has one, its payload as a second argument.
 
 ```ts
-import { createGraphJourney, type GraphJourneyDefinition } from "@rxova/journey-core";
+machine.controls.start();
+await waitUntilSettled(machine);
 
-type StepId = "start" | "review" | "done";
-type Context = { approved: boolean };
+await machine.send("SUBMIT", { email: "ada@example.com" });
+await machine.send("APPROVE");
+```
 
-const def: GraphJourneyDefinition<Context, StepId> = {
-  initial: "start",
-  context: { approved: false },
-  steps: { start: {}, review: {}, done: {} },
+The [Quickstart](../getting-started) defines `waitUntilSettled`. It waits for initial entry work;
+without that wait an immediate send can correctly return `reason: "transitioning"`.
+
+The first candidate whose `from` matches the current step and whose guard returns `true` wins. If no
+candidate is enabled, `send` returns `{ ok: false, reason: "no-enabled-transition" }`.
+
+## Guards and handlers
+
+Guards are synchronous and pure because the runtime also evaluates them while deriving
+`availableEvents` and `availableSteps`.
+
+```ts
+const definition = {
+  initial: "form" as const,
+  context: { role: "member" },
+  handlers: { canApprove: (role: string) => role === "admin" },
+  steps: { form: {}, done: {} },
   transitions: {
-    start: { goToNextStep: [{ to: "review" }] },
-    review: {
-      goToNextStep: [{ to: "done", when: ({ context }) => context.approved }, { to: "review" }]
+    APPROVE: {
+      from: "form",
+      to: "done",
+      when: ({ context, handlers }) => handlers.canApprove(context.role)
     }
   }
 };
 
-const machine = createGraphJourney(def);
-```
-
-The builder and the plain form compile to the same thing — the builder just buys you inference and a
-fluent API. [Transitions syntax](/docs/core/api/transitions-syntax) covers the object shapes in full.
-
-## Sending events
-
-Custom events are the graph's differentiator. Send them by name, with an optional typed payload:
-
-```ts
-await machine.send({ type: "submit" });
-await machine.send({ type: "verifySuccess" });
-
-// With a payload
-await machine.send({ type: "applyCoupon", payload: { code: "SAVE20" } });
-```
-
-:::tip
-`send()` resolves with a `JourneySendResult` — `transitioned`, `snapshot`, and `error`. When a move
-can fail (a guard that rejects, an async check that throws), check the result rather than assuming it
-went through.
-:::
-
-:::note Observing dropped events
-If a sent event matches no enabled transition — every candidate is guarded and none pass, or none is
-declared — it's dropped with `transitioned: false` and no state change. To make those silent drops
-visible, pass an `onNoMatch` hook in the machine options; without one, a development-only warning is
-logged instead. Internal `effect`/`after` events never trigger it.
-
-```ts
-createGraphJourney(definition, {
-  onNoMatch: ({ from, eventType }) => log.warn(`"${eventType}" did nothing in "${from}"`)
+const testMachine = createGraphJourney(definition, {
+  handlers: { canApprove: () => true }
 });
 ```
 
-:::
+Creation options can replace definition handlers, which keeps one definition reusable in tests.
 
-## Guards decide; updates derive
+## Transition and step effects
 
-A transition has two jobs. The **guard** (`when`) decides whether the move is allowed — it can be
-async:
-
-```ts
-to("review").when(async ({ context, signal }) => {
-  const result = await api.validate(context.formData, { signal });
-  return result.valid;
-});
-```
-
-The **update** (`updateContext`) derives the next context once the move is chosen — it's synchronous:
+`onTransition` runs after the destination commits and before the destination step's `onEnter`.
+Neither can cancel the committed move.
 
 ```ts
-to("review").updateContext(({ context, event }) => ({
-  ...context,
-  couponCode: event.payload?.code ?? null
-}));
-```
-
-That split is deliberate, and the [Async behavior](/docs/core/async) page goes deep on why and on
-timeouts, errors, and retries. The short version:
-
-:::warning
-If an async guard throws or times out, the step moves to the `error` phase and `send()` resolves with
-`transitioned: false`. Re-send the same event to retry from a clean slate.
-:::
-
-## Global transitions
-
-Some events should be handled from any step — a "close" affordance, a help overlay, an abort. Declare
-them once under the `global` key instead of repeating them on every step:
-
-```ts
-// With the builder
-createStep("global" as StepId, {
-  on: { requestClose: [to("confirmExit")] }
-});
-
-// Or in a plain definition
 transitions: {
-  global: {
-    requestClose: [{ to: "confirmExit" }];
+  SUBMIT: {
+    from: "form",
+    to: "review",
+    onTransition: async ({ event, snapshot, updateContext, raise }) => {
+      updateContext((context) => ({ ...context, email: event?.payload.email ?? "" }));
+      raise({ type: "APPROVE" });
+    }
   }
 }
 ```
 
-A step's own transitions for an event take precedence; `global` acts as the fallback when no local
-transition matches.
+Raised events run FIFO after the current transition fully settles. Long cascades are capped by
+`MAX_RAISED_EVENTS` and reported through the `error` subscription event.
 
-## Built-in navigation still works
+## Navigation helpers
 
-Graph mode keeps all the built-ins:
+Graph machines still expose `navigate`:
 
-```ts
-await machine.goToPreviousStep(); // history pointer navigation
-await machine.goToLastVisitedStep(); // back to the realized tail
-await machine.completeJourney();
-await machine.terminateJourney();
-```
+- timeline back/forward navigation retraces realized history without transition gating;
+- `goToStepById(id)` succeeds only when an enabled outgoing transition targets `id`;
+- `goToNextStep()` only moves forward through existing timeline history. It does not choose an
+  arbitrary graph edge.
 
-`goToNextStep` fires the `goToNextStep` event through your transition graph. If nothing matches and
-`requireExplicitCompletion` isn't set, the machine auto-completes.
+Step `onLeave` still runs for all of these moves.
 
-## A complete flow
+## Graph snapshot fields
 
 ```ts
-import { createGraphJourneyBuilder, createGraphJourney } from "@rxova/journey-core";
+const snapshot = machine.getSnapshot();
 
-type StepId = "draft" | "review" | "approved" | "rejected";
-type Context = { score: number; reviewerId: string | null };
-type Events = { type: "submit" } | { type: "approve" } | { type: "reject" } | { type: "revise" };
-
-const { createStep, to, build } = createGraphJourneyBuilder<{
-  context: Context;
-  stepId: StepId;
-  events: Events;
-}>();
-
-const machine = createGraphJourney(
-  build({
-    initial: "draft",
-    context: { score: 0, reviewerId: null },
-    steps: [
-      createStep("draft", { on: { submit: [to("review")] } }),
-      createStep("review", {
-        on: {
-          approve: [to("approved")],
-          reject: [to("rejected")],
-          revise: [to("draft")]
-        }
-      }),
-      createStep("approved", {}),
-      createStep("rejected", { on: { revise: [to("draft")] } })
-    ]
-  })
-);
-
-await machine.startJourney();
-await machine.send({ type: "submit" });
-await machine.send({ type: "approve" });
-
-machine.getSnapshot().currentStepId; // "approved"
+snapshot.type; // "graph"
+snapshot.availableEvents; // enabled event names from the current step
+snapshot.availableSteps; // enabled target ids from the current step
+snapshot.currentStep?.isTerminal; // no outgoing transitions are declared
+snapshot.steps.totalSteps;
+snapshot.steps.visitedStepCount;
 ```
 
 ## Where to next
 
-- [Async behavior](/docs/core/async) — guards, timeouts, and error handling in depth.
-- [Headless](./headless) — when navigation should move out of the flow entirely.
-- [Graph builder](/docs/core/api/graph-builder) — the builder API, in full.
+- [Graph builder](../api/graph-builder)
+- [Transitions syntax](../api/transitions-syntax)
+- [Async behavior](../async)

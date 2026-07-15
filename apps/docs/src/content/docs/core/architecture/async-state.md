@@ -1,5 +1,5 @@
 ---
-title: Async State Tracking
+title: Async State
 ---
 
 import { Redirect } from "@docusaurus/router";

@@ -1,69 +1,57 @@
 ---
+id: analytics-plugin
 title: Analytics
-sidebar_label: Analytics
 ---
 
 # Analytics
 
-The analytics plugin turns Journey's lifecycle events into normalized analytics envelopes and
-forwards them to your client. It doesn't touch transition behavior — it listens and reports, so your
-transition logic stays free of tracking calls.
+The analytics plugin converts runtime observations into a stable event envelope and sends them to
+your analytics sink.
 
 ## Install and use
 
 ```ts
-import { createGraphJourney } from "@rxova/journey-core";
 import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
 
-const machine = createGraphJourney(journey, {
+const machine = createGraphJourney(definition, {
   plugins: [
     createAnalyticsPlugin({
-      machineId: "checkout",
-      includeStepMeta: true,
-      track: (event) => analytics.track(event.name, event.payload)
+      track: (event) => analytics.track(event.name, event.payload),
+      onError: (error, event) => report(error, event)
     })
   ]
 });
 ```
 
-## What you get
+Lifecycle names include `journey.transition`, `journey.navigationBlocked`, `journey.error`, and
+`journey.<status>`.
 
-The plugin emits a normalized event for each lifecycle moment, and adds one method for your own
-custom markers:
+## Event envelope
 
 ```ts
-machine.trackAnalyticsEvent(name, payload);
+type AnalyticsTrackedEvent = {
+  name: string;
+  timestamp: number;
+  stepId: string | null;
+  payload: Readonly<Record<string, unknown>>;
+};
 ```
 
-The built-in event names:
+Sink exceptions are captured and never rethrown into the journey pipeline.
 
-`journey_started`, `step_viewed`, `step_exited`, `transition_started`, `transition_succeeded`,
-`transition_failed`, `journey_completed`, `journey_terminated`, `navigation_previous`,
-`navigation_last_visited`.
+## API
 
-Every event carries `name`, `timestamp`, `payload`, and an optional `machineId`. Depending on the
-event, the payload may include the raw `context`, `stepId`, `from`, `to`, `eventType`,
-`transitionId`, `dwellMs`, `durationMs`, and step metadata (`stepMeta`, `fromStepMeta`,
-`toStepMeta`). `payload.context` always holds the raw machine context from the current snapshot.
+```ts
+const api = machine.plugins.analytics;
 
-## Options
+api.trackAnalyticsEvent("coupon_applied", { code: "SAVE20" });
+api.getRecentEvents(); // last 100 successes and failures
+api.clearRecentEvents();
+```
 
-| Option                  | What it does                                          |
-| ----------------------- | ----------------------------------------------------- |
-| `track(event)`          | Your analytics sink                                   |
-| `machineId`             | Optional id included on every tracked event           |
-| `includeStepMeta`       | Include step metadata in payloads                     |
-| `onError(error, event)` | Handle a tracker failure without breaking the machine |
-
-## Gotchas
-
-:::warning
-A throwing `track(...)` never breaks the machine. The failure goes to `onError` if you provided it,
-otherwise a development warning — and transitions, navigation, and commits carry on. Analytics is a
-side channel, never a gate.
-:::
+`now` may be supplied as an injectable clock for tests.
 
 ## Where to next
 
-- [Lifecycle & events](/docs/core/lifecycle) — the raw events these envelopes normalize.
-- [Writing a plugin](/docs/core/plugins/authoring) — build a tracker tuned to your own schema.
+- [Plugins](./overview)
+- [Writing a plugin](./authoring)

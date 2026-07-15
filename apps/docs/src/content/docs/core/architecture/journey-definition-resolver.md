@@ -1,5 +1,5 @@
 ---
-title: Journey Definition Resolver
+title: Definition Normalization
 ---
 
 import { Redirect } from "@docusaurus/router";
