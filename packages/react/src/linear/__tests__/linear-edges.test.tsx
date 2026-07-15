@@ -159,7 +159,7 @@ describe("navigation edges", () => {
     expect(screen.getByTestId("step-a")).toBeTruthy();
   });
 
-  it("reports rejected start navigation through onError", async () => {
+  it("reports a start-position onLeave effect without undoing navigation", async () => {
     const boom = new Error("initial step refused to leave");
     const onError = vi.fn();
     render(
@@ -177,7 +177,8 @@ describe("navigation edges", () => {
     );
     await flush();
 
-    expect(onError).toHaveBeenCalledWith(boom, { phase: "start" });
+    expect(onError).toHaveBeenCalledWith(boom, { phase: "navigate" });
+    expect(screen.getByTestId("step-b")).toBeTruthy();
   });
 });
 
@@ -329,7 +330,7 @@ describe("machine error surfacing", () => {
 
 describe("typed bundle step hooks", () => {
   it("runs bundle step handlers with the render-time context", async () => {
-    const handler = vi.fn();
+    const handler = { run: vi.fn() };
     const journey = createLinearJourney<{ n: number }>()(["hooked", "done"]);
     const HookedStep = () => {
       journey.useLinearJourneyStep(handler);
@@ -352,7 +353,7 @@ describe("typed bundle step hooks", () => {
 
     fireEvent.click(screen.getByText("onward"));
     await flush();
-    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler.run).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("step-b")).toBeTruthy();
   });
 });

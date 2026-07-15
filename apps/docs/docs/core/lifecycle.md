@@ -9,14 +9,14 @@ title: Lifecycle & events
 
 Lifecycle methods are synchronous and return `true` only when the requested state change applies.
 
-| Method                         | Accepted transition                             |
-| ------------------------------ | ----------------------------------------------- | ---------------------- |
-| `controls.start()`             | `idle -> running`                               |
-| `controls.pause()`             | `running -> paused`, when no hook is pending    |
-| `controls.resume()`            | `paused -> running`                             |
-| `controls.complete(payload?)`  | `running -> completed`, when no hook is pending |
-| `controls.terminate(payload?)` | Any non-terminated status -> `terminated`       |
-| `controls.restart()`           | `completed                                      | terminated -> running` |
+| Method                         | Accepted transition                                   |
+| ------------------------------ | ----------------------------------------------------- |
+| `controls.start()`             | `idle -> running`                                     |
+| `controls.pause()`             | `running -> paused`, when no navigation is pending    |
+| `controls.resume()`            | `paused -> running`                                   |
+| `controls.complete(payload?)`  | `running -> completed`, when no navigation is pending |
+| `controls.terminate(payload?)` | Any non-terminated status -> `terminated`             |
+| `controls.restart()`           | Completed or terminated -> `running`                  |
 
 `terminate()` invalidates pending hook continuations. `restart()` also resets context, history,
 visits, and outcome before entering the initial step.
@@ -29,14 +29,14 @@ const stop = machine.subscriptions.subscribeEvent("stepEnter", ({ from, to, snap
 });
 ```
 
-| Event               | Emitted when                                                                        |
-| ------------------- | ----------------------------------------------------------------------------------- |
-| `stepEnter`         | A destination commits, including initial entry.                                     |
-| `stepLeave`         | A non-initial destination commits.                                                  |
-| `statusChange`      | A lifecycle status changes.                                                         |
-| `contextChange`     | `context.update` or a hook updater replaces context.                                |
-| `navigationBlocked` | Navigation is rejected for any reason except `disposed`.                            |
-| `error`             | Post-commit entry/transition work fails, or a raised-event cascade exceeds its cap. |
+| Event               | Emitted when                                                          |
+| ------------------- | --------------------------------------------------------------------- |
+| `stepEnter`         | A destination commits, including initial entry.                       |
+| `stepLeave`         | A non-initial destination commits.                                    |
+| `statusChange`      | A lifecycle status changes.                                           |
+| `contextChange`     | `context.update` or a hook updater replaces context.                  |
+| `navigationBlocked` | Navigation is rejected for any reason except `disposed`.              |
+| `error`             | Navigation work, a lifecycle effect, or a raised-event cascade fails. |
 
 Listener exceptions are isolated and do not stop other listeners or alter runtime state.
 
@@ -44,14 +44,16 @@ Listener exceptions are isolated and do not stop other listeners or alter runtim
 
 For a successful non-initial move:
 
-1. Publish `transition.phase: "leaving"`.
-2. Await source `onLeave`.
-3. Commit timeline and destination with phase `"entering"`.
-4. Emit `stepLeave`, then `stepEnter`.
-5. Await graph `onTransition`, then destination `onEnter`.
-6. Publish the settled snapshot.
-7. Notify plugin transition observers.
-8. Process raised graph events FIFO.
+1. If work was supplied, publish phase `"working"` and await `work.run`.
+2. Run `work.commit` synchronously against staged context.
+3. Atomically commit staged context, timeline, and destination.
+4. Emit `contextChange` when needed, then `stepLeave` and `stepEnter`.
+5. Await source `onLeave`, graph `onTransition`, and destination `onEnter` in that order.
+6. Publish the settled snapshot and notify plugin transition observers.
+7. Process raised graph events FIFO.
+
+A `run` or `commit` failure stops before step 3. Lifecycle-effect failures are reported after the
+move and never roll the committed destination back.
 
 Selector subscribers may run at each published snapshot boundary. Named events are the better fit
 when event identity or ordering matters.

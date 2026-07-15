@@ -2,19 +2,21 @@ import type {
   AnyJourneyPlugin,
   JourneyEventObject,
   JourneySnapshot,
+  NavigationDirection,
+  NavigationWork,
   NavigationResult,
   StepHookArgs
 } from "./types";
 
 /** Internal, kind-agnostic hook shapes (public typing lives in the creators). */
 export type AnyHookArgs = StepHookArgs<unknown, string, JourneyEventObject>;
-export type AnyOnLeave = (args: AnyHookArgs) => boolean | void | Promise<boolean | void>;
 export type AnyOnEffect = (args: AnyHookArgs) => void | Promise<void>;
+export type AnyNavigationWork = NavigationWork<unknown, string, JourneySnapshot, unknown>;
 
 export type RuntimeStep = {
   readonly metadata: unknown;
   readonly onEnter?: AnyOnEffect;
-  readonly onLeave?: AnyOnLeave;
+  readonly onLeave?: AnyOnEffect;
 };
 
 export type RuntimeTransition = {
@@ -45,6 +47,8 @@ export type NavigationFailure = Extract<NavigationResult, { ok: false }>;
 export type TimelineOp =
   | { readonly kind: "pointer"; readonly index: number }
   | { readonly kind: "append" };
+
+export type WorkDirection = NavigationDirection;
 
 export type TransitionListener = (info: {
   from: string | null;

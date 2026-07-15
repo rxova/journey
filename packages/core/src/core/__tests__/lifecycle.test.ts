@@ -125,7 +125,7 @@ describe("lifecycle meta-state-machine", () => {
     expect(machine.getSnapshot().currentStep?.id).toBe("b");
   });
 
-  it("terminate during a pending transition wins; the in-flight promise resolves not-running", async () => {
+  it("terminate during post-commit effects keeps the committed navigation successful", async () => {
     const machine = createLinearJourney({
       steps: [{ id: "a", onLeave: () => wait(30) }, "b"],
       context: {}
@@ -135,9 +135,9 @@ describe("lifecycle meta-state-machine", () => {
 
     const navigation = machine.navigate.goToNextStep();
     expect(machine.controls.terminate()).toBe(true);
-    expect(await navigation).toEqual({ ok: false, reason: "not-running" });
+    expect(await navigation).toEqual({ ok: true, from: "a", to: "b" });
     expect(machine.getSnapshot().status).toBe("terminated");
-    expect(machine.getSnapshot().currentStep?.id).toBe("a");
+    expect(machine.getSnapshot().currentStep?.id).toBe("b");
   });
 
   it("dispose is irreversible and makes every method a safe no-op", async () => {

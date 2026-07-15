@@ -1,4 +1,5 @@
 import type { JourneyRuntime } from "./runtime";
+import type { AnyNavigationWork } from "./runtime.types";
 import type {
   ContextUpdater,
   JourneyEventPayloads,
@@ -28,8 +29,12 @@ export function buildMachineSurface(
     dispose: () => runtime.dispose(),
     navigate: {
       goToStepById: (id: string) => runtime.goToStepById(id),
-      goToPreviousStep: (n?: number) => runtime.goToPreviousStep(n),
-      goToNextStep: () => runtime.goToNextStep(),
+      goToPreviousStep: ((nOrWork?: number | AnyNavigationWork, work?: AnyNavigationWork) =>
+        runtime.goToPreviousStep(nOrWork, work)) as JourneyMachineBase<
+        unknown,
+        string
+      >["navigate"]["goToPreviousStep"],
+      goToNextStep: (work) => runtime.goToNextStep(work as AnyNavigationWork | undefined),
       goToLastVisitedStep: () => runtime.goToLastVisitedStep()
     },
     subscriptions: {
@@ -45,6 +50,9 @@ export function buildMachineSurface(
     },
     context: {
       update: (updater: ContextUpdater<unknown>) => runtime.updateContext(updater)
+    },
+    async: {
+      clearError: () => runtime.clearAsyncError()
     },
     plugins: runtime.pluginApis
   };

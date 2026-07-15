@@ -77,10 +77,10 @@ Narrow `snapshot.type` before reading linear order fields or graph availability 
 ## Hook and transition changes
 
 - `when` is now synchronous and receives only `{ context, handlers }`.
-- Async pre-commit validation belongs in step `onLeave`.
-- `onLeave` can block; `onTransition` and `onEnter` are post-commit effects.
+- Async pre-commit validation belongs in work passed to `goToNextStep` or `goToPreviousStep`.
+- `onLeave`, `onTransition`, and `onEnter` are awaited post-commit effects and cannot block.
 - Transition `updateContext`, `effect`, `after`, labels, ids, and per-transition timeouts are gone.
-- Use hook `updateContext` for writes associated with a hook.
+- Use navigation-work `commit` for transactional writes; hook `updateContext` remains immediate.
 - Use hook `raise` for graph follow-up events after settle.
 - The runtime option `defaultTimeoutMs` applies to every async hook.
 
@@ -108,6 +108,6 @@ Built-in plugin methods now live under `machine.plugins.<name>`.
 1. Choose linear or graph and migrate the definition shape.
 2. Move machine calls into their V1 groups and change graph send syntax.
 3. Replace old snapshot selectors with the new discriminated shape.
-4. Move async guards to `onLeave` and post-commit work to `onTransition`/`onEnter`.
+4. Move caller-driven async guards into navigation work and lifecycle effects into hooks.
 5. Update plugin access and any custom plugin implementation.
 6. Re-test completion, history branching, and restore behavior; none are implicit.

@@ -345,8 +345,8 @@ describe("remaining operations", () => {
   });
 });
 
-describe("guard errors from hooks", () => {
-  it("carries the thrown onLeave error in the operation result", async () => {
+describe("lifecycle effect errors", () => {
+  it("keeps a thrown onLeave error on the committed destination snapshot", async () => {
     const machine = createLinearJourney({
       steps: [
         {
@@ -369,7 +369,12 @@ describe("guard errors from hooks", () => {
 
     await postToBridge(buildInvokeEnvelope("hooked", "navigation.goToNextStep"));
     const result = capture.ofKind("operationResult")[0]!;
-    expect(result.result).toMatchObject({ kind: "snapshot", transitioned: false });
-    expect((result.result as { error?: { message: string } }).error?.message).toBe("no leaving");
+    expect(result.result).toMatchObject({
+      kind: "snapshot",
+      transitioned: true,
+      snapshot: {
+        currentStep: { id: "b", async: { isError: true, error: { message: "no leaving" } } }
+      }
+    });
   });
 });

@@ -25,8 +25,8 @@ is explained in these docs. Import only from package export paths.
 ## Behavioral guarantees
 
 - Graph candidates are selected in declaration order, first enabled match wins.
-- `onLeave` runs before commit and may block.
-- `onTransition` runs after commit and before destination `onEnter`.
+- Supplied next/previous work runs before commit and may stop movement.
+- `onLeave`, `onTransition`, and `onEnter` run after commit in that order and cannot roll it back.
 - Timeline pointer moves retrace realized history; appends from the past replace the old future.
 - Reaching a last or terminal step does not implicitly complete a journey.
 - Plugin contributions remain namespaced and plugins remain observe-only throughout V1.

@@ -22,6 +22,14 @@ export const cloneForTransport = (value: unknown): unknown => {
 
   try {
     const serialized = JSON.stringify(transportValue, (_key, currentValue) => {
+      if (currentValue instanceof Error) {
+        return {
+          name: currentValue.name,
+          message: currentValue.message,
+          stack: typeof currentValue.stack === "string" ? currentValue.stack : null,
+          cause: "cause" in currentValue ? (currentValue.cause ?? null) : null
+        };
+      }
       if (typeof currentValue === "bigint") {
         return currentValue.toString();
       }

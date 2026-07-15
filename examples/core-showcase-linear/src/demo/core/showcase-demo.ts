@@ -142,6 +142,28 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
   });
 
   const submitLogin = async (context: LoginContext) => {
+    if (mode === "linear") {
+      const navigation = await machine.navigate.goToNextStep({
+        run: async () => {
+          const result = await authApi.login(context.username, context.password);
+          if (!result.success) throw new Error("Login failed");
+          return result;
+        },
+        commit: ({ result, updateContext }) => {
+          updateContext((current) => ({
+            ...current,
+            password: "",
+            twoFactorMethod: result.method,
+            error: null
+          }));
+        }
+      });
+      if (!navigation.ok) {
+        machine.context.update((current) => ({ ...current, error: "Login failed" }));
+      }
+      return;
+    }
+
     const result = await authApi.login(context.username, context.password);
     if (!result.success) {
       machine.context.update((current) => ({ ...current, error: "Login failed" }));
@@ -153,11 +175,6 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
       twoFactorMethod: result.method,
       error: null
     }));
-
-    if (mode === "linear") {
-      await machine.navigate.goToNextStep();
-      return;
-    }
 
     if (isGraph(machine)) {
       if (result.method === "no_2fa") {
@@ -422,9 +439,9 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
         <section class="card">
           <h2>Runtime</h2>
           <p class="hint">
-            <strong>Simulated async:</strong> Setup 2FA waits 700 ms on entry to generate a QR code
-            and store it in context, then 6 seconds on leave to confirm enrollment. Leaving is blocked
-            when enrollment is missing; other steps have no artificial hook delays.
+            <strong>Simulated async:</strong> Login authenticates before forward navigation and clears
+            the password only when it commits. Setup 2FA waits 700 ms on entry to generate a QR code,
+            then runs a 6-second confirmation before continuing. Back navigation has no artificial work.
           </p>
           <div class="status-row" data-role="status-row"></div>
           <div style="margin-top: 1rem" data-role="step-slot"></div>
@@ -532,7 +549,14 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
         if (action === "continue-setup") {
           if (isGraph(machine)) await machine.send("setup2fa");
           else if (mode === "headless") await machine.navigate.goToStepById("verifyCode");
-          else await machine.navigate.goToNextStep();
+          else {
+            await machine.navigate.goToNextStep({
+              run: async ({ snapshot }) => {
+                const confirmed = await authApi.confirmTwoFactorSetup(snapshot.context.qrCode);
+                if (!confirmed) throw new Error("Complete QR enrollment before continuing");
+              }
+            });
+          }
         }
         if (action === "verify") await submitVerification(stepId, context);
         if (action === "reset") resetJourney();

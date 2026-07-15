@@ -98,16 +98,18 @@ sequenceDiagram
   participant Hooks
 
   Caller->>Runtime: send / navigate
-  Runtime->>Store: publish leaving
-  Runtime->>Hooks: await source onLeave
-  alt blocked or failed
+  opt next/previous work supplied
+    Runtime->>Store: publish working
+    Runtime->>Runtime: await run, stage commit updates
+  end
+  alt work failed
     Runtime->>Store: publish settled source
     Runtime-->>Caller: failed NavigationResult
-  else accepted
-    Runtime->>Runtime: update timeline and visits
+  else work accepted or absent
+    Runtime->>Runtime: commit context, timeline, and visits
     Runtime->>Store: publish committed destination
     Runtime->>Store: emit stepLeave, stepEnter
-    Runtime->>Hooks: await onTransition, then onEnter
+    Runtime->>Hooks: await onLeave, onTransition, onEnter
     Runtime->>Store: publish settled destination
     Runtime-->>Caller: successful NavigationResult
   end
@@ -120,14 +122,15 @@ the pointer, then appends the new id.
 
 The runtime exposes two related views:
 
-- `snapshot.transition` describes the whole pending move (`leaving` or `entering`);
-- `snapshot.currentStep.async` describes entry work for the current destination.
+- `snapshot.transition` describes the whole pending operation (`working`, `leaving`, or `entering`);
+- `snapshot.currentStep.async` describes navigation work or lifecycle effects.
 
-`onLeave` runs before commit and may cancel. Graph `onTransition` and destination `onEnter` run after
-commit. Their failure is stored on the destination and emitted as an `error` event.
+Navigation work runs before commit and may stop movement. `onLeave`, graph `onTransition`, and
+destination `onEnter` run after commit. Their failure is stored on the destination and emitted as
+an `error` event without rollback.
 
-`defaultTimeoutMs` wraps each hook promise. Terminate, restart, and dispose increment a generation
-counter so stale continuations cannot settle a newer run.
+`defaultTimeoutMs` wraps navigation `run` and each hook promise. Terminate, restart, and dispose
+increment a generation counter so stale continuations cannot settle a newer run.
 
 ## Raised events {#raised-events}
 

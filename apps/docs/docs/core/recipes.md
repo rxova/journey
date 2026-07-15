@@ -5,20 +5,22 @@ title: Recipes
 
 # Recipes
 
-## Validate before leaving
+## Validate before moving forward
 
 ```ts
-const form = {
-  id: "form",
-  onLeave: async ({ snapshot, updateContext }) => {
+const result = await machine.navigate.goToNextStep({
+  run: async ({ snapshot }) => {
     const errors = await validate(snapshot.context);
-    updateContext((context) => ({ ...context, errors }));
-    return errors.length === 0;
+    if (errors.length > 0) throw new ValidationError(errors);
+    return { validatedAt: Date.now() };
+  },
+  commit: ({ result, updateContext }) => {
+    updateContext((context) => ({ ...context, validatedAt: result.validatedAt }));
   }
-};
+});
 ```
 
-The context update remains visible if the move is blocked.
+If validation fails, the machine remains on the current step and staged context is not published.
 
 ## Ordered graph branches
 
@@ -53,20 +55,19 @@ APPLY_COUPON: {
 await machine.send("APPLY_COUPON", { code: "SAVE20" });
 ```
 
-## Retry a blocked or failed leave
+## Retry failed navigation work
 
 ```ts
-const result = await machine.navigate.goToNextStep();
+const result = await machine.navigate.goToNextStep(work);
 
-if (!result.ok && (result.reason === "blocked" || result.reason === "error")) {
+if (!result.ok && result.reason === "error") {
   showValidation(result.error);
-  // Retry by calling the same navigation method after the user fixes the input.
+  // Retry with the same work after the user fixes the input.
 }
 ```
 
-There is no separate error-clear command. Pre-commit failures are represented by the result and
-`navigationBlocked` event; post-commit errors live on `snapshot.currentStep.async` until another
-entry replaces them.
+Failures are represented by the result, `navigationBlocked`, and `error` events. They also live on
+`snapshot.currentStep.async`; call `machine.async.clearError()` to clear the snapshot error.
 
 ## Route post-commit work
 

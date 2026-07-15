@@ -18,7 +18,8 @@ snapshot and machine contracts.
   snapshot.
 - Update transported snapshots to the Core V1 shape: the linear/graph discriminator, timeline
   history, current-step async state, namespaced plugin state, outcomes, and enabled graph events are
-  preserved instead of translated into the legacy computed shape.
+  preserved instead of translated into the legacy computed shape. Nested runtime errors are
+  serialized with their name, message, stack, and cause instead of collapsing to empty objects.
 - Emit protocol version 7. Version 6 invoke envelopes remain accepted because their generic invoke
   shape is identical; version 5 register traffic is tolerated for discovery but cannot invoke v7
   operations.

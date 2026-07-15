@@ -35,7 +35,8 @@ The last linear step and a graph terminal step can remain running.
 <DocAccordionItem title="How does back work?">
 
 `machine.navigate.goToPreviousStep(n?)` moves the realized timeline pointer. It does not search the
-definition or send a graph event. Source `onLeave` still runs and may block the move.
+definition or send a graph event. Pass navigation work when saving or validation must succeed before
+moving; source `onLeave` is a post-commit side effect.
 
 </DocAccordionItem>
 
@@ -49,7 +50,8 @@ map still records every step entered during the run.
 <DocAccordionItem title="Can guards be async?">
 
 Graph `when` guards are synchronous and pure because they are evaluated while deriving available
-events and targets. Use async `onLeave` when a move needs asynchronous approval.
+events and targets. Pass async work to `goToNextStep` or `goToPreviousStep` when caller-driven
+movement needs asynchronous approval.
 
 </DocAccordionItem>
 

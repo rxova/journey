@@ -51,8 +51,8 @@ const test = createGraphJourney(definition, {
 ## Scope
 
 Handlers are passed only to graph `when` guards. Step hooks and `onTransition` receive the current
-snapshot instead. Keep asynchronous work in `onLeave`, `onTransition`, or `onEnter`; guards must stay
-synchronous because they are used to derive available transitions.
+snapshot instead. Guards must stay synchronous because they are used to derive available
+transitions. Caller-driven next/previous operations can attach asynchronous navigation work.
 
 The graph builder's type bag can declare handler types:
 

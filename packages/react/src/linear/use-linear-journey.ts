@@ -1,7 +1,7 @@
 import React from "react";
 import { useJourneySnapshot } from "../headless/use-journey-snapshot";
 import { useLinearJourneyContext } from "./linear-context";
-import type { NavigationResult } from "@rxova/journey-core";
+import type { NavigationResult, NavigationWork } from "@rxova/journey-core";
 import type {
   UseLinearJourneyResult,
   LinearJourneyMachine,
@@ -11,8 +11,8 @@ import type {
 /**
  * The linear journey hook — a thin React binding over the core linear runtime:
  * position, visits, and loading come straight off the snapshot; navigation
- * methods are the machine's own, except `goToNextStep`, which awaits the
- * active step's `useLinearJourneyStep` handler first.
+ * methods are the machine's own, except `goToNextStep`, which supplies the
+ * active step's registered `useLinearJourneyStep` work to Core.
  *
  * The generic parameter is an unchecked assertion (`useLinearJourney<MyContext>()`);
  * fully inferred typing comes from `createLinearJourney()`.
@@ -24,24 +24,27 @@ export const useLinearJourney = <
   const { machine, interceptors, metaByStep } = useLinearJourneyContext("useLinearJourney");
   const snapshot = useJourneySnapshot(machine) as LinearJourneySnapshot<TContext, TStepId>;
 
-  const interceptorState = React.useSyncExternalStore(
-    interceptors.subscribe,
-    interceptors.getState,
-    interceptors.getState
-  );
-
   const navigation = React.useMemo(() => {
-    const goToNextStep = async (): Promise<NavigationResult<TStepId>> => {
+    const goToNextStep = <TResult = void>(
+      work?: NavigationWork<TContext, TStepId, LinearJourneySnapshot<TContext, TStepId>, TResult>
+    ): Promise<NavigationResult<TStepId>> => {
       const currentId = machine.getSnapshot().currentStep?.id;
-      if (currentId !== undefined && !(await interceptors.run(currentId))) {
-        return { ok: false, reason: "blocked" };
-      }
-      return machine.navigate.goToNextStep() as Promise<NavigationResult<TStepId>>;
+      const registered = currentId === undefined ? undefined : interceptors.get(currentId);
+      return machine.navigate.goToNextStep((work ?? registered) as never) as Promise<
+        NavigationResult<TStepId>
+      >;
     };
     return {
       goToNextStep,
-      goToPreviousStep: (steps?: number) =>
-        machine.navigate.goToPreviousStep(steps) as Promise<NavigationResult<TStepId>>,
+      goToPreviousStep: <TResult = void>(
+        stepsOrWork?:
+          | number
+          | NavigationWork<TContext, TStepId, LinearJourneySnapshot<TContext, TStepId>, TResult>,
+        work?: NavigationWork<TContext, TStepId, LinearJourneySnapshot<TContext, TStepId>, TResult>
+      ) =>
+        machine.navigate.goToPreviousStep(stepsOrWork as never, work as never) as Promise<
+          NavigationResult<TStepId>
+        >,
       goToStepById: (stepId: TStepId) =>
         machine.navigate.goToStepById(stepId) as Promise<NavigationResult<TStepId>>,
       goToStepByIndex: (index: number) => {
@@ -59,7 +62,7 @@ export const useLinearJourney = <
       controls: machine.controls,
       updateContext: (updater: (context: TContext) => TContext) =>
         machine.context.update(updater as (previous: unknown) => unknown),
-      clearError: interceptors.clearError
+      clearError: machine.async.clearError
     };
   }, [machine, interceptors]);
 
@@ -79,9 +82,9 @@ export const useLinearJourney = <
     isStepFirstTimeVisit: currentStep.isFirstTimeVisit,
 
     status: snapshot.status,
-    isLoading: snapshot.machine.isLoading || interceptorState.pending,
+    isLoading: snapshot.machine.isLoading,
     isPaused: snapshot.machine.isPaused,
-    error: interceptorState.error ?? currentStep.async.error,
+    error: currentStep.async.error,
     clearError: navigation.clearError,
 
     goToNextStep: navigation.goToNextStep,

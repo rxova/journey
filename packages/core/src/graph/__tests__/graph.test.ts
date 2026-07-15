@@ -47,7 +47,7 @@ describe("createGraphJourney — event-driven transitions", () => {
     expect(await confirmed.send("CONFIRM")).toEqual({ ok: true, from: "review", to: "done" });
   });
 
-  it("runs the pipeline in order: onLeave → commit events → onTransition → onEnter", async () => {
+  it("commits before the awaited onLeave → onTransition → onEnter effects", async () => {
     const log: string[] = [];
     const machine = createGraphJourney({
       steps: {
@@ -66,7 +66,7 @@ describe("createGraphJourney — event-driven transitions", () => {
     machine.subscriptions.subscribeEvent("stepEnter", ({ to }) => log.push(`stepEnter:${to}`));
 
     await machine.send("GO");
-    expect(log).toEqual(["onLeave:a", "stepLeave:a", "stepEnter:b", "onTransition", "onEnter:b"]);
+    expect(log).toEqual(["stepLeave:a", "stepEnter:b", "onLeave:a", "onTransition", "onEnter:b"]);
   });
 
   it("delivers the event (type + payload) to onTransition and onEnter", async () => {
@@ -96,7 +96,7 @@ describe("createGraphJourney — event-driven transitions", () => {
     ]);
   });
 
-  it("onTransition throwing is handled like an onEnter throw (onEnter skipped)", async () => {
+  it("onTransition throwing is reported without skipping onEnter", async () => {
     const boom = new Error("effect failed");
     const enter = vi.fn();
     const machine = createGraphJourney({
@@ -121,7 +121,7 @@ describe("createGraphJourney — event-driven transitions", () => {
     expect(await machine.send("GO")).toEqual({ ok: true, from: "a", to: "b" });
     expect(machine.getSnapshot().currentStep?.async.isError).toBe(true);
     expect(errors).toMatchObject([{ error: boom, phase: "transition", stepId: "b" }]);
-    expect(enter).not.toHaveBeenCalled();
+    expect(enter).toHaveBeenCalledTimes(1);
   });
 
   it("goToStepById is transition-gated sugar", async () => {
@@ -152,7 +152,7 @@ describe("createGraphJourney — event-driven transitions", () => {
     expect(effect).toHaveBeenCalledTimes(1);
   });
 
-  it("timeline moves bypass transition gating but step guards still run", async () => {
+  it("timeline moves bypass transition gating but step effects still run", async () => {
     const leaveB = vi.fn();
     const machine = createGraphJourney({
       steps: { a: {}, b: { onLeave: leaveB } },
@@ -334,7 +334,7 @@ describe("createGraphJourney — event-driven transitions", () => {
     ).toThrow(/unknown step "ghost"/);
   });
 
-  it("rejects navigation while a guard chain is pending", async () => {
+  it("rejects navigation while a lifecycle effect chain is pending", async () => {
     const machine = createGraphJourney({
       steps: { a: { onLeave: () => wait(30) }, b: {} },
       transitions: { GO: { from: "a", to: "b" } },
