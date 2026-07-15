@@ -82,7 +82,7 @@ Narrow `snapshot.type` before reading linear order fields or graph availability 
 - Transition `updateContext`, `effect`, `after`, labels, ids, and per-transition timeouts are gone.
 - Use navigation-work `commit` for transactional writes; hook `updateContext` remains immediate.
 - Use hook `raise` for graph follow-up events after settle.
-- The runtime option `defaultTimeoutMs` applies to every async hook.
+- The runtime option `defaultTimeoutMs` applies to navigation work and every async hook.
 
 ## Plugin changes
 

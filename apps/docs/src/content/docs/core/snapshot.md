@@ -41,7 +41,7 @@ Linear current steps add `index`, `isFirstStep`, and `isLastStep`. Graph current
 ```ts
 snapshot.transition = {
   pending: false,
-  phase: null, // "leaving" | "entering" | null
+  phase: null, // "working" | "leaving" | "entering" | null
   from: null,
   to: null
 };
@@ -65,6 +65,10 @@ snapshot.history = {
 
 `snapshot.machine` provides `isLoading`, `isIdle`, `isRunning`, `isPaused`, `isCompleted`,
 `isTerminated`, and `outcome`. `isLoading` mirrors `snapshot.transition.pending`.
+
+Use `snapshot.machine.isLoading` for ordinary UI concerns such as disabling navigation controls.
+Read `snapshot.transition` when the UI needs phase/source/destination detail, and
+`snapshot.currentStep.async` when it needs the current entry's settled success or error.
 
 ```ts
 snapshot.machine.outcome = null; // or { type: "completed" | "terminated", payload }

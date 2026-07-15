@@ -23,7 +23,7 @@ Both shapes provide:
 
 - the same `controls`, `navigate`, `subscriptions`, and `context` groups;
 - immutable snapshots with status, context, history, current-step async state, and plugin data;
-- blocking `onLeave` and post-commit `onEnter` hooks;
+- transactional next/previous work and post-commit lifecycle hooks;
 - explicit completion and termination;
 - the same plugin contract.
 

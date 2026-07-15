@@ -16,7 +16,7 @@ import type {
 /**
  * Guards are sync and pure: they are evaluated during snapshot derivation to
  * compute `availableEvents`/`availableSteps`, so they receive no event payload
- * and cannot be async. Async validation belongs in `onLeave`.
+ * and cannot be async. Caller-driven async validation belongs in navigation work.
  */
 export type TransitionGuard<TContext, THandlers> = (args: {
   readonly context: TContext;

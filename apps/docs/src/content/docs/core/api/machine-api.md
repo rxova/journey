@@ -46,6 +46,9 @@ until `snapshot.transition.pending` becomes false before issuing the first navig
 
 Completion is always explicit. Navigation never auto-completes.
 
+Linear definitions may include a type-only `types` object with `complete` and `terminate` payload
+shapes. Those shapes constrain the control arguments and narrow `snapshot.machine.outcome`.
+
 ## Navigation
 
 All navigation methods return `Promise<NavigationResult<TStepId>>`.
@@ -81,9 +84,16 @@ await machine.navigate.goToNextStep({
 `run` is awaited while the source remains current. If it fails, navigation returns `reason:
 "error"`. `commit` must be synchronous; its context updates publish atomically with movement.
 
+Use `snapshot.machine.isLoading` as the normal UI-level loading flag. Inspect
+`snapshot.transition` for phase details and `snapshot.currentStep.async` for the current entry's
+success or error state.
+
 ### `navigate.goToLastVisitedStep()`
 
 Move the pointer to the realized timeline tip.
+
+On linear journeys, `goToStepById` is an ungated escape hatch for occasional direct jumps. Prefer
+graph mode when explicit jumps or branches are part of normal domain behavior.
 
 ### Result
 

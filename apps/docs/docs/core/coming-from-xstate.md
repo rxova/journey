@@ -17,7 +17,8 @@ step-based product flows rather than general statecharts.
 | Context                  | Snapshot `context`                                        |
 | Event union              | `{ type; payload? }` union sent as `send(type, payload?)` |
 | Guard                    | Graph transition `when({ context, handlers })`            |
-| Exit action / async gate | Step `onLeave`                                            |
+| Exit action              | Step `onLeave`                                            |
+| Caller-driven async gate | Next/previous navigation `run`                            |
 | Transition action        | Graph `onTransition`                                      |
 | Entry action             | Step `onEnter`                                            |
 | `assign`                 | `context.update` or hook `updateContext`                  |
@@ -28,9 +29,10 @@ step-based product flows rather than general statecharts.
 
 ## Different async model
 
-Journey does not have actors or `invoke`. Put asynchronous validation that must block a move in
-`onLeave`. Put post-commit work in `onTransition` or `onEnter`, then raise a domain event if the
-result should cause another graph transition.
+Journey does not have actors or `invoke`. Put caller-driven asynchronous validation that must block
+a next/previous move in navigation `run`, with synchronous context writes in `commit`. For an
+event-driven graph process, model long-running work as a step: perform it in `onEnter`, then raise a
+domain event that selects the success or failure destination.
 
 ```ts
 const loading = createStep("loading", {

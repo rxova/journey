@@ -27,7 +27,11 @@ const machine = createLinearJourney({
       }
     }
   ] as const,
-  context: { address: "" }
+  context: { address: "" },
+  types: {} as {
+    complete: { orderId: string };
+    terminate: { reason: "cancelled" };
+  }
 });
 ```
 
@@ -59,11 +63,18 @@ UI integrations can instead disable navigation while `snapshot.transition.pendin
 Moving forward from an older history position uses the existing timeline. A new jump from an older
 position truncates the abandoned future before appending the destination.
 
+`goToStepById` is an intentionally ungated escape hatch for occasional jumps in an otherwise
+ordered flow. It does not run next/previous work. If named jumps, guards, or branches become a
+routine part of the flow, convert the definition to graph mode so those transitions become explicit.
+
 Reaching the last step does not complete the journey:
 
 ```ts
 machine.controls.complete();
 ```
+
+The optional `types` object in the definition types completion and termination payloads plus
+`snapshot.machine.outcome`. It is a compile-time carrier and is not retained by the runtime.
 
 ## Linear snapshot fields
 

@@ -17,6 +17,34 @@ const OBSERVED_EVENTS: readonly JourneySubscriptionEvent[] = [
 
 type LogEntry = { readonly label: string; readonly detail?: string };
 
+class InvalidVerificationCodeError extends Error {
+  constructor() {
+    super("Use 123456.");
+    this.name = "InvalidVerificationCodeError";
+  }
+}
+
+type LoginTransition = JourneySnapshot<LoginContext, LoginStepId>["transition"];
+
+const PENDING_LABELS: Partial<
+  Record<NonNullable<LoginTransition["phase"]>, Partial<Record<LoginStepId, string>>>
+> = {
+  working: {
+    login: "Authenticating (about 1.2 seconds)",
+    setup2fa: "Confirming 2FA setup (about 6 seconds)",
+    verifyCode: "Verifying code"
+  },
+  entering: {
+    setup2fa: "Generating QR enrollment"
+  }
+};
+
+const getPendingLabel = (transition: LoginTransition): string => {
+  if (!transition.phase) return "Settling step effects";
+  const stepId = transition.phase === "entering" ? transition.to : transition.from;
+  return (stepId && PENDING_LABELS[transition.phase]?.[stepId]) ?? "Settling step effects";
+};
+
 const formatFieldValue = (value: unknown): string => {
   if (value === null || value === undefined) {
     return "∅";
@@ -24,6 +52,13 @@ const formatFieldValue = (value: unknown): string => {
   const json = JSON.stringify(value);
   return json.length > 24 ? `${json.slice(0, 21)}..."` : json;
 };
+
+const escapeHtml = (value: string): string =>
+  value.replace(
+    /[&<>"']/g,
+    (character) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!
+  );
 
 const describeContextChange = (previous: LoginContext, current: LoginContext): string => {
   const keys = Object.keys(current) as (keyof LoginContext)[];
@@ -87,17 +122,18 @@ export const mountCoreShowcase = (root: HTMLElement) => {
       return;
     }
 
+    machine.async.clearError();
     machine.context.update((context) => ({
       ...context,
       [field]: target.value,
-      error: field === "verificationCode" ? null : context.error
+      error: null
     }));
   });
 
-  const submitLogin = async (context: LoginContext) => {
+  const submitLogin = async () => {
     const navigation = await machine.navigate.goToNextStep({
-      run: async () => {
-        const result = await authApi.login(context.username, context.password);
+      run: async ({ snapshot }) => {
+        const result = await authApi.login(snapshot.context.username, snapshot.context.password);
         if (!result.success) throw new Error("Login failed");
         return result;
       },
@@ -105,39 +141,50 @@ export const mountCoreShowcase = (root: HTMLElement) => {
         updateContext((current) => ({
           ...current,
           password: "",
-          twoFactorMethod: result.method,
+          sessionId: result.sessionId,
           error: null
         }));
       }
     });
-    if (!navigation.ok) {
-      machine.context.update((current) => ({ ...current, error: "Login failed" }));
+    if (!navigation.ok && navigation.reason === "error") {
+      const message = navigation.error instanceof Error ? navigation.error.message : "Login failed";
+      machine.context.update((current) => ({ ...current, error: message }));
     }
   };
 
-  const submitVerification = async (context: LoginContext) => {
-    const result = await authApi.verifyCode(context.verificationCode, context.attempts);
+  const submitVerification = async () => {
+    const navigation = await machine.navigate.goToNextStep({
+      run: async ({ snapshot }) => {
+        const result = await authApi.verifyCode(
+          snapshot.context.verificationCode,
+          snapshot.context.attempts
+        );
+        if (!result.success && result.loggedInStatus === null) {
+          throw new InvalidVerificationCodeError();
+        }
+        return result;
+      },
+      commit: ({ result, updateContext }) => {
+        updateContext((current) => ({
+          ...current,
+          attempts: result.success ? current.attempts : current.attempts + 1,
+          loggedInStatus: result.loggedInStatus,
+          error: result.loggedInStatus === "blocked" ? "Too many failed attempts." : null
+        }));
+      }
+    });
 
-    if (result.success) {
-      machine.context.update((current) => ({
-        ...current,
-        loggedInStatus: "loggedIn",
-        error: null
-      }));
-    } else {
+    if (navigation.ok) {
+      finishJourney(machine.getSnapshot().context.loggedInStatus);
+    } else if (navigation.reason === "error") {
       machine.context.update((current) => ({
         ...current,
         attempts: current.attempts + 1,
-        loggedInStatus: result.loggedInStatus,
-        error: result.loggedInStatus === "blocked" ? "Too many failed attempts." : "Use 123456."
+        error:
+          navigation.error instanceof InvalidVerificationCodeError
+            ? navigation.error.message
+            : "Verification failed."
       }));
-    }
-
-    if (result.success || result.loggedInStatus === "blocked") {
-      const navigation = await machine.navigate.goToNextStep();
-      if (navigation.ok) {
-        finishJourney(result.loggedInStatus);
-      }
     }
   };
 
@@ -157,8 +204,8 @@ export const mountCoreShowcase = (root: HTMLElement) => {
         <div class="step-view">
           <h3 class="step-title">Login</h3>
           <p class="muted">Password "blocked" fails; any other password moves to Setup 2FA.</p>
-          <label class="field">Username<input data-field="username" value="${context.username}" /></label>
-          <label class="field">Password<input data-field="password" type="password" value="${context.password}" /></label>
+          <label class="field">Username<input data-field="username" value="${escapeHtml(context.username)}" /></label>
+          <label class="field">Password<input data-field="password" type="password" value="${escapeHtml(context.password)}" /></label>
           <div class="severity-error" data-role="error" hidden></div>
           <div class="actions"><button data-action="login">Sign In</button></div>
         </div>
@@ -184,7 +231,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
         <div class="step-view">
           <h3 class="step-title">Verify Code</h3>
           <p class="muted">Use 123456 to succeed.</p>
-          <label class="field">Verification Code<input data-field="verificationCode" value="${context.verificationCode}" /></label>
+          <label class="field">Verification Code<input data-field="verificationCode" value="${escapeHtml(context.verificationCode)}" /></label>
           <div class="severity-error" data-role="error" hidden></div>
           <div class="status-row"><span class="token" data-role="attempts"></span></div>
           <div class="actions">
@@ -209,7 +256,8 @@ export const mountCoreShowcase = (root: HTMLElement) => {
   const updateStepContent = (
     stepContainer: HTMLElement,
     stepId: LoginStepId,
-    context: LoginContext
+    context: LoginContext,
+    isLoading: boolean
   ) => {
     const errorEl = stepContainer.querySelector<HTMLElement>('[data-role="error"]');
     if (errorEl) {
@@ -241,7 +289,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     }
 
     stepContainer.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
-      button.disabled = isPending;
+      button.disabled = isLoading;
     });
   };
 
@@ -279,7 +327,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
           <span class="badge badge-linear">linear</span>
         </div>
         <h1>Core Showcase Linear</h1>
-        <p>Declared order drives goToNextStep; guards and hooks live on the steps.</p>
+        <p>Declared order drives next and previous; transactional work decides whether a move commits.</p>
       </header>
       <section class="card"><h2>Progress</h2><div class="stepper" data-role="stepper"></div></section>
       <section class="card">
@@ -287,7 +335,8 @@ export const mountCoreShowcase = (root: HTMLElement) => {
         <p class="hint">
           <strong>Simulated async:</strong> Login authenticates before forward navigation and clears
           the password only when it commits. Setup 2FA waits 700 ms on entry to generate a QR code,
-          then runs a 6-second confirmation before continuing. Back navigation has no artificial work.
+          then runs a 6-second confirmation before continuing. Back has no explicit work, but
+          re-entering Setup 2FA runs its <code>onEnter</code> effect again.
         </p>
         <div class="status-row" data-role="status-row"></div>
       </section>
@@ -297,6 +346,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
           <div data-role="step-slot"></div>
           <div class="pending-overlay" data-role="pending-overlay" hidden>
             <span class="spinner" aria-label="Loading"></span>
+            <strong data-role="pending-label"></strong>
           </div>
         </section>
         <section class="card">
@@ -315,17 +365,17 @@ export const mountCoreShowcase = (root: HTMLElement) => {
   const stepperEl = root.querySelector<HTMLElement>('[data-role="stepper"]')!;
   const stepSlot = root.querySelector<HTMLElement>('[data-role="step-slot"]')!;
   const pendingOverlayEl = root.querySelector<HTMLElement>('[data-role="pending-overlay"]')!;
+  const pendingLabelEl = root.querySelector<HTMLElement>('[data-role="pending-label"]')!;
   const snapshotEl = root.querySelector<HTMLElement>('[data-role="snapshot"]')!;
   const eventLogEl = root.querySelector<HTMLElement>('[data-role="event-log"]')!;
 
   let mountedStepId: LoginStepId | null = null;
-  let isPending = false;
-
   const render = () => {
     const snapshot = machine.getSnapshot() as JourneySnapshot<LoginContext, LoginStepId>;
     const context = snapshot.context;
     const stepId = currentStepId();
     const transition = snapshot.transition;
+    const isLoading = snapshot.machine.isLoading;
     const transitionLabel = transition.pending
       ? `${transition.phase}: ${transition.from ?? "start"} -> ${transition.to ?? "unknown"}`
       : "settled";
@@ -340,7 +390,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
 
     statusRow.innerHTML = `
       <span class="status-pill status-${snapshot.status}">${snapshot.status}</span>
-      ${isPending ? `<span class="token token-pending">request: pending</span>` : ""}
+      ${isLoading ? `<span class="token token-pending">machine: loading</span>` : ""}
       <span class="token ${transition.pending ? "token-pending" : ""}">transition: ${transitionLabel}</span>
       <span class="token ${stepAsync?.isLoading ? "token-pending" : ""}">step async: ${stepAsyncLabel}</span>
       <span class="token">step: ${snapshot.currentStep?.id ?? "—"}</span>
@@ -351,8 +401,9 @@ export const mountCoreShowcase = (root: HTMLElement) => {
       stepSlot.innerHTML = renderStepShell(stepId, context);
       mountedStepId = stepId;
     }
-    updateStepContent(stepSlot, stepId, context);
-    pendingOverlayEl.hidden = !isPending;
+    updateStepContent(stepSlot, stepId, context, isLoading);
+    pendingOverlayEl.hidden = !isLoading;
+    pendingLabelEl.textContent = getPendingLabel(transition);
 
     const currentIndex = stepOrder.findIndex((step) => step.id === stepId);
     stepperEl.innerHTML = renderStepper(currentIndex);
@@ -361,8 +412,8 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     eventLogEl.innerHTML = eventLog
       .map(
         (entry) =>
-          `<div class="log-item"><strong>${entry.label}</strong>${
-            entry.detail ? `<div class="muted">${entry.detail}</div>` : ""
+          `<div class="log-item"><strong>${escapeHtml(entry.label)}</strong>${
+            entry.detail ? `<div class="muted">${escapeHtml(entry.detail)}</div>` : ""
           }</div>`
       )
       .join("");
@@ -375,32 +426,23 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     }
 
     const action = target.dataset.action;
-    if (!action || isPending) {
+    if (!action || machine.getSnapshot().machine.isLoading) {
       return;
     }
 
-    const context = machine.getSnapshot().context;
-
     void (async () => {
-      isPending = true;
-      render();
-      try {
-        if (action === "login") await submitLogin(context);
-        if (action === "back") await machine.navigate.goToPreviousStep();
-        if (action === "continue-setup") {
-          await machine.navigate.goToNextStep({
-            run: async ({ snapshot }) => {
-              const confirmed = await authApi.confirmTwoFactorSetup(snapshot.context.qrCode);
-              if (!confirmed) throw new Error("Complete QR enrollment before continuing");
-            }
-          });
-        }
-        if (action === "verify") await submitVerification(context);
-        if (action === "reset") resetJourney();
-      } finally {
-        isPending = false;
-        render();
+      if (action === "login") await submitLogin();
+      if (action === "back") await machine.navigate.goToPreviousStep();
+      if (action === "continue-setup") {
+        await machine.navigate.goToNextStep({
+          run: async ({ snapshot }) => {
+            const confirmed = await authApi.confirmTwoFactorSetup(snapshot.context.qrCode);
+            if (!confirmed) throw new Error("Complete QR enrollment before continuing");
+          }
+        });
       }
+      if (action === "verify") await submitVerification();
+      if (action === "reset") resetJourney();
     })();
   });
 
