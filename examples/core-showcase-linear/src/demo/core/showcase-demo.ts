@@ -5,7 +5,8 @@ import {
   authApi,
   linearDefinition,
   type LoginContext,
-  type LoginStepId
+  type LoginStepId,
+  type LoginTerminationPayloads
 } from "../fixtures/auth-fixtures";
 import { formatJson } from "../fixtures/support";
 
@@ -72,7 +73,10 @@ const describeContextChange = (previous: LoginContext, current: LoginContext): s
 };
 
 export const mountCoreShowcase = (root: HTMLElement) => {
-  const machine = createLinearJourney(linearDefinition, { autoStart: true });
+  const machine = createLinearJourney<LoginStepId, LoginContext, LoginTerminationPayloads>(
+    linearDefinition,
+    { autoStart: true }
+  );
 
   const eventLog: LogEntry[] = [];
   const pushLogEntry = (entry: LogEntry) => {

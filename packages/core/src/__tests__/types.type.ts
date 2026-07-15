@@ -66,13 +66,28 @@ export function linearTypes() {
 }
 
 export function linearOutcomeTypes() {
-  const machine = createLinearJourney({
-    steps: ["form", "result"],
-    context: {},
-    types: {} as {
+  const machine = createLinearJourney<
+    "form" | "result",
+    { draftId: string | null },
+    {
       complete: { receiptId: string };
       terminate: { reason: "blocked" | "cancelled" };
     }
+  >({
+    steps: ["form", "result"],
+    context: { draftId: null }
+  });
+
+  createLinearJourney<"form" | "result", { draftId: string | null }>({
+    // @ts-expect-error explicit step ids reject undeclared steps
+    steps: ["form", "other"],
+    context: { draftId: null }
+  });
+
+  createLinearJourney<"form" | "result", { draftId: string | null }>({
+    steps: ["form", "result"],
+    // @ts-expect-error explicit context rejects the wrong shape
+    context: { draftId: 42 }
   });
 
   machine.controls.complete({ receiptId: "receipt-1" });

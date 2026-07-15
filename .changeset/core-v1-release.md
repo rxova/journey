@@ -32,8 +32,9 @@ Release the final V1 Core API on a new, smaller shared runtime. This is a full r
   of relying on thrown errors or implicit no-ops.
 - Rename lifecycle status `idled` to `idle`, add first-class `paused` state, make completion
   explicit, and store optional completion/termination payloads in `snapshot.machine.outcome`.
-- Allow linear definitions to declare compile-time `complete` and `terminate` payload shapes,
-  typing both lifecycle control arguments and the discriminated terminal outcome in snapshots.
+- Allow `createLinearJourney<StepId, Context, TerminationPayloads>` to enforce declared step ids,
+  context, completion payloads, termination payloads, and the discriminated terminal outcome in
+  snapshots without runtime type-carrier properties.
 - Default `autoStart` to `false`. `start()` is accepted only from `idle`; `restart()` is accepted
   only after completion or termination and restores the initial context and timeline. Termination
   wins over an in-flight transition.

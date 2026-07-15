@@ -34,7 +34,7 @@ export const pluginDefinition = {
     { id: "review", metadata: { label: "Review" } },
     { id: "done", metadata: { label: "Done" } }
   ]
-} satisfies LinearJourneyDefinition<PluginContext>;
+} satisfies LinearJourneyDefinition<PluginStepId, PluginContext>;
 
 const { createStep, to, build } = createGraphJourneyBuilder<{
   context: Record<string, never>;

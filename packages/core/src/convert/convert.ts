@@ -4,7 +4,11 @@ import type {
   GraphStepConfig,
   GraphTransitionCandidate
 } from "../graph/graph.types";
-import type { LinearJourneyDefinition, LinearStepConfig } from "../linear/linear.types";
+import type {
+  JourneyTerminationPayloads,
+  LinearJourneyDefinition,
+  LinearStepConfig
+} from "../linear/linear.types";
 
 export type { LinearToGraphOptions } from "./convert.types";
 
@@ -15,7 +19,7 @@ export type { LinearToGraphOptions } from "./convert.types";
  * hooks, metadata, and context carry over unchanged.
  */
 export function linearToGraphDefinition<TContext, TMeta = Record<string, unknown>>(
-  definition: LinearJourneyDefinition<TContext, TMeta>,
+  definition: LinearJourneyDefinition<string, TContext, JourneyTerminationPayloads, TMeta>,
   options: LinearToGraphOptions = {}
 ): GraphJourneyDefinition<TContext, string, { type: string }, unknown, TMeta> {
   if (definition.steps.length === 0) {

@@ -74,7 +74,7 @@ export const linearDefinition = {
     { id: "verifyCode", metadata: { label: "Verify Code" } },
     { id: "loggedIn", metadata: { label: "Logged In" } }
   ]
-} satisfies LinearJourneyDefinition<LoginContext>;
+} satisfies LinearJourneyDefinition<LoginStepId, LoginContext>;
 
 /**
  * The "headless" scenario: every auth step in one machine, navigated purely by
@@ -93,7 +93,7 @@ export const headlessDefinition = {
     { id: "loggedIn", metadata: { label: "Logged In" } },
     { id: "blocked", metadata: { label: "Blocked" } }
   ]
-} satisfies LinearJourneyDefinition<LoginContext>;
+} satisfies LinearJourneyDefinition<LoginStepId, LoginContext>;
 
 const { createStep, to, build } = createGraphJourneyBuilder<{
   context: LoginContext;

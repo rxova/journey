@@ -133,20 +133,21 @@ new branch and drops the abandoned future.
 Completion and termination set `snapshot.machine.outcome`. Only `restart()` starts a fresh run from
 a terminal status.
 
-Linear definitions can declare terminal payload types without adding runtime configuration:
+Linear factories can declare terminal payload types without adding runtime configuration:
 
 ```ts
-const machine = createLinearJourney({
+type TerminationPayloads = {
+  complete: { receiptId: string };
+  terminate: { reason: "cancelled" };
+};
+
+const machine = createLinearJourney<"form" | "result", {}, TerminationPayloads>({
   steps: ["form", "result"],
-  context: {},
-  types: {} as {
-    complete: { receiptId: string };
-    terminate: { reason: "cancelled" };
-  }
+  context: {}
 });
 ```
 
-The type-only carrier constrains payloads passed to `controls.complete` and `controls.terminate` and
+The third generic constrains payloads passed to `controls.complete` and `controls.terminate` and
 narrows the corresponding `snapshot.machine.outcome` union.
 
 ## Plugins
