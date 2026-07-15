@@ -14,7 +14,9 @@ const Form = () => <Step label="form" />;
 describe("server-side rendering (no window)", () => {
   it("renders the linear journey's first step to a string", () => {
     const html = renderToString(
-      <LinearJourney steps={{ a: A }} header={<p>head</p>} footer={<p>foot</p>} />
+      <LinearJourney header={<p>head</p>} footer={<p>foot</p>}>
+        <A id="a" />
+      </LinearJourney>
     );
     expect(html).toContain("step:a");
     expect(html).toContain("head");

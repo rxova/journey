@@ -1,12 +1,12 @@
 "use client";
 
 import React from "react";
-import { useWizard } from "@rxova/journey-react";
 import { mockApi } from "../api";
-import type { LoginContext } from "../context";
+import { loginJourney } from "../journey";
 
 export const VerifyCode = () => {
-  const { context, updateContext, goToNextStep, goToPreviousStep } = useWizard<LoginContext>();
+  const { context, updateContext, goToNextStep, goToPreviousStep } =
+    loginJourney.useLinearJourney();
   const [loading, setLoading] = React.useState(false);
 
   const handleVerify = async () => {
@@ -17,7 +17,7 @@ export const VerifyCode = () => {
         await goToNextStep();
       } else {
         const nextAttempts = context.attempts + 1;
-        await updateContext((ctx) => ({
+        updateContext((ctx) => ({
           ...ctx,
           error:
             nextAttempts >= 3
@@ -48,7 +48,7 @@ export const VerifyCode = () => {
           value={context.verificationCode}
           onChange={(e) => {
             const verificationCode = e.target.value;
-            void updateContext((ctx) => ({
+            updateContext((ctx) => ({
               ...ctx,
               verificationCode,
               error: null

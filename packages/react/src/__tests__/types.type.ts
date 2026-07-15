@@ -19,19 +19,19 @@ type Expect<T extends true> = T;
 
 const Component = (): null => null;
 
-// ── createLinearJourney infers context and the step-id union from its config ───────
+// ── createLinearJourney curries the context type and the step-id union ──────
 
 export function linearJourneyTypes() {
-  const bundle = createLinearJourneyBundle({
-    context: { email: "" },
-    steps: { intro: Component, details: Component, done: Component }
-  });
+  const bundle = createLinearJourneyBundle<{ email: string }>()(["intro", "details", "done"]);
 
   type Hook = ReturnType<typeof bundle.useLinearJourney>;
   type _ids = Expect<Equal<Hook["activeStepId"], "intro" | "details" | "done">>;
   type _context = Expect<Equal<Hook["context"], { email: string }>>;
 
-  const definition = bundle.toGraphDefinition();
+  type Props = Parameters<typeof bundle.LinearJourney>[0];
+  type _start = Expect<Equal<Props["startStepId"], "intro" | "details" | "done" | undefined>>;
+
+  const definition = bundle.toGraphDefinition({ email: "" });
   type _initial = Expect<Equal<typeof definition.initial, "intro" | "details" | "done">>;
 
   return bundle;

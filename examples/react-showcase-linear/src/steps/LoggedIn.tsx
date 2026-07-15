@@ -1,13 +1,25 @@
 "use client";
 
 import React from "react";
-import { useWizard } from "@rxova/journey-react";
-import type { LoginContext } from "../context";
+import { loginJourney } from "../journey";
 
 export const LoggedIn = () => {
-  const { context, status, resetJourney } = useWizard<LoginContext>();
+  const { context, status, controls } = loginJourney.useLinearJourney();
   const isBlocked = context.attempts >= 3;
-  void status;
+
+  // Entering this step closes the journey: terminated when the account is
+  // blocked, completed otherwise. (Completed machines keep their last step,
+  // so this screen stays rendered.)
+  React.useEffect(() => {
+    if (status !== "running") {
+      return;
+    }
+    if (isBlocked) {
+      controls.terminate();
+    } else {
+      controls.complete();
+    }
+  }, [status, isBlocked, controls]);
 
   return (
     <div className="step">
@@ -27,7 +39,7 @@ export const LoggedIn = () => {
         )}
       </div>
       <div className="actions" style={{ justifyContent: "center" }}>
-        <button className="secondary" onClick={() => void resetJourney()}>
+        <button className="secondary" onClick={() => controls.restart()}>
           Start Over
         </button>
       </div>

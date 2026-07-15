@@ -1,24 +1,26 @@
 "use client";
 
 import React from "react";
-import { useWizard } from "@rxova/journey-react";
 import { useJourneyEvent } from "@rxova/journey-react/headless";
 
-import type { LoginContext } from "../context";
+import { loginJourney } from "../journey";
 
 const EventLog = () => {
-  const { machine, status, snapshot } = useWizard<LoginContext>();
+  const { machine } = loginJourney.useLinearJourney();
   const [events, setEvents] = React.useState<string[]>([]);
 
-  useJourneyEvent(machine, (event) => {
-    setEvents((prev) => [...prev.slice(-19), `${new Date().toLocaleTimeString()} ${event.type}`]);
-  });
+  const log = (entry: string) =>
+    setEvents((prev) => [...prev.slice(-19), `${new Date().toLocaleTimeString()} ${entry}`]);
 
-  React.useEffect(() => {
-    if (status === "idled" && snapshot.history.timeline.length === 1) {
+  useJourneyEvent(machine, "stepEnter", ({ to }) => log(`stepEnter → ${to}`));
+  useJourneyEvent(machine, "statusChange", ({ current }) => {
+    // A restart resets the journey; start the log fresh with it.
+    if (current === "running") {
       setEvents([]);
+      return;
     }
-  }, [snapshot.history.timeline.length, status]);
+    log(`statusChange → ${current}`);
+  });
 
   return (
     <div className="event-log">
@@ -33,7 +35,7 @@ const EventLog = () => {
 };
 
 const ProgressBar = () => {
-  const { activeStepIndex, stepCount } = useWizard<LoginContext>();
+  const { activeStepIndex, stepCount } = loginJourney.useLinearJourney();
   const pct = stepCount > 1 ? (activeStepIndex / (stepCount - 1)) * 100 : 0;
 
   return (
@@ -45,7 +47,7 @@ const ProgressBar = () => {
 
 export const Shell = ({ children }: { children?: React.ReactNode }) => {
   const { snapshot, status, activeStepIndex, stepCount, isFirstStep, isLastStep } =
-    useWizard<LoginContext>();
+    loginJourney.useLinearJourney();
 
   return (
     <div className="layout">
@@ -53,7 +55,9 @@ export const Shell = ({ children }: { children?: React.ReactNode }) => {
         <h1>
           React Showcase: Linear Mode <span className="badge badge-linear">LINEAR</span>
         </h1>
-        <p>Steps are just components inside &lt;Wizard/&gt;; each advances with goToNextStep.</p>
+        <p>
+          Steps are just components inside &lt;LinearJourney/&gt;; each advances with goToNextStep.
+        </p>
       </header>
 
       <div className="card">
