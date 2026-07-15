@@ -1,11 +1,10 @@
 "use client";
 
 import React from "react";
-import { useWizard } from "@rxova/journey-react";
-import type { LoginContext } from "../context";
+import { loginJourney } from "../journey";
 
 export const Setup2fa = () => {
-  const { context, goToNextStep, goToPreviousStep } = useWizard<LoginContext>();
+  const { context, goToNextStep, goToPreviousStep } = loginJourney.useLinearJourney();
 
   return (
     <div className="step">

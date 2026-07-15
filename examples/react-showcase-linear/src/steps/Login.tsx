@@ -1,12 +1,11 @@
 "use client";
 
 import React from "react";
-import { useWizard } from "@rxova/journey-react";
 import { mockApi } from "../api";
-import type { LoginContext } from "../context";
+import { loginJourney } from "../journey";
 
 export const Login = () => {
-  const { context, updateContext, goToNextStep } = useWizard<LoginContext>();
+  const { context, updateContext, goToNextStep } = loginJourney.useLinearJourney();
   const [loading, setLoading] = React.useState(false);
 
   const handleSubmit = async () => {
@@ -15,10 +14,10 @@ export const Login = () => {
       const result = await mockApi.login(context.username, context.password);
       if (result.success) {
         const qrResult = await mockApi.generateQrCode();
-        await updateContext((ctx) => ({ ...ctx, qrCode: qrResult.qrCode, error: null }));
+        updateContext((ctx) => ({ ...ctx, qrCode: qrResult.qrCode, error: null }));
         await goToNextStep();
       } else {
-        await updateContext((ctx) => ({ ...ctx, error: "Login failed" }));
+        updateContext((ctx) => ({ ...ctx, error: "Login failed" }));
       }
     } finally {
       setLoading(false);
@@ -36,7 +35,7 @@ export const Login = () => {
           value={context.username}
           onChange={(e) => {
             const username = e.target.value;
-            void updateContext((ctx) => ({ ...ctx, username }));
+            updateContext((ctx) => ({ ...ctx, username }));
           }}
           placeholder="alice"
         />
@@ -48,7 +47,7 @@ export const Login = () => {
           value={context.password}
           onChange={(e) => {
             const password = e.target.value;
-            void updateContext((ctx) => ({ ...ctx, password }));
+            updateContext((ctx) => ({ ...ctx, password }));
           }}
           placeholder="password"
         />

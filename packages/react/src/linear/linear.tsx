@@ -2,7 +2,7 @@ import React from "react";
 import { createLinearJourney } from "@rxova/journey-core";
 import { errorInDevelopment } from "@rxova/journey-common/dev";
 import { useJourneySnapshot } from "../headless/use-journey-snapshot";
-import { deriveStepsFromChildren, deriveStepsFromObject } from "./derive-steps";
+import { deriveStepsFromChildren } from "./derive-steps";
 import {
   buildLinearSteps,
   buildPersistPlugin,
@@ -40,6 +40,7 @@ const assignMachineRef = <TContext,>(
 type LinearJourneyMachineSetup = {
   machine: LinearJourneyMachine;
   interceptors: InterceptorStore;
+  contextValue: LinearJourneyContextValue;
 };
 
 /**
@@ -94,15 +95,45 @@ const createLinearJourneyMachine = (
   }
 
   const interceptors = createInterceptorStore((error) => onError(error, { phase: "step-handler" }));
-  return { machine, interceptors };
+  return {
+    machine,
+    interceptors,
+    contextValue: {
+      machine,
+      interceptors,
+      metaByStep: new Map(steps.map((step) => [step.id, step.config.meta])),
+      onError
+    }
+  };
+};
+
+/** Internal prop set by createLinearJourney (the typed factory): the declared id set. */
+type LinearJourneyInternalProps<TContext> = LinearJourneyProps<TContext> & {
+  declaredStepIds?: readonly string[];
+};
+
+const assertDeclaredIds = (
+  steps: readonly DerivedLinearJourneyStep[],
+  declared: readonly string[]
+): void => {
+  const derived = new Set(steps.map((step) => step.id));
+  const missing = declared.filter((id) => !derived.has(id));
+  const extra = steps.filter((step) => !declared.includes(step.id)).map((step) => step.id);
+  if (missing.length > 0 || extra.length > 0) {
+    throw new Error(
+      "<LinearJourney> children don't match the step ids declared in createLinearJourney(): " +
+        `${missing.length > 0 ? `missing [${missing.join(", ")}]` : ""}` +
+        `${missing.length > 0 && extra.length > 0 ? "; " : ""}` +
+        `${extra.length > 0 ? `undeclared [${extra.join(", ")}]` : ""}.`
+    );
+  }
 };
 
 const LinearJourneyComponent = <TContext,>(
-  props: LinearJourneyProps<TContext>
+  props: LinearJourneyInternalProps<TContext>
 ): React.ReactElement => {
   const {
     children,
-    steps: stepsProp,
     context,
     startIndex,
     startStepId,
@@ -110,6 +141,7 @@ const LinearJourneyComponent = <TContext,>(
     footer,
     wrapper,
     fallback,
+    onStart,
     onStepChange,
     onStepEnter,
     onStepLeave,
@@ -117,35 +149,35 @@ const LinearJourneyComponent = <TContext,>(
     onError,
     persist,
     plugins,
-    machineRef
+    machineRef,
+    declaredStepIds
   } = props;
 
-  if (children !== undefined && children !== null && stepsProp !== undefined) {
-    throw new Error(
-      "<LinearJourney> accepts either children (step elements) or the `steps` object prop — not both."
-    );
-  }
   if (startIndex !== undefined && startIndex !== 0 && startStepId !== undefined) {
     errorInDevelopment(
       "<LinearJourney> received both startIndex and startStepId; startStepId wins. Remove one."
     );
   }
 
-  const steps: DerivedLinearJourneyStep[] =
-    stepsProp !== undefined
-      ? deriveStepsFromObject(stepsProp as never)
-      : deriveStepsFromChildren(children);
+  // Steps are re-derived every render so the active element always carries the
+  // latest child props, but the machine below is built once from the first
+  // derivation: the id list is frozen at mount.
+  const steps = deriveStepsFromChildren(children);
+  if (declaredStepIds !== undefined) {
+    assertDeclaredIds(steps, declaredStepIds);
+  }
 
   // Callback refs: subscriptions below stay stable across re-renders while
   // always seeing the latest callbacks.
   const callbacksRef = React.useRef({
+    onStart,
     onStepChange,
     onStepEnter,
     onStepLeave,
     onComplete,
     onError
   });
-  callbacksRef.current = { onStepChange, onStepEnter, onStepLeave, onComplete, onError };
+  callbacksRef.current = { onStart, onStepChange, onStepEnter, onStepLeave, onComplete, onError };
   const reportError = React.useCallback(
     (error: unknown, info: { phase: "start" | "navigate" | "step-handler" }) => {
       callbacksRef.current.onError?.(error, info);
@@ -153,23 +185,18 @@ const LinearJourneyComponent = <TContext,>(
     []
   );
 
-  const machineConfigRef = React.useRef({
-    context: (context ?? {}) as unknown,
-    startStepId,
-    startIndex,
-    persist,
-    plugins
-  });
-
   // Machine ownership: lazy ref init so StrictMode's double render creates
-  // exactly one machine, with a re-render bump when a dynamic step change
-  // swaps in a fresh machine.
+  // exactly one machine. Machine, interceptors, and the provided context value
+  // are all fixed for the lifetime of the mount.
   const setupRef = React.useRef<LinearJourneyMachineSetup | null>(null);
   if (setupRef.current === null) {
-    setupRef.current = createLinearJourneyMachine(steps, machineConfigRef.current, reportError);
+    setupRef.current = createLinearJourneyMachine(
+      steps,
+      { context: (context ?? {}) as unknown, startStepId, startIndex, persist, plugins },
+      reportError
+    );
   }
-  const { machine, interceptors } = setupRef.current;
-  const [, forceRender] = React.useReducer((count: number) => count + 1, 0);
+  const { machine, contextValue } = setupRef.current;
 
   // Dispose on real unmount; a StrictMode remount cancels the scheduled
   // disposal so the live machine is preserved.
@@ -188,42 +215,38 @@ const LinearJourneyComponent = <TContext,>(
     };
   }, []);
 
-  // Dynamic/conditional steps: when the derived id list changes, swap to a
-  // fresh machine carrying the current context, re-entering the current step
-  // when it still exists. (Timeline history restarts — the rewritten core has
-  // no snapshot rehydration yet.)
+  // Frozen step list: conditional/dynamic children are not supported — that
+  // flow belongs to the graph tier. The mounted machine keeps running on the
+  // original id list.
   const signature = stepListSignature(steps);
-  const signatureRef = React.useRef(signature);
-  const stepsRef = React.useRef(steps);
-  stepsRef.current = steps;
-  useSafeLayoutEffect(() => {
-    if (signatureRef.current === signature) {
-      return;
-    }
-    signatureRef.current = signature;
-    // The effect only runs while mounted, so the setup ref is always live.
-    const previous = setupRef.current as LinearJourneyMachineSetup;
-    const previousSnapshot = previous.machine.getSnapshot();
-    const currentId = previousSnapshot.currentStep?.id;
-    const nextSteps = stepsRef.current;
-    const next = createLinearJourneyMachine(
-      nextSteps,
-      {
-        ...machineConfigRef.current,
-        context: previousSnapshot.context,
-        startStepId: nextSteps.some((step) => step.id === currentId) ? currentId : undefined,
-        startIndex: undefined
-      },
-      reportError
+  const mountedSignatureRef = React.useRef(signature);
+  if (mountedSignatureRef.current !== signature) {
+    errorInDevelopment(
+      "<LinearJourney> derived a different step id list than it mounted with " +
+        `(mounted "${mountedSignatureRef.current}", now "${signature}"). ` +
+        "The step list is frozen at mount; conditional steps belong to the graph tier. " +
+        "Remount with a `key` to rebuild the journey."
     );
-    setupRef.current = next;
-    previous.machine.dispose();
-    forceRender();
-  }, [signature, reportError]);
+  }
 
-  // Imperative machineRef and event wiring — per machine instance.
+  // Imperative machineRef, onStart, and event wiring.
+  const startReportedRef = React.useRef(false);
   useSafeLayoutEffect(() => {
     assignMachineRef(machineRef, machine as LinearJourneyMachine<TContext>);
+
+    // Once per mounted journey (the ref guard absorbs StrictMode's double
+    // effect). With a non-default start position this reports step 0; the
+    // deferred start navigation lands via onStepChange right after.
+    if (!startReportedRef.current) {
+      startReportedRef.current = true;
+      const startSnapshot = machine.getSnapshot();
+      if (startSnapshot.currentStep !== null) {
+        callbacksRef.current.onStart?.({
+          stepId: startSnapshot.currentStep.id,
+          context: startSnapshot.context as TContext
+        });
+      }
+    }
 
     const subscriptions = machine.subscriptions;
     const unsubscribes = [
@@ -270,42 +293,14 @@ const LinearJourneyComponent = <TContext,>(
     // machineRef identity changes are deliberately not resubscribed on.
   }, [machine]);
 
-  // Keyed cache instead of useMemo: identity is stable per machine + step
-  // list, and there is no ref-derived dependency for the hooks compiler to
-  // distrust.
-  const contextCacheRef = React.useRef<{
-    machine: unknown;
-    signature: string;
-    value: LinearJourneyContextValue;
-  } | null>(null);
-  if (
-    contextCacheRef.current === null ||
-    contextCacheRef.current.machine !== machine ||
-    contextCacheRef.current.signature !== signature
-  ) {
-    contextCacheRef.current = {
-      machine,
-      signature,
-      value: {
-        machine,
-        interceptors,
-        metaByStep: new Map(steps.map((step) => [step.id, step.config.meta])),
-        onError: reportError
-      }
-    };
-  }
-  const contextValue = contextCacheRef.current.value;
-
   const snapshot = useJourneySnapshot(machine);
   const activeStep = steps.find((step) => step.id === snapshot.currentStep?.id);
 
   let activeNode: React.ReactNode;
   if (activeStep) {
-    const stepContent =
-      activeStep.element ?? React.createElement(activeStep.component as React.ComponentType);
     activeNode = (
       <LinearJourneyActiveStepContext.Provider key={activeStep.id} value={activeStep.id}>
-        {stepContent}
+        {activeStep.element}
       </LinearJourneyActiveStepContext.Provider>
     );
   } else {
@@ -330,9 +325,8 @@ type LinearJourneyComponentType = (<TContext = Record<string, never>>(
 };
 
 /**
- * The linear journey tier. Steps are components — as children (each with a
- * mandatory unique `id`, via an `id` prop or a `<LinearJourney.Step id>` wrapper) or
- * as a `steps` object (keys are ids, insertion order is step order).
+ * The linear journey tier. Steps are the children — each with a mandatory
+ * unique `id`, via an `id` prop or a `<LinearJourney.Step id>` wrapper.
  *
  * ```tsx
  * <LinearJourney header={<Progress />} footer={<Nav />}>
@@ -342,9 +336,9 @@ type LinearJourneyComponentType = (<TContext = Record<string, never>>(
  * </LinearJourney>
  * ```
  *
- * No factory, no views map, no provider, no dispose: the machine is created
- * when `<LinearJourney>` mounts (StrictMode-safe) and disposed on unmount. Inside any
- * step, header, or footer, call `useLinearJourney()`.
+ * No provider, no dispose: the machine is created when `<LinearJourney>` mounts
+ * (StrictMode-safe) and disposed on unmount. The step id list is frozen at
+ * mount. Inside any step, header, or footer, call `useLinearJourney()`.
  */
 export const LinearJourney: LinearJourneyComponentType = /*#__PURE__*/ Object.assign(
   LinearJourneyComponent,

@@ -98,7 +98,6 @@ describe("children flattening", () => {
   it("rejects text children and empty step sets", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     expect(() => render(<LinearJourney>just text</LinearJourney>)).toThrow(/must be step elements/);
-    expect(() => render(<LinearJourney steps={{}} />)).toThrow(/at least one step/);
     expect(() => render(<LinearJourney>{null}</LinearJourney>)).toThrow(/at least one step/);
     consoleError.mockRestore();
   });
@@ -164,41 +163,21 @@ describe("navigation edges", () => {
     const boom = new Error("initial step refused to leave");
     const onError = vi.fn();
     render(
-      <LinearJourney
-        startStepId="b"
-        onError={onError}
-        steps={{
-          a: {
-            component: StepA,
-            onLeave: () => {
-              throw boom;
-            }
-          },
-          b: StepB
-        }}
-      />
+      <LinearJourney startStepId="b" onError={onError}>
+        <LinearJourney.Step
+          id="a"
+          onLeave={() => {
+            throw boom;
+          }}
+        >
+          <StepA />
+        </LinearJourney.Step>
+        <StepB id="b" />
+      </LinearJourney>
     );
     await flush();
 
     expect(onError).toHaveBeenCalledWith(boom, { phase: "start" });
-  });
-
-  it("falls back to the first step when a dynamic change removes the current step", async () => {
-    const Dynamic = ({ swap }: { swap: boolean }) => (
-      <LinearJourney footer={<IndexNav />}>
-        {swap ? <StepB id="b" /> : <StepA id="a" />}
-        <LinearJourney.Step id="tail">
-          <p>tail</p>
-        </LinearJourney.Step>
-      </LinearJourney>
-    );
-    const view = render(<Dynamic swap={false} />);
-    await flush();
-    expect(screen.getByTestId("active").textContent).toBe("a");
-
-    view.rerender(<Dynamic swap={true} />);
-    await flush();
-    expect(screen.getByTestId("active").textContent).toBe("b");
   });
 });
 
@@ -226,27 +205,27 @@ describe("render chrome and refs", () => {
 });
 
 describe("createLinearJourney extras", () => {
-  it("threads startStepId, persist, plugins, and the bundle step hook", async () => {
+  it("threads startStepId, persist, and plugins through the typed component's props", async () => {
     const storage = memoryStorage();
-    const handler = vi.fn();
-    const bundle = createLinearJourney({
-      context: { n: 0 },
-      steps: { one: StepA, two: StepB },
-      startStepId: "two",
-      persist: { key: "bundle", storage },
-      plugins: []
-    });
+    const journey = createLinearJourney<{ n: number }>()(["one", "two"]);
 
-    const HookedStep = () => {
-      bundle.useLinearJourneyStep(handler);
-      return <span data-testid="hooked">hooked</span>;
-    };
     const Forward = () => {
-      const journey = bundle.useLinearJourney();
-      return <button onClick={() => void journey.goToPreviousStep()}>rewind</button>;
+      const state = journey.useLinearJourney();
+      return <button onClick={() => void state.goToPreviousStep()}>rewind</button>;
     };
 
-    render(<bundle.LinearJourney footer={<Forward />} />);
+    render(
+      <journey.LinearJourney
+        context={{ n: 0 }}
+        startStepId="two"
+        persist={{ key: "bundle", storage }}
+        plugins={[]}
+        footer={<Forward />}
+      >
+        <StepA id="one" />
+        <StepB id="two" />
+      </journey.LinearJourney>
+    );
     await flush();
     expect(screen.getByTestId("step-b")).toBeTruthy();
     expect(storage.dump().has("bundle")).toBe(true);
@@ -254,7 +233,6 @@ describe("createLinearJourney extras", () => {
     fireEvent.click(screen.getByText("rewind"));
     await flush();
     expect(screen.getByTestId("step-a")).toBeTruthy();
-    void HookedStep;
   });
 
   it("registers no-op handlers without breaking forward navigation", async () => {
@@ -308,18 +286,17 @@ describe("machine error surfacing", () => {
       );
     };
     render(
-      <LinearJourney
-        steps={{
-          a: StepA,
-          failing: {
-            component: Failing,
-            onEnter: () => {
-              throw new Error("enter exploded");
-            }
-          }
-        }}
-        footer={<Report />}
-      />
+      <LinearJourney footer={<Report />}>
+        <StepA id="a" />
+        <LinearJourney.Step
+          id="failing"
+          onEnter={() => {
+            throw new Error("enter exploded");
+          }}
+        >
+          <Failing />
+        </LinearJourney.Step>
+      </LinearJourney>
     );
     await flush();
     expect(screen.getByTestId("machine-error").textContent).toBe("none");
@@ -350,24 +327,26 @@ describe("machine error surfacing", () => {
   });
 });
 
-describe("bundle overrides", () => {
-  it("render-time context overrides win and bundle step hooks run", async () => {
+describe("typed bundle step hooks", () => {
+  it("runs bundle step handlers with the render-time context", async () => {
     const handler = vi.fn();
+    const journey = createLinearJourney<{ n: number }>()(["hooked", "done"]);
     const HookedStep = () => {
-      bundleWithHook.useLinearJourneyStep(handler);
-      const journey = bundleWithHook.useLinearJourney();
-      return <span data-testid="ctx">{journey.context.n}</span>;
+      journey.useLinearJourneyStep(handler);
+      const state = journey.useLinearJourney();
+      return <span data-testid="ctx">{state.context.n}</span>;
     };
-    const bundleWithHook = createLinearJourney({
-      context: { n: 1 },
-      steps: { hooked: HookedStep, done: StepB }
-    });
     const Forward = () => {
-      const journey = bundleWithHook.useLinearJourney();
-      return <button onClick={() => void journey.goToNextStep()}>onward</button>;
+      const state = journey.useLinearJourney();
+      return <button onClick={() => void state.goToNextStep()}>onward</button>;
     };
 
-    render(<bundleWithHook.LinearJourney context={{ n: 42 }} footer={<Forward />} />);
+    render(
+      <journey.LinearJourney context={{ n: 42 }} footer={<Forward />}>
+        <HookedStep id="hooked" />
+        <StepB id="done" />
+      </journey.LinearJourney>
+    );
     await flush();
     expect(screen.getByTestId("ctx").textContent).toBe("42");
 

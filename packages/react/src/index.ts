@@ -5,11 +5,7 @@ export { useLinearJourney } from "./linear/use-linear-journey";
 export { useLinearJourneySelector } from "./linear/use-linear-journey-selector";
 export { useLinearJourneyStep } from "./linear/use-linear-journey-step";
 
-export type {
-  CreateLinearJourneyConfig,
-  LinearJourneyBundle,
-  LinearJourneyBundleProps
-} from "./linear/create-linear-journey";
+export type { LinearJourneyBundle, TypedLinearJourney } from "./linear/create-linear-journey";
 export type {
   UseLinearJourneyResult,
   LinearJourneyMachine,
@@ -19,8 +15,7 @@ export type {
   LinearJourneyStepChange,
   LinearJourneyStepConfig,
   LinearJourneyStepHandler,
-  LinearJourneyStepProps,
-  LinearJourneyStepsProp
+  LinearJourneyStepProps
 } from "./linear/linear.types";
 
 export type {

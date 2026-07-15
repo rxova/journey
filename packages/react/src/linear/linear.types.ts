@@ -39,27 +39,17 @@ export type LinearJourneySnapshot<
   TStepId extends string = string
 > = LinearSnapshot<TContext, TStepId, unknown>;
 
-/** Full per-step configuration accepted by the steps-object form and `<LinearJourney.Step>`. */
+/** Per-step configuration declared on a `<LinearJourney.Step>` wrapper. */
 export type LinearJourneyStepConfig<TContext = unknown> = {
-  component: React.ComponentType;
   meta?: unknown;
   onEnter?: OnEnterHook<TContext, string, never, LinearJourneySnapshot<TContext>>;
   onLeave?: OnLeaveHook<TContext, string, never, LinearJourneySnapshot<TContext>>;
 };
 
-/**
- * The steps-object form: keys are step ids, insertion order is step order,
- * values are bare components or full config objects.
- */
-export type LinearJourneyStepsProp<TContext = unknown> = Record<
-  string,
-  React.ComponentType | LinearJourneyStepConfig<TContext>
->;
-
 /** Payload passed to the LinearJourney-level `onStepChange` callback. */
-export type LinearJourneyStepChange<TContext = unknown> = {
-  fromStepId: string | null;
-  toStepId: string;
+export type LinearJourneyStepChange<TContext = unknown, TStepId extends string = string> = {
+  fromStepId: TStepId | null;
+  toStepId: TStepId;
   fromIndex: number | null;
   toIndex: number;
   direction: "forward" | "backward" | "jump";
@@ -78,18 +68,20 @@ export type LinearJourneyStepHandler<TContext = unknown> = (args: {
   updateContext: (updater: (context: TContext) => TContext) => void;
 }) => void | Promise<void>;
 
-export type LinearJourneyProps<TContext = unknown> = {
-  /** Children form: each child element is a step. Mutually exclusive with `steps`. */
-  children?: React.ReactNode;
-  /** Object form: keys are step ids, insertion order is step order. */
-  steps?: LinearJourneyStepsProp<TContext>;
+export type LinearJourneyProps<TContext = unknown, TStepId extends string = string> = {
+  /**
+   * The steps, one per child element, each with a mandatory unique `id`
+   * (an `id` prop or a `<LinearJourney.Step id>` wrapper). The step list is
+   * frozen at mount: changing the derived id list is a dev-mode error.
+   */
+  children: React.ReactNode;
 
   /** Initial shared state. Lives in the core machine, not in React. */
   context?: TContext;
   /** Zero-based index of the starting step. Default 0. */
   startIndex?: number;
   /** Starting step id; wins over `startIndex` (dev-mode error if both are set). */
-  startStepId?: string;
+  startStepId?: TStepId;
 
   /** Rendered above/below the active step, INSIDE the linear journey context — both may call useLinearJourney(). */
   header?: React.ReactNode;
@@ -99,11 +91,16 @@ export type LinearJourneyProps<TContext = unknown> = {
   /** Shown when no step can render (before start or after terminate). */
   fallback?: React.ReactNode;
 
-  onStepChange?: (change: LinearJourneyStepChange<TContext>) => void;
+  /** Fires once per mounted journey, right after the machine starts on its first step. */
+  onStart?: (args: { stepId: TStepId; context: TContext }) => void;
+  onStepChange?: (change: LinearJourneyStepChange<TContext, TStepId>) => void;
   /** Global lifecycle callbacks; fire for every step, alongside per-step onEnter/onLeave. */
-  onStepEnter?: (args: { stepId: string; context: TContext }) => void;
-  onStepLeave?: (args: { stepId: string; context: TContext }) => void;
-  onComplete?: (args: { context: TContext; snapshot: LinearJourneySnapshot<TContext> }) => void;
+  onStepEnter?: (args: { stepId: TStepId; context: TContext }) => void;
+  onStepLeave?: (args: { stepId: TStepId; context: TContext }) => void;
+  onComplete?: (args: {
+    context: TContext;
+    snapshot: LinearJourneySnapshot<TContext, TStepId>;
+  }) => void;
   onError?: (error: unknown, info: { phase: "start" | "navigate" | "step-handler" }) => void;
 
   /** Sugar over the core persistence plugin. */
@@ -114,11 +111,11 @@ export type LinearJourneyProps<TContext = unknown> = {
 };
 
 /** Props of the `<LinearJourney.Step>` config-only marker element. */
-export type LinearJourneyStepProps<TContext = unknown> = {
-  id: string;
-  meta?: unknown;
-  onEnter?: LinearJourneyStepConfig<TContext>["onEnter"];
-  onLeave?: LinearJourneyStepConfig<TContext>["onLeave"];
+export type LinearJourneyStepProps<
+  TContext = unknown,
+  TStepId extends string = string
+> = LinearJourneyStepConfig<TContext> & {
+  id: TStepId;
   children: React.ReactNode;
 };
 

@@ -84,7 +84,7 @@ describe("<LinearJourney> children form", () => {
     expect(seenProps[0]).toEqual({ flavor: "salt" });
   });
 
-  it("enforces unique mandatory ids and exclusive step sources", () => {
+  it("enforces unique mandatory ids", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     expect(() =>
       render(
@@ -96,13 +96,6 @@ describe("<LinearJourney> children form", () => {
     ).toThrow(/duplicate id "dup"/);
     expect(() =>
       render(
-        <LinearJourney steps={{ a: StepA }}>
-          <StepB id="b" />
-        </LinearJourney>
-      )
-    ).toThrow(/not both/);
-    expect(() =>
-      render(
         <LinearJourney>
           <StepA />
         </LinearJourney>
@@ -112,8 +105,8 @@ describe("<LinearJourney> children form", () => {
   });
 });
 
-describe("<LinearJourney> steps object form", () => {
-  it("uses key order, exposes meta, and supports LinearJourney.Step config", async () => {
+describe("<LinearJourney> step meta and start position", () => {
+  it("exposes meta declared on <LinearJourney.Step>", async () => {
     const Meta = () => {
       const journey = useLinearJourney();
       return (
@@ -123,13 +116,14 @@ describe("<LinearJourney> steps object form", () => {
       );
     };
     render(
-      <LinearJourney
-        steps={{
-          a: { component: StepA, meta: "Alpha" },
-          b: { component: StepB, meta: "Beta" }
-        }}
-        footer={<Meta />}
-      />
+      <LinearJourney footer={<Meta />}>
+        <LinearJourney.Step id="a" meta="Alpha">
+          <StepA />
+        </LinearJourney.Step>
+        <LinearJourney.Step id="b" meta="Beta">
+          <StepB />
+        </LinearJourney.Step>
+      </LinearJourney>
     );
     await flush();
     expect(screen.getByTestId("meta").textContent).toBe("Alpha|Beta");
@@ -137,14 +131,24 @@ describe("<LinearJourney> steps object form", () => {
 
   it("starts at startStepId, which wins over startIndex", async () => {
     render(
-      <LinearJourney steps={{ a: StepA, b: StepB, c: StepC }} startStepId="b" startIndex={2} />
+      <LinearJourney startStepId="b" startIndex={2}>
+        <StepA id="a" />
+        <StepB id="b" />
+        <StepC id="c" />
+      </LinearJourney>
     );
     await flush();
     expect(screen.getByTestId("step-b")).toBeTruthy();
   });
 
   it("starts at startIndex when no startStepId is given", async () => {
-    render(<LinearJourney steps={{ a: StepA, b: StepB, c: StepC }} startIndex={2} />);
+    render(
+      <LinearJourney startIndex={2}>
+        <StepA id="a" />
+        <StepB id="b" />
+        <StepC id="c" />
+      </LinearJourney>
+    );
     await flush();
     expect(screen.getByTestId("step-c")).toBeTruthy();
   });
@@ -198,6 +202,7 @@ describe("useLinearJourneyStep", () => {
 
 describe("linear journey callbacks and machine escape hatches", () => {
   it("fires step callbacks with directions and completion", async () => {
+    const onStart = vi.fn();
     const onStepChange = vi.fn();
     const onStepEnter = vi.fn();
     const onStepLeave = vi.fn();
@@ -207,6 +212,7 @@ describe("linear journey callbacks and machine escape hatches", () => {
     render(
       <LinearJourney
         context={{ n: 0 }}
+        onStart={onStart}
         onStepChange={onStepChange}
         onStepEnter={onStepEnter}
         onStepLeave={onStepLeave}
@@ -221,6 +227,8 @@ describe("linear journey callbacks and machine escape hatches", () => {
     );
     await flush();
     expect(machineRef.current?.getSnapshot().currentStep?.id).toBe("a");
+    expect(onStart).toHaveBeenCalledTimes(1);
+    expect(onStart).toHaveBeenCalledWith({ stepId: "a", context: { n: 0 } });
 
     fireEvent.click(screen.getByText("next"));
     await flush();
@@ -288,7 +296,9 @@ describe("linear journey callbacks and machine escape hatches", () => {
     expect(await machine.navigate.goToNextStep()).toEqual({ ok: false, reason: "disposed" });
   });
 
-  it("swaps machines when the derived step list changes, keeping position and context", async () => {
+  it("freezes the step list at mount: a changed id list warns in dev and is ignored", async () => {
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const Dynamic = ({ extended }: { extended: boolean }) => (
       <LinearJourney context={{ n: 5 }} footer={<Nav />}>
         <StepA id="a" />
@@ -298,39 +308,57 @@ describe("linear journey callbacks and machine escape hatches", () => {
     );
     const view = render(<Dynamic extended={false} />);
     await flush();
-    fireEvent.click(screen.getByText("next"));
-    await flush();
-    expect(screen.getByTestId("position").textContent).toBe("b:2/2");
+    expect(screen.getByTestId("position").textContent).toBe("a:1/2");
 
     view.rerender(<Dynamic extended={true} />);
     await flush();
-    expect(screen.getByTestId("position").textContent).toBe("b:2/3");
+    expect(screen.getByTestId("position").textContent).toBe("a:1/2");
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining("frozen at mount"));
+    consoleError.mockRestore();
+    delete (globalThis as { __DEV__?: boolean }).__DEV__;
   });
 });
 
-describe("createLinearJourney bundle", () => {
-  it("returns a pre-bound LinearJourney with typed hooks and a graph converter", async () => {
-    const bundle = createLinearJourney({
-      context: { n: 1 },
-      steps: { intro: StepA, details: StepB }
-    });
+describe("createLinearJourney typed bundle", () => {
+  it("curries context and step-id types over the same runtime and converts to graph", async () => {
+    const journey = createLinearJourney<{ n: number }>()(["intro", "details"]);
 
     const BundleFooter = () => {
-      const journey = bundle.useLinearJourney();
-      const stepCount = bundle.useLinearJourneySelector((snapshot) => snapshot.steps.totalSteps);
+      const state = journey.useLinearJourney();
+      const stepCount = journey.useLinearJourneySelector((snapshot) => snapshot.steps.totalSteps);
       return (
         <span data-testid="bundle">
-          {journey.activeStepId}/{stepCount}
+          {state.activeStepId}/{stepCount}/{state.context.n}
         </span>
       );
     };
-    render(<bundle.LinearJourney footer={<BundleFooter />} />);
+    render(
+      <journey.LinearJourney context={{ n: 1 }} footer={<BundleFooter />}>
+        <StepA id="intro" />
+        <StepB id="details" />
+      </journey.LinearJourney>
+    );
     await flush();
-    expect(screen.getByTestId("bundle").textContent).toBe("intro/2");
+    expect(screen.getByTestId("bundle").textContent).toBe("intro/2/1");
 
-    const definition = bundle.toGraphDefinition();
+    const definition = journey.toGraphDefinition({ n: 1 });
     expect(definition.initial).toBe("intro");
     expect(definition.transitions.NEXT).toMatchObject([{ from: "intro", to: "details" }]);
+  });
+
+  it("rejects children whose ids don't match the declaration, and duplicate declarations", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const journey = createLinearJourney()(["intro", "details"]);
+    expect(() =>
+      render(
+        <journey.LinearJourney>
+          <StepA id="intro" />
+          <StepB id="detials" />
+        </journey.LinearJourney>
+      )
+    ).toThrow(/missing \[details\]; undeclared \[detials\]/);
+    expect(() => createLinearJourney()(["dup", "dup"])).toThrow(/must be unique/);
+    consoleError.mockRestore();
   });
 });
 

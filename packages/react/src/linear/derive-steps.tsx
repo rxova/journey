@@ -1,19 +1,13 @@
 import React from "react";
 import { LinearJourneyStep } from "./linear-journey-step";
-import type {
-  LinearJourneyStepConfig,
-  LinearJourneyStepProps,
-  LinearJourneyStepsProp
-} from "./linear.types";
+import type { LinearJourneyStepConfig, LinearJourneyStepProps } from "./linear.types";
 
-/** A resolved linear journey step: stable id plus how to render and configure it. */
+/** A resolved linear journey step: stable id, the element to render, and its config. */
 export type DerivedLinearJourneyStep = {
   id: string;
-  /** Children form: the element to render (already unwrapped from LinearJourney.Step). */
-  element?: React.ReactElement;
-  /** Object form: the component to instantiate. */
-  component?: React.ComponentType;
-  config: Omit<LinearJourneyStepConfig, "component">;
+  /** The element to render (already unwrapped from LinearJourney.Step). */
+  element: React.ReactElement;
+  config: LinearJourneyStepConfig;
 };
 
 const describeChild = (child: React.ReactElement, position: number): string => {
@@ -50,13 +44,13 @@ const assertUniqueId = (id: string, seen: Set<string>, where: string) => {
   if (seen.has(id)) {
     throw new Error(
       `<LinearJourney> step ids must be unique; duplicate id "${id}" at ${where}. ` +
-        "Every step declares a mandatory unique id (an `id` prop on the child, a <LinearJourney.Step id>, or the steps-object key)."
+        "Every step declares a mandatory unique id (an `id` prop on the child or a <LinearJourney.Step id>)."
     );
   }
   seen.add(id);
 };
 
-/** Derives the step list from the children form (id prop or <LinearJourney.Step> wrapper). */
+/** Derives the step list from the children (id prop or <LinearJourney.Step> wrapper). */
 export const deriveStepsFromChildren = (children: React.ReactNode): DerivedLinearJourneyStep[] => {
   const elements = flattenChildren(children);
   const seen = new Set<string>();
@@ -107,23 +101,5 @@ export const deriveStepsFromChildren = (children: React.ReactNode): DerivedLinea
       element: React.createElement(element.type, componentProps),
       config: {}
     };
-  });
-};
-
-/** Derives the step list from the steps-object form (keys are ids, insertion order is step order). */
-export const deriveStepsFromObject = (
-  steps: LinearJourneyStepsProp<never>
-): DerivedLinearJourneyStep[] => {
-  const entries = Object.entries(steps as unknown as LinearJourneyStepsProp);
-  if (entries.length === 0) {
-    throw new Error("<LinearJourney> steps object must declare at least one step.");
-  }
-
-  return entries.map(([id, value]) => {
-    if (typeof value === "function" || !("component" in value)) {
-      return { id, component: value as React.ComponentType, config: {} };
-    }
-    const { component, ...config } = value as LinearJourneyStepConfig;
-    return { id, component, config };
   });
 };
