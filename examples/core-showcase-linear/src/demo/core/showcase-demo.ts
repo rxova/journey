@@ -115,6 +115,14 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
   const currentStepId = (): LoginStepId =>
     (machine.getSnapshot().currentStep?.id ?? "login") as LoginStepId;
 
+  const finishJourney = (loggedInStatus: LoginContext["loggedInStatus"]): void => {
+    if (loggedInStatus === "loggedIn") {
+      machine.controls.complete({ loggedInStatus });
+    } else if (loggedInStatus === "blocked") {
+      machine.controls.terminate({ loggedInStatus });
+    }
+  };
+
   root.addEventListener("input", (event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) {
@@ -188,7 +196,10 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
       };
       const pair = eventByStep[stepId];
       if (pair) {
-        await machine.send(result.success ? pair[0] : pair[1]);
+        const navigation = await machine.send(result.success ? pair[0] : pair[1]);
+        if (navigation.ok) {
+          finishJourney(result.loggedInStatus);
+        }
       }
       return;
     }
@@ -210,20 +221,30 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
 
     if (mode === "linear") {
       if (result.success || result.loggedInStatus === "blocked") {
-        await machine.navigate.goToNextStep();
+        const navigation = await machine.navigate.goToNextStep();
+        if (navigation.ok) {
+          finishJourney(result.loggedInStatus);
+        }
       }
       return;
     }
 
     if (result.success) {
-      await machine.navigate.goToStepById("loggedIn");
+      const navigation = await machine.navigate.goToStepById("loggedIn");
+      if (navigation.ok) {
+        finishJourney(result.loggedInStatus);
+      }
     } else if (result.loggedInStatus === "blocked") {
-      await machine.navigate.goToStepById("blocked");
+      const navigation = await machine.navigate.goToStepById("blocked");
+      if (navigation.ok) {
+        finishJourney(result.loggedInStatus);
+      }
     }
   };
 
   const resetJourney = () => {
-    if (machine.getSnapshot().status !== "terminated") {
+    const status = machine.getSnapshot().status;
+    if (status !== "completed" && status !== "terminated") {
       machine.controls.terminate();
     }
     machine.controls.restart();
