@@ -31,6 +31,7 @@ import {
   hasMissingRequiredFields,
   isLifecycleOperationDisabled
 } from "../src/panel/components/commands/commands";
+import { createGraphSnapshot } from "./fixtures";
 
 const coreFeatures: JourneyDevtoolsMachineFeatureDescriptor[] = [
   {
@@ -140,7 +141,7 @@ const registerEnvelope = (
   machineId: string,
   timestamp: number,
   currentStepId: string,
-  status: "idled" | "running" | "completed" | "terminated" = "running"
+  status: "idle" | "running" | "completed" | "terminated" = "running"
 ): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "register" }> => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
   version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
@@ -156,25 +157,13 @@ const registerEnvelope = (
     mode: "graph",
     stepIds: ["start", "review", "done"],
     eventTypes: ["journey.start", "review.submit"],
-    eventTypesBySource: {
-      start: ["journey.start"],
-      review: ["review.submit"]
-    },
-    goToStepTargetsBySource: {
-      start: ["review"],
-      review: ["done"]
-    },
     features: coreFeatures
   },
-  snapshot: {
-    type: "graph",
-    currentStepId,
-    history: { timeline: [currentStepId], index: 0 },
-    context: {},
-    visited: { [currentStepId]: true },
+  snapshot: createGraphSnapshot(currentStepId, {
     status,
-    async: { isLoading: false, byStep: {} }
-  }
+    availableEvents: currentStepId === "start" ? ["journey.start"] : ["review.submit"],
+    availableSteps: currentStepId === "start" ? ["review"] : ["done"]
+  })
 });
 
 const snapshotEnvelope = (
@@ -182,7 +171,7 @@ const snapshotEnvelope = (
   timestamp: number,
   timeline: string[],
   currentStepId: string,
-  status: "idled" | "running" | "completed" | "terminated" = "running"
+  status: "idle" | "running" | "completed" | "terminated" = "running"
 ): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "snapshot" }> => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
   version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
@@ -190,15 +179,7 @@ const snapshotEnvelope = (
   kind: "snapshot",
   machineId,
   timestamp,
-  snapshot: {
-    type: "graph",
-    currentStepId,
-    history: { timeline, index: timeline.length - 1 },
-    context: {},
-    visited: Object.fromEntries(timeline.map((stepId) => [stepId, true])),
-    status,
-    async: { isLoading: false, byStep: {} }
-  }
+  snapshot: createGraphSnapshot(currentStepId, { timeline, status })
 });
 
 describe("panel state and command helpers", () => {
@@ -408,7 +389,7 @@ describe("panel state and command helpers", () => {
 
     const machine = state.machines["machine-a"]!;
     expect(machine.followLatest).toBe(false);
-    expect(selectDisplayedSnapshot(machine)?.currentStepId).toBe("start");
+    expect(selectDisplayedSnapshot(machine)?.currentStep?.id).toBe("start");
     expect(selectSelectedTimelineEntry(machine)?.label).toBe("@@INIT");
   });
 
@@ -444,8 +425,8 @@ describe("panel state and command helpers", () => {
     const machine = state.machines["machine-a"]!;
     expect(selectActiveMachine({ ...state, selectedMachineId: "missing" })).toBeNull();
     expect(selectSelectedTimelineEntry(machine)?.label).toBe("SNAPSHOT/review");
-    expect(selectDisplayedSnapshot(machine)?.currentStepId).toBe("review");
-    expect(selectSelectedDiff(machine).changed.currentStepId).toEqual({
+    expect(selectDisplayedSnapshot(machine)?.currentStep?.id).toBe("review");
+    expect(selectSelectedDiff(machine).changed["currentStep.id"]).toEqual({
       before: "start",
       after: "review"
     });
@@ -519,7 +500,7 @@ describe("panel state and command helpers", () => {
 
     const machine = state.machines["machine-a"]!;
     expect(machine.followLatest).toBe(true);
-    expect(selectDisplayedSnapshot(machine)?.currentStepId).toBe("review");
+    expect(selectDisplayedSnapshot(machine)?.currentStep?.id).toBe("review");
   });
 
   it("clears machines and selection on disconnect reset", () => {

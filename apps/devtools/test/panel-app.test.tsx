@@ -12,6 +12,7 @@ import {
 } from "@rxova/journey-devtools-bridge";
 import { JOURNEY_DEVTOOLS_PANEL_PORT } from "../src/shared";
 import { App } from "../src/panel/App";
+import { createGraphSnapshot } from "./fixtures";
 
 type Listener<TArgs extends unknown[]> = (...args: TArgs) => void;
 
@@ -61,18 +62,13 @@ class MockPort {
   }
 }
 
-const createSnapshot = (currentStepId: string): JourneyDevtoolsSerializableSnapshot => ({
-  type: "graph",
-  currentStepId,
-  history: {
+const createSnapshot = (currentStepId: string): JourneyDevtoolsSerializableSnapshot =>
+  createGraphSnapshot(currentStepId, {
     timeline: currentStepId === "start" ? ["start"] : ["start", currentStepId],
-    index: currentStepId === "start" ? 0 : 1
-  },
-  context: { count: currentStepId.length },
-  visited: currentStepId === "start" ? { start: true } : { start: true, [currentStepId]: true },
-  status: "running",
-  async: { isLoading: false, byStep: {} }
-});
+    context: { count: currentStepId.length },
+    availableEvents: currentStepId === "start" ? ["submitLogin"] : [],
+    availableSteps: currentStepId === "start" ? ["review"] : []
+  });
 
 const createRegisterEnvelope = (machineId: string): JourneyDevtoolsBridgeEnvelope => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
@@ -89,8 +85,6 @@ const createRegisterEnvelope = (machineId: string): JourneyDevtoolsBridgeEnvelop
     mode: "graph",
     stepIds: ["start", "review"],
     eventTypes: ["submitLogin"],
-    eventTypesBySource: { start: ["submitLogin"] },
-    goToStepTargetsBySource: { start: ["review"] },
     features: [
       {
         id: "core",

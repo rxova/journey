@@ -1,26 +1,19 @@
 import { describe, expect, it } from "vitest";
-import type { JourneyDevtoolsSerializableSnapshot } from "@rxova/journey-devtools-bridge";
 import { INITIAL_SNAPSHOT } from "../src/panel/store";
 import { getSnapshotCurrentStepId } from "../src/panel/utils/snapshot";
+import { createGraphSnapshot } from "./fixtures";
 
 describe("getSnapshotCurrentStepId", () => {
   it("reads the current v7 step", () => {
-    const snapshot: JourneyDevtoolsSerializableSnapshot = {
-      ...INITIAL_SNAPSHOT,
-      currentStep: {
-        id: "review",
-        metadata: null,
-        isFirstTimeVisit: true,
-        async: { isLoading: false, isSuccess: true, isError: false, error: null },
-        isTerminal: false
-      }
-    };
+    const snapshot = createGraphSnapshot("review");
 
     expect(getSnapshotCurrentStepId(snapshot)).toBe("review");
   });
 
   it("falls back to legacy snapshot ids and handles an idle v7 snapshot", () => {
-    const legacySnapshot = { currentStepId: "legacy" } as JourneyDevtoolsSerializableSnapshot;
+    const legacySnapshot = { currentStepId: "legacy" } as unknown as Parameters<
+      typeof getSnapshotCurrentStepId
+    >[0];
 
     expect(getSnapshotCurrentStepId(legacySnapshot)).toBe("legacy");
     expect(getSnapshotCurrentStepId(INITIAL_SNAPSHOT)).toBeNull();

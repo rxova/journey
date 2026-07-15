@@ -18,6 +18,7 @@ import {
   isBackgroundToContentMessage,
   isPanelToBackgroundMessage
 } from "../src/shared";
+import { createGraphSnapshot } from "./fixtures";
 
 const setNativeValue = (element: HTMLInputElement | HTMLTextAreaElement, value: string) => {
   const prototype = Object.getPrototypeOf(element) as
@@ -149,27 +150,12 @@ const registerEnvelope = (): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "reg
     mode: "graph",
     stepIds: ["start", "review", "done"],
     eventTypes: ["journey.start", "review.submit"],
-    eventTypesBySource: {
-      start: ["journey.start"],
-      review: ["review.submit"],
-      "*": ["journey.start"]
-    },
-    goToStepTargetsBySource: {
-      start: ["review"],
-      review: ["done"],
-      "*": ["done"]
-    },
     features
   },
-  snapshot: {
-    type: "graph",
-    currentStepId: "start",
-    history: { timeline: ["start"], index: 0 },
-    context: {},
-    visited: { start: true },
-    status: "running",
-    async: { isLoading: false, byStep: {} }
-  }
+  snapshot: createGraphSnapshot("start", {
+    availableEvents: ["journey.start"],
+    availableSteps: ["review", "done"]
+  })
 });
 
 const operationResultEnvelope = (): Extract<
@@ -186,24 +172,15 @@ const operationResultEnvelope = (): Extract<
   operationId: "core.goToNextStep",
   result: {
     kind: "snapshot",
-    snapshot: {
-      type: "graph",
-      currentStepId: "review",
-      history: { timeline: ["start", "review"], index: 1 },
-      context: {},
-      visited: { start: true, review: true },
-      status: "running",
-      async: { isLoading: false, byStep: {} }
-    },
-    transitioned: true,
-    transitionId: "goToNextStep"
+    snapshot: createGraphSnapshot("review", { timeline: ["start", "review"] }),
+    transitioned: true
   }
 });
 
 const liveSnapshotEnvelope = (
   timestamp = 1002,
   currentStepId: "start" | "review" | "done" = "review",
-  status: "idled" | "running" | "completed" | "terminated" = "running"
+  status: "idle" | "running" | "completed" | "terminated" = "running"
 ): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "snapshot" }> => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
   version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
@@ -211,18 +188,10 @@ const liveSnapshotEnvelope = (
   kind: "snapshot",
   machineId: "machine-1",
   timestamp,
-  snapshot: {
-    type: "graph",
-    currentStepId,
-    history: {
-      timeline: currentStepId === "start" ? ["start"] : ["start", currentStepId],
-      index: currentStepId === "start" ? 0 : 1
-    },
-    context: {},
-    visited: currentStepId === "start" ? { start: true } : { start: true, [currentStepId]: true },
-    status,
-    async: { isLoading: false, byStep: {} }
-  }
+  snapshot: createGraphSnapshot(currentStepId, {
+    timeline: currentStepId === "start" ? ["start"] : ["start", currentStepId],
+    status
+  })
 });
 
 describe("generic devtools operations", () => {
@@ -274,10 +243,10 @@ describe("generic devtools operations", () => {
     if (!machine) {
       throw new Error("expected machine state");
     }
-    expect(machine.snapshot.currentStepId).toBe("review");
+    expect(machine.snapshot.currentStep?.id).toBe("review");
     const lastEntry = machine.timelineEntries[machine.timelineEntries.length - 1];
     expect(lastEntry?.label).toBe("OP/core.goToNextStep");
-    expect(lastEntry?.meta.transitionId).toBe("goToNextStep");
+    expect(lastEntry?.meta).not.toHaveProperty("transitionId");
   });
 
   it("renders generic feature-driven controls and dispatches invocations", async () => {
@@ -410,15 +379,7 @@ describe("generic devtools operations", () => {
         operationId: "core.resetJourney",
         result: {
           kind: "snapshot",
-          snapshot: {
-            type: "graph",
-            currentStepId: "start",
-            history: { timeline: ["start"], index: 0 },
-            context: {},
-            visited: { start: true },
-            status: "idled",
-            async: { isLoading: false, byStep: {} }
-          }
+          snapshot: createGraphSnapshot(null, { status: "idle" })
         }
       }
     });

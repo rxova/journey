@@ -25,6 +25,7 @@ import { PanelHeader } from "../src/panel/components/PanelHeader";
 import { SectionErrorBoundary } from "../src/panel/components/SectionErrorBoundary";
 import { TimelineInspector } from "../src/panel/components/TimelineInspector";
 import { TimelineList } from "../src/panel/components/timeline/TimelineList";
+import { createGraphSnapshot } from "./fixtures";
 
 const panelProviderMocks = vi.hoisted(() => ({
   usePanelState: vi.fn(),
@@ -92,20 +93,12 @@ const setInputValue = async (
   });
 };
 
-const snapshot: JourneyDevtoolsSerializableSnapshot = {
-  type: "graph",
-  currentStepId: "start",
-  history: { timeline: ["start", "review"], index: 0 },
+const snapshot: JourneyDevtoolsSerializableSnapshot = createGraphSnapshot("start", {
+  timeline: ["start", "review"],
   context: { attempts: 1 },
-  visited: { start: true, review: true },
-  status: "running",
-  async: {
-    isLoading: false,
-    byStep: {
-      start: { phase: "idle", eventType: null, transitionId: null, error: null }
-    }
-  }
-};
+  availableEvents: ["submitLogin"],
+  availableSteps: ["review"]
+});
 
 const diff: JourneyPanelStructuredDiff = {
   added: { "context.newFlag": true },
@@ -128,10 +121,10 @@ const createTimelineEntry = (
   requestId: null,
   invocation: null,
   envelopeKind: "snapshot",
-  snapshot: {
-    ...snapshot,
-    currentStepId: "review"
-  },
+  snapshot: createGraphSnapshot("review", {
+    timeline: ["start", "review"],
+    context: { attempts: 1 }
+  }),
   actionPayload: { type: "SNAPSHOT/review" },
   meta: { machineId: "m1" },
   ...overrides
@@ -148,8 +141,6 @@ const createMachineState = (
     mode: "graph",
     stepIds: ["start", "review"],
     eventTypes: ["submitLogin"],
-    eventTypesBySource: { start: ["submitLogin"] },
-    goToStepTargetsBySource: { start: ["review"] },
     features: [
       {
         id: "core",
@@ -474,7 +465,7 @@ describe("panel components", () => {
       throw new Error("missing snapshot tab");
     }
     await click(snapshotTab);
-    expect(view.container.textContent).toContain('"currentStepId": "start"');
+    expect(view.container.textContent).toContain('"id": "start"');
 
     const diffTab = Array.from(view.container.querySelectorAll("button")).find(
       (button) => button.textContent === "Diff"

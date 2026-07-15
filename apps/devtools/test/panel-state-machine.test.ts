@@ -7,7 +7,6 @@ import {
   type JourneyDevtoolsBridgeEnvelope,
   type JourneyDevtoolsSerializableSnapshot
 } from "@rxova/journey-devtools-bridge";
-import type { JourneyJsonObject } from "@rxova/journey-core";
 import {
   INITIAL_SNAPSHOT,
   MAX_MACHINE_TIMELINE_ENTRIES,
@@ -34,26 +33,21 @@ import {
   replaceTimelineEntry,
   resolveSnapshotAtIndex
 } from "../src/panel/state/timeline";
+import { createGraphSnapshot } from "./fixtures";
+
+type TestContext = Record<string, unknown>;
 
 const createSnapshot = (
   currentStepId: string,
-  context: JourneyJsonObject = {},
-  status: "idled" | "running" | "completed" | "terminated" = "running"
-): JourneyDevtoolsSerializableSnapshot => ({
-  type: "graph",
-  currentStepId,
-  history: { timeline: [currentStepId], index: 0 },
-  context,
-  visited: { [currentStepId]: true },
-  status,
-  async: { isLoading: false, byStep: {} }
-});
+  context: TestContext = {},
+  status: "idle" | "running" | "completed" | "terminated" = "running"
+): JourneyDevtoolsSerializableSnapshot => createGraphSnapshot(currentStepId, { context, status });
 
 const createRegisterEnvelope = (
   machineId: string,
   timestamp: number,
   currentStepId: string,
-  context: JourneyJsonObject = {}
+  context: TestContext = {}
 ): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "register" }> => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
   version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
@@ -75,7 +69,7 @@ const createSnapshotEnvelope = (
   machineId: string,
   timestamp: number,
   currentStepId: string,
-  context: JourneyJsonObject = {}
+  context: TestContext = {}
 ): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "snapshot" }> => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
   version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
@@ -120,8 +114,7 @@ const createOperationResultEnvelope = (
     ? {
         kind: "snapshot",
         snapshot,
-        transitioned: true,
-        transitionId: operationId
+        transitioned: true
       }
     : {
         kind: "snapshot",
@@ -154,7 +147,7 @@ const createOperationErrorEnvelope = (
 
 const createMachine = (
   currentStepId = "start",
-  context: JourneyJsonObject = {}
+  context: TestContext = {}
 ): JourneyPanelMachineState =>
   buildJourneyMachineState("machine-1", createSnapshot(currentStepId, context));
 
@@ -198,10 +191,10 @@ describe("panel state reducer and selectors", () => {
 
     const machine = state.machines["machine-1"];
     expect(machine?.pendingCommandsByRequestId).toEqual({});
-    expect(machine?.snapshot.currentStepId).toBe("review");
+    expect(machine?.snapshot.currentStep?.id).toBe("review");
     expect(machine?.timelineEntries).toHaveLength(2);
     expect(machine?.timelineEntries[1]?.id).toBe(queuedEntryId);
-    expect(machine?.timelineEntries[1]?.meta.transitionId).toBe("core.goToNextStep");
+    expect(machine?.timelineEntries[1]?.meta).not.toHaveProperty("transitionId");
   });
 
   it("keeps a newer snapshot when an older operation result arrives later", () => {
@@ -233,7 +226,7 @@ describe("panel state reducer and selectors", () => {
       )
     });
 
-    expect(state.machines["machine-1"]?.snapshot.currentStepId).toBe("done");
+    expect(state.machines["machine-1"]?.snapshot.currentStep?.id).toBe("done");
     expect(state.machines["machine-1"]?.snapshot.context).toEqual({ count: 9 });
   });
 
@@ -309,7 +302,7 @@ describe("panel state reducer and selectors", () => {
     const machine = selectActiveMachine(state);
     expect(machine?.selectedTimelineIndex).toBe(1);
     expect(selectSelectedTimelineEntry(machine)?.label).toBe("SNAPSHOT/review");
-    expect(selectDisplayedSnapshot(machine)?.currentStepId).toBe("review");
+    expect(selectDisplayedSnapshot(machine)?.currentStep?.id).toBe("review");
   });
 
   it("leaves state unchanged for missing-machine reducer actions", () => {
@@ -436,13 +429,13 @@ describe("panel state reducer and selectors", () => {
 
     expect(selectSelectedDiff(machine)).toEqual({
       added: {
-        "visited.review": true
+        "history.visited.review": true
       },
       removed: {
-        "visited.start": true
+        "history.visited.start": true
       },
       changed: {
-        currentStepId: { before: "start", after: "review" },
+        "currentStep.id": { before: "start", after: "review" },
         "history.timeline[0]": { before: "start", after: "review" },
         "context.count": { before: 0, after: 1 }
       }
@@ -529,13 +522,13 @@ describe("panel timeline helpers", () => {
       createMachine("unknown"),
       createRegisterEnvelope("machine-1", 1000, "start", { count: 0 })
     );
-    expect(registered.snapshot.currentStepId).toBe("start");
+    expect(registered.snapshot.currentStep?.id).toBe("start");
 
     const withSnapshot = applyMachineUpdateForEnvelope(
       registered,
       createSnapshotEnvelope("machine-1", 1001, "review", { count: 1 })
     );
-    expect(withSnapshot.snapshot.currentStepId).toBe("review");
+    expect(withSnapshot.snapshot.currentStep?.id).toBe("review");
 
     const suppressed = applyMachineUpdateForEnvelope(
       withSnapshot,
@@ -548,7 +541,7 @@ describe("panel timeline helpers", () => {
       ),
       { applyOperationResultSnapshot: false }
     );
-    expect(suppressed.snapshot.currentStepId).toBe("review");
+    expect(suppressed.snapshot.currentStep?.id).toBe("review");
 
     const dataResult = applyMachineUpdateForEnvelope(suppressed, {
       channel: JOURNEY_DEVTOOLS_CHANNEL,
@@ -561,7 +554,7 @@ describe("panel timeline helpers", () => {
       operationId: "custom.inspect",
       result: { kind: "data", data: { ok: true } }
     });
-    expect(dataResult.snapshot.currentStepId).toBe("review");
+    expect(dataResult.snapshot.currentStep?.id).toBe("review");
 
     const observed = applyMachineUpdateForEnvelope(
       dataResult,
@@ -789,10 +782,10 @@ describe("panel timeline helpers", () => {
       }
     ];
 
-    expect(resolveSnapshotAtIndex(entries, 2)?.currentStepId).toBe("review");
+    expect(resolveSnapshotAtIndex(entries, 2)?.currentStep?.id).toBe("review");
     expect(resolveSnapshotAtIndex(entries, 0)).toBeNull();
     expect(resolveSnapshotAtIndex(entries, -1)).toBeNull();
-    expect(resolveSnapshotAtIndex(entries, 99)?.currentStepId).toBe("review");
+    expect(resolveSnapshotAtIndex(entries, 99)?.currentStep?.id).toBe("review");
   });
 });
 
@@ -835,7 +828,7 @@ describe("panel selectors", () => {
       displayLimit: null
     };
 
-    expect(selectActiveMachine(state)?.snapshot.currentStepId).toBe("review");
+    expect(selectActiveMachine(state)?.snapshot.currentStep?.id).toBe("review");
     expect(selectVisibleTimelineEntries(machine.timelineEntries, null)).toHaveLength(2);
     expect(
       selectVisibleTimelineEntries(machine.timelineEntries, 1).map((entry) => entry.id)
