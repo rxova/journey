@@ -1,28 +1,13 @@
-import { createGraphJourney, createLinearJourney } from "@rxova/journey-core";
-import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
-import type {
-  GraphJourneyMachine,
-  JourneySnapshot,
-  JourneySubscriptionEvent,
-  LinearJourneyMachine
-} from "@rxova/journey-core";
+import { createLinearJourney } from "@rxova/journey-core";
+import type { JourneySnapshot, JourneySubscriptionEvent } from "@rxova/journey-core";
 import "../styles/demo.css";
 import {
   authApi,
-  graphDefinition,
-  headlessDefinition,
   linearDefinition,
-  type AuthEvent,
   type LoginContext,
   type LoginStepId
 } from "../fixtures/auth-fixtures";
 import { formatJson } from "../fixtures/support";
-
-type Mode = "linear" | "graph" | "headless";
-
-type ShowcaseMachine =
-  | LinearJourneyMachine<LoginContext, LoginStepId>
-  | GraphJourneyMachine<LoginContext, LoginStepId, AuthEvent>;
 
 const OBSERVED_EVENTS: readonly JourneySubscriptionEvent[] = [
   "statusChange",
@@ -51,40 +36,8 @@ const describeContextChange = (previous: LoginContext, current: LoginContext): s
     .join(", ");
 };
 
-const badgeClass: Record<Mode, string> = {
-  linear: "badge-linear",
-  graph: "badge-graph",
-  headless: "badge-headless"
-};
-
-const titles: Record<Mode, string> = {
-  linear: "Core Showcase Linear",
-  graph: "Core Showcase Graph",
-  headless: "Core Showcase Headless"
-};
-
-const subtitles: Record<Mode, string> = {
-  linear: "Declared order drives goToNextStep; guards and hooks live on the steps.",
-  graph: "Event-driven transitions: send() is the primary verb, goToStepById is gated.",
-  headless:
-    "A linear machine navigated purely by ungated goToStepById — the reserved headless tier's story (linear = headless + declared order)."
-};
-
-export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
-  const machine: ShowcaseMachine = (
-    mode === "linear"
-      ? createLinearJourney(linearDefinition, { autoStart: true })
-      : mode === "graph"
-        ? createGraphJourney(graphDefinition, {
-            autoStart: true,
-            plugins: [createExecutionPathsPlugin()] as const
-          })
-        : createLinearJourney(headlessDefinition, { autoStart: true })
-  ) as ShowcaseMachine;
-
-  const isGraph = (
-    candidate: ShowcaseMachine
-  ): candidate is GraphJourneyMachine<LoginContext, LoginStepId, AuthEvent> => "send" in candidate;
+export const mountCoreShowcase = (root: HTMLElement) => {
+  const machine = createLinearJourney(linearDefinition, { autoStart: true });
 
   const eventLog: LogEntry[] = [];
   const pushLogEntry = (entry: LogEntry) => {
@@ -142,82 +95,28 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
   });
 
   const submitLogin = async (context: LoginContext) => {
-    if (mode === "linear") {
-      const navigation = await machine.navigate.goToNextStep({
-        run: async () => {
-          const result = await authApi.login(context.username, context.password);
-          if (!result.success) throw new Error("Login failed");
-          return result;
-        },
-        commit: ({ result, updateContext }) => {
-          updateContext((current) => ({
-            ...current,
-            password: "",
-            twoFactorMethod: result.method,
-            error: null
-          }));
-        }
-      });
-      if (!navigation.ok) {
-        machine.context.update((current) => ({ ...current, error: "Login failed" }));
+    const navigation = await machine.navigate.goToNextStep({
+      run: async () => {
+        const result = await authApi.login(context.username, context.password);
+        if (!result.success) throw new Error("Login failed");
+        return result;
+      },
+      commit: ({ result, updateContext }) => {
+        updateContext((current) => ({
+          ...current,
+          password: "",
+          twoFactorMethod: result.method,
+          error: null
+        }));
       }
-      return;
-    }
-
-    const result = await authApi.login(context.username, context.password);
-    if (!result.success) {
+    });
+    if (!navigation.ok) {
       machine.context.update((current) => ({ ...current, error: "Login failed" }));
-      return;
     }
-
-    machine.context.update((current) => ({
-      ...current,
-      twoFactorMethod: result.method,
-      error: null
-    }));
-
-    if (isGraph(machine)) {
-      if (result.method === "no_2fa") {
-        const qr = await authApi.generateQrCode();
-        machine.context.update((current) => ({ ...current, qrCode: qr.qrCode }));
-      }
-
-      await machine.send("submitLogin");
-      return;
-    }
-
-    let nextStep: LoginStepId = "setup2fa";
-    if (result.method === "email") {
-      nextStep = "emailCode";
-      await authApi.sendEmailCode();
-    }
-    if (result.method === "authenticator") {
-      nextStep = "authenticatorCode";
-      const qr = await authApi.generateQrCode();
-      machine.context.update((current) => ({ ...current, qrCode: qr.qrCode }));
-    }
-
-    await machine.navigate.goToStepById(nextStep);
   };
 
-  const submitVerification = async (stepId: LoginStepId, context: LoginContext) => {
+  const submitVerification = async (context: LoginContext) => {
     const result = await authApi.verifyCode(context.verificationCode, context.attempts);
-
-    if (isGraph(machine)) {
-      const eventByStep: Partial<Record<LoginStepId, [AuthEvent["type"], AuthEvent["type"]]>> = {
-        verifyCode: ["verifyCodeSuccess", "verifyCodeFailure"],
-        emailCode: ["verifyEmailSuccess", "verifyEmailFailure"],
-        authenticatorCode: ["verifyAuthenticatorSuccess", "verifyAuthenticatorFailure"]
-      };
-      const pair = eventByStep[stepId];
-      if (pair) {
-        const navigation = await machine.send(result.success ? pair[0] : pair[1]);
-        if (navigation.ok) {
-          finishJourney(result.loggedInStatus);
-        }
-      }
-      return;
-    }
 
     if (result.success) {
       machine.context.update((current) => ({
@@ -234,23 +133,8 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
       }));
     }
 
-    if (mode === "linear") {
-      if (result.success || result.loggedInStatus === "blocked") {
-        const navigation = await machine.navigate.goToNextStep();
-        if (navigation.ok) {
-          finishJourney(result.loggedInStatus);
-        }
-      }
-      return;
-    }
-
-    if (result.success) {
-      const navigation = await machine.navigate.goToStepById("loggedIn");
-      if (navigation.ok) {
-        finishJourney(result.loggedInStatus);
-      }
-    } else if (result.loggedInStatus === "blocked") {
-      const navigation = await machine.navigate.goToStepById("blocked");
+    if (result.success || result.loggedInStatus === "blocked") {
+      const navigation = await machine.navigate.goToNextStep();
       if (navigation.ok) {
         finishJourney(result.loggedInStatus);
       }
@@ -272,10 +156,7 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
       return `
         <div class="step-view">
           <h3 class="step-title">Login</h3>
-          <p class="muted">
-            Password "blocked" fails; username length % 3 picks the 2FA method
-            (0 = no 2FA, 1 = email code, 2 = authenticator).
-          </p>
+          <p class="muted">Password "blocked" fails; any other password moves to Setup 2FA.</p>
           <label class="field">Username<input data-field="username" value="${context.username}" /></label>
           <label class="field">Password<input data-field="password" type="password" value="${context.password}" /></label>
           <div class="severity-error" data-role="error" hidden></div>
@@ -298,10 +179,10 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
       `;
     }
 
-    if (stepId === "verifyCode" || stepId === "emailCode" || stepId === "authenticatorCode") {
+    if (stepId === "verifyCode") {
       return `
         <div class="step-view">
-          <h3 class="step-title">${stepId}</h3>
+          <h3 class="step-title">Verify Code</h3>
           <p class="muted">Use 123456 to succeed.</p>
           <label class="field">Verification Code<input data-field="verificationCode" value="${context.verificationCode}" /></label>
           <div class="severity-error" data-role="error" hidden></div>
@@ -314,20 +195,10 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
       `;
     }
 
-    if (stepId === "loggedIn") {
-      return `
-        <div class="step-view">
-          <h3 class="step-title">Status</h3>
-          <p data-role="status-message"></p>
-          <div class="actions"><button class="secondary" data-action="reset">Start Over</button></div>
-        </div>
-      `;
-    }
-
     return `
       <div class="step-view">
-        <h3 class="step-title">Blocked</h3>
-        <p class="severity-error" data-role="error"></p>
+        <h3 class="step-title">Status</h3>
+        <p data-role="status-message"></p>
         <div class="actions"><button class="secondary" data-action="reset">Start Over</button></div>
       </div>
     `;
@@ -342,10 +213,8 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
   ) => {
     const errorEl = stepContainer.querySelector<HTMLElement>('[data-role="error"]');
     if (errorEl) {
-      const message =
-        stepId === "blocked" ? (context.error ?? "Too many failed attempts.") : context.error;
-      errorEl.textContent = message ?? "";
-      errorEl.hidden = !message;
+      errorEl.textContent = context.error ?? "";
+      errorEl.hidden = !context.error;
     }
 
     const qrEl = stepContainer.querySelector<HTMLElement>('[data-role="qrcode"]');
@@ -402,39 +271,17 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
       })
       .join("");
 
-  const renderExecutionPathsList = () => {
-    if (!isGraph(machine)) {
-      return "";
-    }
-    const api = machine.plugins["execution-paths" as never] as {
-      getCurrentPath(): readonly string[];
-      getCompletedPaths(): readonly (readonly string[])[];
-    };
-    const renderPath = (steps: readonly string[], label: string) =>
-      `<div class="path-item"><strong>${label}</strong><div class="muted">${steps.join(" -> ") || "(empty)"}</div></div>`;
-    return [
-      renderPath(api.getCurrentPath(), "Current run"),
-      ...api
-        .getCompletedPaths()
-        .map((steps, index) => renderPath(steps, `Finished run ${index + 1}`))
-    ].join("");
-  };
-
   root.innerHTML = `
     <div class="app-shell">
       <header class="hero">
         <div class="hero-meta">
           <span class="badge badge-core">Core</span>
-          <span class="badge ${badgeClass[mode]}">${mode}</span>
+          <span class="badge badge-linear">linear</span>
         </div>
-        <h1>${titles[mode]}</h1>
-        <p>${subtitles[mode]}</p>
+        <h1>Core Showcase Linear</h1>
+        <p>Declared order drives goToNextStep; guards and hooks live on the steps.</p>
       </header>
-      ${
-        mode === "linear"
-          ? `<section class="card"><h2>Progress</h2><div class="stepper" data-role="stepper"></div></section>`
-          : ""
-      }
+      <section class="card"><h2>Progress</h2><div class="stepper" data-role="stepper"></div></section>
       <section class="card">
         <h2>Runtime</h2>
         <p class="hint">
@@ -448,7 +295,6 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
         <section class="card card-relative">
           <h2>Component</h2>
           <div data-role="step-slot"></div>
-          ${isGraph(machine) ? `<div style="margin-top: 1rem"><h3>Execution Paths</h3><div class="path-list" data-role="execution-paths"></div></div>` : ""}
           <div class="pending-overlay" data-role="pending-overlay" hidden>
             <span class="spinner" aria-label="Loading"></span>
           </div>
@@ -466,10 +312,9 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
   `;
 
   const statusRow = root.querySelector<HTMLElement>('[data-role="status-row"]')!;
-  const stepperEl = root.querySelector<HTMLElement>('[data-role="stepper"]');
+  const stepperEl = root.querySelector<HTMLElement>('[data-role="stepper"]')!;
   const stepSlot = root.querySelector<HTMLElement>('[data-role="step-slot"]')!;
   const pendingOverlayEl = root.querySelector<HTMLElement>('[data-role="pending-overlay"]')!;
-  const executionPathsEl = root.querySelector<HTMLElement>('[data-role="execution-paths"]');
   const snapshotEl = root.querySelector<HTMLElement>('[data-role="snapshot"]')!;
   const eventLogEl = root.querySelector<HTMLElement>('[data-role="event-log"]')!;
 
@@ -500,11 +345,6 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
       <span class="token ${stepAsync?.isLoading ? "token-pending" : ""}">step async: ${stepAsyncLabel}</span>
       <span class="token">step: ${snapshot.currentStep?.id ?? "—"}</span>
       <span class="token">timeline: ${snapshot.history.timeline.join(" -> ")}</span>
-      ${
-        snapshot.type === "graph"
-          ? `<span class="token">events: ${snapshot.availableEvents.join(", ") || "none"}</span>`
-          : ""
-      }
     `;
 
     if (mountedStepId !== stepId) {
@@ -514,14 +354,8 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
     updateStepContent(stepSlot, stepId, context);
     pendingOverlayEl.hidden = !isPending;
 
-    if (stepperEl) {
-      const currentIndex = stepOrder.findIndex((step) => step.id === stepId);
-      stepperEl.innerHTML = renderStepper(currentIndex);
-    }
-
-    if (executionPathsEl) {
-      executionPathsEl.innerHTML = renderExecutionPathsList();
-    }
+    const currentIndex = stepOrder.findIndex((step) => step.id === stepId);
+    stepperEl.innerHTML = renderStepper(currentIndex);
 
     snapshotEl.textContent = formatJson(snapshot);
     eventLogEl.innerHTML = eventLog
@@ -546,7 +380,6 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
     }
 
     const context = machine.getSnapshot().context;
-    const stepId = currentStepId();
 
     void (async () => {
       isPending = true;
@@ -555,18 +388,14 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
         if (action === "login") await submitLogin(context);
         if (action === "back") await machine.navigate.goToPreviousStep();
         if (action === "continue-setup") {
-          if (isGraph(machine)) await machine.send("setup2fa");
-          else if (mode === "headless") await machine.navigate.goToStepById("verifyCode");
-          else {
-            await machine.navigate.goToNextStep({
-              run: async ({ snapshot }) => {
-                const confirmed = await authApi.confirmTwoFactorSetup(snapshot.context.qrCode);
-                if (!confirmed) throw new Error("Complete QR enrollment before continuing");
-              }
-            });
-          }
+          await machine.navigate.goToNextStep({
+            run: async ({ snapshot }) => {
+              const confirmed = await authApi.confirmTwoFactorSetup(snapshot.context.qrCode);
+              if (!confirmed) throw new Error("Complete QR enrollment before continuing");
+            }
+          });
         }
-        if (action === "verify") await submitVerification(stepId, context);
+        if (action === "verify") await submitVerification(context);
         if (action === "reset") resetJourney();
       } finally {
         isPending = false;
