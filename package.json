@@ -14,8 +14,8 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20.11.0",
-    "pnpm": "10.30.3"
+    "node": ">=22.0.0",
+    "pnpm": "11.4.0"
   },
   "scripts": {
     "build": "pnpm -r build",
@@ -91,26 +91,5 @@
     "*.{js,jsx,ts,tsx,cjs}": "prettier --write",
     "*.{json,md,mdx,yaml,yml,css,scss,html}": "prettier --write"
   },
-  "pnpm": {
-    "overrides": {
-      "lodash": "4.18.1",
-      "svgo": "3.3.3",
-      "jsdom>undici": "7.24.2",
-      "cheerio>undici": "7.24.2",
-      "@crxjs/vite-plugin>rollup": "2.80.0",
-      "serve-handler>minimatch": "3.1.5",
-      "terser-webpack-plugin>serialize-javascript": "7.0.5",
-      "copy-webpack-plugin>serialize-javascript": "7.0.5",
-      "css-minimizer-webpack-plugin>serialize-javascript": "7.0.5",
-      "serialize-javascript@<7.0.5": ">=7.0.5 <8.0.0",
-      "path-to-regexp@<0.1.13": "0.1.13",
-      "picomatch@<2.3.2": ">=2.3.2 <3.0.0",
-      "picomatch@>=4.0.0 <4.0.4": ">=4.0.4",
-      "follow-redirects@<=1.15.11": ">=1.16.0"
-    },
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
-  },
-  "packageManager": "pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017"
+  "packageManager": "pnpm@11.4.0+sha512.f0febc7e37552ab485494a914241b338e0b3580b93d54ce31f00933015880863129038a1b4ae4e414a0ee63ac35bf21197e990172c4a68256450b5636310968f"
 }

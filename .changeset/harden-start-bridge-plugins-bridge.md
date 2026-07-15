@@ -1,5 +1,5 @@
 ---
-"@rxova/journey-core": patch
+"@rxova/journey-devtools-bridge": patch
 ---
 
 Harden three runtime/tooling edge cases surfaced by an adoption review.
