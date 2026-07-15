@@ -188,6 +188,24 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     }
   };
 
+  const goBack = async () => {
+    if (currentStepId() !== "verifyCode") {
+      await machine.navigate.goToPreviousStep();
+      return;
+    }
+
+    await machine.navigate.goToPreviousStep({
+      run: () => undefined,
+      commit: ({ updateContext }) => {
+        updateContext((current) => ({
+          ...current,
+          attempts: 0,
+          error: null
+        }));
+      }
+    });
+  };
+
   const resetJourney = () => {
     const status = machine.getSnapshot().status;
     if (status !== "completed" && status !== "terminated") {
@@ -432,7 +450,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
 
     void (async () => {
       if (action === "login") await submitLogin();
-      if (action === "back") await machine.navigate.goToPreviousStep();
+      if (action === "back") await goBack();
       if (action === "continue-setup") {
         await machine.navigate.goToNextStep({
           run: async ({ snapshot }) => {
