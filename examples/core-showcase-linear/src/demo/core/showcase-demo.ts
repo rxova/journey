@@ -453,10 +453,24 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
     const snapshot = machine.getSnapshot() as JourneySnapshot<LoginContext, LoginStepId>;
     const context = snapshot.context;
     const stepId = currentStepId();
+    const transition = snapshot.transition;
+    const transitionLabel = transition.pending
+      ? `${transition.phase}: ${transition.from ?? "start"} -> ${transition.to ?? "unknown"}`
+      : "settled";
+    const stepAsync = snapshot.currentStep?.async;
+    const stepAsyncLabel = stepAsync?.isLoading
+      ? "loading"
+      : stepAsync?.isError
+        ? "error"
+        : stepAsync?.isSuccess
+          ? "success"
+          : "idle";
 
     statusRow.innerHTML = `
       <span class="status-pill status-${snapshot.status}">${snapshot.status}</span>
-      ${isPending ? `<span class="token token-pending">Working…</span>` : ""}
+      ${isPending ? `<span class="token token-pending">request: pending</span>` : ""}
+      <span class="token ${transition.pending ? "token-pending" : ""}">transition: ${transitionLabel}</span>
+      <span class="token ${stepAsync?.isLoading ? "token-pending" : ""}">step async: ${stepAsyncLabel}</span>
       <span class="token">step: ${snapshot.currentStep?.id ?? "—"}</span>
       <span class="token">timeline: ${snapshot.history.timeline.join(" -> ")}</span>
       ${

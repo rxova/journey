@@ -72,13 +72,20 @@ export const initialLoginContext = (): LoginContext => ({
   loggedInStatus: null
 });
 
+// Deliberate hook latency keeps the runtime's leaving/entering and step async
+// snapshots visible long enough to inspect in the showcase.
+const asyncStepHooks = {
+  onLeave: async () => delay(450),
+  onEnter: async () => delay(700)
+};
+
 export const linearDefinition = {
   context: { ...initialLoginContext(), twoFactorMethod: "no_2fa" as const },
   steps: [
-    { id: "login", metadata: { label: "Login" } },
-    { id: "setup2fa", metadata: { label: "Setup 2FA" } },
-    { id: "verifyCode", metadata: { label: "Verify Code" } },
-    { id: "loggedIn", metadata: { label: "Status" } }
+    { id: "login", metadata: { label: "Login" }, ...asyncStepHooks },
+    { id: "setup2fa", metadata: { label: "Setup 2FA" }, ...asyncStepHooks },
+    { id: "verifyCode", metadata: { label: "Verify Code" }, ...asyncStepHooks },
+    { id: "loggedIn", metadata: { label: "Status" }, ...asyncStepHooks }
   ]
 } satisfies LinearJourneyDefinition<LoginContext>;
 
@@ -91,13 +98,13 @@ export const linearDefinition = {
 export const headlessDefinition = {
   context: initialLoginContext(),
   steps: [
-    { id: "login", metadata: { label: "Login" } },
-    { id: "setup2fa", metadata: { label: "Setup 2FA" } },
-    { id: "verifyCode", metadata: { label: "Verify Code" } },
-    { id: "emailCode", metadata: { label: "Email Code" } },
-    { id: "authenticatorCode", metadata: { label: "Authenticator" } },
-    { id: "loggedIn", metadata: { label: "Logged In" } },
-    { id: "blocked", metadata: { label: "Blocked" } }
+    { id: "login", metadata: { label: "Login" }, ...asyncStepHooks },
+    { id: "setup2fa", metadata: { label: "Setup 2FA" }, ...asyncStepHooks },
+    { id: "verifyCode", metadata: { label: "Verify Code" }, ...asyncStepHooks },
+    { id: "emailCode", metadata: { label: "Email Code" }, ...asyncStepHooks },
+    { id: "authenticatorCode", metadata: { label: "Authenticator" }, ...asyncStepHooks },
+    { id: "loggedIn", metadata: { label: "Logged In" }, ...asyncStepHooks },
+    { id: "blocked", metadata: { label: "Blocked" }, ...asyncStepHooks }
   ]
 } satisfies LinearJourneyDefinition<LoginContext>;
 
@@ -112,6 +119,7 @@ const clearError = (context: LoginContext): LoginContext => ({ ...context, error
 
 const loginStep = createStep("login", {
   metadata: { label: "Login", icon: "🔐" },
+  ...asyncStepHooks,
   on: {
     submitLogin: [
       to("setup2fa")
@@ -133,6 +141,7 @@ const loginStep = createStep("login", {
 
 const setup2faStep = createStep("setup2fa", {
   metadata: { label: "Setup 2FA", icon: "📱" },
+  ...asyncStepHooks,
   on: {
     setup2fa: [to("verifyCode")]
   }
@@ -164,6 +173,7 @@ const failureCandidates = (
 
 const verifyCodeStep = createStep("verifyCode", {
   metadata: { label: "Verify Code", icon: "✅" },
+  ...asyncStepHooks,
   on: {
     verifyCodeSuccess: [to("loggedIn")],
     verifyCodeFailure: failureCandidates(
@@ -176,6 +186,7 @@ const verifyCodeStep = createStep("verifyCode", {
 
 const emailCodeStep = createStep("emailCode", {
   metadata: { label: "Email Code", icon: "✉️" },
+  ...asyncStepHooks,
   on: {
     verifyEmailSuccess: [to("loggedIn")],
     verifyEmailFailure: failureCandidates(
@@ -188,6 +199,7 @@ const emailCodeStep = createStep("emailCode", {
 
 const authenticatorCodeStep = createStep("authenticatorCode", {
   metadata: { label: "Authenticator", icon: "🛡️" },
+  ...asyncStepHooks,
   on: {
     verifyAuthenticatorSuccess: [to("loggedIn")],
     verifyAuthenticatorFailure: failureCandidates(
@@ -199,11 +211,13 @@ const authenticatorCodeStep = createStep("authenticatorCode", {
 });
 
 const loggedInStep = createStep("loggedIn", {
-  metadata: { label: "Logged In", icon: "🎉" }
+  metadata: { label: "Logged In", icon: "🎉" },
+  ...asyncStepHooks
 });
 
 const blockedStep = createStep("blocked", {
-  metadata: { label: "Blocked", icon: "⛔" }
+  metadata: { label: "Blocked", icon: "⛔" },
+  ...asyncStepHooks
 });
 
 export const graphDefinition = build({
