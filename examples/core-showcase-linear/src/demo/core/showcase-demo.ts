@@ -421,6 +421,11 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
       <div class="split">
         <section class="card">
           <h2>Runtime</h2>
+          <p class="hint">
+            <strong>Simulated async:</strong> Setup 2FA waits 700 ms on entry to generate a QR code
+            and store it in context, then 450 ms on leave to confirm enrollment. Leaving is blocked
+            when enrollment is missing; other steps have no artificial hook delays.
+          </p>
           <div class="status-row" data-role="status-row"></div>
           <div style="margin-top: 1rem" data-role="step-slot"></div>
           ${isGraph(machine) ? `<div style="margin-top: 1rem"><h3>Execution Paths</h3><div class="path-list" data-role="execution-paths"></div></div>` : ""}
