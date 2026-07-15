@@ -35,7 +35,7 @@ export type StepMeta = { label: string; icon: string };
 
 export const authApi = {
   login: async (username: string, password: string) => {
-    await delay(700);
+    await delay(1200);
     if (password === "blocked") {
       return { success: false as const, method: null };
     }
