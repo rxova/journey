@@ -20,6 +20,7 @@ import { formatJson } from "../fixtures/support";
 //   controls.*  – lifecycle (complete/terminate/restart), not step-to-step movement
 //   context.*   – read/write journey context directly (e.g. form field edits)
 //   async.*     – transition-level loading/error state (e.g. clearError)
+//   plugins.*   – APIs contributed by installed plugins (e.g. execution-paths)
 const OBSERVED_EVENTS: readonly JourneySubscriptionEvent[] = [
   "statusChange",
   "navigationBlocked",
@@ -85,27 +86,39 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     }
   };
 
+  // Every subscription's disposer is retained so unmount() can undo the mount;
+  // examples get copied, and a leaked subscription is not a pattern to copy.
+  const disposers: (() => void)[] = [];
+
   for (const eventName of OBSERVED_EVENTS) {
-    machine.subscriptions.subscribeEvent(eventName, () => {
-      pushLogEntry({ label: eventName });
-    });
+    disposers.push(
+      machine.subscriptions.subscribeEvent(eventName, () => {
+        pushLogEntry({ label: eventName });
+      })
+    );
   }
 
-  machine.subscriptions.subscribeEvent("contextChange", ({ previous, current }) => {
-    pushLogEntry({ label: "contextChange", detail: describeContextChange(previous, current) });
-  });
+  disposers.push(
+    machine.subscriptions.subscribeEvent("contextChange", ({ previous, current }) => {
+      pushLogEntry({ label: "contextChange", detail: describeContextChange(previous, current) });
+    })
+  );
 
-  machine.subscriptions.subscribeEvent("stepEnter", ({ from, to }) => {
-    pushLogEntry({ label: "stepEnter", detail: `${from ?? "∅"} -> ${to}` });
-  });
+  disposers.push(
+    machine.subscriptions.subscribeEvent("stepEnter", ({ from, to }) => {
+      pushLogEntry({ label: "stepEnter", detail: `${from ?? "∅"} -> ${to}` });
+    })
+  );
 
-  machine.subscriptions.subscribeEvent("stepLeave", ({ from, to }) => {
-    pushLogEntry({ label: "stepLeave", detail: `${from} -> ${to}` });
-  });
+  disposers.push(
+    machine.subscriptions.subscribeEvent("stepLeave", ({ from, to }) => {
+      pushLogEntry({ label: "stepLeave", detail: `${from} -> ${to}` });
+    })
+  );
 
   const currentStepId = (): LoginStepId => machine.getSnapshot().currentStep?.id ?? "login";
 
-  root.addEventListener("input", (event) => {
+  const handleInput = (event: Event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) {
       return;
@@ -121,10 +134,14 @@ export const mountCoreShowcase = (root: HTMLElement) => {
       [field]: target.value,
       error: field === "verificationCode" ? null : context.error
     }));
-  });
+  };
+  root.addEventListener("input", handleInput);
 
   const resetJourney = () => {
-    if (machine.getSnapshot().status !== "terminated") {
+    // restart() only accepts a finished journey: a completed one restarts
+    // directly, a live one is terminated first.
+    const { status } = machine.getSnapshot();
+    if (status !== "terminated" && status !== "completed") {
       machine.controls.terminate();
     }
     machine.controls.restart();
@@ -177,11 +194,21 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     }
 
     if (stepId === "loggedIn") {
+      // loggedIn is a terminal step (no outgoing transitions), but a terminal
+      // step does not complete the journey by itself — status stays "running"
+      // until the product declares the outcome via controls.complete().
       return `
         <div class="step-view">
           <h3 class="step-title">Logged In</h3>
           <p data-role="status-message"></p>
-          <div class="actions"><button class="secondary" data-action="reset">Start Over</button></div>
+          <p class="muted">
+            This step is terminal, yet the journey is still <em>running</em> —
+            completion is an explicit outcome, not a side effect of arriving here.
+          </p>
+          <div class="actions">
+            <button data-action="complete">Complete Journey</button>
+            <button class="secondary" data-action="reset">Start Over</button>
+          </div>
         </div>
       `;
     }
@@ -201,7 +228,8 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     stepContainer: HTMLElement,
     stepId: LoginStepId,
     context: LoginContext,
-    isLoading: boolean
+    isLoading: boolean,
+    status: ReturnType<typeof machine.getSnapshot>["status"]
   ) => {
     const errorEl = stepContainer.querySelector<HTMLElement>('[data-role="error"]');
     if (errorEl) {
@@ -232,6 +260,16 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     stepContainer.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
       button.disabled = isLoading;
     });
+
+    // complete() is only accepted while the journey is running, so the button
+    // goes dark the moment the outcome is declared.
+    const completeButton = stepContainer.querySelector<HTMLButtonElement>(
+      '[data-action="complete"]'
+    );
+    if (completeButton) {
+      completeButton.disabled = isLoading || status !== "running";
+      completeButton.textContent = status === "completed" ? "Completed ✓" : "Complete Journey";
+    }
   };
 
   // `availableEvents` collapses every candidate for an event into one name, so it
@@ -365,7 +403,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
       stepSlot.innerHTML = renderStepShell(stepId, context);
       mountedStepId = stepId;
     }
-    updateStepContent(stepSlot, stepId, context, isLoading);
+    updateStepContent(stepSlot, stepId, context, isLoading, snapshot.status);
     pendingOverlayEl.hidden = !isLoading;
     pendingLabelEl.textContent = getPendingLabel(transition);
 
@@ -383,7 +421,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
       .join("");
   };
 
-  root.addEventListener("click", (event) => {
+  const handleClick = (event: Event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) {
       return;
@@ -394,23 +432,40 @@ export const mountCoreShowcase = (root: HTMLElement) => {
       return;
     }
 
-    // Every branch is a bare send: the definition owns the async, so the call
-    // site names an intent and never pre-computes the route.
+    // Domain actions are bare sends: the definition owns the async, so the call
+    // site names an intent and never pre-computes the route. complete/reset are
+    // controls.* — lifecycle outcomes, not steps.
     void (async () => {
       if (action === "login") await machine.send("submitLogin");
       if (action === "back") await machine.navigate.goToPreviousStep();
       if (action === "continue-setup") await machine.send("setup2fa");
       if (action === "verify") await machine.send("verify");
+      if (action === "complete") machine.controls.complete();
       if (action === "reset") resetJourney();
     })();
-  });
+  };
+  root.addEventListener("click", handleClick);
 
   // subscribeSelector drives the render loop off the whole snapshot; subscribeEvent
   // above is used for the audit-style log instead, since it needs discrete
   // occurrences (contextChange/stepEnter/...), not a derived render trigger.
-  machine.subscriptions.subscribeSelector(
-    (snapshot) => snapshot,
-    () => render()
+  disposers.push(
+    machine.subscriptions.subscribeSelector(
+      (snapshot) => snapshot,
+      () => render()
+    )
   );
   render();
+
+  const unmount = () => {
+    for (const dispose of disposers.splice(0)) {
+      dispose();
+    }
+    root.removeEventListener("input", handleInput);
+    root.removeEventListener("click", handleClick);
+    machine.dispose();
+    root.innerHTML = "";
+  };
+
+  return { machine, unmount };
 };
