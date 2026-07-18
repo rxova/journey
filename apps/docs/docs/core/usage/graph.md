@@ -79,6 +79,60 @@ const testMachine = createGraphJourney(definition, {
 
 Creation options can replace definition handlers, which keeps one definition reusable in tests.
 
+## Transactional sends: event work
+
+An event can carry the async that decides its own outcome. With the
+[graph builder](../api/graph-builder), `work` pairs a `run`/`commit` with the candidates that route
+on what `commit` staged — so the call site stays a bare `send`, and the definition owns both the
+async and the routing:
+
+```ts
+const cart = createStep("cart", {
+  on: {
+    CHECKOUT: ({ to, work }) =>
+      work({
+        run: ({ snapshot, handlers }) => handlers.api.charge(snapshot.context.items),
+        commit: ({ result, updateContext }) =>
+          updateContext((context) => ({ ...context, paid: result.charged })),
+        candidates: [
+          to("receipt").when(({ context }) => context.paid),
+          // Unguarded fallback: a failed charge still routes, so its outcome commits.
+          to("cart")
+        ]
+      })
+  }
+});
+```
+
+Work is keyed by `(step, event)`: two steps can declare the same event with different work and
+different candidates.
+
+A work send is a transaction. The exact order:
+
+1. `run` executes while the machine holds the current step; `snapshot.transition` reports the
+   `"working"` phase and no destination yet.
+2. `commit` receives `run`'s result. Its `updateContext` writes to a **staged** copy of the context,
+   not the live one.
+3. The candidates are evaluated **against the staged context**, in declaration order. The first
+   enabled candidate wins.
+4. If no candidate is enabled, the staged context is **discarded** and `send` returns
+   `{ ok: false, reason: "no-enabled-transition" }`. Either the send routed and committed, or
+   neither happened — a work send never half-lands.
+
+Rule 4 has a practical consequence, the **totality rule**: any outcome that must persist needs an
+enabled candidate to carry it. A success outcome routes forward; a failure outcome that should keep
+its staged context (an error message, an attempt counter) needs a fallback candidate — commonly an
+unguarded transition back to the current step, as in the example above. Without that fallback, a
+failed run's staged context is rolled back with the unmatched send.
+
+Two follow-ups worth knowing:
+
+- A self-transition is an ordinary move. There is no `from === to` special case: the step's
+  `onLeave` and `onEnter` both run again, `onTransition` fires, and the step's visit count
+  increments.
+- `onTransition` runs after the destination commits (see the next section) — by then the staged
+  context **is** the context.
+
 ## Transition and step effects
 
 `onTransition` runs after the destination commits and before the destination step's `onEnter`.

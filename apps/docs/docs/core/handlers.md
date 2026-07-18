@@ -5,8 +5,8 @@ title: Handlers
 
 # Handlers
 
-Graph guards can call injected handlers without closing over application services. This keeps graph
-definitions reusable and makes guard decisions straightforward to test.
+Graph guards and event work can call injected handlers without closing over application services.
+This keeps graph definitions reusable and makes guard decisions straightforward to test.
 
 ## Declare handlers
 
@@ -50,9 +50,21 @@ const test = createGraphJourney(definition, {
 
 ## Scope
 
-Handlers are passed only to graph `when` guards. Step hooks and `onTransition` receive the current
-snapshot instead. Guards must stay synchronous because they are used to derive available
-transitions. Caller-driven next/previous operations can attach asynchronous navigation work.
+Handlers reach the places where a definition decides something:
+
+- graph `when` guards — including the candidates of a work send;
+- event work — the `run` and `commit` of a
+  [transactional send](./usage/graph#transactional-sends-event-work).
+
+Step hooks (`onEnter`, `onLeave`) and `onTransition` deliberately receive **no** handlers. This is a
+design decision, not an omission. Hooks react to a move that has already committed: they get the
+snapshot plus `updateContext`/`raise`, and nothing they do can influence routing or be rolled back.
+Async that needs an injected client belongs in event work, where the transaction stages its outcome
+before the guards route on it. A hook that must call a service can close over it at module scope —
+and that closure is usually a hint the call wants to move into work.
+
+Guards must stay synchronous because they are used to derive available transitions. Caller-driven
+next/previous operations can attach asynchronous navigation work.
 
 The graph builder's type bag can declare handler types:
 
