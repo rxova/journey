@@ -3,14 +3,18 @@ import type {
   GraphStepConfig,
   GraphTransitionCandidate
 } from "./graph.types";
+import { eventWorkKey } from "../core/helpers";
+import type { AnySendWork } from "../core/runtime.types";
 import type {
   HandlersOf,
   JourneyBuilder,
+  JourneyEventWork,
   JourneyStepBuilder,
   JourneyToBuilder,
   JourneyTypeBag,
   MetaOf,
-  ToFactory
+  ToFactory,
+  WorkFactory
 } from "./builder.types";
 
 /**
@@ -39,6 +43,15 @@ export function createGraphJourneyBuilder<TBag extends JourneyTypeBag>(): Journe
 
   const to: ToFactory<TBag, TBag["events"]["type"]> = (target) => makeToBuilder({ to: target });
 
+  // Carries `run`/`commit` through as an opaque bundle: `build` only needs to
+  // separate them from the candidates, never to call them. The config doubles
+  // as `_work` — the runtime reads only `run`/`commit` and ignores the rest.
+  const makeWork = (config: {
+    run: unknown;
+    commit?: unknown;
+    candidates: readonly JourneyToBuilder<TBag, never>[];
+  }) => ({ _work: config, candidates: config.candidates });
+
   function createStep<TStepId extends TBag["stepId"]>(
     id: TStepId,
     config: JourneyStepBuilder<TBag, TStepId>["_config"] = {}
@@ -60,6 +73,7 @@ export function createGraphJourneyBuilder<TBag extends JourneyTypeBag>(): Journe
   > {
     const steps: Record<string, GraphStepConfig> = {};
     const transitions: Record<string, GraphTransitionCandidate[]> = {};
+    const eventWork: Record<string, AnySendWork> = {};
 
     for (const step of input.steps) {
       if (step.id in steps) {
@@ -82,10 +96,26 @@ export function createGraphJourneyBuilder<TBag extends JourneyTypeBag>(): Journe
       if (!config.on) continue;
       for (const [event, entry] of Object.entries(config.on)) {
         if (entry === undefined) continue;
-        const builders =
+        const produced =
           typeof entry === "function"
-            ? entry({ to: to as unknown as ToFactory<TBag, never> })
+            ? entry({
+                to: to as unknown as ToFactory<TBag, never>,
+                work: makeWork as unknown as WorkFactory<TBag, never>
+              })
             : (entry as readonly JourneyToBuilder<TBag, TBag["events"]["type"]>[]);
+
+        // The callback form may return declared work instead of a bare list;
+        // its candidates still land in the shared transitions map, and the work
+        // is keyed by (origin step, event) for the runtime to pick up on send.
+        const isWork = !Array.isArray(produced);
+        const builders = isWork
+          ? (produced as JourneyEventWork<TBag, never>).candidates
+          : (produced as readonly JourneyToBuilder<TBag, TBag["events"]["type"]>[]);
+        if (isWork) {
+          eventWork[eventWorkKey(step.id, event)] = (produced as JourneyEventWork<TBag, never>)
+            ._work as unknown as AnySendWork;
+        }
+
         const bucket = (transitions[event] ??= []);
         for (const builder of builders) {
           bucket.push({
@@ -100,6 +130,7 @@ export function createGraphJourneyBuilder<TBag extends JourneyTypeBag>(): Journe
       initial: input.initial,
       context: input.context,
       ...(input.handlers !== undefined ? { handlers: input.handlers } : {}),
+      ...(Object.keys(eventWork).length > 0 ? { eventWork } : {}),
       steps,
       transitions
     } as unknown as GraphJourneyDefinition<

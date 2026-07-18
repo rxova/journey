@@ -54,14 +54,53 @@ export type ToFactory<TBag extends JourneyTypeBag, TType extends TBag["events"][
   target: TBag["stepId"]
 ) => JourneyToBuilder<TBag, TType>;
 
+/** Event-scoped work args: no `to`, since routing has not happened yet. */
+export type BagSendWorkArgs<TBag extends JourneyTypeBag, TType extends TBag["events"]["type"]> = {
+  readonly snapshot: BagSnapshot<TBag>;
+  readonly from: TBag["stepId"];
+  readonly event: Extract<TBag["events"], { type: TType }>;
+  readonly handlers: HandlersOf<TBag>;
+};
+
+/** An event's declared work plus the candidates its staged context routes into. */
+export type JourneyEventWork<TBag extends JourneyTypeBag, TType extends TBag["events"]["type"]> = {
+  readonly _work: {
+    readonly run: (args: BagSendWorkArgs<TBag, TType>) => unknown;
+    readonly commit?: (args: never) => void;
+  };
+  readonly candidates: readonly JourneyToBuilder<TBag, TType>[];
+};
+
+/**
+ * Declares async that runs before the guards choose an edge. `commit` stages
+ * context, and the candidates are evaluated against that staged context — so
+ * the definition owns the async without guards becoming async.
+ */
+export type WorkFactory<TBag extends JourneyTypeBag, TType extends TBag["events"]["type"]> = <
+  TResult
+>(config: {
+  readonly run: (args: BagSendWorkArgs<TBag, TType>) => TResult | Promise<TResult>;
+  readonly commit?: (
+    args: BagSendWorkArgs<TBag, TType> & {
+      readonly result: TResult;
+      readonly updateContext: (updater: (previous: TBag["context"]) => TBag["context"]) => void;
+    }
+  ) => void;
+  readonly candidates: readonly JourneyToBuilder<TBag, TType>[];
+}) => JourneyEventWork<TBag, TType>;
+
 /**
  * Per-event candidates: an array, or a callback receiving an event-scoped `to`
- * so `onTransition` sees the narrowed event payload.
+ * so `onTransition` sees the narrowed event payload. The callback may instead
+ * return `work({ run, commit, candidates })` to let the machine own the async.
  */
 export type JourneyStepTransitions<TBag extends JourneyTypeBag> = {
   readonly [TType in TBag["events"]["type"]]?:  // array form: wide event type; the callback form's scoped `to` narrows it
     | readonly JourneyToBuilder<TBag, TBag["events"]["type"]>[]
-    | ((helpers: { to: ToFactory<TBag, TType> }) => readonly JourneyToBuilder<TBag, TType>[]);
+    | ((helpers: {
+        to: ToFactory<TBag, TType>;
+        work: WorkFactory<TBag, TType>;
+      }) => readonly JourneyToBuilder<TBag, TType>[] | JourneyEventWork<TBag, TType>);
 };
 
 export type JourneyStepBuilder<

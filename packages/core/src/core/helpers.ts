@@ -3,6 +3,15 @@ import type { StepAsyncState } from "./types";
 /** Hard cap on events processed from one raise cascade before it is dropped. */
 export const MAX_RAISED_EVENTS = 25;
 
+/**
+ * Key for definition-declared send work. Work belongs to an (origin step,
+ * event) pair, not to an event alone — the same event name can be declared
+ * from several steps with different work on each. Length-prefixing the step id
+ * keeps the key injective without reserving a separator character.
+ */
+export const eventWorkKey = (from: string, event: string): string =>
+  `${from.length}:${from}${event}`;
+
 export const SUCCESS_ASYNC: StepAsyncState = Object.freeze({
   isLoading: false,
   isSuccess: true,
