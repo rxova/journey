@@ -24,8 +24,8 @@ visits, and outcome before entering the initial step.
 ## Named subscription events
 
 ```ts
-const stop = machine.subscriptions.subscribeEvent("stepEnter", ({ from, to, snapshot }) => {
-  console.log(from, to, snapshot.status);
+const stop = machine.subscriptions.subscribeEvent("stepEnter", ({ from, to, direction }) => {
+  console.log(from, to, direction);
 });
 ```
 
@@ -37,6 +37,11 @@ const stop = machine.subscriptions.subscribeEvent("stepEnter", ({ from, to, snap
 | `contextChange`     | `context.update` or a hook updater replaces context.                  |
 | `navigationBlocked` | Navigation is rejected for any reason except `disposed`.              |
 | `error`             | Navigation work, a lifecycle effect, or a raised-event cascade fails. |
+
+The `stepEnter` payload carries `direction: "forward" | "backward" | "jump"`
+(`StepEnterDirection`), reported by intent rather than index math: only `goToNextStep` and
+`goToPreviousStep` report `"forward"`/`"backward"`; the initial entry, `goToStepById`,
+`goToStepByIndex`, `goToLastVisitedStep`, and graph `send` report `"jump"`.
 
 Listener exceptions are isolated and do not stop other listeners or alter runtime state.
 
@@ -61,8 +66,14 @@ when event identity or ordering matters.
 ## Initial entry
 
 `controls.start()` first changes status to `running`, then begins initial entry. Initial entry emits
-`stepEnter` with `from: null`; it does not emit `stepLeave`. The method returns before asynchronous
-entry work settles, so consumers should observe `snapshot.transition.pending` before navigating.
+`stepEnter` with `from: null` and `direction: "jump"`; it does not emit `stepLeave`. The method
+returns before asynchronous entry work settles, so consumers should observe
+`snapshot.transition.pending` before navigating.
+
+The `startAt` runtime option changes which step initial entry targets: the journey starts directly
+at that step, earlier steps are neither entered nor visited, the timeline begins as `[startAt]`,
+and `controls.restart()` returns to it. On graph journeys `startAt` overrides `initial`. An
+unknown id throws at creation.
 
 ## Where to next
 

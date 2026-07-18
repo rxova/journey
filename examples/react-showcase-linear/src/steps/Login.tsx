@@ -5,7 +5,8 @@ import { mockApi } from "../api";
 import { loginJourney } from "../journey";
 
 export const Login = () => {
-  const { context, updateContext, goToNextStep } = loginJourney.useLinearJourney();
+  const { machine, snapshot } = loginJourney.useLinearJourney();
+  const context = snapshot.context;
   const [loading, setLoading] = React.useState(false);
 
   const handleSubmit = async () => {
@@ -14,10 +15,10 @@ export const Login = () => {
       const result = await mockApi.login(context.username, context.password);
       if (result.success) {
         const qrResult = await mockApi.generateQrCode();
-        updateContext((ctx) => ({ ...ctx, qrCode: qrResult.qrCode, error: null }));
-        await goToNextStep();
+        machine.context.update((ctx) => ({ ...ctx, qrCode: qrResult.qrCode, error: null }));
+        await machine.navigate.goToNextStep();
       } else {
-        updateContext((ctx) => ({ ...ctx, error: "Login failed" }));
+        machine.context.update((ctx) => ({ ...ctx, error: "Login failed" }));
       }
     } finally {
       setLoading(false);
@@ -35,7 +36,7 @@ export const Login = () => {
           value={context.username}
           onChange={(e) => {
             const username = e.target.value;
-            updateContext((ctx) => ({ ...ctx, username }));
+            machine.context.update((ctx) => ({ ...ctx, username }));
           }}
           placeholder="alice"
         />
@@ -47,7 +48,7 @@ export const Login = () => {
           value={context.password}
           onChange={(e) => {
             const password = e.target.value;
-            updateContext((ctx) => ({ ...ctx, password }));
+            machine.context.update((ctx) => ({ ...ctx, password }));
           }}
           placeholder="password"
         />

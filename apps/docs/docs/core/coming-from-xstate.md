@@ -13,7 +13,7 @@ step-based product flows rather than general statecharts.
 | XState concept           | Journey V1                                                |
 | ------------------------ | --------------------------------------------------------- |
 | Machine states           | Journey steps                                             |
-| Initial state            | Graph `initial`, or first linear step                     |
+| Initial state            | Graph `initial`, or first linear step; `startAt` override |
 | Context                  | Snapshot `context`                                        |
 | Event union              | `{ type; payload? }` union sent as `send(type, payload?)` |
 | Guard                    | Graph transition `when({ context, handlers })`            |

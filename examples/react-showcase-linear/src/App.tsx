@@ -39,13 +39,17 @@ export default function App() {
       wrapper={<Shell />}
       fallback={<p>Unknown step</p>}
       machineRef={handleMachineRef}
-      onStart={({ stepId }) => console.log("[react linear] journey.started at", stepId)}
-      onComplete={({ context }) => console.log("[react linear] journey.completed", context)}
+      onStart={(snapshot) =>
+        console.log("[react linear] journey.started at", snapshot.currentStep?.id)
+      }
+      onComplete={({ snapshot }) =>
+        console.log("[react linear] journey.completed", snapshot.context)
+      }
     >
       <Login id="login" />
       <Setup2fa id="setup2fa" />
       <VerifyCode id="verifyCode" />
-      <LinearJourney.Step id="loggedIn" meta={{ label: "Logged In" }}>
+      <LinearJourney.Step id="loggedIn" metadata={{ label: "Logged In" }}>
         <LoggedIn />
       </LinearJourney.Step>
     </LinearJourney>

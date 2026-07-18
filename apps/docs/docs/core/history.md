@@ -33,7 +33,9 @@ journey falls back to the next declared step; a graph journey returns `"out-of-b
 
 ## Appending and branching
 
-Graph sends and `goToStepById` append destinations. If the pointer is behind the timeline tip, the
+Graph sends and `goToStepById` append destinations. Linear machines also expose
+`goToStepByIndex(index)`, which targets a step by its declared-order index; an out-of-range or
+non-integer index rejects with `"invalid-target"`. If the pointer is behind the timeline tip, the
 old future is removed first:
 
 ```text

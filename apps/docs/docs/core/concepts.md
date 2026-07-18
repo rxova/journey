@@ -19,6 +19,10 @@ const machine = createLinearJourney({
 
 The machine's methods remain stable for its lifetime. Runtime values are read from snapshots.
 
+Factories also accept runtime options: `autoStart`, `startAt` (start directly at a given step;
+overrides graph `initial`), `persist` (persistence-plugin sugar), `defaultTimeoutMs`, and
+`plugins`.
+
 ## Steps and metadata
 
 Every step has an id. A full step config can add static `metadata`, `onLeave`, and `onEnter`.

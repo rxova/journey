@@ -20,17 +20,18 @@ from each plugin's dedicated entrypoint.
 
 Its primary React-specific types are:
 
-| Type                                          | Purpose                          |
-| --------------------------------------------- | -------------------------------- |
-| `LinearJourneyProps<TContext, TStepId>`       | Props for the owning component   |
-| `LinearJourneyStepProps<TContext, TStepId>`   | Config marker props              |
-| `UseLinearJourneyResult<TContext, TStepId>`   | Complete convenience hook result |
-| `LinearJourneySnapshot<TContext, TStepId>`    | Core linear snapshot alias       |
-| `LinearJourneyMachine<TContext>`              | Underlying Core machine          |
-| `LinearJourneyStepHandler<TContext, TResult>` | Transactional navigation work    |
-| `LinearJourneyStepChange<TContext, TStepId>`  | Step-change callback payload     |
-| `LinearJourneyBundle<TContext, TStepId>`      | Typed factory result             |
-| `TypedLinearJourney<TContext, TStepId>`       | Typed component with `.Step`     |
+| Type                                          | Purpose                                     |
+| --------------------------------------------- | ------------------------------------------- |
+| `LinearJourneyProps<TContext, TStepId>`       | Props for the owning component              |
+| `LinearJourneyStepProps<TContext, TStepId>`   | Config marker props                         |
+| `UseLinearJourneyResult<TContext, TStepId>`   | Hook result: `{ machine, snapshot }`        |
+| `LinearJourneySnapshot<TContext, TStepId>`    | Core linear snapshot alias                  |
+| `LinearJourneyMachine<TContext, TStepId>`     | Underlying Core machine, verbatim           |
+| `LinearJourneyEventPayloads<TContext>`        | Core event payloads for the callback props  |
+| `LinearJourneyStepConfig<TContext>`           | `<LinearJourney.Step>` metadata/hook config |
+| `LinearJourneyStepHandler<TContext, TResult>` | Transactional navigation work               |
+| `LinearJourneyBundle<TContext, TStepId>`      | Typed factory result                        |
+| `TypedLinearJourney<TContext, TStepId>`       | Typed component with `.Step`                |
 
 ### Literal step inference
 
@@ -40,7 +41,7 @@ type Context = { email: string };
 const signup = createLinearJourney<Context>()(["email", "password", "review"] as const);
 
 type Signup = ReturnType<typeof signup.useLinearJourney>;
-// activeStepId is "email" | "password" | "review"
+// snapshot.currentStep?.id and machine.navigate targets are "email" | "password" | "review"
 ```
 
 Keep the tuple literal with `as const`; widening it to `string[]` loses the step-ID union.
@@ -108,8 +109,9 @@ The event name selects the listener payload from Core's `JourneyEventPayloads`.
 
 The main React entrypoint re-exports commonly consumed Core machine and snapshot types, including
 `GraphJourneyMachine`, `GraphSnapshot`, `LinearSnapshot`, `JourneySnapshot`,
-`JourneyEventObject`, `JourneySubscriptionEvent`, `NavigationResult`, `JourneyStatus`, and
-`StepAsyncState`.
+`JourneyEventObject`, `JourneyEventPayloads`, `JourneySubscriptionEvent`, `NavigationResult`,
+`NavigationWork`, `JourneyPersistOption`, `JourneyStatus`, `StepAsyncState`, and
+`StepEnterDirection`.
 
 For definitions, builders, navigation work, hook arguments, plugin hosts, or less common contracts,
 import directly from `@rxova/journey-core`.
