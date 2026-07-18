@@ -267,6 +267,7 @@ export class JourneyRuntime {
 
     let stagedContext = this.context;
     let contextWasUpdated = false;
+    let result: unknown;
 
     this.pending = { phase: "working", from, to: null };
     this.entryAsync = LOADING_ASYNC;
@@ -279,7 +280,7 @@ export class JourneyRuntime {
         event,
         handlers: this.config.handlers
       };
-      const result = await this.withTimeout(
+      result = await this.withTimeout(
         Promise.resolve(work.run(args)),
         `send work(${type} from ${from})`
       );
@@ -311,8 +312,9 @@ export class JourneyRuntime {
 
     if (!this.isCurrent(generation)) return this.staleResult();
 
-    // Route against the staged context, not the committed one.
-    const transition = this.resolveTransition(type, stagedContext);
+    // Route against the staged context, not the committed one; the guards also
+    // see the run result directly, so transient outcomes need not be persisted.
+    const transition = this.resolveTransition(type, stagedContext, result);
     if (!transition) {
       // Roll back: the staged context is dropped along with the move.
       this.pending = null;
@@ -395,11 +397,17 @@ export class JourneyRuntime {
   /**
    * `context` is explicit so a work-carrying `send` can evaluate guards against
    * the context its `commit` just staged, rather than the committed one.
+   * `result` is the work's run result during that same routing pass; outside a
+   * work send (plain sends, snapshot introspection) guards see it as undefined.
    */
-  private isEnabled(transition: RuntimeTransition, context: unknown = this.context): boolean {
+  private isEnabled(
+    transition: RuntimeTransition,
+    context: unknown = this.context,
+    result?: unknown
+  ): boolean {
     if (!transition.when) return true;
     try {
-      return transition.when({ context, handlers: this.config.handlers });
+      return transition.when({ context, handlers: this.config.handlers, result });
     } catch {
       return false;
     }
@@ -408,13 +416,14 @@ export class JourneyRuntime {
   /** First enabled candidate for `event` from the current step, in declaration order. */
   private resolveTransition(
     event: string,
-    context: unknown = this.context
+    context: unknown = this.context,
+    result?: unknown
   ): RuntimeTransition | undefined {
     return this.config.transitions.find(
       (candidate) =>
         candidate.event === event &&
         candidate.from === this.currentStepId() &&
-        this.isEnabled(candidate, context)
+        this.isEnabled(candidate, context, result)
     );
   }
 

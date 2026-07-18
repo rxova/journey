@@ -145,7 +145,7 @@
       "name": "core/createGraphJourneyBuilder",
       "path": "dist/index.js",
       "import": "{ createGraphJourneyBuilder }",
-      "limit": "600 B"
+      "limit": "750 B"
     },
     {
       "name": "core/linearToGraphDefinition",
