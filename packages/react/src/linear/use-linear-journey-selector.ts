@@ -14,7 +14,7 @@ export const useLinearJourneySelector = <
   selector: (snapshot: LinearJourneySnapshot<TContext, TStepId>) => TSelected,
   equalityFn?: (a: TSelected, b: TSelected) => boolean
 ): TSelected => {
-  const { machine } = useLinearJourneyContext("useLinearJourneySelector");
+  const machine = useLinearJourneyContext("useLinearJourneySelector");
   return useJourneySelector(
     machine,
     selector as (snapshot: ReturnType<typeof machine.getSnapshot>) => TSelected,

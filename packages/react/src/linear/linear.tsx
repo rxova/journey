@@ -3,29 +3,20 @@ import { createLinearJourney } from "@rxova/journey-core";
 import { errorInDevelopment } from "@rxova/journey-common/dev";
 import { useJourneySnapshot } from "../headless/use-journey-snapshot";
 import { deriveStepsFromChildren } from "./derive-steps";
-import {
-  buildLinearSteps,
-  buildPersistPlugin,
-  createInterceptorStore,
-  stepListSignature
-} from "./linear.helpers";
 import { LinearJourneyActiveStepContext, LinearJourneyContext } from "./linear-context";
 import { LinearJourneyStep } from "./linear-journey-step";
 import type { DerivedLinearJourneyStep } from "./derive-steps";
-import type { InterceptorStore } from "./linear.helpers";
-import type { LinearJourneyContextValue } from "./linear-context";
-import type {
-  LinearJourneyMachine,
-  LinearJourneyProps,
-  LinearJourneySnapshot,
-  LinearJourneyStepChange
-} from "./linear.types";
+import type { LinearJourneyMachine, LinearJourneyProps } from "./linear.types";
 
 const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
 
-const assignMachineRef = <TContext,>(
-  ref: LinearJourneyProps<TContext>["machineRef"],
-  machine: LinearJourneyMachine<TContext> | null
+/** Signature used to detect step-list changes across renders (order-sensitive). */
+const stepListSignature = (steps: readonly DerivedLinearJourneyStep[]): string =>
+  steps.map((step) => step.id).join(" ");
+
+const assignMachineRef = <TContext, TStepId extends string>(
+  ref: LinearJourneyProps<TContext, TStepId>["machineRef"],
+  machine: LinearJourneyMachine<TContext, TStepId> | null
 ): void => {
   if (!ref) {
     return;
@@ -34,77 +25,7 @@ const assignMachineRef = <TContext,>(
     ref(machine as never);
     return;
   }
-  (ref as React.MutableRefObject<LinearJourneyMachine<TContext> | null>).current = machine;
-};
-
-type LinearJourneyMachineSetup = {
-  machine: LinearJourneyMachine;
-  interceptors: InterceptorStore;
-  contextValue: LinearJourneyContextValue;
-};
-
-/**
- * Creates and starts the linear journey machine. `autoStart` in the creation options
- * means the first snapshot already has a current step — the linear journey never
- * renders an idle frame. A non-default start position is one ungated
- * `goToStepById` immediately after start (step 0's hooks still fire).
- */
-const createLinearJourneyMachine = (
-  steps: readonly DerivedLinearJourneyStep[],
-  props: {
-    context: unknown;
-    startStepId?: string | undefined;
-    startIndex?: number | undefined;
-    persist?: LinearJourneyProps["persist"];
-    plugins?: LinearJourneyProps["plugins"];
-  },
-  onError: (error: unknown, info: { phase: "start" | "navigate" | "step-handler" }) => void
-): LinearJourneyMachineSetup => {
-  const machine = createLinearJourney(
-    { steps: buildLinearSteps(steps) as never, context: props.context },
-    {
-      autoStart: true,
-      plugins: [
-        ...(props.persist ? [buildPersistPlugin(props.persist)] : []),
-        ...(props.plugins ?? [])
-      ]
-    }
-  ) as unknown as LinearJourneyMachine;
-
-  const startTarget =
-    props.startStepId ??
-    (props.startIndex !== undefined && props.startIndex !== 0
-      ? steps[props.startIndex]?.id
-      : undefined);
-  if (startTarget !== undefined && startTarget !== steps[0]?.id) {
-    // Deferred a macrotask: the initial entry's effects are still settling
-    // synchronously after creation, and navigation during that window is
-    // rejected as "transitioning".
-    setTimeout(() => {
-      void machine.navigate.goToStepById(startTarget).then((result) => {
-        if (!result.ok) {
-          onError(
-            "error" in result && result.error !== undefined
-              ? result.error
-              : new Error(`linear journey start navigation rejected: ${result.reason}`),
-            { phase: "start" }
-          );
-        }
-      });
-    }, 0);
-  }
-
-  const interceptors = createInterceptorStore();
-  return {
-    machine,
-    interceptors,
-    contextValue: {
-      machine,
-      interceptors,
-      metaByStep: new Map(steps.map((step) => [step.id, step.config.meta])),
-      onError
-    }
-  };
+  (ref as React.MutableRefObject<LinearJourneyMachine<TContext, TStepId> | null>).current = machine;
 };
 
 /** Internal prop set by createLinearJourney (the typed factory): the declared id set. */
@@ -136,13 +57,12 @@ const LinearJourneyComponent = <TContext,>(
     children,
     context,
     startIndex,
-    startStepId,
+    startAt,
     header,
     footer,
     wrapper,
     fallback,
     onStart,
-    onStepChange,
     onStepEnter,
     onStepLeave,
     onComplete,
@@ -153,9 +73,9 @@ const LinearJourneyComponent = <TContext,>(
     declaredStepIds
   } = props;
 
-  if (startIndex !== undefined && startIndex !== 0 && startStepId !== undefined) {
+  if (startIndex !== undefined && startIndex !== 0 && startAt !== undefined) {
     errorInDevelopment(
-      "<LinearJourney> received both startIndex and startStepId; startStepId wins. Remove one."
+      "<LinearJourney> received both startIndex and startAt; startAt wins. Remove one."
     );
   }
 
@@ -169,34 +89,33 @@ const LinearJourneyComponent = <TContext,>(
 
   // Callback refs: subscriptions below stay stable across re-renders while
   // always seeing the latest callbacks.
-  const callbacksRef = React.useRef({
-    onStart,
-    onStepChange,
-    onStepEnter,
-    onStepLeave,
-    onComplete,
-    onError
-  });
-  callbacksRef.current = { onStart, onStepChange, onStepEnter, onStepLeave, onComplete, onError };
-  const reportError = React.useCallback(
-    (error: unknown, info: { phase: "start" | "navigate" | "step-handler" }) => {
-      callbacksRef.current.onError?.(error, info);
-    },
-    []
-  );
+  const callbacksRef = React.useRef({ onStart, onStepEnter, onStepLeave, onComplete, onError });
+  callbacksRef.current = { onStart, onStepEnter, onStepLeave, onComplete, onError };
 
   // Machine ownership: lazy ref init so StrictMode's double render creates
-  // exactly one machine. Machine, interceptors, and the provided context value
-  // are all fixed for the lifetime of the mount.
-  const setupRef = React.useRef<LinearJourneyMachineSetup | null>(null);
-  if (setupRef.current === null) {
-    setupRef.current = createLinearJourneyMachine(
-      steps,
-      { context: (context ?? {}) as unknown, startStepId, startIndex, persist, plugins },
-      reportError
-    );
+  // exactly one machine, fixed for the lifetime of the mount. All linear
+  // semantics — start position, persist, step work — are core creation options.
+  const machineRefInternal = React.useRef<LinearJourneyMachine | null>(null);
+  if (machineRefInternal.current === null) {
+    if (steps.length === 0) {
+      throw new Error("<LinearJourney> needs at least one step.");
+    }
+    const resolvedStartAt =
+      startAt ?? (startIndex !== undefined && startIndex !== 0 ? steps[startIndex]?.id : undefined);
+    machineRefInternal.current = createLinearJourney(
+      {
+        steps: steps.map((step) => ({ id: step.id, ...step.config })) as never,
+        context: (context ?? {}) as unknown
+      },
+      {
+        autoStart: true,
+        ...(resolvedStartAt !== undefined ? { startAt: resolvedStartAt } : {}),
+        ...(persist !== undefined ? { persist } : {}),
+        plugins: plugins ?? []
+      }
+    ) as unknown as LinearJourneyMachine;
   }
-  const { machine, contextValue } = setupRef.current;
+  const machine = machineRefInternal.current;
 
   // Dispose on real unmount; a StrictMode remount cancels the scheduled
   // disposal so the live machine is preserved.
@@ -209,8 +128,8 @@ const LinearJourneyComponent = <TContext,>(
     return () => {
       scheduledDisposeRef.current = globalThis.setTimeout(() => {
         scheduledDisposeRef.current = null;
-        setupRef.current?.machine.dispose();
-        setupRef.current = null;
+        machineRefInternal.current?.dispose();
+        machineRefInternal.current = null;
       }, 0);
     };
   }, []);
@@ -229,60 +148,37 @@ const LinearJourneyComponent = <TContext,>(
     );
   }
 
-  // Imperative machineRef, onStart, and event wiring.
+  // Imperative machineRef, onStart, and verbatim event → prop forwarding.
   const startReportedRef = React.useRef(false);
   useSafeLayoutEffect(() => {
-    assignMachineRef(machineRef, machine as LinearJourneyMachine<TContext>);
+    assignMachineRef(machineRef, machine as never);
 
     // Once per mounted journey (the ref guard absorbs StrictMode's double
-    // effect). With a non-default start position this reports step 0; the
-    // deferred start navigation lands via onStepChange right after.
+    // effect). The machine autostarts at creation, so the start snapshot
+    // already sits on the resolved start step.
     if (!startReportedRef.current) {
       startReportedRef.current = true;
       const startSnapshot = machine.getSnapshot();
       if (startSnapshot.currentStep !== null) {
-        callbacksRef.current.onStart?.({
-          stepId: startSnapshot.currentStep.id,
-          context: startSnapshot.context as TContext
-        });
+        callbacksRef.current.onStart?.(startSnapshot as never);
       }
     }
 
     const subscriptions = machine.subscriptions;
     const unsubscribes = [
-      subscriptions.subscribeEvent("stepEnter", ({ snapshot, from, to }) => {
-        callbacksRef.current.onStepEnter?.({ stepId: to, context: snapshot.context as TContext });
-        const order = snapshot.steps.stepOrder;
-        const fromIndex = from === null ? -1 : order.indexOf(from);
-        const toIndex = order.indexOf(to);
-        let direction: LinearJourneyStepChange<TContext>["direction"] = "jump";
-        if (fromIndex === -1 || toIndex === fromIndex + 1) direction = "forward";
-        else if (toIndex < fromIndex) direction = "backward";
-        const change: LinearJourneyStepChange<TContext> = {
-          fromStepId: from,
-          toStepId: to,
-          fromIndex: fromIndex === -1 ? null : fromIndex,
-          toIndex,
-          direction,
-          context: snapshot.context as TContext
-        };
-        callbacksRef.current.onStepChange?.(change);
+      subscriptions.subscribeEvent("stepEnter", (payload) => {
+        callbacksRef.current.onStepEnter?.(payload as never);
       }),
-      subscriptions.subscribeEvent("stepLeave", ({ snapshot, from }) => {
-        callbacksRef.current.onStepLeave?.({ stepId: from, context: snapshot.context as TContext });
+      subscriptions.subscribeEvent("stepLeave", (payload) => {
+        callbacksRef.current.onStepLeave?.(payload as never);
       }),
-      subscriptions.subscribeEvent("statusChange", ({ snapshot, current }) => {
-        if (current === "completed") {
-          callbacksRef.current.onComplete?.({
-            context: snapshot.context as TContext,
-            snapshot: snapshot as LinearJourneySnapshot<TContext>
-          });
+      subscriptions.subscribeEvent("statusChange", (payload) => {
+        if (payload.current === "completed") {
+          callbacksRef.current.onComplete?.(payload as never);
         }
       }),
-      subscriptions.subscribeEvent("error", ({ error, phase }) => {
-        callbacksRef.current.onError?.(error, {
-          phase: phase === "work" ? "step-handler" : "navigate"
-        });
+      subscriptions.subscribeEvent("error", (payload) => {
+        callbacksRef.current.onError?.(payload as never);
       })
     ];
 
@@ -310,7 +206,7 @@ const LinearJourneyComponent = <TContext,>(
   const wrappedNode = wrapper ? React.cloneElement(wrapper, undefined, activeNode) : activeNode;
 
   return (
-    <LinearJourneyContext.Provider value={contextValue}>
+    <LinearJourneyContext.Provider value={machine}>
       {header}
       {wrappedNode}
       {footer}

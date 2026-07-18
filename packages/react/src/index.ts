@@ -8,11 +8,10 @@ export { useLinearJourneyStep } from "./linear/use-linear-journey-step";
 export type { LinearJourneyBundle, TypedLinearJourney } from "./linear/create-linear-journey";
 export type {
   UseLinearJourneyResult,
+  LinearJourneyEventPayloads,
   LinearJourneyMachine,
-  LinearJourneyPersistProp,
   LinearJourneyProps,
   LinearJourneySnapshot,
-  LinearJourneyStepChange,
   LinearJourneyStepConfig,
   LinearJourneyStepHandler,
   LinearJourneyStepProps
@@ -23,10 +22,14 @@ export type {
   GraphJourneyMachine,
   GraphSnapshot,
   JourneyEventObject,
+  JourneyEventPayloads,
+  JourneyPersistOption,
   JourneySnapshot,
   JourneyStatus,
   JourneySubscriptionEvent,
   LinearSnapshot,
   NavigationResult,
-  StepAsyncState
+  NavigationWork,
+  StepAsyncState,
+  StepEnterDirection
 } from "@rxova/journey-core";
