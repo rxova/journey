@@ -347,6 +347,22 @@ importers:
         specifier: '>=7.3.5 <8.0.0'
         version: 7.3.6(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.8.3)
 
+  examples/core-quickstart-graph:
+    dependencies:
+      '@rxova/journey-core':
+        specifier: workspace:^
+        version: link:../../packages/core
+    devDependencies:
+      '@vitejs/plugin-react':
+        specifier: ^5.1.4
+        version: 5.1.4(vite@7.3.6(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.8.3))
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: '>=7.3.5 <8.0.0'
+        version: 7.3.6(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.8.3)
+
   examples/core-showcase-graph:
     dependencies:
       '@rxova/journey-core':
