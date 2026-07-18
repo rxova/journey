@@ -70,16 +70,22 @@ The callback form also receives `work`, which lets the event carry its own async
 ```ts
 const login = createStep("login", {
   on: {
-    SUBMIT: ({ to, work }) =>
+    SUBMIT: ({ work }) =>
       work({
         run: ({ snapshot, handlers }) => handlers.authenticate(snapshot.context.username),
         commit: ({ result, updateContext }) =>
-          updateContext((context) => ({ ...context, authenticated: result.ok })),
-        candidates: [to("dashboard").when(({ context }) => context.authenticated), to("login")]
+          updateContext((context) => ({ ...context, error: result.ok ? null : "Login failed" })),
+        candidates: ({ to, stay }) => [to("dashboard").when(({ result }) => result.ok), stay()]
       })
   }
 });
 ```
+
+`candidates` takes a plain array (guards see `context`/`handlers`) or a callback receiving a
+work-scoped `to` and `stay` whose guards also see the typed run `result`. `stay()` — also available
+in the event callback itself — is an unguarded candidate back at the declaring step: the named
+totality fallback. A work declaration whose candidates are all guarded triggers a build-time
+warning, silenced by `allowRollback: true`.
 
 The transactional semantics — staging, rollback when no candidate is enabled, and the totality
 rule — are covered in [Graph § Transactional sends](../usage/graph#transactional-sends-event-work).

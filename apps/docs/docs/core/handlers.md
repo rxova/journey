@@ -52,7 +52,8 @@ const test = createGraphJourney(definition, {
 
 Handlers reach the places where a definition decides something:
 
-- graph `when` guards — including the candidates of a work send;
+- graph `when` guards — including the candidates of a work send, whose guards also receive the
+  run `result`;
 - event work — the `run` and `commit` of a
   [transactional send](./usage/graph#transactional-sends-event-work).
 
