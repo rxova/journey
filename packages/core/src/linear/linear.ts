@@ -1,5 +1,6 @@
 import { buildMachineSurface } from "../core/machine";
 import { JourneyRuntime } from "../core/runtime";
+import { persistOptionToPlugin } from "../plugins/persistence/persistence";
 import type { RuntimeStep } from "../core/runtime.types";
 import type {
   CompletePayloadOf,
@@ -82,7 +83,10 @@ export function createLinearJourney<
     handlers: undefined,
     autoStart: options.autoStart ?? false,
     defaultTimeoutMs: options.defaultTimeoutMs,
-    plugins: options.plugins ?? []
+    plugins: [
+      ...(options.persist ? [persistOptionToPlugin(options.persist)] : []),
+      ...(options.plugins ?? [])
+    ]
   });
 
   return buildMachineSurface(runtime) as unknown as LinearJourneyMachine<

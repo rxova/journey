@@ -6,6 +6,7 @@
  * points (navigation accepted → commit → settle, plus lifecycle and context
  * changes) and delivered to subscribers.
  */
+import type { JourneyStorage } from "../plugins/persistence/persistence.types";
 
 /** Journey lifecycle status (meta-state-machine, enforced in core). */
 export type JourneyStatus = "idle" | "running" | "paused" | "completed" | "terminated";
@@ -487,6 +488,13 @@ export type PluginApis<TPlugins extends readonly AnyJourneyPlugin[]> = {
     : never;
 };
 
+/** Sugar over the persistence plugin, expanded at creation. */
+export type JourneyPersistOption = {
+  readonly key: string;
+  /** Defaults to `globalThis.localStorage`; creation throws when neither is available. */
+  readonly storage?: JourneyStorage;
+};
+
 /** Runtime options shared by linear and graph journeys. */
 export type JourneyRuntimeOptions<
   TPlugins extends readonly AnyJourneyPlugin[] = readonly [],
@@ -504,6 +512,11 @@ export type JourneyRuntimeOptions<
    * at creation.
    */
   startAt?: TStepId;
+  /**
+   * Expands into the persistence plugin, prepended to `plugins`. Combining it
+   * with an explicit persistence plugin fails as a duplicate plugin name.
+   */
+  persist?: JourneyPersistOption;
   /**
    * Applied to navigation work and every async hook invocation. Work timeouts
    * block movement; post-commit hook timeouts surface as step errors.

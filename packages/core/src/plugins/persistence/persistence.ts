@@ -4,7 +4,8 @@ import type {
   PersistenceApi,
   PersistencePluginOptions
 } from "./persistence.types";
-import type { JourneyPlugin } from "../../core/types";
+import type { JourneyPersistOption, JourneyPlugin } from "../../core/types";
+import type { JourneyStorage } from "./persistence.types";
 
 export { buildPersistedState, parsePersistedState } from "./persistence.helpers";
 export type {
@@ -64,4 +65,15 @@ export function createPersistencePlugin(
       };
     }
   };
+}
+
+/** Expands the creation-time `persist` option into the persistence plugin. */
+export function persistOptionToPlugin(
+  option: JourneyPersistOption
+): JourneyPlugin<"persistence", PersistenceApi, { lastSavedAt: number | null }> {
+  const storage = option.storage ?? (globalThis.localStorage as JourneyStorage | undefined);
+  if (!storage) {
+    throw new Error("journey: persist.storage is required when localStorage is unavailable");
+  }
+  return createPersistencePlugin({ key: option.key, storage });
 }
