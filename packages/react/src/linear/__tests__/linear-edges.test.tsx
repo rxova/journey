@@ -15,24 +15,15 @@ const StepA = makeStep("a");
 const StepB = makeStep("b");
 
 const IndexNav = () => {
-  const journey = useLinearJourney();
+  const { machine, snapshot } = useLinearJourney();
   return (
     <div>
-      <span data-testid="active">{journey.activeStepId}</span>
-      <span data-testid="paused">{journey.isPaused ? "paused" : "running"}</span>
-      <button onClick={() => void journey.goToStepByIndex(1)}>by-index</button>
-      <button
-        onClick={() =>
-          void journey.goToStepByIndex(99).then((result) => {
-            if (!result.ok) document.title = `idx:${result.reason}`;
-          })
-        }
-      >
-        bad-index
-      </button>
-      <button onClick={() => void journey.goToLastVisitedStep()}>tip</button>
-      <button onClick={() => void journey.goToPreviousStep()}>back</button>
-      <button onClick={() => journey.controls.pause()}>pause</button>
+      <span data-testid="active">{snapshot.currentStep?.id}</span>
+      <span data-testid="paused">{snapshot.machine.isPaused ? "paused" : "running"}</span>
+      <button onClick={() => void machine.navigate.goToStepByIndex(1)}>by-index</button>
+      <button onClick={() => void machine.navigate.goToLastVisitedStep()}>tip</button>
+      <button onClick={() => void machine.navigate.goToPreviousStep()}>back</button>
+      <button onClick={() => machine.controls.pause()}>pause</button>
     </div>
   );
 };
@@ -42,7 +33,7 @@ describe("<LinearJourney.Step> children form", () => {
     const onEnter = vi.fn();
     render(
       <LinearJourney footer={<IndexNav />}>
-        <LinearJourney.Step id="intro" meta="Intro meta">
+        <LinearJourney.Step id="intro" metadata="Intro metadata">
           <p data-testid="intro-content">hello</p>
         </LinearJourney.Step>
         <LinearJourney.Step id="second" onEnter={onEnter} onLeave={() => undefined}>
@@ -118,7 +109,7 @@ describe("children flattening", () => {
 });
 
 describe("navigation edges", () => {
-  it("navigates by index, reports invalid indexes, walks the timeline tip, and pauses", async () => {
+  it("navigates by index, walks the timeline tip, and pauses — all through the machine", async () => {
     render(
       <LinearJourney footer={<IndexNav />}>
         <StepA id="a" />
@@ -130,10 +121,6 @@ describe("navigation edges", () => {
     fireEvent.click(screen.getByText("by-index"));
     await flush();
     expect(screen.getByTestId("active").textContent).toBe("b");
-
-    fireEvent.click(screen.getByText("bad-index"));
-    await flush();
-    expect(document.title).toBe("idx:invalid-target");
 
     fireEvent.click(screen.getByText("back"));
     await flush();
@@ -147,29 +134,12 @@ describe("navigation edges", () => {
     expect(screen.getByTestId("paused").textContent).toBe("paused");
   });
 
-  it("reports an unknown startStepId through onError with the start phase", async () => {
+  it("starts directly at startAt: earlier steps never enter or leave", async () => {
+    const onLeaveA = vi.fn();
     const onError = vi.fn();
     render(
-      <LinearJourney startStepId="ghost" onError={onError}>
-        <StepA id="a" />
-      </LinearJourney>
-    );
-    await flush();
-    expect(onError).toHaveBeenCalledWith(expect.any(Error), { phase: "start" });
-    expect(screen.getByTestId("step-a")).toBeTruthy();
-  });
-
-  it("reports a start-position onLeave effect without undoing navigation", async () => {
-    const boom = new Error("initial step refused to leave");
-    const onError = vi.fn();
-    render(
-      <LinearJourney startStepId="b" onError={onError}>
-        <LinearJourney.Step
-          id="a"
-          onLeave={() => {
-            throw boom;
-          }}
-        >
+      <LinearJourney startAt="b" onError={onError}>
+        <LinearJourney.Step id="a" onLeave={onLeaveA}>
           <StepA />
         </LinearJourney.Step>
         <StepB id="b" />
@@ -177,8 +147,9 @@ describe("navigation edges", () => {
     );
     await flush();
 
-    expect(onError).toHaveBeenCalledWith(boom, { phase: "navigate" });
     expect(screen.getByTestId("step-b")).toBeTruthy();
+    expect(onLeaveA).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
   });
 });
 
@@ -206,19 +177,19 @@ describe("render chrome and refs", () => {
 });
 
 describe("createLinearJourney extras", () => {
-  it("threads startStepId, persist, and plugins through the typed component's props", async () => {
+  it("threads startAt, persist, and plugins through the typed component's props", async () => {
     const storage = memoryStorage();
     const journey = createLinearJourney<{ n: number }>()(["one", "two"]);
 
     const Forward = () => {
-      const state = journey.useLinearJourney();
-      return <button onClick={() => void state.goToPreviousStep()}>rewind</button>;
+      const { machine } = journey.useLinearJourney();
+      return <button onClick={() => void machine.navigate.goToPreviousStep()}>rewind</button>;
     };
 
     render(
       <journey.LinearJourney
         context={{ n: 0 }}
-        startStepId="two"
+        startAt="two"
         persist={{ key: "bundle", storage }}
         plugins={[]}
         footer={<Forward />}
@@ -231,9 +202,10 @@ describe("createLinearJourney extras", () => {
     expect(screen.getByTestId("step-b")).toBeTruthy();
     expect(storage.dump().has("bundle")).toBe(true);
 
+    // startAt starts directly at "two": there is no earlier timeline entry.
     fireEvent.click(screen.getByText("rewind"));
     await flush();
-    expect(screen.getByTestId("step-a")).toBeTruthy();
+    expect(screen.getByTestId("step-b")).toBeTruthy();
   });
 
   it("registers no-op handlers without breaking forward navigation", async () => {
@@ -242,8 +214,8 @@ describe("createLinearJourney extras", () => {
       return <span data-testid="passive">passive</span>;
     };
     const Forward = () => {
-      const journey = useLinearJourney();
-      return <button onClick={() => void journey.goToNextStep()}>go</button>;
+      const { machine } = useLinearJourney();
+      return <button onClick={() => void machine.navigate.goToNextStep()}>go</button>;
     };
     render(
       <LinearJourney footer={<Forward />}>
@@ -275,14 +247,16 @@ describe("createLinearJourney extras", () => {
 });
 
 describe("machine error surfacing", () => {
-  it("exposes a step onEnter error through useLinearJourney().error", async () => {
+  it("exposes a step onEnter error through the snapshot's async state", async () => {
     const Failing = () => <span data-testid="failing">failing</span>;
     const Report = () => {
-      const journey = useLinearJourney();
+      const { machine, snapshot } = useLinearJourney();
       return (
         <div>
-          <span data-testid="machine-error">{String(journey.error ?? "none")}</span>
-          <button onClick={() => void journey.goToNextStep()}>advance</button>
+          <span data-testid="machine-error">
+            {String(snapshot.currentStep?.async.error ?? "none")}
+          </span>
+          <button onClick={() => void machine.navigate.goToNextStep()}>advance</button>
         </div>
       );
     };
@@ -334,12 +308,12 @@ describe("typed bundle step hooks", () => {
     const journey = createLinearJourney<{ n: number }>()(["hooked", "done"]);
     const HookedStep = () => {
       journey.useLinearJourneyStep(handler);
-      const state = journey.useLinearJourney();
-      return <span data-testid="ctx">{state.context.n}</span>;
+      const { snapshot } = journey.useLinearJourney();
+      return <span data-testid="ctx">{snapshot.context.n}</span>;
     };
     const Forward = () => {
-      const state = journey.useLinearJourney();
-      return <button onClick={() => void state.goToNextStep()}>onward</button>;
+      const { machine } = journey.useLinearJourney();
+      return <button onClick={() => void machine.navigate.goToNextStep()}>onward</button>;
     };
 
     render(

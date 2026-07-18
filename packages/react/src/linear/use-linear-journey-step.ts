@@ -6,12 +6,14 @@ const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : Re
 
 /**
  * Registers forward-navigation work for the step component calling it —
- * the react-use-wizard `handleStep` equivalent.
+ * the react-use-wizard `handleStep` equivalent, a shell over core's
+ * `machine.navigate.registerNextStepInterceptor`.
  *
- * `useLinearJourney().goToNextStep()` delegates the work to Core; a throw/reject
- * cancels the navigation and lands in `useLinearJourney().error`, and
- * `useLinearJourney().isLoading` is true while it runs. Forward-only: timeline moves
- * and `goToStepById` bypass it. `onLeave` and `onEnter` remain post-commit effects.
+ * `machine.navigate.goToNextStep()` runs the registered work in Core; a
+ * throw/reject cancels the navigation and lands in
+ * `snapshot.currentStep.async.error`, with `snapshot.machine.isLoading` true
+ * while it runs. Forward-only: timeline moves and `goToStepById` bypass it.
+ * `onLeave` and `onEnter` remain post-commit effects.
  *
  * ```tsx
  * const Password = () => {
@@ -29,7 +31,7 @@ const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : Re
 export const useLinearJourneyStep = <TContext = unknown, TResult = void>(
   handler?: LinearJourneyStepHandler<TContext, TResult>
 ): void => {
-  const { interceptors } = useLinearJourneyContext("useLinearJourneyStep");
+  const machine = useLinearJourneyContext("useLinearJourneyStep");
   const stepId = React.useContext(LinearJourneyActiveStepContext);
 
   if (stepId === null) {
@@ -44,14 +46,11 @@ export const useLinearJourneyStep = <TContext = unknown, TResult = void>(
 
   const hasHandler = handler !== undefined;
   useSafeLayoutEffect(() => {
-    return interceptors.register(
-      stepId,
-      hasHandler
-        ? ({
-            run: (args: never) => handlerRef.current?.run(args),
-            commit: (args: never) => handlerRef.current?.commit?.(args)
-          } as never)
-        : undefined
-    );
-  }, [interceptors, stepId, hasHandler]);
+    if (!hasHandler) return;
+    const work: LinearJourneyStepHandler<TContext, TResult> = {
+      run: (args) => handlerRef.current?.run(args) as TResult | Promise<TResult>,
+      commit: (args) => handlerRef.current?.commit?.(args)
+    };
+    return machine.navigate.registerNextStepInterceptor(stepId, work as never);
+  }, [machine, stepId, hasHandler]);
 };

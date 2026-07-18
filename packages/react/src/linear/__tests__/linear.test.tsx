@@ -16,29 +16,32 @@ const StepB = makeStep("b");
 const StepC = makeStep("c");
 
 const Nav = () => {
-  const journey = useLinearJourney<{ n: number }>();
+  const { machine, snapshot } = useLinearJourney<{ n: number }>();
+  const currentStep = snapshot.currentStep;
   return (
     <div>
       <span data-testid="position">
-        {journey.activeStepId}:{journey.activeStepIndex + 1}/{journey.stepCount}
+        {currentStep?.id}:{(currentStep?.index ?? -1) + 1}/{snapshot.steps.totalSteps}
       </span>
       <span data-testid="flags">
-        {journey.isFirstStep ? "first" : ""}
-        {journey.isLastStep ? "last" : ""}
-        {journey.isStepFirstTimeVisit ? " fresh" : " revisit"}
+        {currentStep?.isFirstStep ? "first" : ""}
+        {currentStep?.isLastStep ? "last" : ""}
+        {currentStep?.isFirstTimeVisit ? " fresh" : " revisit"}
       </span>
-      <span data-testid="error">{journey.error === null ? "none" : String(journey.error)}</span>
-      <button onClick={() => void journey.goToNextStep()}>next</button>
-      <button onClick={() => void journey.goToPreviousStep()}>back</button>
-      <button onClick={() => void journey.goToStepById("c" as never)}>jump</button>
-      <button onClick={() => journey.controls.complete()}>finish</button>
-      <button onClick={() => journey.clearError()}>clear</button>
+      <span data-testid="error">
+        {currentStep?.async.error == null ? "none" : String(currentStep.async.error)}
+      </span>
+      <button onClick={() => void machine.navigate.goToNextStep()}>next</button>
+      <button onClick={() => void machine.navigate.goToPreviousStep()}>back</button>
+      <button onClick={() => void machine.navigate.goToStepById("c" as never)}>jump</button>
+      <button onClick={() => machine.controls.complete()}>finish</button>
+      <button onClick={() => machine.async.clearError()}>clear</button>
     </div>
   );
 };
 
 describe("<LinearJourney> children form", () => {
-  it("renders the first step and navigates through useLinearJourney", async () => {
+  it("renders the first step and navigates through the verbatim machine", async () => {
     render(
       <LinearJourney footer={<Nav />}>
         <StepA id="a" />
@@ -105,33 +108,29 @@ describe("<LinearJourney> children form", () => {
   });
 });
 
-describe("<LinearJourney> step meta and start position", () => {
-  it("exposes meta declared on <LinearJourney.Step>", async () => {
+describe("<LinearJourney> step metadata and start position", () => {
+  it("exposes metadata declared on <LinearJourney.Step> through the snapshot", async () => {
     const Meta = () => {
-      const journey = useLinearJourney();
-      return (
-        <span data-testid="meta">
-          {String(journey.activeStepMeta)}|{String(journey.getStepMeta("b" as never))}
-        </span>
-      );
+      const { snapshot } = useLinearJourney();
+      return <span data-testid="metadata">{String(snapshot.currentStep?.metadata)}</span>;
     };
     render(
       <LinearJourney footer={<Meta />}>
-        <LinearJourney.Step id="a" meta="Alpha">
+        <LinearJourney.Step id="a" metadata="Alpha">
           <StepA />
         </LinearJourney.Step>
-        <LinearJourney.Step id="b" meta="Beta">
+        <LinearJourney.Step id="b" metadata="Beta">
           <StepB />
         </LinearJourney.Step>
       </LinearJourney>
     );
     await flush();
-    expect(screen.getByTestId("meta").textContent).toBe("Alpha|Beta");
+    expect(screen.getByTestId("metadata").textContent).toBe("Alpha");
   });
 
-  it("starts at startStepId, which wins over startIndex", async () => {
+  it("starts at startAt, which wins over startIndex", async () => {
     render(
-      <LinearJourney startStepId="b" startIndex={2}>
+      <LinearJourney startAt="b" startIndex={2}>
         <StepA id="a" />
         <StepB id="b" />
         <StepC id="c" />
@@ -141,7 +140,7 @@ describe("<LinearJourney> step meta and start position", () => {
     expect(screen.getByTestId("step-b")).toBeTruthy();
   });
 
-  it("starts at startIndex when no startStepId is given", async () => {
+  it("starts at startIndex when no startAt is given", async () => {
     render(
       <LinearJourney startIndex={2}>
         <StepA id="a" />
@@ -151,6 +150,18 @@ describe("<LinearJourney> step meta and start position", () => {
     );
     await flush();
     expect(screen.getByTestId("step-c")).toBeTruthy();
+  });
+
+  it("throws at mount for an unknown startAt id", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect(() =>
+      render(
+        <LinearJourney startAt="ghost">
+          <StepA id="a" />
+        </LinearJourney>
+      )
+    ).toThrow(/startAt references unknown step "ghost"/);
+    consoleError.mockRestore();
   });
 });
 
@@ -170,9 +181,9 @@ describe("useLinearJourneyStep", () => {
     return <span data-testid="guarded">guarded</span>;
   };
   const Bump = () => {
-    const journey = useLinearJourney<{ n: number }>();
+    const { machine } = useLinearJourney<{ n: number }>();
     return (
-      <button onClick={() => journey.updateContext((c) => ({ ...c, n: c.n + 1 }))}>bump</button>
+      <button onClick={() => machine.context.update((c) => ({ ...c, n: c.n + 1 }))}>bump</button>
     );
   };
 
@@ -190,13 +201,13 @@ describe("useLinearJourneyStep", () => {
     await flush();
     expect(screen.getByTestId("guarded")).toBeTruthy(); // still here
     expect(screen.getByTestId("error").textContent).toContain("n too small");
-    expect(onError).toHaveBeenCalledWith(expect.any(Error), { phase: "step-handler" });
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.any(Error), phase: "work", stepId: "guarded" })
+    );
 
     fireEvent.click(screen.getByText("clear"));
     await flush();
     expect(screen.getByTestId("error").textContent).toBe("none");
-    fireEvent.click(screen.getByText("clear")); // nothing left to clear: no-op
-    await flush();
 
     fireEvent.click(screen.getByText("bump"));
     fireEvent.click(screen.getByText("next"));
@@ -206,9 +217,8 @@ describe("useLinearJourneyStep", () => {
 });
 
 describe("linear journey callbacks and machine escape hatches", () => {
-  it("fires step callbacks with directions and completion", async () => {
+  it("forwards core events to the callback props verbatim", async () => {
     const onStart = vi.fn();
-    const onStepChange = vi.fn();
     const onStepEnter = vi.fn();
     const onStepLeave = vi.fn();
     const onComplete = vi.fn();
@@ -218,7 +228,6 @@ describe("linear journey callbacks and machine escape hatches", () => {
       <LinearJourney
         context={{ n: 0 }}
         onStart={onStart}
-        onStepChange={onStepChange}
         onStepEnter={onStepEnter}
         onStepLeave={onStepLeave}
         onComplete={onComplete}
@@ -233,45 +242,35 @@ describe("linear journey callbacks and machine escape hatches", () => {
     await flush();
     expect(machineRef.current?.getSnapshot().currentStep?.id).toBe("a");
     expect(onStart).toHaveBeenCalledTimes(1);
-    expect(onStart).toHaveBeenCalledWith({ stepId: "a", context: { n: 0 } });
+    expect(onStart).toHaveBeenCalledWith(
+      expect.objectContaining({ currentStep: expect.objectContaining({ id: "a" }) })
+    );
 
     fireEvent.click(screen.getByText("next"));
     await flush();
-    expect(onStepEnter).toHaveBeenLastCalledWith({ stepId: "b", context: { n: 0 } });
-    expect(onStepLeave).toHaveBeenLastCalledWith({ stepId: "a", context: { n: 0 } });
-    expect(onStepChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ fromStepId: "a", toStepId: "b", direction: "forward" })
+    expect(onStepEnter).toHaveBeenLastCalledWith(
+      expect.objectContaining({ from: "a", to: "b", direction: "forward" })
     );
+    expect(onStepLeave).toHaveBeenLastCalledWith(expect.objectContaining({ from: "a", to: "b" }));
 
     fireEvent.click(screen.getByText("back"));
     await flush();
-    expect(onStepChange).toHaveBeenLastCalledWith(
+    expect(onStepEnter).toHaveBeenLastCalledWith(
       expect.objectContaining({ direction: "backward" })
     );
 
     fireEvent.click(screen.getByText("jump")); // a → c skips b
     await flush();
-    expect(onStepChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ toStepId: "c", direction: "jump" })
+    expect(onStepEnter).toHaveBeenLastCalledWith(
+      expect.objectContaining({ to: "c", direction: "jump" })
     );
 
     fireEvent.click(screen.getByText("finish"));
     await flush();
-    expect(onComplete).toHaveBeenCalledWith(expect.objectContaining({ context: { n: 0 } }));
+    expect(onComplete).toHaveBeenCalledWith(expect.objectContaining({ current: "completed" }));
   });
 
-  it("defaults the persist storage to localStorage", async () => {
-    localStorage.removeItem("wiz-default");
-    render(
-      <LinearJourney persist={{ key: "wiz-default" }}>
-        <StepA id="a" />
-      </LinearJourney>
-    );
-    await flush();
-    expect(localStorage.getItem("wiz-default")).toContain('"timeline":["a"]');
-  });
-
-  it("persists navigation through the persist sugar", async () => {
+  it("threads the persist option through to core", async () => {
     const storage = memoryStorage();
     render(
       <LinearJourney persist={{ key: "wiz", storage }} footer={<Nav />}>
@@ -329,11 +328,11 @@ describe("createLinearJourney typed bundle", () => {
     const journey = createLinearJourney<{ n: number }>()(["intro", "details"]);
 
     const BundleFooter = () => {
-      const state = journey.useLinearJourney();
-      const stepCount = journey.useLinearJourneySelector((snapshot) => snapshot.steps.totalSteps);
+      const { snapshot } = journey.useLinearJourney();
+      const stepCount = journey.useLinearJourneySelector((s) => s.steps.totalSteps);
       return (
         <span data-testid="bundle">
-          {state.activeStepId}/{stepCount}/{state.context.n}
+          {snapshot.currentStep?.id}/{stepCount}/{snapshot.context.n}
         </span>
       );
     };

@@ -100,7 +100,7 @@
       "name": "react/LinearJourney",
       "path": "dist/index.js",
       "import": "{ LinearJourney, useLinearJourney, useLinearJourneyStep }",
-      "limit": "5 kB"
+      "limit": "2.5 kB"
     },
     {
       "name": "react/headless",

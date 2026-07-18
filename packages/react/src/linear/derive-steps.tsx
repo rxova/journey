@@ -59,7 +59,7 @@ export const deriveStepsFromChildren = (children: React.ReactNode): DerivedLinea
     if (element.type === LinearJourneyStep) {
       const {
         id,
-        meta,
+        metadata,
         onEnter,
         onLeave,
         children: stepChildren
@@ -74,7 +74,7 @@ export const deriveStepsFromChildren = (children: React.ReactNode): DerivedLinea
         id,
         element: <React.Fragment>{stepChildren}</React.Fragment>,
         config: {
-          ...(meta !== undefined ? { meta } : {}),
+          ...(metadata !== undefined ? { metadata } : {}),
           ...(onEnter !== undefined ? { onEnter } : {}),
           ...(onLeave !== undefined ? { onLeave } : {})
         }
