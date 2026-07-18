@@ -10,16 +10,26 @@ snapshot semantics come directly from Core; see [Core API](/docs/core/api) and
 ## `<LinearJourney>`
 
 `<LinearJourney>` derives a Core linear definition from its direct children. Every step must have a
-unique `id`, either directly on the element or through `<LinearJourney.Step>`.
+unique `id`, either directly on the element or through `<LinearJourney.Step>`. The wrapper also
+accepts Core's per-step config: `metadata` plus `onEnter`/`onLeave` hooks.
+
+```tsx
+<LinearJourney.Step id="shipping" metadata={{ title: "Shipping" }}>
+  <Shipping />
+</LinearJourney.Step>
+```
+
+Declared `metadata` surfaces at `snapshot.currentStep.metadata` while the step is current; there is
+no separate per-step metadata lookup.
 
 ```tsx
 <LinearJourney
   context={initialContext}
-  startStepId="shipping"
+  startAt="shipping"
   header={<Progress />}
   footer={<Controls />}
   fallback={<p>Journey unavailable</p>}
-  onStepChange={(change) => analytics.track("step", change)}
+  onStepEnter={({ from, to, direction }) => analytics.track("step", { from, to, direction })}
 >
   <Account id="account" />
   <Shipping id="shipping" />
@@ -29,55 +39,77 @@ unique `id`, either directly on the element or through `<LinearJourney.Step>`.
 
 Important props include:
 
-| Prop                          | Meaning                                                      |
-| ----------------------------- | ------------------------------------------------------------ |
-| `context`                     | Initial shared context                                       |
-| `startIndex` / `startStepId`  | Initial declared position; step ID wins                      |
-| `header` / `footer`           | Content rendered inside journey context                      |
-| `wrapper`                     | Element cloned around the active step                        |
-| `fallback`                    | Content shown when no step can render                        |
-| `onStart`                     | Fires after the first step starts                            |
-| `onStepChange`                | Reports source, destination, indexes, direction, and context |
-| `onStepEnter` / `onStepLeave` | Global lifecycle observation                                 |
-| `onComplete`                  | Reports final context and snapshot                           |
-| `onError`                     | Handles owned start/navigation/step-handler errors           |
-| `persist`                     | Persistence-plugin sugar                                     |
-| `plugins`                     | Core plugins installed on the owned machine                  |
-| `machineRef`                  | Imperative access for integration code                       |
+| Prop                          | Meaning                                                                 |
+| ----------------------------- | ----------------------------------------------------------------------- |
+| `context`                     | Initial shared context                                                  |
+| `startIndex` / `startAt`      | Starting step; `startAt` is Core's option and wins over the index sugar |
+| `header` / `footer`           | Content rendered inside journey context                                 |
+| `wrapper`                     | Element cloned around the active step                                   |
+| `fallback`                    | Content shown when no step can render                                   |
+| `onStart`                     | Fires once per mount with the start snapshot                            |
+| `onStepEnter` / `onStepLeave` | Verbatim Core `stepEnter` / `stepLeave` event payloads                  |
+| `onComplete`                  | Core `statusChange` payload, forwarded when `current === "completed"`   |
+| `onError`                     | Verbatim Core `error` event payload                                     |
+| `persist`                     | Core's `persist` creation option (`JourneyPersistOption`)               |
+| `plugins`                     | Core plugins installed on the owned machine                             |
+| `machineRef`                  | Imperative access for integration code                                  |
+
+Callback props are verbatim forwards of Core subscription events. `onStepEnter` receives
+`{ snapshot, from, to, direction }`, where `direction` is `"forward" | "backward" | "jump"` by
+intent: only `goToNextStep` and `goToPreviousStep` report `"forward"`/`"backward"`; the initial
+entry, `goToStepById`, `goToStepByIndex`, and `goToLastVisitedStep` report `"jump"`.
+`onStepLeave` receives `{ snapshot, from, to }`, `onComplete` receives
+`{ snapshot, previous, current }`, and `onError` receives `{ snapshot, error, phase, stepId }`.
+
+`startAt` starts the journey directly at that step: earlier steps are never entered or visited,
+their `onEnter`/`onLeave` hooks never fire, the timeline begins as `[startAt]`, and
+`controls.restart()` returns to it. An unknown `startAt` id throws at mount.
 
 The step list is frozen at mount. Journey reports a development error if the derived IDs change,
 because changing the declared order would invalidate history and index semantics.
 
 ## `useLinearJourney()`
 
-This hook must run below the matching linear component.
+This hook must run below the matching linear component. It returns the underlying Core machine and
+its live snapshot, verbatim — there is no React-only convenience shape:
 
 ```tsx
 function Controls() {
-  const {
-    activeStepId,
-    isFirstStep,
-    isLastStep,
-    isLoading,
-    error,
-    goToNextStep,
-    goToPreviousStep,
-    controls,
-    context,
-    updateContext,
-    snapshot
-  } = useLinearJourney<CheckoutContext>();
+  const { machine, snapshot } = useLinearJourney<CheckoutContext>();
 
-  // ...
+  const currentStep = snapshot.currentStep;
+
+  return (
+    <nav>
+      <p>
+        {currentStep?.id} ({(currentStep?.index ?? -1) + 1} / {snapshot.steps.totalSteps})
+      </p>
+      <button
+        disabled={currentStep?.isFirstStep}
+        onClick={() => void machine.navigate.goToPreviousStep()}
+      >
+        Back
+      </button>
+      <button
+        disabled={snapshot.machine.isLoading}
+        onClick={() => void machine.navigate.goToNextStep()}
+      >
+        Continue
+      </button>
+    </nav>
+  );
 }
 ```
 
-Navigation methods return Core `NavigationResult` values. `goToNextStep` first runs work
-registered for the active step, then delegates to Core. Lifecycle methods remain grouped on
-`controls`.
-
-`clearError()` clears the active entry's async error. `snapshot` is the complete immutable Core
-linear snapshot when a component needs fields not projected onto the convenience result.
+Every read is a snapshot field: `snapshot.currentStep.id/.index/.isFirstStep/.isLastStep/`
+`.isFirstTimeVisit/.metadata/.async`, `snapshot.steps.totalSteps/.stepOrder`,
+`snapshot.history.visited`, `snapshot.status`, `snapshot.machine.isLoading/.isPaused`, and
+`snapshot.context`. Every command is a machine group: `machine.navigate.*` (including linear
+`goToStepByIndex`), `machine.controls.*`, `machine.context.update(updater)`, and
+`machine.async.clearError()`. Navigation methods return Core `NavigationResult` values, and
+`goToNextStep` first runs work registered for the active step. See
+[Machine API](/docs/core/api/machine-api) and [Snapshot](/docs/core/snapshot) for the complete
+contracts.
 
 ## `useLinearJourneySelector()`
 
@@ -110,9 +142,12 @@ function ShippingStep() {
 }
 ```
 
-The hook registers work for the currently rendered step. `run` happens before movement;
-`commit` publishes its updates atomically with movement. A failed run leaves the source step and
-context in place.
+The hook is a thin shell over Core's
+`machine.navigate.registerNextStepInterceptor(stepId, work)`: it registers work for the currently
+rendered step, and `machine.navigate.goToNextStep()` runs it when no explicit work is passed.
+`run` happens before movement; `commit` publishes its updates atomically with movement. A failed
+run leaves the source step and context in place, and the error lands in
+`snapshot.currentStep.async.error` until `machine.async.clearError()`.
 
 ## Typed linear bundles
 

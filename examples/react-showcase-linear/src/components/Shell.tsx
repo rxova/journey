@@ -35,8 +35,10 @@ const EventLog = () => {
 };
 
 const ProgressBar = () => {
-  const { activeStepIndex, stepCount } = loginJourney.useLinearJourney();
-  const pct = stepCount > 1 ? (activeStepIndex / (stepCount - 1)) * 100 : 0;
+  const { snapshot } = loginJourney.useLinearJourney();
+  const index = snapshot.currentStep?.index ?? 0;
+  const stepCount = snapshot.steps.totalSteps;
+  const pct = stepCount > 1 ? (index / (stepCount - 1)) * 100 : 0;
 
   return (
     <div className="progress-bar">
@@ -46,8 +48,8 @@ const ProgressBar = () => {
 };
 
 export const Shell = ({ children }: { children?: React.ReactNode }) => {
-  const { snapshot, status, activeStepIndex, stepCount, isFirstStep, isLastStep } =
-    loginJourney.useLinearJourney();
+  const { snapshot } = loginJourney.useLinearJourney();
+  const currentStep = snapshot.currentStep;
 
   return (
     <div className="layout">
@@ -62,11 +64,11 @@ export const Shell = ({ children }: { children?: React.ReactNode }) => {
 
       <div className="card">
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.75rem" }}>
-          <span className={`status status-${status}`}>{status}</span>
+          <span className={`status status-${snapshot.status}`}>{snapshot.status}</span>
           <span style={{ fontSize: "0.8rem", color: "#888" }}>
-            Step {activeStepIndex + 1} of {stepCount}
-            {isFirstStep && " (first)"}
-            {isLastStep && " (last)"}
+            Step {(currentStep?.index ?? 0) + 1} of {snapshot.steps.totalSteps}
+            {currentStep?.isFirstStep && " (first)"}
+            {currentStep?.isLastStep && " (last)"}
           </span>
         </div>
 

@@ -30,17 +30,20 @@ type SignupContext = {
 };
 
 function SignupFooter() {
-  const journey = useLinearJourney<SignupContext>();
+  const { machine, snapshot } = useLinearJourney<SignupContext>();
 
   return (
     <nav>
       <button
-        disabled={!journey.snapshot.history.canGoBack}
-        onClick={() => void journey.goToPreviousStep()}
+        disabled={!snapshot.history.canGoBack}
+        onClick={() => void machine.navigate.goToPreviousStep()}
       >
         Back
       </button>
-      <button disabled={journey.isLoading} onClick={() => void journey.goToNextStep()}>
+      <button
+        disabled={snapshot.machine.isLoading}
+        onClick={() => void machine.navigate.goToNextStep()}
+      >
         Continue
       </button>
     </nav>
@@ -52,7 +55,7 @@ export function Signup() {
     <LinearJourney
       context={{ email: "", acceptedTerms: false }}
       footer={<SignupFooter />}
-      onComplete={({ context }) => submitSignup(context)}
+      onComplete={({ snapshot }) => submitSignup(snapshot.context)}
     >
       <EmailStep id="email" />
       <TermsStep id="terms" />
@@ -66,16 +69,15 @@ The child ID list is frozen for the mount. This matters because history, visit t
 derivations depend on a stable declared order. If steps need to branch dynamically, represent that
 choice in a graph instead of changing the JSX list after mount.
 
-`useLinearJourney()` exposes:
+`useLinearJourney()` returns `{ machine, snapshot }` — the underlying Core machine and its live
+snapshot, verbatim. There is no renamed React-side shape:
 
-- active step ID/index, step IDs, and first/last derivations;
-- visited state and first-visit state;
-- lifecycle status, loading state, and the current entry error;
-- next, previous, direct-step, and last-visited navigation;
-- `controls` for lifecycle changes;
-- context plus `updateContext`;
-- metadata reads;
-- the immutable `snapshot` and underlying Core `machine`.
+- reads come from the snapshot: `snapshot.currentStep?.id/.index/.isFirstStep/.isLastStep/`
+  `.isFirstTimeVisit/.metadata/.async`, `snapshot.steps`, `snapshot.history`, `snapshot.status`,
+  `snapshot.machine`, and `snapshot.context`;
+- commands come from the machine groups: `machine.navigate.*` (including linear
+  `goToStepByIndex`), `machine.controls.*`, `machine.context.update`, and
+  `machine.async.clearError`.
 
 ### Typed linear bundles
 

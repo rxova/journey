@@ -20,15 +20,15 @@ type SignupContext = {
 };
 
 function EmailStep() {
-  const { context, updateContext } = useLinearJourney<SignupContext>();
+  const { machine, snapshot } = useLinearJourney<SignupContext>();
 
   return (
     <label>
       Email
       <input
-        value={context.email}
+        value={snapshot.context.email}
         onChange={(event) =>
-          updateContext((current) => ({
+          machine.context.update((current) => ({
             ...current,
             email: event.target.value
           }))
@@ -53,25 +53,27 @@ function ReviewStep() {
 }
 
 function Footer() {
-  const journey = useLinearJourney<SignupContext>();
+  const { machine, snapshot } = useLinearJourney<SignupContext>();
 
   const next = async () => {
-    const result = await journey.goToNextStep();
+    const result = await machine.navigate.goToNextStep();
     if (!result.ok && result.reason === "error") {
       report(result.error);
     }
   };
 
+  const isLoading = snapshot.machine.isLoading;
+
   return (
     <nav>
       <button
-        disabled={!journey.snapshot.history.canGoBack}
-        onClick={() => void journey.goToPreviousStep()}
+        disabled={!snapshot.history.canGoBack}
+        onClick={() => void machine.navigate.goToPreviousStep()}
       >
         Back
       </button>
-      <button disabled={journey.isLoading} onClick={() => void next()}>
-        {journey.isLoading ? "Working…" : "Continue"}
+      <button disabled={isLoading} onClick={() => void next()}>
+        {isLoading ? "Working…" : "Continue"}
       </button>
     </nav>
   );
@@ -82,7 +84,7 @@ export function Signup() {
     <LinearJourney<SignupContext>
       context={{ email: "", accountId: null }}
       footer={<Footer />}
-      onComplete={({ context }) => console.log(context.accountId)}
+      onComplete={({ snapshot }) => console.log(snapshot.context.accountId)}
     >
       <EmailStep id="email" />
       <ReviewStep id="review" />
@@ -94,7 +96,8 @@ export function Signup() {
 
 The journey owns and starts the Core machine. Navigation work on Review runs before movement; its
 context commit becomes visible in the same snapshot that moves to Success. Reaching Success alone
-does not complete the machine—call `controls.complete()` when the product outcome is complete.
+does not complete the machine—call `machine.controls.complete()` when the product outcome is
+complete.
 
 ## Add compile-time step IDs
 

@@ -28,6 +28,21 @@ await machine.navigate.goToNextStep({
 `run` may be asynchronous. `commit` is synchronous and its updates publish atomically with the
 step change. A failure leaves both the current step and context unchanged.
 
+Work can also be registered per step instead of passed at each call site:
+
+```ts
+const stop = machine.navigate.registerNextStepInterceptor("payment", {
+  run: async ({ snapshot }) => authorize(snapshot.context.cardToken),
+  commit: ({ result, updateContext }) => {
+    updateContext((context) => ({ ...context, authorizationId: result.id }));
+  }
+});
+```
+
+`goToNextStep()` consults the registration for the current step when no explicit work is passed.
+The last registration for a step wins, the returned function removes only its own registration,
+and an unknown step id throws.
+
 ## Work after a move
 
 Use `onLeave` for source cleanup and `onEnter` for destination setup:

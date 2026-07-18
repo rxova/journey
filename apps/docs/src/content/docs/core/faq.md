@@ -42,7 +42,8 @@ moving; source `onLeave` is a post-commit side effect.
 
 <DocAccordionItem title="Can a linear journey jump to another step?">
 
-Yes. `machine.navigate.goToStepById(id)` is an ungated escape hatch that can reach any declared
+Yes. `machine.navigate.goToStepById(id)` — or its declared-order sibling
+`machine.navigate.goToStepByIndex(index)` — is an ungated escape hatch that can reach any declared
 linear step. It is appropriate for occasional exceptional jumps. When named jumps, guards, or
 branches become routine domain behavior, convert the definition to graph mode so movement policy is
 explicit.
@@ -74,8 +75,9 @@ settles. Calling `send()` directly while a hook chain is pending returns `transi
 <DocAccordionItem title="Can users resume from persistence automatically?">
 
 Not in the current V1 persistence plugin. It writes and parses persisted status, context, and
-timeline, but does not hydrate live runtime history. Apply saved context and navigation according to
-your application's restore policy.
+timeline, but does not hydrate live runtime history. The `persist: { key, storage? }` runtime
+option is sugar for registering the plugin, not for restoring. Apply saved context and navigation
+(for example the `startAt` option) according to your application's restore policy.
 
 </DocAccordionItem>
 

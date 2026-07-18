@@ -38,8 +38,9 @@ const machine = createLinearJourney<StepId, Context, TerminationPayloads>({
 });
 ```
 
-The first declared step is the initial step. Duplicate ids and empty step arrays are rejected at
-creation time.
+The first declared step is the initial step; the `startAt` runtime option starts (and restarts)
+the journey directly at another declared step instead, with earlier steps neither entered nor
+visited. Duplicate ids and empty step arrays are rejected at creation time.
 
 ## Navigation
 
@@ -50,6 +51,7 @@ await waitUntilSettled(machine);
 await machine.navigate.goToNextStep();
 await machine.navigate.goToPreviousStep();
 await machine.navigate.goToStepById("review");
+await machine.navigate.goToStepByIndex(2);
 await machine.navigate.goToLastVisitedStep();
 ```
 
@@ -61,13 +63,15 @@ UI integrations can instead disable navigation while `snapshot.transition.pendin
   falls back to the next step in declared order.
 - `goToPreviousStep(n)` moves the history pointer back and clamps to the first timeline entry.
 - `goToStepById(id)` may jump to any declared linear step and appends a new timeline entry.
+- `goToStepByIndex(index)` is the same jump addressed by declared-order index; an out-of-range or
+  non-integer index rejects with `"invalid-target"`.
 - `goToLastVisitedStep()` moves the pointer to the timeline tip.
 
 Moving forward from an older history position uses the existing timeline. A new jump from an older
 position truncates the abandoned future before appending the destination.
 
-`goToStepById` is an intentionally ungated escape hatch for occasional jumps in an otherwise
-ordered flow. It does not run next/previous work. If named jumps, guards, or branches become a
+`goToStepById` and `goToStepByIndex` are intentionally ungated escape hatches for occasional jumps
+in an otherwise ordered flow. They do not run next/previous work. If named jumps, guards, or branches become a
 routine part of the flow, convert the definition to graph mode so those transitions become explicit.
 
 Reaching the last step does not complete the journey:

@@ -4,22 +4,27 @@ import React from "react";
 import { loginJourney } from "../journey";
 
 export const LoggedIn = () => {
-  const { context, status, controls } = loginJourney.useLinearJourney();
+  const { machine, snapshot } = loginJourney.useLinearJourney();
+  const context = snapshot.context;
+  const status = snapshot.status;
+  const isSettled = !snapshot.transition.pending;
   const isBlocked = context.attempts >= 3;
 
   // Entering this step closes the journey: terminated when the account is
   // blocked, completed otherwise. (Completed machines keep their last step,
-  // so this screen stays rendered.)
+  // so this screen stays rendered.) Lifecycle verbs are rejected while the
+  // entry transition is still settling, so the effect waits for
+  // `transition.pending` to clear and re-runs on that snapshot change.
   React.useEffect(() => {
-    if (status !== "running") {
+    if (status !== "running" || !isSettled) {
       return;
     }
     if (isBlocked) {
-      controls.terminate();
+      machine.controls.terminate();
     } else {
-      controls.complete();
+      machine.controls.complete();
     }
-  }, [status, isBlocked, controls]);
+  }, [status, isSettled, isBlocked, machine]);
 
   return (
     <div className="step">
@@ -39,7 +44,7 @@ export const LoggedIn = () => {
         )}
       </div>
       <div className="actions" style={{ justifyContent: "center" }}>
-        <button className="secondary" onClick={() => controls.restart()}>
+        <button className="secondary" onClick={() => machine.controls.restart()}>
           Start Over
         </button>
       </div>

@@ -104,6 +104,15 @@ await machine.navigate.goToStepById(resumeStepId);
 For graph journeys, that id must be the target of an enabled transition from the current step.
 `waitUntilSettled` is defined in the [Quickstart](./getting-started).
 
+When the earlier steps do not need to be re-entered, pass the `startAt` runtime option instead:
+
+```ts
+const machine = createLinearJourney(definition, { startAt: resumeStepId });
+```
+
+The journey then starts directly at that step — earlier steps are neither entered nor visited and
+the timeline begins as `[startAt]`. An unknown id throws at creation.
+
 ## Observe one UI slice
 
 ```ts

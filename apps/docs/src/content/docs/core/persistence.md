@@ -26,6 +26,22 @@ const machine = createLinearJourney(definition, {
 
 `storage` must implement `getItem`, `setItem`, and `removeItem`. `setItem` may return a promise.
 
+## The `persist` creation option
+
+For the common case, every factory accepts `persist` as sugar over the plugin:
+
+```ts
+const machine = createLinearJourney(definition, {
+  persist: { key: "checkout" }
+});
+```
+
+`persist` expands into the persistence plugin, prepended to `plugins`. `storage` is optional here
+and defaults to `globalThis.localStorage`; creation throws when neither a `storage` value nor
+`localStorage` is available. Combining `persist` with an explicitly registered persistence plugin
+fails at creation as a duplicate plugin name. Use the explicit plugin form when you need
+`clearOnTerminate` or an injected clock.
+
 ## Persisted shape
 
 ```ts
