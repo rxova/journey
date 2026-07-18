@@ -62,6 +62,28 @@ const admin = createStep("admin", {
 The callback form gives `to` the current event type, so `onTransition` sees its narrowed payload.
 The array form is shorter when payload narrowing is unnecessary.
 
+## Declare event work
+
+The callback form also receives `work`, which lets the event carry its own async: `run` executes,
+`commit` stages context from the result, and the candidates route on the staged context.
+
+```ts
+const login = createStep("login", {
+  on: {
+    SUBMIT: ({ to, work }) =>
+      work({
+        run: ({ snapshot, handlers }) => handlers.authenticate(snapshot.context.username),
+        commit: ({ result, updateContext }) =>
+          updateContext((context) => ({ ...context, authenticated: result.ok })),
+        candidates: [to("dashboard").when(({ context }) => context.authenticated), to("login")]
+      })
+  }
+});
+```
+
+The transactional semantics — staging, rollback when no candidate is enabled, and the totality
+rule — are covered in [Graph § Transactional sends](../usage/graph#transactional-sends-event-work).
+
 ## Build and run
 
 ```ts
