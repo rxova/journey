@@ -706,6 +706,9 @@ importers:
       '@rxova/journey-common':
         specifier: workspace:*
         version: link:../common
+      immer:
+        specifier: ^11.1.15
+        version: 11.1.15
 
   packages/devtools-bridge:
     dependencies:
@@ -5367,6 +5370,9 @@ packages:
 
   immediate@3.3.0:
     resolution: {integrity: sha512-HR7EVodfFUdQCTIeySw+WDRFJlPcLOJbXfwwZ7Oom6tjsvZ3bOkCDJHehQC3nxJrv7+f9XecwazynjU8e4Vw3Q==}
+
+  immer@11.1.15:
+    resolution: {integrity: sha512-VrNANlmnWQnh5COXIIOQXM9oOJw7naGKlBT74ZOOR6lpVXc3gFEu9FJLDFcpCJ2j+NWr8TIwtWD//T6ZX6TKiQ==}
 
   import-fresh@3.3.1:
     resolution: {integrity: sha512-TR3KfrTZTYLPB6jUjfx6MF9WcWrHL9su5TObK4ZkYgBdWKPOFoSoQIdEuTuR82pmtxH2spWG9h6etwfr1pLBqQ==}
@@ -14319,6 +14325,8 @@ snapshots:
   image-size@2.0.2: {}
 
   immediate@3.3.0: {}
+
+  immer@11.1.15: {}
 
   import-fresh@3.3.1:
     dependencies:

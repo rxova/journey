@@ -18,6 +18,12 @@ export default defineConfig({
   resolve: {
     alias: [
       {
+        find: "@rxova/journey-core/connectors/immer",
+        replacement: fileURLToPath(
+          new URL("./packages/core/src/connectors/immer/immer.ts", import.meta.url)
+        )
+      },
+      {
         find: "@rxova/journey-core/analytics",
         replacement: fileURLToPath(
           new URL("./packages/core/src/plugins/analytics/analytics.ts", import.meta.url)

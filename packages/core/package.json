@@ -43,6 +43,14 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./connectors/immer": {
+      "types": {
+        "import": "./dist/connectors/immer/immer.d.ts",
+        "require": "./dist/connectors/immer/immer.d.cts"
+      },
+      "import": "./dist/connectors/immer/immer.js",
+      "require": "./dist/connectors/immer/immer.cjs"
+    },
     "./analytics": {
       "types": {
         "import": "./dist/plugins/analytics/analytics.d.ts",
@@ -126,7 +134,16 @@
     "size:check": "pnpm run build && size-limit"
   },
   "devDependencies": {
-    "@rxova/journey-common": "workspace:*"
+    "@rxova/journey-common": "workspace:*",
+    "immer": "^11.1.15"
+  },
+  "peerDependencies": {
+    "immer": "^11.1.15"
+  },
+  "peerDependenciesMeta": {
+    "immer": {
+      "optional": true
+    }
   },
   "size-limit": [
     {
@@ -146,6 +163,12 @@
       "path": "dist/index.js",
       "import": "{ createGraphJourneyBuilder }",
       "limit": "750 B"
+    },
+    {
+      "name": "core/immerConnector",
+      "path": "dist/connectors/immer/immer.js",
+      "import": "{ immerConnector }",
+      "limit": "100 B"
     },
     {
       "name": "core/linearToGraphDefinition",

@@ -67,6 +67,7 @@ Registered plugins appear under `machine.plugins`.
 | Import                                      | Export                                               |
 | ------------------------------------------- | ---------------------------------------------------- |
 | `@rxova/journey-core/convert`               | `linearToGraphDefinition`                            |
+| `@rxova/journey-core/connectors/immer`      | `immerConnector` and `ImmerContextRecipe`            |
 | `@rxova/journey-core/persistence`           | `createPersistencePlugin` and helpers/types          |
 | `@rxova/journey-core/autosave`              | `createAutosavePlugin` and helpers/types             |
 | `@rxova/journey-core/analytics`             | `createAnalyticsPlugin` and helpers/types            |
@@ -75,7 +76,9 @@ Registered plugins appear under `machine.plugins`.
 | `@rxova/journey-core/execution-paths`       | `createExecutionPathsPlugin`                         |
 | `@rxova/journey-core/subscription-enhancer` | `createSubscriptionEnhancerPlugin`                   |
 
-These entry points are independently tree-shakeable.
+These entry points are independently tree-shakeable. Connectors adapt optional third-party
+libraries to Core primitives; the Immer connector requires `immer` as a peer only when that entry
+point is used.
 
 ## Where to next
 

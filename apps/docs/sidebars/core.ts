@@ -33,6 +33,12 @@ const sidebars: SidebarsConfig = {
       label: "Extend it",
       collapsed: true,
       items: [
+        {
+          type: "category",
+          label: "Connectors",
+          collapsed: true,
+          items: ["connectors/overview", "connectors/immer"]
+        },
         "plugins/overview",
         "plugins/authoring",
         "persistence",

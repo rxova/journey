@@ -217,6 +217,31 @@ post-commit effects.
 For larger graphs, `createGraphJourneyBuilder` co-locates typed transitions with each step. See the
 [Graph guide](https://rxova.org/docs/core/usage/graph).
 
+## Connectors
+
+Connectors adapt optional third-party libraries to existing Core primitives without attaching a
+plugin to the machine. The Immer connector turns a synchronous producer into a context updater:
+
+```bash
+pnpm add immer
+```
+
+```ts
+import { immerConnector } from "@rxova/journey-core/connectors/immer";
+
+machine.context.update(
+  immerConnector<CheckoutContext>((draft) => {
+    draft.cart.items.push(item);
+    draft.cart.total += item.price;
+  })
+);
+```
+
+It also works with the `updateContext` passed to hooks and transactional commits. Immer remains an
+optional peer, so consumers that do not import this connector do not install or bundle it. See the
+[Immer connector guide](https://rxova.org/docs/core/connectors/immer) for replacement recipes,
+freezing, draftability, and transactional behavior.
+
 ## Plugins
 
 Built-in plugins are separately imported and observe the machine through a read-only host:
