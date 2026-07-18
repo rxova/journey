@@ -112,6 +112,12 @@ Release the final V1 Core API on a new, smaller shared runtime. This is a full r
 - Export focused helper functions and associated types from the plugin subpaths for parsing,
   serialization, normalization, and diagnostics analysis.
 
+## Connectors
+
+- Add the optional `@rxova/journey-core/connectors/immer` entry point. Its `immerConnector` adapts
+  mutating or replacement Immer producers into ordinary Core context updaters without adding Immer
+  to the main Core entry or installation.
+
 The controller-per-concern engine and duplicated linear/graph derivation code were replaced by one
 snapshot/event runtime. Current minified+Brotli measurements against the `rc.2` baseline are:
 

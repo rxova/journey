@@ -9,8 +9,10 @@ const common = {
   minify: true,
   sourcemap: true,
   legalComments: "none",
+  external: ["immer"],
   entryPoints: [
     "src/index.ts",
+    "src/connectors/immer/immer.ts",
     "src/convert/convert.ts",
     "src/plugins/analytics/analytics.ts",
     "src/plugins/autosave/autosave.ts",
