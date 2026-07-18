@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { parsePersistedState } from "@rxova/journey-core/persistence";
 import { createLinearJourney } from "@rxova/journey-core";
 import { createPersistencePlugin } from "@rxova/journey-core/persistence";
-import type { JourneyStorage } from "@rxova/journey-core/persistence";
+import type { JourneyStorage, PersistenceApi } from "@rxova/journey-core/persistence";
 import { flush } from "@rxova/journey-core/testing";
 
 function memoryStorage(): JourneyStorage & { dump(): Map<string, string> } {
@@ -99,5 +99,62 @@ describe("terminate without clearOnTerminate", () => {
     const { machine } = await startedWithPersistence();
     machine.controls.terminate();
     expect(machine.plugins.persistence.readPersisted()).toMatchObject({ status: "terminated" });
+  });
+});
+
+describe("persist creation option", () => {
+  it("expands into the persistence plugin and writes under the key", async () => {
+    const storage = memoryStorage();
+    const machine = createLinearJourney(
+      { steps: ["a", "b"], context: { n: 0 } },
+      { autoStart: true, persist: { key: "wizard", storage } }
+    );
+    await flush();
+    await machine.navigate.goToNextStep();
+
+    const state = parsePersistedState(storage.getItem("wizard"));
+    expect(state?.timeline).toEqual(["a", "b"]);
+    const persistence = machine.plugins.persistence as PersistenceApi | undefined;
+    expect(persistence?.readPersisted()?.currentIndex).toBe(1);
+  });
+
+  it("defaults storage to globalThis.localStorage", async () => {
+    const storage = memoryStorage();
+    vi.stubGlobal("localStorage", storage);
+    try {
+      const machine = createLinearJourney(
+        { steps: ["a", "b"], context: {} },
+        { autoStart: true, persist: { key: "wizard" } }
+      );
+      await flush();
+      await machine.navigate.goToNextStep();
+      expect(parsePersistedState(storage.getItem("wizard"))?.timeline).toEqual(["a", "b"]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("throws at creation when no storage is available", () => {
+    vi.stubGlobal("localStorage", undefined);
+    try {
+      expect(() =>
+        createLinearJourney({ steps: ["a"], context: {} }, { persist: { key: "wizard" } })
+      ).toThrow(/persist\.storage is required/);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("combined with an explicit persistence plugin fails as a duplicate name", () => {
+    const storage = memoryStorage();
+    expect(() =>
+      createLinearJourney(
+        { steps: ["a"], context: {} },
+        {
+          persist: { key: "wizard", storage },
+          plugins: [createPersistencePlugin({ key: "other", storage })]
+        }
+      )
+    ).toThrow(/duplicate plugin name "persistence"/);
   });
 });

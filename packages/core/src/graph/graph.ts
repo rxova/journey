@@ -1,5 +1,6 @@
 import { buildMachineSurface } from "../core/machine";
 import { JourneyRuntime } from "../core/runtime";
+import { persistOptionToPlugin } from "../plugins/persistence/persistence";
 import type { RuntimeStep, RuntimeTransition } from "../core/runtime.types";
 import type {
   GraphJourneyMachine,
@@ -129,7 +130,10 @@ export function createGraphJourney<
     handlers: options.handlers ?? definition.handlers,
     autoStart: options.autoStart ?? false,
     defaultTimeoutMs: options.defaultTimeoutMs,
-    plugins: options.plugins ?? []
+    plugins: [
+      ...(options.persist ? [persistOptionToPlugin(options.persist)] : []),
+      ...(options.plugins ?? [])
+    ]
   });
 
   // `send(type, work)` and `send(type, payload)` are told apart structurally:
