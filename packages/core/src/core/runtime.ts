@@ -1,9 +1,11 @@
-import { LOADING_ASYNC, MAX_RAISED_EVENTS, SUCCESS_ASYNC } from "./helpers";
+import { eventWorkKey, LOADING_ASYNC, MAX_RAISED_EVENTS, SUCCESS_ASYNC } from "./helpers";
 import { JourneyStore } from "./store";
 import type {
   AnyHookArgs,
   AnyNavigationWork,
   AnyOnEffect,
+  AnySendWork,
+  AnySendWorkArgs,
   NavigationFailure,
   RuntimeConfig,
   RuntimeTransition,
@@ -47,7 +49,8 @@ export class JourneyRuntime {
   private pending: {
     phase: "working" | "leaving" | "entering";
     from: string | null;
-    to: string;
+    /** Null while a graph send runs its work: the target is not resolved yet. */
+    to: string | null;
   } | null = null;
   private disposed = false;
   /** Bumped by terminate/restart/dispose so stale hook continuations bail out. */
@@ -224,21 +227,110 @@ export class JourneyRuntime {
   }
 
   /** Graph-only primary verb; also drives raised events. */
-  send(type: string, payload?: unknown): Promise<NavigationResult> {
+  send(type: string, payload?: unknown, work?: AnySendWork): Promise<NavigationResult> {
     const rejected = this.checkNavigable();
     if (rejected) return this.blocked(rejected, null);
-    const transition = this.config.transitions.find(
-      (candidate) =>
-        candidate.event === type &&
-        candidate.from === this.currentStepId() &&
-        this.isEnabled(candidate)
-    );
+    const event: JourneyEventObject =
+      payload === undefined ? { type } : ({ type, payload } as JourneyEventObject);
+
+    const from = this.currentStepId();
+    const declaredWork =
+      work ?? (from === null ? undefined : this.config.eventWork?.[eventWorkKey(from, type)]);
+    if (declaredWork) return this.sendWithWork(type, event, declaredWork);
+
+    const transition = this.resolveTransition(type);
     if (!transition) {
       return this.blocked({ ok: false, reason: "no-enabled-transition" }, null);
     }
-    const event: JourneyEventObject =
-      payload === undefined ? { type } : ({ type, payload } as JourneyEventObject);
     return this.runNavigation(transition.to, { kind: "append" }, event, transition);
+  }
+
+  /**
+   * Work-carrying send: the async runs *before* routing, so its `commit` can
+   * stage the very context the guards are then evaluated against. Guards stay
+   * sync and pure — the work supplies facts, the definition still picks the
+   * edge.
+   *
+   * The machine holds its position for the whole `working` phase (`pending.to`
+   * is null: there is no target yet). If no candidate is enabled once the
+   * context is staged, the staged context is discarded and nothing is
+   * published — either the send routed and committed, or neither happened.
+   */
+  private async sendWithWork(
+    type: string,
+    event: JourneyEventObject,
+    work: AnySendWork
+  ): Promise<NavigationResult> {
+    const generation = this.generation;
+    const from = this.currentStepId();
+    if (from === null) return this.blocked({ ok: false, reason: "not-running" }, null);
+
+    let stagedContext = this.context;
+    let contextWasUpdated = false;
+
+    this.pending = { phase: "working", from, to: null };
+    this.entryAsync = LOADING_ASYNC;
+    this.publish();
+
+    try {
+      const args: AnySendWorkArgs = {
+        snapshot: this.store.getSnapshot(),
+        from,
+        event,
+        handlers: this.config.handlers
+      };
+      const result = await this.withTimeout(
+        Promise.resolve(work.run(args)),
+        `send work(${type} from ${from})`
+      );
+      if (!this.isCurrent(generation)) return this.staleResult();
+      const commitResult = (work.commit as ((value: unknown) => unknown) | undefined)?.({
+        ...args,
+        result,
+        updateContext: (updater: ContextUpdater<unknown>) => {
+          stagedContext = updater(stagedContext);
+          contextWasUpdated = true;
+        }
+      });
+      if (typeof commitResult === "object" && commitResult !== null && "then" in commitResult) {
+        throw new Error("journey: send work commit must be synchronous");
+      }
+    } catch (error) {
+      if (!this.isCurrent(generation)) return this.staleResult();
+      this.pending = null;
+      this.entryAsync = Object.freeze({
+        isLoading: false,
+        isSuccess: false,
+        isError: true,
+        error
+      });
+      const snapshot = this.publish();
+      this.store.emit("error", { snapshot, error, phase: "work", stepId: from });
+      return this.blocked({ ok: false, reason: "error", error }, null);
+    }
+
+    if (!this.isCurrent(generation)) return this.staleResult();
+
+    // Route against the staged context, not the committed one.
+    const transition = this.resolveTransition(type, stagedContext);
+    if (!transition) {
+      // Roll back: the staged context is dropped along with the move.
+      this.pending = null;
+      this.entryAsync = SUCCESS_ASYNC;
+      this.publish();
+      return this.blocked({ ok: false, reason: "no-enabled-transition" }, null);
+    }
+
+    return this.commitAndSettle(
+      from,
+      transition.to,
+      { kind: "append" },
+      event,
+      transition,
+      generation,
+      stagedContext,
+      contextWasUpdated
+    );
   }
 
   // ── plugin host ──────────────────────────────────────────────────────────
@@ -300,13 +392,30 @@ export class JourneyRuntime {
     return { type: transition.event };
   }
 
-  private isEnabled(transition: RuntimeTransition): boolean {
+  /**
+   * `context` is explicit so a work-carrying `send` can evaluate guards against
+   * the context its `commit` just staged, rather than the committed one.
+   */
+  private isEnabled(transition: RuntimeTransition, context: unknown = this.context): boolean {
     if (!transition.when) return true;
     try {
-      return transition.when({ context: this.context, handlers: this.config.handlers });
+      return transition.when({ context, handlers: this.config.handlers });
     } catch {
       return false;
     }
+  }
+
+  /** First enabled candidate for `event` from the current step, in declaration order. */
+  private resolveTransition(
+    event: string,
+    context: unknown = this.context
+  ): RuntimeTransition | undefined {
+    return this.config.transitions.find(
+      (candidate) =>
+        candidate.event === event &&
+        candidate.from === this.currentStepId() &&
+        this.isEnabled(candidate, context)
+    );
   }
 
   private checkNavigable(): NavigationFailure | null {
@@ -467,7 +576,33 @@ export class JourneyRuntime {
     }
     if (!this.isCurrent(generation)) return this.staleResult();
 
-    // Commit position and staged context in one snapshot.
+    return this.commitAndSettle(
+      from,
+      to,
+      op,
+      event,
+      transition,
+      generation,
+      stagedContext,
+      contextWasUpdated
+    );
+  }
+
+  /**
+   * Publishes the position change and any staged context in one snapshot, then
+   * awaits the post-commit effects. Shared by plain navigation and by a
+   * work-carrying `send`, which reaches here only once its target is resolved.
+   */
+  private async commitAndSettle(
+    from: string | null,
+    to: string,
+    op: TimelineOp,
+    event: JourneyEventObject | null,
+    transition: RuntimeTransition | null,
+    generation: number,
+    stagedContext: unknown,
+    contextWasUpdated: boolean
+  ): Promise<NavigationResult> {
     const previousContext = this.context;
     if (op.kind === "pointer") {
       this.currentIndex = op.index;

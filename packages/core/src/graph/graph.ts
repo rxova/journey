@@ -11,6 +11,7 @@ import type {
   MutableRuntimeStep,
   MutableRuntimeTransition
 } from "./graph.types";
+import type { AnySendWork } from "../core/runtime.types";
 import type { AnyJourneyPlugin, JourneyEventObject } from "../core/types";
 
 /** Flattens the transitions map in declaration order and validates step refs. */
@@ -103,6 +104,7 @@ export function createGraphJourney<
     readonly initial: NoInfer<TStepId>;
     readonly context: TContext;
     readonly handlers?: THandlers;
+    readonly eventWork?: Readonly<Record<string, AnySendWork>>;
     readonly $events?: TEvents;
   },
   options: GraphJourneyOptions<NoInfer<THandlers>, TPlugins> = {}
@@ -118,15 +120,33 @@ export function createGraphJourney<
     initial: definition.initial,
     initialContext: definition.context,
     transitions,
+    ...(definition.eventWork !== undefined ? { eventWork: definition.eventWork } : {}),
     handlers: options.handlers ?? definition.handlers,
     autoStart: options.autoStart ?? false,
     defaultTimeoutMs: options.defaultTimeoutMs,
     plugins: options.plugins ?? []
   });
 
+  // `send(type, work)` and `send(type, payload)` are told apart structurally:
+  // work is the only second argument carrying a `run` function.
+  const isSendWork = (candidate: unknown): candidate is AnySendWork =>
+    typeof candidate === "object" &&
+    candidate !== null &&
+    typeof (candidate as { run?: unknown }).run === "function";
+
   const machine = {
     ...buildMachineSurface(runtime),
-    send: (type: string, payload?: unknown) => runtime.send(type, payload)
+    send: (type: string, payloadOrWork?: unknown, work?: AnySendWork) =>
+      isSendWork(payloadOrWork)
+        ? runtime.send(type, undefined, payloadOrWork)
+        : runtime.send(type, payloadOrWork, work)
   };
-  return machine as unknown as GraphJourneyMachine<TContext, TStepId, TEvents, TMeta, TPlugins>;
+  return machine as unknown as GraphJourneyMachine<
+    TContext,
+    TStepId,
+    TEvents,
+    TMeta,
+    TPlugins,
+    THandlers
+  >;
 }
