@@ -6,7 +6,6 @@ import {
   authApi,
   createAuthHandlers,
   graphDefinition,
-  type AuthEvent,
   type LoginContext,
   type LoginStepId
 } from "../fixtures/auth-fixtures";
@@ -65,11 +64,12 @@ const describeContextChange = (previous: LoginContext, current: LoginContext): s
 };
 
 export const mountCoreShowcase = (root: HTMLElement) => {
-  // Handlers are runtime functions, so the policy the guards consult is swapped
-  // here without touching the definition — the same seam a test would use. The
-  // definition's own default is 2 attempts; nothing about either choice appears
-  // in the snapshot, which only ever carries serializable context.
-  const handlers = createAuthHandlers(3);
+  // Handlers are runtime functions, so both the policy the guards consult and
+  // the client the definition's own work calls are swapped here without
+  // touching the definition — the same seam a test would use to inject a fake
+  // api. The definition's own default is 2 attempts; nothing about either
+  // choice appears in the snapshot, which only carries serializable context.
+  const handlers = createAuthHandlers(3, authApi);
 
   const machine = createGraphJourney(graphDefinition, {
     autoStart: true,
@@ -122,46 +122,6 @@ export const mountCoreShowcase = (root: HTMLElement) => {
       error: field === "verificationCode" ? null : context.error
     }));
   });
-
-  const submitLogin = async (context: LoginContext) => {
-    const result = await authApi.login(context.username, context.password);
-    if (!result.success) {
-      machine.context.update((current) => ({ ...current, error: "Login failed" }));
-      return;
-    }
-
-    machine.context.update((current) => ({
-      ...current,
-      twoFactorMethod: result.method,
-      error: null
-    }));
-
-    if (result.method === "no_2fa") {
-      const qr = await authApi.generateQrCode();
-      machine.context.update((current) => ({ ...current, qrCode: qr.qrCode }));
-    }
-
-    // The definition's "when" guards (see loginStep in auth-fixtures.ts) pick the
-    // actual target step from twoFactorMethod — this call only chooses the event.
-    await machine.send("submitLogin");
-  };
-
-  const submitVerification = async (stepId: LoginStepId, context: LoginContext) => {
-    const result = await authApi.verifyCode(context.verificationCode);
-
-    // Same pattern as submitLogin: the "when" guards on each verify step (see
-    // failureCandidates in auth-fixtures.ts) decide retry-vs-blocked; this map
-    // only decides which success/failure event fires.
-    const eventByStep: Partial<Record<LoginStepId, [AuthEvent["type"], AuthEvent["type"]]>> = {
-      verifyCode: ["verifyCodeSuccess", "verifyCodeFailure"],
-      emailCode: ["verifyEmailSuccess", "verifyEmailFailure"],
-      authenticatorCode: ["verifyAuthenticatorSuccess", "verifyAuthenticatorFailure"]
-    };
-    const pair = eventByStep[stepId];
-    if (pair) {
-      await machine.send(result.success ? pair[0] : pair[1]);
-    }
-  };
 
   const resetJourney = () => {
     if (machine.getSnapshot().status !== "terminated") {
@@ -434,14 +394,13 @@ export const mountCoreShowcase = (root: HTMLElement) => {
       return;
     }
 
-    const context = machine.getSnapshot().context;
-    const stepId = currentStepId();
-
+    // Every branch is a bare send: the definition owns the async, so the call
+    // site names an intent and never pre-computes the route.
     void (async () => {
-      if (action === "login") await submitLogin(context);
+      if (action === "login") await machine.send("submitLogin");
       if (action === "back") await machine.navigate.goToPreviousStep();
       if (action === "continue-setup") await machine.send("setup2fa");
-      if (action === "verify") await submitVerification(stepId, context);
+      if (action === "verify") await machine.send("verify");
       if (action === "reset") resetJourney();
     })();
   });
