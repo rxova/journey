@@ -58,6 +58,7 @@ export type {
   NavigationFailureReason,
   NavigationDirection,
   NavigationResult,
+  StepEnterDirection,
   NavigationWork,
   NavigationWorkArgs,
   OnEnterHook,

@@ -23,7 +23,8 @@ import type {
   JourneyStatus,
   NavigationResult,
   PluginHost,
-  StepAsyncState
+  StepAsyncState,
+  StepEnterDirection
 } from "./types";
 
 const getGraphGuardState = (
@@ -331,7 +332,8 @@ export class JourneyRuntime {
       transition,
       generation,
       stagedContext,
-      contextWasUpdated
+      contextWasUpdated,
+      "jump"
     );
   }
 
@@ -524,7 +526,7 @@ export class JourneyRuntime {
     this.pending = { phase: "entering", from: null, to };
     this.timeline = [to];
     this.currentIndex = 0;
-    this.commitEntry(null, to);
+    this.commitEntry(null, to, "jump");
     await this.runEntryEffects(null, to, null, null, generation);
   }
 
@@ -593,7 +595,8 @@ export class JourneyRuntime {
       transition,
       generation,
       stagedContext,
-      contextWasUpdated
+      contextWasUpdated,
+      direction ?? "jump"
     );
   }
 
@@ -610,7 +613,8 @@ export class JourneyRuntime {
     transition: RuntimeTransition | null,
     generation: number,
     stagedContext: unknown,
-    contextWasUpdated: boolean
+    contextWasUpdated: boolean,
+    direction: StepEnterDirection
   ): Promise<NavigationResult> {
     const previousContext = this.context;
     if (op.kind === "pointer") {
@@ -625,6 +629,7 @@ export class JourneyRuntime {
     this.commitEntry(
       from,
       to,
+      direction,
       contextWasUpdated ? { previous: previousContext, current: stagedContext } : undefined,
       fromStep?.onLeave !== undefined || transition?.onTransition !== undefined
     );
@@ -637,6 +642,7 @@ export class JourneyRuntime {
   private commitEntry(
     from: string | null,
     to: string,
+    direction: StepEnterDirection,
     contextChange?: { previous: unknown; current: unknown },
     hasPreEnterEffect = false
   ): void {
@@ -646,7 +652,7 @@ export class JourneyRuntime {
     const snapshot = this.publish();
     if (contextChange) this.store.emit("contextChange", { snapshot, ...contextChange });
     if (from !== null) this.store.emit("stepLeave", { snapshot, from, to });
-    this.store.emit("stepEnter", { snapshot, from, to });
+    this.store.emit("stepEnter", { snapshot, from, to, direction });
   }
 
   /** Post-commit effects: step `onLeave`, transition effect, then step `onEnter`. */

@@ -266,6 +266,7 @@ export type JourneyEventPayloads<
     readonly snapshot: TSnap;
     readonly from: TStepId | null;
     readonly to: TStepId;
+    readonly direction: StepEnterDirection;
   };
   stepLeave: {
     readonly snapshot: TSnap;
@@ -336,6 +337,14 @@ export type JourneyControls<TCompletePayload = unknown, TTerminatePayload = unkn
 };
 
 export type NavigationDirection = "forward" | "backward";
+
+/**
+ * How a step was entered, by intent rather than index math: only
+ * `goToNextStep`/`goToPreviousStep` report `"forward"`/`"backward"`; the
+ * initial entry, absolute verbs (`goToStepById`, `goToStepByIndex`,
+ * `goToLastVisitedStep`), and graph `send` report `"jump"`.
+ */
+export type StepEnterDirection = NavigationDirection | "jump";
 
 /** Read-only arguments for work that must succeed before navigation commits. */
 export type NavigationWorkArgs<TStepId extends string, TSnap> = {
