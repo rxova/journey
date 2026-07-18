@@ -1,5 +1,9 @@
 import { createLinearJourney } from "@rxova/journey-core";
-import type { JourneySnapshot, JourneySubscriptionEvent } from "@rxova/journey-core";
+import type {
+  JourneySnapshot,
+  JourneySubscriptionEvent,
+  StepAsyncState
+} from "@rxova/journey-core";
 import "../styles/demo.css";
 import {
   authApi,
@@ -9,6 +13,19 @@ import {
   type LoginTerminationPayloads
 } from "../fixtures/auth-fixtures";
 import { formatJson } from "../fixtures/support";
+
+const getStepperState = (index: number, currentIndex: number) => {
+  if (index < currentIndex) return "done";
+  if (index === currentIndex) return "current";
+  return "upcoming";
+};
+
+const getStepAsyncPresentation = (state: StepAsyncState | undefined) => {
+  if (state?.isLoading) return { label: "loading", className: "token-pending" };
+  if (state?.isError) return { label: "error", className: "token-error" };
+  if (state?.isSuccess) return { label: "success", className: "token-success" };
+  return { label: "idle", className: "" };
+};
 
 const OBSERVED_EVENTS: readonly JourneySubscriptionEvent[] = [
   "statusChange",
@@ -340,8 +357,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
   const renderStepper = (currentIndex: number) =>
     stepOrder
       .map(({ id, label }, index) => {
-        const state =
-          index < currentIndex ? "done" : index === currentIndex ? "current" : "upcoming";
+        const state = getStepperState(index, currentIndex);
         const connector =
           index < stepOrder.length - 1
             ? `<div class="stepper-connector stepper-connector-${index < currentIndex ? "done" : "upcoming"}"></div>`
@@ -416,21 +432,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     const transitionLabel = transition.pending
       ? `${transition.phase}: ${transition.from ?? "start"} -> ${transition.to ?? "unknown"}`
       : "settled";
-    const stepAsync = snapshot.currentStep?.async;
-    const stepAsyncLabel = stepAsync?.isLoading
-      ? "loading"
-      : stepAsync?.isError
-        ? "error"
-        : stepAsync?.isSuccess
-          ? "success"
-          : "idle";
-    const stepAsyncStateClass = stepAsync?.isLoading
-      ? "token-pending"
-      : stepAsync?.isError
-        ? "token-error"
-        : stepAsync?.isSuccess
-          ? "token-success"
-          : "";
+    const stepAsync = getStepAsyncPresentation(snapshot.currentStep?.async);
 
     const token = (label: string, value: string, stateClass = "") =>
       `<span class="token ${stateClass}"><span class="token-label">${label}</span><span class="token-value">${value}</span></span>`;
@@ -439,7 +441,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
       <span class="status-pill status-${snapshot.status}">${snapshot.status}</span>
       ${isLoading ? token("machine", "loading", "token-pending") : ""}
       ${token("transition", transitionLabel, transition.pending ? "token-pending" : "")}
-      ${token("step async", stepAsyncLabel, stepAsyncStateClass)}
+      ${token("step async", stepAsync.label, stepAsync.className)}
       ${token("step", snapshot.currentStep?.id ?? "—")}
       ${token("timeline", snapshot.history.timeline.join(" -> "))}
     `;

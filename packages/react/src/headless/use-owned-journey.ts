@@ -24,7 +24,7 @@ const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : Re
  *   const machine = useOwnedJourney(() =>
  *     createHeadlessJourney({ initial: "watching", context: { score: 0 }, steps: { watching: {}, flagged: {} } })
  *   );
- *   const phase = useJourneySelector(machine, (s) => s.currentStepId);
+ *   const stepId = useJourneySelector(machine, (snapshot) => snapshot.currentStep?.id);
  *   return phase === "flagged" ? <Banner onAck={() => void machine.goToStepById("watching")} /> : null;
  * }
  * ```

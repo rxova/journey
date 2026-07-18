@@ -1,157 +1,177 @@
 # @rxova/journey-react
 
-Typed React bindings for multi-step UI flows.
+React bindings for `@rxova/journey-core`.
 
-<p>
-  <a href="https://www.npmjs.com/package/@rxova/journey-react">
-    <img src="https://img.shields.io/npm/v/@rxova/journey-react?color=0f8f6a" alt="npm" />
-  </a>
-  <img src="https://img.shields.io/badge/1.33%20kB-brotli-0f8f6a" alt="size" />
-  <img src="https://img.shields.io/badge/React%2018+-black" alt="React 18+" />
-  <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
-</p>
-
-`@rxova/journey-react` is approaching a `1.0.0-rc` contract freeze. The key runtime rule is unchanged:
-one `createJourney(...)` call creates one machine instance immediately, and the returned hooks/components stay bound to that instance.
+The package offers three integration levels without changing Core semantics: a declarative linear
+component, Provider-owned graph bundles, and machine-argument headless hooks.
 
 ## Install
 
 ```bash
-npm i @rxova/journey-react @rxova/journey-core
+npm install @rxova/journey-react @rxova/journey-core react
 ```
 
-Use the root entry for server-safe imports. When a Next.js App Router client boundary should be explicit,
-import from `@rxova/journey-react/client`.
+React 19 is supported. The package uses `useSyncExternalStore` to subscribe to immutable Core
+snapshots.
 
-## Quickstart
+## Declarative linear journeys
 
 ```tsx
-import { createJourney, type JourneyViews } from "@rxova/journey-react";
-import type { JourneyDefinition } from "@rxova/journey-core";
+import { LinearJourney, useLinearJourney } from "@rxova/journey-react";
 
-type StepId = "start" | "review";
-type Context = { name: string };
-
-const definition: JourneyDefinition<Context, StepId> = {
-  initial: "start",
-  context: { name: "" },
-  steps: { start: {}, review: {} },
-  transitions: {
-    start: { goToNextStep: [{ to: "review" }] },
-    review: {}
-  }
+type Context = {
+  email: string;
 };
 
-const signup = createJourney(definition);
+function Controls() {
+  const journey = useLinearJourney<Context>();
 
-const Start = () => {
-  const api = signup.useJourneyApi();
-  const snap = signup.useJourneySnapshot();
   return (
-    <div>
-      <p>Hello, {snap.context.name || "stranger"}</p>
-      <button onClick={() => void api.goToNextStep()}>Next</button>
-    </div>
+    <nav>
+      <button
+        disabled={!journey.snapshot.history.canGoBack}
+        onClick={() => void journey.goToPreviousStep()}
+      >
+        Back
+      </button>
+      <button disabled={journey.isLoading} onClick={() => void journey.goToNextStep()}>
+        Continue
+      </button>
+    </nav>
   );
-};
+}
 
-const Review = () => {
-  const api = signup.useJourneyApi();
-  return <button onClick={() => void api.completeJourney()}>Submit</button>;
-};
-
-const views: JourneyViews<StepId> = { start: Start, review: Review };
-
-export const App = () => (
-  <signup.JourneyProvider views={views}>
-    <signup.StepRenderer />
-  </signup.JourneyProvider>
-);
+export function Signup() {
+  return (
+    <LinearJourney
+      context={{ email: "" }}
+      footer={<Controls />}
+      onComplete={({ context }) => submit(context)}
+    >
+      <Email id="email" />
+      <Password id="password" />
+      <Review id="review" />
+    </LinearJourney>
+  );
+}
 ```
 
-## Hooks
+The mounted component owns one Core linear machine. It derives the declared order from direct child
+IDs, starts the machine, renders the active child, and disposes the machine on unmount. The child ID
+list remains fixed for the mount.
 
-`createJourney()` returns a runtime with bound hooks:
+`useLinearJourney()` provides position, visit tracking, status, loading/error state, navigation,
+lifecycle `controls`, context updates, metadata, the immutable snapshot, and the underlying
+machine.
 
-- **`useJourneySnapshot()`** — full snapshot: `currentStepId`, `context`, `history`, `status`, `async`
-- **`useJourneyApi()`** — runtime commands: `startJourney`, `goToNextStep`, `goToPreviousStep`, `completeJourney`, `send`, etc.
-- **`useStepApi(stepId)`** — step-scoped command surface with `send(...)` narrowed to custom events handled by that step or `global`
-- **`useJourneyComputed()`** — derived state: `mode`, `activeStepId`, `activeStepIndex`, `visitedStepCount`, `isLoading`, `isIdle`, `isRunning`, `isComplete`, `isTerminated`, `isInitialStep`; linear mode adds `stepCount`, `journeyLength`, `isFirstStep`, `isLastStep`, `stepOrder`
-- **`useJourneySelector(selector, eq?)`** — subscribe to a slice of the snapshot
-- **`useJourneyEvent(listener)`** — stream lifecycle events for analytics
-- **`useJourneyStepLifecycle(stepId, callbacks)`** — run side effects on step enter/leave
+### Transactional step work
 
-## Navigation
+```tsx
+function Review() {
+  useLinearJourneyStep({
+    run: ({ snapshot }) => api.submit(snapshot.context),
+    commit: ({ result, updateContext }) => {
+      updateContext((context) => ({ ...context, receiptId: result.id }));
+    }
+  });
+
+  return <ReviewForm />;
+}
+```
+
+Step work runs before forward movement. Failure keeps the source step current; a successful commit
+publishes its context updates atomically with movement.
+
+### Typed bundles
 
 ```ts
-const api = signup.useJourneyApi();
-
-await api.startJourney();
-await api.goToNextStep();
-await api.goToPreviousStep();
-await api.goToLastVisitedStep();
-await api.completeJourney();
-await api.terminateJourney();
-await api.goToStepById("review");
-
-api.updateContext((ctx) => ({ ...ctx, name: "Ada" }));
-api.resetJourney();
+const signup = createLinearJourney<Context>()(["email", "password", "review"] as const);
 ```
 
-Transition failures resolve through `result.error` instead of rejecting, so `void api.goToNextStep()` is safe from unhandled promise rejections.
+Use `signup.LinearJourney`, `signup.useLinearJourney()`,
+`signup.useLinearJourneySelector()`, and `signup.useLinearJourneyStep()`. The literal tuple
+preserves the step-ID union. The bundle creates no machine until its component mounts.
 
-For step components, `useStepApi(stepId)` returns the same commands but narrows `send(...)` to custom events handled by that step or by `global` transitions:
-
-```tsx
-const api = signup.useStepApi("start");
-void api.send({ type: "submit" });
-```
-
-## Custom Step Renderer
-
-`StepRenderer` is a convenience — it just looks up the current step's view from the `views` record and renders it. You can build your own if you need transitions, animations, or a different rendering strategy:
+## Graph journeys
 
 ```tsx
-const MyStepRenderer = () => {
-  const { currentStepId } = signup.useJourneySnapshot();
-  const View = views[currentStepId];
-  if (!View) return <p>Unknown step</p>;
-  return <View />;
-};
-```
+import { createGraphJourney } from "@rxova/journey-react/graph";
 
-## Plugins
-
-```tsx
-import { createPersistencePlugin } from "@rxova/journey-core/persistence";
-
-const signup = createJourney(definition, {
-  plugins: [createPersistencePlugin({ key: "signup", version: 1 })],
-  defaultTimeoutMs: 30_000
+const checkout = createGraphJourney(definition, {
+  plugins: [createReplayPlugin()] as const
 });
+
+function Continue() {
+  const snapshot = checkout.useSnapshot();
+  const api = checkout.useApi();
+
+  return (
+    <button
+      disabled={!snapshot.availableEvents.includes("continue")}
+      onClick={() => void api.send("continue")}
+    >
+      Continue
+    </button>
+  );
+}
+
+<checkout.Provider views={{ cart: Cart, shipping: Shipping, done: Done }}>
+  <checkout.StepRenderer fallback={<p>Missing view</p>} />
+  <Continue />
+</checkout.Provider>;
 ```
 
-## Runtime Ownership
+Each Provider mount owns an independent Core graph machine. Bundle hooks must run under that
+Provider. Available hooks are `useSnapshot`, `useSelector`, `useApi`,
+`useStepAsyncState`, `useEvent`, `useStepLifecycle`, and `useMachine`.
 
-Each `createJourney()` call creates one machine instance. The returned hooks are permanently bound to it.
+`useApi()` returns the machine's grouped `controls` and `navigate` objects, typed `send`, and
+`updateContext`. Plugin APIs remain namespaced on `useMachine().plugins`.
 
-- Rendering multiple providers from the same runtime shares one journey state
-- `JourneyProvider` auto-starts an `idled` runtime, but does not dispose it by default
-- Provider-free flows can start manually through `useJourneyApi().startJourney()` or `machine.startJourney()`
-- Provider-owned startup failures are reported through `onError(error, { phase: "start" })`
-- Set `disposeOnUnmount` when a provider fully owns a component-scoped runtime
-- Independent instances require separate `createJourney()` calls
-- `createJourneyFactory()` returns a typed helper for producing fresh runtimes from the same definition/options pair and is the preferred path when request-scoped or boundary-scoped isolation matters
-- `dispose()` tears down subscriptions when the runtime is no longer needed
+## Headless hooks
 
-## Documentation
+Use an existing Core machine without a Journey Provider:
 
-- [Pre-1.0 Migration](https://rxova.org/docs/core/pre-1-0-migration)
-- [Stability Contract](https://rxova.org/docs/core/stability)
-- [React Quickstart](https://rxova.org/docs/react/quickstart)
-- [Provider and Hooks](https://rxova.org/docs/react/provider-and-hooks)
-- [Patterns](https://rxova.org/docs/react/patterns)
-- [Core Docs](https://rxova.org/docs/core/getting-started)
+```tsx
+import { useJourneyEvent, useJourneySnapshot } from "@rxova/journey-react/headless";
+
+function Inspector({ machine }) {
+  const snapshot = useJourneySnapshot(machine);
+
+  useJourneyEvent(machine, "navigationBlocked", ({ reason, error }) => {
+    report(reason, error);
+  });
+
+  return <output>{snapshot.currentStep?.id}</output>;
+}
+```
+
+Also available: `useJourneySelector`, `useJourneyStepLifecycle`,
+`useStepAsyncState`, and `useOwnedJourney`. Every headless hook takes the machine as its first
+argument. Except for `useOwnedJourney`, the caller retains start/dispose ownership.
+
+## Async UI
+
+Read `snapshot.machine.isLoading` for the broad loading state,
+`snapshot.transition` for phase/source/destination, and `snapshot.currentStep.async` for the
+current entry result. Guards are synchronous; work that must complete before movement belongs in
+Core navigation work.
+
+## DevTools
+
+Provider-owned machines are available through `machineRef`:
+
+```tsx
+<checkout.Provider views={views} machineRef={setMachine}>
+  <checkout.StepRenderer />
+</checkout.Provider>
+```
+
+Attach that machine in an effect, return the bridge detach function, and use
+`mutationsEnabled: false` for inspect-only sessions.
+
+See the [React documentation](https://rxova.org/docs/react/overview) for complete guides and API
+reference.
 
 ## License
 

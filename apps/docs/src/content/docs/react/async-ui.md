@@ -6,97 +6,86 @@ sidebar_label: Async UI
 
 # Async UI
 
-Most steps eventually wait on something — an effect calling an API, a guard validating input, a
-delayed `after` transition. The UI has to reflect that: a spinner while work is in flight, an error
-panel when it fails, the normal step once it settles. React doesn't invent any of this; it renders
-the async state Journey core already tracks per step. Your job is to read one step's phase and map it
-to a view.
+Journey separates work that must succeed **before** movement from effects that settle **after**
+movement. React renders both from the Core snapshot; it does not need a parallel local loading state.
 
-:::info Source of truth
-The _when_ and _why_ of phase changes — `invoking`, `evaluating-when`, `error`, timeouts, retries —
-live in [Core async behavior](/docs/core/async) and [Effects](/docs/core/effects). This page is just
-how to render them in React.
-:::
+Guards are synchronous. A graph guard answers only whether a candidate is enabled for the current
+context and handlers. Network validation, file writes, and submissions belong in navigation work.
 
-## Read one step's async state with `useStepAsyncState`
-
-`useStepAsyncState(stepId)` returns that step's `{ phase, eventType, transitionId, error }` and
-re-renders only when that slice changes — so a spinner for one step doesn't re-render on unrelated
-updates.
+## Pre-commit navigation work
 
 ```tsx
-const checkout = createJourney(definition);
+function ContinueButton() {
+  const snapshot = checkout.useSnapshot();
+  const api = checkout.useApi();
 
-const Verify = () => {
-  const { phase, error } = checkout.useStepAsyncState("verify");
-  const api = checkout.useJourneyApi();
+  const continueJourney = async () => {
+    const result = await api.navigate.goToNextStep({
+      run: ({ snapshot }) => orders.save(snapshot.context),
+      commit: ({ result: order, updateContext }) => {
+        updateContext((context) => ({
+          ...context,
+          orderId: order.id
+        }));
+      }
+    });
 
-  if (phase === "invoking") return <Spinner label="Verifying…" />;
-  if (phase === "error") {
-    return <ErrorPanel message={String(error)} onRetry={() => api.clearStepError("verify")} />;
-  }
-  return <VerifyForm />;
-};
+    if (!result.ok && result.reason === "error") {
+      report(result.error);
+    }
+  };
+
+  return (
+    <button disabled={snapshot.machine.isLoading} onClick={() => void continueJourney()}>
+      {snapshot.machine.isLoading ? "Saving…" : "Continue"}
+    </button>
+  );
+}
 ```
 
-The four phases:
+While `run` is pending, the source step remains current and
+`snapshot.transition.phase === "working"`. If it fails, position and context stay unchanged. A
+successful synchronous `commit` publishes context and position together.
 
-| Phase             | Means                                            | Typical UI                       |
-| ----------------- | ------------------------------------------------ | -------------------------------- |
-| `idle`            | Nothing in flight                                | Normal interactive step          |
-| `invoking`        | A step [`effect`](/docs/core/effects) is running | Spinner / skeleton               |
-| `evaluating-when` | An async guard (`when`) is deciding a transition | Disable controls / "validating…" |
-| `error`           | A guard or effect rejected or timed out          | Recoverable error UI + retry     |
+## Post-commit hooks
 
-:::tip `invoking` is the effect phase
-A step that declares an [`effect`](/docs/core/effects) enters `invoking` on arrival and settles to
-`idle` (or routes to its `onResolved`/`onRejected` target) when the work finishes. `useStepAsyncState`
-is the ergonomic way to drive a loading screen off that — no need to reach into the raw snapshot.
-:::
+Core step `onLeave` and `onEnter` hooks run after movement commits. During them, the destination
+is already current and `transition.phase` is `"leaving"` or `"entering"`. A hook error is
+observable but does not roll navigation back.
 
-## Whole-machine loading
+Use hooks for analytics, cleanup, or loading destination data. Use navigation work whenever failure
+must prevent movement.
 
-For a coarse "is anything loading?" gate, read `async.isLoading` from the snapshot rather than a
-single step:
+## Which loading field to read
+
+- `snapshot.machine.isLoading` is the normal whole-flow flag.
+- `snapshot.transition` shows pending state, phase, source, and destination.
+- `snapshot.currentStep.async` records loading, success, error, and the error value for the current
+  entry.
+- Graph `useStepAsyncState(stepId)` and headless `useStepAsyncState(machine, stepId)` provide a
+  focused React subscription.
 
 ```tsx
-const snapshot = checkout.useJourneySnapshot();
-if (snapshot.async.isLoading) return <GlobalSpinner />;
+function ReviewError() {
+  const asyncState = checkout.useStepAsyncState("review");
+  const machine = checkout.useMachine();
+
+  if (!asyncState.isError) return null;
+
+  return (
+    <aside>
+      <ErrorMessage error={asyncState.error} />
+      <button onClick={() => machine.async.clearError()}>Dismiss</button>
+    </aside>
+  );
+}
 ```
 
-## Clearing errors
+## Concurrency and results
 
-An `error` phase is sticky until you clear it — re-sending the same event, or clearing explicitly:
+Only one navigation settles at a time. A concurrent attempt resolves with
+`{ ok: false, reason: "transitioning" }`. Expected navigation failures resolve rather than reject,
+so `void api.navigate.goToNextStep()` is safe in a click handler.
 
-```tsx
-const api = checkout.useJourneyApi();
-
-api.clearStepError(); // current step
-api.clearStepError("payment"); // a specific step
-```
-
-## A complete step view
-
-```tsx
-const StepView = ({ stepId }: { stepId: StepId }) => {
-  const { phase, error } = checkout.useStepAsyncState(stepId);
-  const api = checkout.useJourneyApi();
-
-  switch (phase) {
-    case "invoking":
-      return <Spinner />;
-    case "evaluating-when":
-      return <StepContent disabled />;
-    case "error":
-      return <ErrorPanel message={String(error)} onRetry={() => api.clearStepError(stepId)} />;
-    default:
-      return <StepContent />;
-  }
-};
-```
-
-## Where to next
-
-- [Effects](/docs/core/effects) — what produces the `invoking` phase, with cancellation and timeouts.
-- [Core async behavior](/docs/core/async) — phase semantics, errors, and retries in depth.
-- [Provider & hooks](./provider-and-hooks) — the full hook surface, including `useStepAsyncState`.
+Termination, restart, and disposal invalidate stale async continuations. A late hook completion
+cannot resurrect a terminated or disposed machine.

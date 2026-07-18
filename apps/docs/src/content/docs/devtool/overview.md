@@ -1,53 +1,29 @@
 ---
-title: "Chrome DevTools Overview"
-sidebar:
-  label: "Overview"
+id: overview
+title: Chrome DevTools Overview
+sidebar_label: Overview
 ---
 
-Journey devtools has two parts:
+Journey DevTools consists of the runtime bridge and the Chrome panel.
 
-- `@rxova/journey-devtools-bridge`: runtime message bridge.
-- Devtools panel app: visualization + controls.
+Install the [extension from the Chrome Web Store](https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm),
+then attach a Core machine with `@rxova/journey-devtools-bridge`.
 
-## Download Extension
+The panel discovers multiple machines, displays their immutable v7 snapshots, records observation
+and operation envelopes in a timeline, and renders operation forms from descriptors advertised by
+each machine. Protocol v7 interoperates with v6 invokes and keeps v5 machines available read-only
+during rolling upgrades.
 
-Install the extension from Chrome Web Store:
+Snapshot inspection follows the current Core envelope:
 
-- https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm
+- `type` distinguishes linear and graph machines.
+- `currentStep.id` and `currentStep.async` describe the current entry.
+- `history.timeline` and `history.currentIndex` describe realized navigation.
+- `machine` contains lifecycle booleans and terminal outcome.
+- Graph snapshots expose event availability and outgoing transition introspection.
 
-Preview:
+Timeline row selection is local to the panel. It changes the Action, State, and Diff views but never
+rewinds or mutates the inspected machine.
 
-![Journey Devtools Overview](../../../assets/devtool/panel-overview.png)
-
-## Why It Exists
-
-The devtools stack helps teams see journey behavior clearly: timeline movement, transition outcomes, async phases, and command outcomes.
-
-## Protocol Version
-
-Bridge protocol version is **4**. The panel shows a compatibility warning when the inspected app reports a different protocol version.
-
-## Command Surface
-
-The panel can drive navigation, lifecycle controls, error clearing, custom event sending, and read-only execution path queries through the bridge. The `getExecutionPaths` query remains available even when mutating commands are disabled.
-
-See full details in [Bridge API](../bridge/bridge-api.md) and exact transport types in [Protocol](../bridge/protocol.md).
-
-## Snapshot Payload Focus
-
-Panel state is driven by serialized machine snapshots including:
-
-- history pointer model (`history.timeline`, `history.index`)
-- current position (`currentStepId`)
-- runtime state (`context`, `visited`, `status`, `async`)
-
-For a full payload example, see [Bridge API](../bridge/bridge-api.md).
-
-## Time Travel UX
-
-Panel supports:
-
-- Redux-style timeline inspector rows with local selection
-- follow-latest toggle and point-in-time `Action` / `State` / `Diff` inspection
-
-Inspector selection does not mutate runtime machine state.
+See [Bridge API](/docs/bridge/bridge-api), [Protocol](/docs/bridge/protocol), and the
+[Panel Guide](./panel-guide).

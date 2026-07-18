@@ -6,68 +6,55 @@ sidebar_label: Examples
 
 # Examples
 
-A few ways to wire the bridge into a real app. The bridge is observational by default and a no-op
-outside the browser, so it's safe to attach unconditionally in development.
-
-## Attach to a core machine
+## Core machine
 
 ```ts
-import { createGraphJourney } from "@rxova/journey-core";
-import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
-
-const machine = createGraphJourney(journey);
+const machine = createGraphJourney(definition, {
+  autoStart: true,
+  plugins: [createExecutionPathsPlugin()] as const
+});
 
 const detach = attachJourneyDevtools(machine, {
   machineId: "checkout",
-  label: "Checkout Journey"
+  label: "Checkout graph",
+  eventTypes: ["continue", "cancel"],
+  mutationsEnabled: true
 });
-
-machine.startJourney();
-
-// later, on teardown
-// detach();
 ```
 
-## Attach in a React app
-
-With `@rxova/journey-react`, attach once to the shared runtime's `machine` — outside render, or in an
-effect that returns the `detach` cleanup:
-
-```tsx
-import { useEffect } from "react";
-import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
-import { checkoutJourney } from "./checkout-journey";
-
-export const DevtoolsBridge = () => {
-  useEffect(
-    () =>
-      attachJourneyDevtools(checkoutJourney.machine, {
-        machineId: "checkout",
-        label: "Checkout Journey"
-      }),
-    []
-  );
-  return null;
-};
-```
-
-## Inspect in production, read-only
-
-Enable the transport but block mutations so the panel can observe without driving the machine:
+## Inspect-only production session
 
 ```ts
-attachJourneyDevtools(machine, { enabled: true, mutationsEnabled: false });
+attachJourneyDevtools(machine, {
+  enabled: true,
+  mutationsEnabled: false
+});
 ```
 
-## What the panel can invoke
+Enabling the bridge does not make it inspect-only. Supply `mutationsEnabled: false` whenever the
+panel must be unable to navigate, change context, or invoke another mutating operation.
 
-The panel drives the machine through the **operations** the bridge advertises — core navigation and
-lifecycle (`goToNextStep`, `goToStepById`, `goToPreviousStep`, `completeJourney`, `resetJourney`,
-`clearStepError`, …), custom event dispatch, and read-only plugin queries such as execution-paths
-inspection. Mutating operations require `mutationsEnabled`. See [Bridge API](./bridge-api) for the
-full list and [Protocol](./protocol) for the wire shapes.
+## React graph Provider
 
-## Where to next
+```tsx
+function Checkout() {
+  const [machine, setMachine] = React.useState(null);
 
-- [Bridge API](./bridge-api) — options and what the bridge streams.
-- [Protocol](./protocol) — envelopes, operations, and versioning.
+  React.useEffect(() => {
+    if (!machine) return;
+    return attachJourneyDevtools(machine, {
+      label: "Checkout",
+      mutationsEnabled: false
+    });
+  }, [machine]);
+
+  return (
+    <checkout.Provider views={views} machineRef={setMachine}>
+      <checkout.StepRenderer />
+    </checkout.Provider>
+  );
+}
+```
+
+`machineRef` exposes the machine owned by that Provider mount. The callback receives `null` on
+unmount, and the Provider disposes its machine.

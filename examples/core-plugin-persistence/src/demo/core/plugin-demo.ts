@@ -52,49 +52,54 @@ export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => 
   const eventStore = createLogStore<{ name: string; payload: unknown }>();
   const storageKey = pluginStorageKey("core", kind);
 
-  const machine: DemoMachine = (
-    kind === "diagnostics"
-      ? createGraphJourney(structureDefinition, {
+  const createMachine = (): DemoMachine => {
+    switch (kind) {
+      case "diagnostics":
+        return createGraphJourney(structureDefinition, {
           autoStart: true,
           plugins: [createDiagnosticsPlugin()] as const
-        })
-      : kind === "execution-paths"
-        ? createGraphJourney(structureDefinition, {
-            autoStart: true,
-            plugins: [createExecutionPathsPlugin()] as const
-          })
-        : kind === "analytics"
-          ? createLinearJourney(pluginDefinition, {
-              autoStart: true,
-              plugins: [
-                createAnalyticsPlugin({
-                  track: (event) => eventStore.push({ name: event.name, payload: event.payload })
-                })
-              ] as const
+        });
+      case "execution-paths":
+        return createGraphJourney(structureDefinition, {
+          autoStart: true,
+          plugins: [createExecutionPathsPlugin()] as const
+        });
+      case "analytics":
+        return createLinearJourney(pluginDefinition, {
+          autoStart: true,
+          plugins: [
+            createAnalyticsPlugin({
+              track: (event) => eventStore.push({ name: event.name, payload: event.payload })
             })
-          : kind === "autosave"
-            ? createLinearJourney(pluginDefinition, {
-                autoStart: true,
-                plugins: [
-                  createAutosavePlugin({
-                    storage: window.localStorage,
-                    key: storageKey,
-                    debounceMs: 250
-                  })
-                ] as const
-              })
-            : kind === "persistence"
-              ? createLinearJourney(pluginDefinition, {
-                  autoStart: true,
-                  plugins: [
-                    createPersistencePlugin({ storage: window.localStorage, key: storageKey })
-                  ] as const
-                })
-              : createLinearJourney(pluginDefinition, {
-                  autoStart: true,
-                  plugins: [createReplayPlugin({ maxEntries: 60 })] as const
-                })
-  ) as DemoMachine;
+          ] as const
+        });
+      case "autosave":
+        return createLinearJourney(pluginDefinition, {
+          autoStart: true,
+          plugins: [
+            createAutosavePlugin({
+              storage: window.localStorage,
+              key: storageKey,
+              debounceMs: 250
+            })
+          ] as const
+        });
+      case "persistence":
+        return createLinearJourney(pluginDefinition, {
+          autoStart: true,
+          plugins: [
+            createPersistencePlugin({ storage: window.localStorage, key: storageKey })
+          ] as const
+        });
+      case "replay":
+        return createLinearJourney(pluginDefinition, {
+          autoStart: true,
+          plugins: [createReplayPlugin({ maxEntries: 60 })] as const
+        });
+    }
+  };
+
+  const machine = createMachine();
 
   const pluginApi = machine.plugins as Partial<{
     analytics: AnalyticsApi;

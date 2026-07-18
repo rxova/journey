@@ -4,77 +4,84 @@ sidebar:
   label: "Examples"
 ---
 
-Use this page as a guide to common React integration scenarios.
+The repository's `examples/` workspace contains runnable Vite applications for every supported
+React surface.
 
-React examples focus on wiring and component patterns.
-For runtime internals, pair them with Core docs.
+## Showcase applications
 
-## Example Scenarios
+- `react-showcase-linear` demonstrates declarative JSX steps, context edits, transactional work,
+  lifecycle callbacks, persistence, and typed bundle hooks.
+- `react-showcase-graph` demonstrates a Provider-owned graph machine, typed domain events,
+  synchronous route guards, graph snapshot introspection, and `machineRef` DevTools attachment.
+- `react-showcase-headless` demonstrates machine-argument hooks over an existing Core machine.
 
-### 1. Basic `createJourney` Setup
+Run an example from the repository root:
 
-What it shows:
+```bash
+pnpm --filter examples-react-showcase-graph dev
+```
 
-- `createJourney(definition, options?)`
-- separate `views`
-- `JourneyProvider`
-- `StepRenderer`
+## Plugin applications
 
-Start from: `/docs/react/quickstart`
+The six `react-plugin-*` examples create fully typed Core machines and consume them through
+`@rxova/journey-react/headless`. They demonstrate exact event-hook signatures and namespaced
+`machine.plugins` APIs for analytics, autosave, diagnostics, execution paths, persistence, and
+replay.
 
-### 2. Provider-Free Hooks
+For example:
 
-What it shows:
+```tsx
+const snapshot = useJourneySnapshot(machine);
 
-- `useJourneySnapshot()`
-- `useJourneyApi()`
-- `useJourneySelector()`
-- `useJourneyEvent()`
+useJourneyEvent(machine, "stepEnter", ({ from, to }) => {
+  console.log(from, to);
+});
 
-Use this when components need machine state or actions but are not part of step rendering.
+machine.plugins.replay.getReplaySession();
+machine.plugins.autosave.flushAutosave();
+```
 
-### 3. Controlled Navigation
+## Minimal graph controls
 
-What it shows:
+```tsx
+function Controls() {
+  const snapshot = checkout.useSnapshot();
+  const api = checkout.useApi();
 
-- `goToNextStep`
-- `goToPreviousStep`
-- `goToLastVisitedStep`
-- explicit event sending via `api.send(...)`
+  return (
+    <>
+      <button
+        disabled={!snapshot.history.canGoBack}
+        onClick={() => void api.navigate.goToPreviousStep()}
+      >
+        Back
+      </button>
+      <button
+        disabled={!snapshot.availableEvents.includes("continue")}
+        onClick={() => void api.send("continue")}
+      >
+        Continue
+      </button>
+    </>
+  );
+}
+```
 
-Runtime semantics live in: `/docs/core/api` and `/docs/core/history`
+## Minimal headless panel
 
-### 4. Async UI
+```tsx
+function MachinePanel({ machine }) {
+  const snapshot = useJourneySnapshot(machine);
 
-What it shows:
+  return (
+    <section>
+      <p>{snapshot.currentStep?.id ?? "Not started"}</p>
+      <pre>{JSON.stringify(snapshot, null, 2)}</pre>
+      <button onClick={() => void machine.navigate.goToNextStep()}>Next</button>
+    </section>
+  );
+}
+```
 
-- reading `snapshot.async`
-- loading and error rendering
-- `clearStepError`
-
-Runtime async rules live in: `/docs/core/async`
-
-### 5. Step Metadata Reads
-
-What it shows:
-
-- `getStepMeta(stepId)` from React actions or selectors
-
-Step metadata semantics live in: `/docs/core/api`
-
-### 6. Devtools Bridge Integration
-
-What it shows:
-
-- passing `journey.machine` to `attachJourneyDevtools(...)`
-
-### 7. Inside-Component Journey Creation
-
-What it shows:
-
-- `useJourney(() => createJourney(...))` for component-owned runtimes
-- automatic disposal on unmount; reset by remounting with a `key`
-
-## Full Integration Reference
-
-For an end-to-end setup across core, react, and the devtools bridge, see the demo app in this repository.
+See [Quickstart](./quickstart), [Provider and Hooks](./provider-and-hooks), [Async UI](./async-ui),
+and [DevTools](./devtools) for the design rules behind these examples.

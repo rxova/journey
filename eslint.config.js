@@ -157,6 +157,11 @@ export default [
   },
   js.configs.recommended,
   {
+    rules: {
+      "no-nested-ternary": "error"
+    }
+  },
+  {
     files: [
       "scripts/**/*.{ts,js}",
       "packages/*/scripts/**/*.ts",

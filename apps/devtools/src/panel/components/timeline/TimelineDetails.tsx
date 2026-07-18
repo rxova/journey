@@ -17,6 +17,12 @@ const tabList: readonly { id: TimelineTabId; label: string }[] = [
   { id: "diff", label: "Diff" }
 ];
 
+const copyTitle: Record<"idle" | "copied" | "error", string> = {
+  idle: "Copy current payload",
+  copied: "Copied",
+  error: "Copy failed"
+};
+
 const buildActionDetailsPayload = (selectedEntry: JourneyPanelTimelineEntry | null): unknown => {
   if (!selectedEntry) {
     return { message: "No action selected." };
@@ -127,13 +133,7 @@ export const TimelineDetails = ({
           type="button"
           className={styles.copyButton}
           aria-label="Copy current timeline payload"
-          title={
-            copyState === "copied"
-              ? "Copied"
-              : copyState === "error"
-                ? "Copy failed"
-                : "Copy current payload"
-          }
+          title={copyTitle[copyState]}
           onClick={() => {
             void handleCopy();
           }}
