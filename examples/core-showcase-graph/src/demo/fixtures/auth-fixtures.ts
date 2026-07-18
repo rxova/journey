@@ -121,7 +121,7 @@ const { createStep, to, build } = createGraphJourneyBuilder<{
 const loginStep = createStep("login", {
   metadata: { label: "Login", icon: "🔐" },
   on: {
-    submitLogin: ({ to: into, work }) =>
+    submitLogin: ({ to, work }) =>
       work({
         run: ({ snapshot, handlers }) =>
           handlers.api.login(snapshot.context.username, snapshot.context.password),
@@ -133,16 +133,16 @@ const loginStep = createStep("login", {
             error: result.success ? null : "Login failed"
           })),
         candidates: [
-          into("setup2fa").when(({ context, handlers }) =>
+          to("setup2fa").when(({ context, handlers }) =>
             handlers.requiresMethod(context, "no_2fa")
           ),
-          into("emailCode").when(({ context, handlers }) =>
+          to("emailCode").when(({ context, handlers }) =>
             handlers.requiresMethod(context, "email")
           ),
-          into("authenticatorCode").when(({ context, handlers }) =>
+          to("authenticatorCode").when(({ context, handlers }) =>
             handlers.requiresMethod(context, "authenticator")
           ),
-          into("login")
+          to("login")
         ]
       })
   }
@@ -180,7 +180,7 @@ const verificationStep = (
   createStep(id, {
     metadata,
     on: {
-      verify: ({ to: into, work }) =>
+      verify: ({ to, work }) =>
         work({
           run: ({ snapshot, handlers }) =>
             handlers.api.verifyCode(snapshot.context.verificationCode),
@@ -192,13 +192,13 @@ const verificationStep = (
               error: result.success ? null : retryError
             })),
           candidates: [
-            into("loggedIn").when(({ context }) => context.lastVerifyOk === true),
-            into("blocked")
+            to("loggedIn").when(({ context }) => context.lastVerifyOk === true),
+            to("blocked")
               .when(({ context, handlers }) => handlers.hasExhaustedAttempts(context))
               .onTransition(({ updateContext }) =>
                 updateContext((context) => ({ ...context, error: blockedError }))
               ),
-            into(id)
+            to(id)
           ]
         })
     }
