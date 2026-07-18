@@ -106,8 +106,9 @@ export type GraphJourneyDefinition<
 
 export type GraphJourneyOptions<
   THandlers = unknown,
-  TPlugins extends readonly AnyJourneyPlugin[] = readonly []
-> = JourneyRuntimeOptions<TPlugins> & {
+  TPlugins extends readonly AnyJourneyPlugin[] = readonly [],
+  TStepId extends string = string
+> = JourneyRuntimeOptions<TPlugins, TStepId> & {
   /** Overrides the definition's handlers — one definition serves app and tests. */
   handlers?: THandlers;
 };

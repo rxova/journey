@@ -1,6 +1,6 @@
 # RFC 0001 — Three-Tier React API: `<Wizard>`, Graph, Headless
 
-- **Status:** Draft
+- **Status:** Draft — implemented on branch with renames (`Wizard` → `LinearJourney`); §3.12 amendment accepted 2026-07-18 (verbatim wrapper, four core absorptions)
 - **Branch:** `feat/react-api-redesign`
 - **Date:** 2026-07-14
 - **Scope:** `@rxova/journey-react` (full redesign), `@rxova/journey-core` (snapshot family + three small additions), `@rxova/journey-devtools-bridge` (type-aware presentation)
@@ -412,6 +412,65 @@ Crucially, `createWizard` does **not** create a machine (unlike today's factorie
 
 - No module-scope machine → no cross-request state leaks. The pre-start snapshot already has `currentStepId = initial` with `status: "idled"`, so the server renders the first step's HTML synchronously; `startJourney` runs client-side in the layout effect.
 - With `persist`, rehydration happens client-side at start, which risks a hydration mismatch. **Default: render `fallback` until `status !== "idled"`** (deterministic on both sides). Open question §10.3.
+
+### 3.12 Amendment: verbatim thin wrapper — core owns all linear semantics (accepted 2026-07-18)
+
+An audit of the shipped wrapper (3.14 kB brotli against the 601 B headless
+tier) found framework-agnostic logic still living in React, in tension with
+§6.1's "all linear semantics live in core." This amendment finishes the move
+and tightens the wrapper contract to **verbatim**: the React layer performs no
+reshaping and no name translation — anything a Vue/Svelte wrapper would have to
+reimplement identically belongs in core.
+
+**Four core absorptions (additive):**
+
+1. **`startAt` creation option** (`JourneyRuntimeOptions.startAt?: TStepId`,
+   linear and graph). The initial entry resolves `startAt ?? initial` inside
+   the runtime, replacing the wrapper's deferred `goToStepById` workaround for
+   the "transitioning" rejection window. Semantics: the journey starts
+   _directly_ at the target — only its `onEnter` fires, earlier steps are
+   neither entered nor visited, the timeline is `[startAt]`, and `restart()`
+   returns to `startAt`. An unknown id throws at creation (programmer error).
+2. **`persist` creation option** (`JourneyRuntimeOptions.persist?: { key,
+storage? }`). Expands to the persistence plugin prepended to `plugins`
+   (formalizing §3.10 item 2 in core). `storage` defaults to
+   `globalThis.localStorage`; creation throws when neither is available.
+3. **`direction` on the `stepEnter` payload** (`"forward" | "backward" |
+"jump"`). Intent-based, not index math: only `goToNextStep` /
+   `goToPreviousStep` report `"forward"`/`"backward"`; the initial entry,
+   `goToStepById`, `goToStepByIndex`, `goToLastVisitedStep`, and graph `send`
+   report `"jump"`. Indices stay off the payload (linear-only concepts, already
+   on the snapshot). Behavior change: an adjacent `goToStepById` was previously
+   reported "forward" by the React wiring; it is now a `"jump"`.
+4. **`registerNextStepInterceptor` lands in core** as promised by §6.1:
+   `machine.navigate.registerNextStepInterceptor(stepId, work): () => void`,
+   last-registration-wins, consulted by `goToNextStep` when no explicit work is
+   passed. The React-side interceptor store is deleted; `useLinearJourneyStep`
+   becomes a registration shell. Core linear `navigate` also gains
+   `goToStepByIndex` (already promised by §6.1).
+
+**Verbatim wrapper contract (breaking, pre-1.0):**
+
+- `useLinearJourney()` returns `{ machine, snapshot }` — both core-shaped. The
+  flat ~25-field result (`activeStepId`, `stepCount`, `goToNextStep`, …) is
+  deleted, not moved: consumers read `snapshot.currentStep.isFirstStep` and
+  call `machine.navigate.goToNextStep()`.
+- No name translation: the step `meta` prop becomes `metadata` (core's name),
+  `startStepId` becomes `startAt` (`startIndex` remains as JSX-order sugar
+  resolved wrapper-side), and callback props are named after core events —
+  `onStepEnter` (verbatim `stepEnter` payload, now carrying `direction`),
+  `onStepLeave`, `onError` (verbatim payloads), `onComplete` (`statusChange`
+  gated on `"completed"`), `onStart` (once per mount, receives the start
+  snapshot). The React-invented `onStepChange` name and its
+  `LinearJourneyStepChange` shape are deleted.
+- What remains React-owned: JSX children → step-list derivation, contexts,
+  StrictMode-safe mount/dispose lifecycle, `useSyncExternalStore` subscription,
+  and verbatim event→prop forwarding.
+
+**Deferred (follow-up, out of scope here):** statically stripping dev-only
+error/warning strings from production bundles via build-time `define`
+(`__DEV__` / `NODE_ENV`) — ~18 % of the wrapper's minified bytes are DX
+message strings.
 
 ## 4. Tier 2 — Graph: `@rxova/journey-react/graph`
 

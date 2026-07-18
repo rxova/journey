@@ -520,7 +520,7 @@ export class JourneyRuntime {
   /** Entry on start()/restart(): no onLeave, `from` is null, event is null. */
   private async enterInitialStep(): Promise<void> {
     const generation = this.generation;
-    const to = this.config.initial;
+    const to = this.config.startAt ?? this.config.initial;
     this.pending = { phase: "entering", from: null, to };
     this.timeline = [to];
     this.currentIndex = 0;
