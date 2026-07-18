@@ -59,6 +59,7 @@ export class JourneyRuntime {
   private raiseQueue: JourneyEventObject[] = [];
   private processingRaised = false;
   private lastPluginExtensions: Readonly<Record<string, unknown>> = {};
+  private readonly nextStepInterceptors = new Map<string, AnyNavigationWork>();
   private readonly transitionListeners = new Set<TransitionListener>();
   private readonly disposeCallbacks: (() => void)[] = [];
   private readonly snapshotDerivers = new Map<
@@ -145,6 +146,7 @@ export class JourneyRuntime {
         // dispose callbacks must never break teardown
       }
     }
+    this.nextStepInterceptors.clear();
     this.transitionListeners.clear();
     this.store.dispose();
   }
@@ -204,18 +206,43 @@ export class JourneyRuntime {
   goToNextStep(work?: AnyNavigationWork): Promise<NavigationResult> {
     const rejected = this.checkNavigable();
     if (rejected) return this.blocked(rejected, null);
+    const effectiveWork = work ?? this.nextStepInterceptors.get(this.currentStepId() as string);
     if (this.currentIndex < this.timeline.length - 1) {
       const index = this.currentIndex + 1;
       const target = this.timeline[index] as string;
-      return this.runNavigation(target, { kind: "pointer", index }, null, null, work, "forward");
+      return this.runNavigation(
+        target,
+        { kind: "pointer", index },
+        null,
+        null,
+        effectiveWork,
+        "forward"
+      );
     }
     if (this.config.kind === "linear") {
       const orderIndex = this.config.stepIds.indexOf(this.currentStepId() ?? "");
       const target = this.config.stepIds[orderIndex + 1];
       if (target === undefined) return this.blocked({ ok: false, reason: "out-of-bounds" }, null);
-      return this.runNavigation(target, { kind: "append" }, null, null, work, "forward");
+      return this.runNavigation(target, { kind: "append" }, null, null, effectiveWork, "forward");
     }
     return this.blocked({ ok: false, reason: "out-of-bounds" }, null);
+  }
+
+  /**
+   * Registers forward-navigation work for `stepId`, consulted by `goToNextStep`
+   * when no explicit work is passed. Last registration wins; the returned
+   * unsubscribe removes the registration only while it is still the active one.
+   */
+  registerNextStepInterceptor(stepId: string, work: AnyNavigationWork): () => void {
+    if (!(stepId in this.config.steps)) {
+      throw new Error(`journey: registerNextStepInterceptor references unknown step "${stepId}"`);
+    }
+    this.nextStepInterceptors.set(stepId, work);
+    return () => {
+      if (this.nextStepInterceptors.get(stepId) === work) {
+        this.nextStepInterceptors.delete(stepId);
+      }
+    };
   }
 
   goToLastVisitedStep(): Promise<NavigationResult> {

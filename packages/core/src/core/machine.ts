@@ -35,7 +35,9 @@ export function buildMachineSurface(
         string
       >["navigate"]["goToPreviousStep"],
       goToNextStep: (work) => runtime.goToNextStep(work as AnyNavigationWork | undefined),
-      goToLastVisitedStep: () => runtime.goToLastVisitedStep()
+      goToLastVisitedStep: () => runtime.goToLastVisitedStep(),
+      registerNextStepInterceptor: (stepId, work) =>
+        runtime.registerNextStepInterceptor(stepId, work as AnyNavigationWork)
     },
     subscriptions: {
       subscribeSelector: <TSelected>(
