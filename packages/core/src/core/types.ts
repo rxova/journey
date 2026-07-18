@@ -391,6 +391,15 @@ export type JourneyNavigation<TContext, TStepId extends string, TSnap> = {
   ): Promise<NavigationResult<TStepId>>;
   /** Pointer → timeline tip; fails if already there. */
   goToLastVisitedStep(): Promise<NavigationResult<TStepId>>;
+  /**
+   * Registers forward-navigation work for `stepId`, used by `goToNextStep`
+   * when no explicit work is passed. Last registration wins; the returned
+   * unsubscribe removes only its own registration. Unknown step ids throw.
+   */
+  registerNextStepInterceptor<TResult = void>(
+    stepId: TStepId,
+    work: NavigationWork<TContext, TStepId, TSnap, TResult>
+  ): Unsubscribe;
 };
 
 /** Machine surface shared by linear and graph journeys. */
