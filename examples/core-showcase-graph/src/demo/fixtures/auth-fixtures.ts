@@ -1,4 +1,4 @@
-import { createGraphJourneyBuilder, type LinearJourneyDefinition } from "@rxova/journey-core";
+import { createGraphJourneyBuilder } from "@rxova/journey-core";
 import { delay } from "./support";
 
 export type LoginStepId =
@@ -65,35 +65,6 @@ export const initialLoginContext = (): LoginContext => ({
   error: null,
   attempts: 0
 });
-
-export const linearDefinition = {
-  context: { ...initialLoginContext(), twoFactorMethod: "no_2fa" as const },
-  steps: [
-    { id: "login", metadata: { label: "Login" } },
-    { id: "setup2fa", metadata: { label: "Setup 2FA" } },
-    { id: "verifyCode", metadata: { label: "Verify Code" } },
-    { id: "loggedIn", metadata: { label: "Logged In" } }
-  ]
-} satisfies LinearJourneyDefinition<LoginStepId, LoginContext>;
-
-/**
- * The "headless" scenario: every auth step in one machine, navigated purely by
- * ungated `goToStepById`. The dedicated headless tier is reserved in the
- * rewritten core; linear minus its declared-order navigation is exactly that
- * story (linear = headless + declared order).
- */
-export const headlessDefinition = {
-  context: initialLoginContext(),
-  steps: [
-    { id: "login", metadata: { label: "Login" } },
-    { id: "setup2fa", metadata: { label: "Setup 2FA" } },
-    { id: "verifyCode", metadata: { label: "Verify Code" } },
-    { id: "emailCode", metadata: { label: "Email Code" } },
-    { id: "authenticatorCode", metadata: { label: "Authenticator" } },
-    { id: "loggedIn", metadata: { label: "Logged In" } },
-    { id: "blocked", metadata: { label: "Blocked" } }
-  ]
-} satisfies LinearJourneyDefinition<LoginStepId, LoginContext>;
 
 const { createStep, to, build } = createGraphJourneyBuilder<{
   context: LoginContext;
