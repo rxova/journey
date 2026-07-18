@@ -254,6 +254,15 @@ export class JourneyRuntime {
     return this.runNavigation(target, { kind: "pointer", index: tip }, null, null);
   }
 
+  /** Linear-only: declared-order index navigation, delegating to `goToStepById`. */
+  goToStepByIndex(index: number): Promise<NavigationResult> {
+    const target = Number.isInteger(index) ? this.config.stepIds[index] : undefined;
+    if (target === undefined) {
+      return this.blocked({ ok: false, reason: "invalid-target" }, null);
+    }
+    return this.goToStepById(target);
+  }
+
   /** Graph-only primary verb; also drives raised events. */
   send(type: string, payload?: unknown, work?: AnySendWork): Promise<NavigationResult> {
     const rejected = this.checkNavigable();

@@ -75,6 +75,43 @@ describe("createLinearJourney", () => {
   });
 });
 
+describe("createLinearJourney — goToStepByIndex", () => {
+  it("navigates by declared-order index and reports it as a jump", async () => {
+    const machine = await startedLinear();
+    const directions: string[] = [];
+    machine.subscriptions.subscribeEvent("stepEnter", ({ direction }) => {
+      directions.push(direction);
+    });
+
+    expect(await machine.navigate.goToStepByIndex(2)).toEqual({ ok: true, from: "a", to: "c" });
+    expect(machine.getSnapshot().currentStep?.id).toBe("c");
+    expect(directions).toEqual(["jump"]);
+  });
+
+  it("rejects out-of-range and non-integer indexes as invalid-target, same index as no-op", async () => {
+    const machine = await startedLinear();
+    const blocked: string[] = [];
+    machine.subscriptions.subscribeEvent("navigationBlocked", ({ reason }) => {
+      blocked.push(reason);
+    });
+
+    expect(await machine.navigate.goToStepByIndex(9)).toEqual({
+      ok: false,
+      reason: "invalid-target"
+    });
+    expect(await machine.navigate.goToStepByIndex(-1)).toEqual({
+      ok: false,
+      reason: "invalid-target"
+    });
+    expect(await machine.navigate.goToStepByIndex(1.5)).toEqual({
+      ok: false,
+      reason: "invalid-target"
+    });
+    expect(await machine.navigate.goToStepByIndex(0)).toEqual({ ok: false, reason: "no-op" });
+    expect(blocked).toEqual(["invalid-target", "invalid-target", "invalid-target", "no-op"]);
+  });
+});
+
 describe("createLinearJourney — startAt", () => {
   it("starts directly at the target: earlier steps are neither entered nor visited", async () => {
     const entered: string[] = [];

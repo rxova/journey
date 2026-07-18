@@ -89,7 +89,14 @@ export function createLinearJourney<
     ]
   });
 
-  return buildMachineSurface(runtime) as unknown as LinearJourneyMachine<
+  const surface = buildMachineSurface(runtime);
+  return {
+    ...surface,
+    navigate: {
+      ...surface.navigate,
+      goToStepByIndex: (index: number) => runtime.goToStepByIndex(index)
+    }
+  } as unknown as LinearJourneyMachine<
     TContext,
     TStepId,
     TMeta,

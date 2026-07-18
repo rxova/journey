@@ -2,6 +2,7 @@ import type {
   AnyJourneyPlugin,
   JourneyMachineBase,
   LinearSnapshot,
+  NavigationResult,
   OnEnterHook,
   OnLeaveHook,
   PluginApis
@@ -94,12 +95,25 @@ export type LinearJourneyMachine<
   TPlugins extends readonly AnyJourneyPlugin[] = readonly [],
   TCompletePayload = unknown,
   TTerminatePayload = unknown
-> = JourneyMachineBase<
-  TContext,
-  TStepId,
-  LinearSnapshot<TContext, TStepId, TMeta, TCompletePayload, TTerminatePayload>,
-  TCompletePayload,
-  TTerminatePayload
+> = Omit<
+  JourneyMachineBase<
+    TContext,
+    TStepId,
+    LinearSnapshot<TContext, TStepId, TMeta, TCompletePayload, TTerminatePayload>,
+    TCompletePayload,
+    TTerminatePayload
+  >,
+  "navigate"
 > & {
+  readonly navigate: JourneyMachineBase<
+    TContext,
+    TStepId,
+    LinearSnapshot<TContext, TStepId, TMeta, TCompletePayload, TTerminatePayload>,
+    TCompletePayload,
+    TTerminatePayload
+  >["navigate"] & {
+    /** Declared-order index navigation; out-of-range indexes reject with "invalid-target". */
+    goToStepByIndex(index: number): Promise<NavigationResult<TStepId>>;
+  };
   readonly plugins: PluginApis<TPlugins>;
 };
