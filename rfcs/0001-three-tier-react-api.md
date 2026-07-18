@@ -744,7 +744,6 @@ const machine = createLinearMachine({
   initialSnapshot?: JourneySnapshotStateBase<JourneyJsonObject, string>;
   onListenerError?: (error: unknown, context: "snapshot" | "event") => void;
   onLifecycleError?: (error: unknown, context: JourneyLifecycleErrorContext<string>) => void;
-  onNoMatch?: (context: JourneyNoMatchContext<string>) => void; // relevant for graph
 })
 
 const machineResult = {
