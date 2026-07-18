@@ -5,109 +5,134 @@ sidebar_label: Protocol
 
 # Protocol
 
-The bridge and the devtools extension talk over `window.postMessage` using a small, versioned
-envelope protocol. You rarely touch it directly — `attachJourneyDevtools` and the panel handle both
-ends — but understanding the shapes helps when debugging a connection or building your own consumer.
+The bridge and Chrome extension communicate through versioned `window.postMessage` envelopes. Most
+applications never construct an envelope directly, but the format matters when diagnosing
+compatibility, reviewing security, or building a custom consumer.
 
-Every message is an envelope tagged with a `channel`, a `version`, a `source`
-(`rxova-journey-bridge` or `rxova-journey-extension`), a `kind`, and the `machineId` it concerns. The
-exact types are in the [API reference](./api/reference/) — `JourneyDevtoolsBridgeEnvelope`,
-`JourneyDevtoolsExtensionEnvelope`, and the guards `isJourneyDevtoolsEnvelope` /
-`isJourneyDevtoolsBridgeEnvelope` / `isJourneyDevtoolsExtensionEnvelope`.
+## Versions
 
-## Versioning
+The current protocol is **v7**.
 
-The current protocol version is **6** (`JOURNEY_DEVTOOLS_PROTOCOL_VERSION`). The bridge also accepts
-the prior version **5** (`JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION`) and tolerates the legacy version
-**3** for register envelopes.
+| Version | Status                   | Notes                                                                         |
+| ------- | ------------------------ | ----------------------------------------------------------------------------- |
+| v7      | Current                  | Carries the redesigned immutable Core snapshot and required mutation metadata |
+| v6      | Prior, invoke-compatible | Uses the same invoke shape, so a v6 panel can drive a v7 bridge               |
+| v5      | Legacy, read-only        | Tolerated for registration during rolling upgrades; cannot invoke             |
 
-:::info v5 ↔ v6 interoperate
-v6 only **added** the optional `meta.steps` field to the register envelope. The `invoke` envelope
-shape is unchanged, so a v6 bridge and a v5 extension work together — a v5 extension ignores the new
-field, and the bridge processes v5 invokes (`isCompatibleInvokeProtocolVersion` gates this).
-:::
+Compatibility is deliberately asymmetric. Register envelopes from all three known versions can be
+recognized, while only v6 and v7 invoke envelopes are accepted.
 
-Protocol version is the compatibility boundary: any breaking change to an envelope or payload shape
-bumps it, and additive optional fields are preferred over mutating existing shapes.
+## Base envelope
 
-## Bridge → extension envelopes
-
-The bridge emits one of these `kind`s:
-
-| Kind              | When                                        | Key payload                          |
-| ----------------- | ------------------------------------------- | ------------------------------------ |
-| `register`        | On attach (and on replay request)           | `meta` + initial `snapshot`          |
-| `snapshot`        | On every machine snapshot change            | `snapshot`                           |
-| `observation`     | On every `JourneyObservationEvent`          | `event` (transport-safe clone)       |
-| `operationResult` | An invoked operation succeeded              | `requestId`, `operationId`, `result` |
-| `operationError`  | An invoked operation failed or was rejected | `requestId`, `operationId`, `error`  |
-| `unregister`      | On detach                                   | —                                    |
-
-## Register metadata
-
-The `register` envelope carries a `JourneyDevtoolsMachineMeta` describing the machine statically:
-
-- `machineId`, `label`, `appName`, `mutationsEnabled`
-- `mode` — `"linear" | "graph" | "headless"`
-- `stepIds`, `eventTypes`, `eventTypesBySource`, `goToStepTargetsBySource`
-- `features` — the invokable operation groups (core navigation plus plugin features)
-- `steps` — **new in v6**: per-step authored features, so the panel can show which steps carry an
-  effect, delayed transitions, lifecycle callbacks, or metadata:
+Every normal protocol message contains:
 
 ```ts
-steps: {
-  verify: {
-    hasEffect: true,
-    afterDelays: [], // delays (ms) of the step's `after` transitions
-    hasOnEnter: true,
-    hasOnLeave: false,
-    hasMeta: true
-  }
+type EnvelopeBase = {
+  channel: "__RXOVA_JOURNEY_DEVTOOLS__";
+  version: 5 | 6 | 7;
+  source: "rxova-journey-bridge" | "rxova-journey-extension";
+  kind: string;
+  machineId: string;
+  timestamp: number;
+};
+```
+
+The channel and source fields keep unrelated page messages out of the protocol parser. The machine
+ID routes extension requests when several journeys are attached in one tab.
+
+## Bridge-to-extension messages
+
+The bridge emits:
+
+- `register`: metadata, feature descriptors, mutation policy, and the current snapshot;
+- `unregister`: the machine detached;
+- `snapshot`: the next immutable snapshot;
+- `observation`: a named Core subscription payload without a duplicate snapshot;
+- `operationResult`: a successful generic operation result;
+- `operationError`: validation, policy, rate-limit, or runtime failure.
+
+A registration describes operations generically:
+
+```ts
+{
+  id: "core.goToPreviousStep",
+  label: "Previous",
+  description: "...",
+  mutates: true,
+  output: "snapshot",
+  fields: [
+    { key: "steps", label: "Steps", type: "integer" }
+  ]
 }
 ```
 
-## Snapshot payload
+Consumers should render from descriptors instead of maintaining a hard-coded command list. Plugin
+and future operation groups can then participate without changing the envelope format.
 
-`register` and `snapshot` envelopes carry a transport-safe `JourneyDevtoolsSerializableSnapshot` —
-`currentStepId`, `history.timeline`, `history.index`, `context`, `visited`, `status`, and `async`.
-The per-step async phase is one of `idle`, `evaluating-when`, `invoking`, or `error`:
+## Extension-to-bridge invokes
 
-```ts
-async: {
-  isLoading: true,
-  byStep: {
-    verify: { phase: "invoking", eventType: null, transitionId: null, error: null }
-  }
-}
-```
-
-:::note `invoking` since v6
-The `invoking` phase (a step [effect](/docs/core/effects) is running) is reported as of protocol v6.
-Earlier bridges collapsed it to `idle`.
-:::
-
-## Extension → bridge envelopes
-
-The extension sends a single `kind`, `invoke`, to run an operation the bridge advertised in
-`meta.features`:
+An invoke carries a request ID and operation identity:
 
 ```ts
 {
   kind: "invoke",
-  requestId: "req-1",
+  requestId: "request-42",
   invocation: {
-    operationId: "core.goToNextStep",
-    input: { /* validated against the operation's field spec */ }
+    operationId: "core.goToPreviousStep",
+    input: { steps: 2 }
   }
 }
 ```
 
-The bridge replies with a matching `operationResult` (a `snapshot`, `data`, `text`, or `void`
-payload) or an `operationError`. Mutating operations are blocked unless the bridge was attached with
-`mutationsEnabled`. A replay request asks the bridge to re-emit its `register` + `snapshot`.
+The bridge resolves the descriptor, validates fields, checks `mutationsEnabled`, applies the rate
+limit, runs the operation, and responds with the same request ID. Unknown operation IDs and
+malformed inputs produce `operationError` rather than reaching the machine.
 
-## Where to next
+## Registration metadata
 
-- [Bridge API](./bridge-api) — `attachJourneyDevtools` and its options.
-- [API reference](./api/reference/) — the exact envelope, meta, and guard types.
-- [Stability contract](/docs/core/stability) — the broader support guarantees.
+A v7 register includes:
+
+- `machineId`, `label`, and `appName`;
+- required `mutationsEnabled`;
+- machine `mode` and declared step IDs when known;
+- optional full graph `eventTypes`;
+- optional authored per-step feature hints;
+- feature groups and generic operation descriptors.
+
+The register also embeds a snapshot, which lets a newly opened panel render immediately without
+waiting for the next machine change.
+
+## Snapshot envelope
+
+Protocol v7 transports the current Core snapshot. Shared fields are:
+
+```ts
+{
+  type: ("linear" | "graph", status, context, transition, history, machine, plugins, currentStep);
+}
+```
+
+`currentStep` is `null` while idle and otherwise includes `id`, `metadata`,
+`isFirstTimeVisit`, and per-entry `async` state. `history` contains `timeline`,
+`currentIndex`, `visited`, `canGoBack`, and `canGoForward`. `machine` contains lifecycle
+booleans, the broad loading flag, and terminal outcome.
+
+Linear snapshots add declared-order `steps` data and current-step index flags. Graph snapshots add
+`declaredEvents`, `availableEvents`, `availableSteps`, and candidate-level
+`outgoingTransitions`.
+
+## Observations and replay discovery
+
+Observation events are `stepEnter`, `stepLeave`, `statusChange`, `contextChange`,
+`navigationBlocked`, and `error`. Their snapshot field is omitted on the wire because snapshots
+stream independently.
+
+When the panel opens after a machine was already attached, the extension sends a replay-discovery
+request. Each live bridge responds by re-emitting its register envelope and current snapshot.
+
+## Validation and safety limits
+
+Parsers validate the channel, known version/source, envelope-specific fields, operation descriptors,
+payload depth, and serialized size. The bridge also verifies the page origin and rate-limits
+operations. These are robustness boundaries, not a secret channel: other scripts executing in the
+same page can observe page-level `postMessage` traffic.

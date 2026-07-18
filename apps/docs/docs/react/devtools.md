@@ -3,42 +3,32 @@ title: Devtools Bridge (Chrome)
 sidebar_position: 7
 ---
 
-React integration for devtools still goes through `@rxova/journey-devtools-bridge`.
+Install the [Journey Chrome DevTools extension](https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm).
 
-Chrome extension download:
-
-- https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm
-
-This page is a React-facing entry point. Full bridge documentation lives under `/docs/bridge/*`, and Chrome DevTools extension docs live under `/docs/devtool/*`.
-
-## Quick React Integration
+A graph Provider owns its machine, so expose that mount with `machineRef`:
 
 ```tsx
-import { useEffect } from "react";
-import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
-import { signupJourney } from "./signup-journey";
+function Checkout() {
+  const [machine, setMachine] = React.useState(null);
 
-const JourneyDevtoolsBridge = () => {
-  useEffect(() => {
-    return attachJourneyDevtools(signupJourney.machine, {
-      label: "Signup",
-      pluginMetadata: {
-        persistence: {
-          key: "signup-journey",
-          clearOnReset: true
-        }
-      }
+  React.useEffect(() => {
+    if (!machine) return;
+    return attachJourneyDevtools(machine, {
+      label: "Checkout",
+      mutationsEnabled: false
     });
-  }, []);
+  }, [machine]);
 
-  return null;
-};
+  return (
+    <checkout.Provider views={views} machineRef={setMachine}>
+      <checkout.StepRenderer />
+    </checkout.Provider>
+  );
+}
 ```
 
-For Chrome Web Store status and extension details, see `/docs/devtool/web-store`.
+For `<LinearJourney>`, pass a ref through its `machineRef` prop and attach the current machine in
+an effect. For headless React, attach the same Core machine passed to the hooks.
 
-The current panel can inspect:
-
-- live snapshots
-- core observation events in the timeline
-- read-only execution-path queries when the machine exposes `getExecutionPaths()`
+The bridge is disabled in production by default. An explicitly enabled bridge permits mutations
+unless `mutationsEnabled: false` is supplied. Always return the detach function.

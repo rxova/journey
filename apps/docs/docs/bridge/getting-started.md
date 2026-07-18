@@ -3,147 +3,117 @@ title: Getting Started
 sidebar_position: 2
 ---
 
-import Tabs from "@theme/Tabs";
-import TabItem from "@theme/TabItem";
+The bridge connects a Journey Core machine running in the inspected page to the Journey Chrome
+DevTools panel.
 
-This guide gets you from zero to a bridge-ready setup while the Chrome extension listing is under review.
+## Install the extension
 
-## 1) Install Bridge In Your App
+Install [Journey DevTools from the Chrome Web Store](https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm).
+After installation, open Chrome DevTools and select the **Journey** tab.
 
-<Tabs groupId="package-managers" defaultValue="pnpm">
-  <TabItem value="pnpm" label="pnpm">
-
-```bash
-pnpm add @rxova/journey-devtools-bridge
-```
-
-  </TabItem>
-  <TabItem value="yarn" label="yarn">
-
-```bash
-yarn add @rxova/journey-devtools-bridge
-```
-
-  </TabItem>
-  <TabItem value="npm" label="npm">
+## Install the bridge
 
 ```bash
 npm install @rxova/journey-devtools-bridge
 ```
 
-  </TabItem>
-  <TabItem value="bun" label="bun">
+The bridge is a runtime dependency of the inspected application. The Chrome extension itself is not
+bundled into the app.
 
-```bash
-bun add @rxova/journey-devtools-bridge
-```
-
-  </TabItem>
-</Tabs>
-
-`@rxova/journey-devtools-bridge` can be used in Bun-based SPAs. If your browser bundle does not expose a dev/prod env signal, set `enabled: true` explicitly.
-
-## 2) Attach Bridge To A Machine
-
-### Core Example
+## Attach a Core machine
 
 ```ts
-import { createGraphJourney } from "@rxova/journey-core";
+import { createLinearJourney } from "@rxova/journey-core";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 
-const journeyMachine = createGraphJourney(journey);
-
-const detachDevtools = attachJourneyDevtools(journeyMachine, {
-  machineId: "checkout-main",
-  label: "Checkout Flow",
-  appName: "Storefront"
+const machine = createLinearJourney(definition, {
+  autoStart: true
 });
 
-journeyMachine.startJourney();
-
-// optional cleanup
-// detachDevtools();
+const detach = attachJourneyDevtools(machine, {
+  machineId: "checkout",
+  label: "Checkout",
+  appName: "Storefront"
+});
 ```
 
-The bridge does not auto-start the machine. Call `journeyMachine.startJourney()` when your app is ready to process navigation and transitions.
+The panel should show a machine labelled Checkout. Its first register envelope already includes the
+current immutable snapshot.
 
-### React Example
+Attachment is observational with respect to lifecycle: it does not start, pause, resume, navigate,
+complete, or terminate the machine. Use `autoStart: true` or call
+`machine.controls.start()` when your application is ready.
 
-```tsx
-import { useEffect } from "react";
-import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
-import { checkoutJourney } from "./checkout-journey";
+## Choose the mutation policy
 
-export const JourneyDebugBridge = () => {
-  useEffect(() => {
-    return attachJourneyDevtools(checkoutJourney.machine, {
-      machineId: "onboarding",
-      label: "Onboarding Journey"
-    });
-  }, []);
-
-  return null;
-};
-```
-
-## 3) Extension Availability
-
-The `Rxova Journey Devtools` Chrome extension is currently pending Chrome Web Store approval.
-
-For now, this public guide does not include local unpacked extension setup.
-
-What you can do now:
-
-- keep bridge integration in place
-- verify events and transitions in your app runtime
-- prepare unique `machineId` and readable `label` values for fast debugging once the extension is available
-
-We will publish the store install link here as soon as approval is complete.
-
-## 4) Open DevTools Panel (After Approval)
-
-1. Install `Rxova Journey Devtools` from the Chrome Web Store.
-2. Open your app page.
-3. Open Chrome DevTools.
-4. Select the `Journey` panel.
-
-If bridge messages are flowing, connection state should change to connected.
-
-## 5) Validate End-To-End (After Approval)
-
-Do this quick check:
-
-1. Trigger UI event in app (e.g. `goToNextStep`).
-2. Confirm `currentStepId` updates in Snapshot tab.
-3. Run the `goToPreviousStep` operation from the panel.
-4. Confirm app returns to previous step.
-
-## First Successful Session Screenshot
-
-![Journey Devtools Connected Session](/img/devtool/panel-overview.png)
-
-## Default Runtime Behavior
-
-If you do nothing else:
-
-- Bridge is enabled in development when `import.meta.env` or `process.env.NODE_ENV` exposes a non-production runtime.
-- Bridge is disabled in production.
-- No-op in non-browser environments.
-- If neither env source is available, bridge defaults to disabled.
-
-To force production enablement:
+Once the bridge is enabled, mutating DevTools operations are allowed by default. Use inspect-only
+mode when the panel should be unable to navigate or change context:
 
 ```ts
-attachJourneyDevtools(journeyMachine, { enabled: true });
+attachJourneyDevtools(machine, {
+  mutationsEnabled: false
+});
 ```
 
-## Common Setup Pitfalls
+Read-only inspection and plugin queries remain available.
 
-- Bridge is attached before machine exists: attach after machine creation.
-- Multiple machines with same `machineId`: use unique ids.
-- Extension not yet available publicly: wait for Chrome Web Store approval and use bridge-only validation meanwhile.
+The bridge itself is enabled by default only outside production. To deliberately inspect a
+production build, both decisions should be explicit:
 
-## Where to next
+```ts
+attachJourneyDevtools(machine, {
+  enabled: true,
+  mutationsEnabled: false
+});
+```
 
-- [Bridge API](./bridge-api) — `attachJourneyDevtools` options and what the bridge streams.
-- [Protocol](./protocol) — the envelope shapes and versioning.
+## Graph event forms
+
+A graph snapshot reports currently available events, but the panel may need the entire declared
+union to build a stable event selector. Supply it through `eventTypes`:
+
+```ts
+attachJourneyDevtools(graphMachine, {
+  eventTypes: ["continue", "skip", "cancel"]
+});
+```
+
+## React-owned machines
+
+A graph Provider creates the machine during mount. Capture that mount with `machineRef` and attach
+it in an effect:
+
+```tsx
+function Checkout() {
+  const [machine, setMachine] = React.useState(null);
+
+  React.useEffect(() => {
+    if (!machine) return;
+    return attachJourneyDevtools(machine, {
+      label: "Checkout",
+      mutationsEnabled: false
+    });
+  }, [machine]);
+
+  return (
+    <checkout.Provider views={views} machineRef={setMachine}>
+      <checkout.StepRenderer />
+    </checkout.Provider>
+  );
+}
+```
+
+Returning the detach function removes message listeners and unregisters the machine. The Provider
+sets the ref to `null` and disposes its machine on unmount.
+
+## Troubleshooting checklist
+
+1. Confirm the extension is installed and the Journey panel is open.
+2. Confirm the attached machine is running in the inspected tab, not an iframe or another tab.
+3. Check that `enabled` was not forced to false.
+4. Confirm the panel and bridge are protocol compatible.
+5. Inspect Content Security Policy and extension injection errors in the panel.
+6. Verify the snapshot changes at `currentStep.id` and `history.currentIndex` when the app moves.
+
+See [Bridge API](./bridge-api), [Protocol](./protocol), and
+[DevTools troubleshooting](/docs/devtool/troubleshooting).

@@ -5,67 +5,102 @@ sidebar_label: Bridge API
 
 # Bridge API
 
-`attachJourneyDevtools(machine, options?)` connects a Journey machine to the devtools channel and
-returns a `detach` function. Once attached, the bridge streams snapshots and observation events to
-the panel and — when you allow it — lets the panel drive the machine back.
-
-It's observational by default: attaching does **not** start the machine, so a fresh machine stays
-`idled` until your app calls `startJourney()`.
+`attachJourneyDevtools(machine, options?)` connects a current Core linear or graph machine to the
+Journey Chrome DevTools channel. It registers the machine, streams immutable snapshots and named
+observations, exposes generic operation descriptors, and returns a detach function.
 
 ```ts
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 
 const detach = attachJourneyDevtools(machine, {
-  machineId: "checkout-main",
-  label: "Checkout Flow",
-  appName: "Storefront"
+  machineId: "checkout",
+  label: "Checkout",
+  appName: "Storefront",
+  eventTypes: ["continue", "cancel"],
+  mutationsEnabled: false
 });
-
-// later, e.g. on unmount
-// detach();
 ```
 
 ## Options
 
-`JourneyDevtoolsBridgeOptions` (full type in the [API reference](./api/reference/type-aliases/JourneyDevtoolsBridgeOptions.md)):
+| Option                   | Default                      | Purpose                                               |
+| ------------------------ | ---------------------------- | ----------------------------------------------------- |
+| `machineId`              | generated                    | Stable identity in the panel                          |
+| `label`                  | `"Journey Machine"`          | Human-readable machine label                          |
+| `appName`                | `document.title`             | Application label                                     |
+| `enabled`                | true only outside production | Enables the page transport                            |
+| `mutationsEnabled`       | true whenever enabled        | Permits operations marked mutating                    |
+| `eventTypes`             | omitted                      | Full declared graph event list for stable panel forms |
+| `rateLimit.maxPerWindow` | 100                          | Maximum invokes in one window                         |
+| `rateLimit.windowMs`     | 10,000                       | Rate-limit window duration                            |
 
-| Option             | Default               | Purpose                                                         |
-| ------------------ | --------------------- | --------------------------------------------------------------- |
-| `machineId`        | generated             | Stable id; set it when several machines share a page            |
-| `label`            | `"Journey Machine"`   | Human-readable name in the panel                                |
-| `appName`          | `document.title`      | App name in the registration metadata                           |
-| `enabled`          | on outside production | Force the bridge on or off                                      |
-| `mutationsEnabled` | on outside production | Allow the panel to mutate the machine (navigate, patch context) |
+Environment detection uses the repository's non-production resolver. When detection is unavailable,
+it fails conservatively. Set `enabled` explicitly when build tooling cannot expose the environment
+reliably.
 
-:::note Safety-first defaults
-Both `enabled` and `mutationsEnabled` default on only in non-production builds (resolved from
-`import.meta.env` or `NODE_ENV`), and the bridge is a no-op outside the browser. Enable them
-explicitly to inspect a production build. `commandsEnabled` is a deprecated alias for
-`mutationsEnabled`.
-:::
+`mutationsEnabled` is a separate decision from `enabled`. If a bridge is enabled, mutations are
+allowed unless the option is false.
 
-## What the bridge streams
+## Lifecycle behavior
 
-- **Snapshots** — every machine snapshot change is serialized to a transport-safe payload
-  (`currentStepId`, `history`, `context`, `visited`, `status`, `async`) and sent as a `snapshot`
-  envelope. The per-step async `phase` includes `invoking` for a running [effect](/docs/core/effects).
-- **Observations** — every `JourneyObservationEvent` is forwarded as an `observation` envelope, so
-  the panel can render a live event timeline.
-- **Register metadata** — on attach the bridge sends the machine's mode, step ids, event types,
-  invokable operations, and (as of protocol v6) per-step features. See [Protocol](./protocol).
+Attachment does not start or alter the machine. A newly created machine remains idle until
+`controls.start()` or an `autoStart` factory option takes effect.
 
-## What the panel can invoke
+On attachment, the bridge posts one register envelope containing metadata, generic feature
+descriptors, and the current snapshot. It then subscribes to snapshot changes and all named Core
+observation events.
 
-The bridge advertises a set of **operations** the panel can invoke — core navigation and lifecycle
-(`goToNextStep`, `goToStepById`, `goToPreviousStep`, `goToLastVisitedStep`, `completeJourney`,
-`terminateJourney`, `startJourney`, `resetJourney`, `clearStepError`), custom event dispatch
-(`send`), context edits, and read-only plugin queries such as execution-paths inspection.
+The returned function:
 
-When `mutationsEnabled` is `false`, mutating operations are rejected while read-only queries still
-run. Each invocation resolves to an `operationResult` or `operationError` — see [Protocol](./protocol).
+1. unsubscribes from the machine;
+2. removes the page message listener;
+3. posts an unregister envelope;
+4. becomes a safe no-op if called again.
 
-## Where to next
+Outside the browser, or when disabled, attachment immediately returns a no-op detach function.
 
-- [Getting started](./getting-started) — install and attach the bridge.
-- [Protocol](./protocol) — the envelope shapes and versioning.
-- [API reference](./api/reference/) — exact types for options, envelopes, and guards.
+## Operations
+
+The bridge builds operations from the attachable machine surface. Core operations cover valid
+lifecycle controls, navigation, context updates, graph events where available, and async error
+clearing. Plugins can contribute namespaced operations through their advertised features.
+
+Each operation has a stable ID, user-facing label, optional description, typed field descriptors, a
+mutation flag, and an output kind. The panel builds its forms from these descriptors.
+
+Incoming invokes are rejected when:
+
+- the operation ID is unknown;
+- the input does not satisfy the descriptor;
+- the operation mutates and `mutationsEnabled` is false;
+- the request exceeds the configured rate limit;
+- the protocol version is not invoke-compatible.
+
+Machine failures are serialized into operation results or operation errors; they are not thrown
+through the message listener.
+
+## Snapshot serialization
+
+The bridge clones the Core snapshot for transport. Protocol v7 preserves the discriminated linear or
+graph shape, including current-step async state, history pointer, machine outcome, plugin snapshot
+extensions, and graph routing introspection.
+
+Snapshot/context values must be serializable enough for structured transport. Functions, DOM nodes,
+and class instances do not belong in journey context.
+
+## Security guidance
+
+The transport is same-page `window.postMessage`. Origin, payload, envelope, and rate checks improve
+robustness, but another script executing in the page can observe or attempt to emit page-level
+messages.
+
+For sensitive applications:
+
+- keep the bridge disabled in production unless there is a deliberate debugging need;
+- when enabled, prefer `mutationsEnabled: false`;
+- avoid credentials, tokens, and personal secrets in context or metadata;
+- keep operation rate limits enabled;
+- call detach during teardown;
+- review third-party scripts that execute in the inspected page.
+
+See [Protocol](./protocol) for the exact envelope model.

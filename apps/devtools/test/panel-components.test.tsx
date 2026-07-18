@@ -80,12 +80,12 @@ const setInputValue = async (
   value: string
 ) => {
   await act(async () => {
-    const prototype =
-      element instanceof HTMLTextAreaElement
-        ? HTMLTextAreaElement.prototype
-        : element instanceof HTMLSelectElement
-          ? HTMLSelectElement.prototype
-          : HTMLInputElement.prototype;
+    let prototype: object = HTMLInputElement.prototype;
+    if (element instanceof HTMLTextAreaElement) {
+      prototype = HTMLTextAreaElement.prototype;
+    } else if (element instanceof HTMLSelectElement) {
+      prototype = HTMLSelectElement.prototype;
+    }
     const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
     setter?.call(element, value);
     element.dispatchEvent(new Event("input", { bubbles: true }));

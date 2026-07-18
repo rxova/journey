@@ -159,11 +159,10 @@ describe("useJourneyEvent / useJourneyStepLifecycle / useStepAsyncState", () => 
     );
     const Probe = ({ stepId }: { stepId: "a" | "b" }) => {
       const state = useStepAsyncState(machine, stepId);
-      return (
-        <span data-testid={`async-${stepId}`}>
-          {state.isError ? "error" : state.isSuccess ? "success" : "idle"}
-        </span>
-      );
+      let label = "idle";
+      if (state.isError) label = "error";
+      else if (state.isSuccess) label = "success";
+      return <span data-testid={`async-${stepId}`}>{label}</span>;
     };
     render(
       <>

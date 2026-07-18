@@ -71,6 +71,26 @@ const getSelectOnlyFields = (operationId: string): readonly string[] | undefined
   }
 };
 
+const getOperationClasses = (operationId: string) => {
+  if (
+    operationId === "core.goToStepById" ||
+    operationId === "core.forceStepTransition" ||
+    operationId === "core.goToPreviousStep"
+  ) {
+    return {
+      form: styles.navigationInlineForm,
+      button: styles.navigationInlineButton
+    };
+  }
+  if (operationId === "core.sendEvent") {
+    return { form: styles.eventSendForm, button: styles.eventSendButton };
+  }
+  if (operationId === "core.clearStepError") {
+    return { form: styles.eventClearForm, button: styles.eventClearButton };
+  }
+  return { form: undefined, button: undefined };
+};
+
 const getOperationDisabled = (
   operation: JourneyDevtoolsMachineOperationDescriptor,
   sectionId: string,
@@ -244,63 +264,46 @@ export const CommandControls = ({
                 }))
               }
             >
-              {renderSectionOperations(section.id, section.operations, (operation) => (
-                <OperationForm
-                  key={operation.id}
-                  operation={operation}
-                  sectionId={section.id}
-                  className={
-                    operation.id === "core.goToStepById" ||
-                    operation.id === "core.forceStepTransition" ||
-                    operation.id === "core.goToPreviousStep"
-                      ? styles.navigationInlineForm
-                      : operation.id === "core.sendEvent"
-                        ? styles.eventSendForm
-                        : operation.id === "core.clearStepError"
-                          ? styles.eventClearForm
-                          : undefined
-                  }
-                  buttonClassName={
-                    operation.id === "core.goToStepById" ||
-                    operation.id === "core.forceStepTransition" ||
-                    operation.id === "core.goToPreviousStep"
-                      ? styles.navigationInlineButton
-                      : operation.id === "core.sendEvent"
-                        ? styles.eventSendButton
-                        : operation.id === "core.clearStepError"
-                          ? styles.eventClearButton
-                          : undefined
-                  }
-                  fieldsDisabled={getOperationDisabled(
-                    operation,
-                    section.id,
-                    disabled,
-                    mutationsEnabled,
-                    snapshotStatus
-                  )}
-                  submitDisabled={getSubmitDisabled(
-                    operation,
-                    section.id,
-                    disabled,
-                    mutationsEnabled,
-                    snapshotStatus,
-                    fieldValues
-                  )}
-                  fieldValues={fieldValues}
-                  fieldOptions={getOperationFieldOptions(
-                    operation.id,
-                    currentStepId,
-                    mode,
-                    stepIds,
-                    eventTypes,
-                    eventTypesBySource,
-                    goToStepTargetsBySource
-                  )}
-                  selectOnlyFields={getSelectOnlyFields(operation.id)}
-                  onFieldChange={setFieldValue}
-                  onSubmit={submit}
-                />
-              ))}
+              {renderSectionOperations(section.id, section.operations, (operation) => {
+                const operationClasses = getOperationClasses(operation.id);
+                return (
+                  <OperationForm
+                    key={operation.id}
+                    operation={operation}
+                    sectionId={section.id}
+                    className={operationClasses.form}
+                    buttonClassName={operationClasses.button}
+                    fieldsDisabled={getOperationDisabled(
+                      operation,
+                      section.id,
+                      disabled,
+                      mutationsEnabled,
+                      snapshotStatus
+                    )}
+                    submitDisabled={getSubmitDisabled(
+                      operation,
+                      section.id,
+                      disabled,
+                      mutationsEnabled,
+                      snapshotStatus,
+                      fieldValues
+                    )}
+                    fieldValues={fieldValues}
+                    fieldOptions={getOperationFieldOptions(
+                      operation.id,
+                      currentStepId,
+                      mode,
+                      stepIds,
+                      eventTypes,
+                      eventTypesBySource,
+                      goToStepTargetsBySource
+                    )}
+                    selectOnlyFields={getSelectOnlyFields(operation.id)}
+                    onFieldChange={setFieldValue}
+                    onSubmit={submit}
+                  />
+                );
+              })}
               {formError?.sectionId === section.id ? (
                 <p className={styles.formError}>{formError.message}</p>
               ) : null}

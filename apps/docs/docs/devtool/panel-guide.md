@@ -3,70 +3,42 @@ title: Panel Guide
 sidebar_position: 4
 ---
 
-## Timeline Inspector
+## Machine selector
 
-The panel uses a Redux-style inspector layout:
+The panel lists every machine registered by the inspected page. Metadata shows mode, lifecycle
+status, mutation policy, and advertised feature groups.
 
-- Left side: timeline rows, one per bridge event received.
+## Snapshot
 
-| Kind     | Badge  | Label pattern                                    | Appears when                        |
-| -------- | ------ | ------------------------------------------------ | ----------------------------------- |
-| init     | `INIT` | `@@INIT`                                         | Machine registers                   |
-| snapshot | `SNAP` | `SNAPSHOT/<stepId>`                              | State snapshot received             |
-| command  | `CMD`  | `COMMAND/<type>` or `COMMAND_RESULT/<requestId>` | Mutating command completes          |
-| query    | `QRY`  | `QUERY/getExecutionPaths` or `QUERY/<requestId>` | Execution paths result received     |
-| event    | `EVT`  | `EVENT/<type>`                                   | Observation event envelope received |
-| error    | `ERR`  | `ERROR/<type>` or `ERROR/<requestId>`            | Command or query error              |
+The snapshot view displays the current protocol envelope. Linear and graph snapshots are
+discriminated by `type`; graph routing fields and linear declared-order fields appear only on their
+matching snapshot.
 
-- Right side: tabs for `Action`, `State`, and `Diff`.
-- Selection is local/read-only and does not mutate inspected runtime state.
+## Timeline
 
-### Badge Abbreviations
+Rows record registration, snapshots, observations, operation results, and errors. Selecting a row
+shows:
 
-| Badge  | Meaning                  |
-| ------ | ------------------------ |
-| `INIT` | Machine registered       |
-| `SNAP` | Snapshot update          |
-| `CMD`  | Command result           |
-| `QRY`  | Query result (read-only) |
-| `EVT`  | Observation event        |
-| `ERR`  | Error                    |
+- **Action**: the envelope or invocation that produced the row.
+- **State**: the serialized snapshot associated with that point.
+- **Diff**: a structured comparison with the preceding retained state.
 
-## Timeline Controls
+**Follow latest** pins selection to new rows. Display limits control rendering; pruning removes older
+retained rows for the active machine. Selection and pruning are panel-local and do not mutate the
+runtime machine.
 
-- **Follow latest**: keeps selection pinned to newest row.
-- **Display limit**: limits rows rendered in the panel.
-- **Prune to limit**: truncates retained rows for the active machine.
+## Operations
 
-## Capabilities
+The panel groups forms from generic feature and operation descriptors sent by the bridge. Each
+descriptor provides a stable operation ID, label, fields, result kind, and whether it mutates.
+Lifecycle, navigation, context, graph-event, async, and plugin operations therefore appear only when
+the attached machine advertises them.
 
-When a machine is selected, the panel shows a Capabilities row with four badges:
+When `mutationsEnabled` is false, mutating forms are disabled while read-only operations remain
+available. Lifecycle forms are also disabled when their source status is invalid.
 
-| Badge           | Active                                   | Inactive              |
-| --------------- | ---------------------------------------- | --------------------- |
-| Observe         | `Observe`                                | `No Events`           |
-| Commands        | `Commands <N>` (mutating commands count) | `Commands Off`        |
-| Execution Paths | `Execution Paths`                        | `No Execution Paths`  |
-| Persistence     | `Persistence`                            | `No Persistence Meta` |
+## Compatibility
 
-The Commands count excludes `getExecutionPaths`, which is a read-only query. When a persistence plugin is configured, the panel also shows the persistence key and `clearOnReset` setting below the badges.
-
-## Command Controls
-
-Built-ins:
-
-- `startJourney`, `goToNextStep`, `terminateJourney`, `completeJourney`, `resetJourney`
-- `goToStepById`
-- `goToPreviousStep`
-- `goToLastVisitedStep`
-- custom `send`
-- `clearStepError`
-- `getExecutionPaths` (read-only query; accepts optional `maxDepth` and `maxPaths` limits)
-
-## Timeline Retention
-
-The panel retains at most **2000 entries per machine**. When the cap is reached, the oldest entries are dropped automatically. The **Prune to limit** button explicitly truncates the retained rows for the active machine to the current display limit.
-
-## Protocol Compatibility
-
-If the inspected app uses a different protocol version than the panel, a **Compatibility** warning is shown above the machine selector. Commands are disabled for machines on mismatched protocol versions. Legacy protocol v3 machines are read-only in the current build.
+Protocol v7 is current. v6 invoke envelopes remain compatible because their shape is identical. v5
+is tolerated for registration but cannot invoke operations. The panel displays compatibility state
+when a machine cannot use the full current surface.

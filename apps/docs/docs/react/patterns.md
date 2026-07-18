@@ -4,86 +4,92 @@ title: React Patterns
 sidebar_label: Patterns
 ---
 
-These patterns keep React code clean while Journey core remains the runtime source of truth.
+These patterns keep React rendering predictable while Core remains the source of runtime truth.
 
-## Create The Journey Once Per Flow
+## Keep definitions outside render
 
-```ts
-const checkoutJourney = createJourney(checkoutDefinition);
-```
+Core definitions are pure data and can live at module scope. React graph bundles can also live at
+module scope because `createGraphJourney` captures the definition without creating a machine.
+Machines are created per Provider mount.
 
-Keep the journey at module scope when possible so references stay stable across renders.
-
-Why it helps:
-
-- hook typing is captured once
-- views stay separate from runtime definition
-- multiple journeys can coexist safely with separate closures
-
-## Read And Actions Split
+## Select the smallest useful state
 
 ```tsx
-const snapshot = checkoutJourney.useJourneySnapshot();
-const api = checkoutJourney.useJourneyApi();
+const stepId = checkout.useSelector((snapshot) => snapshot.currentStep?.id);
+
+const loading = checkout.useSelector((snapshot) => snapshot.machine.isLoading);
 ```
 
-Use `snapshot` to read state and `api` to change state.
+Use `useSnapshot()` when a component needs several related fields that should come from one
+consistent emission. Use selectors for leaf components to avoid re-rendering on unrelated changes.
 
-## Prefer Selector Reads For Focused Components
+## Keep commands grouped
 
 ```tsx
-const currentStepId = checkoutJourney.useJourneySelector((snapshot) => snapshot.currentStepId);
-const isLoading = checkoutJourney.useJourneySelector((snapshot) => snapshot.async.isLoading);
+const api = checkout.useApi();
+
+api.controls.pause();
+await api.navigate.goToPreviousStep();
+await api.send("continue");
+api.updateContext((context) => ({ ...context, dirty: true }));
 ```
 
-Use `useJourneySelector` when a component depends on only part of the snapshot.
-Use `useJourneySnapshot` when it genuinely needs the full object.
+Lifecycle, position, events, and context are separate concepts. Preserving the Core groups makes
+handlers easier to read and prevents accidental semantic shortcuts.
 
-## Keep Step Rendering Separate From Global Controls
+## Use functional context updates
 
-- render the current step with `checkoutJourney.StepRenderer`
-- keep shared controls in separate components using `checkoutJourney.useJourneyApi()`
-
-This keeps step views focused on step concerns and shared controls focused on navigation concerns.
-
-## Use The Provider Only For Views
+Snapshot context is immutable. Always return the next value:
 
 ```tsx
-<checkoutJourney.JourneyProvider views={checkoutViews}>
-  <checkoutJourney.StepRenderer />
-</checkoutJourney.JourneyProvider>
+api.updateContext((context) => ({
+  ...context,
+  email: nextEmail
+}));
 ```
 
-Hooks do not need the provider. The provider only supplies the view map and lifecycle callbacks for `StepRenderer`.
+Do not mutate objects read from a snapshot. Plugins, selectors, and concurrent React rendering all
+rely on stable immutable values.
 
-## Creating A Journey Inside A Component
+## Put blocking work on navigation
 
-When a component owns the journey — per-instance UI, or any server-rendered / RSC app — use
-[`useJourney`](/docs/react/overview#usejourney). It creates the runtime once, survives StrictMode, and
-disposes it on unmount; reset it by remounting the owner with a `key`:
+Use navigation `run` for validation/submission that must succeed before movement and `commit`
+for the context updates that belong to that successful result. Use step hooks for post-commit
+cleanup, analytics, and destination setup.
+
+Synchronous graph guards should remain fast and deterministic. They answer routing questions; they
+do not perform network work.
+
+## Respect machine ownership
+
+A linear component or graph Provider owns its machine. Do not cache that machine globally or keep it
+after unmount. Use hooks for rendering and `machineRef` only for integration boundaries such as
+DevTools.
+
+Headless hooks are the opposite: the caller owns the supplied Core machine and decides when it
+starts and disposes.
+
+## Model branches as a graph
+
+Avoid adding/removing linear JSX children in response to context. The declared linear order is
+frozen for a mount. When context changes the valid path, express it with graph candidates and guards
+so routing remains introspectable.
+
+## Handle navigation results deliberately
+
+Expected failures resolve:
 
 ```tsx
-function App() {
-  const journey = useJourney(() => createJourney(definition));
+const result = await api.send("continue");
 
-  return (
-    <journey.JourneyProvider views={views}>
-      <journey.StepRenderer />
-    </journey.JourneyProvider>
-  );
+if (!result.ok) {
+  if (result.reason === "no-enabled-transition") {
+    showValidationMessage();
+  } else if (result.reason === "error") {
+    report(result.error);
+  }
 }
 ```
 
-## Devtools And Other Integrations
-
-Use `journey.machine` directly when wiring external tools such as the devtools bridge.
-
-## Keep Runtime Questions In Core Docs
-
-Patterns here are React wiring patterns.
-
-For runtime semantics, use Core docs:
-
-- transition and lifecycle semantics: [Core Lifecycle](/docs/core/lifecycle)
-- async guard behavior: [Core Async Behavior](/docs/core/async)
-- history pointer model: [Core Timeline Navigation](/docs/core/history)
+Fire-and-forget handlers are safe from rejected promises, but user-facing failures still deserve an
+intentional UI response.

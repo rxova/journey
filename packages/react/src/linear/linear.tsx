@@ -255,17 +255,15 @@ const LinearJourneyComponent = <TContext,>(
         const order = snapshot.steps.stepOrder;
         const fromIndex = from === null ? -1 : order.indexOf(from);
         const toIndex = order.indexOf(to);
+        let direction: LinearJourneyStepChange<TContext>["direction"] = "jump";
+        if (fromIndex === -1 || toIndex === fromIndex + 1) direction = "forward";
+        else if (toIndex < fromIndex) direction = "backward";
         const change: LinearJourneyStepChange<TContext> = {
           fromStepId: from,
           toStepId: to,
           fromIndex: fromIndex === -1 ? null : fromIndex,
           toIndex,
-          direction:
-            fromIndex === -1 || toIndex === fromIndex + 1
-              ? "forward"
-              : toIndex < fromIndex
-                ? "backward"
-                : "jump",
+          direction,
           context: snapshot.context as TContext
         };
         callbacksRef.current.onStepChange?.(change);

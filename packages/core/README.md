@@ -228,7 +228,6 @@ import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
 const machine = createLinearJourney(definition, {
   plugins: [
     createAnalyticsPlugin({
-      machineId: "checkout",
       track: (event) => analytics.track(event.name, event.payload)
     })
   ]

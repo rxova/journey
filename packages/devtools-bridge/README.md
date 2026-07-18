@@ -1,42 +1,43 @@
 # @rxova/journey-devtools-bridge
 
-Connect Journey machines to Chrome DevTools.
-
-<p>
-  <a href="https://www.npmjs.com/package/@rxova/journey-devtools-bridge">
-    <img src="https://img.shields.io/npm/v/@rxova/journey-devtools-bridge?color=0f8f6a" alt="npm" />
-  </a>
-  <img src="https://img.shields.io/badge/3.2%20kB-brotli-0f8f6a" alt="size" />
-</p>
+Connect current Journey Core machines to the Chrome DevTools extension.
 
 ## Install
 
 ```bash
-npm i @rxova/journey-devtools-bridge
+npm install @rxova/journey-devtools-bridge
 ```
 
 ## Usage
 
 ```ts
-import { createJourneyMachine } from "@rxova/journey-core";
+import { createLinearJourney } from "@rxova/journey-core";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 
-const machine = createJourneyMachine(definition);
-const detach = attachJourneyDevtools(machine, { label: "Checkout" });
-machine.startJourney();
+const machine = createLinearJourney(definition, { autoStart: true });
+const detach = attachJourneyDevtools(machine, {
+  machineId: "checkout",
+  label: "Checkout",
+  eventTypes: ["continue", "cancel"],
+  mutationsEnabled: false
+});
 ```
 
-## What It Does
+The bridge registers the machine, streams v7 snapshots and observation events, and exposes generic
+operation descriptors to the panel. It accepts v6 invoke envelopes and tolerates v5 registration
+during rolling upgrades.
 
-- Streams snapshots and lifecycle events to the Journey DevTools panel in Chrome
-- Supports remote commands: navigate steps, reset, send events, inspect execution paths
-- Enabled by default in development, disabled in production unless explicitly opted in
+The bridge is enabled by default only outside production. When a bridge is enabled, mutating
+operations are enabled by default; pass `mutationsEnabled: false` for inspection-only access.
+Attaching never starts the machine.
 
-## Documentation
+The transport uses same-page `window.postMessage`. Treat inspected snapshot/context data as visible
+to other scripts on the page, avoid secrets in journey state, keep production attachment disabled
+unless required, and detach on teardown.
 
-- [Chrome DevTools Overview](https://rxova.org/docs/devtool/overview)
-- [Panel Guide](https://rxova.org/docs/devtool/panel-guide)
 - [Bridge API](https://rxova.org/docs/bridge/bridge-api)
+- [Protocol](https://rxova.org/docs/bridge/protocol)
+- [Chrome extension](https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm)
 
 ## License
 

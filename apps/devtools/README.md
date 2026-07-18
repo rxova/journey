@@ -1,105 +1,82 @@
-# Rxova Journey Devtools (Chrome)
+# Rxova Journey DevTools
 
-Chrome DevTools extension for inspecting and controlling `@rxova/journey-core` machines.
+Chrome DevTools extension for inspecting and controlling current `@rxova/journey-core` machines.
 
-## What it provides
+Install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm).
 
-- Per-tab connection status
-- Multiple machine selection
-- Redux-style timeline inspector (`Action`, `State`, `Diff`) with local time travel
-- Timeline retention controls (display limit + prune, retaining latest 2000 rows per machine)
-- Command controls (`startJourney`, `goToNextStep`, `terminateJourney`, `completeJourney`, `resetJourney`, `goToLastVisitedStep`, `goToStepById`, `goToPreviousStep`, custom `send`, `clearStepError`, `getExecutionPaths`)
-- Theme follows Chrome DevTools / OS preference (light + dark)
+## What the panel provides
 
-## Prerequisites
+- Per-tab connection and protocol compatibility status.
+- Selection between multiple machines registered by one page.
+- Inspection of the current immutable linear or graph snapshot.
+- A Redux-style timeline with Action, State, and Diff views.
+- Follow-latest, display-limit, and local prune controls.
+- Forms generated from generic machine and plugin operation descriptors.
+- Light/dark theme integration with Chrome DevTools.
 
-- App integrates `@rxova/journey-devtools-bridge`
-- Browser: Chrome (Manifest V3)
+Timeline selection is local to the extension. Selecting an older row changes the inspector view but
+does not rewind or mutate the runtime machine.
 
-The extension injects its content bridge at runtime only for inspected tabs with an active Journey panel.
-
-## Security Notes
-
-- Command execution should remain disabled by default in production contexts.
-- Use `commandsEnabled: false` for inspect-only mode in sensitive contexts.
-- Disable bridge integration in production when runtime debugging is not needed.
-- Same-page scripts can observe and emit page-level `postMessage` traffic.
-- Robustness controls include origin checks, rate limiting, payload validation, and typed message guards.
-- DevTools warnings now include structured codes for injection issues to support deterministic troubleshooting.
-
-## App Integration (Core)
+## App integration
 
 ```ts
-import { createJourneyMachine } from "@rxova/journey-core";
+import { createLinearJourney } from "@rxova/journey-core";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 
-const machine = createJourneyMachine(journey);
-attachJourneyDevtools(machine, { label: "Checkout" });
-machine.startJourney();
+const machine = createLinearJourney(definition, {
+  autoStart: true
+});
+
+const detach = attachJourneyDevtools(machine, {
+  machineId: "checkout",
+  label: "Checkout",
+  mutationsEnabled: false
+});
 ```
 
-## App Integration (React)
+For React graph Providers, capture the mounted machine with `machineRef`, attach it in an effect,
+and return the detach function from that effect.
 
-```tsx
-import { useEffect } from "react";
-import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
-import { signupJourney } from "./signup-journey";
+## Protocol and compatibility
 
-const Bridge = () => {
-  useEffect(() => attachJourneyDevtools(signupJourney.machine, { label: "Signup" }), []);
-  return null;
-};
-```
+The current bridge protocol is v7. v6 invokes remain compatible because their envelope shape is
+unchanged. v5 registration is tolerated during rolling upgrades but remains read-only.
 
-## Local Development
+The panel does not hard-code one command list. It groups the feature and operation descriptors
+advertised by the attached bridge. Descriptors provide operation IDs, fields, mutation flags, and
+result kinds.
+
+## Security
+
+The bridge is disabled by default in production. An explicitly enabled bridge permits mutating
+operations unless `mutationsEnabled: false` is set.
+
+The transport uses same-page `window.postMessage`. Other scripts executing in the inspected page
+can observe page-level traffic, so do not place credentials or secrets in journey snapshots,
+context, or metadata. Keep production attachment off unless it is deliberately required, prefer
+inspect-only mode in sensitive environments, and detach during teardown.
+
+## Local development
 
 ```bash
 pnpm --filter apps-devtools dev
 ```
 
-## Build
+Build the extension:
 
 ```bash
 pnpm --filter apps-devtools build
 ```
 
-Load unpacked extension from:
-
-- `apps/devtools/dist`
-
-Then open Chrome DevTools on your app page and use the `Journey` panel.
-
-## CI Artifact Workflow
-
-The repository includes `.github/workflows/devtools.yml`.
-
-It runs on `main` pushes when devtools or key workspace files change, then:
-
-- typechecks devtools app
-- runs devtools tests
-- builds extension
-- uploads `apps-devtools-dist.tgz` as a workflow artifact
-
-## Web Store Readiness Checklist
-
-- Manifest V3 is used with explicit minimal permissions
-- Static icons are included at `16/32/48/128`
-- No remote code execution or remote script loading
-- Deterministic production build via `vite build`
-- Placeholder screenshots are available in `public/screenshots`
-
-Required submission assets to replace:
-
-- `public/icons/icon16.png`
-- `public/icons/icon32.png`
-- `public/icons/icon48.png`
-- `public/icons/icon128.png`
-- `public/screenshots/panel-placeholder.png`
+Load `apps/devtools/dist` as an unpacked extension. Open Chrome DevTools on an app that attached at
+least one Journey machine and select the Journey panel.
 
 ## Testing
 
 ```bash
 pnpm test -- --run apps/devtools/test
+pnpm --filter apps-devtools typecheck
 ```
 
-Browser integration smoke is temporarily disabled in CI.
+The extension is Manifest V3, uses bundled code only, and requests only the permissions declared in
+its manifest.

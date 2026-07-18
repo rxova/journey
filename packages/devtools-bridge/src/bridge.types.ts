@@ -15,7 +15,7 @@ export type JourneyDevtoolsBridgeOptions = {
   enabled?: boolean;
   /** App name shown in devtools. Defaults to `document.title`. */
   appName?: string;
-  /** Allow devtools to mutate the machine (navigate, patch context). Defaults to non-production. */
+  /** Allow devtools to mutate the machine. Defaults to true whenever the bridge is enabled. */
   mutationsEnabled?: boolean;
   /**
    * Declared event types shown in the panel. The machine surface exposes only

@@ -36,7 +36,7 @@
     "examples:typecheck": "pnpm -r --filter \"./examples/*\" typecheck",
     "examples:lint": "eslint examples",
     "examples:verify": "pnpm run examples:typecheck && pnpm run examples:lint && pnpm run examples:build",
-    "packages:typecheck": "pnpm -r --filter \"./packages/*\" --filter apps-devtools typecheck && tsc --noEmit -p tsconfig.test.json",
+    "packages:typecheck": "pnpm -r --filter \"./packages/*\" --filter apps-devtools --filter apps-demo typecheck && tsc --noEmit -p tsconfig.test.json",
     "release": "pnpm -r build && changeset publish",
     "releases": "pnpm run changeset:version && pnpm run release",
     "typecheck": "pnpm run packages:typecheck",

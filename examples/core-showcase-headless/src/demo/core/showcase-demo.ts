@@ -61,6 +61,26 @@ type LogEntry = { readonly label: string; readonly detail?: string };
 
 type ShowcaseTransition = JourneySnapshot<LoginContext, LoginStepId>["transition"];
 
+const createShowcaseMachine = (mode: Mode): ShowcaseMachine => {
+  switch (mode) {
+    case "linear":
+      return createLinearJourney(linearDefinition, { autoStart: true }) as ShowcaseMachine;
+    case "graph":
+      return createGraphJourney(graphDefinition, {
+        autoStart: true,
+        plugins: [createExecutionPathsPlugin()] as const
+      }) as ShowcaseMachine;
+    case "headless":
+      return createLinearJourney(headlessDefinition, { autoStart: true }) as ShowcaseMachine;
+  }
+};
+
+const getStepperState = (index: number, currentIndex: number) => {
+  if (index < currentIndex) return "done";
+  if (index === currentIndex) return "current";
+  return "upcoming";
+};
+
 const getPendingLabel = (transition: ShowcaseTransition): string => {
   if (!transition.phase) return "Settling step effects";
   if (transition.phase === "entering") return `Entering ${transition.to ?? "step"}`;
@@ -110,16 +130,7 @@ const stepOrderForMode = (
 };
 
 export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
-  const machine: ShowcaseMachine = (
-    mode === "linear"
-      ? createLinearJourney(linearDefinition, { autoStart: true })
-      : mode === "graph"
-        ? createGraphJourney(graphDefinition, {
-            autoStart: true,
-            plugins: [createExecutionPathsPlugin()] as const
-          })
-        : createLinearJourney(headlessDefinition, { autoStart: true })
-  ) as ShowcaseMachine;
+  const machine = createShowcaseMachine(mode);
 
   const isGraph = (
     candidate: ShowcaseMachine
@@ -363,10 +374,11 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
       '[data-role="status-message"]'
     );
     if (statusMessageEl) {
-      statusMessageEl.textContent =
-        stepId === "blocked"
-          ? (context.error ?? "Too many failed attempts.")
-          : `Welcome, ${context.username || "User"}.`;
+      if (stepId === "blocked") {
+        statusMessageEl.textContent = context.error ?? "Too many failed attempts.";
+      } else {
+        statusMessageEl.textContent = `Welcome, ${context.username || "User"}.`;
+      }
     }
 
     stepContainer.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
@@ -379,8 +391,7 @@ export const mountCoreShowcase = (mode: Mode, root: HTMLElement) => {
   const renderStepper = (currentIndex: number) =>
     stepOrder
       .map(({ id, label }, index) => {
-        const state =
-          index < currentIndex ? "done" : index === currentIndex ? "current" : "upcoming";
+        const state = getStepperState(index, currentIndex);
         const connector =
           index < stepOrder.length - 1
             ? `<div class="stepper-connector stepper-connector-${index < currentIndex ? "done" : "upcoming"}"></div>`

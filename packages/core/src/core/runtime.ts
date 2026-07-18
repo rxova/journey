@@ -24,6 +24,14 @@ import type {
   StepAsyncState
 } from "./types";
 
+const getGraphGuardState = (
+  guard: RuntimeTransition["when"],
+  enabled: boolean
+): GraphTransitionSnapshot<string, string>["guard"] => {
+  if (guard === undefined) return "none";
+  return enabled ? "passed" : "failed";
+};
+
 export class JourneyRuntime {
   readonly store: JourneyStore<unknown, string>;
   readonly pluginApis: Record<string, unknown> = {};
@@ -716,7 +724,7 @@ export class JourneyRuntime {
               event: transition.event,
               to: transition.to,
               priority,
-              guard: transition.when === undefined ? "none" : enabled ? "passed" : "failed",
+              guard: getGraphGuardState(transition.when, enabled),
               enabled,
               selected
             })
