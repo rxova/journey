@@ -1,6 +1,6 @@
 # RFC 0002 — Work-Send Ergonomics: Result Routing, Totality, Handler Scope
 
-- **Status:** Draft
+- **Status:** Accepted — §2 and §3 implemented 2026-07-18 (see §7); §4 recorded as keep; §5 deferred
 - **Branch:** `feat/react-api-redesign`
 - **Date:** 2026-07-18
 - **Scope:** `@rxova/journey-core` (graph runtime + builder types); example/docs alignment
@@ -56,10 +56,10 @@ work({
       ...context,
       attempts: result.success ? context.attempts : context.attempts + 1
     })),
-  candidates: [
+  candidates: ({ to, stay }) => [
     to("loggedIn").when(({ result }) => result.success),
     to("blocked").when(({ context, handlers }) => handlers.hasExhaustedAttempts(context)),
-    to(id)
+    stay()
   ]
 });
 ```
@@ -109,7 +109,7 @@ Two additions, no semantic change:
    remain here" — and makes totality greppable:
 
    ```ts
-   candidates: [to("loggedIn").when(({ result }) => result.success), stay()];
+   candidates: ({ to, stay }) => [to("loggedIn").when(({ result }) => result.success), stay()];
    ```
 
 2. **Dev-mode diagnostic:** when a `work(...)` declaration's candidate list contains no unguarded
@@ -140,7 +140,7 @@ from people who have read that section, reopen with a scoped proposal (e.g. read
 ## 5. Immer-style context updates — **Defer**
 
 Spread-based updates are ordinary immutable JavaScript, predictable, and dependency-free; the core
-size budget (4.5 kB gzip per entry, `packages/core/package.json` size-limit) rules out bundling a
+size budget (4.5 kB brotli per entry, `packages/core/package.json` size-limit) rules out bundling a
 draft mechanism. If demand materializes, the right shape is an optional adapter that wraps
 `updateContext` with a draft-producing equivalent — the same optional-layer pattern as the
 subscription-enhancer plugin. No core change; nothing to design until someone asks with a concrete
@@ -157,3 +157,28 @@ context shape that hurts.
 
 Both changes are pre-1.0 and additive to the authoring surface; the only observable behavior
 change is intentional (guards seeing `result` during a work send).
+
+## 7. Implementation notes (2026-07-18)
+
+All three rollout steps landed together. Deviations and decisions made during implementation:
+
+1. **Typed `result` requires the candidates-callback form.** The RFC's original §2 sketch showed
+   the event-scoped `to` producing a result-reading guard; that cannot be typed, because the
+   event callback runs before `work(...)` declares `TResult`. The realized API is
+   `candidates: ({ to, stay }) => [...]` — a work-scoped `to`/`stay` whose guards receive
+   `{ context, handlers, result: TResult }` (`WorkGuardArgs` in `builder.types.ts`). The plain
+   array form remains valid for guards that only need context/handlers.
+2. **`stay()` lives in both scopes.** The event callback (`({ to, work, stay })`) for plain
+   candidate arrays, and the work candidates callback for result-typed lists. Both produce the
+   same unguarded self-candidate.
+3. **Runtime threading.** `sendWithWork` passes the run result through
+   `resolveTransition` → `isEnabled` into every guard evaluated for that send —
+   array-form (untyped) guards simply ignore the extra key. Outside a work send, including
+   `outgoingTransitions` introspection, guards see `result: undefined`, as specified.
+4. **Diagnostic channel.** The totality warning is a `console.warn` at `build()` time, dev-only
+   (`NODE_ENV !== "production"`, read via `globalThis` so the dependency-free core never assumes
+   Node types or a bundler define). The escape hatch shipped as proposed: `allowRollback: true`.
+5. **Coverage.** `graph/__tests__/send-work.test.ts` — "work-result routing and stay()": result
+   routing without context persistence, `stay()` committing staged context on no-match,
+   introspection with `result: undefined`, the warning firing, and both silencing paths
+   (`stay()` present, `allowRollback`).
