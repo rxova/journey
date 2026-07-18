@@ -6,7 +6,7 @@ import "./styles/quickstart.css";
 
 // ── 1. Types ─────────────────────────────────────────────────────────────────
 type CheckoutStepId = "cart" | "receipt";
-type CheckoutContext = { items: number; paid: boolean; error: string | null };
+type CheckoutContext = { items: number; error: string | null };
 type CheckoutEvent = { type: "checkout" };
 
 const { createStep, build } = createGraphJourneyBuilder<{
@@ -25,19 +25,18 @@ const cartStep = createStep("cart", {
   on: {
     // `checkout` names an intent, not an outcome. The work calls the API,
     // `commit` stages what came back, and the candidates route on the staged
-    // context — first enabled wins. The unguarded `to("cart")` keeps the event
-    // total: a failed charge still routes (back here), so its error commits
-    // instead of being rolled back with the unmatched send.
-    checkout: ({ to, work }) =>
+    // context plus the run `result` — first enabled wins. The unguarded
+    // `stay()` keeps the event total: a failed charge still routes (back
+    // here), so its error commits instead of being rolled back.
+    checkout: ({ work }) =>
       work({
         run: ({ snapshot }) => chargeApi(snapshot.context.items),
         commit: ({ result, updateContext }) =>
           updateContext((context) => ({
             ...context,
-            paid: result.charged,
             error: result.charged ? null : "Your cart is empty."
           })),
-        candidates: [to("receipt").when(({ context }) => context.paid), to("cart")]
+        candidates: ({ to, stay }) => [to("receipt").when(({ result }) => result.charged), stay()]
       })
   }
 });
@@ -48,7 +47,7 @@ const receiptStep = createStep("receipt", {});
 
 const definition = build({
   initial: "cart",
-  context: { items: 0, paid: false, error: null },
+  context: { items: 0, error: null },
   steps: [cartStep, receiptStep]
 });
 

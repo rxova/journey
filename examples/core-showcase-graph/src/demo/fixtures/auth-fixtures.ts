@@ -20,8 +20,6 @@ export type LoginContext = {
   qrCode: string | null;
   error: string | null;
   attempts: number;
-  /** Outcome of the last `verify` work — the fact its guards route on. */
-  lastVerifyOk: boolean | null;
 };
 
 export type AuthApi = typeof authApi;
@@ -97,8 +95,7 @@ export const initialLoginContext = (): LoginContext => ({
   verificationCode: "",
   qrCode: null,
   error: null,
-  attempts: 0,
-  lastVerifyOk: null
+  attempts: 0
 });
 
 const { createStep, to, build } = createGraphJourneyBuilder<{
@@ -114,14 +111,15 @@ const { createStep, to, build } = createGraphJourneyBuilder<{
  * only then do the guards pick a step. The call site is a bare
  * `send("submitLogin")` — it neither knows nor decides the 2FA method.
  *
- * The last candidate is unguarded and points back at `login`. That keeps the
- * event *total*: a failed login still routes somewhere, so its error message
- * commits instead of being rolled back with the unmatched send.
+ * The last candidate is `stay()` — an unguarded fallback back at `login`. That
+ * keeps the event *total*: a failed login still routes somewhere, so its error
+ * message commits instead of being rolled back with the unmatched send. (Leave
+ * it out and the builder warns at build time.)
  */
 const loginStep = createStep("login", {
   metadata: { label: "Login", icon: "🔐" },
   on: {
-    submitLogin: ({ to, work }) =>
+    submitLogin: ({ to, work, stay }) =>
       work({
         run: ({ snapshot, handlers }) =>
           handlers.api.login(snapshot.context.username, snapshot.context.password),
@@ -142,7 +140,7 @@ const loginStep = createStep("login", {
           to("authenticatorCode").when(({ context, handlers }) =>
             handlers.requiresMethod(context, "authenticator")
           ),
-          to("login")
+          stay()
         ]
       })
   }
@@ -167,9 +165,12 @@ const setup2faStep = createStep("setup2fa", {
  * Every verification step declares the same `verify` event with its own work
  * and its own candidates — which is what keying work by (step, event) buys.
  *
- * Candidate order is the policy: success wins, then the exhausted-attempts
- * guard, then an unguarded retry. The retry is what makes the event total, so
- * a wrong code commits its attempt count instead of rolling back.
+ * The candidates use the work-scoped callback form, so the success guard reads
+ * the run `result` directly — the outcome routes without ever being persisted
+ * in context. Candidate order is the policy: success wins, then the
+ * exhausted-attempts guard, then `stay()` — the unguarded retry that makes the
+ * event total, so a wrong code commits its attempt count instead of rolling
+ * back.
  */
 const verificationStep = (
   id: "verifyCode" | "emailCode" | "authenticatorCode",
@@ -180,25 +181,24 @@ const verificationStep = (
   createStep(id, {
     metadata,
     on: {
-      verify: ({ to, work }) =>
+      verify: ({ work }) =>
         work({
           run: ({ snapshot, handlers }) =>
             handlers.api.verifyCode(snapshot.context.verificationCode),
           commit: ({ result, updateContext }) =>
             updateContext((context) => ({
               ...context,
-              lastVerifyOk: result.success,
               attempts: result.success ? context.attempts : context.attempts + 1,
               error: result.success ? null : retryError
             })),
-          candidates: [
-            to("loggedIn").when(({ context }) => context.lastVerifyOk === true),
-            to("blocked")
+          candidates: ({ to: into, stay }) => [
+            into("loggedIn").when(({ result }) => result.success),
+            into("blocked")
               .when(({ context, handlers }) => handlers.hasExhaustedAttempts(context))
               .onTransition(({ updateContext }) =>
                 updateContext((context) => ({ ...context, error: blockedError }))
               ),
-            to(id)
+            stay()
           ]
         })
     }
