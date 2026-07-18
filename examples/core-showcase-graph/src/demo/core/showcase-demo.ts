@@ -4,6 +4,7 @@ import type { JourneySnapshot, JourneySubscriptionEvent } from "@rxova/journey-c
 import "../styles/demo.css";
 import {
   authApi,
+  createAuthHandlers,
   graphDefinition,
   type AuthEvent,
   type LoginContext,
@@ -64,8 +65,15 @@ const describeContextChange = (previous: LoginContext, current: LoginContext): s
 };
 
 export const mountCoreShowcase = (root: HTMLElement) => {
+  // Handlers are runtime functions, so the policy the guards consult is swapped
+  // here without touching the definition — the same seam a test would use. The
+  // definition's own default is 2 attempts; nothing about either choice appears
+  // in the snapshot, which only ever carries serializable context.
+  const handlers = createAuthHandlers(3);
+
   const machine = createGraphJourney(graphDefinition, {
     autoStart: true,
+    handlers,
     plugins: [createExecutionPathsPlugin()] as const
   });
 
@@ -266,6 +274,42 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     });
   };
 
+  // `availableEvents` collapses every candidate for an event into one name, so it
+  // cannot show *why* a route was taken. `outgoingTransitions` keeps each
+  // candidate separate — the guard result and the first-enabled-wins pick — which
+  // is the only place the routing rule is visible as data.
+  const renderOutgoingTransitions = (
+    outgoing: ReturnType<typeof machine.getSnapshot>["outgoingTransitions"]
+  ) => {
+    if (outgoing.length === 0) {
+      return `<div class="muted">No outgoing transitions — this step is terminal.</div>`;
+    }
+
+    const guardClass: Record<string, string> = {
+      passed: "token-success",
+      failed: "token-error",
+      none: ""
+    };
+
+    return outgoing
+      .map((candidate) => {
+        const token = (label: string, value: string, stateClass = "") =>
+          `<span class="token ${stateClass}"><span class="token-label">${label}</span><span class="token-value">${value}</span></span>`;
+        return `
+          <div class="log-item">
+            <strong>${escapeHtml(candidate.event)} -> ${escapeHtml(candidate.to)}</strong>
+            <div class="status-row">
+              ${token("priority", String(candidate.priority))}
+              ${token("guard", candidate.guard, guardClass[candidate.guard] ?? "")}
+              ${token("enabled", String(candidate.enabled), candidate.enabled ? "token-success" : "")}
+              ${token("selected", String(candidate.selected), candidate.selected ? "token-success" : "")}
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+  };
+
   const renderExecutionPaths = () => {
     const api = machine.plugins["execution-paths"];
     const renderPath = (steps: readonly string[], label: string) =>
@@ -307,6 +351,17 @@ export const mountCoreShowcase = (root: HTMLElement) => {
         </section>
       </div>
       <section class="card">
+        <h2>Outgoing Transitions</h2>
+        <p class="hint">
+          Every candidate declared from the current step, in declaration order.
+          <code>guard</code> is the live result of the candidate's <code>when</code>,
+          and <code>selected</code> marks the one <code>send()</code> would pick under
+          first-enabled-wins. Fail a code to watch the <code>blocked</code> candidate
+          flip from <code>failed</code> to <code>selected</code>, outranking the retry.
+        </p>
+        <div class="log-list" data-role="outgoing-transitions"></div>
+      </section>
+      <section class="card">
         <h2>Execution Paths</h2>
         <div class="path-list" data-role="execution-paths"></div>
       </section>
@@ -322,6 +377,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
   const pendingOverlayEl = root.querySelector<HTMLElement>('[data-role="pending-overlay"]')!;
   const pendingLabelEl = root.querySelector<HTMLElement>('[data-role="pending-label"]')!;
   const snapshotEl = root.querySelector<HTMLElement>('[data-role="snapshot"]')!;
+  const outgoingEl = root.querySelector<HTMLElement>('[data-role="outgoing-transitions"]')!;
   const executionPathsEl = root.querySelector<HTMLElement>('[data-role="execution-paths"]')!;
   const eventLogEl = root.querySelector<HTMLElement>('[data-role="event-log"]')!;
 
@@ -342,6 +398,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
       ${token("step", snapshot.currentStep?.id ?? "—")}
       ${token("timeline", snapshot.history.timeline.join(" -> "))}
       ${token("events", snapshot.availableEvents.join(", ") || "none")}
+      ${token("retry policy", handlers.describeRetryPolicy())}
     `;
 
     if (mountedStepId !== stepId) {
@@ -352,6 +409,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     pendingOverlayEl.hidden = !isLoading;
     pendingLabelEl.textContent = getPendingLabel(transition);
 
+    outgoingEl.innerHTML = renderOutgoingTransitions(snapshot.outgoingTransitions);
     executionPathsEl.innerHTML = renderExecutionPaths();
 
     snapshotEl.textContent = formatJson(snapshot);
