@@ -89,15 +89,18 @@ async and the routing:
 ```ts
 const cart = createStep("cart", {
   on: {
-    CHECKOUT: ({ to, work }) =>
+    CHECKOUT: ({ work }) =>
       work({
         run: ({ snapshot, handlers }) => handlers.api.charge(snapshot.context.items),
         commit: ({ result, updateContext }) =>
-          updateContext((context) => ({ ...context, paid: result.charged })),
-        candidates: [
-          to("receipt").when(({ context }) => context.paid),
-          // Unguarded fallback: a failed charge still routes, so its outcome commits.
-          to("cart")
+          updateContext((context) => ({
+            ...context,
+            error: result.charged ? null : "Charge failed."
+          })),
+        candidates: ({ to, stay }) => [
+          to("receipt").when(({ result }) => result.charged),
+          // stay(): a failed charge still routes (back here), so its outcome commits.
+          stay()
         ]
       })
   }
@@ -105,7 +108,10 @@ const cart = createStep("cart", {
 ```
 
 Work is keyed by `(step, event)`: two steps can declare the same event with different work and
-different candidates.
+different candidates. Candidates come in two forms: a plain array (guards see `context` and
+`handlers`), or — as above — a callback receiving a work-scoped `to` and `stay` whose guards
+additionally see the typed run `result`. Routing facts like `result.charged` therefore never need
+to be persisted in context; `commit` stages only business state.
 
 A work send is a transaction. The exact order:
 
@@ -113,25 +119,29 @@ A work send is a transaction. The exact order:
    `"working"` phase and no destination yet.
 2. `commit` receives `run`'s result. Its `updateContext` writes to a **staged** copy of the context,
    not the live one.
-3. The candidates are evaluated **against the staged context**, in declaration order. The first
-   enabled candidate wins.
+3. The candidates are evaluated **against the staged context and the run result**, in declaration
+   order. The first enabled candidate wins.
 4. If no candidate is enabled, the staged context is **discarded** and `send` returns
    `{ ok: false, reason: "no-enabled-transition" }`. Either the send routed and committed, or
    neither happened — a work send never half-lands.
 
 Rule 4 has a practical consequence, the **totality rule**: any outcome that must persist needs an
 enabled candidate to carry it. A success outcome routes forward; a failure outcome that should keep
-its staged context (an error message, an attempt counter) needs a fallback candidate — commonly an
-unguarded transition back to the current step, as in the example above. Without that fallback, a
-failed run's staged context is rolled back with the unmatched send.
+its staged context (an error message, an attempt counter) needs a fallback candidate. `stay()` is
+the named form of that fallback: an unguarded candidate back at the current step. Without one, a
+failed run's staged context is rolled back with the unmatched send — which is why the builder warns
+at build time when every candidate of a work declaration is guarded. An intentionally partial event
+declares `allowRollback: true` on the work to silence it.
 
-Two follow-ups worth knowing:
+Three follow-ups worth knowing:
 
-- A self-transition is an ordinary move. There is no `from === to` special case: the step's
-  `onLeave` and `onEnter` both run again, `onTransition` fires, and the step's visit count
-  increments.
+- A self-transition (including `stay()`) is an ordinary move. There is no `from === to` special
+  case: the step's `onLeave` and `onEnter` both run again, `onTransition` fires, and the step's
+  visit count increments.
 - `onTransition` runs after the destination commits (see the next section) — by then the staged
   context **is** the context.
+- Snapshot introspection evaluates guards outside any send, so a guard that reads `result` sees it
+  as `undefined` there — details on the [snapshot page](../snapshot#graph-snapshot).
 
 ## Transition and step effects
 
