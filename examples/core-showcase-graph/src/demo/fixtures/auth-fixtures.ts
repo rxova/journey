@@ -10,15 +10,41 @@ export type LoginStepId =
   | "loggedIn"
   | "blocked";
 
+export type TwoFactorMethod = "no_2fa" | "email" | "authenticator";
+
 export type LoginContext = {
   username: string;
   password: string;
-  twoFactorMethod: "no_2fa" | "email" | "authenticator" | null;
+  twoFactorMethod: TwoFactorMethod | null;
   verificationCode: string;
   qrCode: string | null;
   error: string | null;
   attempts: number;
 };
+
+/**
+ * Policy the guards consult, injected rather than closed over.
+ *
+ * Handlers are plain runtime functions: they are never serialized into the
+ * snapshot, so this is where behaviour that must stay live (policy, injected
+ * clients) belongs — as opposed to context, which is data and *is* serialized.
+ * `createGraphJourney`'s `handlers` option overrides the definition's, so one
+ * definition can serve the app under one policy and tests under another.
+ */
+export type AuthHandlers = {
+  /** Routing policy: does the login result call for this 2FA method? */
+  requiresMethod: (context: LoginContext, method: TwoFactorMethod) => boolean;
+  /** Retry policy: has the user burned every allowed attempt? */
+  hasExhaustedAttempts: (context: LoginContext) => boolean;
+  /** Human-readable form of the active retry policy, for the Runtime row. */
+  describeRetryPolicy: () => string;
+};
+
+export const createAuthHandlers = (maxAttempts: number): AuthHandlers => ({
+  requiresMethod: (context, method) => context.twoFactorMethod === method,
+  hasExhaustedAttempts: (context) => context.attempts >= maxAttempts,
+  describeRetryPolicy: () => `${maxAttempts} attempts`
+});
 
 export type AuthEvent =
   | { type: "submitLogin" }
@@ -71,6 +97,7 @@ const { createStep, to, build } = createGraphJourneyBuilder<{
   stepId: LoginStepId;
   events: AuthEvent;
   meta: StepMeta;
+  handlers: AuthHandlers;
 }>();
 
 const clearError = (context: LoginContext): LoginContext => ({ ...context, error: null });
@@ -80,15 +107,15 @@ const loginStep = createStep("login", {
   on: {
     submitLogin: [
       to("setup2fa")
-        .when(({ context }) => context.twoFactorMethod === "no_2fa")
+        .when(({ context, handlers }) => handlers.requiresMethod(context, "no_2fa"))
         .onTransition(({ updateContext }) => updateContext(clearError)),
       to("emailCode")
-        .when(({ context }) => context.twoFactorMethod === "email")
+        .when(({ context, handlers }) => handlers.requiresMethod(context, "email"))
         .onTransition(({ updateContext }) =>
           updateContext((context) => ({ ...clearError(context), password: "" }))
         ),
       to("authenticatorCode")
-        .when(({ context }) => context.twoFactorMethod === "authenticator")
+        .when(({ context, handlers }) => handlers.requiresMethod(context, "authenticator"))
         .onTransition(({ updateContext }) =>
           updateContext((context) => ({ ...clearError(context), password: "" }))
         )
@@ -110,7 +137,7 @@ const failureCandidates = (
   retryError: string
 ) => [
   to("blocked")
-    .when(({ context }) => context.attempts >= 2)
+    .when(({ context, handlers }) => handlers.hasExhaustedAttempts(context))
     .onTransition(({ updateContext }) =>
       updateContext((context) => ({
         ...context,
@@ -174,6 +201,9 @@ const blockedStep = createStep("blocked", {
 export const graphDefinition = build({
   initial: "login",
   context: initialLoginContext(),
+  // The definition ships a default policy; the demo overrides it at
+  // createGraphJourney time to show the seam (see showcase-demo.ts).
+  handlers: createAuthHandlers(2),
   steps: [
     loginStep,
     setup2faStep,
