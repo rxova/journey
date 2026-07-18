@@ -488,12 +488,22 @@ export type PluginApis<TPlugins extends readonly AnyJourneyPlugin[]> = {
 };
 
 /** Runtime options shared by linear and graph journeys. */
-export type JourneyRuntimeOptions<TPlugins extends readonly AnyJourneyPlugin[] = readonly []> = {
+export type JourneyRuntimeOptions<
+  TPlugins extends readonly AnyJourneyPlugin[] = readonly [],
+  TStepId extends string = string
+> = {
   /**
    * Defaults to `false`: subscribe-before-start is the natural order, so the
    * first `stepEnter` never fires before subscribers can attach.
    */
   autoStart?: boolean;
+  /**
+   * Start (and restart) directly at this step instead of the first/initial
+   * one: only the target's `onEnter` fires, earlier steps are neither entered
+   * nor visited, and the timeline begins as `[startAt]`. An unknown id throws
+   * at creation.
+   */
+  startAt?: TStepId;
   /**
    * Applied to navigation work and every async hook invocation. Work timeouts
    * block movement; post-commit hook timeouts surface as step errors.

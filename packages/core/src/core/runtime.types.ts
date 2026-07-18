@@ -60,6 +60,8 @@ export type RuntimeConfig = {
   readonly stepIds: readonly string[];
   readonly steps: Readonly<Record<string, RuntimeStep>>;
   readonly initial: string;
+  /** Overrides `initial` for the entry on start()/restart(). */
+  readonly startAt?: string;
   readonly initialContext: unknown;
   /** Graph only: flattened transitions map in declaration order. */
   readonly transitions: readonly RuntimeTransition[];

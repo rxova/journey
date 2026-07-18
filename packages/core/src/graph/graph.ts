@@ -107,17 +107,22 @@ export function createGraphJourney<
     readonly eventWork?: Readonly<Record<string, AnySendWork>>;
     readonly $events?: TEvents;
   },
-  options: GraphJourneyOptions<NoInfer<THandlers>, TPlugins> = {}
+  options: GraphJourneyOptions<NoInfer<THandlers>, TPlugins, NoInfer<TStepId>> = {}
 ): GraphJourneyMachine<TContext, TStepId, TEvents, TMeta, TPlugins> {
   const { stepIds, steps, transitions } = normalizeGraphDefinition(
     definition as unknown as LooseGraphDefinition
   );
+
+  if (options.startAt !== undefined && !(options.startAt in steps)) {
+    throw new Error(`journey: startAt references unknown step "${options.startAt}"`);
+  }
 
   const runtime = new JourneyRuntime({
     kind: "graph",
     stepIds,
     steps,
     initial: definition.initial,
+    ...(options.startAt !== undefined ? { startAt: options.startAt } : {}),
     initialContext: definition.context,
     transitions,
     ...(definition.eventWork !== undefined ? { eventWork: definition.eventWork } : {}),

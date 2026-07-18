@@ -26,7 +26,7 @@ export function createLinearJourney<
   TMeta = Record<string, unknown>
 >(
   definition: LinearJourneyDefinition<TStepId, TContext, TTerminationPayloads, TMeta>,
-  options: JourneyRuntimeOptions<TPlugins> = {}
+  options: JourneyRuntimeOptions<TPlugins, NoInfer<TStepId>> = {}
 ): LinearJourneyMachine<
   TContext,
   TStepId,
@@ -67,11 +67,16 @@ export function createLinearJourney<
     steps[config.id] = runtimeStep;
   }
 
+  if (options.startAt !== undefined && !(options.startAt in steps)) {
+    throw new Error(`journey: startAt references unknown step "${options.startAt}"`);
+  }
+
   const runtime = new JourneyRuntime({
     kind: "linear",
     stepIds,
     steps,
     initial: stepIds[0] as string,
+    ...(options.startAt !== undefined ? { startAt: options.startAt } : {}),
     initialContext: definition.context,
     transitions: [],
     handlers: undefined,

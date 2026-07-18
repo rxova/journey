@@ -419,3 +419,32 @@ describe("createGraphJourney — event-driven transitions", () => {
     expect(await first).toEqual({ ok: true, from: "a", to: "b" });
   });
 });
+
+describe("createGraphJourney — startAt", () => {
+  it("overrides the definition's initial step at start", async () => {
+    const machine = createGraphJourney(
+      {
+        steps: { form: {}, review: {}, done: {} },
+        transitions: { EDIT: { from: "review", to: "form" } },
+        initial: "form",
+        context: {}
+      },
+      { startAt: "review" }
+    );
+    machine.controls.start();
+    await flush();
+
+    expect(machine.getSnapshot().currentStep?.id).toBe("review");
+    expect(machine.getSnapshot().history.timeline).toEqual(["review"]);
+    expect(await machine.send("EDIT")).toEqual({ ok: true, from: "review", to: "form" });
+  });
+
+  it("throws at creation for an unknown startAt id", () => {
+    expect(() =>
+      createGraphJourney(
+        { steps: { a: {} }, transitions: {}, initial: "a", context: {} },
+        { startAt: "nope" as never }
+      )
+    ).toThrow(/startAt references unknown step "nope"/);
+  });
+});

@@ -74,3 +74,52 @@ describe("createLinearJourney", () => {
     expect(before).not.toBe(after);
   });
 });
+
+describe("createLinearJourney — startAt", () => {
+  it("starts directly at the target: earlier steps are neither entered nor visited", async () => {
+    const entered: string[] = [];
+    const machine = createLinearJourney(
+      {
+        steps: [
+          { id: "a", onEnter: () => void entered.push("a") },
+          { id: "b", onEnter: () => void entered.push("b") },
+          { id: "c", onEnter: () => void entered.push("c") }
+        ],
+        context: {}
+      },
+      { startAt: "c" }
+    );
+    machine.controls.start();
+    await flush();
+
+    const snapshot = machine.getSnapshot();
+    expect(snapshot.currentStep?.id).toBe("c");
+    expect(snapshot.history.timeline).toEqual(["c"]);
+    expect(snapshot.history.visited).toEqual({ a: false, b: false, c: true });
+    expect(entered).toEqual(["c"]);
+  });
+
+  it("throws at creation for an unknown startAt id", () => {
+    expect(() =>
+      createLinearJourney({ steps: ["a", "b"], context: {} }, { startAt: "nope" as never })
+    ).toThrow(/startAt references unknown step "nope"/);
+  });
+
+  it("goToPreviousStep from the start position is out-of-bounds", async () => {
+    const machine = await startedLinear({ startAt: "c" });
+    expect(await machine.navigate.goToPreviousStep()).toEqual({
+      ok: false,
+      reason: "out-of-bounds"
+    });
+  });
+
+  it("restart returns to startAt, not the first step", async () => {
+    const machine = await startedLinear({ startAt: "b" });
+    await machine.navigate.goToNextStep();
+    machine.controls.complete();
+    machine.controls.restart();
+    await flush();
+    expect(machine.getSnapshot().currentStep?.id).toBe("b");
+    expect(machine.getSnapshot().history.timeline).toEqual(["b"]);
+  });
+});
