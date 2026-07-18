@@ -1,4 +1,4 @@
-import type { GraphHookArgs, GraphJourneyDefinition, TransitionGuard } from "./graph.types";
+import type { GraphHookArgs, GraphJourneyDefinition } from "./graph.types";
 import type { GraphSnapshot, JourneyEventObject, OnEnterHook, OnLeaveHook } from "../core/types";
 
 /**
@@ -28,16 +28,36 @@ export type BagSnapshot<TBag extends JourneyTypeBag> = GraphSnapshot<
   TBag["events"]
 >;
 
+/** What every guard sees; work-scoped candidates extend this with `result`. */
+export type GuardArgsOf<TBag extends JourneyTypeBag> = {
+  readonly context: TBag["context"];
+  readonly handlers: HandlersOf<TBag>;
+};
+
+/**
+ * Guard args for a candidate declared inside `work(...)`: the run result rides
+ * along, so transient outcomes can route without being persisted in context.
+ * `result` is only populated while routing that work's send — during snapshot
+ * introspection (`outgoingTransitions`) the same guard sees it as undefined.
+ */
+export type WorkGuardArgs<TBag extends JourneyTypeBag, TResult> = GuardArgsOf<TBag> & {
+  readonly result: TResult;
+};
+
 /** Chainable transition candidate under construction (no `from` yet). */
-export type JourneyToBuilder<TBag extends JourneyTypeBag, TType extends TBag["events"]["type"]> = {
+export type JourneyToBuilder<
+  TBag extends JourneyTypeBag,
+  TType extends TBag["events"]["type"],
+  TGuardArgs extends GuardArgsOf<TBag> = GuardArgsOf<TBag>
+> = {
   readonly _candidate: {
     readonly to: TBag["stepId"];
-    readonly when?: TransitionGuard<TBag["context"], HandlersOf<TBag>>;
+    readonly when?: (args: TGuardArgs) => boolean;
     readonly onTransition?: (
       args: GraphHookArgs<TBag["context"], TBag["stepId"], TBag["events"], MetaOf<TBag>>
     ) => void | Promise<void>;
   };
-  when(guard: TransitionGuard<TBag["context"], HandlersOf<TBag>>): JourneyToBuilder<TBag, TType>;
+  when(guard: (args: TGuardArgs) => boolean): JourneyToBuilder<TBag, TType, TGuardArgs>;
   onTransition(
     effect: (
       args: GraphHookArgs<
@@ -47,12 +67,26 @@ export type JourneyToBuilder<TBag extends JourneyTypeBag, TType extends TBag["ev
         MetaOf<TBag>
       >
     ) => void | Promise<void>
-  ): JourneyToBuilder<TBag, TType>;
+  ): JourneyToBuilder<TBag, TType, TGuardArgs>;
 };
 
-export type ToFactory<TBag extends JourneyTypeBag, TType extends TBag["events"]["type"]> = (
-  target: TBag["stepId"]
-) => JourneyToBuilder<TBag, TType>;
+export type ToFactory<
+  TBag extends JourneyTypeBag,
+  TType extends TBag["events"]["type"],
+  TGuardArgs extends GuardArgsOf<TBag> = GuardArgsOf<TBag>
+> = (target: TBag["stepId"]) => JourneyToBuilder<TBag, TType, TGuardArgs>;
+
+/**
+ * Unguarded candidate pointing back at the declaring step — the named form of
+ * the totality fallback: "on any other outcome, keep the staged context and
+ * remain here". Chainable like any candidate, but the unguarded default is the
+ * point.
+ */
+export type StayFactory<
+  TBag extends JourneyTypeBag,
+  TType extends TBag["events"]["type"],
+  TGuardArgs extends GuardArgsOf<TBag> = GuardArgsOf<TBag>
+> = () => JourneyToBuilder<TBag, TType, TGuardArgs>;
 
 /** Event-scoped work args: no `to`, since routing has not happened yet. */
 export type BagSendWorkArgs<TBag extends JourneyTypeBag, TType extends TBag["events"]["type"]> = {
@@ -62,13 +96,28 @@ export type BagSendWorkArgs<TBag extends JourneyTypeBag, TType extends TBag["eve
   readonly handlers: HandlersOf<TBag>;
 };
 
+/** Work-scoped candidate helpers: `to`/`stay` whose guards also see `result`. */
+export type WorkCandidateHelpers<
+  TBag extends JourneyTypeBag,
+  TType extends TBag["events"]["type"],
+  TResult
+> = {
+  readonly to: ToFactory<TBag, TType, WorkGuardArgs<TBag, TResult>>;
+  readonly stay: StayFactory<TBag, TType, WorkGuardArgs<TBag, TResult>>;
+};
+
 /** An event's declared work plus the candidates its staged context routes into. */
 export type JourneyEventWork<TBag extends JourneyTypeBag, TType extends TBag["events"]["type"]> = {
   readonly _work: {
     readonly run: (args: BagSendWorkArgs<TBag, TType>) => unknown;
     readonly commit?: (args: never) => void;
+    readonly allowRollback?: boolean;
   };
-  readonly candidates: readonly JourneyToBuilder<TBag, TType>[];
+  readonly candidates:
+    | readonly JourneyToBuilder<TBag, TType>[]
+    | ((
+        helpers: WorkCandidateHelpers<TBag, TType, unknown>
+      ) => readonly JourneyToBuilder<TBag, TType, WorkGuardArgs<TBag, unknown>>[]);
 };
 
 /**
@@ -86,7 +135,22 @@ export type WorkFactory<TBag extends JourneyTypeBag, TType extends TBag["events"
       readonly updateContext: (updater: (previous: TBag["context"]) => TBag["context"]) => void;
     }
   ) => void;
-  readonly candidates: readonly JourneyToBuilder<TBag, TType>[];
+  /**
+   * Array form: candidates share the event scope's `to` (guards see context
+   * and handlers). Callback form: a work-scoped `to`/`stay` whose guards also
+   * receive the typed run `result`.
+   */
+  readonly candidates:
+    | readonly JourneyToBuilder<TBag, TType>[]
+    | ((
+        helpers: WorkCandidateHelpers<TBag, TType, TResult>
+      ) => readonly JourneyToBuilder<TBag, TType, WorkGuardArgs<TBag, TResult>>[]);
+  /**
+   * Declares an intentionally partial event: silences the build-time totality
+   * warning that fires when every candidate is guarded (meaning a no-match
+   * send rolls its staged context back).
+   */
+  readonly allowRollback?: boolean;
 }) => JourneyEventWork<TBag, TType>;
 
 /**
@@ -100,6 +164,7 @@ export type JourneyStepTransitions<TBag extends JourneyTypeBag> = {
     | ((helpers: {
         to: ToFactory<TBag, TType>;
         work: WorkFactory<TBag, TType>;
+        stay: StayFactory<TBag, TType>;
       }) => readonly JourneyToBuilder<TBag, TType>[] | JourneyEventWork<TBag, TType>);
 };
 

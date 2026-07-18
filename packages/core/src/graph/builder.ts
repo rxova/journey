@@ -13,9 +13,20 @@ import type {
   JourneyToBuilder,
   JourneyTypeBag,
   MetaOf,
+  StayFactory,
   ToFactory,
   WorkFactory
 } from "./builder.types";
+
+/**
+ * The totality warning is authoring feedback, not runtime behavior, so it is
+ * silenced in production bundles. Read through globalThis: the core carries no
+ * Node types and must not assume a bundler defines `process`.
+ */
+const isDevBuild = (): boolean => {
+  const env = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process?.env?.NODE_ENV;
+  return env !== "production";
+};
 
 /**
  * Returns typed `{ createStep, to, build }` for the given type bag. Steps are
@@ -45,11 +56,13 @@ export function createGraphJourneyBuilder<TBag extends JourneyTypeBag>(): Journe
 
   // Carries `run`/`commit` through as an opaque bundle: `build` only needs to
   // separate them from the candidates, never to call them. The config doubles
-  // as `_work` — the runtime reads only `run`/`commit` and ignores the rest.
+  // as `_work` — the runtime reads only `run`/`commit` and ignores the rest
+  // (`allowRollback` is consumed by `build`'s totality check).
   const makeWork = (config: {
     run: unknown;
     commit?: unknown;
-    candidates: readonly JourneyToBuilder<TBag, never>[];
+    allowRollback?: boolean;
+    candidates: unknown;
   }) => ({ _work: config, candidates: config.candidates });
 
   function createStep<TStepId extends TBag["stepId"]>(
@@ -94,13 +107,17 @@ export function createGraphJourneyBuilder<TBag extends JourneyTypeBag>(): Journe
       steps[step.id] = stepConfig;
 
       if (!config.on) continue;
+      // `stay()` is sugar for an unguarded candidate back at this step — the
+      // named form of the totality fallback.
+      const stay = () => makeToBuilder({ to: step.id });
       for (const [event, entry] of Object.entries(config.on)) {
         if (entry === undefined) continue;
         const produced =
           typeof entry === "function"
             ? entry({
                 to: to as unknown as ToFactory<TBag, never>,
-                work: makeWork as unknown as WorkFactory<TBag, never>
+                work: makeWork as unknown as WorkFactory<TBag, never>,
+                stay: stay as unknown as StayFactory<TBag, never>
               })
             : (entry as readonly JourneyToBuilder<TBag, TBag["events"]["type"]>[]);
 
@@ -108,12 +125,28 @@ export function createGraphJourneyBuilder<TBag extends JourneyTypeBag>(): Journe
         // its candidates still land in the shared transitions map, and the work
         // is keyed by (origin step, event) for the runtime to pick up on send.
         const isWork = !Array.isArray(produced);
-        const builders = isWork
-          ? (produced as JourneyEventWork<TBag, never>).candidates
-          : (produced as readonly JourneyToBuilder<TBag, TBag["events"]["type"]>[]);
+        let builders: readonly JourneyToBuilder<TBag, TBag["events"]["type"]>[];
         if (isWork) {
-          eventWork[eventWorkKey(step.id, event)] = (produced as JourneyEventWork<TBag, never>)
-            ._work as unknown as AnySendWork;
+          const bundle = produced as JourneyEventWork<TBag, never>;
+          // Work candidates may be a factory taking the work-scoped `to`/`stay`
+          // (whose guards see the typed run result) instead of a plain array.
+          const source = bundle.candidates as unknown;
+          builders = (
+            typeof source === "function" ? source({ to, stay }) : source
+          ) as readonly JourneyToBuilder<TBag, TBag["events"]["type"]>[];
+          eventWork[eventWorkKey(step.id, event)] = bundle._work as unknown as AnySendWork;
+
+          if (
+            isDevBuild() &&
+            !(bundle._work as { allowRollback?: boolean }).allowRollback &&
+            !builders.some((builder) => !builder._candidate.when)
+          ) {
+            console.warn(
+              `journey: "${event}" work on "${step.id}" has only guarded candidates — a no-match send rolls back its staged context. Add stay() or allowRollback: true.`
+            );
+          }
+        } else {
+          builders = produced as readonly JourneyToBuilder<TBag, TBag["events"]["type"]>[];
         }
 
         const bucket = (transitions[event] ??= []);

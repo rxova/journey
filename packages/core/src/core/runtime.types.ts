@@ -46,7 +46,11 @@ export type RuntimeTransition = {
   readonly event: string;
   readonly from: string;
   readonly to: string;
-  readonly when?: (args: { context: unknown; handlers: unknown }) => boolean;
+  /**
+   * `result` is the run result while routing a work send, and undefined
+   * everywhere else (plain sends, snapshot introspection).
+   */
+  readonly when?: (args: { context: unknown; handlers: unknown; result?: unknown }) => boolean;
   readonly onTransition?: AnyOnEffect;
 };
 

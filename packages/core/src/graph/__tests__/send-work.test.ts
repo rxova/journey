@@ -274,3 +274,141 @@ describe("definition-declared send work", () => {
     expect(machine.getSnapshot().context).toEqual({ method: null });
   });
 });
+
+type AttemptCtx = { attempts: number };
+
+/**
+ * Work-scoped candidates: the guards read the run result directly, so the
+ * routing fact never touches context — and `stay()` names the totality
+ * fallback that keeps a failed attempt's staged context committed.
+ */
+function buildResultRoutedJourney(handlers: LoginHandlers) {
+  const { createStep, to, build } = createGraphJourneyBuilder<{
+    context: AttemptCtx;
+    stepId: "login" | "email" | "sms";
+    events: LoginEvent;
+    handlers: LoginHandlers;
+  }>();
+
+  const definition = build({
+    initial: "login",
+    context: { attempts: 0 },
+    handlers,
+    steps: [
+      createStep("login", {
+        on: {
+          SUBMIT: ({ work }) =>
+            work({
+              run: ({ handlers: h }) => h.login(),
+              commit: ({ updateContext }) =>
+                updateContext((c) => ({ ...c, attempts: c.attempts + 1 })),
+              candidates: ({ to: into, stay }) => [
+                into("email").when(({ result }) => result === "email"),
+                into("sms").when(({ result }) => result === "sms"),
+                stay()
+              ]
+            })
+        }
+      }),
+      createStep("email", { on: { RESET: [to("login")] } }),
+      createStep("sms", { on: { RESET: [to("login")] } })
+    ]
+  });
+
+  return createGraphJourney(definition, { autoStart: true });
+}
+
+describe("work-result routing and stay()", () => {
+  it("routes on the run result without persisting it in context", async () => {
+    const machine = buildResultRoutedJourney({ login: async () => "sms" });
+    await flush();
+
+    expect(await machine.send("SUBMIT")).toEqual({ ok: true, from: "login", to: "sms" });
+    // The routing fact stayed transient: context only holds business state.
+    expect(machine.getSnapshot().context).toEqual({ attempts: 1 });
+  });
+
+  it("stay() keeps the staged context committed when no routed candidate matches", async () => {
+    const machine = buildResultRoutedJourney({
+      login: async () => "carrier-pigeon" as unknown as "email"
+    });
+    await flush();
+
+    // Neither result guard passes, so the unguarded stay() wins: a
+    // self-transition that commits the staged attempt count instead of
+    // rolling it back with the send.
+    expect(await machine.send("SUBMIT")).toEqual({ ok: true, from: "login", to: "login" });
+    expect(machine.getSnapshot().context).toEqual({ attempts: 1 });
+  });
+
+  it("snapshot introspection evaluates result-reading guards with result undefined", async () => {
+    const machine = buildResultRoutedJourney({ login: async () => "email" });
+    await flush();
+
+    const outgoing = machine.getSnapshot().outgoingTransitions;
+    const [email, sms, self] = outgoing;
+    // Outside a send there is no result, so result-dependent guards report
+    // their resting-state answer; the unguarded stay() is what introspection
+    // would select.
+    expect(email).toMatchObject({ to: "email", guard: "failed", enabled: false });
+    expect(sms).toMatchObject({ to: "sms", guard: "failed", enabled: false });
+    expect(self).toMatchObject({ to: "login", guard: "none", enabled: true, selected: true });
+  });
+
+  it("warns at build time when every work candidate is guarded", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      buildDeclaredWorkJourney({ login: async () => "email" });
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0]?.[0]).toContain('"SUBMIT" work on "login"');
+      expect(warn.mock.calls[0]?.[0]).toContain("stay()");
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("allowRollback declares a partial event and silences the warning", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const { createStep, build } = createGraphJourneyBuilder<{
+        context: AttemptCtx;
+        stepId: "login" | "email";
+        events: LoginEvent;
+        handlers: LoginHandlers;
+      }>();
+      build({
+        initial: "login",
+        context: { attempts: 0 },
+        handlers: { login: async () => "email" as const },
+        steps: [
+          createStep("login", {
+            on: {
+              SUBMIT: ({ work }) =>
+                work({
+                  run: ({ handlers: h }) => h.login(),
+                  allowRollback: true,
+                  candidates: ({ to: into }) => [
+                    into("email").when(({ result }) => result === "email")
+                  ]
+                })
+            }
+          }),
+          createStep("email", {})
+        ]
+      });
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("an unguarded totality fallback silences the warning too", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      buildResultRoutedJourney({ login: async () => "email" });
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});
