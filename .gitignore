@@ -15,3 +15,6 @@ coverage/
 .turbo
 .astro
 assets/social
+# Local planning notes at the repo root. Anchored: a bare `docs/` would also
+# match apps/docs/src/content/docs and silently ignore new pages.
+/docs/
