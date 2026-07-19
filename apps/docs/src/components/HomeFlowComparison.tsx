@@ -13,35 +13,47 @@ const INDEX_SNIPPET = `const [step, setStep] = useState(0);
 
 /**
  * Verified against `packages/react/src` — not against the prose docs, which still
- * show a pre-1.0 shape. Every symbol here is a real export, and the props match
- * `LinearJourneyProps`: `context`, `footer`, and `onComplete` (which receives
- * core's `statusChange` payload, hence `{ snapshot }`).
+ * show a pre-1.0 shape. Every symbol is a real export, and the props match
+ * `LinearJourneyProps`: `context` and `onComplete` (which receives core's
+ * `statusChange` payload, hence `{ snapshot }`). `machine.context.update` is the
+ * grouped command at `packages/core/src/core/types.ts:417`.
  *
- * Steps use the `<LinearJourney.Step id>` wrapper deliberately: the global
- * `React.Attributes` `id` augmentation was removed before 1.0, so an inline
- * `<EmailStep id="email" />` only typechecks when that component declares its
- * own `id` prop. The wrapper always does.
+ * `onComplete` is deliberately shown with its own try/catch. It is an observer,
+ * not a gate: `linear.tsx:173` discards the return value, and core's `emit`
+ * (`core/store.ts:104-116`) calls listeners synchronously inside a try/catch that
+ * only catches sync throws — a rejected promise from an async handler escapes as
+ * an unhandled rejection. The awaited pre-commit gate is navigation work
+ * (`NavigationWork.run`, `core/types.ts:357-366`), which the machine does await.
+ *
+ * The inline `id` is the contract in `derive-steps.tsx:84-103`: `<LinearJourney>`
+ * reads `id` off the child and strips it before rendering, so a step declares
+ * `id?: string` and never reads it. That optional-and-unused shape is exactly how
+ * the repo's own `makeStep` test helper types a step
+ * (`packages/react/src/__tests__/helpers.tsx:17-19`) — necessary because the global
+ * `React.Attributes` `id` augmentation was removed before 1.0.
  */
 const JOURNEY_SNIPPET = `import { LinearJourney, useLinearJourney } from "@rxova/journey-react";
 
-function Footer() {
+type SignupContext = { email: string; acceptedTerms: boolean };
+
+// <LinearJourney> reads \`id\` and strips it before render,
+// so a step declares the prop but never reads it.
+function EmailStep(_props: { id?: string }) {
   const { machine, snapshot } = useLinearJourney<SignupContext>();
 
   return (
-    <nav>
-      <button
-        disabled={!snapshot.history.canGoBack}
-        onClick={() => void machine.navigate.goToPreviousStep()}
-      >
-        Back
-      </button>
-      <button
-        disabled={snapshot.machine.isLoading}
-        onClick={() => void machine.navigate.goToNextStep()}
-      >
-        Continue
-      </button>
-    </nav>
+    <label>
+      Email
+      <input
+        value={snapshot.context.email}
+        onChange={(event) =>
+          machine.context.update((context) => ({
+            ...context,
+            email: event.target.value
+          }))
+        }
+      />
+    </label>
   );
 }
 
@@ -49,18 +61,19 @@ export function Signup() {
   return (
     <LinearJourney
       context={{ email: "", acceptedTerms: false }}
-      footer={<Footer />}
-      onComplete={({ snapshot }) => submitSignup(snapshot.context)}
+      onComplete={async ({ snapshot }) => {
+        // Observer, not a gate: the machine does not await this,
+        // so handle failures here rather than letting them escape.
+        try {
+          await submitSignup(snapshot.context);
+        } catch (error) {
+          reportError(error);
+        }
+      }}
     >
-      <LinearJourney.Step id="email">
-        <EmailStep />
-      </LinearJourney.Step>
-      <LinearJourney.Step id="terms">
-        <TermsStep />
-      </LinearJourney.Step>
-      <LinearJourney.Step id="review">
-        <ReviewStep />
-      </LinearJourney.Step>
+      <EmailStep id="email" />
+      <TermsStep id="terms" />
+      <ReviewStep id="review" />
     </LinearJourney>
   );
 }`;
