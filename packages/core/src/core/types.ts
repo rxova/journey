@@ -540,5 +540,11 @@ export type JourneyRuntimeOptions<
    * block movement; post-commit hook timeouts surface as step errors.
    */
   defaultTimeoutMs?: number;
+  /**
+   * Called when a subscriber (selector or event listener) throws. Listener
+   * failures are always isolated — this hook only routes the report. Defaults
+   * to a `console.error`; a throwing reporter falls back to that default.
+   */
+  onListenerError?: (error: unknown) => void;
   plugins?: TPlugins;
 };

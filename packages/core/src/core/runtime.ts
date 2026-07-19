@@ -55,6 +55,8 @@ export class JourneyRuntime {
     to: string | null;
   } | null = null;
   private disposed = false;
+  /** One-shot seed for the first start(); restart() always enters fresh. */
+  private restoreSeed: RuntimeConfig["restore"] | null = null;
   /** Bumped by terminate/restart/dispose so stale hook continuations bail out. */
   private generation = 0;
   private raiseQueue: JourneyEventObject[] = [];
@@ -70,8 +72,9 @@ export class JourneyRuntime {
 
   constructor(config: RuntimeConfig) {
     this.config = config;
-    this.context = config.initialContext;
-    this.store = new JourneyStore(this.buildSnapshot());
+    this.restoreSeed = config.restore ?? null;
+    this.context = config.restore ? config.restore.context : config.initialContext;
+    this.store = new JourneyStore(this.buildSnapshot(), config.onListenerError);
     this.setupPlugins();
     this.store.publish(this.buildSnapshot());
     if (config.autoStart) this.start();
@@ -564,6 +567,23 @@ export class JourneyRuntime {
   /** Entry on start()/restart(): no onLeave, `from` is null, event is null. */
   private async enterInitialStep(): Promise<void> {
     const generation = this.generation;
+    const seed = this.restoreSeed;
+    this.restoreSeed = null;
+    if (seed) {
+      const to = seed.timeline[seed.currentIndex] as string;
+      this.pending = { phase: "entering", from: null, to };
+      this.timeline = [...seed.timeline];
+      this.currentIndex = seed.currentIndex;
+      // Persisted records carry no visit counts; occurrences in the restored
+      // timeline are the best-effort reconstruction. commitEntry adds one more
+      // for the re-entered current step, so it reports isFirstTimeVisit: false.
+      for (const id of seed.timeline) {
+        this.visitCounts.set(id, (this.visitCounts.get(id) ?? 0) + 1);
+      }
+      this.commitEntry(null, to, "jump");
+      await this.runEntryEffects(null, to, null, null, generation);
+      return;
+    }
     const to = this.config.startAt ?? this.config.initial;
     this.pending = { phase: "entering", from: null, to };
     this.timeline = [to];

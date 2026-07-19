@@ -74,6 +74,18 @@ export type RuntimeConfig = {
   readonly handlers: unknown;
   readonly autoStart: boolean;
   readonly defaultTimeoutMs: number | undefined;
+  /** Routes isolated subscriber failures; defaults to the console reporter. */
+  readonly onListenerError?: (error: unknown) => void;
+  /**
+   * Seeds the first `start()` from a persisted record instead of a fresh
+   * entry at `startAt ?? initial`. Consumed once — `restart()` always goes
+   * fresh. Factories only pass a record that validated against the definition.
+   */
+  readonly restore?: {
+    readonly context: unknown;
+    readonly timeline: readonly string[];
+    readonly currentIndex: number;
+  };
   readonly plugins: readonly AnyJourneyPlugin[];
 };
 

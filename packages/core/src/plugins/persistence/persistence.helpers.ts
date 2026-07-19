@@ -1,5 +1,5 @@
-import type { JourneyPersistedState } from "./persistence.types";
-import type { JourneySnapshot } from "../../core/types";
+import type { JourneyPersistedState, JourneyStorage } from "./persistence.types";
+import type { JourneyPersistOption, JourneySnapshot } from "../../core/types";
 
 export function buildPersistedState(snapshot: JourneySnapshot, now: number): JourneyPersistedState {
   return {
@@ -31,4 +31,40 @@ export function parsePersistedState(raw: string | null): JourneyPersistedState |
     return null;
   }
   return candidate as unknown as JourneyPersistedState;
+}
+
+/** Resolves the `persist` option's storage; throws when none is available. */
+export function resolvePersistStorage(option: JourneyPersistOption): JourneyStorage {
+  const storage = option.storage ?? (globalThis.localStorage as JourneyStorage | undefined);
+  if (!storage) {
+    throw new Error("journey: persist.storage is required when localStorage is unavailable");
+  }
+  return storage;
+}
+
+/**
+ * Reads a persisted record that can seed this machine, or `null`. Restore is
+ * best-effort by design: terminal-status records, records whose timeline
+ * mentions a step the current definition no longer declares (definition
+ * drift), and malformed/foreign payloads are all ignored rather than thrown.
+ */
+export function readRestorableState(
+  option: JourneyPersistOption,
+  isDeclaredStep: (id: string) => boolean
+): JourneyPersistedState | null {
+  let raw: string | null;
+  try {
+    raw = resolvePersistStorage(option).getItem(option.key);
+  } catch {
+    return null;
+  }
+  const record = parsePersistedState(raw);
+  if (!record) return null;
+  if (record.status !== "running" && record.status !== "paused") return null;
+  if (!Number.isInteger(record.currentIndex)) return null;
+  if (record.currentIndex < 0 || record.currentIndex >= record.timeline.length) return null;
+  for (const id of record.timeline) {
+    if (typeof id !== "string" || !isDeclaredStep(id)) return null;
+  }
+  return record;
 }
