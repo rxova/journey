@@ -1,5 +1,5 @@
 import { useJourneySnapshot } from "../headless/use-journey-snapshot";
-import { useLinearJourneyContext } from "./linear-context";
+import { useLinearJourneyMachine } from "./machine-context";
 import type {
   LinearJourneyMachine,
   LinearJourneySnapshot,
@@ -18,7 +18,7 @@ export const useLinearJourney = <
   TContext = unknown,
   TStepId extends string = string
 >(): UseLinearJourneyResult<TContext, TStepId> => {
-  const machine = useLinearJourneyContext("useLinearJourney");
+  const machine = useLinearJourneyMachine("useLinearJourney");
   const snapshot = useJourneySnapshot(machine) as LinearJourneySnapshot<TContext, TStepId>;
   return { machine: machine as LinearJourneyMachine<TContext, TStepId>, snapshot };
 };

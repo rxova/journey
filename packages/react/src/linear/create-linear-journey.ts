@@ -70,14 +70,14 @@ export const createLinearJourney =
       );
     }
 
+    // The public component type hides the internal `declaredStepIds` prop and
+    // widens step ids to string; this alias is the one cast bridging both.
+    const LinearJourneyWithDeclaration = LinearJourney as unknown as (
+      props: LinearJourneyProps<TContext, TStepId> & { declaredStepIds: readonly string[] }
+    ) => React.ReactElement;
+
     const BundleLinearJourney = (props: LinearJourneyProps<TContext, TStepId>) =>
-      React.createElement(
-        LinearJourney as never,
-        {
-          ...props,
-          declaredStepIds: stepIds
-        } as never
-      );
+      React.createElement(LinearJourneyWithDeclaration, { ...props, declaredStepIds: stepIds });
     BundleLinearJourney.displayName = "LinearJourney";
 
     return {
