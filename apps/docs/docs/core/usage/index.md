@@ -17,6 +17,9 @@ Start linear when the flow is fundamentally ordered. You can still jump by id an
 Choose graph when the transition itself is a domain event such as `SUBMIT`, `APPROVE`, or `RETRY`,
 or when multiple guarded candidates may handle the same event.
 
+Either machine can also run [headless](./headless) — consumed without a rendering tier. That is a
+usage pattern over these two shapes, not a third machine kind.
+
 ## What stays the same
 
 Both shapes provide:

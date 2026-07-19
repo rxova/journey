@@ -29,8 +29,20 @@ createGraphJourney(definition, options?);
 createGraphJourneyBuilder<TypeBag>();
 ```
 
-Shared options are `autoStart`, `defaultTimeoutMs`, and `plugins`. Graph options additionally allow
-`handlers` to replace handlers stored on the definition.
+Graph options additionally allow `handlers` to replace handlers stored on the definition.
+
+### Creation options
+
+Both factories accept the same `JourneyRuntimeOptions`:
+
+| Option             | Meaning                                                                                                                                                                                                                                                                         |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `autoStart`        | Start immediately at creation. Defaults to `false`, so subscribe-before-start is the natural order.                                                                                                                                                                             |
+| `startAt`          | Start (and restart) directly at this step: only its `onEnter` fires, earlier steps are neither entered nor visited, and the timeline begins as `[startAt]`. An unknown id throws at creation. Wins over a persisted `persist` record.                                           |
+| `persist`          | `{ key, storage? }` sugar that registers the persistence plugin **and restores**: a valid non-terminal record found at creation seeds context, timeline, and position, so the first `start()` resumes at the persisted step. See [Persistence](/docs/core/persistence#restore). |
+| `defaultTimeoutMs` | Applies to navigation/send work and every async hook. Work timeouts block movement; post-commit hook timeouts surface as step errors.                                                                                                                                           |
+| `onListenerError`  | Called when a subscriber (selector or event listener) throws. Listener failures are always isolated — this option only routes the report. Defaults to `console.error`; a throwing reporter falls back to that default.                                                          |
+| `plugins`          | Observe-only plugin instances; see [Plugins](/docs/core/plugins/overview).                                                                                                                                                                                                      |
 
 ## Machine surface
 

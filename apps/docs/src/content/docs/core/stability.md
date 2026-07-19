@@ -5,22 +5,30 @@ title: Stability contract
 
 # Stability contract
 
-The documented V1 public surface follows semantic versioning after `1.0.0`.
+The documented V1 public surface follows semantic versioning from `1.0.0`. Stability promises made
+by pre-1.0 release candidates do not carry forward: the rc-era factory and flat machine surface
+were removed, and `1.0.0` is the baseline contract. See
+[rc.2 → 1.0 migration](./pre-1-0-migration).
 
-## Core runtime
+## What semver covers at 1.0
 
-The supported Core surface is:
-
-- `createLinearJourney`, `createGraphJourney`, and `createGraphJourneyBuilder`;
-- exported public types and `MAX_RAISED_EVENTS` from the main entry;
-- the grouped machine API and graph `send`;
-- linear and graph snapshot contracts;
-- documented step hooks, graph transitions, results, and named subscription events;
-- `linearToGraphDefinition` from the convert entry;
-- documented plugin entry points, options, APIs, helpers, and plugin host contract.
-
-Files and classes under `packages/core/src` are implementation details even when their architecture
-is explained in these docs. Import only from package export paths.
+- **Factories and entry points** — `createLinearJourney`, `createGraphJourney`,
+  `createGraphJourneyBuilder`, `normalizeGraphDefinition`, `MAX_RAISED_EVENTS`, and the exported
+  public types from the main entry.
+- **The grouped machine surface** — `getSnapshot`, `controls`, `navigate`, `subscriptions`,
+  `context`, `async`, `plugins`, `dispose`, and graph `send`, with their documented return
+  contracts (boolean controls, `NavigationResult` navigation).
+- **The snapshot shape** — the discriminated `type: "linear" | "graph"` union with status,
+  context, transition, history, machine, plugins, and current-step fields as documented.
+- **Definition contracts** — the linear step tuple and the graph
+  steps/transitions/initial/context/handlers shape, including candidate declaration-order
+  selection and sync pure guards.
+- **The plugin contract** — `JourneyPlugin`, `PluginHost`, and the observe-only model. Plugins
+  stay observe-only throughout V1. Adding new host taps is a non-breaking minor change; removing
+  or repurposing an existing tap is never done within a major.
+- **Subpath exports** — `convert`, `connectors/immer`, and the seven plugin subpaths
+  (`persistence`, `autosave`, `analytics`, `diagnostics`, `execution-paths`, `replay`,
+  `subscription-enhancer`) with their documented factories, options, APIs, and helpers.
 
 ## Behavioral guarantees
 
@@ -30,16 +38,21 @@ is explained in these docs. Import only from package export paths.
 - Timeline pointer moves retrace realized history; appends from the past replace the old future.
 - Reaching a last or terminal step does not implicitly complete a journey.
 - Plugin contributions remain namespaced and plugins remain observe-only throughout V1.
+- Subscriber failures are isolated; `onListenerError` only routes the report.
+- The creation-time `persist` option restores a valid non-terminal record at the first `start()`;
+  explicit `startAt` wins and `restart()` always begins fresh.
 - Disposal is irreversible and later calls are safe.
 
 ## Not guaranteed
 
 - Internal module layout, class names, private state, or number of snapshot publications per
-  operation.
-- Object identity for newly derived snapshots, except where a documented selector equality function
-  controls notification.
+  operation. Files under `packages/core/src` are implementation details even when these docs
+  explain their architecture; import only from package export paths.
+- Object identity for newly derived snapshots, except where a documented selector equality
+  function controls notification.
 - Automatic cancellation of user-created promises or I/O.
-- Automatic hydration of persisted runtime history.
+- A bounded history timeline: the timeline is unbounded in 1.0, and a `maxHistory` option is
+  planned post-1.0 as a compatible addition.
 - Undocumented details in generated declarations or source files.
 
 ## Plugin compatibility
@@ -51,10 +64,11 @@ depend on another plugin's private state or uncommitted observation timing.
 ## Devtools
 
 The bridge protocol has its own explicit protocol version. Core semver and bridge wire compatibility
-are related but separate boundaries; use the bridge documentation for command and envelope support.
+are related but separate boundaries; use the bridge documentation for operation and envelope
+support.
 
 ## Migration
 
-Code written against the pre-V1 controller API must migrate; there is no V1 compatibility promise
-for `createJourneyMachine`, `createHeadlessJourney`, flat machine methods, or old snapshot fields.
-See [Pre-1.0 migration](./pre-1-0-migration).
+Code written against any pre-1.0 release candidate must migrate; there is no V1 compatibility
+promise for the rc-era factories, flat machine methods, or old snapshot fields. See
+[rc.2 → 1.0 migration](./pre-1-0-migration).

@@ -42,6 +42,9 @@ and defaults to `globalThis.localStorage`; creation throws when neither a `stora
 fails at creation as a duplicate plugin name. Use the explicit plugin form when you need
 `clearOnTerminate` or an injected clock.
 
+Unlike the explicit plugin, `persist` also [restores](#restore): a valid record found at creation
+seeds the machine so the first `start()` resumes where the record left off.
+
 ## Persisted shape
 
 ```ts
@@ -71,22 +74,36 @@ machine.getSnapshot().plugins.persistence;
 
 Malformed or structurally invalid storage values return `null`.
 
-## Restore behavior
+## Restore behavior {#restore}
 
-The V1 plugin writes and reads persisted data but does not hydrate a live runtime's history. Read the
-stored state before creating a machine and use the saved context according to your application's
-restore policy.
+The creation-time `persist` option restores. At creation, the factory reads the stored record; when
+it is restorable, the record seeds context, timeline, and pointer, and the first `start()` re-enters
+the persisted current step instead of the first/initial one:
 
 ```ts
-const saved = persistencePluginRead();
-const machine = createLinearJourney({
-  ...definition,
-  context: saved?.context ?? definition.context
+const machine = createLinearJourney(definition, {
+  persist: { key: "checkout" }
 });
+
+machine.controls.start();
+// resumes at the persisted step when a valid record existed
 ```
 
-History rehydration is planned separately; do not imply that registering this plugin moves a new
-machine to a saved step.
+A record is restorable when its status is `running` or `paused`, its `currentIndex` points inside
+its timeline, and every timeline step is declared by the current definition. Anything else —
+terminal-status records, definition drift, malformed or foreign payloads, a throwing storage read —
+is ignored and the journey starts fresh. Restore is best-effort by design and never throws.
+
+Details of a restored start:
+
+- the initial entry runs as a normal `stepEnter` with `from: null` and `direction: "jump"`;
+- visit counts are reconstructed from the restored timeline, so the re-entered step reports
+  `isFirstTimeVisit: false`;
+- an explicit `startAt` option wins over the persisted record;
+- `restart()` always begins a fresh run — the seed applies only to the first `start()`.
+
+Registering `createPersistencePlugin` explicitly in `plugins` stays save-only: plugins are
+observe-only and cannot seed the runtime. Use the `persist` option when you want restore.
 
 ## Options
 

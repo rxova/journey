@@ -28,6 +28,10 @@ const machine = createLinearJourney(definition, {
 `storage` is required and uses the same adapter contract and persisted shape as the persistence
 plugin.
 
+Autosave is save-side only. It never seeds a machine: the creation-time restore behavior belongs to
+the [`persist` option](./persistence#restore), which reads the persistence key, not the autosave
+key. Read autosaved drafts yourself via `readPersisted()`.
+
 ## API
 
 ```ts

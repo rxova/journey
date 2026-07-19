@@ -1,6 +1,6 @@
 {
   "entryPoints": ["packages/react/src/index.ts"],
-  "tsconfig": "packages/react/tsconfig.json",
+  "tsconfig": "packages/react/tsconfig.typedoc.json",
   "plugin": ["typedoc-plugin-markdown"],
   "out": "apps/docs/docs/react/api/reference",
   "readme": "none",

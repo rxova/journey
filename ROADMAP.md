@@ -26,6 +26,8 @@ The current emphasis is clear: finish hardening the core contract ahead of the `
 
 ## Post V1
 
+- [ ] History growth bounds: an opt-in `maxHistory` creation option that trims the oldest timeline
+      entries (the 1.0 timeline is unbounded by design; `restart()` is the reset lever)
 - [ ] First-class routing support for React apps
   - Focus areas: React Router, TanStack Router, and Next.js router integration patterns
 - [ ] Additional framework packages
