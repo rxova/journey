@@ -46,9 +46,15 @@ export default function App() {
         console.log("[react linear] journey.completed", snapshot.context)
       }
     >
-      <Login id="login" />
-      <Setup2fa id="setup2fa" />
-      <VerifyCode id="verifyCode" />
+      <LinearJourney.Step id="login">
+        <Login />
+      </LinearJourney.Step>
+      <LinearJourney.Step id="setup2fa">
+        <Setup2fa />
+      </LinearJourney.Step>
+      <LinearJourney.Step id="verifyCode">
+        <VerifyCode />
+      </LinearJourney.Step>
       <LinearJourney.Step id="loggedIn" metadata={{ label: "Logged In" }}>
         <LoggedIn />
       </LinearJourney.Step>

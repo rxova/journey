@@ -242,7 +242,9 @@ describe("createLinearJourney extras", () => {
     };
     render(
       <LinearJourney footer={<Forward />}>
-        <Passive id="p" />
+        <LinearJourney.Step id="p">
+          <Passive />
+        </LinearJourney.Step>
         <StepB id="b" />
       </LinearJourney>
     );
@@ -369,7 +371,9 @@ describe("typed bundle step hooks", () => {
 
     render(
       <journey.LinearJourney context={{ n: 42 }} footer={<Forward />}>
-        <HookedStep id="hooked" />
+        <journey.LinearJourney.Step id="hooked">
+          <HookedStep />
+        </journey.LinearJourney.Step>
         <StepB id="done" />
       </journey.LinearJourney>
     );

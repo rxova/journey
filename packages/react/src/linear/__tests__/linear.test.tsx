@@ -191,7 +191,9 @@ describe("useLinearJourneyStep", () => {
     const onError = vi.fn();
     render(
       <LinearJourney context={{ n: 0 }} onError={onError} footer={<Nav />} header={<Bump />}>
-        <Guarded id="guarded" />
+        <LinearJourney.Step id="guarded">
+          <Guarded />
+        </LinearJourney.Step>
         <StepB id="b" />
       </LinearJourney>
     );

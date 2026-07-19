@@ -1,23 +1,4 @@
 import type React from "react";
-
-/**
- * Make `id` a valid attribute on ANY component element — the same mechanism
- * React uses for `key` (which lives on `React.Attributes`, the base of
- * `JSX.IntrinsicAttributes`). This lets a step declare its linear journey id inline
- * (`<Login id="login" />`) without the component having to add an `id` prop
- * to its own props type. `<LinearJourney>` reads the id off the element and strips
- * it before rendering, so it never reaches the component.
- *
- * Scope note: like Emotion's `css` prop, this augmentation is global for any
- * project that imports `@rxova/journey-react`.
- */
-declare module "react" {
-  interface Attributes {
-    /** Step id when this element is a direct child of `<LinearJourney>`. */
-    id?: string;
-  }
-}
-
 import type {
   AnyJourneyPlugin,
   JourneyEventPayloads,
@@ -72,7 +53,8 @@ export type LinearJourneyStepHandler<TContext = unknown, TResult = void> = Navig
 export type LinearJourneyProps<TContext = unknown, TStepId extends string = string> = {
   /**
    * The steps, one per child element, each with a mandatory unique `id`
-   * (an `id` prop or a `<LinearJourney.Step id>` wrapper). The step list is
+   * (a `<LinearJourney.Step id>` wrapper, or an inline `id` prop on components
+   * that declare one). The step list is
    * frozen at mount: changing the derived id list is a dev-mode error.
    */
   children: React.ReactNode;
