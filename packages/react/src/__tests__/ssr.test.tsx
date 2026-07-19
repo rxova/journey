@@ -12,17 +12,19 @@ const A = () => <Step label="a" />;
 const Form = () => <Step label="form" />;
 
 describe("server-side rendering (no window)", () => {
-  it("renders the linear journey's first step to a string", () => {
+  it("renders the linear journey's fallback to a string — the start is a client effect", () => {
+    // Render is pure: the machine is created idle and started in a layout
+    // effect, which never runs on the server. Deterministic on both sides —
+    // the client's first frame is the same fallback, replaced before paint.
     const html = renderToString(
-      <LinearJourney header={<p>head</p>} footer={<p>foot</p>}>
+      <LinearJourney header={<p>head</p>} footer={<p>foot</p>} fallback={<p>loading</p>}>
         <LinearJourney.Step id="a">
           <A />
         </LinearJourney.Step>
       </LinearJourney>
     );
-    expect(html).toContain("step:a");
-    expect(html).toContain("head");
-    expect(html).toContain("foot");
+    expect(html).toContain("loading");
+    expect(html).not.toContain("step:a");
   });
 
   it("renders headless-owned machines to a string", () => {

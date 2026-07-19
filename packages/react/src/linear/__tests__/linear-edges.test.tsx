@@ -134,11 +134,11 @@ describe("navigation edges", () => {
     expect(screen.getByTestId("paused").textContent).toBe("paused");
   });
 
-  it("starts directly at startAt: earlier steps never enter or leave", async () => {
+  it("starts directly at options.startAt: earlier steps never enter or leave", async () => {
     const onLeaveA = vi.fn();
     const onError = vi.fn();
     render(
-      <LinearJourney startAt="b" onError={onError}>
+      <LinearJourney options={{ startAt: "b" }} onError={onError}>
         <LinearJourney.Step id="a" onLeave={onLeaveA}>
           <StepA />
         </LinearJourney.Step>
@@ -200,7 +200,7 @@ describe("render chrome and refs", () => {
 });
 
 describe("createLinearJourney extras", () => {
-  it("threads startAt, persist, and plugins through the typed component's props", async () => {
+  it("threads options (startAt, persist, plugins) through the typed component", async () => {
     const storage = memoryStorage();
     const journey = createLinearJourney<{ n: number }>()(["one", "two"]);
 
@@ -212,9 +212,7 @@ describe("createLinearJourney extras", () => {
     render(
       <journey.LinearJourney
         context={{ n: 0 }}
-        startAt="two"
-        persist={{ key: "bundle", storage }}
-        plugins={[]}
+        options={{ startAt: "two", persist: { key: "bundle", storage }, plugins: [] }}
         footer={<Forward />}
       >
         <StepA id="one" />

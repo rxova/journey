@@ -471,9 +471,19 @@ storage? }`). Expands to the persistence plugin prepended to `plugins`
   `id` on every component in the consumer's app. `<LinearJourney.Step id>` is
   the canonical spelling; the inline `id` prop still works at runtime and
   type-checks for components that declare their own `id` prop.
-- The React `LinearJourneySnapshot` narrows `currentStep` to non-null (the
-  tier always autostarts, so the idle state is unobservable) — a type-level
-  invariant, not reshaping.
+- The React `LinearJourneySnapshot` narrows `currentStep` to non-null (a
+  rendered journey never observes idle) — a type-level invariant, not
+  reshaping.
+- **Creation options are one verbatim prop** (accepted 2026-07-19): `startAt`,
+  `persist`, and `plugins` are no longer individual props — `<LinearJourney
+options>` takes Core's `JourneyRuntimeOptions` unchanged, frozen at mount,
+  with `autoStart` defaulting to `true`. **The start moved out of render into
+  a layout effect** (subscribers attach first, so the initial `stepEnter`
+  reaches the callback props and `onStart` fires from it): render is pure — no
+  entry hooks, no persistence writes. While idle, only `fallback` renders
+  (also the SSR payload, per §3.11's original default), and the client start
+  re-renders synchronously before paint. `startIndex` stays as JSX-order
+  sugar.
 
 **Deferred (follow-up, out of scope here):** statically stripping dev-only
 error/warning strings from production bundles via build-time `define`
