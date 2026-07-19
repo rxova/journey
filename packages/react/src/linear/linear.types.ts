@@ -2,7 +2,7 @@ import type React from "react";
 import type {
   AnyJourneyPlugin,
   JourneyEventPayloads,
-  JourneyPersistOption,
+  JourneyRuntimeOptions,
   LinearJourneyMachine as CoreLinearJourneyMachine,
   LinearSnapshot,
   NavigationWork,
@@ -61,10 +61,17 @@ export type LinearJourneyProps<TContext = unknown, TStepId extends string = stri
 
   /** Initial shared state. Lives in the core machine, not in React. */
   context?: TContext;
-  /** Zero-based index of the starting step (JSX-order sugar over `startAt`). Default 0. */
+  /** Zero-based index of the starting step (JSX-order sugar over `options.startAt`). Default 0. */
   startIndex?: number;
-  /** Starting step id (core's `startAt`); wins over `startIndex` (dev-mode error if both are set). */
-  startAt?: TStepId;
+  /**
+   * Core's creation options, passed through verbatim (`startAt`, `persist`,
+   * `plugins`, `defaultTimeoutMs`, `autoStart`) and frozen at mount.
+   * `autoStart` defaults to `true` here and the start runs in a layout effect —
+   * render stays pure, and until the journey starts only `fallback` renders
+   * (which is also what SSR emits). With `autoStart: false`, start it yourself
+   * via `machineRef`/`useLinearJourney().machine.controls.start()`.
+   */
+  options?: JourneyRuntimeOptions<readonly AnyJourneyPlugin[], TStepId>;
 
   /** Rendered above/below the active step, INSIDE the linear journey context — both may call useLinearJourney(). */
   header?: React.ReactNode;
@@ -85,9 +92,6 @@ export type LinearJourneyProps<TContext = unknown, TStepId extends string = stri
   /** Verbatim forward of core's `error` event. */
   onError?: (payload: LinearJourneyEventPayloads<TContext, TStepId>["error"]) => void;
 
-  /** Core's `persist` creation option, passed through verbatim. */
-  persist?: JourneyPersistOption;
-  plugins?: readonly AnyJourneyPlugin[];
   /** Imperative escape hatch to the underlying core machine. */
   machineRef?: React.Ref<LinearJourneyMachine<TContext, TStepId>>;
 };

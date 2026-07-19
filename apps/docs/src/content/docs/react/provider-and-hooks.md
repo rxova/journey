@@ -26,7 +26,7 @@ no separate per-step metadata lookup.
 ```tsx
 <LinearJourney
   context={initialContext}
-  startAt="shipping"
+  options={{ startAt: "shipping" }}
   header={<Progress />}
   footer={<Controls />}
   fallback={<p>Journey unavailable</p>}
@@ -46,20 +46,19 @@ no separate per-step metadata lookup.
 
 Important props include:
 
-| Prop                          | Meaning                                                                 |
-| ----------------------------- | ----------------------------------------------------------------------- |
-| `context`                     | Initial shared context                                                  |
-| `startIndex` / `startAt`      | Starting step; `startAt` is Core's option and wins over the index sugar |
-| `header` / `footer`           | Content rendered inside journey context                                 |
-| `wrapper`                     | Element cloned around the active step                                   |
-| `fallback`                    | Content shown when no step can render                                   |
-| `onStart`                     | Fires once per mount with the start snapshot                            |
-| `onStepEnter` / `onStepLeave` | Verbatim Core `stepEnter` / `stepLeave` event payloads                  |
-| `onComplete`                  | Core `statusChange` payload, forwarded when `current === "completed"`   |
-| `onError`                     | Verbatim Core `error` event payload                                     |
-| `persist`                     | Core's `persist` creation option (`JourneyPersistOption`)               |
-| `plugins`                     | Core plugins installed on the owned machine                             |
-| `machineRef`                  | Imperative access for integration code                                  |
+| Prop                          | Meaning                                                                                                                                         |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `context`                     | Initial shared context                                                                                                                          |
+| `options`                     | Core's `JourneyRuntimeOptions`, verbatim and frozen at mount: `startAt`, `persist`, `plugins`, `defaultTimeoutMs`, `autoStart` (default `true`) |
+| `startIndex`                  | JSX-order sugar for the starting step; `options.startAt` wins                                                                                   |
+| `header` / `footer`           | Content rendered inside journey context                                                                                                         |
+| `wrapper`                     | Element cloned around the active step                                                                                                           |
+| `fallback`                    | Content shown when no step can render                                                                                                           |
+| `onStart`                     | Fires once per mount with the start snapshot                                                                                                    |
+| `onStepEnter` / `onStepLeave` | Verbatim Core `stepEnter` / `stepLeave` event payloads                                                                                          |
+| `onComplete`                  | Core `statusChange` payload, forwarded when `current === "completed"`                                                                           |
+| `onError`                     | Verbatim Core `error` event payload                                                                                                             |
+| `machineRef`                  | Imperative access for integration code                                                                                                          |
 
 Callback props are verbatim forwards of Core subscription events. `onStepEnter` receives
 `{ snapshot, from, to, direction }`, where `direction` is `"forward" | "backward" | "jump"` by
@@ -68,9 +67,17 @@ entry, `goToStepById`, `goToStepByIndex`, and `goToLastVisitedStep` report `"jum
 `onStepLeave` receives `{ snapshot, from, to }`, `onComplete` receives
 `{ snapshot, previous, current }`, and `onError` receives `{ snapshot, error, phase, stepId }`.
 
-`startAt` starts the journey directly at that step: earlier steps are never entered or visited,
-their `onEnter`/`onLeave` hooks never fire, the timeline begins as `[startAt]`, and
+`options.startAt` starts the journey directly at that step: earlier steps are never entered or
+visited, their `onEnter`/`onLeave` hooks never fire, the timeline begins as `[startAt]`, and
 `controls.restart()` returns to it. An unknown `startAt` id throws at mount.
+
+**Render is pure.** The machine is created idle during render and started in a layout effect, so
+step `onEnter` hooks and persistence writes never run inside a render. Until the start commits
+(the first client frame, server rendering, or an `options={{ autoStart: false }}` machine you have
+not started yet) only `fallback` renders — hook consumers never observe a missing `currentStep`.
+On the client the start re-renders synchronously before paint, so nothing flashes; on the server
+the emitted HTML is the fallback. With `autoStart: false`, start the journey yourself via
+`machineRef` or `useLinearJourney().machine.controls.start()`.
 
 The step list is frozen at mount. Journey reports a development error if the derived IDs change,
 because changing the declared order would invalidate history and index semantics.

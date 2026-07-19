@@ -223,3 +223,64 @@ describe("useJourneyEvent / useJourneyStepLifecycle / useStepAsyncState", () => 
     expect(screen.getByTestId("async-b").textContent).toBe("error");
   });
 });
+
+describe("concurrent rendering", () => {
+  it("never tears: two subscribers observe the same step within every commit", async () => {
+    const machine = makeMachine();
+    const observed: { a: string | undefined; b: string | undefined }[] = [];
+    let currentA: string | undefined;
+    const A = () => {
+      currentA = useJourneySelector(machine, (snapshot) => snapshot.currentStep?.id);
+      return <span>{currentA}</span>;
+    };
+    const B = () => {
+      const b = useJourneySelector(machine, (snapshot) => snapshot.currentStep?.id);
+      observed.push({ a: currentA, b });
+      return <span>{b}</span>;
+    };
+    render(
+      <>
+        <A />
+        <B />
+      </>
+    );
+    await flush();
+
+    await act(async () => {
+      React.startTransition(() => {
+        void machine.navigate.goToNextStep();
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    await act(async () => {
+      React.startTransition(() => {
+        void machine.navigate.goToNextStep();
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(observed.length).toBeGreaterThanOrEqual(2);
+    for (const pair of observed) {
+      expect(pair.a).toBe(pair.b);
+    }
+    expect(machine.getSnapshot().currentStep?.id).toBe("c");
+  });
+
+  it("navigation triggered inside startTransition lands and renders", async () => {
+    const machine = makeMachine();
+    const Probe = () => {
+      const id = useJourneySelector(machine, (snapshot) => snapshot.currentStep?.id);
+      return <span data-testid="current">{id}</span>;
+    };
+    render(<Probe />);
+    await flush();
+
+    await act(async () => {
+      React.startTransition(() => {
+        void machine.navigate.goToStepById("c");
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(screen.getByTestId("current").textContent).toBe("c");
+  });
+});

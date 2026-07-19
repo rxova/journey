@@ -31,7 +31,9 @@ export function linearJourneyTypes() {
   type _context = Expect<Equal<Hook["snapshot"]["context"], { email: string }>>;
 
   type Props = Parameters<typeof bundle.LinearJourney>[0];
-  type _start = Expect<Equal<Props["startAt"], "intro" | "details" | "done" | undefined>>;
+  type _start = Expect<
+    Equal<NonNullable<Props["options"]>["startAt"], "intro" | "details" | "done" | undefined>
+  >;
 
   const definition = bundle.toGraphDefinition({ email: "" });
   type _initial = Expect<Equal<typeof definition.initial, "intro" | "details" | "done">>;

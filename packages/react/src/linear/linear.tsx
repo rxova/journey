@@ -57,7 +57,6 @@ const LinearJourneyComponent = <TContext,>(
     children,
     context,
     startIndex,
-    startAt,
     header,
     footer,
     wrapper,
@@ -67,15 +66,14 @@ const LinearJourneyComponent = <TContext,>(
     onStepLeave,
     onComplete,
     onError,
-    persist,
-    plugins,
+    options,
     machineRef,
     declaredStepIds
   } = props;
 
-  if (startIndex !== undefined && startIndex !== 0 && startAt !== undefined) {
+  if (startIndex !== undefined && startIndex !== 0 && options?.startAt !== undefined) {
     errorInDevelopment(
-      "<LinearJourney> received both startIndex and startAt; startAt wins. Remove one."
+      "<LinearJourney> received both startIndex and options.startAt; options.startAt wins. Remove one."
     );
   }
 
@@ -93,25 +91,28 @@ const LinearJourneyComponent = <TContext,>(
   callbacksRef.current = { onStart, onStepEnter, onStepLeave, onComplete, onError };
 
   // Machine ownership: lazy ref init so StrictMode's double render creates
-  // exactly one machine, fixed for the lifetime of the mount. All linear
-  // semantics — start position, persist, step work — are core creation options.
+  // exactly one machine, fixed for the lifetime of the mount. Creation is
+  // pure — `autoStart` is forced off here and the start runs in the layout
+  // effect below, after subscribers attach, so entry effects and persistence
+  // writes never happen during render. Options are frozen at mount.
   const machineRefInternal = React.useRef<LinearJourneyMachine | null>(null);
+  const autoStartRef = React.useRef(options?.autoStart ?? true);
   if (machineRefInternal.current === null) {
     if (steps.length === 0) {
       throw new Error("<LinearJourney> needs at least one step.");
     }
     const resolvedStartAt =
-      startAt ?? (startIndex !== undefined && startIndex !== 0 ? steps[startIndex]?.id : undefined);
+      options?.startAt ??
+      (startIndex !== undefined && startIndex !== 0 ? steps[startIndex]?.id : undefined);
     machineRefInternal.current = createLinearJourney(
       {
         steps: steps.map((step) => ({ id: step.id, ...step.config })) as never,
         context: (context ?? {}) as unknown
       },
       {
-        autoStart: true,
-        ...(resolvedStartAt !== undefined ? { startAt: resolvedStartAt } : {}),
-        ...(persist !== undefined ? { persist } : {}),
-        plugins: plugins ?? []
+        ...options,
+        autoStart: false,
+        ...(resolvedStartAt !== undefined ? { startAt: resolvedStartAt } : {})
       }
     ) as unknown as LinearJourneyMachine;
   }
@@ -148,23 +149,20 @@ const LinearJourneyComponent = <TContext,>(
     );
   }
 
-  // Imperative machineRef, onStart, and verbatim event → prop forwarding.
+  // Imperative machineRef, verbatim event → prop forwarding, and the start.
   const startReportedRef = React.useRef(false);
   useSafeLayoutEffect(() => {
     assignMachineRef(machineRef, machine as never);
 
-    // Once per mounted journey (the ref guard absorbs StrictMode's double
-    // effect). The machine autostarts at creation, so the start snapshot
-    // already sits on the resolved start step.
-    if (!startReportedRef.current) {
-      startReportedRef.current = true;
-      const startSnapshot = machine.getSnapshot();
-      callbacksRef.current.onStart?.(startSnapshot as never);
-    }
-
     const subscriptions = machine.subscriptions;
     const unsubscribes = [
       subscriptions.subscribeEvent("stepEnter", (payload) => {
+        // The first from-null entry IS the start (once per mount: the ref
+        // guard absorbs StrictMode's double effect and restarts).
+        if (!startReportedRef.current && payload.from === null) {
+          startReportedRef.current = true;
+          callbacksRef.current.onStart?.(payload.snapshot as never);
+        }
         callbacksRef.current.onStepEnter?.(payload as never);
       }),
       subscriptions.subscribeEvent("stepLeave", (payload) => {
@@ -180,6 +178,13 @@ const LinearJourneyComponent = <TContext,>(
       })
     ];
 
+    // Start after the subscribers attach, outside render: the initial entry's
+    // hooks and persistence writes run here, and its stepEnter (from: null)
+    // reaches the callback props. A StrictMode re-run is a no-op (not idle).
+    if (autoStartRef.current) {
+      machine.controls.start();
+    }
+
     return () => {
       for (const unsubscribe of unsubscribes) unsubscribe();
       assignMachineRef(machineRef, null);
@@ -188,6 +193,19 @@ const LinearJourneyComponent = <TContext,>(
   }, [machine]);
 
   const snapshot = useJourneySnapshot(machine);
+
+  // Idle only exists before the layout-effect start (first client frame, SSR,
+  // or an autoStart: false machine the caller hasn't started yet): render the
+  // fallback alone so hook consumers never observe a null currentStep. The
+  // start re-renders synchronously before paint, so nothing flashes.
+  if (snapshot.currentStep === null) {
+    return (
+      <LinearJourneyMachineContext.Provider value={machine}>
+        {fallback ?? null}
+      </LinearJourneyMachineContext.Provider>
+    );
+  }
+
   const activeStep = steps.find((step) => step.id === snapshot.currentStep?.id);
 
   let activeNode: React.ReactNode;

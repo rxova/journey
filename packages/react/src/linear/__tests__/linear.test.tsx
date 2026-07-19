@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import {
   createLinearJourney,
   useLinearJourney,
@@ -128,9 +128,9 @@ describe("<LinearJourney> step metadata and start position", () => {
     expect(screen.getByTestId("metadata").textContent).toBe("Alpha");
   });
 
-  it("starts at startAt, which wins over startIndex", async () => {
+  it("starts at options.startAt, which wins over startIndex", async () => {
     render(
-      <LinearJourney startAt="b" startIndex={2}>
+      <LinearJourney options={{ startAt: "b" }} startIndex={2}>
         <StepA id="a" />
         <StepB id="b" />
         <StepC id="c" />
@@ -140,7 +140,7 @@ describe("<LinearJourney> step metadata and start position", () => {
     expect(screen.getByTestId("step-b")).toBeTruthy();
   });
 
-  it("starts at startIndex when no startAt is given", async () => {
+  it("starts at startIndex when no options.startAt is given", async () => {
     render(
       <LinearJourney startIndex={2}>
         <StepA id="a" />
@@ -152,11 +152,11 @@ describe("<LinearJourney> step metadata and start position", () => {
     expect(screen.getByTestId("step-c")).toBeTruthy();
   });
 
-  it("throws at mount for an unknown startAt id", () => {
+  it("throws at mount for an unknown options.startAt id", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     expect(() =>
       render(
-        <LinearJourney startAt="ghost">
+        <LinearJourney options={{ startAt: "ghost" }}>
           <StepA id="a" />
         </LinearJourney>
       )
@@ -244,6 +244,11 @@ describe("linear journey callbacks and machine escape hatches", () => {
     await flush();
     expect(machineRef.current?.getSnapshot().currentStep?.id).toBe("a");
     expect(onStart).toHaveBeenCalledTimes(1);
+    // The layout-effect start attaches subscribers first, so the initial
+    // entry itself is forwarded verbatim.
+    expect(onStepEnter).toHaveBeenCalledWith(
+      expect.objectContaining({ from: null, to: "a", direction: "jump" })
+    );
     expect(onStart).toHaveBeenCalledWith(
       expect.objectContaining({ currentStep: expect.objectContaining({ id: "a" }) })
     );
@@ -275,7 +280,7 @@ describe("linear journey callbacks and machine escape hatches", () => {
   it("threads the persist option through to core", async () => {
     const storage = memoryStorage();
     render(
-      <LinearJourney persist={{ key: "wiz", storage }} footer={<Nav />}>
+      <LinearJourney options={{ persist: { key: "wiz", storage } }} footer={<Nav />}>
         <StepA id="a" />
         <StepB id="b" />
       </LinearJourney>
@@ -322,6 +327,33 @@ describe("linear journey callbacks and machine escape hatches", () => {
     expect(consoleError).toHaveBeenCalledWith(expect.stringContaining("frozen at mount"));
     consoleError.mockRestore();
     delete (globalThis as { __DEV__?: boolean }).__DEV__;
+  });
+});
+
+describe("options.autoStart", () => {
+  it("false renders the fallback until the machine is started manually", async () => {
+    const onStart = vi.fn();
+    const machineRef = React.createRef<LinearJourneyMachine>();
+    render(
+      <LinearJourney
+        options={{ autoStart: false }}
+        fallback={<span data-testid="idle">idle</span>}
+        onStart={onStart}
+        machineRef={machineRef}
+      >
+        <StepA id="a" />
+      </LinearJourney>
+    );
+    await flush();
+    expect(screen.getByTestId("idle")).toBeTruthy();
+    expect(onStart).not.toHaveBeenCalled();
+
+    await act(async () => {
+      machineRef.current?.controls.start();
+    });
+    await flush();
+    expect(screen.getByTestId("step-a")).toBeTruthy();
+    expect(onStart).toHaveBeenCalledTimes(1);
   });
 });
 
