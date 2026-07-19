@@ -252,6 +252,34 @@ describe("createLinearJourney extras", () => {
     expect(screen.getByTestId("step-b")).toBeTruthy();
   });
 
+  it("warns in dev when two mounted components register work for the same step", async () => {
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const First = () => {
+      useLinearJourneyStep({ run: () => undefined });
+      return <span>first</span>;
+    };
+    const Second = () => {
+      useLinearJourneyStep({ run: () => undefined });
+      return <span>second</span>;
+    };
+    render(
+      <LinearJourney>
+        <LinearJourney.Step id="doubled">
+          <First />
+          <Second />
+        </LinearJourney.Step>
+      </LinearJourney>
+    );
+    await flush();
+
+    expect(consoleWarn).toHaveBeenCalledWith(
+      expect.stringContaining('live registration for step "doubled"')
+    );
+    consoleWarn.mockRestore();
+    delete (globalThis as { __DEV__?: boolean }).__DEV__;
+  });
+
   it("useLinearJourneyStep outside a step component throws", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const Outside = () => {

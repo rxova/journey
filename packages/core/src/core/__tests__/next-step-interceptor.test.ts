@@ -96,3 +96,27 @@ describe("registerNextStepInterceptor", () => {
     ).toThrow(/registerNextStepInterceptor references unknown step "nope"/);
   });
 });
+
+describe("registerNextStepInterceptor dev warning", () => {
+  it("warns when overwriting a live registration, but not across unregister cycles", async () => {
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const machine = await startedLinear();
+      const unregister = machine.navigate.registerNextStepInterceptor("a", {
+        run: () => undefined
+      });
+      unregister();
+      machine.navigate.registerNextStepInterceptor("a", { run: () => undefined });
+      expect(consoleWarn).not.toHaveBeenCalled();
+
+      machine.navigate.registerNextStepInterceptor("a", { run: () => undefined });
+      expect(consoleWarn).toHaveBeenCalledWith(
+        expect.stringContaining('live registration for step "a"')
+      );
+    } finally {
+      consoleWarn.mockRestore();
+      delete (globalThis as { __DEV__?: boolean }).__DEV__;
+    }
+  });
+});
