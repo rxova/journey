@@ -56,7 +56,7 @@ const reactTiers = [
   {
     name: "Headless hooks",
     importPath: "@rxova/journey-react/headless",
-    body: "You own the Core machine and the rendering. The hooks only subscribe to snapshots and step lifecycle.",
+    body: "You build the machine and own the rendering. useOwnedJourney keeps it for the component's lifetime and disposes it on unmount; the rest just subscribe.",
     bestFit: "Existing machines, custom rendering",
     href: "/docs/react/overview"
   }
