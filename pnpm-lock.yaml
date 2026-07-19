@@ -71,9 +71,6 @@ importers:
       eslint-plugin-react-hooks:
         specifier: ^7.1.1
         version: 7.1.1(eslint@10.5.0(jiti@2.7.0))
-      expect-type:
-        specifier: ^1.3.0
-        version: 1.3.0
       fast-check:
         specifier: ^4.8.0
         version: 4.8.0
