@@ -260,6 +260,10 @@ describe("operation invokes", () => {
     await postToBridge(
       buildInvokeEnvelope("test-machine", "machine.inspectSnapshot", undefined, { version: 5 })
     );
+    await postToBridge({
+      ...buildInvokeEnvelope("test-machine", "machine.inspectSnapshot"),
+      kind: "unregister"
+    });
 
     expect(capture.ofKind("operationResult")).toHaveLength(0);
     expect(capture.ofKind("operationError")).toHaveLength(0);

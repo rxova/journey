@@ -174,6 +174,29 @@ describe("render chrome and refs", () => {
     await flush();
     expect(seen[seen.length - 1]).toBeNull();
   });
+
+  it("renders fallback when a rerender removes the machine's active step", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const view = render(
+      <LinearJourney fallback={<span data-testid="fallback">fallback</span>} footer={<IndexNav />}>
+        <StepA id="a" />
+        <StepB id="b" />
+      </LinearJourney>
+    );
+    await flush();
+    fireEvent.click(screen.getByText("by-index"));
+    await flush();
+
+    view.rerender(
+      <LinearJourney fallback={<span data-testid="fallback">fallback</span>} footer={<IndexNav />}>
+        <StepA id="a" />
+      </LinearJourney>
+    );
+    await flush();
+
+    expect(screen.getByTestId("fallback")).toBeTruthy();
+    consoleError.mockRestore();
+  });
 });
 
 describe("createLinearJourney extras", () => {

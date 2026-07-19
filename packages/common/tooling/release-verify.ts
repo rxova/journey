@@ -31,6 +31,7 @@ export const releaseVerifySteps: readonly ReleaseVerifyStep[] = [
   { name: "Build docs", script: "docs:check" },
   { name: "Typecheck packages and apps", script: "packages:typecheck" },
   { name: "Run tests", script: "test" },
+  { name: "Check per-file package coverage", script: "packages:coverage" },
   { name: "Check package publishing metadata", script: "packaging:check" },
   { name: "Smoke-test package tarballs", script: "pack:smoke" },
   { name: "Build examples", script: "examples:build" },

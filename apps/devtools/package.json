@@ -9,7 +9,7 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "pnpm --workspace-root vitest run apps/devtools/test",
-    "coverage": "JOURNEY_COVERAGE_INCLUDE=apps/devtools/src/**/*.ts,apps/devtools/src/**/*.tsx pnpm --workspace-root vitest run apps/devtools/test --coverage --coverage.reporter=text-summary",
+    "coverage": "JOURNEY_COVERAGE_INCLUDE=apps/devtools/src/**/*.ts,apps/devtools/src/**/*.tsx JOURNEY_COVERAGE_DIR=coverage/devtools pnpm --workspace-root vitest run apps/devtools/test --coverage --coverage.reporter=text-summary",
     "test:browser": "node -e \"console.log('Browser integration tests are temporarily disabled.')\""
   },
   "dependencies": {

@@ -37,6 +37,31 @@ describe("createGraphJourney — event-driven transitions", () => {
     expect(await machine.send("EDIT")).toEqual({ ok: false, reason: "no-enabled-transition" });
   });
 
+  it("treats a throwing transition guard as disabled", async () => {
+    const machine = createGraphJourney({
+      steps: { a: {}, b: {} },
+      transitions: {
+        GO: {
+          from: "a",
+          to: "b",
+          when: () => {
+            throw new Error("guard exploded");
+          }
+        }
+      },
+      initial: "a",
+      context: {}
+    });
+    machine.controls.start();
+    await flush();
+
+    expect(machine.getSnapshot().outgoingTransitions[0]).toMatchObject({
+      guard: "failed",
+      enabled: false
+    });
+    expect(await machine.send("GO")).toEqual({ ok: false, reason: "no-enabled-transition" });
+  });
+
   it("multiple candidates per event: first enabled in declaration order wins", async () => {
     const fallback = await startedGraph();
     await fallback.send("SUBMIT");

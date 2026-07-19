@@ -164,6 +164,71 @@ describe("PanelProvider bridge lifecycle", () => {
     expect(ports[0]?.postedMessages).toEqual([{ type: "panel-init", tabId: 7 }]);
     expect(latestState?.isCommandChannelReady).toBe(false);
     expect(latestState?.displayConnected).toBe(false);
+
+    act(() => {
+      latestActions?.invokeOperation("not-registered", { operationId: "machine.inspectSnapshot" });
+    });
+    expect(ports[0]?.postedMessages[1]).toMatchObject({
+      type: "panel-command",
+      envelope: {
+        machineId: "not-registered",
+        version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION
+      }
+    });
+  });
+
+  it("clears pending status and machine timers when unmounted", async () => {
+    act(() => {
+      root.render(
+        <PanelProvider>
+          <TestConsumer />
+        </PanelProvider>
+      );
+    });
+    const port = ports[0];
+    if (!port) {
+      throw new Error("expected active port");
+    }
+
+    await act(async () => {
+      port.emitMessage({ type: "panel-connected", connected: true });
+      port.emitMessage({
+        type: "panel-bridge-envelope",
+        envelope: createRegisterEnvelope("machine-1")
+      });
+      port.emitMessage({ type: "panel-connected", connected: false });
+      await Promise.resolve();
+    });
+
+    act(() => {
+      root.unmount();
+    });
+    expect(port.disconnected).toBe(true);
+  });
+
+  it("ignores a captured reconnect callback after unmount", () => {
+    connectMock.mockImplementationOnce(() => {
+      throw new Error("connect failed");
+    });
+    const setTimeoutSpy = vi.spyOn(window, "setTimeout");
+
+    act(() => {
+      root.render(
+        <PanelProvider>
+          <TestConsumer />
+        </PanelProvider>
+      );
+    });
+    const reconnect = setTimeoutSpy.mock.calls.find((call) => call[1] === 600)?.[0];
+    if (typeof reconnect !== "function") {
+      throw new Error("expected reconnect callback");
+    }
+
+    act(() => {
+      root.unmount();
+      reconnect();
+    });
+    expect(connectMock).toHaveBeenCalledTimes(1);
   });
 
   it("updates state from connection, warning, and register messages", async () => {

@@ -175,6 +175,18 @@ describe("extension envelope guard", () => {
       source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE
     };
     expect(isJourneyDevtoolsExtensionEnvelope(bridgeSourced)).toBe(false);
+    expect(
+      isJourneyDevtoolsExtensionEnvelope({
+        ...buildInvokeEnvelope("m1", "op"),
+        kind: "unregister"
+      })
+    ).toBe(false);
+    expect(
+      isJourneyDevtoolsExtensionEnvelope({
+        ...buildInvokeEnvelope("m1", "op"),
+        invocation: null
+      })
+    ).toBe(false);
   });
 });
 
@@ -248,6 +260,7 @@ describe("meta field validation", () => {
       false
     );
     expect(isJourneyDevtoolsBridgeEnvelope(register({ appName: 5 }))).toBe(false);
+    expect(isJourneyDevtoolsBridgeEnvelope(register({ features: null }))).toBe(false);
   });
 
   it("validates operation field descriptors", () => {
@@ -283,6 +296,35 @@ describe("meta field validation", () => {
     expect(
       isJourneyDevtoolsBridgeEnvelope(
         withField({ key: "k", label: "K", type: "text", required: "y" })
+      )
+    ).toBe(false);
+    expect(isJourneyDevtoolsBridgeEnvelope(withField(null as never))).toBe(false);
+    expect(
+      isJourneyDevtoolsBridgeEnvelope(
+        withField({
+          key: "k",
+          label: "K",
+          type: "integer",
+          required: false,
+          description: "Count",
+          placeholder: "0",
+          min: 0,
+          max: 10
+        })
+      )
+    ).toBe(true);
+    expect(
+      isJourneyDevtoolsBridgeEnvelope(
+        register({
+          features: [
+            {
+              id: "f",
+              label: "f",
+              description: null,
+              operations: [null]
+            }
+          ]
+        })
       )
     ).toBe(false);
   });

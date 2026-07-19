@@ -34,6 +34,70 @@ const getOutcomeLabel = (entry: JourneyPanelTimelineEntry): string | null => {
   return entry.meta.transitioned ? "OK" : "NOOP";
 };
 
+export const observeTimelineElementRect = (
+  element: HTMLDivElement | null,
+  callback: (rect: { width: number; height: number }) => void
+): (() => void) | undefined => {
+  if (!element) {
+    return undefined;
+  }
+
+  const emit = () => {
+    callback({
+      width: element.clientWidth,
+      height: element.clientHeight || TIMELINE_FALLBACK_VIEWPORT_HEIGHT_PX
+    });
+  };
+
+  emit();
+
+  if (typeof ResizeObserver !== "function") {
+    window.addEventListener("resize", emit);
+    return () => window.removeEventListener("resize", emit);
+  }
+
+  const observer = new ResizeObserver(emit);
+  observer.observe(element);
+
+  return () => {
+    observer.unobserve(element);
+    observer.disconnect();
+  };
+};
+
+export const observeTimelineElementOffset = (
+  element: HTMLDivElement | null,
+  callback: (offset: number, isScrolling: boolean) => void
+): (() => void) | undefined => {
+  if (!element) {
+    return undefined;
+  }
+
+  let timeoutId: number | null = null;
+  const emit = (isScrolling: boolean) => callback(element.scrollTop, isScrolling);
+
+  const handleScroll = () => {
+    emit(true);
+    if (timeoutId !== null) {
+      window.clearTimeout(timeoutId);
+    }
+    timeoutId = window.setTimeout(() => {
+      emit(false);
+      timeoutId = null;
+    }, 150);
+  };
+
+  emit(false);
+  element.addEventListener("scroll", handleScroll, { passive: true });
+
+  return () => {
+    element.removeEventListener("scroll", handleScroll);
+    if (timeoutId !== null) {
+      window.clearTimeout(timeoutId);
+    }
+  };
+};
+
 type TimelineListProps = {
   visibleEntries: readonly JourneyPanelTimelineEntry[];
   visibleStartIndex: number;
@@ -63,64 +127,10 @@ export const TimelineList = ({
         timelineListElement.scrollTop = offset;
       }
     },
-    observeElementRect: (_instance, callback) => {
-      const element = timelineListElement;
-      if (!element) {
-        return undefined;
-      }
-
-      const emit = () => {
-        callback({
-          width: element.clientWidth,
-          height: element.clientHeight || TIMELINE_FALLBACK_VIEWPORT_HEIGHT_PX
-        });
-      };
-
-      emit();
-
-      if (typeof ResizeObserver !== "function") {
-        window.addEventListener("resize", emit);
-        return () => window.removeEventListener("resize", emit);
-      }
-
-      const observer = new ResizeObserver(emit);
-      observer.observe(element);
-
-      return () => {
-        observer.unobserve(element);
-        observer.disconnect();
-      };
-    },
-    observeElementOffset: (_instance, callback) => {
-      const element = timelineListElement;
-      if (!element) {
-        return undefined;
-      }
-
-      let timeoutId: number | null = null;
-      const emit = (isScrolling: boolean) => callback(element.scrollTop, isScrolling);
-
-      const handleScroll = () => {
-        emit(true);
-        if (timeoutId !== null) {
-          window.clearTimeout(timeoutId);
-        }
-        timeoutId = window.setTimeout(() => {
-          emit(false);
-          timeoutId = null;
-        }, 150);
-      };
-
-      emit(false);
-      element.addEventListener("scroll", handleScroll, { passive: true });
-
-      return () => {
-        element.removeEventListener("scroll", handleScroll);
-        if (timeoutId !== null) {
-          window.clearTimeout(timeoutId);
-        }
-      };
-    },
+    observeElementRect: (_instance, callback) =>
+      observeTimelineElementRect(timelineListElement, callback),
+    observeElementOffset: (_instance, callback) =>
+      observeTimelineElementOffset(timelineListElement, callback),
     initialRect: {
       width: 0,
       height: TIMELINE_FALLBACK_VIEWPORT_HEIGHT_PX

@@ -50,6 +50,7 @@
     "prepare": "husky",
     "commitlint": "node --import tsx ./packages/common/tooling/commitlint.ts",
     "test": "vitest run --coverage --pool=threads",
+    "packages:coverage": "pnpm -r --workspace-concurrency=1 --filter @rxova/journey-core --filter @rxova/journey-react --filter @rxova/journey-devtools-bridge --filter apps-devtools coverage",
     "test:precommit": "vitest run --coverage --pool=threads --coverage.reporter=text-summary",
     "test:watch": "vitest",
     "size": "pnpm -r --reporter=append-only --workspace-concurrency=1 size",

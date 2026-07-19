@@ -51,6 +51,8 @@ jobs:
         run: pnpm run packages:typecheck
       - name: Run test suite
         run: pnpm run test
+      - name: Enforce per-file package coverage
+        run: pnpm run packages:coverage
 
   examples:
     runs-on: ubuntu-latest

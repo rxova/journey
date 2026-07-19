@@ -24,7 +24,16 @@ import { OperationSectionCard } from "../src/panel/components/commands/Operation
 import { PanelHeader } from "../src/panel/components/PanelHeader";
 import { SectionErrorBoundary } from "../src/panel/components/SectionErrorBoundary";
 import { TimelineInspector } from "../src/panel/components/TimelineInspector";
-import { TimelineList } from "../src/panel/components/timeline/TimelineList";
+import {
+  TimelineList,
+  observeTimelineElementOffset,
+  observeTimelineElementRect
+} from "../src/panel/components/timeline/TimelineList";
+import {
+  parseDisplayLimit,
+  updateDisplayLimit
+} from "../src/panel/components/timeline/TimelineToolbar";
+import { getProtocolMismatchReason, isLegacyProtocolVersion } from "../src/panel/utils/protocol";
 import { createGraphSnapshot } from "./fixtures";
 
 const panelProviderMocks = vi.hoisted(() => ({
@@ -344,6 +353,19 @@ describe("panel components", () => {
     }
     await setInputValue(select as HTMLSelectElement, "m1");
     expect(onSelect).toHaveBeenCalledWith("m1");
+
+    await selector.rerender(
+      <JourneyMachineSelector
+        machineOrder={["m1"]}
+        machines={{
+          m1: createMachineState({ meta: { ...createMachineState().meta, appName: null } })
+        }}
+        selectedMachineId={null}
+        onSelect={onSelect}
+      />
+    );
+    expect(selector.container.textContent).toContain("Checkout");
+    expect(selector.container.textContent).not.toContain("(Store)");
     await selector.unmount();
 
     const emptySelector = await mount(
@@ -448,6 +470,12 @@ describe("panel components", () => {
     expect(onDisplayLimitChange).toHaveBeenCalledWith(null);
     await setInputValue(displayLimitInput as HTMLInputElement, "10");
     expect(onDisplayLimitChange).toHaveBeenCalledWith(10);
+    await setInputValue(displayLimitInput as HTMLInputElement, "1e999");
+    expect(onDisplayLimitChange).not.toHaveBeenCalledWith(Infinity);
+    expect(parseDisplayLimit("1e999")).toBeUndefined();
+    expect(parseDisplayLimit(" -4 ")).toBe(1);
+    updateDisplayLimit("1e999", onDisplayLimitChange);
+    expect(onDisplayLimitChange).not.toHaveBeenCalledWith(Infinity);
 
     const pruneButton = Array.from(view.container.querySelectorAll("button")).find(
       (button) => button.textContent === "Prune to limit"
@@ -586,6 +614,9 @@ describe("panel components", () => {
     }) as typeof window.setTimeout;
     window.clearTimeout = vi.fn() as unknown as typeof window.clearTimeout;
 
+    expect(observeTimelineElementRect(null, vi.fn())).toBeUndefined();
+    expect(observeTimelineElementOffset(null, vi.fn())).toBeUndefined();
+
     const onSelectEntry = vi.fn();
     const view = await mount(
       <TimelineList
@@ -651,6 +682,83 @@ describe("panel components", () => {
     });
     window.setTimeout = originalSetTimeout;
     window.clearTimeout = originalClearTimeout;
+  });
+
+  it("serializes circular copy payloads and resets clipboard feedback timers", async () => {
+    vi.useFakeTimers();
+    let serializationCount = 0;
+    const payload = {
+      toJSON: () => {
+        serializationCount += 1;
+        if (serializationCount > 1) {
+          throw new Error("copy serialization failed");
+        }
+        return { renderable: true };
+      }
+    };
+    const entry = createTimelineEntry({ actionPayload: payload });
+    const view = await mount(
+      <TimelineInspector
+        entries={[entry]}
+        selectedIndex={0}
+        selectedEntry={entry}
+        displayedSnapshot={snapshot}
+        selectedDiff={diff}
+        followLatest={false}
+        displayLimit={null}
+        onSelectEntry={vi.fn()}
+        onFollowLatestChange={vi.fn()}
+        onDisplayLimitChange={vi.fn()}
+        onPrune={vi.fn()}
+      />
+    );
+    const copyButton = Array.from(view.container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Copy")
+    );
+    if (!copyButton) {
+      throw new Error("missing copy button");
+    }
+
+    await click(copyButton);
+    await act(async () => Promise.resolve());
+    expect(copyButton.textContent).toContain("Copied");
+    await act(async () => vi.advanceTimersByTime(1200));
+    expect(copyButton.textContent).toContain("Copy");
+
+    vi.mocked(navigator.clipboard.writeText).mockRejectedValueOnce(new Error("denied"));
+    await click(copyButton);
+    await act(async () => Promise.resolve());
+    await act(async () => vi.advanceTimersByTime(1600));
+    expect(copyButton.textContent).toContain("Copy");
+    await view.unmount();
+    vi.useRealTimers();
+  });
+
+  it("renders no-op action details without an action payload", async () => {
+    const entry = createTimelineEntry({
+      kind: "operation",
+      envelopeKind: "operationResult",
+      invocation: { operationId: "core.pause" },
+      actionPayload: undefined,
+      meta: { machineId: "m1", transitioned: false }
+    });
+    const view = await mount(
+      <TimelineInspector
+        entries={[entry]}
+        selectedIndex={0}
+        selectedEntry={entry}
+        displayedSnapshot={snapshot}
+        selectedDiff={diff}
+        followLatest={false}
+        displayLimit={null}
+        onSelectEntry={vi.fn()}
+        onFollowLatestChange={vi.fn()}
+        onDisplayLimitChange={vi.fn()}
+        onPrune={vi.fn()}
+      />
+    );
+    expect(view.container.textContent).toContain("did not produce a transition");
+    await view.unmount();
   });
 
   it("renders command controls validation, disabled, and option branches", async () => {
@@ -970,6 +1078,12 @@ describe("panel components", () => {
     expect(optionField.container.querySelector("select")?.getAttribute("aria-invalid")).toBe(
       "true"
     );
+    const optionSelect = optionField.container.querySelector("select");
+    if (!optionSelect) {
+      throw new Error("missing option select");
+    }
+    await setInputValue(optionSelect, "review");
+    expect(onChange).toHaveBeenCalledWith("custom.options:target", "review");
     await optionField.unmount();
 
     const textField = await mount(
@@ -1028,6 +1142,104 @@ describe("panel components", () => {
     const view = await mount(<CompatibilityNotice />);
     expect(view.container.textContent).toContain("Legacy protocol mismatch");
     expect(view.container.textContent).toContain("Legacy protocol v3 machines are read-only");
+
+    panelProviderMocks.useLegacyProtocolState.mockReturnValue({
+      protocolMismatchReason: "Newer protocol mismatch",
+      isLegacyProtocol: false
+    });
+    await view.rerender(<CompatibilityNotice />);
+    expect(view.container.textContent).toContain("Newer protocol mismatch");
+    expect(view.container.textContent).not.toContain("Legacy protocol v3 machines are read-only");
+    await view.unmount();
+  });
+
+  it("returns no active panel and reports protocol compatibility helpers", async () => {
+    const view = await mount(<ActiveMachinePanel />);
+    expect(view.container.innerHTML).toBe("");
+    expect(getProtocolMismatchReason(undefined)).toBeNull();
+    expect(getProtocolMismatchReason(JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION)).toContain(
+      "selected machine"
+    );
+    expect(isLegacyProtocolVersion(undefined)).toBe(false);
+    expect(isLegacyProtocolVersion(JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION)).toBe(true);
+    await view.unmount();
+  });
+
+  it("derives legacy linear controls when source maps are absent", async () => {
+    const linearSnapshot = {
+      ...snapshot,
+      type: "linear",
+      currentStep: null
+    } as unknown as JourneyDevtoolsSerializableSnapshot;
+    const metaWithoutStepIds = { ...createMachineState().meta };
+    delete metaWithoutStepIds.stepIds;
+    const machine = createMachineState({
+      snapshot: linearSnapshot,
+      meta: {
+        ...metaWithoutStepIds,
+        appName: null,
+        mode: "linear"
+      }
+    });
+    panelProviderMocks.useActiveMachine.mockReturnValue({
+      activeMachine: machine,
+      displayedSnapshot: linearSnapshot,
+      selectedTimelineEntry: machine.timelineEntries[0],
+      selectedDiff: diff,
+      protocolMismatchReason: null,
+      areCommandsDisabled: false,
+      commandDisabledReason: null
+    });
+
+    const view = await mount(<ActiveMachinePanel />);
+    expect(view.container.textContent).toContain("Operations");
+
+    const machineWithSteps = createMachineState({
+      snapshot: linearSnapshot,
+      meta: { ...machine.meta, stepIds: ["start", "review"] }
+    });
+    panelProviderMocks.useActiveMachine.mockReturnValue({
+      activeMachine: machineWithSteps,
+      displayedSnapshot: linearSnapshot,
+      selectedTimelineEntry: machineWithSteps.timelineEntries[0],
+      selectedDiff: diff,
+      protocolMismatchReason: null,
+      areCommandsDisabled: false,
+      commandDisabledReason: null
+    });
+    await view.rerender(<ActiveMachinePanel />);
+    expect(view.container.textContent).toContain("Operations");
+    await view.unmount();
+  });
+
+  it("renders event sections with either optional operation absent", async () => {
+    const operation = (id: "core.sendEvent" | "core.clearStepError") => ({
+      id,
+      label: id,
+      description: null,
+      mutates: true,
+      output: "snapshot" as const,
+      fields: []
+    });
+    const renderControls = (id: "core.sendEvent" | "core.clearStepError") => (
+      <CommandControls
+        features={[{ id: "core", label: "Core", description: null, operations: [operation(id)] }]}
+        snapshotStatus="running"
+        currentStepId="start"
+        onInvoke={vi.fn()}
+        disabled={false}
+        mutationsEnabled
+        mode="graph"
+        stepIds={[]}
+        eventTypes={[]}
+        eventTypesBySource={{}}
+        goToStepTargetsBySource={{}}
+      />
+    );
+    const view = await mount(renderControls("core.sendEvent"));
+    expect(view.container.textContent).toContain("core.sendEvent");
+    await view.rerender(renderControls("core.clearStepError"));
+    expect(view.container.textContent).toContain("core.clearStepError");
     await view.unmount();
   });
 
@@ -1092,6 +1304,34 @@ describe("panel components", () => {
     }
     await click(timelineButton);
     expect(selectTimelineEntry).toHaveBeenCalledWith("m1", 0);
+
+    const followButton = Array.from(active.container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Following latest")
+    );
+    const pruneButton = Array.from(active.container.querySelectorAll("button")).find(
+      (button) => button.textContent === "Prune to limit"
+    );
+    const limitInput = active.container.querySelector('input[type="number"]');
+    if (!followButton || !pruneButton || !limitInput) {
+      throw new Error("missing active timeline controls");
+    }
+    await click(followButton);
+    await setInputValue(limitInput as HTMLInputElement, "12");
+    await click(pruneButton);
+    expect(setFollowLatest).toHaveBeenCalledWith("m1", false);
+    expect(setDisplayLimit).toHaveBeenCalledWith(12);
+    expect(pruneTimeline).toHaveBeenCalledWith("m1", 50);
+
+    const operationButton = Array.from(active.container.querySelectorAll("button")).find(
+      (button) => button.textContent === "goToNextStep"
+    );
+    if (!operationButton) {
+      throw new Error("missing active operation");
+    }
+    await click(operationButton);
+    expect(invokeOperation).toHaveBeenCalledWith("m1", {
+      operationId: "core.goToNextStep"
+    });
     await active.unmount();
   });
 });

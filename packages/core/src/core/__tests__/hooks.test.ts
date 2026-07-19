@@ -180,6 +180,19 @@ describe("step hooks", () => {
     expect(step?.id).toBe("b");
     expect(step?.async).toEqual({ isLoading: false, isSuccess: false, isError: true, error: boom });
     expect(errors).toMatchObject([{ error: boom, phase: "enter", stepId: "b" }]);
+
+    machine.async.clearError();
+    expect(machine.getSnapshot().currentStep?.async).toEqual({
+      isLoading: false,
+      isSuccess: true,
+      isError: false,
+      error: null
+    });
+
+    // Clearing an already-successful or disposed machine is deliberately a no-op.
+    machine.async.clearError();
+    machine.dispose();
+    machine.async.clearError();
   });
 
   it("exposes loading state and phase while an async onEnter is pending", async () => {
