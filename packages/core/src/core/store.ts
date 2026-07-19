@@ -19,9 +19,27 @@ export class JourneyStore<TContext, TStepId extends string> {
     Set<(payload: never) => void>
   >();
   private disposed = false;
+  private readonly onListenerError: ((error: unknown) => void) | undefined;
 
-  constructor(initial: JourneySnapshot<TContext, TStepId>) {
+  constructor(
+    initial: JourneySnapshot<TContext, TStepId>,
+    onListenerError?: (error: unknown) => void
+  ) {
     this.snapshot = initial;
+    this.onListenerError = onListenerError;
+  }
+
+  /** Isolation stays unconditional; the configured reporter only routes the report. */
+  private report(error: unknown): void {
+    if (!this.onListenerError) {
+      reportListenerError(error);
+      return;
+    }
+    try {
+      this.onListenerError(error);
+    } catch (reporterError) {
+      reportListenerError(reporterError);
+    }
   }
 
   getSnapshot(): JourneySnapshot<TContext, TStepId> {
@@ -36,7 +54,7 @@ export class JourneyStore<TContext, TStepId extends string> {
       try {
         selected = entry.selector(next);
       } catch (error) {
-        reportListenerError(error);
+        this.report(error);
         continue;
       }
       if (entry.equals(entry.last, selected)) continue;
@@ -44,7 +62,7 @@ export class JourneyStore<TContext, TStepId extends string> {
       try {
         (entry.listener as (value: unknown) => void)(selected);
       } catch (error) {
-        reportListenerError(error);
+        this.report(error);
       }
     }
   }
@@ -93,7 +111,7 @@ export class JourneyStore<TContext, TStepId extends string> {
       try {
         (listener as (value: unknown) => void)(payload);
       } catch (error) {
-        reportListenerError(error);
+        this.report(error);
       }
     }
   }

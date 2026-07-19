@@ -40,9 +40,11 @@ Release the final V1 Core API on a new, smaller shared runtime. This is a full r
   wins over an in-flight transition.
 - Expose declared graph events and serializable outgoing transition descriptors in snapshots,
   including candidate priority, evaluated guard state, enabled state, and first-enabled selection.
-- Remove `requireExplicitCompletion`, `onLifecycleError`, and `onListenerError` options. Completion
-  is always explicit; work failures use navigation results and hook failures use typed error events;
-  subscriber failures are isolated from the machine and reported through `console.error`.
+- Remove the `requireExplicitCompletion` and `onLifecycleError` options. Completion is always
+  explicit; work failures use navigation results and hook failures use typed error events.
+  Subscriber failures are isolated from the machine and route through the optional
+  `onListenerError` creation option (defaulting to `console.error`; a throwing reporter falls back
+  to that default).
 - Make `dispose()` irreversible but safe: listeners are dropped and subsequent machine operations
   become no-ops or rejected results instead of throwing a dedicated disposed error.
 - Replace broad, unfiltered event subscriptions and lifecycle-specific methods with typed
@@ -70,6 +72,9 @@ Release the final V1 Core API on a new, smaller shared runtime. This is a full r
   immediate side effects after commit.
 - Keep linear `goToStepById` as an ungated direct-jump escape hatch. Occasional exceptional jumps
   can stay linear; named jumps, guards, and routine branches belong in graph definitions.
+- Known limitation: the history timeline is unbounded in 1.0. Long-lived journeys accumulate one
+  entry per navigation; `restart()` is the reset lever, and a `maxHistory` bound is planned
+  post-1.0 as a compatible addition.
 
 ## Graph events
 
@@ -93,8 +98,12 @@ Release the final V1 Core API on a new, smaller shared runtime. This is a full r
 - Scope mutable built-in plugin state to each `setup()` call, so reusing a plugin instance across
   multiple machines no longer shares replay buffers, timers, analytics events, or subscriptions.
 - Rewrite persistence around `{ storage, key, clearOnTerminate?, now? }`. It stores status, context,
-  timeline, pointer, and save time; exposes `inspectPersistedState`, `readPersisted`, and
-  `clearPersisted`; and does not automatically hydrate a machine.
+  timeline, pointer, and save time and exposes `inspectPersistedState`, `readPersisted`, and
+  `clearPersisted`. The creation-time `persist` option additionally restores: a valid non-terminal
+  record found at creation seeds context, timeline, and position, so the first `start()` resumes at
+  the persisted step (explicit `startAt` wins; records that no longer match the definition are
+  ignored; `restart()` always begins fresh). Wiring `createPersistencePlugin` explicitly stays
+  save-only — plugins observe and cannot seed the runtime.
 - Rewrite autosave as a debounced observer with required storage, configurable
   `context | transition | status` triggers, explicit idle/pending/saving/saved/error state, and
   `flushAutosave`, `clearAutosave`, and `readPersisted` APIs.

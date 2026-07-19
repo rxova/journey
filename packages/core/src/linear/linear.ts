@@ -1,6 +1,7 @@
 import { buildMachineSurface } from "../core/machine";
 import { JourneyRuntime } from "../core/runtime";
 import { persistOptionToPlugin } from "../plugins/persistence/persistence";
+import { readRestorableState } from "../plugins/persistence/persistence.helpers";
 import type { RuntimeStep } from "../core/runtime.types";
 import type {
   CompletePayloadOf,
@@ -72,6 +73,12 @@ export function createLinearJourney<
     throw new Error(`journey: startAt references unknown step "${options.startAt}"`);
   }
 
+  // Explicit `startAt` wins over a persisted record; restore is best-effort.
+  const restored =
+    options.persist && options.startAt === undefined
+      ? readRestorableState(options.persist, (id) => id in steps)
+      : null;
+
   const runtime = new JourneyRuntime({
     kind: "linear",
     stepIds,
@@ -79,10 +86,20 @@ export function createLinearJourney<
     initial: stepIds[0] as string,
     ...(options.startAt !== undefined ? { startAt: options.startAt } : {}),
     initialContext: definition.context,
+    ...(restored
+      ? {
+          restore: {
+            context: restored.context,
+            timeline: restored.timeline,
+            currentIndex: restored.currentIndex
+          }
+        }
+      : {}),
     transitions: [],
     handlers: undefined,
     autoStart: options.autoStart ?? false,
     defaultTimeoutMs: options.defaultTimeoutMs,
+    ...(options.onListenerError !== undefined ? { onListenerError: options.onListenerError } : {}),
     plugins: [
       ...(options.persist ? [persistOptionToPlugin(options.persist)] : []),
       ...(options.plugins ?? [])

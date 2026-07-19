@@ -1,6 +1,7 @@
 import { buildMachineSurface } from "../core/machine";
 import { JourneyRuntime } from "../core/runtime";
 import { persistOptionToPlugin } from "../plugins/persistence/persistence";
+import { readRestorableState } from "../plugins/persistence/persistence.helpers";
 import type { RuntimeStep, RuntimeTransition } from "../core/runtime.types";
 import type {
   GraphJourneyMachine,
@@ -118,6 +119,12 @@ export function createGraphJourney<
     throw new Error(`journey: startAt references unknown step "${options.startAt}"`);
   }
 
+  // Explicit `startAt` wins over a persisted record; restore is best-effort.
+  const restored =
+    options.persist && options.startAt === undefined
+      ? readRestorableState(options.persist, (id) => id in steps)
+      : null;
+
   const runtime = new JourneyRuntime({
     kind: "graph",
     stepIds,
@@ -125,11 +132,21 @@ export function createGraphJourney<
     initial: definition.initial,
     ...(options.startAt !== undefined ? { startAt: options.startAt } : {}),
     initialContext: definition.context,
+    ...(restored
+      ? {
+          restore: {
+            context: restored.context,
+            timeline: restored.timeline,
+            currentIndex: restored.currentIndex
+          }
+        }
+      : {}),
     transitions,
     ...(definition.eventWork !== undefined ? { eventWork: definition.eventWork } : {}),
     handlers: options.handlers ?? definition.handlers,
     autoStart: options.autoStart ?? false,
     defaultTimeoutMs: options.defaultTimeoutMs,
+    ...(options.onListenerError !== undefined ? { onListenerError: options.onListenerError } : {}),
     plugins: [
       ...(options.persist ? [persistOptionToPlugin(options.persist)] : []),
       ...(options.plugins ?? [])

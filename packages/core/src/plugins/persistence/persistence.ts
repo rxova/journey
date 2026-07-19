@@ -1,11 +1,14 @@
-import { buildPersistedState, parsePersistedState } from "./persistence.helpers";
+import {
+  buildPersistedState,
+  parsePersistedState,
+  resolvePersistStorage
+} from "./persistence.helpers";
 import type {
   JourneyPersistedState,
   PersistenceApi,
   PersistencePluginOptions
 } from "./persistence.types";
 import type { JourneyPersistOption, JourneyPlugin } from "../../core/types";
-import type { JourneyStorage } from "./persistence.types";
 
 export { buildPersistedState, parsePersistedState } from "./persistence.helpers";
 export type {
@@ -19,9 +22,10 @@ export type {
  * Persists a serializable slice of machine state (status, context, timeline)
  * on every transition, status change, and context change.
  *
- * Rehydration into a running machine is a planned core feature (restore saved
- * history); until then `readPersisted()` exposes the saved state so callers
- * can seed a new journey's `context` themselves.
+ * The plugin itself is save-side only (plugins observe, they cannot seed the
+ * runtime). Restore happens through the creation-time `persist` option, which
+ * reads a restorable record before the machine is built; `readPersisted()`
+ * exposes the saved state for callers wiring this plugin explicitly.
  */
 export function createPersistencePlugin(
   options: PersistencePluginOptions
@@ -71,9 +75,5 @@ export function createPersistencePlugin(
 export function persistOptionToPlugin(
   option: JourneyPersistOption
 ): JourneyPlugin<"persistence", PersistenceApi, { lastSavedAt: number | null }> {
-  const storage = option.storage ?? (globalThis.localStorage as JourneyStorage | undefined);
-  if (!storage) {
-    throw new Error("journey: persist.storage is required when localStorage is unavailable");
-  }
-  return createPersistencePlugin({ key: option.key, storage });
+  return createPersistencePlugin({ key: option.key, storage: resolvePersistStorage(option) });
 }
