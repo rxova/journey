@@ -7,7 +7,13 @@ const coverageInclude = process.env.JOURNEY_COVERAGE_INCLUDE?.split(",") ?? [
   "apps/devtools/src/**/*.ts",
   "apps/devtools/src/**/*.tsx"
 ];
-const perFileCoveragePrefixes = ["packages/common/", "packages/core/", "packages/react/"] as const;
+const perFileCoveragePrefixes = [
+  "packages/common/",
+  "packages/core/",
+  "packages/react/",
+  "packages/devtools-bridge/",
+  "apps/devtools/"
+] as const;
 const enforcePerFileCoverage =
   process.env.JOURNEY_COVERAGE_INCLUDE !== undefined &&
   coverageInclude.every((pattern) =>
@@ -168,6 +174,7 @@ export default defineConfig({
     environment: "jsdom",
     coverage: {
       provider: "v8",
+      reportsDirectory: process.env.JOURNEY_COVERAGE_DIR ?? "coverage",
       reporter: ["text", "text-summary", "html", "json-summary", "lcov"],
       thresholds: {
         perFile: enforcePerFileCoverage,

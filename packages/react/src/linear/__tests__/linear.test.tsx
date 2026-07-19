@@ -361,6 +361,22 @@ describe("createLinearJourney typed bundle", () => {
         </journey.LinearJourney>
       )
     ).toThrow(/missing \[details\]; undeclared \[detials\]/);
+    expect(() =>
+      render(
+        <journey.LinearJourney>
+          <StepA id="intro" />
+        </journey.LinearJourney>
+      )
+    ).toThrow(/missing \[details\]\./);
+    expect(() =>
+      render(
+        <journey.LinearJourney>
+          <StepA id="intro" />
+          <StepB id="details" />
+          <StepC id="extra" />
+        </journey.LinearJourney>
+      )
+    ).toThrow(/undeclared \[extra\]\./);
     expect(() => createLinearJourney()(["dup", "dup"])).toThrow(/must be unique/);
     consoleError.mockRestore();
   });

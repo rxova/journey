@@ -283,6 +283,31 @@ describe("panel state reducer and selectors", () => {
     expect(state.machines["machine-2"]).toBeUndefined();
   });
 
+  it("keeps the current selection when another machine unregisters", () => {
+    let state = createInitialPanelState();
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: createRegisterEnvelope("machine-1", 1000, "start")
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: createRegisterEnvelope("machine-2", 1001, "review")
+    });
+    state = panelReducer(state, {
+      type: "bridge-envelope",
+      envelope: {
+        channel: JOURNEY_DEVTOOLS_CHANNEL,
+        version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+        source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
+        kind: "unregister",
+        machineId: "machine-2",
+        timestamp: 1002
+      }
+    });
+
+    expect(state.selectedMachineId).toBe("machine-1");
+  });
+
   it("clamps selected timeline indices and resolves selected views safely", () => {
     let state: JourneyPanelState = createInitialPanelState();
     state = panelReducer(state, {

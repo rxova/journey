@@ -88,7 +88,8 @@
   "scripts": {
     "build": "pnpm run clean && node --import tsx ./scripts/build.ts && tsc -p tsconfig.build.json && node --import tsx ../common/tooling/copy-types.ts dist",
     "clean": "node --import tsx ../common/tooling/clean-paths.ts dist tsconfig.build.tsbuildinfo",
-    "coverage": "JOURNEY_COVERAGE_INCLUDE=packages/react/src/** pnpm --workspace-root vitest run packages/react/test --coverage --coverage.reporter=text-summary",
+    "coverage": "JOURNEY_COVERAGE_INCLUDE=packages/react/src/** JOURNEY_COVERAGE_DIR=coverage/react pnpm --workspace-root vitest run packages/react/src --coverage --coverage.reporter=text-summary",
+    "test": "pnpm --workspace-root vitest run packages/react/src --coverage.enabled=false",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "check:exports": "publint --strict",
     "attw": "attw --pack .",

@@ -159,9 +159,7 @@ const LinearJourneyComponent = <TContext,>(
     if (!startReportedRef.current) {
       startReportedRef.current = true;
       const startSnapshot = machine.getSnapshot();
-      if (startSnapshot.currentStep !== null) {
-        callbacksRef.current.onStart?.(startSnapshot as never);
-      }
+      callbacksRef.current.onStart?.(startSnapshot as never);
     }
 
     const subscriptions = machine.subscriptions;

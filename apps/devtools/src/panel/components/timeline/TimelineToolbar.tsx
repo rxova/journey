@@ -9,6 +9,30 @@ type TimelineToolbarProps = {
   onPrune: () => void;
 };
 
+export const parseDisplayLimit = (value: string): number | null | undefined => {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed)) {
+    return undefined;
+  }
+
+  return Math.max(1, Math.trunc(parsed));
+};
+
+export const updateDisplayLimit = (
+  value: string,
+  onDisplayLimitChange: (value: number | null) => void
+): void => {
+  const displayLimitValue = parseDisplayLimit(value);
+  if (displayLimitValue !== undefined) {
+    onDisplayLimitChange(displayLimitValue);
+  }
+};
+
 export const TimelineToolbar = ({
   followLatest,
   displayLimit,
@@ -32,20 +56,7 @@ export const TimelineToolbar = ({
         min={1}
         value={displayLimit ?? ""}
         placeholder="unbounded"
-        onChange={(event) => {
-          const value = event.target.value.trim();
-          if (value.length === 0) {
-            onDisplayLimitChange(null);
-            return;
-          }
-
-          const parsed = Number(value);
-          if (!Number.isFinite(parsed)) {
-            return;
-          }
-
-          onDisplayLimitChange(Math.max(1, Math.trunc(parsed)));
-        }}
+        onChange={(event) => updateDisplayLimit(event.target.value, onDisplayLimitChange)}
       />
     </label>
 

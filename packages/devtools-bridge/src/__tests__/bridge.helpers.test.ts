@@ -131,6 +131,23 @@ describe("buildOperationRunners", () => {
     expect(moved).toMatchObject({ kind: "snapshot", transitioned: true });
   });
 
+  it("preserves an explicit navigation error in a rejected result", async () => {
+    const machine = await startedLinearMachine();
+    const boom = new Error("navigation exploded");
+    (machine.navigate as unknown as { goToNextStep: () => Promise<unknown> }).goToNextStep =
+      async () => ({ ok: false, reason: "error", error: boom });
+
+    const result = await runnerById(buildOperationRunners(machine), "navigation.goToNextStep").run(
+      undefined
+    );
+
+    expect(result).toMatchObject({
+      kind: "snapshot",
+      transitioned: false,
+      error: { message: "navigation exploded" }
+    });
+  });
+
   it("context.patch shallow-merges and rejects non-object patches", async () => {
     const machine = await startedLinearMachine();
     const runners = buildOperationRunners(machine);
