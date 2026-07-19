@@ -6,3 +6,6 @@ flow
 pnpm-lock.yaml
 apps/docs/.astro
 apps/docs/dist
+apps/docs/src/content/docs/core/api/reference
+apps/docs/src/content/docs/react/api/reference
+apps/docs/src/content/docs/bridge/api/reference
