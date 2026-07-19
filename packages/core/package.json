@@ -150,13 +150,13 @@
       "name": "core/createLinearJourney",
       "path": "dist/index.js",
       "import": "{ createLinearJourney }",
-      "limit": "5 kB"
+      "limit": "5.25 kB"
     },
     {
       "name": "core/createGraphJourney",
       "path": "dist/index.js",
       "import": "{ createGraphJourney }",
-      "limit": "5 kB"
+      "limit": "5.25 kB"
     },
     {
       "name": "core/createGraphJourneyBuilder",

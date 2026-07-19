@@ -1,3 +1,4 @@
+import { warnInDevelopment } from "@rxova/journey-common/dev";
 import { eventWorkKey, LOADING_ASYNC, MAX_RAISED_EVENTS, SUCCESS_ASYNC } from "./helpers";
 import { JourneyStore } from "./store";
 import type {
@@ -236,6 +237,11 @@ export class JourneyRuntime {
   registerNextStepInterceptor(stepId: string, work: AnyNavigationWork): () => void {
     if (!(stepId in this.config.steps)) {
       throw new Error(`journey: registerNextStepInterceptor references unknown step "${stepId}"`);
+    }
+    if (this.nextStepInterceptors.has(stepId)) {
+      warnInDevelopment(
+        `journey: overwrote a live registration for step "${stepId}" — last registration wins.`
+      );
     }
     this.nextStepInterceptors.set(stepId, work);
     return () => {
