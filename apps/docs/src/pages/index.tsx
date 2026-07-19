@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "@docusaurus/Link";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
+import CodeBlock from "@theme/CodeBlock";
 import Layout from "@theme/Layout";
 import { HomeFlowComparison } from "../components/HomeFlowComparison";
 import { HomeInstallTypewriter } from "../components/HomeInstallTypewriter";
@@ -36,6 +37,49 @@ const installCommands = [
   "npm install @rxova/journey-core",
   "npm install @rxova/journey-devtools-bridge"
 ];
+
+/**
+ * Verified against `packages/react/src/graph` and `packages/core/src/graph` by
+ * compiling this exact snippet with `tsc`. The `send(type, work)` overload is
+ * `SendVerb` (`core/src/graph/graph.types.ts:175-223`); `run`/`commit` semantics
+ * are `SendWork` (:139-164) — run is awaited while the machine holds position,
+ * commit stages the context the guards are then evaluated against. Candidate
+ * arrays resolve first-enabled-wins (`GraphTransitionCandidate`, :54).
+ */
+const GRAPH_SNIPPET = `import { createGraphJourney } from "@rxova/journey-react/graph";
+
+type CheckoutContext = { cartId: string; riskScore: number };
+type CheckoutStepId = "payment" | "review" | "done";
+type CheckoutEvents = { type: "submit" } | { type: "approve" };
+
+const checkout = createGraphJourney<CheckoutContext, CheckoutStepId, CheckoutEvents>({
+  initial: "payment",
+  context: { cartId: "", riskScore: 0 },
+  steps: { payment: {}, review: {}, done: {} },
+  transitions: {
+    // First enabled candidate wins, so order encodes the branch.
+    submit: [
+      { from: "payment", to: "review", when: ({ context }) => context.riskScore > 70 },
+      { from: "payment", to: "done" }
+    ],
+    approve: { from: "review", to: "done" }
+  }
+});
+
+export function PayButton() {
+  const { send } = checkout.useApi();
+
+  // \`run\` is awaited while the machine holds its position; \`commit\` stages the
+  // context that the guards are then evaluated against.
+  const submit = () =>
+    send("submit", {
+      run: ({ snapshot }) => scoreRisk(snapshot.context.cartId),
+      commit: ({ result, updateContext }) =>
+        updateContext((context) => ({ ...context, riskScore: result }))
+    });
+
+  return <button onClick={() => void submit()}>Pay</button>;
+}`;
 
 /** Surfaces and ownership match the table in `docs/react/overview.md`. */
 const reactTiers = [
@@ -133,6 +177,28 @@ export default function Home(): ReactNode {
             </div>
 
             <HomeFlowComparison />
+
+            <section>
+              <h2 className={sectionHeading}>And when it branches</h2>
+              <p className={sectionLede}>
+                Swap the linear tier for a graph and named events choose the route. The async that
+                decides the branch runs <em>inside</em> the send: the machine holds its position
+                while <code>run</code> is awaited, <code>commit</code> stages the result, and the
+                guards are evaluated against that staged context. Guards never have to become async,
+                and nothing moves if the work fails.
+              </p>
+              <div className="mt-8">
+                <CodeBlock language="tsx">{GRAPH_SNIPPET}</CodeBlock>
+              </div>
+              <p className="mt-5 text-sm text-ink-600 dark:text-ink-100">
+                The bundle also hands you <code>Provider</code>, <code>StepRenderer</code>, and
+                typed hooks for the same machine.{" "}
+                <Link to="/docs/react/overview" className="font-semibold">
+                  See the graph tier
+                </Link>
+                .
+              </p>
+            </section>
 
             <section>
               <h2 className={sectionHeading}>Three ways in. Pick the one that fits.</h2>
