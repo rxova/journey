@@ -20,7 +20,8 @@ const machine = createLinearJourney({
 The machine's methods remain stable for its lifetime. Runtime values are read from snapshots.
 
 Factories also accept runtime options: `autoStart`, `startAt` (start directly at a given step;
-overrides graph `initial`), `persist` (persistence-plugin sugar), `defaultTimeoutMs`, and
+overrides graph `initial`), `persist` (persistence-plugin sugar that also restores a saved
+position), `defaultTimeoutMs`, `onListenerError` (routes isolated subscriber failures), and
 `plugins`.
 
 ## Steps and metadata

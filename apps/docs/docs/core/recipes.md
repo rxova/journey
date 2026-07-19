@@ -90,10 +90,23 @@ const verify = createStep("verify", {
 });
 ```
 
-## Resume a timeline position in application code
+## Resume a saved position
 
-The persistence plugin can read stored state but does not hydrate runtime history. Restore approved
-context before creation, start the machine, then navigate according to an application-owned policy:
+For the common case, let the `persist` creation option restore: a valid saved record seeds context,
+timeline, and position at creation, and the first `start()` resumes at the persisted step.
+
+```ts
+const machine = createLinearJourney(definition, { persist: { key: "checkout" } });
+
+machine.controls.start(); // resumes where the record left off
+```
+
+See [Persistence](./persistence#restore) for the record validity rules — invalid or drifted records
+are ignored and the journey starts fresh.
+
+When your restore policy is application-owned instead (approval gates, partial restores, a custom
+storage shape), read the stored state yourself, restore approved context before creation, start the
+machine, then navigate:
 
 ```ts
 machine.controls.start();

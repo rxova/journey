@@ -56,6 +56,13 @@ those `true` entries.
 
 `currentStep.isFirstTimeVisit` is true only during a step's first entry in the run.
 
+## History growth
+
+The timeline is unbounded in 1.0: every navigation appends or retraces one entry, and nothing is
+evicted while a run is live. Long-lived journeys therefore accumulate one entry per navigation.
+`restart()` resets the timeline (with the rest of the run state). A `maxHistory` bound is planned
+post-1.0 as a compatible addition; see the roadmap.
+
 ## Hooks still apply
 
 Timeline moves bypass graph transition gating. Optional next/previous work may stop before commit;

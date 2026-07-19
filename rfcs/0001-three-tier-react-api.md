@@ -1,9 +1,31 @@
 # RFC 0001 — Three-Tier React API: `<Wizard>`, Graph, Headless
 
-- **Status:** Draft — implemented on branch with renames (`Wizard` → `LinearJourney`); §3.12 amendment accepted 2026-07-18 (verbatim wrapper, four core absorptions)
+- **Status:** Accepted — implemented on branch with renames (`Wizard` → `LinearJourney`); §3.12 amendment accepted 2026-07-18 (verbatim wrapper, four core absorptions); see "Shipped divergences" below for where the implementation superseded this document's sketches
 - **Branch:** `feat/react-api-redesign`
-- **Date:** 2026-07-14
+- **Date:** 2026-07-14 (accepted 2026-07-19)
 - **Scope:** `@rxova/journey-react` (full redesign), `@rxova/journey-core` (snapshot family + three small additions), `@rxova/journey-devtools-bridge` (type-aware presentation)
+
+## Shipped divergences (2026-07-19)
+
+The implementation is the contract; where this document's sketches differ, the shipped code
+deliberately superseded them:
+
+- **Dynamic children (§3.6):** the sketched "machine transplant" for a changed step list was not
+  shipped. The linear tier freezes the derived step list at mount and raises a dev-mode error when
+  it changes, directing dynamic flows to the graph tier.
+- **Naming:** every `Wizard` name shipped as `LinearJourney` (`<LinearJourney>`,
+  `useLinearJourney`, `useLinearJourneyStep`, `createLinearJourney`); the module folder is
+  `src/linear/`.
+- **Hook result (§3.12):** `useLinearJourney()` returns the verbatim `{ machine, snapshot }` pair;
+  the earlier flat ~25-field result described in pre-§3.12 sections is gone.
+- **Pause/resume:** shipped as core `controls.pause()` / `controls.resume()` (with a `paused`
+  status and `machine.isPaused`), not as `pauseJourney()` / `resumeJourney()` machine methods.
+- **Graph bundle surface (§4):** the sketched `useStepApi` and `useComputed` hooks were not
+  shipped. The bundle exposes `Provider`, `StepRenderer`, `useSnapshot`, `useSelector`, `useApi`
+  (`{ controls, navigate, send, updateContext }`), `useStepAsyncState`, `useEvent`,
+  `useStepLifecycle`, and `useMachine`.
+- **File layout (§9):** shipped as `linear/` + `headless/` + `graph/` with per-hook files, not the
+  predicted `wizard/` layout.
 
 ---
 

@@ -74,10 +74,12 @@ settles. Calling `send()` directly while a hook chain is pending returns `transi
 
 <DocAccordionItem title="Can users resume from persistence automatically?">
 
-Not in the current V1 persistence plugin. It writes and parses persisted status, context, and
-timeline, but does not hydrate live runtime history. The `persist: { key, storage? }` runtime
-option is sugar for registering the plugin, not for restoring. Apply saved context and navigation
-(for example the `startAt` option) according to your application's restore policy.
+Yes, through the `persist: { key, storage? }` creation option. A valid non-terminal record found at
+creation seeds context, timeline, and position, and the first `start()` resumes at the persisted
+step. An explicit `startAt` wins over the record, `restart()` always begins fresh, and invalid or
+drifted records are ignored. Registering `createPersistencePlugin` explicitly stays save-only —
+plugins are observe-only and cannot seed the runtime. See
+[Persistence](./persistence#restore).
 
 </DocAccordionItem>
 

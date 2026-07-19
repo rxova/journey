@@ -15,6 +15,7 @@ const sidebars: SidebarsConfig = {
       items: [
         "usage/linear",
         "usage/graph",
+        "usage/headless",
         "usage/step-behavior",
         "effects",
         "handlers",
@@ -26,7 +27,25 @@ const sidebars: SidebarsConfig = {
       type: "category",
       label: "Understand it",
       collapsed: true,
-      items: ["architecture", "snapshot", "lifecycle", "async", "history"]
+      items: [
+        {
+          type: "category",
+          label: "How it works",
+          collapsed: true,
+          link: { type: "doc", id: "architecture" },
+          items: [
+            "architecture/runtime",
+            "architecture/store",
+            "architecture/machine-surface",
+            "architecture/plugin-host",
+            "architecture/work-and-transitions"
+          ]
+        },
+        "snapshot",
+        "lifecycle",
+        "async",
+        "history"
+      ]
     },
     {
       type: "category",
