@@ -10,8 +10,9 @@ snapshot semantics come directly from Core; see [Core API](/docs/core/api) and
 ## `<LinearJourney>`
 
 `<LinearJourney>` derives a Core linear definition from its direct children. Every step must have a
-unique `id`, either directly on the element or through `<LinearJourney.Step>`. The wrapper also
-accepts Core's per-step config: `metadata` plus `onEnter`/`onLeave` hooks.
+unique `id`, declared through the `<LinearJourney.Step>` wrapper — or inline on the element for
+components that declare an `id` prop of their own. The wrapper also accepts Core's per-step config:
+`metadata` plus `onEnter`/`onLeave` hooks.
 
 ```tsx
 <LinearJourney.Step id="shipping" metadata={{ title: "Shipping" }}>
@@ -31,9 +32,15 @@ no separate per-step metadata lookup.
   fallback={<p>Journey unavailable</p>}
   onStepEnter={({ from, to, direction }) => analytics.track("step", { from, to, direction })}
 >
-  <Account id="account" />
-  <Shipping id="shipping" />
-  <Review id="review" />
+  <LinearJourney.Step id="account">
+    <Account />
+  </LinearJourney.Step>
+  <LinearJourney.Step id="shipping">
+    <Shipping />
+  </LinearJourney.Step>
+  <LinearJourney.Step id="review">
+    <Review />
+  </LinearJourney.Step>
 </LinearJourney>
 ```
 

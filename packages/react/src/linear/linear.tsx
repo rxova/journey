@@ -220,7 +220,8 @@ type LinearJourneyComponentType = (<TContext = Record<string, never>>(
 
 /**
  * The linear journey tier. Steps are the children — each with a mandatory
- * unique `id`, via an `id` prop or a `<LinearJourney.Step id>` wrapper.
+ * unique `id` via a `<LinearJourney.Step id>` wrapper (or an inline `id` prop
+ * on components that declare one).
  *
  * ```tsx
  * <LinearJourney header={<Progress />} footer={<Nav />}>

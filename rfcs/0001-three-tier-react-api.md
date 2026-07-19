@@ -466,6 +466,14 @@ storage? }`). Expands to the persistence plugin prepended to `plugins`
 - What remains React-owned: JSX children → step-list derivation, contexts,
   StrictMode-safe mount/dispose lifecycle, `useSyncExternalStore` subscription,
   and verbatim event→prop forwarding.
+- The global `React.Attributes` `id` augmentation (§3.5's inline-id typing
+  mechanism) is **removed** — it silently disabled excess-prop checking for
+  `id` on every component in the consumer's app. `<LinearJourney.Step id>` is
+  the canonical spelling; the inline `id` prop still works at runtime and
+  type-checks for components that declare their own `id` prop.
+- The React `LinearJourneySnapshot` narrows `currentStep` to non-null (the
+  tier always autostarts, so the idle state is unobservable) — a type-level
+  invariant, not reshaping.
 
 **Deferred (follow-up, out of scope here):** statically stripping dev-only
 error/warning strings from production bundles via build-time `define`
