@@ -1,5 +1,5 @@
 import { useJourneySelector } from "../headless/use-journey-selector";
-import { useLinearJourneyContext } from "./linear-context";
+import { useLinearJourneyMachine } from "./machine-context";
 import type { LinearJourneySnapshot } from "./linear.types";
 
 /**
@@ -14,7 +14,7 @@ export const useLinearJourneySelector = <
   selector: (snapshot: LinearJourneySnapshot<TContext, TStepId>) => TSelected,
   equalityFn?: (a: TSelected, b: TSelected) => boolean
 ): TSelected => {
-  const machine = useLinearJourneyContext("useLinearJourneySelector");
+  const machine = useLinearJourneyMachine("useLinearJourneySelector");
   return useJourneySelector(
     machine,
     selector as (snapshot: ReturnType<typeof machine.getSnapshot>) => TSelected,

@@ -1,5 +1,5 @@
 import React from "react";
-import { useLinearJourneyContext, LinearJourneyActiveStepContext } from "./linear-context";
+import { useLinearJourneyMachine, LinearJourneyActiveStepContext } from "./machine-context";
 import type { LinearJourneyStepHandler } from "./linear.types";
 
 const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
@@ -31,7 +31,7 @@ const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : Re
 export const useLinearJourneyStep = <TContext = unknown, TResult = void>(
   handler?: LinearJourneyStepHandler<TContext, TResult>
 ): void => {
-  const machine = useLinearJourneyContext("useLinearJourneyStep");
+  const machine = useLinearJourneyMachine("useLinearJourneyStep");
   const stepId = React.useContext(LinearJourneyActiveStepContext);
 
   if (stepId === null) {

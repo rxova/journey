@@ -3,7 +3,7 @@ import { createLinearJourney } from "@rxova/journey-core";
 import { errorInDevelopment } from "@rxova/journey-common/dev";
 import { useJourneySnapshot } from "../headless/use-journey-snapshot";
 import { deriveStepsFromChildren } from "./derive-steps";
-import { LinearJourneyActiveStepContext, LinearJourneyContext } from "./linear-context";
+import { LinearJourneyActiveStepContext, LinearJourneyMachineContext } from "./machine-context";
 import { LinearJourneyStep } from "./linear-journey-step";
 import type { DerivedLinearJourneyStep } from "./derive-steps";
 import type { LinearJourneyMachine, LinearJourneyProps } from "./linear.types";
@@ -204,11 +204,11 @@ const LinearJourneyComponent = <TContext,>(
   const wrappedNode = wrapper ? React.cloneElement(wrapper, undefined, activeNode) : activeNode;
 
   return (
-    <LinearJourneyContext.Provider value={machine}>
+    <LinearJourneyMachineContext.Provider value={machine}>
       {header}
       {wrappedNode}
       {footer}
-    </LinearJourneyContext.Provider>
+    </LinearJourneyMachineContext.Provider>
   );
 };
 
