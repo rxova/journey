@@ -72,7 +72,7 @@ choice in a graph instead of changing the JSX list after mount.
 `useLinearJourney()` returns `{ machine, snapshot }` — the underlying Core machine and its live
 snapshot, verbatim. There is no renamed React-side shape:
 
-- reads come from the snapshot: `snapshot.currentStep?.id/.index/.isFirstStep/.isLastStep/`
+- reads come from the snapshot: `snapshot.currentStep.id/.index/.isFirstStep/.isLastStep/` (the linear tier autostarts, so `currentStep` is never null)
   `.isFirstTimeVisit/.metadata/.async`, `snapshot.steps`, `snapshot.history`, `snapshot.status`,
   `snapshot.machine`, and `snapshot.context`;
 - commands come from the machine groups: `machine.navigate.*` (including linear
@@ -222,9 +222,9 @@ React reads the current Core snapshot:
 ```ts
 snapshot.status;
 snapshot.context;
-snapshot.currentStep?.id;
-snapshot.currentStep?.metadata;
-snapshot.currentStep?.async;
+snapshot.currentStep.id; // non-null in the linear tier (autostart); nullable on bare core machines
+snapshot.currentStep.metadata;
+snapshot.currentStep.async;
 snapshot.history.timeline;
 snapshot.history.currentIndex;
 snapshot.transition;

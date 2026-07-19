@@ -21,15 +21,15 @@ const Nav = () => {
   return (
     <div>
       <span data-testid="position">
-        {currentStep?.id}:{(currentStep?.index ?? -1) + 1}/{snapshot.steps.totalSteps}
+        {currentStep.id}:{currentStep.index + 1}/{snapshot.steps.totalSteps}
       </span>
       <span data-testid="flags">
-        {currentStep?.isFirstStep ? "first" : ""}
-        {currentStep?.isLastStep ? "last" : ""}
-        {currentStep?.isFirstTimeVisit ? " fresh" : " revisit"}
+        {currentStep.isFirstStep ? "first" : ""}
+        {currentStep.isLastStep ? "last" : ""}
+        {currentStep.isFirstTimeVisit ? " fresh" : " revisit"}
       </span>
       <span data-testid="error">
-        {currentStep?.async.error == null ? "none" : String(currentStep.async.error)}
+        {currentStep.async.error == null ? "none" : String(currentStep.async.error)}
       </span>
       <button onClick={() => void machine.navigate.goToNextStep()}>next</button>
       <button onClick={() => void machine.navigate.goToPreviousStep()}>back</button>
@@ -112,7 +112,7 @@ describe("<LinearJourney> step metadata and start position", () => {
   it("exposes metadata declared on <LinearJourney.Step> through the snapshot", async () => {
     const Meta = () => {
       const { snapshot } = useLinearJourney();
-      return <span data-testid="metadata">{String(snapshot.currentStep?.metadata)}</span>;
+      return <span data-testid="metadata">{String(snapshot.currentStep.metadata)}</span>;
     };
     render(
       <LinearJourney footer={<Meta />}>
@@ -332,7 +332,7 @@ describe("createLinearJourney typed bundle", () => {
       const stepCount = journey.useLinearJourneySelector((s) => s.steps.totalSteps);
       return (
         <span data-testid="bundle">
-          {snapshot.currentStep?.id}/{stepCount}/{snapshot.context.n}
+          {snapshot.currentStep.id}/{stepCount}/{snapshot.context.n}
         </span>
       );
     };

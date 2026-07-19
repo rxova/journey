@@ -40,7 +40,7 @@ export default function App() {
       fallback={<p>Unknown step</p>}
       machineRef={handleMachineRef}
       onStart={(snapshot) =>
-        console.log("[react linear] journey.started at", snapshot.currentStep?.id)
+        console.log("[react linear] journey.started at", snapshot.currentStep.id)
       }
       onComplete={({ snapshot }) =>
         console.log("[react linear] journey.completed", snapshot.context)

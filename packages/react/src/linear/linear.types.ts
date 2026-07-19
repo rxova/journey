@@ -35,11 +35,18 @@ export type LinearJourneyMachine<
   TStepId extends string = string
 > = CoreLinearJourneyMachine<TContext, TStepId>;
 
-/** A linear journey's core snapshot, verbatim. */
-export type LinearJourneySnapshot<
-  TContext = unknown,
-  TStepId extends string = string
-> = LinearSnapshot<TContext, TStepId, unknown>;
+/**
+ * A linear journey's core snapshot, verbatim — with one type-level narrowing:
+ * `currentStep` is non-null. The React tier always creates its machine with
+ * `autoStart`, and the initial entry commits synchronously inside creation, so
+ * a rendered journey never observes the idle (null) state.
+ */
+export type LinearJourneySnapshot<TContext = unknown, TStepId extends string = string> = Omit<
+  LinearSnapshot<TContext, TStepId, unknown>,
+  "currentStep"
+> & {
+  readonly currentStep: NonNullable<LinearSnapshot<TContext, TStepId, unknown>["currentStep"]>;
+};
 
 /** Core event payloads bound to the linear snapshot; callback props receive these verbatim. */
 export type LinearJourneyEventPayloads<

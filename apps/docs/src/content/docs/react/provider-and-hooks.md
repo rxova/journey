@@ -82,10 +82,10 @@ function Controls() {
   return (
     <nav>
       <p>
-        {currentStep?.id} ({(currentStep?.index ?? -1) + 1} / {snapshot.steps.totalSteps})
+        {currentStep.id} ({currentStep.index + 1} / {snapshot.steps.totalSteps})
       </p>
       <button
-        disabled={currentStep?.isFirstStep}
+        disabled={currentStep.isFirstStep}
         onClick={() => void machine.navigate.goToPreviousStep()}
       >
         Back
