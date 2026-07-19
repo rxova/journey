@@ -112,6 +112,48 @@ describe("useJourneySelector cache", () => {
     // same object identity across re-renders: the cache reused the selection
     expect(new Set(seen).size).toBe(1);
   });
+
+  it("keeps one machine subscription across re-renders with inline selectors", async () => {
+    const machine = makeMachine();
+    const subscribeSpy = vi.spyOn(machine.subscriptions, "subscribeSelector");
+
+    const Probe = ({ label }: { label: string }) => {
+      // inline selector + inline equality: new identities every render
+      const id = useJourneySelector(
+        machine,
+        (snapshot) => snapshot.currentStep?.id,
+        (a, b) => a === b
+      );
+      return (
+        <span>
+          {label}:{id}
+        </span>
+      );
+    };
+
+    const view = render(<Probe label="one" />);
+    await flush();
+    view.rerender(<Probe label="two" />);
+    view.rerender(<Probe label="three" />);
+    await flush();
+
+    expect(subscribeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-runs a props-dependent selector on the render that changes it", async () => {
+    const machine = makeMachine();
+    const Probe = ({ index }: { index: number }) => {
+      const id = useJourneySelector(machine, (snapshot) => snapshot.steps.stepOrder[index]);
+      return <span data-testid="picked">{id}</span>;
+    };
+
+    const view = render(<Probe index={0} />);
+    await flush();
+    expect(screen.getByTestId("picked").textContent).toBe("a");
+
+    view.rerender(<Probe index={2} />);
+    expect(screen.getByTestId("picked").textContent).toBe("c");
+  });
 });
 
 describe("useJourneyEvent / useJourneyStepLifecycle / useStepAsyncState", () => {
