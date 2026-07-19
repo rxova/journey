@@ -36,7 +36,7 @@ const EventLog = () => {
 
 const ProgressBar = () => {
   const { snapshot } = loginJourney.useLinearJourney();
-  const index = snapshot.currentStep?.index ?? 0;
+  const index = snapshot.currentStep.index;
   const stepCount = snapshot.steps.totalSteps;
   const pct = stepCount > 1 ? (index / (stepCount - 1)) * 100 : 0;
 
@@ -66,9 +66,9 @@ export const Shell = ({ children }: { children?: React.ReactNode }) => {
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.75rem" }}>
           <span className={`status status-${snapshot.status}`}>{snapshot.status}</span>
           <span style={{ fontSize: "0.8rem", color: "#888" }}>
-            Step {(currentStep?.index ?? 0) + 1} of {snapshot.steps.totalSteps}
-            {currentStep?.isFirstStep && " (first)"}
-            {currentStep?.isLastStep && " (last)"}
+            Step {currentStep.index + 1} of {snapshot.steps.totalSteps}
+            {currentStep.isFirstStep && " (first)"}
+            {currentStep.isLastStep && " (last)"}
           </span>
         </div>
 

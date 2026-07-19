@@ -18,7 +18,7 @@ const IndexNav = () => {
   const { machine, snapshot } = useLinearJourney();
   return (
     <div>
-      <span data-testid="active">{snapshot.currentStep?.id}</span>
+      <span data-testid="active">{snapshot.currentStep.id}</span>
       <span data-testid="paused">{snapshot.machine.isPaused ? "paused" : "running"}</span>
       <button onClick={() => void machine.navigate.goToStepByIndex(1)}>by-index</button>
       <button onClick={() => void machine.navigate.goToLastVisitedStep()}>tip</button>
@@ -305,7 +305,7 @@ describe("machine error surfacing", () => {
       return (
         <div>
           <span data-testid="machine-error">
-            {String(snapshot.currentStep?.async.error ?? "none")}
+            {String(snapshot.currentStep.async.error ?? "none")}
           </span>
           <button onClick={() => void machine.navigate.goToNextStep()}>advance</button>
         </div>
