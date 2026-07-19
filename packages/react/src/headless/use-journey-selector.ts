@@ -65,19 +65,19 @@ export const useJourneySelector = <TMachine extends AnyJourneyMachine, TSelected
     return nextSelected;
   }, [machine, isEqual, selector]);
 
-  const subscribeToSelectedSnapshot = React.useCallback(
+  // The subscription is deliberately selector-independent: inline selectors
+  // (the common case) would otherwise tear it down on every render. It fires
+  // on every snapshot publish; `getSelectedSnapshot`'s cache returns a stable
+  // reference when the selected value is unchanged, so useSyncExternalStore
+  // still skips the re-render.
+  const subscribe = React.useCallback(
     (onStoreChange: () => void) =>
       machine.subscriptions.subscribeSelector(
-        selector as (snapshot: unknown) => unknown,
-        () => onStoreChange(),
-        isEqual as (a: unknown, b: unknown) => boolean
+        (snapshot) => snapshot,
+        () => onStoreChange()
       ),
-    [machine, isEqual, selector]
+    [machine]
   );
 
-  return React.useSyncExternalStore(
-    subscribeToSelectedSnapshot,
-    getSelectedSnapshot,
-    getSelectedSnapshot
-  );
+  return React.useSyncExternalStore(subscribe, getSelectedSnapshot, getSelectedSnapshot);
 };
