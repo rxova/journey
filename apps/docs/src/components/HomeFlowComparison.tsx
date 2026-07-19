@@ -12,8 +12,15 @@ const INDEX_SNIPPET = `const [step, setStep] = useState(0);
 // - restore the flow after a refresh`;
 
 /**
- * Mirrors the linear example in `docs/react/overview.md`. Keep the two in sync;
- * this snippet is the first API a visitor sees.
+ * Verified against `packages/react/src` — not against the prose docs, which still
+ * show a pre-1.0 shape. Every symbol here is a real export, and the props match
+ * `LinearJourneyProps`: `context`, `footer`, and `onComplete` (which receives
+ * core's `statusChange` payload, hence `{ snapshot }`).
+ *
+ * Steps use the `<LinearJourney.Step id>` wrapper deliberately: the global
+ * `React.Attributes` `id` augmentation was removed before 1.0, so an inline
+ * `<EmailStep id="email" />` only typechecks when that component declares its
+ * own `id` prop. The wrapper always does.
  */
 const JOURNEY_SNIPPET = `import { LinearJourney, useLinearJourney } from "@rxova/journey-react";
 
@@ -45,9 +52,15 @@ export function Signup() {
       footer={<Footer />}
       onComplete={({ snapshot }) => submitSignup(snapshot.context)}
     >
-      <EmailStep id="email" />
-      <TermsStep id="terms" />
-      <ReviewStep id="review" />
+      <LinearJourney.Step id="email">
+        <EmailStep />
+      </LinearJourney.Step>
+      <LinearJourney.Step id="terms">
+        <TermsStep />
+      </LinearJourney.Step>
+      <LinearJourney.Step id="review">
+        <ReviewStep />
+      </LinearJourney.Step>
     </LinearJourney>
   );
 }`;
