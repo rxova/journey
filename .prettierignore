@@ -7,3 +7,6 @@ pnpm-lock.yaml
 apps/docs/.docusaurus
 apps/docs/build
 apps/docs/build-ci-check*
+apps/docs/docs/core/api/reference
+apps/docs/docs/react/api/reference
+apps/docs/docs/bridge/api/reference
