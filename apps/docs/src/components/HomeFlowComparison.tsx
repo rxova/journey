@@ -12,68 +12,98 @@ const INDEX_SNIPPET = `const [step, setStep] = useState(0);
 // - restore the flow after a refresh`;
 
 /**
- * Verified against `packages/react/src` — not against the prose docs, which still
- * show a pre-1.0 shape. Every symbol is a real export, and the props match
- * `LinearJourneyProps`: `context` and `onComplete` (which receives core's
- * `statusChange` payload, hence `{ snapshot }`). `machine.context.update` is the
- * grouped command at `packages/core/src/core/types.ts:417`.
+ * Verified against `packages/react/src` by compiling this exact snippet with
+ * `tsc` — not lifted from prose docs.
  *
- * `onComplete` is deliberately shown with its own try/catch. It is an observer,
- * not a gate: `linear.tsx:173` discards the return value, and core's `emit`
- * (`core/store.ts:104-116`) calls listeners synchronously inside a try/catch that
- * only catches sync throws — a rejected promise from an async handler escapes as
- * an unhandled rejection. The awaited pre-commit gate is navigation work
- * (`NavigationWork.run`, `core/types.ts:357-366`), which the machine does await.
+ * Why the submit lives in `useLinearJourneyStep` and not in `onComplete`:
+ * `onComplete` is an observer, not a gate. `linear.tsx:171-175` calls it and
+ * drops the result; core's `emit` (`core/store.ts:104-116`) is synchronous and
+ * its try/catch only catches sync throws; and `setStatus`
+ * (`core/runtime.ts:484-491`) commits the status and publishes the snapshot
+ * *before* any listener runs. The awaited gate is `NavigationWork.run`
+ * (`core/types.ts:357-366`), reached on the linear tier via
+ * `useLinearJourneyStep` — a shell over `registerNextStepInterceptor`
+ * (`use-linear-journey-step.ts:31-56`) whose rejection cancels the move and
+ * lands in `currentStep.async.error`, with `machine.isLoading` true meanwhile.
+ *
+ * The work is attached to `review`, which has a successor on purpose:
+ * `goToNextStep` returns `out-of-bounds` at the last declared step
+ * (`core/runtime.ts:226-230`) *before* running any work, so a gate registered on
+ * the final step would never fire.
  *
  * The inline `id` is the contract in `derive-steps.tsx:84-103`: `<LinearJourney>`
  * reads `id` off the child and strips it before rendering, so a step declares
- * `id?: string` and never reads it. That optional-and-unused shape is exactly how
- * the repo's own `makeStep` test helper types a step
- * (`packages/react/src/__tests__/helpers.tsx:17-19`) — necessary because the global
- * `React.Attributes` `id` augmentation was removed before 1.0.
+ * `id?: string` and never reads it — the same shape as the repo's `makeStep`
+ * helper (`packages/react/src/__tests__/helpers.tsx:17-19`).
  */
-const JOURNEY_SNIPPET = `import { LinearJourney, useLinearJourney } from "@rxova/journey-react";
+const JOURNEY_SNIPPET = `import { LinearJourney, useLinearJourney, useLinearJourneyStep } from "@rxova/journey-react";
 
-type SignupContext = { email: string; acceptedTerms: boolean };
+type SignupContext = { email: string; orderId: string | null };
 
-// <LinearJourney> reads \`id\` and strips it before render,
-// so a step declares the prop but never reads it.
 function EmailStep(_props: { id?: string }) {
   const { machine, snapshot } = useLinearJourney<SignupContext>();
 
   return (
-    <label>
-      Email
-      <input
-        value={snapshot.context.email}
-        onChange={(event) =>
-          machine.context.update((context) => ({
-            ...context,
-            email: event.target.value
-          }))
-        }
-      />
-    </label>
+    <input
+      value={snapshot.context.email}
+      onChange={(event) =>
+        machine.context.update((context) => ({ ...context, email: event.target.value }))
+      }
+    />
+  );
+}
+
+function ReviewStep(_props: { id?: string }) {
+  // The awaited gate: \`run\` holds the machine on this step until it settles, and
+  // a rejection cancels the move and lands in \`currentStep.async.error\`.
+  useLinearJourneyStep<SignupContext, { orderId: string }>({
+    run: ({ snapshot }) => submitOrder(snapshot.context.email),
+    commit: ({ result, updateContext }) =>
+      updateContext((context) => ({ ...context, orderId: result.orderId }))
+  });
+
+  return <p>Review and place the order.</p>;
+}
+
+function DoneStep(_props: { id?: string }) {
+  const { machine, snapshot } = useLinearJourney<SignupContext>();
+
+  // Position and outcome are separate: reaching the last step does not finish it.
+  return (
+    <button onClick={() => machine.controls.complete()}>
+      Order {snapshot.context.orderId} placed — finish
+    </button>
+  );
+}
+
+function Controls() {
+  const { machine, snapshot } = useLinearJourney<SignupContext>();
+  const { error } = snapshot.currentStep.async;
+
+  return (
+    <>
+      {error ? <p role="alert">{String(error)}</p> : null}
+      <button
+        disabled={snapshot.machine.isLoading}
+        onClick={() => void machine.navigate.goToNextStep()}
+      >
+        {snapshot.machine.isLoading ? "Working…" : "Continue"}
+      </button>
+    </>
   );
 }
 
 export function Signup() {
   return (
     <LinearJourney
-      context={{ email: "", acceptedTerms: false }}
-      onComplete={async ({ snapshot }) => {
-        // Observer, not a gate: the machine does not await this,
-        // so handle failures here rather than letting them escape.
-        try {
-          await submitSignup(snapshot.context);
-        } catch (error) {
-          reportError(error);
-        }
-      }}
+      context={{ email: "", orderId: null }}
+      footer={<Controls />}
+      // Observer only: the status is already committed before this runs.
+      onComplete={({ snapshot }) => analytics.track("signup_complete", snapshot.context)}
     >
       <EmailStep id="email" />
-      <TermsStep id="terms" />
       <ReviewStep id="review" />
+      <DoneStep id="done" />
     </LinearJourney>
   );
 }`;
