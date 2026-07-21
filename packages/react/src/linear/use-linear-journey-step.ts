@@ -1,12 +1,13 @@
 import React from "react";
-import { useLinearJourneyMachine, LinearJourneyActiveStepContext } from "./machine-context";
-import type { LinearJourneyStepHandler } from "./linear.types";
+import { LinearJourneyActiveStepContext } from "./active-step-context";
+import type { LinearJourneyMachine, LinearJourneyStepHandler } from "./linear.types";
 
 const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
 
 /**
- * Registers forward-navigation work for the step component calling it —
- * the react-use-wizard `handleStep` equivalent, a shell over core's
+ * Implementation behind every bundle's `journey.useStep()` — registers
+ * forward-navigation work for the step component calling it, the
+ * react-use-wizard `handleStep` equivalent, a shell over core's
  * `machine.navigate.registerNextStepInterceptor`.
  *
  * `machine.navigate.goToNextStep()` runs the registered work in Core; a
@@ -14,30 +15,17 @@ const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : Re
  * `snapshot.currentStep.async.error`, with `snapshot.machine.isLoading` true
  * while it runs. Forward-only: timeline moves and `goToStepById` bypass it.
  * `onLeave` and `onEnter` remain post-commit effects.
- *
- * ```tsx
- * const Password = () => {
- *   useLinearJourneyStep({
- *     run: async ({ snapshot }) => validatePassword(snapshot.context.password),
- *     commit: ({ result, updateContext }) => {
- *       if (!result) throw new Error("Invalid password");
- *       updateContext((ctx) => ({ ...ctx, password: "" }));
- *     }
- *   });
- *   return <PasswordForm />;
- * };
- * ```
  */
-export const useLinearJourneyStep = <TContext = unknown, TResult = void>(
+export const useLinearJourneyStep = <TContext, TResult = void>(
+  machine: LinearJourneyMachine<TContext, string>,
   handler?: LinearJourneyStepHandler<TContext, TResult>
 ): void => {
-  const machine = useLinearJourneyMachine("useLinearJourneyStep");
   const stepId = React.useContext(LinearJourneyActiveStepContext);
 
   if (stepId === null) {
     throw new Error(
-      "useLinearJourneyStep() must be called from inside a step component rendered by <LinearJourney> " +
-        "(the linear journey provides the owning step's identity)."
+      "useStep() must be called from inside a step component rendered by the journey's <Provider> " +
+        "(the Provider supplies the owning step's identity)."
     );
   }
 

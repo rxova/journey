@@ -19,24 +19,29 @@ type Expect<T extends true> = T;
 
 const Component = (): null => null;
 
-// ── createLinearJourney curries the context type and the step-id union ──────
+// ── createLinearJourney infers TContext and the step-id union from the definition ──
 
 export function linearJourneyTypes() {
-  const bundle = createLinearJourneyBundle<{ email: string }>()(["intro", "details", "done"]);
+  const initialContext: { email: string } = { email: "" };
+  const bundle = createLinearJourneyBundle({
+    context: initialContext,
+    steps: ["intro", { id: "details" }, "done"]
+  });
 
-  type Hook = ReturnType<typeof bundle.useLinearJourney>;
-  type _ids = Expect<
-    Equal<NonNullable<Hook["snapshot"]["currentStep"]>["id"], "intro" | "details" | "done">
-  >;
+  type Hook = ReturnType<typeof bundle.useJourney>;
+  type _ids = Expect<Equal<Hook["snapshot"]["currentStep"]["id"], "intro" | "details" | "done">>;
   type _context = Expect<Equal<Hook["snapshot"]["context"], { email: string }>>;
 
-  type Props = Parameters<typeof bundle.LinearJourney>[0];
-  type _start = Expect<
-    Equal<NonNullable<Props["options"]>["startAt"], "intro" | "details" | "done" | undefined>
-  >;
+  type Props = Parameters<typeof bundle.Provider>[0];
+  type _start = Expect<Equal<Props["startAt"], "intro" | "details" | "done" | undefined>>;
+  type _initial = Expect<Equal<Props["initialContext"], { email: string } | undefined>>;
 
-  const definition = bundle.toGraphDefinition({ email: "" });
-  type _initial = Expect<Equal<typeof definition.initial, "intro" | "details" | "done">>;
+  type StepProps = Parameters<typeof bundle.Step>[0];
+  type _stepId = Expect<Equal<StepProps["id"], "intro" | "details" | "done">>;
+
+  // @ts-expect-error step ids come from the definition
+  const typoStep: StepProps = { id: "typo", children: null };
+  void typoStep;
 
   return bundle;
 }

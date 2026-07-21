@@ -3,7 +3,7 @@ import React from "react";
 import { describe, expect, it } from "vitest";
 import { renderToString } from "react-dom/server";
 import { createLinearJourney } from "@rxova/journey-core";
-import { LinearJourney } from "@rxova/journey-react";
+import { createLinearJourney as createLinearJourneyBundle } from "@rxova/journey-react";
 import { createGraphJourney } from "@rxova/journey-react/graph";
 import { useJourneySnapshot, useOwnedJourney } from "@rxova/journey-react/headless";
 
@@ -16,12 +16,13 @@ describe("server-side rendering (no window)", () => {
     // Render is pure: the machine is created idle and started in a layout
     // effect, which never runs on the server. Deterministic on both sides —
     // the client's first frame is the same fallback, replaced before paint.
+    const journey = createLinearJourneyBundle({ context: {}, steps: ["a"] });
     const html = renderToString(
-      <LinearJourney header={<p>head</p>} footer={<p>foot</p>} fallback={<p>loading</p>}>
-        <LinearJourney.Step id="a">
+      <journey.Provider header={<p>head</p>} footer={<p>foot</p>} fallback={<p>loading</p>}>
+        <journey.Step id="a">
           <A />
-        </LinearJourney.Step>
-      </LinearJourney>
+        </journey.Step>
+      </journey.Provider>
     );
     expect(html).toContain("loading");
     expect(html).not.toContain("step:a");

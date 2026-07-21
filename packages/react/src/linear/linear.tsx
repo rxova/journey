@@ -1,21 +1,21 @@
 import React from "react";
-import { createLinearJourney } from "@rxova/journey-core";
+import { createLinearJourney as coreCreateLinearJourney } from "@rxova/journey-core";
 import { errorInDevelopment } from "@rxova/journey-common/dev";
 import { useJourneySnapshot } from "../headless/use-journey-snapshot";
 import { deriveStepsFromChildren } from "./derive-steps";
-import { LinearJourneyActiveStepContext, LinearJourneyMachineContext } from "./machine-context";
-import { LinearJourneyStep } from "./linear-journey-step";
+import { LinearJourneyActiveStepContext } from "./active-step-context";
 import type { DerivedLinearJourneyStep } from "./derive-steps";
-import type { LinearJourneyMachine, LinearJourneyProps } from "./linear.types";
+import type {
+  LinearJourneyBundleDefinition,
+  LinearJourneyBundleOptions,
+  LinearJourneyMachine,
+  LinearProviderProps
+} from "./linear.types";
 
 const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
 
-/** Signature used to detect step-list changes across renders (order-sensitive). */
-const stepListSignature = (steps: readonly DerivedLinearJourneyStep[]): string =>
-  steps.map((step) => step.id).join(" ");
-
 const assignMachineRef = <TContext, TStepId extends string>(
-  ref: LinearJourneyProps<TContext, TStepId>["machineRef"],
+  ref: LinearProviderProps<TContext, TStepId>["machineRef"],
   machine: LinearJourneyMachine<TContext, TStepId> | null
 ): void => {
   if (!ref) {
@@ -28,35 +28,61 @@ const assignMachineRef = <TContext, TStepId extends string>(
   (ref as React.MutableRefObject<LinearJourneyMachine<TContext, TStepId> | null>).current = machine;
 };
 
-/** Internal prop set by createLinearJourney (the typed factory): the declared id set. */
-type LinearJourneyInternalProps<TContext> = LinearJourneyProps<TContext> & {
-  declaredStepIds?: readonly string[];
-};
-
-const assertDeclaredIds = (
+/**
+ * Children must cover the definition exactly — the definition is the machine's
+ * source of truth, the children only supply what each step renders.
+ */
+const assertChildrenCoverDefinition = (
   steps: readonly DerivedLinearJourneyStep[],
   declared: readonly string[]
 ): void => {
-  const derived = new Set(steps.map((step) => step.id));
-  const missing = declared.filter((id) => !derived.has(id));
-  const extra = steps.filter((step) => !declared.includes(step.id)).map((step) => step.id);
+  const derived = steps.map((step) => step.id);
+  const derivedSet = new Set(derived);
+  const missing = declared.filter((id) => !derivedSet.has(id));
+  const extra = derived.filter((id) => !declared.includes(id));
   if (missing.length > 0 || extra.length > 0) {
     throw new Error(
-      "<LinearJourney> children don't match the step ids declared in createLinearJourney(): " +
+      "<Provider> children don't match the step ids declared in createLinearJourney(): " +
         `${missing.length > 0 ? `missing [${missing.join(", ")}]` : ""}` +
         `${missing.length > 0 && extra.length > 0 ? "; " : ""}` +
         `${extra.length > 0 ? `undeclared [${extra.join(", ")}]` : ""}.`
     );
   }
+  if (declared.some((id, index) => derived[index] !== id)) {
+    errorInDevelopment(
+      `<Provider> children are ordered [${derived.join(", ")}] but the definition declares ` +
+        `[${declared.join(", ")}]. The definition's order drives the machine; reorder the children to match.`
+    );
+  }
 };
 
-const LinearJourneyComponent = <TContext,>(
-  props: LinearJourneyInternalProps<TContext>
+/** Internal props the factory adds on top of the public Provider props. */
+type LinearProviderRuntimeProps<TContext, TStepId extends string> = LinearProviderProps<
+  TContext,
+  TStepId
+> & {
+  definition: LinearJourneyBundleDefinition<TContext>;
+  declaredStepIds: readonly string[];
+  runtimeOptions: LinearJourneyBundleOptions<TStepId> | undefined;
+  machineContext: React.Context<LinearJourneyMachine<TContext, TStepId> | null>;
+};
+
+/**
+ * The runtime behind every bundle's `<Provider>`. The machine is created when
+ * the Provider mounts (StrictMode-safe) from the factory's definition — with
+ * the `initialContext` and `startAt` props as mount-time overrides — and
+ * disposed on unmount. Render stays pure: `autoStart` is forced off at
+ * creation and the start runs in a layout effect after subscribers attach, so
+ * entry effects and persistence writes never happen during render; until then
+ * only `fallback` renders (which is also what SSR emits).
+ */
+export const LinearJourneyProvider = <TContext, TStepId extends string>(
+  props: LinearProviderRuntimeProps<TContext, TStepId>
 ): React.ReactElement => {
   const {
     children,
-    context,
-    startIndex,
+    initialContext,
+    startAt,
     header,
     footer,
     wrapper,
@@ -66,24 +92,18 @@ const LinearJourneyComponent = <TContext,>(
     onStepLeave,
     onComplete,
     onError,
-    options,
     machineRef,
-    declaredStepIds
+    definition,
+    declaredStepIds,
+    runtimeOptions,
+    machineContext
   } = props;
 
-  if (startIndex !== undefined && startIndex !== 0 && options?.startAt !== undefined) {
-    errorInDevelopment(
-      "<LinearJourney> received both startIndex and options.startAt; options.startAt wins. Remove one."
-    );
-  }
-
-  // Steps are re-derived every render so the active element always carries the
-  // latest child props, but the machine below is built once from the first
-  // derivation: the id list is frozen at mount.
+  // Children are re-derived every render so the active element always carries
+  // the latest child props; the machine below is built from the definition,
+  // and the children must keep covering it on every render.
   const steps = deriveStepsFromChildren(children);
-  if (declaredStepIds !== undefined) {
-    assertDeclaredIds(steps, declaredStepIds);
-  }
+  assertChildrenCoverDefinition(steps, declaredStepIds);
 
   // Callback refs: subscriptions below stay stable across re-renders while
   // always seeing the latest callbacks.
@@ -91,30 +111,23 @@ const LinearJourneyComponent = <TContext,>(
   callbacksRef.current = { onStart, onStepEnter, onStepLeave, onComplete, onError };
 
   // Machine ownership: lazy ref init so StrictMode's double render creates
-  // exactly one machine, fixed for the lifetime of the mount. Creation is
-  // pure — `autoStart` is forced off here and the start runs in the layout
-  // effect below, after subscribers attach, so entry effects and persistence
-  // writes never happen during render. Options are frozen at mount.
-  const machineRefInternal = React.useRef<LinearJourneyMachine | null>(null);
-  const autoStartRef = React.useRef(options?.autoStart ?? true);
+  // exactly one machine, fixed for the lifetime of the mount. Options and the
+  // initialContext/startAt overrides are frozen at mount.
+  const machineRefInternal = React.useRef<LinearJourneyMachine<TContext, TStepId> | null>(null);
+  const autoStartRef = React.useRef(runtimeOptions?.autoStart ?? true);
   if (machineRefInternal.current === null) {
-    if (steps.length === 0) {
-      throw new Error("<LinearJourney> needs at least one step.");
-    }
-    const resolvedStartAt =
-      options?.startAt ??
-      (startIndex !== undefined && startIndex !== 0 ? steps[startIndex]?.id : undefined);
-    machineRefInternal.current = createLinearJourney(
+    const resolvedStartAt = startAt ?? runtimeOptions?.startAt;
+    machineRefInternal.current = coreCreateLinearJourney(
       {
-        steps: steps.map((step) => ({ id: step.id, ...step.config })) as never,
-        context: (context ?? {}) as unknown
+        steps: definition.steps as never,
+        context: (initialContext ?? definition.context) as unknown
       },
       {
-        ...options,
+        ...runtimeOptions,
         autoStart: false,
         ...(resolvedStartAt !== undefined ? { startAt: resolvedStartAt } : {})
       }
-    ) as unknown as LinearJourneyMachine;
+    ) as unknown as LinearJourneyMachine<TContext, TStepId>;
   }
   const machine = machineRefInternal.current;
 
@@ -135,24 +148,10 @@ const LinearJourneyComponent = <TContext,>(
     };
   }, []);
 
-  // Frozen step list: conditional/dynamic children are not supported — that
-  // flow belongs to the graph tier. The mounted machine keeps running on the
-  // original id list.
-  const signature = stepListSignature(steps);
-  const mountedSignatureRef = React.useRef(signature);
-  if (mountedSignatureRef.current !== signature) {
-    errorInDevelopment(
-      "<LinearJourney> derived a different step id list than it mounted with " +
-        `(mounted "${mountedSignatureRef.current}", now "${signature}"). ` +
-        "The step list is frozen at mount; conditional steps belong to the graph tier. " +
-        "Remount with a `key` to rebuild the journey."
-    );
-  }
-
   // Imperative machineRef, verbatim event → prop forwarding, and the start.
   const startReportedRef = React.useRef(false);
   useSafeLayoutEffect(() => {
-    assignMachineRef(machineRef, machine as never);
+    assignMachineRef(machineRef, machine);
 
     const subscriptions = machine.subscriptions;
     const unsubscribes = [
@@ -199,63 +198,28 @@ const LinearJourneyComponent = <TContext,>(
   // fallback alone so hook consumers never observe a null currentStep. The
   // start re-renders synchronously before paint, so nothing flashes.
   if (snapshot.currentStep === null) {
-    return (
-      <LinearJourneyMachineContext.Provider value={machine}>
-        {fallback ?? null}
-      </LinearJourneyMachineContext.Provider>
-    );
+    return <machineContext.Provider value={machine}>{fallback ?? null}</machineContext.Provider>;
   }
 
-  const activeStep = steps.find((step) => step.id === snapshot.currentStep?.id);
+  // Children cover the definition exactly (asserted above) and the machine
+  // only navigates declared ids, so the active id always has an element.
+  const activeStep = steps.find(
+    (step) => step.id === snapshot.currentStep?.id
+  ) as DerivedLinearJourneyStep;
 
-  let activeNode: React.ReactNode;
-  if (activeStep) {
-    activeNode = (
-      <LinearJourneyActiveStepContext.Provider key={activeStep.id} value={activeStep.id}>
-        {activeStep.element}
-      </LinearJourneyActiveStepContext.Provider>
-    );
-  } else {
-    activeNode = fallback ?? null;
-  }
+  const activeNode: React.ReactNode = (
+    <LinearJourneyActiveStepContext.Provider key={activeStep.id} value={activeStep.id}>
+      {activeStep.element}
+    </LinearJourneyActiveStepContext.Provider>
+  );
 
   const wrappedNode = wrapper ? React.cloneElement(wrapper, undefined, activeNode) : activeNode;
 
   return (
-    <LinearJourneyMachineContext.Provider value={machine}>
+    <machineContext.Provider value={machine}>
       {header}
       {wrappedNode}
       {footer}
-    </LinearJourneyMachineContext.Provider>
+    </machineContext.Provider>
   );
 };
-
-type LinearJourneyComponentType = (<TContext = Record<string, never>>(
-  props: LinearJourneyProps<TContext>
-) => React.ReactElement) & {
-  Step: typeof LinearJourneyStep;
-};
-
-/**
- * The linear journey tier. Steps are the children — each with a mandatory
- * unique `id` via a `<LinearJourney.Step id>` wrapper (or an inline `id` prop
- * on components that declare one).
- *
- * ```tsx
- * <LinearJourney header={<Progress />} footer={<Nav />}>
- *   <Email id="email" />
- *   <Password id="password" />
- *   <Confirm id="confirm" />
- * </LinearJourney>
- * ```
- *
- * No provider, no dispose: the machine is created when `<LinearJourney>` mounts
- * (StrictMode-safe) and disposed on unmount. The step id list is frozen at
- * mount. Inside any step, header, or footer, call `useLinearJourney()`.
- */
-export const LinearJourney: LinearJourneyComponentType = /*#__PURE__*/ Object.assign(
-  LinearJourneyComponent,
-  {
-    Step: LinearJourneyStep
-  }
-) as LinearJourneyComponentType;

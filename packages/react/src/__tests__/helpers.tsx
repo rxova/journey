@@ -12,7 +12,7 @@ export const flush = async (): Promise<void> => {
  * A trivial named step component factory for linear journey/graph views. The
  * declared (unused) `id` prop is what makes the inline-id spelling
  * (`<StepA id="a" />`) type-check — components without one use the
- * `<LinearJourney.Step id>` wrapper.
+ * `<journey.Step id>` wrapper.
  */
 export const makeStep =
   (label: string): React.ComponentType<{ id?: string }> =>

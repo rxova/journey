@@ -2,17 +2,16 @@ import type React from "react";
 import type { LinearJourneyStepProps } from "./linear.types";
 
 /**
- * Config-only marker element for the children form: declares a step's id (and
- * optional meta / lifecycle hooks) without touching the wrapped component's
- * props. `<LinearJourney>` reads the props off this element and renders its children;
- * the element itself never renders.
+ * Marker element for the Provider's children form: declares which definition
+ * step a child renders, without touching the wrapped component's props. Every
+ * bundle's `journey.Step` is this one component (typed per bundle); the
+ * Provider reads the id off the element and renders its children — the element
+ * itself never renders.
  */
-export const LinearJourneyStep = <TContext,>(
-  props: LinearJourneyStepProps<TContext>
-): React.ReactElement => {
+export const LinearJourneyStep = (props: LinearJourneyStepProps): React.ReactElement => {
   void props;
   throw new Error(
-    "<LinearJourney.Step> must be a direct child of <LinearJourney>; it never renders on its own."
+    "<journey.Step> must be a direct child of the journey's <Provider>; it never renders on its own."
   );
 };
 

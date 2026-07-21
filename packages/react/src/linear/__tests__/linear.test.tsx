@@ -1,13 +1,8 @@
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import {
-  createLinearJourney,
-  useLinearJourney,
-  useLinearJourneySelector,
-  useLinearJourneyStep,
-  LinearJourney
-} from "@rxova/journey-react";
+import { createLinearJourney } from "@rxova/journey-react";
+import { linearToGraphDefinition } from "@rxova/journey-core/convert";
 import { flush, makeStep, memoryStorage } from "@rxova/journey-react/testing";
 import type { LinearJourneyMachine } from "@rxova/journey-react";
 
@@ -15,8 +10,10 @@ const StepA = makeStep("a");
 const StepB = makeStep("b");
 const StepC = makeStep("c");
 
+const abc = createLinearJourney({ context: { n: 0 }, steps: ["a", "b", "c"] });
+
 const Nav = () => {
-  const { machine, snapshot } = useLinearJourney<{ n: number }>();
+  const { machine, snapshot } = abc.useJourney();
   const currentStep = snapshot.currentStep;
   return (
     <div>
@@ -28,27 +25,26 @@ const Nav = () => {
         {currentStep.isLastStep ? "last" : ""}
         {currentStep.isFirstTimeVisit ? " fresh" : " revisit"}
       </span>
-      <span data-testid="error">
-        {currentStep.async.error == null ? "none" : String(currentStep.async.error)}
-      </span>
+      <span data-testid="context-n">{snapshot.context.n}</span>
       <button onClick={() => void machine.navigate.goToNextStep()}>next</button>
       <button onClick={() => void machine.navigate.goToPreviousStep()}>back</button>
-      <button onClick={() => void machine.navigate.goToStepById("c" as never)}>jump</button>
+      <button onClick={() => void machine.navigate.goToStepById("c")}>jump</button>
       <button onClick={() => machine.controls.complete()}>finish</button>
-      <button onClick={() => machine.async.clearError()}>clear</button>
     </div>
   );
 };
 
-describe("<LinearJourney> children form", () => {
+const AbcJourney = (props: Partial<Parameters<typeof abc.Provider>[0]>) => (
+  <abc.Provider footer={<Nav />} {...props}>
+    <StepA id="a" />
+    <StepB id="b" />
+    <StepC id="c" />
+  </abc.Provider>
+);
+
+describe("bundle Provider rendering and navigation", () => {
   it("renders the first step and navigates through the verbatim machine", async () => {
-    render(
-      <LinearJourney footer={<Nav />}>
-        <StepA id="a" />
-        <StepB id="b" />
-        <StepC id="c" />
-      </LinearJourney>
-    );
+    render(<AbcJourney />);
     await flush();
 
     expect(screen.getByTestId("step-a")).toBeTruthy();
@@ -78,96 +74,154 @@ describe("<LinearJourney> children form", () => {
       seenProps.push(props);
       return <span>probe</span>;
     };
+    const journey = createLinearJourney({ context: {}, steps: ["only"] });
     render(
-      <LinearJourney>
+      <journey.Provider>
         <Probe id="only" flavor="salt" />
-      </LinearJourney>
+      </journey.Provider>
     );
     await flush();
     expect(seenProps[0]).toEqual({ flavor: "salt" });
   });
 
-  it("enforces unique mandatory ids", () => {
+  it("enforces unique mandatory ids on the children", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const journey = createLinearJourney({ context: {}, steps: ["dup", "other"] });
     expect(() =>
       render(
-        <LinearJourney>
+        <journey.Provider>
           <StepA id="dup" />
           <StepB id="dup" />
-        </LinearJourney>
+        </journey.Provider>
       )
     ).toThrow(/duplicate id "dup"/);
     expect(() =>
       render(
-        <LinearJourney>
+        <journey.Provider>
           <StepA />
-        </LinearJourney>
+          <StepB id="other" />
+        </journey.Provider>
       )
     ).toThrow(/mandatory unique "id"/);
     consoleError.mockRestore();
   });
+
+  it("rejects children whose ids don't cover the definition", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const journey = createLinearJourney({ context: {}, steps: ["intro", "details"] });
+    expect(() =>
+      render(
+        <journey.Provider>
+          <StepA id="intro" />
+          <StepB id="detials" />
+        </journey.Provider>
+      )
+    ).toThrow(/missing \[details\]; undeclared \[detials\]/);
+    expect(() =>
+      render(
+        <journey.Provider>
+          <StepA id="intro" />
+        </journey.Provider>
+      )
+    ).toThrow(/missing \[details\]\./);
+    expect(() =>
+      render(
+        <journey.Provider>
+          <StepA id="intro" />
+          <StepB id="details" />
+          <StepC id={"extra" as never} />
+        </journey.Provider>
+      )
+    ).toThrow(/undeclared \[extra\]\./);
+    consoleError.mockRestore();
+  });
+
+  it("throws when a rerender stops covering the definition", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const journey = createLinearJourney({ context: {}, steps: ["a", "b"] });
+    const Dynamic = ({ narrow }: { narrow: boolean }) => (
+      <journey.Provider>
+        <StepA id="a" />
+        {narrow ? null : <StepB id="b" />}
+      </journey.Provider>
+    );
+    const view = render(<Dynamic narrow={false} />);
+    await flush();
+    expect(screen.getByTestId("step-a")).toBeTruthy();
+
+    expect(() => view.rerender(<Dynamic narrow={true} />)).toThrow(/missing \[b\]/);
+    consoleError.mockRestore();
+  });
+
+  it("warns in dev when the children order fights the definition order", async () => {
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const journey = createLinearJourney({ context: {}, steps: ["a", "b"] });
+    render(
+      <journey.Provider>
+        <StepB id="b" />
+        <StepA id="a" />
+      </journey.Provider>
+    );
+    await flush();
+    // The definition wins: the machine still starts at its first step.
+    expect(screen.getByTestId("step-a")).toBeTruthy();
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.stringContaining("The definition's order drives the machine")
+    );
+    consoleError.mockRestore();
+    delete (globalThis as { __DEV__?: boolean }).__DEV__;
+  });
 });
 
-describe("<LinearJourney> step metadata and start position", () => {
-  it("exposes metadata declared on <LinearJourney.Step> through the snapshot", async () => {
+describe("definition step config and start position", () => {
+  it("exposes definition metadata through the snapshot", async () => {
+    const journey = createLinearJourney({
+      context: {},
+      steps: [
+        { id: "a", metadata: "Alpha" },
+        { id: "b", metadata: "Beta" }
+      ]
+    });
     const Meta = () => {
-      const { snapshot } = useLinearJourney();
+      const { snapshot } = journey.useJourney();
       return <span data-testid="metadata">{String(snapshot.currentStep.metadata)}</span>;
     };
     render(
-      <LinearJourney footer={<Meta />}>
-        <LinearJourney.Step id="a" metadata="Alpha">
-          <StepA />
-        </LinearJourney.Step>
-        <LinearJourney.Step id="b" metadata="Beta">
-          <StepB />
-        </LinearJourney.Step>
-      </LinearJourney>
+      <journey.Provider footer={<Meta />}>
+        <StepA id="a" />
+        <StepB id="b" />
+      </journey.Provider>
     );
     await flush();
     expect(screen.getByTestId("metadata").textContent).toBe("Alpha");
   });
 
-  it("starts at options.startAt, which wins over startIndex", async () => {
-    render(
-      <LinearJourney options={{ startAt: "b" }} startIndex={2}>
+  it("starts at the startAt prop, which wins over the bundle options' startAt", async () => {
+    const journey = createLinearJourney({ context: {}, steps: ["a", "b", "c"] }, { startAt: "b" });
+    const journeySteps = (
+      <>
         <StepA id="a" />
         <StepB id="b" />
         <StepC id="c" />
-      </LinearJourney>
+      </>
     );
+    const optionsOnly = render(<journey.Provider>{journeySteps}</journey.Provider>);
     await flush();
     expect(screen.getByTestId("step-b")).toBeTruthy();
-  });
+    optionsOnly.unmount();
+    await flush();
 
-  it("starts at startIndex when no options.startAt is given", async () => {
-    render(
-      <LinearJourney startIndex={2}>
-        <StepA id="a" />
-        <StepB id="b" />
-        <StepC id="c" />
-      </LinearJourney>
-    );
+    render(<journey.Provider startAt="c">{journeySteps}</journey.Provider>);
     await flush();
     expect(screen.getByTestId("step-c")).toBeTruthy();
   });
-
-  it("throws at mount for an unknown options.startAt id", () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    expect(() =>
-      render(
-        <LinearJourney options={{ startAt: "ghost" }}>
-          <StepA id="a" />
-        </LinearJourney>
-      )
-    ).toThrow(/startAt references unknown step "ghost"/);
-    consoleError.mockRestore();
-  });
 });
 
-describe("useLinearJourneyStep", () => {
+describe("useStep", () => {
+  const guarded = createLinearJourney({ context: { n: 0 }, steps: ["guarded", "b"] });
   const Guarded = () => {
-    useLinearJourneyStep<{ n: number }, number>({
+    guarded.useStep<number>({
       run: async ({ snapshot }) => {
         if (snapshot.context.n < 1) {
           throw new Error("n too small");
@@ -180,22 +234,31 @@ describe("useLinearJourneyStep", () => {
     });
     return <span data-testid="guarded">guarded</span>;
   };
-  const Bump = () => {
-    const { machine } = useLinearJourney<{ n: number }>();
+  const GuardedChrome = () => {
+    const { machine, snapshot } = guarded.useJourney();
     return (
-      <button onClick={() => machine.context.update((c) => ({ ...c, n: c.n + 1 }))}>bump</button>
+      <div>
+        <span data-testid="error">
+          {snapshot.currentStep.async.error == null
+            ? "none"
+            : String(snapshot.currentStep.async.error)}
+        </span>
+        <button onClick={() => machine.context.update((c) => ({ ...c, n: c.n + 1 }))}>bump</button>
+        <button onClick={() => void machine.navigate.goToNextStep()}>next</button>
+        <button onClick={() => machine.async.clearError()}>clear</button>
+      </div>
     );
   };
 
   it("blocks forward navigation on a rejected handler and surfaces the error", async () => {
     const onError = vi.fn();
     render(
-      <LinearJourney context={{ n: 0 }} onError={onError} footer={<Nav />} header={<Bump />}>
-        <LinearJourney.Step id="guarded">
+      <guarded.Provider onError={onError} footer={<GuardedChrome />}>
+        <guarded.Step id="guarded">
           <Guarded />
-        </LinearJourney.Step>
+        </guarded.Step>
         <StepB id="b" />
-      </LinearJourney>
+      </guarded.Provider>
     );
     await flush();
 
@@ -218,28 +281,22 @@ describe("useLinearJourneyStep", () => {
   });
 });
 
-describe("linear journey callbacks and machine escape hatches", () => {
+describe("journey callbacks and machine escape hatches", () => {
   it("forwards core events to the callback props verbatim", async () => {
     const onStart = vi.fn();
     const onStepEnter = vi.fn();
     const onStepLeave = vi.fn();
     const onComplete = vi.fn();
-    const machineRef = React.createRef<LinearJourneyMachine<{ n: number }>>();
+    const machineRef = React.createRef<LinearJourneyMachine<{ n: number }, "a" | "b" | "c">>();
 
     render(
-      <LinearJourney
-        context={{ n: 0 }}
+      <AbcJourney
         onStart={onStart}
         onStepEnter={onStepEnter}
         onStepLeave={onStepLeave}
         onComplete={onComplete}
         machineRef={machineRef}
-        footer={<Nav />}
-      >
-        <StepA id="a" />
-        <StepB id="b" />
-        <StepC id="c" />
-      </LinearJourney>
+      />
     );
     await flush();
     expect(machineRef.current?.getSnapshot().currentStep?.id).toBe("a");
@@ -279,11 +336,19 @@ describe("linear journey callbacks and machine escape hatches", () => {
 
   it("threads the persist option through to core", async () => {
     const storage = memoryStorage();
+    const journey = createLinearJourney(
+      { context: {}, steps: ["a", "b"] },
+      { persist: { key: "wiz", storage } }
+    );
+    const Forward = () => {
+      const { machine } = journey.useJourney();
+      return <button onClick={() => void machine.navigate.goToNextStep()}>next</button>;
+    };
     render(
-      <LinearJourney options={{ persist: { key: "wiz", storage } }} footer={<Nav />}>
+      <journey.Provider footer={<Forward />}>
         <StepA id="a" />
         <StepB id="b" />
-      </LinearJourney>
+      </journey.Provider>
     );
     await flush();
     fireEvent.click(screen.getByText("next"));
@@ -294,55 +359,56 @@ describe("linear journey callbacks and machine escape hatches", () => {
   });
 
   it("disposes the machine on unmount", async () => {
-    const machineRef = React.createRef<LinearJourneyMachine>();
-    const view = render(
-      <LinearJourney machineRef={machineRef}>
-        <StepA id="a" />
-      </LinearJourney>
-    );
+    const machineRef = React.createRef<LinearJourneyMachine<{ n: number }, "a" | "b" | "c">>();
+    const view = render(<AbcJourney machineRef={machineRef} />);
     await flush();
     const machine = machineRef.current!;
     view.unmount();
     await flush();
     expect(await machine.navigate.goToNextStep()).toEqual({ ok: false, reason: "disposed" });
   });
+});
 
-  it("freezes the step list at mount: a changed id list warns in dev and is ignored", async () => {
-    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const Dynamic = ({ extended }: { extended: boolean }) => (
-      <LinearJourney context={{ n: 5 }} footer={<Nav />}>
+describe("initialContext override", () => {
+  it("defaults to the definition context and lets the Provider override it at mount", async () => {
+    const journey = createLinearJourney({ context: { n: 5 }, steps: ["a"] });
+    const ShowN = () => {
+      const n = journey.useSelector((snapshot) => snapshot.context.n);
+      return <span data-testid="n">{n}</span>;
+    };
+    const fromDefinition = render(
+      <journey.Provider footer={<ShowN />}>
         <StepA id="a" />
-        <StepB id="b" />
-        {extended ? <StepC id="c" /> : null}
-      </LinearJourney>
+      </journey.Provider>
     );
-    const view = render(<Dynamic extended={false} />);
     await flush();
-    expect(screen.getByTestId("position").textContent).toBe("a:1/2");
+    expect(screen.getByTestId("n").textContent).toBe("5");
+    fromDefinition.unmount();
+    await flush();
 
-    view.rerender(<Dynamic extended={true} />);
+    render(
+      <journey.Provider initialContext={{ n: 42 }} footer={<ShowN />}>
+        <StepA id="a" />
+      </journey.Provider>
+    );
     await flush();
-    expect(screen.getByTestId("position").textContent).toBe("a:1/2");
-    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining("frozen at mount"));
-    consoleError.mockRestore();
-    delete (globalThis as { __DEV__?: boolean }).__DEV__;
+    expect(screen.getByTestId("n").textContent).toBe("42");
   });
 });
 
 describe("options.autoStart", () => {
   it("false renders the fallback until the machine is started manually", async () => {
     const onStart = vi.fn();
-    const machineRef = React.createRef<LinearJourneyMachine>();
+    const journey = createLinearJourney({ context: {}, steps: ["a"] }, { autoStart: false });
+    const machineRef = React.createRef<LinearJourneyMachine<Record<string, never>, "a">>();
     render(
-      <LinearJourney
-        options={{ autoStart: false }}
+      <journey.Provider
         fallback={<span data-testid="idle">idle</span>}
         onStart={onStart}
         machineRef={machineRef}
       >
         <StepA id="a" />
-      </LinearJourney>
+      </journey.Provider>
     );
     await flush();
     expect(screen.getByTestId("idle")).toBeTruthy();
@@ -357,78 +423,55 @@ describe("options.autoStart", () => {
   });
 });
 
-describe("createLinearJourney typed bundle", () => {
-  it("curries context and step-id types over the same runtime and converts to graph", async () => {
-    const journey = createLinearJourney<{ n: number }>()(["intro", "details"]);
-
-    const BundleFooter = () => {
-      const { snapshot } = journey.useLinearJourney();
-      const stepCount = journey.useLinearJourneySelector((s) => s.steps.totalSteps);
-      return (
-        <span data-testid="bundle">
-          {snapshot.currentStep.id}/{stepCount}/{snapshot.context.n}
-        </span>
-      );
-    };
-    render(
-      <journey.LinearJourney context={{ n: 1 }} footer={<BundleFooter />}>
-        <StepA id="intro" />
-        <StepB id="details" />
-      </journey.LinearJourney>
+describe("factory validation and graph migration", () => {
+  it("rejects duplicate and empty step declarations", () => {
+    expect(() => createLinearJourney({ context: {}, steps: ["dup", "dup"] })).toThrow(
+      /must be unique/
     );
-    await flush();
-    expect(screen.getByTestId("bundle").textContent).toBe("intro/2/1");
-
-    const definition = journey.toGraphDefinition({ n: 1 });
-    expect(definition.initial).toBe("intro");
-    expect(definition.transitions.NEXT).toMatchObject([{ from: "intro", to: "details" }]);
+    expect(() => createLinearJourney({ context: {}, steps: [] as never })).toThrow(
+      /at least one step/
+    );
   });
 
-  it("rejects children whose ids don't match the declaration, and duplicate declarations", () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const journey = createLinearJourney()(["intro", "details"]);
-    expect(() =>
-      render(
-        <journey.LinearJourney>
-          <StepA id="intro" />
-          <StepB id="detials" />
-        </journey.LinearJourney>
-      )
-    ).toThrow(/missing \[details\]; undeclared \[detials\]/);
-    expect(() =>
-      render(
-        <journey.LinearJourney>
-          <StepA id="intro" />
-        </journey.LinearJourney>
-      )
-    ).toThrow(/missing \[details\]\./);
-    expect(() =>
-      render(
-        <journey.LinearJourney>
-          <StepA id="intro" />
-          <StepB id="details" />
-          <StepC id="extra" />
-        </journey.LinearJourney>
-      )
-    ).toThrow(/undeclared \[extra\]\./);
-    expect(() => createLinearJourney()(["dup", "dup"])).toThrow(/must be unique/);
-    consoleError.mockRestore();
+  it("converts the captured definition with core's external helper", () => {
+    const definition = { context: { n: 1 }, steps: ["intro", "details"] } as const;
+    const journey = createLinearJourney(definition);
+    void journey;
+
+    const graphDefinition = linearToGraphDefinition(definition);
+    expect(graphDefinition.initial).toBe("intro");
+    expect(graphDefinition.transitions.NEXT).toMatchObject([{ from: "intro", to: "details" }]);
   });
 });
 
 describe("hook guards", () => {
-  it("useLinearJourney and useLinearJourneySelector throw outside a <LinearJourney>", () => {
+  it("bundle hooks throw outside their own Provider", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const Lost = () => {
-      useLinearJourney();
+      abc.useJourney();
       return null;
     };
-    expect(() => render(<Lost />)).toThrow(/inside a <LinearJourney>/);
+    expect(() => render(<Lost />)).toThrow(/inside this journey's <Provider>/);
+
     const LostSelector = () => {
-      useLinearJourneySelector((snapshot) => snapshot.status);
+      abc.useSelector((snapshot) => snapshot.status);
       return null;
     };
-    expect(() => render(<LostSelector />)).toThrow(/inside a <LinearJourney>/);
+    expect(() => render(<LostSelector />)).toThrow(/inside this journey's <Provider>/);
+
+    // Bundles are isolated: another journey's Provider does not satisfy abc's hooks.
+    const other = createLinearJourney({ context: {}, steps: ["solo"] });
+    const Crossed = () => {
+      abc.useJourney();
+      return null;
+    };
+    expect(() =>
+      render(
+        <other.Provider header={<Crossed />}>
+          <StepA id="solo" />
+        </other.Provider>
+      )
+    ).toThrow(/inside this journey's <Provider>/);
     consoleError.mockRestore();
   });
 });
