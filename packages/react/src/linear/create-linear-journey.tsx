@@ -2,7 +2,6 @@ import React from "react";
 import { useJourneySelector } from "../headless/use-journey-selector";
 import { useJourneySnapshot } from "../headless/use-journey-snapshot";
 import { LinearJourneyProvider } from "./linear";
-import { LinearJourneyStep } from "./linear-journey-step";
 import { useLinearJourneyStep } from "./use-linear-journey-step";
 import type { LinearStepIdOf, LinearStepInput } from "@rxova/journey-core";
 import type {
@@ -27,15 +26,16 @@ const stepIdOf = (step: string | { readonly id: string }): string =>
  *
  * ```tsx
  * const signup = createLinearJourney({
+ *   name: "signup",
  *   context: initialContext,
  *   steps: [{ id: "email" }, { id: "review" }, { id: "done" }]
  * });
  *
- * <signup.Provider footer={<Controls />} onComplete={track}>
- *   <signup.Step id="email"><EmailStep /></signup.Step>
- *   <signup.Step id="review"><ReviewStep /></signup.Step>
- *   <signup.Step id="done"><DoneStep /></signup.Step>
- * </signup.Provider>;
+ * <signup.Provider
+ *   views={{ email: <EmailStep />, review: <ReviewStep />, done: <DoneStep /> }}
+ *   footer={<Controls />}
+ *   onComplete={track}
+ * />;
  *
  * const { machine, snapshot } = signup.useJourney();
  * ```
@@ -43,12 +43,12 @@ const stepIdOf = (step: string | { readonly id: string }): string =>
  * **No machine is created here** — the definition is captured and a machine is
  * created per `<Provider>` mount (StrictMode-safe, disposed on unmount);
  * multiple Providers are independent instances. Step configs (`metadata`,
- * `onEnter`, `onLeave`) live in the definition; children only supply what each
- * step renders, and the Provider asserts they cover the declared ids exactly.
- * Each bundle owns a private React context, so its hooks only see its own
- * Providers. The definition is core's `LinearJourneyDefinition` shape — hand
- * it to `linearToGraphDefinition()` from `@rxova/journey-core/convert` when a
- * journey outgrows the linear tier.
+ * `onEnter`, `onLeave`) live in the definition; the Provider's `views` record
+ * supplies what each step renders, and its keys are type-checked to cover the
+ * declared ids exactly. Each bundle owns a private React context, so its
+ * hooks only see its own Providers. The definition is core's
+ * `LinearJourneyDefinition` shape — hand it to `linearToGraphDefinition()`
+ * from `@rxova/journey-core/convert` when a journey outgrows the linear tier.
  */
 export const createLinearJourney = <
   TContext,
@@ -93,11 +93,10 @@ export const createLinearJourney = <
       machineContext={MachineContext}
     />
   );
-  Provider.displayName = "LinearJourneyProvider";
+  Provider.displayName = definition.name ? `${definition.name}.Provider` : "LinearJourney.Provider";
 
   return {
     Provider,
-    Step: LinearJourneyStep as LinearJourneyBundle<TContext, TStepId>["Step"],
     useJourney: (): UseLinearJourneyResult<TContext, TStepId> => {
       const machine = useMachine("useJourney");
       const snapshot = useJourneySnapshot(machine) as Snapshot;

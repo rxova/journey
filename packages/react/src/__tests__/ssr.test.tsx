@@ -18,11 +18,12 @@ describe("server-side rendering (no window)", () => {
     // the client's first frame is the same fallback, replaced before paint.
     const journey = createLinearJourneyBundle({ context: {}, steps: ["a"] });
     const html = renderToString(
-      <journey.Provider header={<p>head</p>} footer={<p>foot</p>} fallback={<p>loading</p>}>
-        <journey.Step id="a">
-          <A />
-        </journey.Step>
-      </journey.Provider>
+      <journey.Provider
+        views={{ a: <A /> }}
+        header={<p>head</p>}
+        footer={<p>foot</p>}
+        fallback={<p>loading</p>}
+      />
     );
     expect(html).toContain("loading");
     expect(html).not.toContain("step:a");

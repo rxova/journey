@@ -2,13 +2,12 @@ import React from "react";
 import { createLinearJourney as coreCreateLinearJourney } from "@rxova/journey-core";
 import { errorInDevelopment } from "@rxova/journey-common/dev";
 import { useJourneySnapshot } from "../headless/use-journey-snapshot";
-import { deriveStepsFromChildren } from "./derive-steps";
 import { LinearJourneyActiveStepContext } from "./active-step-context";
-import type { DerivedLinearJourneyStep } from "./derive-steps";
 import type {
   LinearJourneyBundleDefinition,
   LinearJourneyBundleOptions,
   LinearJourneyMachine,
+  LinearJourneyViews,
   LinearProviderProps
 } from "./linear.types";
 
@@ -29,29 +28,26 @@ const assignMachineRef = <TContext, TStepId extends string>(
 };
 
 /**
- * Children must cover the definition exactly — the definition is the machine's
- * source of truth, the children only supply what each step renders.
+ * Exhaustiveness is enforced by the `views` record type; this runtime check
+ * exists for plain-JS callers. A `null`/`undefined` view value is legal (the
+ * step renders nothing) — only an absent key is an error.
  */
-const assertChildrenCoverDefinition = (
-  steps: readonly DerivedLinearJourneyStep[],
+const assertViewsCoverDefinition = (
+  views: LinearJourneyViews<string>,
   declared: readonly string[]
 ): void => {
-  const derived = steps.map((step) => step.id);
-  const derivedSet = new Set(derived);
-  const missing = declared.filter((id) => !derivedSet.has(id));
-  const extra = derived.filter((id) => !declared.includes(id));
-  if (missing.length > 0 || extra.length > 0) {
+  const missing = declared.filter((id) => !(id in views));
+  if (missing.length > 0) {
     throw new Error(
-      "<Provider> children don't match the step ids declared in createLinearJourney(): " +
-        `${missing.length > 0 ? `missing [${missing.join(", ")}]` : ""}` +
-        `${missing.length > 0 && extra.length > 0 ? "; " : ""}` +
-        `${extra.length > 0 ? `undeclared [${extra.join(", ")}]` : ""}.`
+      `<Provider> views is missing [${missing.join(", ")}] declared in createLinearJourney().`
     );
   }
-  if (declared.some((id, index) => derived[index] !== id)) {
+  const declaredSet = new Set(declared);
+  const undeclared = Object.keys(views).filter((id) => !declaredSet.has(id));
+  if (undeclared.length > 0) {
     errorInDevelopment(
-      `<Provider> children are ordered [${derived.join(", ")}] but the definition declares ` +
-        `[${declared.join(", ")}]. The definition's order drives the machine; reorder the children to match.`
+      `<Provider> views has undeclared keys [${undeclared.join(", ")}]; they can never render. ` +
+        "Declare them as steps in createLinearJourney() or remove them."
     );
   }
 };
@@ -80,7 +76,7 @@ export const LinearJourneyProvider = <TContext, TStepId extends string>(
   props: LinearProviderRuntimeProps<TContext, TStepId>
 ): React.ReactElement => {
   const {
-    children,
+    views,
     initialContext,
     startAt,
     header,
@@ -99,11 +95,9 @@ export const LinearJourneyProvider = <TContext, TStepId extends string>(
     machineContext
   } = props;
 
-  // Children are re-derived every render so the active element always carries
-  // the latest child props; the machine below is built from the definition,
-  // and the children must keep covering it on every render.
-  const steps = deriveStepsFromChildren(children);
-  assertChildrenCoverDefinition(steps, declaredStepIds);
+  // Views are read every render so the active view always carries the latest
+  // props; the machine below is built from the definition alone.
+  assertViewsCoverDefinition(views, declaredStepIds);
 
   // Callback refs: subscriptions below stay stable across re-renders while
   // always seeing the latest callbacks.
@@ -201,15 +195,13 @@ export const LinearJourneyProvider = <TContext, TStepId extends string>(
     return <machineContext.Provider value={machine}>{fallback ?? null}</machineContext.Provider>;
   }
 
-  // Children cover the definition exactly (asserted above) and the machine
-  // only navigates declared ids, so the active id always has an element.
-  const activeStep = steps.find(
-    (step) => step.id === snapshot.currentStep?.id
-  ) as DerivedLinearJourneyStep;
-
+  // The views record covers the definition and the machine only navigates
+  // declared ids, so the active id always has an entry. Keyed by id: moving
+  // steps remounts the view instead of reconciling across steps.
+  const activeStepId = snapshot.currentStep.id;
   const activeNode: React.ReactNode = (
-    <LinearJourneyActiveStepContext.Provider key={activeStep.id} value={activeStep.id}>
-      {activeStep.element}
+    <LinearJourneyActiveStepContext.Provider key={activeStepId} value={activeStepId}>
+      {views[activeStepId as TStepId]}
     </LinearJourneyActiveStepContext.Provider>
   );
 
