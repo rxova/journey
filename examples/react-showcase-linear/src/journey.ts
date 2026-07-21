@@ -8,6 +8,7 @@ import { initialContext } from "./context";
  * one is created per <loginJourney.Provider> mount.
  */
 export const loginJourney = createLinearJourney({
+  name: "loginJourney",
   context: initialContext,
   steps: ["login", "setup2fa", "verifyCode", { id: "loggedIn", metadata: { label: "Logged In" } }]
 });
