@@ -5,22 +5,33 @@ sidebar_position: 2
 
 Choose the React surface based on who owns the machine and how the flow is authored.
 
-- Start with `<LinearJourney>` for an ordered JSX flow.
+- Start with `createLinearJourney()` for an ordered flow.
 - Use the graph bundle for named events, branches, and guards.
 - Use headless hooks when a Core machine already exists.
 
 ## Build a linear signup
 
 ```tsx
-import { LinearJourney, useLinearJourney, useLinearJourneyStep } from "@rxova/journey-react";
+import { createLinearJourney } from "@rxova/journey-react";
 
 type SignupContext = {
   email: string;
   accountId: string | null;
 };
 
+const initialContext: SignupContext = {
+  email: "",
+  accountId: null
+};
+
+const signup = createLinearJourney({
+  name: "signup",
+  context: initialContext,
+  steps: ["email", "review", "success"]
+});
+
 function EmailStep() {
-  const { machine, snapshot } = useLinearJourney<SignupContext>();
+  const { machine, snapshot } = signup.useJourney();
 
   return (
     <label>
@@ -39,7 +50,7 @@ function EmailStep() {
 }
 
 function ReviewStep() {
-  useLinearJourneyStep<SignupContext, { accountId: string }>({
+  signup.useStep<{ accountId: string }>({
     run: ({ snapshot }) => signupApi.create(snapshot.context.email),
     commit: ({ result, updateContext }) => {
       updateContext((context) => ({
@@ -53,7 +64,7 @@ function ReviewStep() {
 }
 
 function Footer() {
-  const { machine, snapshot } = useLinearJourney<SignupContext>();
+  const { machine, snapshot } = signup.useJourney();
 
   const next = async () => {
     const result = await machine.navigate.goToNextStep();
@@ -81,32 +92,46 @@ function Footer() {
 
 export function Signup() {
   return (
-    <LinearJourney<SignupContext>
-      context={{ email: "", accountId: null }}
+    <signup.Provider
+      views={{
+        email: <EmailStep />,
+        review: <ReviewStep />,
+        success: <SuccessStep />
+      }}
       footer={<Footer />}
       onComplete={({ snapshot }) => console.log(snapshot.context.accountId)}
-    >
-      <EmailStep id="email" />
-      <ReviewStep id="review" />
-      <SuccessStep id="success" />
-    </LinearJourney>
+    />
   );
 }
 ```
 
-The journey owns and starts the Core machine. Navigation work on Review runs before movement; its
-context commit becomes visible in the same snapshot that moves to Success. Reaching Success alone
-does not complete the machine—call `machine.controls.complete()` when the product outcome is
-complete.
+The factory captures the definition; each `<signup.Provider>` mount creates, starts, and disposes
+its own Core machine. Navigation work on Review runs before movement; its context commit becomes
+visible in the same snapshot that moves to Success. Reaching Success alone does not complete the
+machine—call `machine.controls.complete()` when the product outcome is complete.
 
-## Add compile-time step IDs
+## Step IDs are compile-time by default
 
-```ts
-const signup = createLinearJourney<SignupContext>()(["email", "review", "success"] as const);
+There is no separate typed variant. `TContext` is inferred from `definition.context` (annotate the
+value, as `initialContext` is above—do not cast), and the step-ID union is inferred from the
+`steps` tuple, so no call site passes generics. The `views` record is keyed by that union and
+checked exhaustively at compile time: a missing key or an undeclared key is a TS error. Plain-JS
+callers get a runtime error for a missing key and a dev-mode warning for undeclared keys. A `null`
+view value is legal and renders nothing.
+
+Per-mount data flows through Provider props, read once at mount. `initialContext` replaces the
+definition's context wholesale (it is not merged), and `startAt` is typed to the ID union:
+
+```tsx
+<signup.Provider
+  views={views}
+  startAt="review"
+  initialContext={{ email: user.email, accountId: null }}
+/>
 ```
 
-Replace `LinearJourney` with `signup.LinearJourney` and use the bundle hooks. At mount, the child
-IDs are checked against the declared tuple.
+Step configuration (`metadata`, `onEnter`, `onLeave`) lives in the definition's step objects, never
+in JSX—the `views` values only supply what each step renders.
 
 ## Build a graph checkout
 
@@ -157,8 +182,9 @@ export function Checkout() {
 }
 ```
 
-The Provider creates one machine for this mount. A second Provider creates a separate machine; the
-two do not share context or history.
+Both factories share one shape: capture a definition, get a bundle back, and let each Provider
+mount own one machine. A second Provider creates a separate machine; the two do not share context
+or history.
 
 ## Render an existing machine
 

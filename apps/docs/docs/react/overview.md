@@ -10,27 +10,42 @@ the same immutable snapshots and invoke the same command groups as any other Cor
 
 The package has three surfaces because ownership and authoring style differ across applications.
 
-| Surface            | Import                          | Machine ownership                            | Best fit                               |
-| ------------------ | ------------------------------- | -------------------------------------------- | -------------------------------------- |
-| Declarative linear | `@rxova/journey-react`          | `<LinearJourney>` owns one machine per mount | Ordinary ordered wizards               |
-| Graph bundle       | `@rxova/journey-react/graph`    | Each bundle Provider owns one machine        | Branching event-driven flows           |
-| Headless hooks     | `@rxova/journey-react/headless` | The caller supplies a Core machine           | Existing machines and custom rendering |
+| Surface        | Import                          | Machine ownership                     | Best fit                               |
+| -------------- | ------------------------------- | ------------------------------------- | -------------------------------------- |
+| Linear bundle  | `@rxova/journey-react`          | Each bundle Provider owns one machine | Ordinary ordered wizards               |
+| Graph bundle   | `@rxova/journey-react/graph`    | Each bundle Provider owns one machine | Branching event-driven flows           |
+| Headless hooks | `@rxova/journey-react/headless` | The caller supplies a Core machine    | Existing machines and custom rendering |
 
-## Declarative linear journeys
+The linear and graph tiers share one factory shape: capture a definition once, get a bundle of
+Provider and typed hooks back, and let each Provider mount own one machine.
 
-The linear component reads its direct step children once, builds a Core linear definition, starts the
-machine, and renders the active child.
+## Linear journey bundles
+
+`createLinearJourney()` captures a definition—core's own `LinearJourneyDefinition` shape—and
+returns a bundle. The Provider builds a machine from that definition at mount, starts it, and
+renders the active step's view from its `views` record.
 
 ```tsx
-import { LinearJourney, useLinearJourney } from "@rxova/journey-react";
+import { createLinearJourney } from "@rxova/journey-react";
 
 type SignupContext = {
   email: string;
   acceptedTerms: boolean;
 };
 
+const initialContext: SignupContext = {
+  email: "",
+  acceptedTerms: false
+};
+
+const signup = createLinearJourney({
+  name: "signup",
+  context: initialContext,
+  steps: ["email", "terms", "review"]
+});
+
 function SignupFooter() {
-  const { machine, snapshot } = useLinearJourney<SignupContext>();
+  const { machine, snapshot } = signup.useJourney();
 
   return (
     <nav>
@@ -52,24 +67,35 @@ function SignupFooter() {
 
 export function Signup() {
   return (
-    <LinearJourney
-      context={{ email: "", acceptedTerms: false }}
+    <signup.Provider
+      views={{
+        email: <EmailStep />,
+        terms: <TermsStep />,
+        review: <ReviewStep />
+      }}
       footer={<SignupFooter />}
       onComplete={({ snapshot }) => submitSignup(snapshot.context)}
-    >
-      <EmailStep id="email" />
-      <TermsStep id="terms" />
-      <ReviewStep id="review" />
-    </LinearJourney>
+    />
   );
 }
 ```
 
-The child ID list is frozen for the mount. This matters because history, visit tracking, and index
-derivations depend on a stable declared order. If steps need to branch dynamically, represent that
-choice in a graph instead of changing the JSX list after mount.
+The definition is the single source of truth. `context` is both the initial value and the type
+anchor—annotate the value (`const initialContext: SignupContext = { ... }`) rather than casting—so
+`TContext` and the step-ID union are inferred and no call site passes generics. A bare string in
+`steps` is shorthand for `{ id }`; step configuration (`metadata`, `onEnter`, `onLeave`) lives in
+those step objects, never in JSX. The optional `name` becomes the Provider's React DevTools
+displayName. History, visit tracking, and index derivations all follow the definition's declared
+order.
 
-`useLinearJourney()` returns `{ machine, snapshot }` — the underlying Core machine and its live
+The `views` record (`LinearJourneyViews<TStepId>`) only supplies what each step renders, keyed by
+step ID; the definition alone drives order. Exhaustiveness is checked at compile time—a missing
+key or an undeclared key is a TS error—and plain-JS callers get a runtime error for a missing key
+plus a dev-mode warning for undeclared keys. A `null` view value is legal and renders nothing, and
+because values are elements rather than component types, props and wrappers stay inline. If steps
+need to branch dynamically, represent that choice in a graph instead.
+
+`signup.useJourney()` returns `{ machine, snapshot }` — the underlying Core machine and its live
 snapshot, verbatim. There is no renamed React-side shape:
 
 - reads come from the snapshot: `snapshot.currentStep.id/.index/.isFirstStep/.isLastStep/` (the linear tier autostarts, so `currentStep` is never null)
@@ -79,20 +105,35 @@ snapshot, verbatim. There is no renamed React-side shape:
   `goToStepByIndex`), `machine.controls.*`, `machine.context.update`, and
   `machine.async.clearError`.
 
-### Typed linear bundles
+`signup.useSelector(selector, equalityFn?)` subscribes to a derived slice, and
+`signup.useStep(handler)` registers transactional forward-navigation work for the step component
+calling it. Each bundle owns a private React context, so its hooks only work under its own
+Provider.
 
-A typed bundle binds context and a literal step-ID tuple once:
+### Bundle options and per-mount overrides
+
+The factory's second argument passes Core's creation options through verbatim, frozen per bundle:
+`persist`, `plugins`, `autoStart`, `startAt`, `defaultTimeoutMs`, and `onListenerError`.
 
 ```ts
-import { createLinearJourney } from "@rxova/journey-react";
-
-const signup = createLinearJourney<SignupContext>()(["email", "terms", "review"] as const);
+const signup = createLinearJourney(
+  { context: initialContext, steps: ["email", "terms", "review"] },
+  { persist: sessionPersist, startAt: "email" }
+);
 ```
 
-Use `signup.LinearJourney` instead of the untyped component, and use
-`signup.useLinearJourney()`, `signup.useLinearJourneySelector()`, and
-`signup.useLinearJourneyStep()` below it. The bundle is a type-level declaration; it does not
-create a machine until the component mounts.
+Per-mount variation goes on the Provider instead, read once at mount: `initialContext` overrides
+the definition's context value (route params, server data—the definition stays the type anchor; it
+is a whole-object replacement, not a merge, so spread the definition's context yourself for a
+partial override), and `startAt` overrides the starting step and wins over the bundle options'
+`startAt`. Besides `views`, the Provider also takes `header`, `footer`, `wrapper`, `fallback`, the
+`onStart` / `onStepEnter` / `onStepLeave` / `onComplete` / `onError` callbacks, and a `machineRef`
+escape hatch.
+
+No machine is created in the factory; one machine is created per Provider mount
+(StrictMode-safe, disposed on unmount), and multiple Providers of one bundle are independent
+instances. When a journey outgrows the linear tier, hand the same definition object to
+`linearToGraphDefinition()` from `@rxova/journey-core/convert`.
 
 ## Graph journey bundles
 
@@ -213,7 +254,7 @@ function MachinePanel({ machine }) {
 
 Every headless hook takes the machine as its first argument. There is no hidden global runtime and no
 Provider lookup. `useOwnedJourney(factory)` is available when a component should create and dispose
-an arbitrary Core machine without using either Journey component surface.
+an arbitrary Core machine without using either Journey factory surface.
 
 ## Snapshot and command semantics
 

@@ -40,6 +40,10 @@ const detach = attachJourneyDevtools(machine, {
 The panel should show a machine labelled Checkout. Its first register envelope already includes the
 current immutable snapshot.
 
+This is Core's machine-creating factory. `@rxova/journey-react` exports a `createLinearJourney` of
+its own that creates no machine — each of its Providers does, at mount; attach those through
+`machineRef` as shown in [React-owned machines](#react-owned-machines).
+
 Attachment is observational with respect to lifecycle: it does not start, pause, resume, navigate,
 complete, or terminate the machine. Use `autoStart: true` or call
 `machine.controls.start()` when your application is ready.
@@ -80,8 +84,8 @@ attachJourneyDevtools(graphMachine, {
 
 ## React-owned machines
 
-A graph Provider creates the machine during mount. Capture that mount with `machineRef` and attach
-it in an effect:
+A React bundle Provider — graph or linear — creates its machine during mount. Capture that mount
+with `machineRef` and attach it in an effect; a graph journey looks like this:
 
 ```tsx
 function Checkout() {

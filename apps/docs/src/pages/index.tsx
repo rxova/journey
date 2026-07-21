@@ -86,7 +86,7 @@ const reactTiers = [
   {
     name: "Declarative linear",
     importPath: "@rxova/journey-react",
-    body: "<LinearJourney> reads its step children, owns one machine per mount, and renders the active step. Reach for it first.",
+    body: "createLinearJourney captures your definition once and returns a typed Provider, Step, and hooks — one machine per mount, no generics at call sites. Reach for it first.",
     bestFit: "Ordinary ordered wizards",
     href: "/docs/react/quickstart"
   },
@@ -334,7 +334,7 @@ export default function Home(): ReactNode {
                 />
                 <Card
                   title="React: the UI bindings"
-                  body="Render active steps with the linear component, graph bundles, or headless hooks."
+                  body="Render active steps with typed linear bundles, graph bundles, or headless hooks."
                   href="/docs/react/overview"
                 />
                 <Card

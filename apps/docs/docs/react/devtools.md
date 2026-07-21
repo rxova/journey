@@ -27,8 +27,9 @@ function Checkout() {
 }
 ```
 
-For `<LinearJourney>`, pass a ref through its `machineRef` prop and attach the current machine in
-an effect. For headless React, attach the same Core machine passed to the hooks.
+A linear bundle's Provider works the same way: pass a ref through its `machineRef` prop and attach
+the current machine in an effect. For headless React, attach the same Core machine passed to the
+hooks.
 
 The bridge is disabled in production by default. An explicitly enabled bridge permits mutations
 unless `mutationsEnabled: false` is supplied. Always return the detach function.

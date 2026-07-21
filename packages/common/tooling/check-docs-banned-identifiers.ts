@@ -40,7 +40,18 @@ export const BANNED_IDENTIFIERS: readonly BannedIdentifier[] = [
   { name: "useStepApi", pattern: /\buseStepApi\b/ },
   { name: "useJourneyComputed", pattern: /\buseJourneyComputed\b/ },
   { name: "JourneyProvider", pattern: /\bJourneyProvider\b/ },
-  { name: "commandsEnabled", pattern: /\bcommandsEnabled\b/ }
+  { name: "commandsEnabled", pattern: /\bcommandsEnabled\b/ },
+  // Linear tier surfaces removed by the definition-taking factory (2026-07).
+  { name: "<LinearJourney>", pattern: /<LinearJourney[\s/>]/ },
+  { name: "LinearJourney.Step", pattern: /\bLinearJourney\.Step\b/ },
+  { name: "useLinearJourney", pattern: /\buseLinearJourney\b/ },
+  { name: "useLinearJourneySelector", pattern: /\buseLinearJourneySelector\b/ },
+  { name: "useLinearJourneyStep", pattern: /\buseLinearJourneyStep\b/ },
+  { name: "TypedLinearJourney", pattern: /\bTypedLinearJourney\b/ },
+  { name: "LinearJourneyProps", pattern: /\bLinearJourneyProps\b/ },
+  { name: "LinearJourneyStepConfig", pattern: /\bLinearJourneyStepConfig\b/ },
+  { name: "LinearJourneyStepProps", pattern: /\bLinearJourneyStepProps\b/ },
+  { name: "bundle.toGraphDefinition", pattern: /\btoGraphDefinition\b/ }
 ];
 
 /**
