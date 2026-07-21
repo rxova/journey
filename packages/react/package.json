@@ -97,9 +97,9 @@
   },
   "size-limit": [
     {
-      "name": "react/LinearJourney",
+      "name": "react/createLinearJourney",
       "path": "dist/index.js",
-      "import": "{ LinearJourney, useLinearJourney, useLinearJourneyStep }",
+      "import": "{ createLinearJourney }",
       "limit": "2.5 kB"
     },
     {

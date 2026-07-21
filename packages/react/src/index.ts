@@ -1,20 +1,16 @@
-export { LinearJourney } from "./linear/linear";
-export { LinearJourneyStep } from "./linear/linear-journey-step";
 export { createLinearJourney } from "./linear/create-linear-journey";
-export { useLinearJourney } from "./linear/use-linear-journey";
-export { useLinearJourneySelector } from "./linear/use-linear-journey-selector";
-export { useLinearJourneyStep } from "./linear/use-linear-journey-step";
 
-export type { LinearJourneyBundle, TypedLinearJourney } from "./linear/create-linear-journey";
 export type {
-  UseLinearJourneyResult,
+  LinearJourneyBundle,
+  LinearJourneyBundleDefinition,
+  LinearJourneyBundleOptions,
   LinearJourneyEventPayloads,
   LinearJourneyMachine,
-  LinearJourneyProps,
   LinearJourneySnapshot,
-  LinearJourneyStepConfig,
   LinearJourneyStepHandler,
-  LinearJourneyStepProps
+  LinearJourneyStepProps,
+  LinearProviderProps,
+  UseLinearJourneyResult
 } from "./linear/linear.types";
 
 export type {

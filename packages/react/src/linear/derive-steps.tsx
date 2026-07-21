@@ -1,13 +1,11 @@
 import React from "react";
 import { LinearJourneyStep } from "./linear-journey-step";
-import type { LinearJourneyStepConfig, LinearJourneyStepProps } from "./linear.types";
+import type { LinearJourneyStepProps } from "./linear.types";
 
-/** A resolved linear journey step: stable id, the element to render, and its config. */
+/** A resolved step child: stable id and the element to render (already unwrapped from journey.Step). */
 export type DerivedLinearJourneyStep = {
   id: string;
-  /** The element to render (already unwrapped from LinearJourney.Step). */
   element: React.ReactElement;
-  config: LinearJourneyStepConfig;
 };
 
 const describeChild = (child: React.ReactElement, position: number): string => {
@@ -33,7 +31,7 @@ const flattenChildren = (children: React.ReactNode): React.ReactElement[] => {
       return;
     }
     throw new Error(
-      `<LinearJourney> children must be step elements; received ${typeof child}. ` +
+      `<Provider> children must be step elements; received ${typeof child}. ` +
         "Wrap text or other nodes inside a step component."
     );
   });
@@ -43,54 +41,41 @@ const flattenChildren = (children: React.ReactNode): React.ReactElement[] => {
 const assertUniqueId = (id: string, seen: Set<string>, where: string) => {
   if (seen.has(id)) {
     throw new Error(
-      `<LinearJourney> step ids must be unique; duplicate id "${id}" at ${where}. ` +
-        "Every step declares a mandatory unique id (an `id` prop on the child or a <LinearJourney.Step id>)."
+      `<Provider> step ids must be unique; duplicate id "${id}" at ${where}. ` +
+        "Every step child declares the id of the definition step it renders."
     );
   }
   seen.add(id);
 };
 
-/** Derives the step list from the children (id prop or <LinearJourney.Step> wrapper). */
+/** Derives the step children (id prop or journey.Step wrapper) into an id → element list. */
 export const deriveStepsFromChildren = (children: React.ReactNode): DerivedLinearJourneyStep[] => {
   const elements = flattenChildren(children);
   const seen = new Set<string>();
 
   return elements.map((element, position) => {
     if (element.type === LinearJourneyStep) {
-      const {
-        id,
-        metadata,
-        onEnter,
-        onLeave,
-        children: stepChildren
-      } = element.props as LinearJourneyStepProps;
+      const { id, children: stepChildren } = element.props as LinearJourneyStepProps;
       if (typeof id !== "string" || id.length === 0) {
-        throw new Error(
-          `<LinearJourney.Step> at position ${position} is missing its mandatory "id" prop.`
-        );
+        throw new Error(`<Step> at position ${position} is missing its mandatory "id" prop.`);
       }
       assertUniqueId(id, seen, `position ${position}`);
       return {
         id,
-        element: <React.Fragment>{stepChildren}</React.Fragment>,
-        config: {
-          ...(metadata !== undefined ? { metadata } : {}),
-          ...(onEnter !== undefined ? { onEnter } : {}),
-          ...(onLeave !== undefined ? { onLeave } : {})
-        }
+        element: <React.Fragment>{stepChildren}</React.Fragment>
       };
     }
 
     const id = (element.props as { id?: unknown }).id;
     if (typeof id !== "string" || id.length === 0) {
       throw new Error(
-        `<LinearJourney> step ${describeChild(element, position)} is missing its mandatory unique "id" prop. ` +
-          'Give every step child an id (<Login id="login" />) or wrap it in <LinearJourney.Step id="...">.'
+        `<Provider> step ${describeChild(element, position)} is missing its mandatory unique "id" prop. ` +
+          'Give every step child an id (<Login id="login" />) or wrap it in <journey.Step id="...">.'
       );
     }
     assertUniqueId(id, seen, describeChild(element, position));
 
-    // The id belongs to the linear journey config layer, not the component: strip it
+    // The id belongs to the journey config layer, not the component: strip it
     // before rendering so components never need (or receive) an `id` prop.
     const componentProps: Record<string, unknown> = {
       ...(element.props as Record<string, unknown>)
@@ -98,8 +83,7 @@ export const deriveStepsFromChildren = (children: React.ReactNode): DerivedLinea
     delete componentProps.id;
     return {
       id,
-      element: React.createElement(element.type, componentProps),
-      config: {}
+      element: React.createElement(element.type, componentProps)
     };
   });
 };
