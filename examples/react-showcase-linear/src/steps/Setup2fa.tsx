@@ -4,7 +4,7 @@ import React from "react";
 import { loginJourney } from "../journey";
 
 export const Setup2fa = () => {
-  const { machine, snapshot } = loginJourney.useLinearJourney();
+  const { machine, snapshot } = loginJourney.useJourney();
   const context = snapshot.context;
 
   return (

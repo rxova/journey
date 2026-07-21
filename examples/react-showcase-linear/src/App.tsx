@@ -1,43 +1,35 @@
 import React from "react";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
-import type { LinearJourneyMachine } from "@rxova/journey-react";
 
 import { loginJourney } from "./journey";
-import { initialContext } from "./context";
-import type { LoginContext } from "./context";
+import type { LoginJourneyMachine } from "./journey";
 import { Shell } from "./components/Shell";
 import { Login } from "./steps/Login";
 import { Setup2fa } from "./steps/Setup2fa";
 import { VerifyCode } from "./steps/VerifyCode";
 import { LoggedIn } from "./steps/LoggedIn";
 
-const { LinearJourney } = loginJourney;
-
 export default function App() {
-  // Devtools attach per machine instance (the linear journey owns its machine).
+  // Devtools attach per machine instance (each Provider mount owns a machine).
   const detachRef = React.useRef<(() => void) | null>(null);
-  const handleMachineRef = React.useCallback(
-    (machine: LinearJourneyMachine<LoginContext> | null) => {
-      detachRef.current?.();
-      detachRef.current = null;
-      if (machine) {
-        detachRef.current = attachJourneyDevtools(machine as never, {
-          machineId: "react-showcase-linear",
-          label: "React Showcase Linear",
-          appName: "React Showcase Linear",
-          enabled: true,
-          mutationsEnabled: true
-        });
-      }
-    },
-    []
-  );
+  const handleMachineRef = React.useCallback((machine: LoginJourneyMachine | null) => {
+    detachRef.current?.();
+    detachRef.current = null;
+    if (machine) {
+      detachRef.current = attachJourneyDevtools(machine as never, {
+        machineId: "react-showcase-linear",
+        label: "React Showcase Linear",
+        appName: "React Showcase Linear",
+        enabled: true,
+        mutationsEnabled: true
+      });
+    }
+  }, []);
 
   return (
-    <LinearJourney
-      context={initialContext}
+    <loginJourney.Provider
       wrapper={<Shell />}
-      fallback={<p>Unknown step</p>}
+      fallback={<p>Starting…</p>}
       machineRef={handleMachineRef}
       onStart={(snapshot) =>
         console.log("[react linear] journey.started at", snapshot.currentStep.id)
@@ -46,18 +38,18 @@ export default function App() {
         console.log("[react linear] journey.completed", snapshot.context)
       }
     >
-      <LinearJourney.Step id="login">
+      <loginJourney.Step id="login">
         <Login />
-      </LinearJourney.Step>
-      <LinearJourney.Step id="setup2fa">
+      </loginJourney.Step>
+      <loginJourney.Step id="setup2fa">
         <Setup2fa />
-      </LinearJourney.Step>
-      <LinearJourney.Step id="verifyCode">
+      </loginJourney.Step>
+      <loginJourney.Step id="verifyCode">
         <VerifyCode />
-      </LinearJourney.Step>
-      <LinearJourney.Step id="loggedIn" metadata={{ label: "Logged In" }}>
+      </loginJourney.Step>
+      <loginJourney.Step id="loggedIn">
         <LoggedIn />
-      </LinearJourney.Step>
-    </LinearJourney>
+      </loginJourney.Step>
+    </loginJourney.Provider>
   );
 }
