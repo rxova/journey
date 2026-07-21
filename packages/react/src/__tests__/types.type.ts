@@ -36,12 +36,21 @@ export function linearJourneyTypes() {
   type _start = Expect<Equal<Props["startAt"], "intro" | "details" | "done" | undefined>>;
   type _initial = Expect<Equal<Props["initialContext"], { email: string } | undefined>>;
 
-  type StepProps = Parameters<typeof bundle.Step>[0];
-  type _stepId = Expect<Equal<StepProps["id"], "intro" | "details" | "done">>;
+  type Views = Props["views"];
+  type _views = Expect<Equal<keyof Views, "intro" | "details" | "done">>;
 
-  // @ts-expect-error step ids come from the definition
-  const typoStep: StepProps = { id: "typo", children: null };
-  void typoStep;
+  // @ts-expect-error views must cover the declared step ids
+  const incomplete: Views = { intro: null, details: null };
+  void incomplete;
+
+  const withTypo: Views = {
+    intro: null,
+    details: null,
+    done: null,
+    // @ts-expect-error undeclared view keys are rejected
+    typo: null
+  };
+  void withTypo;
 
   return bundle;
 }

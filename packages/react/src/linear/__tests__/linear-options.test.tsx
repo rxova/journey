@@ -24,13 +24,11 @@ describe("Provider mount-time freezing", () => {
     const captured: Captured = { current: null };
     const { rerender } = render(
       <journey.Provider
+        views={{ a: <StepA />, b: <StepB /> }}
         initialContext={{ n: 1 }}
         machineRef={capture(captured) as never}
         footer={<ShowN />}
-      >
-        <StepA id="a" />
-        <StepB id="b" />
-      </journey.Provider>
+      />
     );
     await flush();
     const first = captured.current;
@@ -39,14 +37,12 @@ describe("Provider mount-time freezing", () => {
 
     rerender(
       <journey.Provider
+        views={{ a: <StepA />, b: <StepB /> }}
         initialContext={{ n: 99 }}
         startAt="b"
         machineRef={capture(captured) as never}
         footer={<ShowN />}
-      >
-        <StepA id="a" />
-        <StepB id="b" />
-      </journey.Provider>
+      />
     );
     await flush();
 
@@ -63,10 +59,10 @@ describe("Provider mount-time freezing", () => {
     );
     const captured: Captured = { current: null };
     render(
-      <journey.Provider machineRef={capture(captured) as never}>
-        <StepA id="a" />
-        <StepB id="b" />
-      </journey.Provider>
+      <journey.Provider
+        views={{ a: <StepA />, b: <StepB /> }}
+        machineRef={capture(captured) as never}
+      />
     );
     await flush();
 
@@ -94,12 +90,10 @@ describe("Provider mount-time freezing", () => {
     ) => (
       <React.StrictMode>
         <journey.Provider
+          views={{ a: <StepA />, b: <StepB /> }}
           machineRef={capture(captured) as never}
           {...(onStart !== undefined ? { onStart } : {})}
-        >
-          <StepA id="a" />
-          <StepB id="b" />
-        </journey.Provider>
+        />
       </React.StrictMode>
     );
 

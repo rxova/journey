@@ -11,6 +11,7 @@ const StepB = makeStep("b");
 const StepC = makeStep("c");
 
 const abc = createLinearJourney({ context: { n: 0 }, steps: ["a", "b", "c"] });
+const abcViews = { a: <StepA />, b: <StepB />, c: <StepC /> };
 
 const Nav = () => {
   const { machine, snapshot } = abc.useJourney();
@@ -25,7 +26,6 @@ const Nav = () => {
         {currentStep.isLastStep ? "last" : ""}
         {currentStep.isFirstTimeVisit ? " fresh" : " revisit"}
       </span>
-      <span data-testid="context-n">{snapshot.context.n}</span>
       <button onClick={() => void machine.navigate.goToNextStep()}>next</button>
       <button onClick={() => void machine.navigate.goToPreviousStep()}>back</button>
       <button onClick={() => void machine.navigate.goToStepById("c")}>jump</button>
@@ -34,16 +34,12 @@ const Nav = () => {
   );
 };
 
-const AbcJourney = (props: Partial<Parameters<typeof abc.Provider>[0]>) => (
-  <abc.Provider footer={<Nav />} {...props}>
-    <StepA id="a" />
-    <StepB id="b" />
-    <StepC id="c" />
-  </abc.Provider>
+const AbcJourney = (props: Partial<Parameters<typeof abc.Provider>[0]>): React.ReactElement => (
+  <abc.Provider views={abcViews} footer={<Nav />} {...props} />
 );
 
 describe("bundle Provider rendering and navigation", () => {
-  it("renders the first step and navigates through the verbatim machine", async () => {
+  it("renders the first step's view and navigates through the verbatim machine", async () => {
     render(<AbcJourney />);
     await flush();
 
@@ -68,109 +64,48 @@ describe("bundle Provider rendering and navigation", () => {
     expect(screen.getByTestId("flags").textContent).toContain("last");
   });
 
-  it("strips the id prop before rendering the step component", async () => {
-    const seenProps: unknown[] = [];
-    const Probe = (props: Record<string, unknown>) => {
-      seenProps.push(props);
-      return <span>probe</span>;
-    };
+  it("re-renders the active view with its latest props", async () => {
     const journey = createLinearJourney({ context: {}, steps: ["only"] });
-    render(
-      <journey.Provider>
-        <Probe id="only" flavor="salt" />
-      </journey.Provider>
-    );
+    const Probe = ({ flavor }: { flavor: string }) => <span data-testid="probe">{flavor}</span>;
+    const view = render(<journey.Provider views={{ only: <Probe flavor="salt" /> }} />);
     await flush();
-    expect(seenProps[0]).toEqual({ flavor: "salt" });
+    expect(screen.getByTestId("probe").textContent).toBe("salt");
+
+    view.rerender(<journey.Provider views={{ only: <Probe flavor="pepper" /> }} />);
+    await flush();
+    expect(screen.getByTestId("probe").textContent).toBe("pepper");
   });
 
-  it("enforces unique mandatory ids on the children", () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const journey = createLinearJourney({ context: {}, steps: ["dup", "other"] });
-    expect(() =>
-      render(
-        <journey.Provider>
-          <StepA id="dup" />
-          <StepB id="dup" />
-        </journey.Provider>
-      )
-    ).toThrow(/duplicate id "dup"/);
-    expect(() =>
-      render(
-        <journey.Provider>
-          <StepA />
-          <StepB id="other" />
-        </journey.Provider>
-      )
-    ).toThrow(/mandatory unique "id"/);
-    consoleError.mockRestore();
-  });
-
-  it("rejects children whose ids don't cover the definition", () => {
+  it("throws for a views record missing a declared id (plain-JS callers)", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const journey = createLinearJourney({ context: {}, steps: ["intro", "details"] });
-    expect(() =>
-      render(
-        <journey.Provider>
-          <StepA id="intro" />
-          <StepB id="detials" />
-        </journey.Provider>
-      )
-    ).toThrow(/missing \[details\]; undeclared \[detials\]/);
-    expect(() =>
-      render(
-        <journey.Provider>
-          <StepA id="intro" />
-        </journey.Provider>
-      )
-    ).toThrow(/missing \[details\]\./);
-    expect(() =>
-      render(
-        <journey.Provider>
-          <StepA id="intro" />
-          <StepB id="details" />
-          <StepC id={"extra" as never} />
-        </journey.Provider>
-      )
-    ).toThrow(/undeclared \[extra\]\./);
-    consoleError.mockRestore();
-  });
-
-  it("throws when a rerender stops covering the definition", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const journey = createLinearJourney({ context: {}, steps: ["a", "b"] });
-    const Dynamic = ({ narrow }: { narrow: boolean }) => (
-      <journey.Provider>
-        <StepA id="a" />
-        {narrow ? null : <StepB id="b" />}
-      </journey.Provider>
+    expect(() => render(<journey.Provider views={{ intro: <StepA /> } as never} />)).toThrow(
+      /views is missing \[details\]/
     );
-    const view = render(<Dynamic narrow={false} />);
-    await flush();
-    expect(screen.getByTestId("step-a")).toBeTruthy();
-
-    expect(() => view.rerender(<Dynamic narrow={true} />)).toThrow(/missing \[b\]/);
     consoleError.mockRestore();
   });
 
-  it("warns in dev when the children order fights the definition order", async () => {
+  it("warns in dev about undeclared view keys, which can never render", async () => {
     (globalThis as { __DEV__?: boolean }).__DEV__ = true;
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const journey = createLinearJourney({ context: {}, steps: ["a", "b"] });
-    render(
-      <journey.Provider>
-        <StepB id="b" />
-        <StepA id="a" />
-      </journey.Provider>
-    );
+    const journey = createLinearJourney({ context: {}, steps: ["a"] });
+    render(<journey.Provider views={{ a: <StepA />, ghost: <StepB /> } as never} />);
     await flush();
-    // The definition wins: the machine still starts at its first step.
     expect(screen.getByTestId("step-a")).toBeTruthy();
-    expect(consoleError).toHaveBeenCalledWith(
-      expect.stringContaining("The definition's order drives the machine")
-    );
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining("undeclared keys [ghost]"));
     consoleError.mockRestore();
     delete (globalThis as { __DEV__?: boolean }).__DEV__;
+  });
+
+  it("renders nothing for an explicitly null view", async () => {
+    const journey = createLinearJourney({ context: {}, steps: ["silent"] });
+    const Probe = () => {
+      const { snapshot } = journey.useJourney();
+      return <span data-testid="silent-active">{snapshot.currentStep.id}</span>;
+    };
+    render(<journey.Provider views={{ silent: null }} footer={<Probe />} />);
+    await flush();
+    expect(screen.getByTestId("silent-active").textContent).toBe("silent");
   });
 });
 
@@ -187,32 +122,21 @@ describe("definition step config and start position", () => {
       const { snapshot } = journey.useJourney();
       return <span data-testid="metadata">{String(snapshot.currentStep.metadata)}</span>;
     };
-    render(
-      <journey.Provider footer={<Meta />}>
-        <StepA id="a" />
-        <StepB id="b" />
-      </journey.Provider>
-    );
+    render(<journey.Provider views={{ a: <StepA />, b: <StepB /> }} footer={<Meta />} />);
     await flush();
     expect(screen.getByTestId("metadata").textContent).toBe("Alpha");
   });
 
   it("starts at the startAt prop, which wins over the bundle options' startAt", async () => {
     const journey = createLinearJourney({ context: {}, steps: ["a", "b", "c"] }, { startAt: "b" });
-    const journeySteps = (
-      <>
-        <StepA id="a" />
-        <StepB id="b" />
-        <StepC id="c" />
-      </>
-    );
-    const optionsOnly = render(<journey.Provider>{journeySteps}</journey.Provider>);
+    const views = { a: <StepA />, b: <StepB />, c: <StepC /> };
+    const optionsOnly = render(<journey.Provider views={views} />);
     await flush();
     expect(screen.getByTestId("step-b")).toBeTruthy();
     optionsOnly.unmount();
     await flush();
 
-    render(<journey.Provider startAt="c">{journeySteps}</journey.Provider>);
+    render(<journey.Provider views={views} startAt="c" />);
     await flush();
     expect(screen.getByTestId("step-c")).toBeTruthy();
   });
@@ -253,12 +177,11 @@ describe("useStep", () => {
   it("blocks forward navigation on a rejected handler and surfaces the error", async () => {
     const onError = vi.fn();
     render(
-      <guarded.Provider onError={onError} footer={<GuardedChrome />}>
-        <guarded.Step id="guarded">
-          <Guarded />
-        </guarded.Step>
-        <StepB id="b" />
-      </guarded.Provider>
+      <guarded.Provider
+        views={{ guarded: <Guarded />, b: <StepB /> }}
+        onError={onError}
+        footer={<GuardedChrome />}
+      />
     );
     await flush();
 
@@ -344,12 +267,7 @@ describe("journey callbacks and machine escape hatches", () => {
       const { machine } = journey.useJourney();
       return <button onClick={() => void machine.navigate.goToNextStep()}>next</button>;
     };
-    render(
-      <journey.Provider footer={<Forward />}>
-        <StepA id="a" />
-        <StepB id="b" />
-      </journey.Provider>
-    );
+    render(<journey.Provider views={{ a: <StepA />, b: <StepB /> }} footer={<Forward />} />);
     await flush();
     fireEvent.click(screen.getByText("next"));
     await flush();
@@ -376,20 +294,14 @@ describe("initialContext override", () => {
       const n = journey.useSelector((snapshot) => snapshot.context.n);
       return <span data-testid="n">{n}</span>;
     };
-    const fromDefinition = render(
-      <journey.Provider footer={<ShowN />}>
-        <StepA id="a" />
-      </journey.Provider>
-    );
+    const fromDefinition = render(<journey.Provider views={{ a: <StepA /> }} footer={<ShowN />} />);
     await flush();
     expect(screen.getByTestId("n").textContent).toBe("5");
     fromDefinition.unmount();
     await flush();
 
     render(
-      <journey.Provider initialContext={{ n: 42 }} footer={<ShowN />}>
-        <StepA id="a" />
-      </journey.Provider>
+      <journey.Provider views={{ a: <StepA /> }} initialContext={{ n: 42 }} footer={<ShowN />} />
     );
     await flush();
     expect(screen.getByTestId("n").textContent).toBe("42");
@@ -403,12 +315,11 @@ describe("options.autoStart", () => {
     const machineRef = React.createRef<LinearJourneyMachine<Record<string, never>, "a">>();
     render(
       <journey.Provider
+        views={{ a: <StepA /> }}
         fallback={<span data-testid="idle">idle</span>}
         onStart={onStart}
         machineRef={machineRef}
-      >
-        <StepA id="a" />
-      </journey.Provider>
+      />
     );
     await flush();
     expect(screen.getByTestId("idle")).toBeTruthy();
@@ -431,6 +342,15 @@ describe("factory validation and graph migration", () => {
     expect(() => createLinearJourney({ context: {}, steps: [] as never })).toThrow(
       /at least one step/
     );
+  });
+
+  it("names the Provider for React DevTools when the definition carries a name", () => {
+    const anonymous = createLinearJourney({ context: {}, steps: ["a"] });
+    expect((anonymous.Provider as { displayName?: string }).displayName).toBe(
+      "LinearJourney.Provider"
+    );
+    const named = createLinearJourney({ name: "signup", context: {}, steps: ["a"] });
+    expect((named.Provider as { displayName?: string }).displayName).toBe("signup.Provider");
   });
 
   it("converts the captured definition with core's external helper", () => {
@@ -466,11 +386,7 @@ describe("hook guards", () => {
       return null;
     };
     expect(() =>
-      render(
-        <other.Provider header={<Crossed />}>
-          <StepA id="solo" />
-        </other.Provider>
-      )
+      render(<other.Provider views={{ solo: <StepA /> }} header={<Crossed />} />)
     ).toThrow(/inside this journey's <Provider>/);
     consoleError.mockRestore();
   });

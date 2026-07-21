@@ -60,6 +60,8 @@ export type LinearJourneyBundleDefinition<
   readonly steps: TSteps;
   /** Initial shared state and the bundle's context type anchor. */
   readonly context: TContext;
+  /** Optional bundle name, used for the Provider's React DevTools displayName. */
+  readonly name?: string;
 };
 
 /** Core's creation options, passed through verbatim and frozen per bundle. */
@@ -68,18 +70,24 @@ export type LinearJourneyBundleOptions<TStepId extends string = string> = Journe
   TStepId
 >;
 
+/**
+ * What each declared step renders, keyed by step id. Exhaustiveness is
+ * type-checked: a missing key or an undeclared key is a compile error. Values
+ * are elements (not component types), so props and wrappers stay inline.
+ */
+export type LinearJourneyViews<TStepId extends string> = {
+  readonly [K in TStepId]: React.ReactNode;
+};
+
 export type LinearProviderProps<TContext = unknown, TStepId extends string = string> = {
-  /**
-   * One child element per declared step, in definition order — either a
-   * `<journey.Step id>` wrapper or a component with an inline `id` prop. The
-   * Provider asserts at every render that the child ids cover the definition
-   * exactly; an order mismatch is a dev-mode error (the definition wins).
-   */
-  children: React.ReactNode;
+  /** The step views, one per declared id; only the active step's view renders. */
+  views: LinearJourneyViews<TStepId>;
 
   /**
    * Render-time override of the definition's initial context (route params,
    * server data, …). Read once at mount; the definition stays the type anchor.
+   * Whole-object replacement, not a merge — spread the definition's context
+   * yourself for a partial override.
    */
   initialContext?: TContext;
   /**
@@ -111,12 +119,6 @@ export type LinearProviderProps<TContext = unknown, TStepId extends string = str
   machineRef?: React.Ref<LinearJourneyMachine<TContext, TStepId>>;
 };
 
-/** Props of the `journey.Step` marker element: an id from the declared union, nothing else. */
-export type LinearJourneyStepProps<TStepId extends string = string> = {
-  id: TStepId;
-  children: React.ReactNode;
-};
-
 /** Everything `journey.useJourney()` returns: the core machine and snapshot, verbatim. */
 export type UseLinearJourneyResult<TContext = unknown, TStepId extends string = string> = {
   machine: LinearJourneyMachine<TContext, TStepId>;
@@ -124,15 +126,13 @@ export type UseLinearJourneyResult<TContext = unknown, TStepId extends string = 
 };
 
 /**
- * What `createLinearJourney()` returns: a Provider, a Step marker, and hooks —
- * every one pre-bound to the definition's context and step-id types, so call
- * sites never pass generics. Each bundle owns a private React context;
- * machines are created per Provider mount, never in the factory.
+ * What `createLinearJourney()` returns: a Provider and hooks — every one
+ * pre-bound to the definition's context and step-id types, so call sites
+ * never pass generics. Each bundle owns a private React context; machines are
+ * created per Provider mount, never in the factory.
  */
 export type LinearJourneyBundle<TContext, TStepId extends string> = {
   Provider: (props: LinearProviderProps<TContext, TStepId>) => React.ReactElement;
-  /** Marker element declaring which step a child renders; it never renders itself. */
-  Step: (props: LinearJourneyStepProps<TStepId>) => React.ReactElement;
   /** The core machine and its live snapshot, verbatim. */
   useJourney: () => UseLinearJourneyResult<TContext, TStepId>;
   /** Subscribes to a derived slice of the snapshot; re-renders only when it changes. */

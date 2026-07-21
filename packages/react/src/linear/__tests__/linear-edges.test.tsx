@@ -9,6 +9,7 @@ const StepA = makeStep("a");
 const StepB = makeStep("b");
 
 const ab = createLinearJourney({ context: {}, steps: ["a", "b"] });
+const abViews = { a: <StepA />, b: <StepB /> };
 
 const IndexNav = () => {
   const { machine, snapshot } = ab.useJourney();
@@ -24,8 +25,8 @@ const IndexNav = () => {
   );
 };
 
-describe("journey.Step marker form", () => {
-  it("declares the rendered content without touching the wrapped markup, with config in the definition", async () => {
+describe("definition step config", () => {
+  it("runs definition onEnter/onLeave hooks while views only render", async () => {
     const onEnter = vi.fn();
     const onLeave = vi.fn();
     const journey = createLinearJourney({
@@ -45,14 +46,13 @@ describe("journey.Step marker form", () => {
       );
     };
     render(
-      <journey.Provider footer={<Chrome />}>
-        <journey.Step id="intro">
-          <p data-testid="intro-content">hello</p>
-        </journey.Step>
-        <journey.Step id="second">
-          <p data-testid="second-content">world</p>
-        </journey.Step>
-      </journey.Provider>
+      <journey.Provider
+        views={{
+          intro: <p data-testid="intro-content">hello</p>,
+          second: <p data-testid="second-content">world</p>
+        }}
+        footer={<Chrome />}
+      />
     );
     await flush();
     expect(screen.getByTestId("intro-content")).toBeTruthy();
@@ -67,68 +67,11 @@ describe("journey.Step marker form", () => {
     expect(screen.getByTestId("intro-content")).toBeTruthy();
     expect(onLeave).toHaveBeenCalledTimes(1);
   });
-
-  it("throws when rendered outside the Provider or without an id", () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    expect(() => render(<ab.Step id="a">nope</ab.Step>)).toThrow(/direct child/);
-    expect(() =>
-      render(
-        <ab.Provider>
-          <ab.Step id={"" as never}>missing</ab.Step>
-          <StepB id="b" />
-        </ab.Provider>
-      )
-    ).toThrow(/missing its mandatory "id"/);
-    consoleError.mockRestore();
-  });
-});
-
-describe("children flattening", () => {
-  it("flattens fragments and skips null/boolean children", async () => {
-    render(
-      <ab.Provider>
-        <>
-          {false}
-          {null}
-          <StepA id="a" />
-        </>
-        <StepB id="b" />
-      </ab.Provider>
-    );
-    await flush();
-    expect(screen.getByTestId("step-a")).toBeTruthy();
-  });
-
-  it("rejects text children and children that vanish entirely", () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    expect(() => render(<ab.Provider>just text</ab.Provider>)).toThrow(/must be step elements/);
-    expect(() => render(<ab.Provider>{null}</ab.Provider>)).toThrow(/missing \[a, b\]/);
-    consoleError.mockRestore();
-  });
-
-  it("describes intrinsic and anonymous components in missing-id errors", () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const Anonymous = () => null;
-    Object.defineProperty(Anonymous, "name", { value: undefined });
-
-    expect(() => render(<ab.Provider>{React.createElement("div")}</ab.Provider>)).toThrow(
-      /child #0 \(div\)/
-    );
-    expect(() => render(<ab.Provider>{React.createElement(Anonymous)}</ab.Provider>)).toThrow(
-      /anonymous component/
-    );
-    consoleError.mockRestore();
-  });
 });
 
 describe("navigation edges", () => {
   it("navigates by index, walks the timeline tip, and pauses — all through the machine", async () => {
-    render(
-      <ab.Provider footer={<IndexNav />}>
-        <StepA id="a" />
-        <StepB id="b" />
-      </ab.Provider>
-    );
+    render(<ab.Provider views={abViews} footer={<IndexNav />} />);
     await flush();
 
     fireEvent.click(screen.getByText("by-index"));
@@ -155,10 +98,7 @@ describe("navigation edges", () => {
       steps: [{ id: "a", onLeave: onLeaveA }, "b"]
     });
     render(
-      <journey.Provider startAt="b" onError={onError}>
-        <StepA id="a" />
-        <StepB id="b" />
-      </journey.Provider>
+      <journey.Provider views={{ a: <StepA />, b: <StepB /> }} startAt="b" onError={onError} />
     );
     await flush();
 
@@ -169,18 +109,17 @@ describe("navigation edges", () => {
 });
 
 describe("render chrome and refs", () => {
-  it("clones the active step into the wrapper and supports function machineRefs", async () => {
+  it("clones the active view into the wrapper and supports function machineRefs", async () => {
     const seen: (LinearJourneyMachine | null)[] = [];
     const journey = createLinearJourney({ context: {}, steps: ["a"] });
     const view = render(
       <journey.Provider
+        views={{ a: <StepA /> }}
         wrapper={<section data-testid="wrap" />}
         machineRef={(machine) => {
           seen.push(machine as LinearJourneyMachine | null);
         }}
-      >
-        <StepA id="a" />
-      </journey.Provider>
+      />
     );
     await flush();
     expect(screen.getByTestId("wrap").querySelector("[data-testid='step-a']")).toBeTruthy();
@@ -189,6 +128,29 @@ describe("render chrome and refs", () => {
     view.unmount();
     await flush();
     expect(seen[seen.length - 1]).toBeNull();
+  });
+
+  it("remounts the view when the step changes (keyed by id)", async () => {
+    const mounts = vi.fn();
+    const Counting = ({ label }: { label: string }) => {
+      React.useEffect(() => {
+        mounts(label);
+      }, [label]);
+      return <span data-testid={`step-${label}`}>{label}</span>;
+    };
+    render(
+      <ab.Provider
+        views={{ a: <Counting label="a" />, b: <Counting label="b" /> }}
+        footer={<IndexNav />}
+      />
+    );
+    await flush();
+    fireEvent.click(screen.getByText("by-index"));
+    await flush();
+    fireEvent.click(screen.getByText("back"));
+    await flush();
+    // a mounted twice (fresh + revisit), b once: views remount per entry.
+    expect(mounts.mock.calls.map(([label]) => label)).toEqual(["a", "b", "a"]);
   });
 });
 
@@ -203,14 +165,7 @@ describe("useStep extras", () => {
       const { machine } = journey.useJourney();
       return <button onClick={() => void machine.navigate.goToNextStep()}>go</button>;
     };
-    render(
-      <journey.Provider footer={<Forward />}>
-        <journey.Step id="p">
-          <Passive />
-        </journey.Step>
-        <StepB id="b" />
-      </journey.Provider>
-    );
+    render(<journey.Provider views={{ p: <Passive />, b: <StepB /> }} footer={<Forward />} />);
     await flush();
     fireEvent.click(screen.getByText("go"));
     await flush();
@@ -230,12 +185,16 @@ describe("useStep extras", () => {
       return <span>second</span>;
     };
     render(
-      <journey.Provider>
-        <journey.Step id="doubled">
-          <First />
-          <Second />
-        </journey.Step>
-      </journey.Provider>
+      <journey.Provider
+        views={{
+          doubled: (
+            <>
+              <First />
+              <Second />
+            </>
+          )
+        }}
+      />
     );
     await flush();
 
@@ -246,20 +205,15 @@ describe("useStep extras", () => {
     delete (globalThis as { __DEV__?: boolean }).__DEV__;
   });
 
-  it("throws outside a step component", () => {
+  it("throws outside a step view", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const Outside = () => {
       ab.useStep();
       return null;
     };
-    expect(() =>
-      render(
-        <ab.Provider header={<Outside />}>
-          <StepA id="a" />
-          <StepB id="b" />
-        </ab.Provider>
-      )
-    ).toThrow(/inside a step component/);
+    expect(() => render(<ab.Provider views={abViews} header={<Outside />} />)).toThrow(
+      /inside a step/
+    );
     consoleError.mockRestore();
   });
 
@@ -277,12 +231,11 @@ describe("useStep extras", () => {
     };
 
     render(
-      <journey.Provider initialContext={{ n: 42 }} footer={<Forward />}>
-        <journey.Step id="hooked">
-          <HookedStep />
-        </journey.Step>
-        <StepB id="done" />
-      </journey.Provider>
+      <journey.Provider
+        views={{ hooked: <HookedStep />, done: <StepB /> }}
+        initialContext={{ n: 42 }}
+        footer={<Forward />}
+      />
     );
     await flush();
     expect(screen.getByTestId("ctx").textContent).toBe("42");
@@ -320,12 +273,10 @@ describe("machine error surfacing", () => {
       );
     };
     render(
-      <journey.Provider footer={<Report />}>
-        <StepA id="a" />
-        <journey.Step id="failing">
-          <span data-testid="failing">failing</span>
-        </journey.Step>
-      </journey.Provider>
+      <journey.Provider
+        views={{ a: <StepA />, failing: <span data-testid="failing">failing</span> }}
+        footer={<Report />}
+      />
     );
     await flush();
     expect(screen.getByTestId("machine-error").textContent).toBe("none");
@@ -341,12 +292,11 @@ describe("machine error surfacing", () => {
     const view = render(
       <React.StrictMode>
         <journey.Provider
+          views={{ a: <StepA /> }}
           machineRef={(machine) => {
             if (machine !== null) seen.add(machine);
           }}
-        >
-          <StepA id="a" />
-        </journey.Provider>
+        />
       </React.StrictMode>
     );
     await flush();

@@ -8,7 +8,7 @@ export type {
   LinearJourneyMachine,
   LinearJourneySnapshot,
   LinearJourneyStepHandler,
-  LinearJourneyStepProps,
+  LinearJourneyViews,
   LinearProviderProps,
   UseLinearJourneyResult
 } from "./linear/linear.types";

@@ -8,14 +8,9 @@ export const flush = async (): Promise<void> => {
   });
 };
 
-/**
- * A trivial named step component factory for linear journey/graph views. The
- * declared (unused) `id` prop is what makes the inline-id spelling
- * (`<StepA id="a" />`) type-check — components without one use the
- * `<journey.Step id>` wrapper.
- */
+/** A trivial named step component factory for linear journey/graph views. */
 export const makeStep =
-  (label: string): React.ComponentType<{ id?: string }> =>
+  (label: string): React.ComponentType =>
   () => <div data-testid={`step-${label}`}>{label}</div>;
 
 /** In-memory localStorage-compatible store for persistence tests. */
