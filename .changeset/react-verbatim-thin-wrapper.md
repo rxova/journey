@@ -1,5 +1,0 @@
----
-"@rxova/journey-react": minor
----
-
-**Breaking (pre-1.0):** the linear tier is now a verbatim thin wrapper over core (RFC 0001 §3.12). `useLinearJourney()` returns `{ machine, snapshot }` — the flat result shape (`activeStepId`, `stepCount`, `goToNextStep`, `updateContext`, `getStepMeta`, …) is removed; read `snapshot.currentStep.*` / `snapshot.steps.*` and call `machine.navigate.*` / `machine.controls.*` / `machine.context.update` directly. `<LinearJourney>` renames `startStepId` → `startAt` (which now starts directly at the target without entering earlier steps, and throws at mount for unknown ids) and `<LinearJourney.Step meta>` → `metadata`. Callback props forward core event payloads verbatim: `onStepEnter` (now carrying `direction`), `onStepLeave`, `onComplete` (`statusChange` gated on completion), `onError`; the `onStepChange` prop and the `LinearJourneyStepChange` / `LinearJourneyPersistProp` types are removed (`persist` is core's `JourneyPersistOption`). `useLinearJourneyStep` now registers through core's `registerNextStepInterceptor`; handler errors surface in `snapshot.currentStep.async.error`.
