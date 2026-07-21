@@ -6,7 +6,7 @@ import { useJourneyEvent } from "@rxova/journey-react/headless";
 import { loginJourney } from "../journey";
 
 const EventLog = () => {
-  const { machine } = loginJourney.useLinearJourney();
+  const { machine } = loginJourney.useJourney();
   const [events, setEvents] = React.useState<string[]>([]);
 
   const log = (entry: string) =>
@@ -35,7 +35,7 @@ const EventLog = () => {
 };
 
 const ProgressBar = () => {
-  const { snapshot } = loginJourney.useLinearJourney();
+  const { snapshot } = loginJourney.useJourney();
   const index = snapshot.currentStep.index;
   const stepCount = snapshot.steps.totalSteps;
   const pct = stepCount > 1 ? (index / (stepCount - 1)) * 100 : 0;
@@ -48,7 +48,7 @@ const ProgressBar = () => {
 };
 
 export const Shell = ({ children }: { children?: React.ReactNode }) => {
-  const { snapshot } = loginJourney.useLinearJourney();
+  const { snapshot } = loginJourney.useJourney();
   const currentStep = snapshot.currentStep;
 
   return (
@@ -58,7 +58,8 @@ export const Shell = ({ children }: { children?: React.ReactNode }) => {
           React Showcase: Linear Mode <span className="badge badge-linear">LINEAR</span>
         </h1>
         <p>
-          Steps are just components inside &lt;LinearJourney/&gt;; each advances with goToNextStep.
+          Steps are just components inside the journey&apos;s &lt;Provider/&gt;; each advances with
+          goToNextStep.
         </p>
       </header>
 

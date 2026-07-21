@@ -5,7 +5,7 @@ import { mockApi } from "../api";
 import { loginJourney } from "../journey";
 
 export const Login = () => {
-  const { machine, snapshot } = loginJourney.useLinearJourney();
+  const { machine, snapshot } = loginJourney.useJourney();
   const context = snapshot.context;
   const [loading, setLoading] = React.useState(false);
 
