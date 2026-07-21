@@ -58,7 +58,7 @@ export const Shell = ({ children }: { children?: React.ReactNode }) => {
           React Showcase: Linear Mode <span className="badge badge-linear">LINEAR</span>
         </h1>
         <p>
-          Steps are just components inside the journey&apos;s &lt;Provider/&gt;; each advances with
+          Each step is a view in the Provider&apos;s typed views record; each advances with
           goToNextStep.
         </p>
       </header>

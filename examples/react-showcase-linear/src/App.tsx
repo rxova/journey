@@ -28,6 +28,12 @@ export default function App() {
 
   return (
     <loginJourney.Provider
+      views={{
+        login: <Login />,
+        setup2fa: <Setup2fa />,
+        verifyCode: <VerifyCode />,
+        loggedIn: <LoggedIn />
+      }}
       wrapper={<Shell />}
       fallback={<p>Starting…</p>}
       machineRef={handleMachineRef}
@@ -37,19 +43,6 @@ export default function App() {
       onComplete={({ snapshot }) =>
         console.log("[react linear] journey.completed", snapshot.context)
       }
-    >
-      <loginJourney.Step id="login">
-        <Login />
-      </loginJourney.Step>
-      <loginJourney.Step id="setup2fa">
-        <Setup2fa />
-      </loginJourney.Step>
-      <loginJourney.Step id="verifyCode">
-        <VerifyCode />
-      </loginJourney.Step>
-      <loginJourney.Step id="loggedIn">
-        <LoggedIn />
-      </loginJourney.Step>
-    </loginJourney.Provider>
+    />
   );
 }
