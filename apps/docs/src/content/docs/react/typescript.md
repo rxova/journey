@@ -3,61 +3,88 @@ title: TypeScript Types
 sidebar_position: 7
 ---
 
-React keeps Core types intact and adds types for component props, typed bundles, and hook results.
-Import full machine and definition contracts from `@rxova/journey-core`; import plugin contracts
-from each plugin's dedicated entrypoint.
+React keeps Core types intact and adds types for the linear bundle, its Provider props, and hook
+results. Import full machine and definition contracts from `@rxova/journey-core`; import plugin
+contracts from each plugin's dedicated entrypoint.
 
 ## Main entrypoint exports
 
-`@rxova/journey-react` exports these runtimes:
+`@rxova/journey-react` exports one runtime:
 
-- `LinearJourney`
-- `LinearJourney.Step`
 - `createLinearJourney`
-- `useLinearJourney`
-- `useLinearJourneySelector`
-- `useLinearJourneyStep`
 
 Its primary React-specific types are:
 
-| Type                                          | Purpose                                     |
-| --------------------------------------------- | ------------------------------------------- |
-| `LinearJourneyProps<TContext, TStepId>`       | Props for the owning component              |
-| `LinearJourneyStepProps<TContext, TStepId>`   | Config marker props                         |
-| `UseLinearJourneyResult<TContext, TStepId>`   | Hook result: `{ machine, snapshot }`        |
-| `LinearJourneySnapshot<TContext, TStepId>`    | Core linear snapshot alias                  |
-| `LinearJourneyMachine<TContext, TStepId>`     | Underlying Core machine, verbatim           |
-| `LinearJourneyEventPayloads<TContext>`        | Core event payloads for the callback props  |
-| `LinearJourneyStepConfig<TContext>`           | `<LinearJourney.Step>` metadata/hook config |
-| `LinearJourneyStepHandler<TContext, TResult>` | Transactional navigation work               |
-| `LinearJourneyBundle<TContext, TStepId>`      | Typed factory result                        |
-| `TypedLinearJourney<TContext, TStepId>`       | Typed component with `.Step`                |
+| Type                                              | Purpose                                                         |
+| ------------------------------------------------- | --------------------------------------------------------------- |
+| `LinearJourneyBundle<TContext, TStepId>`          | Factory result: `Provider` and the hooks                        |
+| `LinearJourneyBundleDefinition<TContext, TSteps>` | The `{ context, steps, name? }` definition the factory captures |
+| `LinearJourneyBundleOptions<TStepId>`             | Core's `JourneyRuntimeOptions`, frozen per bundle               |
+| `LinearProviderProps<TContext, TStepId>`          | Props for the bundle's Provider                                 |
+| `LinearJourneyViews<TStepId>`                     | The Provider's `views` record: `{ [K in TStepId]: ReactNode }`  |
+| `UseLinearJourneyResult<TContext, TStepId>`       | Hook result: `{ machine, snapshot }`                            |
+| `LinearJourneySnapshot<TContext, TStepId>`        | Core linear snapshot with non-null `currentStep`                |
+| `LinearJourneyMachine<TContext, TStepId>`         | Underlying Core machine, verbatim                               |
+| `LinearJourneyEventPayloads<TContext, TStepId>`   | Core event payloads for the callback props                      |
+| `LinearJourneyStepHandler<TContext, TResult>`     | Transactional navigation work                                   |
 
-### Literal step inference
+### Inference from the definition
+
+Both type parameters come from the single definition argument: `TContext` is inferred from
+`definition.context`, and the step-id union from the `steps` tuple — mixed bare-string and config
+entries both contribute their literal ids.
 
 ```ts
-type Context = { email: string };
+type SignupContext = { email: string; accountId: string | null };
 
-const signup = createLinearJourney<Context>()(["email", "password", "review"] as const);
+const initialContext: SignupContext = { email: "", accountId: null };
 
-type Signup = ReturnType<typeof signup.useLinearJourney>;
-// snapshot.currentStep?.id and machine.navigate targets are "email" | "password" | "review"
+const signup = createLinearJourney({
+  context: initialContext,
+  steps: ["email", { id: "password" }, "review"]
+});
+
+// snapshot.currentStep.id and machine.navigate targets are "email" | "password" | "review"
 ```
 
-Keep the tuple literal with `as const`; widening it to `string[]` loses the step-ID union.
+Annotate the context variable; do not cast. An annotation checks the initial value against the
+type and anchors `TContext` at the declared unions (`string | null`, not `null`), while an
+`as SignupContext` cast would silence missing or mistyped fields.
+
+There is no way to pass explicit type arguments to `createLinearJourney` — and no need. TypeScript
+has no partial type-argument inference: an explicit `TContext` would also force spelling out the
+whole steps tuple by hand. Inferring everything from the one definition argument sidesteps that,
+which is why the factory takes an annotated context value as the type anchor instead of a generic.
+
+The step tuple's literal ids type the whole bundle: the keys of the Provider's `views` record, its
+`startAt` prop, and `machine.navigate` targets are all the declared union. Coverage is
+compile-time checked too — `views` is `LinearJourneyViews<TStepId>`, a mapped
+`{ [K in TStepId]: ReactNode }` record, so a missing key and an undeclared key are both TS errors.
+The runtime check that remains (a missing key throws, an undeclared key is a development-mode
+error) exists only for plain-JS callers.
+
+`LinearJourneySnapshot` is Core's linear snapshot with one narrowing: `currentStep` is non-null,
+because a rendered journey never observes the idle state (only `fallback` renders before start).
+
+For imperative escape hatches such as `machineRef`, derive the machine type from the bundle:
+
+```ts
+type SignupMachine = ReturnType<typeof signup.useJourney>["machine"];
+```
 
 ### Navigation work
 
 ```ts
-const saveShipping: LinearJourneyStepHandler<Context, Shipping> = {
-  run: ({ snapshot }) => api.save(snapshot.context),
+const createAccount: LinearJourneyStepHandler<SignupContext, { accountId: string }> = {
+  run: ({ snapshot }) => api.create(snapshot.context.email),
   commit: ({ result, updateContext }) => {
-    updateContext((context) => ({ ...context, shippingId: result.id }));
+    updateContext((context) => ({ ...context, accountId: result.accountId }));
   }
 };
 ```
 
-The result type from `run` flows into `commit.result`.
+The result type from `run` flows into `commit.result`. When the handler is written inline,
+`signup.useStep({ ... })` infers `TResult` from `run`'s return type — no annotation needed.
 
 ## Graph entrypoint exports
 
@@ -109,9 +136,9 @@ The event name selects the listener payload from Core's `JourneyEventPayloads`.
 
 The main React entrypoint re-exports commonly consumed Core machine and snapshot types, including
 `GraphJourneyMachine`, `GraphSnapshot`, `LinearSnapshot`, `JourneySnapshot`,
-`JourneyEventObject`, `JourneyEventPayloads`, `JourneySubscriptionEvent`, `NavigationResult`,
-`NavigationWork`, `JourneyPersistOption`, `JourneyStatus`, `StepAsyncState`, and
-`StepEnterDirection`.
+`JourneyEventObject`, `JourneyEventPayloads`, `JourneyRuntimeOptions`,
+`JourneySubscriptionEvent`, `NavigationResult`, `NavigationWork`, `JourneyPersistOption`,
+`JourneyStatus`, `StepAsyncState`, `StepEnterDirection`, and `AnyJourneyPlugin`.
 
 For definitions, builders, navigation work, hook arguments, plugin hosts, or less common contracts,
 import directly from `@rxova/journey-core`.
