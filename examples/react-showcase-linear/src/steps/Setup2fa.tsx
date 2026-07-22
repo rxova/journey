@@ -4,7 +4,7 @@ import React from "react";
 import { loginJourney } from "../journey";
 
 export const Setup2fa = () => {
-  const { machine, snapshot } = loginJourney.useJourney();
+  const snapshot = loginJourney.useSnapshot();
   const context = snapshot.context;
 
   return (
@@ -30,10 +30,12 @@ export const Setup2fa = () => {
         <div className="loading">Loading QR code...</div>
       )}
       <div className="actions">
-        <button className="secondary" onClick={() => void machine.navigate.goToPreviousStep()}>
+        <button className="secondary" onClick={() => void loginJourney.navigate.goToPreviousStep()}>
           Back
         </button>
-        <button onClick={() => void machine.navigate.goToNextStep()}>I&apos;ve scanned it</button>
+        <button onClick={() => void loginJourney.navigate.goToNextStep()}>
+          I&apos;ve scanned it
+        </button>
       </div>
     </div>
   );

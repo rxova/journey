@@ -1,9 +1,6 @@
+import React from "react";
 import { createLinearJourney } from "@rxova/journey-core";
 import type { JourneyEventPayloads, JourneySubscriptionEvent } from "@rxova/journey-core";
-import {
-  useJourneyEvent as useEventOf,
-  useJourneySnapshot as useSnapshotOf
-} from "@rxova/journey-react/headless";
 
 export type StepId =
   | "login"
@@ -72,18 +69,36 @@ type ObservedEvent = {
   >[TEvent];
 }[JourneySubscriptionEvent];
 
-export const useJourneySnapshot = () => useSnapshotOf(machine);
-export const useJourneyComputed = () => useSnapshotOf(machine).steps;
+// No React package needed to consume a caller-owned machine: the machine is a
+// module-scope singleton, so the subscribe adapter is a stable plain function
+// and React's own useSyncExternalStore is the whole bridge.
+const subscribe = (onStoreChange: () => void) =>
+  machine.subscriptions.subscribeSelector((snapshot) => snapshot, onStoreChange);
+
+export const useJourneySnapshot = () =>
+  React.useSyncExternalStore(subscribe, machine.getSnapshot, machine.getSnapshot);
+export const useJourneyComputed = () => useJourneySnapshot().steps;
+
+const useEventOf = <TEvent extends JourneySubscriptionEvent>(
+  event: TEvent,
+  listener: (payload: JourneyEventPayloads<LoginContext, StepId, Snapshot>[TEvent]) => void
+): void => {
+  const listenerRef = React.useRef(listener);
+  listenerRef.current = listener;
+  React.useEffect(
+    () =>
+      machine.subscriptions.subscribeEvent(event, (payload) =>
+        listenerRef.current(payload as never)
+      ),
+    [event]
+  );
+};
 export const useJourneyApi = () => api;
 export const useJourneyEvent = (listener: (event: ObservedEvent) => void) => {
-  useEventOf(machine, "stepEnter", (payload) => listener({ type: "stepEnter", ...payload }));
-  useEventOf(machine, "stepLeave", (payload) => listener({ type: "stepLeave", ...payload }));
-  useEventOf(machine, "statusChange", (payload) => listener({ type: "statusChange", ...payload }));
-  useEventOf(machine, "contextChange", (payload) =>
-    listener({ type: "contextChange", ...payload })
-  );
-  useEventOf(machine, "navigationBlocked", (payload) =>
-    listener({ type: "navigationBlocked", ...payload })
-  );
-  useEventOf(machine, "error", (payload) => listener({ type: "error", ...payload }));
+  useEventOf("stepEnter", (payload) => listener({ type: "stepEnter", ...payload }));
+  useEventOf("stepLeave", (payload) => listener({ type: "stepLeave", ...payload }));
+  useEventOf("statusChange", (payload) => listener({ type: "statusChange", ...payload }));
+  useEventOf("contextChange", (payload) => listener({ type: "contextChange", ...payload }));
+  useEventOf("navigationBlocked", (payload) => listener({ type: "navigationBlocked", ...payload }));
+  useEventOf("error", (payload) => listener({ type: "error", ...payload }));
 };

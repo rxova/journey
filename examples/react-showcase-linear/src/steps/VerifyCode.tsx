@@ -5,7 +5,7 @@ import { mockApi } from "../api";
 import { loginJourney } from "../journey";
 
 export const VerifyCode = () => {
-  const { machine, snapshot } = loginJourney.useJourney();
+  const snapshot = loginJourney.useSnapshot();
   const context = snapshot.context;
   const [loading, setLoading] = React.useState(false);
 
@@ -14,10 +14,10 @@ export const VerifyCode = () => {
     try {
       const result = await mockApi.verifyCode(context.verificationCode);
       if (result.success) {
-        await machine.navigate.goToNextStep();
+        await loginJourney.navigate.goToNextStep();
       } else {
         const nextAttempts = context.attempts + 1;
-        machine.context.update((ctx) => ({
+        loginJourney.updateContext((ctx) => ({
           ...ctx,
           error:
             nextAttempts >= 3
@@ -27,7 +27,7 @@ export const VerifyCode = () => {
         }));
 
         if (nextAttempts >= 3) {
-          await machine.navigate.goToNextStep();
+          await loginJourney.navigate.goToNextStep();
         }
       }
     } finally {
@@ -48,7 +48,7 @@ export const VerifyCode = () => {
           value={context.verificationCode}
           onChange={(e) => {
             const verificationCode = e.target.value;
-            machine.context.update((ctx) => ({
+            loginJourney.updateContext((ctx) => ({
               ...ctx,
               verificationCode,
               error: null
@@ -63,7 +63,7 @@ export const VerifyCode = () => {
         <span>Attempts: {context.attempts}</span>
       </div>
       <div className="actions">
-        <button className="secondary" onClick={() => void machine.navigate.goToPreviousStep()}>
+        <button className="secondary" onClick={() => void loginJourney.navigate.goToPreviousStep()}>
           Back
         </button>
         <button onClick={() => void handleVerify()} disabled={loading}>

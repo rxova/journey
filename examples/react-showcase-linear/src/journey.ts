@@ -3,9 +3,9 @@ import { initialContext } from "./context";
 
 /**
  * The typed factory: captures the definition once — the context value is the
- * type anchor, the steps carry their configs — so every step and chrome
- * component gets fully typed hooks with no generics. No machine lives here;
- * one is created per <loginJourney.Provider> mount.
+ * type anchor, the steps carry their configs — and creates one standalone
+ * machine. Every hook and delegate on the bundle closes over it, with or
+ * without the Provider.
  */
 export const loginJourney = createLinearJourney({
   name: "loginJourney",
@@ -13,5 +13,9 @@ export const loginJourney = createLinearJourney({
   steps: ["login", "setup2fa", "verifyCode", { id: "loggedIn", metadata: { label: "Logged In" } }]
 });
 
-/** The bundle's machine type, for imperative escape hatches like machineRef. */
-export type LoginJourneyMachine = ReturnType<typeof loginJourney.useJourney>["machine"];
+// The machine is standalone: observers attach at module scope, no React needed.
+loginJourney.machine.subscriptions.subscribeEvent("statusChange", ({ current }) => {
+  if (current === "completed") {
+    console.log("[react linear] journey.completed", loginJourney.machine.getSnapshot().context);
+  }
+});
