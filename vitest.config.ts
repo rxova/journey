@@ -95,6 +95,10 @@ export default defineConfig({
         replacement: fileURLToPath(new URL("./packages/react/src/graph.tsx", import.meta.url))
       },
       {
+        find: "@rxova/journey-react/client",
+        replacement: fileURLToPath(new URL("./packages/react/src/client.ts", import.meta.url))
+      },
+      {
         find: "@rxova/journey-react/testing",
         replacement: fileURLToPath(
           new URL("./packages/react/src/__tests__/helpers.tsx", import.meta.url)
@@ -163,7 +167,7 @@ export default defineConfig({
       "apps/**/test/**/*.test.tsx"
     ],
     exclude: ["**/node_modules/**"],
-    setupFiles: ["./apps/devtools/test/setup.ts"],
+    setupFiles: ["./test/setup.ts"],
     globals: true,
     silent: true,
     environment: "jsdom",

@@ -5,6 +5,7 @@
     "types": ["node"]
   },
   "include": [
+    "test",
     "packages/*/test",
     "packages/common/tooling",
     "apps/devtools/test",
