@@ -52,11 +52,11 @@
     },
     "./graph": {
       "types": {
-        "import": "./dist/graph/graph.d.ts",
-        "require": "./dist/graph/graph.d.cts"
+        "import": "./dist/graph.d.ts",
+        "require": "./dist/graph.d.cts"
       },
-      "import": "./dist/graph/graph.js",
-      "require": "./dist/graph/graph.cjs"
+      "import": "./dist/graph.js",
+      "require": "./dist/graph.cjs"
     }
   },
   "files": [
@@ -97,7 +97,7 @@
     },
     {
       "name": "react/graph",
-      "path": "dist/graph/graph.js",
+      "path": "dist/graph.js",
       "import": "{ createGraphJourney }",
       "limit": "2.5 kB"
     }

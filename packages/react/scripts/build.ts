@@ -24,7 +24,7 @@ const common = {
 for (const [entryPoint, outfile] of [
   ["src/index.ts", "dist/index.js"],
   ["src/client.ts", "dist/client.js"],
-  ["src/graph/graph.tsx", "dist/graph/graph.js"]
+  ["src/graph.tsx", "dist/graph.js"]
 ] as const) {
   await build({
     ...common,

@@ -6,7 +6,7 @@ import type {
   JourneyEventObject,
   JourneySubscriptionEvent
 } from "@rxova/journey-core";
-import type { EventPayloadOf } from "../headless/headless.types";
+import type { EventPayloadOf } from "./headless.types";
 
 /**
  * What each step renders, keyed by step id. Exhaustiveness is type-checked: a

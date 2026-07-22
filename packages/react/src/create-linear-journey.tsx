@@ -1,6 +1,6 @@
 import React from "react";
 import { createLinearJourney as coreCreateLinearJourney } from "@rxova/journey-core";
-import { useSafeLayoutEffect } from "../headless/use-safe-layout-effect";
+import { useSafeLayoutEffect } from "./use-safe-layout-effect";
 import type { LinearStepIdOf, LinearStepInput } from "@rxova/journey-core";
 import type {
   LinearJourneyBundle,

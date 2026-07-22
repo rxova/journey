@@ -39,7 +39,7 @@ const installCommands = [
 ];
 
 /**
- * Verified against `packages/react/src/graph` and `packages/core/src/graph` by
+ * Verified against `packages/react/src/graph.tsx` and `packages/core/src/graph` by
  * compiling this exact snippet with `tsc`. `checkout.send` is the machine's
  * `send`, verbatim on the bundle (`graph.tsx` — the factory creates one
  * standalone machine); the `send(type, work)` overload is core's `SendVerb`,

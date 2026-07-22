@@ -1,4 +1,4 @@
-export { createLinearJourney } from "./linear/create-linear-journey";
+export { createLinearJourney } from "./create-linear-journey";
 
 export type {
   LinearJourneyBundle,
@@ -10,7 +10,7 @@ export type {
   LinearJourneyStepHandler,
   LinearJourneyViews,
   LinearProviderProps
-} from "./linear/linear.types";
+} from "./linear.types";
 
 export type {
   AnyJourneyMachine,
@@ -18,7 +18,7 @@ export type {
   EventPayloadOf,
   SnapshotOf,
   StepIdOf
-} from "./headless/headless.types";
+} from "./headless.types";
 
 export type {
   AnyJourneyPlugin,
