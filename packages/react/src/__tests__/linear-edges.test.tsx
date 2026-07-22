@@ -205,6 +205,11 @@ describe("subscription lifecycle", () => {
     };
     const view = render(<Probe event="stepEnter" />);
     await flush();
+    // The mount-time start delivers the first stepEnter; this test is about
+    // what arrives *after* the event name changes.
+    expect(delivered).toEqual(["stepEnter"]);
+    delivered.length = 0;
+
     view.rerender(<Probe event="contextChange" />);
     await act(async () => {
       await journey.navigate.goToNextStep(); // stepEnter no longer subscribed
@@ -345,6 +350,74 @@ describe("machine error surfacing", () => {
     );
     consoleWarn.mockRestore();
     delete (globalThis as { __DEV__?: boolean }).__DEV__;
+  });
+
+  it("starts the journey once no matter how many components mount", async () => {
+    const journey = createLinearJourney({ context: {}, steps: ["a", "b"] });
+    const statuses: string[] = [];
+    journey.machine.subscriptions.subscribeEvent("statusChange", ({ current }) =>
+      statuses.push(current)
+    );
+    const Probe = () => {
+      journey.useStep();
+      return null;
+    };
+    render(
+      <>
+        <Probe />
+        <Probe />
+        <journey.Provider views={{ a: <StepA />, b: <StepB /> }}>
+          <journey.StepRenderer />
+        </journey.Provider>
+      </>
+    );
+    await flush();
+
+    expect(statuses).toEqual(["running"]);
+    expect(journey.machine.getSnapshot().currentStep?.id).toBe("a");
+  });
+
+  it("restores the outer component's step handler when the inner one unmounts", async () => {
+    const journey = createLinearJourney({ context: {}, steps: ["gated", "next"] });
+    const outer = vi.fn();
+    const inner = vi.fn();
+    const Outer = () => {
+      journey.useStepHandler("gated", { run: outer });
+      return <span>outer</span>;
+    };
+    const Inner = () => {
+      journey.useStepHandler("gated", { run: inner });
+      return <span>inner</span>;
+    };
+    const Shell = ({ withInner }: { withInner: boolean }) => (
+      <>
+        <Outer />
+        {withInner ? <Inner /> : null}
+      </>
+    );
+
+    const view = render(<Shell withInner />);
+    await flush();
+
+    // Both mounted: the later registration gates the step.
+    await act(async () => {
+      await journey.navigate.goToNextStep();
+    });
+    expect(inner).toHaveBeenCalledOnce();
+    expect(outer).not.toHaveBeenCalled();
+    await act(async () => {
+      await journey.navigate.goToPreviousStep();
+    });
+
+    // Inner unmounts while Outer is still mounted and still believes it guards
+    // this step — before the stack fix the step silently became ungated.
+    view.rerender(<Shell withInner={false} />);
+    await flush();
+    await act(async () => {
+      await journey.navigate.goToNextStep();
+    });
+    expect(outer).toHaveBeenCalledOnce();
+    expect(inner).toHaveBeenCalledOnce();
   });
 
   it("renders under StrictMode against the one standalone machine", async () => {

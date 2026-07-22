@@ -26,6 +26,7 @@ type BindableRuntime<TContext, TSnapshot> = {
     ) => () => void;
   };
   context: { update: (updater: (context: TContext) => TContext) => unknown };
+  controls: { start: () => boolean };
 };
 
 // Hoisted selectors: stable identities let every built-in hook hit the
@@ -42,6 +43,30 @@ const selectStepId = <TSnapshot extends { currentStep: { readonly id: string } |
 ): string | undefined => snapshot.currentStep?.id;
 
 /**
+ * Builds the hook that starts the machine from a layout effect on first mount,
+ * so every subscriber that mounted alongside it is attached before the initial
+ * `stepEnter` fires — starting inside the factory makes that event structurally
+ * unobservable. `controls.start()` no-ops unless the status is idle, so this
+ * needs no ref counting and is safe under StrictMode's double effect.
+ *
+ * Every mounted entry point calls it: the Provider, every reactive hook, and
+ * the tier verbs that register machine work.
+ */
+export const createAutoStartHook = (
+  machine: { controls: { start: () => boolean } },
+  startOnMount: boolean
+): (() => void) => {
+  // The effect is registered unconditionally — `startOnMount` is fixed for the
+  // bundle's lifetime, but branching on it outside the hook would make the hook
+  // count depend on a value read at build time, which is needlessly subtle.
+  return () => {
+    useSafeLayoutEffect(() => {
+      if (startOnMount) machine.controls.start();
+    }, []);
+  };
+};
+
+/**
  * Builds the bundle surface both tiers share around one standalone machine:
  * the useSyncExternalStore bridge, the Provider/StepRenderer pair, and the
  * hooks that close over the machine. The factories spread this and add their
@@ -55,7 +80,8 @@ export const createJourneyBindings = <
   TSnapshot extends { currentStep: { readonly id: TStepId } | null; context: TContext }
 >(
   machine: TMachine,
-  displayBase: string
+  displayBase: string,
+  useAutoStart: () => void
 ): JourneyBundleBase<TMachine, TContext, TStepId, TSnapshot> => {
   const runtime = machine as unknown as BindableRuntime<TContext, TSnapshot>;
 
@@ -103,14 +129,21 @@ export const createJourneyBindings = <
       return selected;
     };
 
-    return React.useSyncExternalStore(subscribe, getSelected, getSelected);
+    const selected = React.useSyncExternalStore(subscribe, getSelected, getSelected);
+    // Declared last on purpose: layout effects fire in hook order, so the store
+    // subscription above is live before the start effect can emit stepEnter.
+    useAutoStart();
+    return selected;
   };
 
   const ViewsContext = React.createContext<JourneyViews<TStepId> | null>(null);
 
-  const Provider = ({ views, children }: JourneyProviderProps<TStepId>): React.ReactElement => (
-    <ViewsContext.Provider value={views}>{children}</ViewsContext.Provider>
-  );
+  const Provider = ({ views, children }: JourneyProviderProps<TStepId>): React.ReactElement => {
+    // Mounting the Provider starts the journey even when nothing under it is
+    // reactive — a Provider whose children only call useControls still counts.
+    useAutoStart();
+    return <ViewsContext.Provider value={views}>{children}</ViewsContext.Provider>;
+  };
   Provider.displayName = `${displayBase}.Provider`;
 
   const StepRenderer = ({ fallback = null }: JourneyStepRendererProps) => {
@@ -152,6 +185,9 @@ export const createJourneyBindings = <
           ),
         [event]
       );
+      // Declared last on purpose: this listener must be attached before the
+      // start effect runs, or it misses the journey's very first stepEnter.
+      useAutoStart();
     },
     useMachine: () => machine,
     useControls: () => machine.controls,

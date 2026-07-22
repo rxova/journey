@@ -1,5 +1,5 @@
 import { createGraphJourney as coreCreateGraphJourney } from "@rxova/journey-core";
-import { createJourneyBindings } from "./react.helpers";
+import { createAutoStartHook, createJourneyBindings } from "./react.helpers";
 import type {
   AnyJourneyPlugin,
   GraphJourneyMachine,
@@ -83,13 +83,18 @@ export function createGraphJourney<
   type Snapshot = GraphSnapshot<TContext, TStepId, TMeta, TEvents>;
 
   const { name, ...coreDefinition } = definition;
+  // Three-way autoStart — see the note in create-linear-journey.tsx.
   const machine: Machine = coreCreateGraphJourney(coreDefinition, {
     ...options,
-    autoStart: options?.autoStart ?? true
+    autoStart: options?.autoStart === true
   });
 
   return {
-    ...createJourneyBindings<Machine, TContext, TStepId, Snapshot>(machine, name ?? "GraphJourney"),
+    ...createJourneyBindings<Machine, TContext, TStepId, Snapshot>(
+      machine,
+      name ?? "GraphJourney",
+      createAutoStartHook(machine, options?.autoStart === undefined)
+    ),
     send: machine.send
   };
 }

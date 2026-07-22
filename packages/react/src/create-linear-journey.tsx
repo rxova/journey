@@ -1,6 +1,6 @@
 import React from "react";
 import { createLinearJourney as coreCreateLinearJourney } from "@rxova/journey-core";
-import { createJourneyBindings } from "./react.helpers";
+import { createAutoStartHook, createJourneyBindings } from "./react.helpers";
 import { useSafeLayoutEffect } from "./use-safe-layout-effect";
 import type { AnyJourneyPlugin, LinearStepIdOf, LinearStepInput } from "@rxova/journey-core";
 import type {
@@ -84,15 +84,23 @@ export const createLinearJourney = <
   // two derivations name the same union, but TypeScript cannot prove it
   // through the generic call, so core infers `string` and the result is
   // re-branded here.
+  // Three-way autoStart in this tier: `undefined` (the default) starts the
+  // machine from a layout effect on first mount, so subscribers attach before
+  // the initial stepEnter; `true` keeps the eager in-factory start for callers
+  // who need SSR to emit step content; `false` defers to controls.start().
+  const eagerStart = options?.autoStart === true;
   const machine = coreCreateLinearJourney(
     { steps: definition.steps, context: definition.context },
-    { ...options, autoStart: options?.autoStart ?? true }
+    { ...options, autoStart: eagerStart }
   ) as unknown as Machine;
+
+  const useAutoStart = createAutoStartHook(machine, options?.autoStart === undefined);
 
   return {
     ...createJourneyBindings<Machine, TContext, TStepId, Snapshot>(
       machine,
-      definition.name ?? "LinearJourney"
+      definition.name ?? "LinearJourney",
+      useAutoStart
     ),
     useStepHandler: <TResult = void,>(
       stepId: TStepId,
@@ -109,6 +117,9 @@ export const createLinearJourney = <
         };
         return machine.navigate.registerNextStepInterceptor(stepId, work);
       }, [stepId]);
+      // Declared last on purpose: the interceptor must be registered before the
+      // start effect runs, so it can gate a navigation from the very first step.
+      useAutoStart();
     },
     navigate: machine.navigate
   };
