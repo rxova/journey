@@ -1,4 +1,4 @@
-import { warnInDevelopment } from "@rxova/journey-common/dev";
+import { isDevelopmentEnvironment, warnInDevelopment } from "@rxova/journey-common/dev";
 import {
   eventWorkKey,
   LOADING_ASYNC,
@@ -33,6 +33,23 @@ import type {
   StepAsyncState,
   StepEnterDirection
 } from "./types";
+
+/**
+ * Dev-only shallow freeze of the context.
+ *
+ * Every other snapshot slice is frozen, so an unfrozen context is a surprising
+ * gap: mutating it in place changes nothing the machine can observe — no
+ * publish, no re-render, no subscriber — and the bug is silent. Freezing turns
+ * it into a throw where it happens.
+ *
+ * Shallow, matching how the rest of the snapshot is frozen; deep-freezing would
+ * cost a full walk per update and break Maps, Dates, and class instances that
+ * legitimately live in a context. Development only, so production pays nothing.
+ */
+const freezeContextInDevelopment = <T>(context: T): T =>
+  typeof context === "object" && context !== null && isDevelopmentEnvironment()
+    ? Object.freeze(context)
+    : context;
 
 const EMPTY_METADATA: Readonly<Record<string, unknown>> = Object.freeze({});
 const EMPTY_PLUGINS: Readonly<Record<string, unknown>> = Object.freeze({});
@@ -112,7 +129,9 @@ export class JourneyRuntime {
     this.config = config;
     this.frozenStepOrder = Object.freeze([...config.stepIds]) as readonly string[];
     this.restoreSeed = config.restore ?? null;
-    this.context = config.restore ? config.restore.context : config.initialContext;
+    this.context = freezeContextInDevelopment(
+      config.restore ? config.restore.context : config.initialContext
+    );
     this.store = new JourneyStore(this.buildSnapshot(), config.onListenerError);
     this.setupPlugins();
     this.store.publish(this.buildSnapshot());
@@ -167,7 +186,7 @@ export class JourneyRuntime {
     this.raiseQueue = [];
     this.timeline = [];
     this.currentIndex = -1;
-    this.context = this.config.initialContext;
+    this.context = freezeContextInDevelopment(this.config.initialContext);
     this.outcome = null;
     this.visitCounts = new Map();
     this.entryAsync = SUCCESS_ASYNC;
@@ -199,7 +218,7 @@ export class JourneyRuntime {
   updateContext(updater: ContextUpdater<unknown>): void {
     if (this.disposed) return;
     const previous = this.context;
-    this.context = updater(previous);
+    this.context = freezeContextInDevelopment(updater(previous));
     const snapshot = this.publish();
     this.store.emit("contextChange", { snapshot, previous, current: this.context });
   }
@@ -732,7 +751,7 @@ export class JourneyRuntime {
       this.timeline = [...this.timeline.slice(0, this.currentIndex + 1), to];
       this.currentIndex = this.timeline.length - 1;
     }
-    if (contextWasUpdated) this.context = stagedContext;
+    if (contextWasUpdated) this.context = freezeContextInDevelopment(stagedContext);
     const fromStep = from === null ? undefined : this.config.steps[from];
     this.pending = { phase: fromStep?.onLeave ? "leaving" : "entering", from, to };
     this.commitEntry(
