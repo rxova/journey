@@ -1,3 +1,4 @@
+import { JourneyError } from "../core/errors";
 import { hasOwn } from "../core/helpers";
 import { buildMachineSurface } from "../core/machine";
 import { JourneyRuntime } from "../core/runtime";
@@ -44,7 +45,7 @@ export function createLinearJourney<
   TerminatePayloadOf<TTerminationPayloads>
 > {
   if (definition.steps.length === 0) {
-    throw new Error("journey: a linear journey needs at least one step");
+    throw new JourneyError("empty-definition", "a linear journey needs at least one step");
   }
 
   const stepIds: string[] = [];
@@ -58,7 +59,9 @@ export function createLinearJourney<
       TerminatePayloadOf<TTerminationPayloads>
     > = typeof input === "string" ? { id: input } : input;
     if (hasOwn(steps, config.id)) {
-      throw new Error(`journey: duplicate step id "${config.id}"`);
+      throw new JourneyError("duplicate-step-id", `duplicate step id "${config.id}"`, {
+        stepId: config.id
+      });
     }
     stepIds.push(config.id);
     const runtimeStep: {
@@ -76,7 +79,9 @@ export function createLinearJourney<
   }
 
   if (options.startAt !== undefined && !hasOwn(steps, options.startAt)) {
-    throw new Error(`journey: startAt references unknown step "${options.startAt}"`);
+    throw new JourneyError("unknown-step", `startAt references unknown step "${options.startAt}"`, {
+      stepId: options.startAt
+    });
   }
 
   // Explicit `startAt` wins over a persisted record; restore is best-effort.

@@ -1,3 +1,4 @@
+import { JourneyError } from "../../core/errors";
 import type { JourneyPersistedState, JourneyStorage } from "./persistence.types";
 import type { JourneyPersistOption, JourneySnapshot } from "../../core/types";
 
@@ -98,8 +99,9 @@ export function resolvePersistStorage(option: JourneyPersistOption): JourneyStor
   try {
     ambient = globalThis.localStorage as JourneyStorage | undefined;
   } catch (error) {
-    const blocked = new Error(
-      "journey: localStorage access was blocked by the environment; pass persist.storage explicitly"
+    const blocked = new JourneyError(
+      "storage-unavailable",
+      "localStorage access was blocked by the environment; pass persist.storage explicitly"
     );
     // Assigned rather than passed to the constructor: `cause` is ES2022 and the
     // compilation target is ES2020, so the two-argument form does not typecheck.
@@ -108,7 +110,10 @@ export function resolvePersistStorage(option: JourneyPersistOption): JourneyStor
   }
 
   if (!ambient) {
-    throw new Error("journey: persist.storage is required when localStorage is unavailable");
+    throw new JourneyError(
+      "storage-unavailable",
+      "persist.storage is required when localStorage is unavailable"
+    );
   }
   return ambient;
 }
