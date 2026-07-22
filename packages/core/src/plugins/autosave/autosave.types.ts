@@ -1,4 +1,4 @@
-import type { JourneyPersistedState, JourneyStorage } from "../persistence/persistence.types";
+import type { JourneyPersistedState, JourneyStorage } from "../persistence/persistence.types.js";
 
 export type AutosaveReason = "context" | "transition" | "status";
 

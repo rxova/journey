@@ -7,7 +7,7 @@ import {
   createJourneyMachineId,
   OperationRateLimiter,
   serializeSnapshot
-} from "./bridge.helpers";
+} from "./bridge.helpers.js";
 import {
   JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
   JOURNEY_DEVTOOLS_CHANNEL,
@@ -15,18 +15,18 @@ import {
   JOURNEY_DEVTOOLS_REPLAY_REQUEST,
   isCompatibleInvokeProtocolVersion,
   isJourneyDevtoolsExtensionEnvelope
-} from "./protocol";
+} from "./protocol.js";
 import type {
   JourneyDevtoolsAttachableMachine,
   JourneyDevtoolsBridgeOptions,
   LooseMachine,
   OperationRunner
-} from "./bridge.types";
+} from "./bridge.types.js";
 import type {
   JourneyDevtoolsBridgeEnvelope,
   JourneyDevtoolsMachineMeta,
   JourneyDevtoolsOperationResultPayload
-} from "./protocol.types";
+} from "./protocol.types.js";
 import type { JourneySnapshot, JourneySubscriptionEvent } from "@rxova/journey-core";
 
 const OBSERVED_EVENTS: readonly JourneySubscriptionEvent[] = [

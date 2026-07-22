@@ -3,7 +3,7 @@ import type {
   JourneySubscriptionEvent,
   NavigationResult
 } from "@rxova/journey-core";
-import type { JourneyDevtoolsOperationResultPayload } from "./protocol.types";
+import type { JourneyDevtoolsOperationResultPayload } from "./protocol.types.js";
 
 /** Options for `attachJourneyDevtools`. */
 export type JourneyDevtoolsBridgeOptions = {

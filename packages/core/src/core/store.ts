@@ -1,11 +1,11 @@
-import { reportListenerError } from "./helpers";
-import type { SelectorEntry } from "./store.types";
+import { reportListenerError } from "./helpers.js";
+import type { SelectorEntry } from "./store.types.js";
 import type {
   JourneyEventPayloads,
   JourneySnapshot,
   JourneySubscriptionEvent,
   Unsubscribe
-} from "./types";
+} from "./types.js";
 
 /**
  * Snapshot holder + subscription hub. Snapshots are immutable and rebuilt by

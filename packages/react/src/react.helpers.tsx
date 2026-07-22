@@ -1,12 +1,12 @@
 import React from "react";
-import { useSafeLayoutEffect } from "./use-safe-layout-effect";
+import { useSafeLayoutEffect } from "./use-safe-layout-effect.js";
 import type { JourneySubscriptionEvent } from "@rxova/journey-core";
 import type {
   JourneyBundleBase,
   JourneyProviderProps,
   JourneyStepRendererProps,
   JourneyViews
-} from "./react.types";
+} from "./react.types.js";
 
 /**
  * The runtime surface the bindings drive. The factories hand us a concretely

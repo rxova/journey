@@ -1,8 +1,8 @@
-import { buildMachineSurface } from "../core/machine";
-import { JourneyRuntime } from "../core/runtime";
-import { persistOptionToPlugin } from "../plugins/persistence/persistence";
-import { readRestorableState } from "../plugins/persistence/persistence.helpers";
-import type { RuntimeStep, RuntimeTransition } from "../core/runtime.types";
+import { buildMachineSurface } from "../core/machine.js";
+import { JourneyRuntime } from "../core/runtime.js";
+import { persistOptionToPlugin } from "../plugins/persistence/persistence.js";
+import { readRestorableState } from "../plugins/persistence/persistence.helpers.js";
+import type { RuntimeStep, RuntimeTransition } from "../core/runtime.types.js";
 import type {
   GraphJourneyMachine,
   GraphJourneyOptions,
@@ -12,9 +12,9 @@ import type {
   LooseGraphDefinition,
   MutableRuntimeStep,
   MutableRuntimeTransition
-} from "./graph.types";
-import type { AnySendWork } from "../core/runtime.types";
-import type { AnyJourneyPlugin, JourneyEventObject } from "../core/types";
+} from "./graph.types.js";
+import type { AnySendWork } from "../core/runtime.types.js";
+import type { AnyJourneyPlugin, JourneyEventObject } from "../core/types.js";
 
 /** Flattens the transitions map in declaration order and validates step refs. */
 export function normalizeGraphDefinition(definition: LooseGraphDefinition): {

@@ -1,8 +1,13 @@
-import { normalizeMaxEntries, serializeReplaySession, toSerializable } from "./replay.helpers";
-import type { ReplayApi, ReplayEntry, ReplayEntryKind, ReplayPluginOptions } from "./replay.types";
-import type { JourneyPlugin } from "../../core/types";
+import { normalizeMaxEntries, serializeReplaySession, toSerializable } from "./replay.helpers.js";
+import type {
+  ReplayApi,
+  ReplayEntry,
+  ReplayEntryKind,
+  ReplayPluginOptions
+} from "./replay.types.js";
+import type { JourneyPlugin } from "../../core/types.js";
 
-export { normalizeMaxEntries, serializeReplaySession, toSerializable } from "./replay.helpers";
+export { normalizeMaxEntries, serializeReplaySession, toSerializable } from "./replay.helpers.js";
 export type {
   ReplayApi,
   ReplayEntry,
@@ -10,7 +15,7 @@ export type {
   ReplayExportOptions,
   ReplayPluginOptions,
   ReplaySession
-} from "./replay.types";
+} from "./replay.types.js";
 
 /** Records snapshot and lifecycle activity into an exportable replay session. */
 export function createReplayPlugin(

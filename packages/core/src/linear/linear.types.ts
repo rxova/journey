@@ -6,7 +6,7 @@ import type {
   OnEnterHook,
   OnLeaveHook,
   PluginApis
-} from "../core/types";
+} from "../core/types.js";
 
 /** Completion and termination payload types supplied to a journey factory. */
 export type JourneyTerminationPayloads = {

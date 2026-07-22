@@ -1,4 +1,4 @@
-import type { PluginHost, Unsubscribe } from "../../core/types";
+import type { PluginHost, Unsubscribe } from "../../core/types.js";
 
 export type StatusChangeInfo = Parameters<Parameters<PluginHost["onStatusChange"]>[0]>[0];
 export type StatusListener = (info: StatusChangeInfo) => void;

@@ -207,6 +207,12 @@ export default [
       "@typescript-eslint": tsPlugin,
       "react-hooks": reactHooks
     },
+    settings: {
+      // useSafeLayoutEffect is useLayoutEffect on the client and useEffect on
+      // the server. Without this its dependency arrays are invisible to
+      // exhaustive-deps, which is most of the effects in packages/react.
+      "react-hooks": { additionalHooks: "(useSafeLayoutEffect)" }
+    },
     rules: {
       ...tsPlugin.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,

@@ -1,20 +1,20 @@
-import { DEFAULT_SAVE_REASONS, normalizeDebounceMs } from "./autosave.helpers";
-import { buildPersistedState, parsePersistedState } from "../persistence/persistence.helpers";
+import { DEFAULT_SAVE_REASONS, normalizeDebounceMs } from "./autosave.helpers.js";
+import { buildPersistedState, parsePersistedState } from "../persistence/persistence.helpers.js";
 import type {
   AutosaveApi,
   AutosavePluginOptions,
   AutosaveReason,
   AutosaveState
-} from "./autosave.types";
-import type { JourneyPlugin } from "../../core/types";
+} from "./autosave.types.js";
+import type { JourneyPlugin } from "../../core/types.js";
 
-export { DEFAULT_SAVE_REASONS, normalizeDebounceMs } from "./autosave.helpers";
+export { DEFAULT_SAVE_REASONS, normalizeDebounceMs } from "./autosave.helpers.js";
 export type {
   AutosaveApi,
   AutosavePluginOptions,
   AutosaveReason,
   AutosaveState
-} from "./autosave.types";
+} from "./autosave.types.js";
 
 /**
  * Debounced persistence: schedules a save after each observed change and

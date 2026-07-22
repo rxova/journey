@@ -6,7 +6,7 @@
  * points (navigation accepted → commit → settle, plus lifecycle and context
  * changes) and delivered to subscribers.
  */
-import type { JourneyStorage } from "../plugins/persistence/persistence.types";
+import type { JourneyStorage } from "../plugins/persistence/persistence.types.js";
 
 /** Journey lifecycle status (meta-state-machine, enforced in core). */
 export type JourneyStatus = "idle" | "running" | "paused" | "completed" | "terminated";
