@@ -120,7 +120,8 @@ Releases are automated with Changesets and GitHub Actions.
 
 ## Browser Compatibility
 
-Rxova Journey targets modern evergreen browsers and React 18+.
+Rxova Journey targets modern evergreen browsers and React 18.2+ (the first release with
+`useSyncExternalStore`'s final semantics). CI runs the suite against both 18.2 and the latest 19.
 If you need legacy browser support (for example, older Safari or IE11),
 you must provide your own transpilation and polyfills in your app build.
 

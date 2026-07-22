@@ -12,8 +12,14 @@ pattern for machines the caller owns.
 npm install @rxova/journey-react @rxova/journey-core react
 ```
 
-React 19 is supported. The package uses `useSyncExternalStore` to subscribe to immutable Core
-snapshots.
+**React 18.2 and later**, including React 19. The package uses `useSyncExternalStore` to
+subscribe to immutable Core snapshots, and CI runs the test suite against both the minimum
+supported version and the latest.
+
+One development-only difference: React 18's StrictMode re-mounts hooks on its second render pass,
+so `useJourney()`'s factory runs twice there and once on React 19. Only the committed bundle is
+ever started, so the discarded one holds no timers, subscriptions, or journey state — but keep
+the factory free of side effects beyond building the bundle.
 
 ## Linear journeys
 

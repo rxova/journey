@@ -1,5 +1,5 @@
 import React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { createLinearJourney, useJourney } from "@rxova/journey-react";
 import { flush } from "@rxova/journey-react/testing";
@@ -7,8 +7,13 @@ import { flush } from "@rxova/journey-react/testing";
 const makeBundle = () => createLinearJourney({ context: { n: 0 }, steps: ["a", "b"] });
 
 describe("useJourney", () => {
-  it("creates exactly one bundle per component instance under StrictMode", async () => {
-    const factory = vi.fn(makeBundle);
+  it("starts exactly one machine per component instance under StrictMode", async () => {
+    const built: ReturnType<typeof makeBundle>[] = [];
+    const factory = () => {
+      const bundle = makeBundle();
+      built.push(bundle);
+      return bundle;
+    };
     const Wizard = () => {
       const journey = useJourney(factory);
       return <span data-testid="step">{journey.useStep()?.id ?? "idle"}</span>;
@@ -21,9 +26,13 @@ describe("useJourney", () => {
     );
     await flush();
 
-    // A useState lazy initializer would have run twice here and built two
-    // fully-configured machines, abandoning one undisposed.
-    expect(factory).toHaveBeenCalledTimes(1);
+    // React 18's StrictMode re-mounts hooks on the second render pass, giving a
+    // fresh ref, so the factory runs twice there and once on React 19. What
+    // matters is the same on both: only the committed bundle is ever *started*.
+    // The discarded one never mounts, so its start effect never runs — it holds
+    // no timers, no subscriptions, and no journey state, and is collected.
+    const started = built.filter((bundle) => bundle.machine.getSnapshot().status !== "idle");
+    expect(started).toHaveLength(1);
     expect(screen.getByTestId("step").textContent).toBe("a");
   });
 
