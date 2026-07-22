@@ -26,12 +26,13 @@ consistent emission. Use selectors for leaf components to avoid re-rendering on 
 ## Keep commands grouped
 
 ```tsx
-const api = checkout.useApi();
+const controls = checkout.useControls();
+const navigate = checkout.useNavigation();
 
-api.controls.pause();
-await api.navigate.goToPreviousStep();
-await api.send("continue");
-api.updateContext((context) => ({ ...context, dirty: true }));
+controls.pause();
+await navigate.goToPreviousStep();
+await checkout.send("continue");
+checkout.updateContext((context) => ({ ...context, dirty: true }));
 ```
 
 Lifecycle, position, events, and context are separate concepts. Preserving the Core groups makes
@@ -42,7 +43,7 @@ handlers easier to read and prevents accidental semantic shortcuts.
 Snapshot context is immutable. Always return the next value:
 
 ```tsx
-api.updateContext((context) => ({
+checkout.updateContext((context) => ({
   ...context,
   email: nextEmail
 }));
@@ -62,11 +63,12 @@ do not perform network work.
 
 ## Respect machine ownership
 
-A linear component or graph Provider owns its machine. Do not cache that machine globally or keep it
-after unmount. Use hooks for rendering and `machineRef` only for integration boundaries such as
-DevTools.
+Ownership differs per tier, on purpose. A linear Provider owns its machine per mount — do not cache
+it globally or keep it after unmount; use hooks for rendering and `machineRef` only for integration
+boundaries such as DevTools. A graph bundle's machine is standalone on the bundle — `bundle.machine`
+is the integration boundary, and React never disposes it.
 
-Headless hooks are the opposite: the caller owns the supplied Core machine and decides when it
+Headless hooks are the third model: the caller owns the supplied Core machine and decides when it
 starts and disposes.
 
 ## Model branches as a graph
@@ -80,7 +82,7 @@ so routing remains introspectable.
 Expected failures resolve:
 
 ```tsx
-const result = await api.send("continue");
+const result = await checkout.send("continue");
 
 if (!result.ok) {
   if (result.reason === "no-enabled-transition") {

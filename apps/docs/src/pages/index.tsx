@@ -40,11 +40,12 @@ const installCommands = [
 
 /**
  * Verified against `packages/react/src/graph` and `packages/core/src/graph` by
- * compiling this exact snippet with `tsc`. The `send(type, work)` overload is
- * `SendVerb` (`core/src/graph/graph.types.ts:175-223`); `run`/`commit` semantics
- * are `SendWork` (:139-164) — run is awaited while the machine holds position,
- * commit stages the context the guards are then evaluated against. Candidate
- * arrays resolve first-enabled-wins (`GraphTransitionCandidate`, :54).
+ * compiling this exact snippet with `tsc`. `checkout.send` is the machine's
+ * `send`, verbatim on the bundle (`graph.tsx` — the factory creates one
+ * standalone machine); the `send(type, work)` overload is core's `SendVerb`,
+ * and `run`/`commit` semantics are `SendWork` — run is awaited while the
+ * machine holds position, commit stages the context the guards are then
+ * evaluated against. Candidate arrays resolve first-enabled-wins.
  */
 const GRAPH_SNIPPET = `import { createGraphJourney } from "@rxova/journey-react/graph";
 
@@ -67,12 +68,12 @@ const checkout = createGraphJourney<CheckoutContext, CheckoutStepId, CheckoutEve
 });
 
 export function PayButton() {
-  const { send } = checkout.useApi();
-
+  // The machine is standalone on the bundle: \`checkout.send\` works here, in a
+  // plain event handler, or outside React entirely.
   // \`run\` is awaited while the machine holds its position; \`commit\` stages the
   // context that the guards are then evaluated against.
   const submit = () =>
-    send("submit", {
+    checkout.send("submit", {
       run: ({ snapshot }) => scoreRisk(snapshot.context.cartId),
       commit: ({ result, updateContext }) =>
         updateContext((context) => ({ ...context, riskScore: result }))
@@ -93,7 +94,7 @@ const reactTiers = [
   {
     name: "Graph bundle",
     importPath: "@rxova/journey-react/graph",
-    body: "A typed bundle with its own Provider, StepRenderer, and hooks. Named events and guards choose the route instead of a fixed order.",
+    body: "A typed bundle around one standalone machine — hooks, send, and updateContext work with or without the Provider. Named events and guards choose the route instead of a fixed order.",
     bestFit: "Branching, event-driven flows",
     href: "/docs/react/overview"
   },

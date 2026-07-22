@@ -11,8 +11,9 @@ React surface.
 
 - `react-showcase-linear` demonstrates declarative JSX steps, context edits, transactional work,
   lifecycle callbacks, persistence, and typed bundle hooks.
-- `react-showcase-graph` demonstrates a Provider-owned graph machine, typed domain events,
-  synchronous route guards, graph snapshot introspection, and `machineRef` DevTools attachment.
+- `react-showcase-graph` demonstrates a standalone graph bundle machine, typed domain events,
+  synchronous route guards, graph snapshot introspection, and DevTools attached straight to
+  `journey.machine`.
 - `react-showcase-headless` demonstrates machine-argument hooks over an existing Core machine.
 
 Run an example from the repository root:
@@ -46,19 +47,19 @@ machine.plugins.autosave.flushAutosave();
 ```tsx
 function Controls() {
   const snapshot = checkout.useSnapshot();
-  const api = checkout.useApi();
+  const navigate = checkout.useNavigation();
 
   return (
     <>
       <button
         disabled={!snapshot.history.canGoBack}
-        onClick={() => void api.navigate.goToPreviousStep()}
+        onClick={() => void navigate.goToPreviousStep()}
       >
         Back
       </button>
       <button
         disabled={!snapshot.availableEvents.includes("continue")}
-        onClick={() => void api.send("continue")}
+        onClick={() => void checkout.send("continue")}
       >
         Continue
       </button>
