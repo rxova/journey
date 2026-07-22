@@ -77,16 +77,16 @@ export function createGraphJourney<
     /** Optional bundle name, used for the React DevTools display names. */
     readonly name?: string;
   },
-  options?: GraphJourneyOptions<NoInfer<THandlers>, TPlugins>
+  options?: GraphJourneyOptions<NoInfer<THandlers>, TPlugins, NoInfer<TStepId>>
 ): GraphJourneyBundle<TContext, TStepId, TEvents, TMeta, TPlugins> {
   type Machine = GraphJourneyMachine<TContext, TStepId, TEvents, TMeta, TPlugins>;
   type Snapshot = GraphSnapshot<TContext, TStepId, TMeta, TEvents>;
 
   const { name, ...coreDefinition } = definition;
-  const machine = coreCreateGraphJourney(
-    coreDefinition as never,
-    { ...options, autoStart: options?.autoStart ?? true } as never
-  ) as unknown as Machine;
+  const machine: Machine = coreCreateGraphJourney(coreDefinition, {
+    ...options,
+    autoStart: options?.autoStart ?? true
+  });
 
   return {
     ...createJourneyBindings<Machine, TContext, TStepId, Snapshot>(machine, name ?? "GraphJourney"),

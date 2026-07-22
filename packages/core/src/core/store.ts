@@ -48,6 +48,9 @@ export class JourneyStore<TContext, TStepId extends string> {
 
   /** Replaces the snapshot and notifies selector subscribers whose value changed. */
   publish(next: JourneySnapshot<TContext, TStepId>): void {
+    // Structural sharing upstream returns the previous object verbatim when
+    // nothing changed — such publishes are complete no-ops.
+    if (Object.is(this.snapshot, next)) return;
     this.snapshot = next;
     for (const entry of [...this.selectorEntries]) {
       let selected: unknown;

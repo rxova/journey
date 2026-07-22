@@ -1,5 +1,11 @@
 import { warnInDevelopment } from "@rxova/journey-common/dev";
-import { eventWorkKey, LOADING_ASYNC, MAX_RAISED_EVENTS, SUCCESS_ASYNC } from "./helpers";
+import {
+  eventWorkKey,
+  LOADING_ASYNC,
+  MAX_RAISED_EVENTS,
+  shallowEqual,
+  SUCCESS_ASYNC
+} from "./helpers";
 import { JourneyStore } from "./store";
 import type {
   AnyHookArgs,
@@ -27,6 +33,28 @@ import type {
   StepAsyncState,
   StepEnterDirection
 } from "./types";
+
+const EMPTY_METADATA: Readonly<Record<string, unknown>> = Object.freeze({});
+const EMPTY_PLUGINS: Readonly<Record<string, unknown>> = Object.freeze({});
+
+/** Freezes and returns the rebuilt sub-object, or the previous one when content-equal. */
+const shared = <T extends object>(next: T, previous: T | null | undefined): T =>
+  previous != null &&
+  shallowEqual(next as Record<string, unknown>, previous as Record<string, unknown>)
+    ? previous
+    : Object.freeze(next);
+
+/** Reuses the previous frozen array when elements are pairwise equal. */
+const sharedArray = <T>(
+  next: readonly T[],
+  previous: readonly T[] | undefined,
+  equal: (a: T, b: T) => boolean = Object.is
+): readonly T[] =>
+  previous !== undefined &&
+  previous.length === next.length &&
+  next.every((item, index) => equal(item, previous[index] as T))
+    ? previous
+    : (Object.freeze([...next]) as readonly T[]);
 
 const getGraphGuardState = (
   guard: RuntimeTransition["when"],
@@ -62,6 +90,9 @@ export class JourneyRuntime {
   private raiseQueue: JourneyEventObject[] = [];
   private processingRaised = false;
   private lastPluginExtensions: Readonly<Record<string, unknown>> = {};
+  /** The last built snapshot — the sharing baseline for buildSnapshot(). */
+  private lastSnapshot: JourneySnapshot | null = null;
+  private readonly frozenStepOrder: readonly string[];
   private readonly nextStepInterceptors = new Map<string, AnyNavigationWork>();
   private readonly transitionListeners = new Set<TransitionListener>();
   private readonly disposeCallbacks: (() => void)[] = [];
@@ -72,6 +103,7 @@ export class JourneyRuntime {
 
   constructor(config: RuntimeConfig) {
     this.config = config;
+    this.frozenStepOrder = Object.freeze([...config.stepIds]) as readonly string[];
     this.restoreSeed = config.restore ?? null;
     this.context = config.restore ? config.restore.context : config.initialContext;
     this.store = new JourneyStore(this.buildSnapshot(), config.onListenerError);
@@ -844,40 +876,60 @@ export class JourneyRuntime {
   // ── snapshot derivation ──────────────────────────────────────────────────
 
   private buildSnapshot(): JourneySnapshot {
+    // Structural sharing: every sub-object reuses the previous snapshot's
+    // reference when content-identical, and a fully unchanged snapshot returns
+    // the previous object itself — subscribers (and framework bindings diffing
+    // by reference) see identity change exactly when content changes.
+    const previous = this.lastSnapshot;
     const currentId = this.currentStepId();
-    const visited: Record<string, boolean> = {};
+    const visitedNext: Record<string, boolean> = {};
     let visitedStepCount = 0;
     for (const id of this.config.stepIds) {
       const seen = (this.visitCounts.get(id) ?? 0) > 0;
-      visited[id] = seen;
+      visitedNext[id] = seen;
       if (seen) visitedStepCount += 1;
     }
+
+    const previousHistory = previous?.history;
+    const visited =
+      previousHistory != null && shallowEqual(previousHistory.visited, visitedNext)
+        ? previousHistory.visited
+        : (Object.freeze(visitedNext) as Readonly<Record<string, boolean>>);
 
     const base = {
       status: this.status,
       context: this.context,
-      transition: Object.freeze({
-        pending: this.pending !== null,
-        phase: this.pending?.phase ?? null,
-        from: this.pending?.from ?? null,
-        to: this.pending?.to ?? null
-      }),
-      history: Object.freeze({
-        timeline: Object.freeze([...this.timeline]) as readonly string[],
-        currentIndex: this.currentIndex,
-        visited: Object.freeze(visited),
-        canGoBack: this.currentIndex > 0,
-        canGoForward: this.currentIndex >= 0 && this.currentIndex < this.timeline.length - 1
-      }),
-      machine: Object.freeze({
-        isLoading: this.pending !== null,
-        isIdle: this.status === "idle",
-        isRunning: this.status === "running",
-        isPaused: this.status === "paused",
-        isCompleted: this.status === "completed",
-        isTerminated: this.status === "terminated",
-        outcome: this.outcome
-      })
+      transition: shared(
+        {
+          pending: this.pending !== null,
+          phase: this.pending?.phase ?? null,
+          from: this.pending?.from ?? null,
+          to: this.pending?.to ?? null
+        },
+        previous?.transition
+      ),
+      history: shared(
+        {
+          timeline: sharedArray(this.timeline, previousHistory?.timeline),
+          currentIndex: this.currentIndex,
+          visited,
+          canGoBack: this.currentIndex > 0,
+          canGoForward: this.currentIndex >= 0 && this.currentIndex < this.timeline.length - 1
+        },
+        previousHistory
+      ),
+      machine: shared(
+        {
+          isLoading: this.pending !== null,
+          isIdle: this.status === "idle",
+          isRunning: this.status === "running",
+          isPaused: this.status === "paused",
+          isCompleted: this.status === "completed",
+          isTerminated: this.status === "terminated",
+          outcome: this.outcome
+        },
+        previous?.machine
+      )
     };
 
     const currentBase: CurrentStepBase<string, unknown> | null =
@@ -885,13 +937,14 @@ export class JourneyRuntime {
         ? null
         : {
             id: currentId,
-            metadata: this.config.steps[currentId]?.metadata ?? {},
+            metadata: this.config.steps[currentId]?.metadata ?? EMPTY_METADATA,
             isFirstTimeVisit: (this.visitCounts.get(currentId) ?? 0) === 1,
             async: this.entryAsync
           };
 
     let snapshot: JourneySnapshot;
     if (this.config.kind === "linear") {
+      const previousLinear = previous?.type === "linear" ? previous : null;
       const orderIndex = currentId === null ? -1 : this.config.stepIds.indexOf(currentId);
       snapshot = {
         ...base,
@@ -899,18 +952,24 @@ export class JourneyRuntime {
         currentStep:
           currentBase === null
             ? null
-            : Object.freeze({
-                ...currentBase,
-                index: orderIndex,
-                isFirstStep: orderIndex === 0,
-                isLastStep: orderIndex === this.config.stepIds.length - 1
-              }),
-        steps: Object.freeze({
-          totalSteps: this.config.stepIds.length,
-          stepOrder: Object.freeze([...this.config.stepIds]) as readonly string[],
-          visitedStepCount
-        }),
-        plugins: {}
+            : shared(
+                {
+                  ...currentBase,
+                  index: orderIndex,
+                  isFirstStep: orderIndex === 0,
+                  isLastStep: orderIndex === this.config.stepIds.length - 1
+                },
+                previousLinear?.currentStep
+              ),
+        steps: shared(
+          {
+            totalSteps: this.config.stepIds.length,
+            stepOrder: this.frozenStepOrder,
+            visitedStepCount
+          },
+          previousLinear?.steps
+        ),
+        plugins: EMPTY_PLUGINS
       } as JourneySnapshot;
     } else {
       const declaredEvents: string[] = [];
@@ -948,17 +1007,27 @@ export class JourneyRuntime {
           }
         }
       }
+      const previousGraph = previous?.type === "graph" ? previous : null;
       snapshot = {
         ...base,
         type: "graph",
         currentStep:
-          currentBase === null ? null : Object.freeze({ ...currentBase, isTerminal: !hasOutgoing }),
-        steps: Object.freeze({ totalSteps: this.config.stepIds.length, visitedStepCount }),
-        declaredEvents: Object.freeze(declaredEvents) as readonly string[],
-        availableEvents: Object.freeze(availableEvents) as readonly string[],
-        availableSteps: Object.freeze(availableSteps) as readonly string[],
-        outgoingTransitions: Object.freeze(outgoingTransitions),
-        plugins: {}
+          currentBase === null
+            ? null
+            : shared({ ...currentBase, isTerminal: !hasOutgoing }, previousGraph?.currentStep),
+        steps: shared(
+          { totalSteps: this.config.stepIds.length, visitedStepCount },
+          previousGraph?.steps
+        ),
+        declaredEvents: sharedArray(declaredEvents, previousGraph?.declaredEvents),
+        availableEvents: sharedArray(availableEvents, previousGraph?.availableEvents),
+        availableSteps: sharedArray(availableSteps, previousGraph?.availableSteps),
+        outgoingTransitions: sharedArray(
+          outgoingTransitions,
+          previousGraph?.outgoingTransitions,
+          (a, b) => shallowEqual(a, b as unknown as Record<string, unknown>)
+        ),
+        plugins: EMPTY_PLUGINS
       } as JourneySnapshot;
     }
 
@@ -968,8 +1037,26 @@ export class JourneyRuntime {
         extensions[name] = derive(snapshot, this.lastPluginExtensions[name]);
       }
       this.lastPluginExtensions = extensions;
-      snapshot = { ...snapshot, plugins: Object.freeze(extensions) } as JourneySnapshot;
+      const previousPlugins = previous?.plugins;
+      snapshot = {
+        ...snapshot,
+        plugins:
+          previousPlugins != null && shallowEqual(previousPlugins, extensions)
+            ? previousPlugins
+            : Object.freeze(extensions)
+      } as JourneySnapshot;
     }
-    return Object.freeze(snapshot) as JourneySnapshot;
+
+    const frozen = Object.freeze(snapshot) as JourneySnapshot;
+    const result =
+      previous !== null &&
+      shallowEqual(
+        frozen as unknown as Record<string, unknown>,
+        previous as unknown as Record<string, unknown>
+      )
+        ? previous
+        : frozen;
+    this.lastSnapshot = result;
+    return result;
   }
 }
