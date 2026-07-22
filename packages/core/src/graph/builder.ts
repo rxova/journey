@@ -3,6 +3,7 @@ import type {
   GraphStepConfig,
   GraphTransitionCandidate
 } from "./graph.types";
+import { JourneyError } from "../core/errors";
 import { eventWorkKey, hasOwn } from "../core/helpers";
 import type { AnySendWork } from "../core/runtime.types";
 import type {
@@ -90,7 +91,9 @@ export function createGraphJourneyBuilder<TBag extends JourneyTypeBag>(): Journe
 
     for (const step of input.steps) {
       if (hasOwn(steps, step.id)) {
-        throw new Error(`journey: duplicate step id "${step.id}"`);
+        throw new JourneyError("duplicate-step-id", `duplicate step id "${step.id}"`, {
+          stepId: step.id
+        });
       }
       const config = step._config;
       const stepConfig: {

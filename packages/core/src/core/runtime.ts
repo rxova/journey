@@ -1,4 +1,5 @@
 import { isDevelopmentEnvironment, warnInDevelopment } from "@rxova/journey-common/dev";
+import { JourneyError } from "./errors";
 import {
   eventWorkKey,
   hasOwn,
@@ -300,7 +301,11 @@ export class JourneyRuntime {
    */
   registerNextStepInterceptor(stepId: string, work: AnyNavigationWork): () => void {
     if (!hasOwn(this.config.steps, stepId)) {
-      throw new Error(`journey: registerNextStepInterceptor references unknown step "${stepId}"`);
+      throw new JourneyError(
+        "unknown-step",
+        `registerNextStepInterceptor references unknown step "${stepId}"`,
+        { stepId }
+      );
     }
     const stack = this.nextStepInterceptors.get(stepId);
     if (stack) {
@@ -407,7 +412,7 @@ export class JourneyRuntime {
         }
       });
       if (typeof commitResult === "object" && commitResult !== null && "then" in commitResult) {
-        throw new Error("journey: send work commit must be synchronous");
+        throw new JourneyError("async-commit", "send work commit must be synchronous");
       }
     } catch (error) {
       if (!this.isCurrent(generation)) return this.staleResult();
@@ -492,7 +497,13 @@ export class JourneyRuntime {
     try {
       for (const plugin of this.config.plugins) {
         if (hasOwn(this.pluginApis, plugin.name)) {
-          throw new Error(`journey: duplicate plugin name "${plugin.name}"`);
+          throw new JourneyError(
+            "duplicate-plugin-name",
+            `duplicate plugin name "${plugin.name}"`,
+            {
+              pluginName: plugin.name
+            }
+          );
         }
         const contribution = plugin.setup(host);
         this.pluginApis[plugin.name] = contribution.api;
@@ -709,7 +720,7 @@ export class JourneyRuntime {
           }
         });
         if (typeof commitResult === "object" && commitResult !== null && "then" in commitResult) {
-          throw new Error("journey: navigation work commit must be synchronous");
+          throw new JourneyError("async-commit", "navigation work commit must be synchronous");
         }
       } catch (error) {
         if (!this.isCurrent(generation)) return this.staleResult();

@@ -15,6 +15,9 @@ were removed, and `1.0.0` is the baseline contract. See
 - **Factories and entry points** — `createLinearJourney`, `createGraphJourney`,
   `createGraphJourneyBuilder`, `MAX_RAISED_EVENTS`, and the exported public types from the main
   entry.
+- **Error codes** — `JourneyError.code` is a closed union. Adding a member is a minor change;
+  removing or repurposing one is not done within a major. Error **messages** are not covered: match
+  on `code`, never on message text.
 - **The grouped machine surface** — `getSnapshot`, `controls`, `navigate`, `subscriptions`,
   `context`, `async`, `plugins`, `dispose`, and graph `send`, with their documented return
   contracts (boolean controls, `NavigationResult` navigation).

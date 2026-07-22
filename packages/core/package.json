@@ -149,7 +149,7 @@
       "name": "core/createLinearJourney",
       "path": "dist/index.js",
       "import": "{ createLinearJourney }",
-      "limit": "5.95 kB"
+      "limit": "6.05 kB"
     },
     {
       "name": "core/createGraphJourney",
@@ -161,7 +161,7 @@
       "name": "core/createGraphJourneyBuilder",
       "path": "dist/index.js",
       "import": "{ createGraphJourneyBuilder }",
-      "limit": "750 B"
+      "limit": "820 B"
     },
     {
       "name": "core/immerConnector",

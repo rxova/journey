@@ -20,6 +20,31 @@ import {
 The package also exports the definition, machine, snapshot, hook, event, navigation, plugin, and
 builder types used by those functions.
 
+## Errors
+
+Everything Core throws itself is a `JourneyError` carrying a machine-readable `code`, plus the
+offending `stepId`, `event`, or `pluginName` where one applies:
+
+```ts
+import { createLinearJourney, isJourneyError } from "@rxova/journey-core";
+
+try {
+  createLinearJourney(definition, { startAt: idFromRoute });
+} catch (error) {
+  if (isJourneyError(error) && error.code === "unknown-step") {
+    redirectToFirstStep(error.stepId);
+  }
+}
+```
+
+`code` is the stable contract and a closed union: `empty-definition`, `duplicate-step-id`,
+`unknown-step`, `unknown-initial-step`, `dangling-transition`, `duplicate-plugin-name`,
+`storage-unavailable`, `async-commit`. Messages are for humans and may be reworded in any release —
+never match on them.
+
+Failures that are not Core's own stay untyped. `NavigationResult.error` and the `error` subscription
+event carry whatever your navigation work or hooks threw, which Core cannot constrain.
+
 ## Factories
 
 ```ts

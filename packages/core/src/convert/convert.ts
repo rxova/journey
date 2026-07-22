@@ -1,3 +1,4 @@
+import { JourneyError } from "../core/errors";
 import type { LinearToGraphOptions } from "./convert.types";
 import type {
   GraphJourneyDefinition,
@@ -23,7 +24,7 @@ export function linearToGraphDefinition<TContext, TMeta = Record<string, unknown
   options: LinearToGraphOptions = {}
 ): GraphJourneyDefinition<TContext, string, { type: string }, unknown, TMeta> {
   if (definition.steps.length === 0) {
-    throw new Error("journey: a linear journey needs at least one step");
+    throw new JourneyError("empty-definition", "a linear journey needs at least one step");
   }
 
   const normalized: LinearStepConfig<TContext, string, TMeta>[] = definition.steps.map((input) =>

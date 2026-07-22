@@ -1,3 +1,4 @@
+import { JourneyError } from "../core/errors";
 import { hasOwn } from "../core/helpers";
 import { buildMachineSurface } from "../core/machine";
 import { JourneyRuntime } from "../core/runtime";
@@ -31,10 +32,14 @@ export function normalizeGraphDefinition(definition: LooseGraphDefinition): {
 } {
   const stepIds = Object.keys(definition.steps);
   if (stepIds.length === 0) {
-    throw new Error("journey: a graph journey needs at least one step");
+    throw new JourneyError("empty-definition", "a graph journey needs at least one step");
   }
   if (!stepIds.includes(definition.initial)) {
-    throw new Error(`journey: initial step "${definition.initial}" is not a declared step`);
+    throw new JourneyError(
+      "unknown-initial-step",
+      `initial step "${definition.initial}" is not a declared step`,
+      { stepId: definition.initial }
+    );
   }
 
   const steps: Record<string, RuntimeStep> = {};
@@ -57,7 +62,11 @@ export function normalizeGraphDefinition(definition: LooseGraphDefinition): {
     for (const candidate of candidates) {
       for (const ref of [candidate.from, candidate.to]) {
         if (!stepIds.includes(ref)) {
-          throw new Error(`journey: transition "${event}" references unknown step "${ref}"`);
+          throw new JourneyError(
+            "dangling-transition",
+            `transition "${event}" references unknown step "${ref}"`,
+            { event, stepId: ref }
+          );
         }
       }
       const runtimeTransition: MutableRuntimeTransition = {
@@ -138,7 +147,9 @@ export function createGraphJourney<
   );
 
   if (options.startAt !== undefined && !hasOwn(steps, options.startAt)) {
-    throw new Error(`journey: startAt references unknown step "${options.startAt}"`);
+    throw new JourneyError("unknown-step", `startAt references unknown step "${options.startAt}"`, {
+      stepId: options.startAt
+    });
   }
 
   // Explicit `startAt` wins over a persisted record; restore is best-effort.
