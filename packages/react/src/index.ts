@@ -1,4 +1,5 @@
 export { createLinearJourney } from "./create-linear-journey";
+export { useJourney } from "./use-journey";
 
 export type {
   AnyJourneyMachine,
@@ -15,6 +16,7 @@ export type {
   LinearJourneyMachine,
   LinearJourneySnapshot,
   LinearJourneyStepHandler,
+  OwnedJourneyBundle,
   SnapshotOf,
   StepIdOf
 } from "./react.types";

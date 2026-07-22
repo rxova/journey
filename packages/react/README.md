@@ -130,14 +130,52 @@ mid-flight), and in SSR a module-scope machine is shared across requests.
 
 The machine works everywhere: every method is pre-bound, so Redux middleware, reducers' thunks,
 WebSocket handlers, and tests can call `bundle.send`, `bundle.navigate`, `bundle.updateContext`,
-or `machine.subscriptions` directly — no React in sight.
+or `machine.subscriptions` directly — no React in sight. A bundle driven only from non-React code
+needs `{ autoStart: true }`, since nothing ever mounts to start it.
+
+## Starting and stopping
+
+By default the machine starts when the first Provider or hook mounts, not when the factory runs.
+That ordering is what makes the journey's first `stepEnter` observable through
+`useSubscribeEvent`, and it keeps SSR deterministic — layout effects do not run on the server, so
+both sides render `fallback` and hydration matches. `controls.start()` is idempotent, so mounting
+many components still starts the journey exactly once.
+
+Pass `{ autoStart: true }` to start eagerly inside the factory (server-rendered step content, or
+a bundle driven entirely from non-React code), or `{ autoStart: false }` to start it yourself.
+
+**A module-scope bundle is never disposed.** Its machine, its subscriptions, and any plugin
+resources — autosave timers, persistence writers — live for the lifetime of the process. That is
+the intended trade-off for a journey that outlives every component; it also means one bundle at
+module scope is shared by every request in a server process, so state a request writes is visible
+to the next one. Own a bundle per component or per request when that matters.
+
+## Owning a bundle per component
+
+`useJourney()` creates a bundle for one component instance and disposes it on unmount:
+
+```tsx
+import { createLinearJourney, useJourney } from "@rxova/journey-react";
+
+function Wizard() {
+  const signup = useJourney(() =>
+    createLinearJourney({ context: initialContext, steps: ["email", "review", "done"] })
+  );
+  const step = signup.useStep();
+  return <signup.Provider views={views}>{/* … */}</signup.Provider>;
+}
+```
+
+The factory runs once per component instance. Do not reach for a `useState` lazy initializer
+here: React double-invokes those under StrictMode, which builds two fully-configured machines —
+two plugin setups, two persistence reads and writes — and abandons one without disposing it.
+`useJourney` initializes into a ref and defers disposal by a macrotask, so StrictMode's simulated
+unmount cancels it and a real unmount does not.
 
 ## Bring your own machine
 
-For per-mount or per-request isolation, create the bundle inside a component with a `useState`
-lazy initializer (`const [signup] = useState(() => createLinearJourney(...))` — the reference
-must stay stable for the component's lifetime), or drop a tier lower and own a Core machine
-yourself — no package entry needed, React's `useSyncExternalStore` is the whole bridge:
+To drop a tier lower and own a Core machine yourself — no package entry needed, React's
+`useSyncExternalStore` is the whole bridge:
 
 ```tsx
 import React from "react";

@@ -68,6 +68,14 @@ export type EventPayloadOf<
   TEvent extends JourneySubscriptionEvent
 > = JourneyEventPayloads<ContextOf<TMachine>, StepIdOf<TMachine>, SnapshotOf<TMachine>>[TEvent];
 
+/**
+ * The minimum a bundle must expose for `useJourney()` to own its lifetime.
+ * Both tiers satisfy it; so does any object wrapping a core machine.
+ */
+export type OwnedJourneyBundle = {
+  machine: { dispose: () => void };
+};
+
 // ---------------------------------------------------------------------------
 // Shared bundle surface — everything the two tiers have in common
 // ---------------------------------------------------------------------------
