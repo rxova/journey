@@ -115,7 +115,9 @@ describe("linear bundle rendering and navigation", () => {
   it("works fully outside the Provider: the machine is standalone", async () => {
     const journey = makeAbc();
 
-    expect(journey.machine.getSnapshot().currentStep?.id).toBe("a");
+    // The default start is deferred to the first mount, so the machine is idle
+    // here — the non-React verbs still work against it.
+    expect(journey.machine.getSnapshot().currentStep).toBeNull();
     journey.updateContext((context) => ({ n: context.n + 1 }));
 
     const Lost = () => {
@@ -130,6 +132,8 @@ describe("linear bundle rendering and navigation", () => {
     render(<Lost />);
     await flush();
     expect(screen.getByTestId("ctx").textContent).toBe("1");
+    // Mounting a hook outside the Provider still starts the journey.
+    expect(journey.machine.getSnapshot().currentStep?.id).toBe("a");
 
     fireEvent.click(screen.getByTestId("ctx"));
     await flush();
@@ -294,15 +298,18 @@ describe("events, persistence, and factory validation", () => {
     await act(async () => {
       await journey.navigate.goToNextStep();
     });
-    // The initial "a" entry happened at factory creation, before any mount.
-    expect(entered).toEqual(["b"]);
+    // The start is deferred to the mount and its effect is ordered after the
+    // subscription, so the journey's very first entry is observable too.
+    expect(entered).toEqual(["a", "b"]);
   });
 
   it("threads the persist option through to core and restores across bundles", async () => {
     const storage = memoryStorage();
+    // Driven entirely from non-React code, so it opts into the eager start —
+    // the deferred default would leave the machine idle with nothing mounted.
     const first = createLinearJourney(
       { context: { n: 0 }, steps: ["a", "b"] },
-      { persist: { key: "wiz", storage } }
+      { persist: { key: "wiz", storage }, autoStart: true }
     );
     // The factory's initial entry is still settling right after creation; let
     // it commit before navigating.
@@ -319,7 +326,7 @@ describe("events, persistence, and factory validation", () => {
     // A new bundle over the same key restores the persisted position/context.
     const second = createLinearJourney(
       { context: { n: 0 }, steps: ["a", "b"] },
-      { persist: { key: "wiz", storage } }
+      { persist: { key: "wiz", storage }, autoStart: true }
     );
     const snapshot = second.machine.getSnapshot();
     expect(snapshot.currentStep?.id).toBe("b");

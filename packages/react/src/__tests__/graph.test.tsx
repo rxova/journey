@@ -86,8 +86,10 @@ describe("graph bundle", () => {
   it("works fully outside the Provider: the machine is standalone", async () => {
     const bundle = makeBundle();
 
-    // Non-React access before anything renders.
-    expect(bundle.machine.getSnapshot().currentStep?.id).toBe("form");
+    // Non-React access before anything renders. The default start is deferred to
+    // the first mount, so the machine is still idle here — context updates and
+    // every other non-React verb work regardless.
+    expect(bundle.machine.getSnapshot().currentStep).toBeNull();
     bundle.updateContext((context) => ({ attempts: context.attempts + 1 }));
 
     const Lost = () => {
@@ -102,6 +104,8 @@ describe("graph bundle", () => {
     render(<Lost />);
     await flush();
     expect(screen.getByTestId("ctx").textContent).toBe("1");
+    // Mounting a hook outside the Provider still starts the journey.
+    expect(bundle.machine.getSnapshot().currentStep?.id).toBe("form");
 
     fireEvent.click(screen.getByTestId("ctx"));
     await flush();
