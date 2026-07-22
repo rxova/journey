@@ -11,7 +11,6 @@ import {
 } from "@rxova/journey-core";
 import { createLinearJourney as createLinearJourneyBundle } from "@rxova/journey-react";
 import { createGraphJourney } from "@rxova/journey-react/graph";
-import type { AnyJourneyMachine, SnapshotOf, StepIdOf } from "@rxova/journey-react/headless";
 
 type Equal<A, B> =
   (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
@@ -28,15 +27,17 @@ export function linearJourneyTypes() {
     steps: ["intro", { id: "details" }, "done"]
   });
 
-  type Hook = ReturnType<typeof bundle.useJourney>;
-  type _ids = Expect<Equal<Hook["snapshot"]["currentStep"]["id"], "intro" | "details" | "done">>;
-  type _context = Expect<Equal<Hook["snapshot"]["context"], { email: string }>>;
+  type Snapshot = ReturnType<typeof bundle.useSnapshot>;
+  type _ids = Expect<
+    Equal<NonNullable<Snapshot["currentStep"]>["id"], "intro" | "details" | "done">
+  >;
+  type _context = Expect<Equal<ReturnType<typeof bundle.useContext>, { email: string }>>;
+  type _machine = Expect<Equal<typeof bundle.machine, ReturnType<typeof bundle.useMachine>>>;
+  type _gate = Expect<
+    Equal<Parameters<typeof bundle.useStepHandler>[0], "intro" | "details" | "done">
+  >;
 
-  type Props = Parameters<typeof bundle.Provider>[0];
-  type _start = Expect<Equal<Props["startAt"], "intro" | "details" | "done" | undefined>>;
-  type _initial = Expect<Equal<Props["initialContext"], { email: string } | undefined>>;
-
-  type Views = Props["views"];
+  type Views = Parameters<typeof bundle.Provider>[0]["views"];
   type _views = Expect<Equal<keyof Views, "intro" | "details" | "done">>;
 
   // @ts-expect-error views must cover the declared step ids
@@ -80,9 +81,9 @@ export function graphBundleTypes() {
   return bundle;
 }
 
-// ── every core machine satisfies the headless structural surface ────────────
+// ── caller-owned core machines type through their own snapshots ─────────────
 
-export function headlessTypes() {
+export function ownedMachineTypes() {
   const linear = createLinearJourney({ steps: ["a", "b"], context: { n: 0 } });
   const graph = coreCreateGraphJourney({
     steps: { x: {}, y: {} },
@@ -91,11 +92,6 @@ export function headlessTypes() {
     context: {}
   });
 
-  const acceptsAny = (machine: AnyJourneyMachine) => machine;
-  acceptsAny(linear);
-  acceptsAny(graph);
-
-  type _linearStepIds = Expect<Equal<StepIdOf<typeof linear>, "a" | "b">>;
-  type _graphStepIds = Expect<Equal<StepIdOf<typeof graph>, "x" | "y">>;
-  type _linearSnapshotKind = Expect<Equal<SnapshotOf<typeof linear>["type"], "linear">>;
+  type _linearSnapshotKind = Expect<Equal<ReturnType<typeof linear.getSnapshot>["type"], "linear">>;
+  type _graphSnapshotKind = Expect<Equal<ReturnType<typeof graph.getSnapshot>["type"], "graph">>;
 }

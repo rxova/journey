@@ -3,6 +3,7 @@ import type {
   AnyJourneyPlugin,
   JourneyEventPayloads,
   JourneyRuntimeOptions,
+  JourneySubscriptionEvent,
   LinearJourneyMachine as CoreLinearJourneyMachine,
   LinearSnapshot,
   LinearStepInput,
@@ -16,19 +17,16 @@ export type LinearJourneyMachine<
 > = CoreLinearJourneyMachine<TContext, TStepId>;
 
 /**
- * A linear journey's core snapshot, verbatim — with one type-level narrowing:
- * `currentStep` is non-null. The React tier always creates its machine with
- * `autoStart`, and the initial entry commits synchronously inside creation, so
- * a rendered journey never observes the idle (null) state.
+ * A linear journey's core snapshot, verbatim. `currentStep` is null while the
+ * machine is idle (`autoStart: false` before `controls.start()`), exactly as
+ * in the graph tier.
  */
-export type LinearJourneySnapshot<TContext = unknown, TStepId extends string = string> = Omit<
-  LinearSnapshot<TContext, TStepId, unknown>,
-  "currentStep"
-> & {
-  readonly currentStep: NonNullable<LinearSnapshot<TContext, TStepId, unknown>["currentStep"]>;
-};
+export type LinearJourneySnapshot<
+  TContext = unknown,
+  TStepId extends string = string
+> = LinearSnapshot<TContext, TStepId, unknown>;
 
-/** Core event payloads bound to the linear snapshot; callback props receive these verbatim. */
+/** Core event payloads bound to the linear snapshot. */
 export type LinearJourneyEventPayloads<
   TContext = unknown,
   TStepId extends string = string
@@ -79,67 +77,65 @@ export type LinearJourneyViews<TStepId extends string> = {
   readonly [K in TStepId]: React.ReactNode;
 };
 
-export type LinearProviderProps<TContext = unknown, TStepId extends string = string> = {
-  /** The step views, one per declared id; only the active step's view renders. */
+/**
+ * The Provider carries only the views for `<StepRenderer>` — the machine is
+ * standalone on the bundle and needs no React context.
+ */
+export type LinearProviderProps<TStepId extends string> = {
   views: LinearJourneyViews<TStepId>;
-
-  /**
-   * Render-time override of the definition's initial context (route params,
-   * server data, …). Read once at mount; the definition stays the type anchor.
-   * Whole-object replacement, not a merge — spread the definition's context
-   * yourself for a partial override.
-   */
-  initialContext?: TContext;
-  /**
-   * Render-time override of the starting step (deep links, resume, …). Read
-   * once at mount; wins over the bundle options' `startAt`.
-   */
-  startAt?: TStepId;
-
-  /** Rendered above/below the active step, INSIDE the journey context — both may call the bundle hooks. */
-  header?: React.ReactNode;
-  footer?: React.ReactNode;
-  /** The active step is cloned into this element (e.g. an animation wrapper). */
-  wrapper?: React.ReactElement<{ children?: React.ReactNode }>;
-  /** Shown when no step can render (before start or after terminate). */
-  fallback?: React.ReactNode;
-
-  /** Fires once per mounted journey with the start snapshot. */
-  onStart?: (snapshot: LinearJourneySnapshot<TContext, TStepId>) => void;
-  /** Verbatim forward of core's `stepEnter` event (carries `direction`). */
-  onStepEnter?: (payload: LinearJourneyEventPayloads<TContext, TStepId>["stepEnter"]) => void;
-  /** Verbatim forward of core's `stepLeave` event. */
-  onStepLeave?: (payload: LinearJourneyEventPayloads<TContext, TStepId>["stepLeave"]) => void;
-  /** Core's `statusChange` event, forwarded only when the journey completes. */
-  onComplete?: (payload: LinearJourneyEventPayloads<TContext, TStepId>["statusChange"]) => void;
-  /** Verbatim forward of core's `error` event. */
-  onError?: (payload: LinearJourneyEventPayloads<TContext, TStepId>["error"]) => void;
-
-  /** Imperative escape hatch to the underlying core machine. */
-  machineRef?: React.Ref<LinearJourneyMachine<TContext, TStepId>>;
-};
-
-/** Everything `journey.useJourney()` returns: the core machine and snapshot, verbatim. */
-export type UseLinearJourneyResult<TContext = unknown, TStepId extends string = string> = {
-  machine: LinearJourneyMachine<TContext, TStepId>;
-  snapshot: LinearJourneySnapshot<TContext, TStepId>;
+  children: React.ReactNode;
 };
 
 /**
- * What `createLinearJourney()` returns: a Provider and hooks — every one
- * pre-bound to the definition's context and step-id types, so call sites
- * never pass generics. Each bundle owns a private React context; machines are
- * created per Provider mount, never in the factory.
+ * What `createLinearJourney()` returns — the same shape as the graph bundle,
+ * with the linear verbs: one standalone machine created by the factory,
+ * `navigate` where graph has `send`, and `useStepHandler` to gate
+ * `goToNextStep` from a component. Every hook closes over the bundle's
+ * machine, so all of them work with or without the Provider; the Provider
+ * exists to hand `views` to `StepRenderer`.
  */
 export type LinearJourneyBundle<TContext, TStepId extends string> = {
-  Provider: (props: LinearProviderProps<TContext, TStepId>) => React.ReactElement;
-  /** The core machine and its live snapshot, verbatim. */
-  useJourney: () => UseLinearJourneyResult<TContext, TStepId>;
-  /** Subscribes to a derived slice of the snapshot; re-renders only when it changes. */
+  /** The bundle's machine — created by the factory, usable outside React. */
+  machine: LinearJourneyMachine<TContext, TStepId>;
+  Provider: (props: LinearProviderProps<TStepId>) => React.ReactElement;
+  /** Renders the active step's view; place it anywhere inside the Provider. */
+  StepRenderer: React.ComponentType<{ fallback?: React.ReactNode }>;
+
+  /** The machine's live snapshot (reactive). */
+  useSnapshot: () => LinearJourneySnapshot<TContext, TStepId>;
+  /** A derived slice of the snapshot; re-renders only when it changes (reactive). */
   useSelector: <TSelected>(
     selector: (snapshot: LinearJourneySnapshot<TContext, TStepId>) => TSelected,
     equalityFn?: (a: TSelected, b: TSelected) => boolean
   ) => TSelected;
-  /** Registers forward-navigation work for the step component calling it. */
-  useStep: <TResult = void>(handler?: LinearJourneyStepHandler<TContext, TResult>) => void;
+  /** The current step — id, metadata, async state — or null while idle (reactive). */
+  useStep: () => LinearJourneySnapshot<TContext, TStepId>["currentStep"];
+  /** The machine's context value (reactive). */
+  useContext: () => TContext;
+  /** Subscribes a listener to a machine event for the component's lifetime. */
+  useSubscribeEvent: <TEvent extends JourneySubscriptionEvent>(
+    event: TEvent,
+    listener: (payload: LinearJourneyEventPayloads<TContext, TStepId>[TEvent]) => void
+  ) => void;
+
+  /** The machine and its command groups, verbatim (stable — not reactive). */
+  useMachine: () => LinearJourneyMachine<TContext, TStepId>;
+  useControls: () => LinearJourneyMachine<TContext, TStepId>["controls"];
+  useNavigation: () => LinearJourneyMachine<TContext, TStepId>["navigate"];
+
+  /**
+   * Registers forward-navigation work for `stepId` while the calling
+   * component is mounted (the linear counterpart of graph `send` work):
+   * `run` gates `goToNextStep`, a throw/reject cancels the move and lands in
+   * `currentStep.async.error`, `commit` stages the context transactionally.
+   */
+  useStepHandler: <TResult = void>(
+    stepId: TStepId,
+    handler: LinearJourneyStepHandler<TContext, TResult>
+  ) => void;
+
+  /** `machine.navigate`, verbatim — callable from anywhere, React or not. */
+  navigate: LinearJourneyMachine<TContext, TStepId>["navigate"];
+  /** `machine.context.update`, verbatim — callable from anywhere, React or not. */
+  updateContext: (updater: (context: TContext) => TContext) => void;
 };

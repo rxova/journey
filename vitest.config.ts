@@ -95,12 +95,6 @@ export default defineConfig({
         replacement: fileURLToPath(new URL("./packages/react/src/graph/graph.tsx", import.meta.url))
       },
       {
-        find: "@rxova/journey-react/headless",
-        replacement: fileURLToPath(
-          new URL("./packages/react/src/headless/headless.ts", import.meta.url)
-        )
-      },
-      {
         find: "@rxova/journey-react/testing",
         replacement: fileURLToPath(
           new URL("./packages/react/src/__tests__/helpers.tsx", import.meta.url)

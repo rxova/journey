@@ -50,14 +50,6 @@
       "import": "./dist/client.js",
       "require": "./dist/client.cjs"
     },
-    "./headless": {
-      "types": {
-        "import": "./dist/headless/headless.d.ts",
-        "require": "./dist/headless/headless.d.cts"
-      },
-      "import": "./dist/headless/headless.js",
-      "require": "./dist/headless/headless.cjs"
-    },
     "./graph": {
       "types": {
         "import": "./dist/graph/graph.d.ts",
@@ -102,12 +94,6 @@
       "path": "dist/index.js",
       "import": "{ createLinearJourney }",
       "limit": "2.5 kB"
-    },
-    {
-      "name": "react/headless",
-      "path": "dist/headless/headless.js",
-      "import": "{ useOwnedJourney, useJourneySnapshot, useJourneySelector }",
-      "limit": "1.5 kB"
     },
     {
       "name": "react/graph",
