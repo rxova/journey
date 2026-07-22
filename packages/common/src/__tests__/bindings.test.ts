@@ -163,6 +163,33 @@ describe("createSnapshotSource", () => {
     expect(host.selectedValues[0]).toBe(source.getSnapshot());
   });
 
+  it("does not register a listener when the machine refuses the subscription", () => {
+    let refuse = true;
+    let released = 0;
+    const machine: JourneyReadable<Snap> = {
+      getSnapshot: () => ({ n: 0, slice: { id: "a" } }),
+      subscriptions: {
+        subscribeSelector: () => {
+          if (refuse) throw new Error("core refused the subscription");
+          return () => {
+            released += 1;
+          };
+        }
+      }
+    };
+    const source = createSnapshotSource(machine);
+
+    expect(() => source.subscribe(vi.fn())).toThrow(/refused/);
+    // A stranded listener would keep the count above zero forever, so the
+    // machine subscription could never be released.
+    expect(source.listenerCount).toBe(0);
+
+    refuse = false;
+    source.subscribe(vi.fn())();
+    expect(source.listenerCount).toBe(0);
+    expect(released).toBe(1);
+  });
+
   it("does not notify a listener released before the publish", () => {
     const host = makeMachine();
     const source = createSnapshotSource(host.machine);

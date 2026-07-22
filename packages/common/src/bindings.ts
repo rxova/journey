@@ -91,8 +91,11 @@ export const createSnapshotSource = <TSnapshot>(
     getSnapshot: () => machine.getSnapshot(),
 
     subscribe: (listener: () => void) => {
-      listeners.add(listener);
+      // Open the machine subscription first. Registering the listener before
+      // this call would strand it in the set if the machine refuses, leaving a
+      // count that never returns to zero and a subscription never released.
       release ??= machine.subscriptions.subscribeSelector(identity, notify);
+      listeners.add(listener);
 
       let released = false;
       return () => {
