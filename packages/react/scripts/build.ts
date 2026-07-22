@@ -1,5 +1,6 @@
 import { rmSync } from "node:fs";
 import { build } from "esbuild";
+import type { BuildOptions } from "esbuild";
 
 rmSync("dist", { recursive: true, force: true });
 
@@ -19,7 +20,7 @@ const common = {
     "@rxova/journey-core/persistence",
     "@rxova/journey-core/convert"
   ]
-};
+} satisfies BuildOptions;
 
 for (const [entryPoint, outfile] of [
   ["src/index.ts", "dist/index.js"],
