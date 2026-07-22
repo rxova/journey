@@ -29,8 +29,12 @@ export class JourneyStore<TContext, TStepId extends string> {
     this.onListenerError = onListenerError;
   }
 
-  /** Isolation stays unconditional; the configured reporter only routes the report. */
-  private report(error: unknown): void {
+  /**
+   * Isolation stays unconditional; the configured reporter only routes the
+   * report. Internal, but reachable from the runtime so plugin-boundary
+   * failures land in the same place as subscriber failures.
+   */
+  report(error: unknown): void {
     if (!this.onListenerError) {
       reportListenerError(error);
       return;
