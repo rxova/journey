@@ -14,7 +14,7 @@ import type {
   JourneyDevtoolsProtocolVersion,
   JourneyDevtoolsSource,
   JourneyDevtoolsStepFeatureDescriptor
-} from "./protocol.types.js";
+} from "./protocol.types";
 
 /**
  * Current devtools protocol version emitted by the bridge. v7 carries the

@@ -1,4 +1,4 @@
-import type { JourneySnapshot } from "./types.js";
+import type { JourneySnapshot } from "./types";
 
 export type SelectorEntry<TContext, TStepId extends string> = {
   selector: (snapshot: JourneySnapshot<TContext, TStepId>) => unknown;

@@ -1,16 +1,16 @@
-import type { LinearToGraphOptions } from "./convert.types.js";
+import type { LinearToGraphOptions } from "./convert.types";
 import type {
   GraphJourneyDefinition,
   GraphStepConfig,
   GraphTransitionCandidate
-} from "../graph/graph.types.js";
+} from "../graph/graph.types";
 import type {
   JourneyTerminationPayloads,
   LinearJourneyDefinition,
   LinearStepConfig
-} from "../linear/linear.types.js";
+} from "../linear/linear.types";
 
-export type { LinearToGraphOptions } from "./convert.types.js";
+export type { LinearToGraphOptions } from "./convert.types";
 
 /**
  * Definition transformer: converts a pure-data linear definition into the

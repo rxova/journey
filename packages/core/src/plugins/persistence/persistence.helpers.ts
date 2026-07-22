@@ -1,5 +1,5 @@
-import type { JourneyPersistedState, JourneyStorage } from "./persistence.types.js";
-import type { JourneyPersistOption, JourneySnapshot } from "../../core/types.js";
+import type { JourneyPersistedState, JourneyStorage } from "./persistence.types";
+import type { JourneyPersistOption, JourneySnapshot } from "../../core/types";
 
 export function buildPersistedState(snapshot: JourneySnapshot, now: number): JourneyPersistedState {
   return {

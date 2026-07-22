@@ -1,4 +1,4 @@
-export { createLinearJourney } from "./linear/linear.js";
+export { createLinearJourney } from "./linear/linear";
 export type {
   JourneyTerminationPayloads,
   LinearJourneyDefinition,
@@ -6,9 +6,9 @@ export type {
   LinearStepConfig,
   LinearStepIdOf,
   LinearStepInput
-} from "./linear/linear.types.js";
+} from "./linear/linear.types";
 
-export { createGraphJourney, normalizeGraphDefinition } from "./graph/graph.js";
+export { createGraphJourney, normalizeGraphDefinition } from "./graph/graph";
 export type {
   GraphHookArgs,
   GraphJourneyDefinition,
@@ -18,18 +18,18 @@ export type {
   GraphTransitionCandidate,
   GraphTransitionsMap,
   TransitionGuard
-} from "./graph/graph.types.js";
+} from "./graph/graph.types";
 
-export { createGraphJourneyBuilder } from "./graph/builder.js";
+export { createGraphJourneyBuilder } from "./graph/builder";
 export type {
   JourneyBuilder,
   JourneyStepBuilder,
   JourneyStepTransitions,
   JourneyToBuilder,
   JourneyTypeBag
-} from "./graph/builder.types.js";
+} from "./graph/builder.types";
 
-export { MAX_RAISED_EVENTS } from "./core/helpers.js";
+export { MAX_RAISED_EVENTS } from "./core/helpers";
 export type {
   AnyJourneyPlugin,
   ContextUpdater,
@@ -69,4 +69,4 @@ export type {
   StepHookArgs,
   TransitionState,
   Unsubscribe
-} from "./core/types.js";
+} from "./core/types";

@@ -1,4 +1,4 @@
-import type { AutosaveReason } from "./autosave.types.js";
+import type { AutosaveReason } from "./autosave.types";
 
 export const DEFAULT_SAVE_REASONS: readonly AutosaveReason[] = ["context", "transition", "status"];
 
