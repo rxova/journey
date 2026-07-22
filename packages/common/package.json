@@ -13,6 +13,7 @@
     "./predicates": "./src/predicates.ts",
     "./serialization": "./src/serialization.ts",
     "./async": "./src/async.ts",
+    "./bindings": "./src/bindings.ts",
     "./dev": "./src/dev.ts",
     "./origin": "./src/origin.ts",
     "./memoize": "./src/memoize.ts"

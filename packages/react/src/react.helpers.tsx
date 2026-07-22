@@ -1,4 +1,5 @@
 import React from "react";
+import { createSelectorCache, createSnapshotSource } from "@rxova/journey-common/bindings";
 import { useSafeLayoutEffect } from "./use-safe-layout-effect";
 import type { JourneySubscriptionEvent } from "@rxova/journey-core";
 import type {
@@ -85,10 +86,12 @@ export const createJourneyBindings = <
 ): JourneyBundleBase<TMachine, TContext, TStepId, TSnapshot> => {
   const runtime = machine as unknown as BindableRuntime<TContext, TSnapshot>;
 
-  // The machine is a factory-scoped singleton, so this subscribe adapter is a
-  // stable plain function — useSyncExternalStore never resubscribes on it.
-  const subscribe = (onStoreChange: () => void) =>
-    runtime.subscriptions.subscribeSelector(selectSnapshot, onStoreChange);
+  // One machine subscription for the whole bundle, fanned out to every mounted
+  // hook. Subscribing per hook would make core re-run its selector and equality
+  // check once per subscriber on every publish, for a change that is identical
+  // for all of them. `source.subscribe` is a stable reference, so
+  // useSyncExternalStore never resubscribes on it.
+  const source = createSnapshotSource<TSnapshot>(runtime);
 
   /**
    * The one React bridge in this bundle. useSyncExternalStore requires the
@@ -112,22 +115,11 @@ export const createJourneyBindings = <
     // closures every render, so this memo is often rebuilt — value identity is
     // preserved across those rebuilds by the committed ref, not by this cache.
     const getSelected = React.useMemo(() => {
-      let cached: { snapshot: TSnapshot; selected: TSelected } | null = null;
-      return (): TSelected => {
-        const snapshot = runtime.getSnapshot();
-        if (cached !== null && Object.is(cached.snapshot, snapshot)) return cached.selected;
-
-        const next = selector(snapshot);
-        const committed = committedRef.current;
-        const isEqual = equalityFn ?? Object.is;
-        const selected =
-          committed !== null && isEqual(committed.value, next) ? committed.value : next;
-        cached = { snapshot, selected };
-        return selected;
-      };
+      const select = createSelectorCache<TSnapshot, TSelected>(selector, equalityFn);
+      return (): TSelected => select(source.getSnapshot(), committedRef.current);
     }, [selector, equalityFn]);
 
-    const selected = React.useSyncExternalStore(subscribe, getSelected, getSelected);
+    const selected = React.useSyncExternalStore(source.subscribe, getSelected, getSelected);
 
     // The baseline advances only once a render commits.
     useSafeLayoutEffect(() => {

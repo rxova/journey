@@ -412,6 +412,40 @@ describe("machine error surfacing", () => {
     delete (globalThis as { __DEV__?: boolean }).__DEV__;
   });
 
+  it("opens one machine subscription for the whole tree, and releases it on unmount", async () => {
+    const journey = createLinearJourney({ context: { n: 0 }, steps: ["a", "b"] });
+    // Count live core subscriptions by wrapping the machine's own registrar.
+    const realSubscribe = journey.machine.subscriptions.subscribeSelector;
+    let open = 0;
+    journey.machine.subscriptions.subscribeSelector = ((selector: never, listener: never) => {
+      open += 1;
+      const release = realSubscribe.call(journey.machine.subscriptions, selector, listener);
+      return () => {
+        open -= 1;
+        release();
+      };
+    }) as typeof realSubscribe;
+
+    const Probe = () => <span>{journey.useSelector((snapshot) => snapshot.context.n)}</span>;
+    const view = render(
+      <>
+        <Probe />
+        <Probe />
+        <Probe />
+        <Probe />
+        <Probe />
+      </>
+    );
+    await flush();
+
+    // Five subscribed components, one machine subscription — core does its
+    // selector work once per publish rather than once per component.
+    expect(open).toBe(1);
+
+    view.unmount();
+    expect(open).toBe(0);
+  });
+
   it("starts the journey once no matter how many components mount", async () => {
     const journey = createLinearJourney({ context: {}, steps: ["a", "b"] });
     const statuses: string[] = [];
