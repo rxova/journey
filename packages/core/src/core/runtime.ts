@@ -1,6 +1,7 @@
 import { isDevelopmentEnvironment, warnInDevelopment } from "@rxova/journey-common/dev";
 import {
   eventWorkKey,
+  hasOwn,
   LOADING_ASYNC,
   MAX_RAISED_EVENTS,
   shallowEqual,
@@ -234,7 +235,7 @@ export class JourneyRuntime {
   goToStepById(id: string): Promise<NavigationResult> {
     const rejected = this.checkNavigable();
     if (rejected) return this.blocked(rejected, id);
-    if (!(id in this.config.steps))
+    if (!hasOwn(this.config.steps, id))
       return this.blocked({ ok: false, reason: "invalid-target" }, id);
     if (id === this.currentStepId()) return this.blocked({ ok: false, reason: "no-op" }, id);
 
@@ -298,7 +299,7 @@ export class JourneyRuntime {
    * one reinstates whichever registration it had shadowed.
    */
   registerNextStepInterceptor(stepId: string, work: AnyNavigationWork): () => void {
-    if (!(stepId in this.config.steps)) {
+    if (!hasOwn(this.config.steps, stepId)) {
       throw new Error(`journey: registerNextStepInterceptor references unknown step "${stepId}"`);
     }
     const stack = this.nextStepInterceptors.get(stepId);
@@ -483,7 +484,7 @@ export class JourneyRuntime {
       }
     };
     for (const plugin of this.config.plugins) {
-      if (plugin.name in this.pluginApis) {
+      if (hasOwn(this.pluginApis, plugin.name)) {
         throw new Error(`journey: duplicate plugin name "${plugin.name}"`);
       }
       const contribution = plugin.setup(host);

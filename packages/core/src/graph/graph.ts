@@ -1,3 +1,4 @@
+import { hasOwn } from "../core/helpers";
 import { buildMachineSurface } from "../core/machine";
 import { JourneyRuntime } from "../core/runtime";
 import { persistOptionToPlugin } from "../plugins/persistence/persistence";
@@ -14,7 +15,13 @@ import type {
   MutableRuntimeTransition
 } from "./graph.types";
 import type { AnySendWork } from "../core/runtime.types";
-import type { AnyJourneyPlugin, JourneyEventObject } from "../core/types";
+import type {
+  AnyJourneyPlugin,
+  CompletePayloadOf,
+  JourneyEventObject,
+  JourneyTerminationPayloads,
+  TerminatePayloadOf
+} from "../core/types";
 
 /** Flattens the transitions map in declaration order and validates step refs. */
 export function normalizeGraphDefinition(definition: LooseGraphDefinition): {
@@ -87,7 +94,8 @@ export function createGraphJourney<
   TEvents extends JourneyEventObject = JourneyEventObject,
   THandlers = unknown,
   TMeta = Record<string, unknown>,
-  const TPlugins extends readonly AnyJourneyPlugin[] = readonly []
+  const TPlugins extends readonly AnyJourneyPlugin[] = readonly [],
+  TTerminationPayloads extends JourneyTerminationPayloads = JourneyTerminationPayloads
 >(
   // Inline shape (not GraphJourneyDefinition) so TStepId infers from the
   // steps-record keys alone: every other occurrence is NoInfer-wrapped,
@@ -106,23 +114,37 @@ export function createGraphJourney<
     readonly initial: NoInfer<TStepId>;
     readonly context: TContext;
     readonly handlers?: THandlers;
-    readonly eventWork?: Readonly<Record<string, AnySendWork>>;
+    /** @internal Builder-produced; opaque by design (see GraphJourneyDefinition). */
+    readonly eventWork?: Readonly<Record<string, unknown>>;
     readonly $events?: TEvents;
+    readonly $payloads?: TTerminationPayloads;
   },
   options: GraphJourneyOptions<NoInfer<THandlers>, TPlugins, NoInfer<TStepId>> = {}
-): GraphJourneyMachine<TContext, TStepId, TEvents, TMeta, TPlugins> {
+  // THandlers is load-bearing: it types `handlers` inside send work, which is
+  // the only channel injected clients reach. Omitting it here let the
+  // annotation win over the cast below and erased it to `unknown`.
+): GraphJourneyMachine<
+  TContext,
+  TStepId,
+  TEvents,
+  TMeta,
+  TPlugins,
+  THandlers,
+  CompletePayloadOf<TTerminationPayloads>,
+  TerminatePayloadOf<TTerminationPayloads>
+> {
   const { stepIds, steps, transitions } = normalizeGraphDefinition(
     definition as unknown as LooseGraphDefinition
   );
 
-  if (options.startAt !== undefined && !(options.startAt in steps)) {
+  if (options.startAt !== undefined && !hasOwn(steps, options.startAt)) {
     throw new Error(`journey: startAt references unknown step "${options.startAt}"`);
   }
 
   // Explicit `startAt` wins over a persisted record; restore is best-effort.
   const restored =
     options.persist && options.startAt === undefined
-      ? readRestorableState(options.persist, (id) => id in steps)
+      ? readRestorableState(options.persist, (id) => hasOwn(steps, id))
       : null;
 
   const runtime = new JourneyRuntime({
@@ -142,7 +164,9 @@ export function createGraphJourney<
         }
       : {}),
     transitions,
-    ...(definition.eventWork !== undefined ? { eventWork: definition.eventWork } : {}),
+    ...(definition.eventWork !== undefined
+      ? { eventWork: definition.eventWork as Readonly<Record<string, AnySendWork>> }
+      : {}),
     handlers: options.handlers ?? definition.handlers,
     autoStart: options.autoStart ?? false,
     defaultTimeoutMs: options.defaultTimeoutMs,
@@ -173,6 +197,8 @@ export function createGraphJourney<
     TEvents,
     TMeta,
     TPlugins,
-    THandlers
+    THandlers,
+    CompletePayloadOf<TTerminationPayloads>,
+    TerminatePayloadOf<TTerminationPayloads>
   >;
 }

@@ -1,3 +1,4 @@
+import { hasOwn } from "../core/helpers";
 import { buildMachineSurface } from "../core/machine";
 import { JourneyRuntime } from "../core/runtime";
 import { persistOptionToPlugin } from "../plugins/persistence/persistence";
@@ -24,7 +25,12 @@ export function createLinearJourney<
   const TStepId extends string,
   TContext,
   TTerminationPayloads extends JourneyTerminationPayloads = JourneyTerminationPayloads,
-  const TPlugins extends readonly AnyJourneyPlugin[] = readonly AnyJourneyPlugin[],
+  // Defaults to the empty tuple, matching createGraphJourney. Defaulting to
+  // `readonly AnyJourneyPlugin[]` collapsed PluginApis to `{ [x: string]: never }`
+  // — an index signature that accepts any key — so `machine.plugins.typo`
+  // compiled clean whenever plugins were omitted or the first generics were
+  // supplied explicitly.
+  const TPlugins extends readonly AnyJourneyPlugin[] = readonly [],
   TMeta = Record<string, unknown>
 >(
   definition: LinearJourneyDefinition<TStepId, TContext, TTerminationPayloads, TMeta>,
@@ -51,7 +57,7 @@ export function createLinearJourney<
       CompletePayloadOf<TTerminationPayloads>,
       TerminatePayloadOf<TTerminationPayloads>
     > = typeof input === "string" ? { id: input } : input;
-    if (config.id in steps) {
+    if (hasOwn(steps, config.id)) {
       throw new Error(`journey: duplicate step id "${config.id}"`);
     }
     stepIds.push(config.id);
@@ -69,14 +75,14 @@ export function createLinearJourney<
     steps[config.id] = runtimeStep;
   }
 
-  if (options.startAt !== undefined && !(options.startAt in steps)) {
+  if (options.startAt !== undefined && !hasOwn(steps, options.startAt)) {
     throw new Error(`journey: startAt references unknown step "${options.startAt}"`);
   }
 
   // Explicit `startAt` wins over a persisted record; restore is best-effort.
   const restored =
     options.persist && options.startAt === undefined
-      ? readRestorableState(options.persist, (id) => id in steps)
+      ? readRestorableState(options.persist, (id) => hasOwn(steps, id))
       : null;
 
   const runtime = new JourneyRuntime({
