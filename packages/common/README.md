@@ -23,6 +23,10 @@ Everything in `src/` obeys three constraints, and they are the reason this packa
 2. **No ambient assumptions.** Every global is feature-detected — `window`, `process`, `console`, and `structuredClone` may all be absent. The utilities run in Node, the browser, a web worker, and an extension service worker.
 3. **Never throw on the diagnostic path.** `serialization` and `dev` run while the caller is already handling a failure. They degrade to a lossy result instead of turning a recoverable problem into a lost one.
 
+A fourth rule applies to `serialization` specifically: **never silently drop.** A reader of a devtools payload cannot tell an omission from an absence, so an omission is a lie. `cloneForTransport` documents exactly what it converts and what it accepts as lossy; the guarantees are enforced by property tests in `src/__tests__/serialization-fuzz.test.ts` rather than examples alone, because "never throws for any input" is a claim about all inputs.
+
+Related: values are identified by their built-in tag, never by `instanceof`. Anything arriving from an iframe, a worker, an extension port, or `structuredClone` carries a foreign realm's prototype, so `x instanceof Map` is false for a real Map. That is this module's normal input, not an edge case.
+
 ## Entry points
 
 Consumers import subpaths, not the barrel:

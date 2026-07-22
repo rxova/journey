@@ -135,6 +135,75 @@ describe("cloneForTransport", () => {
     expect(cloneForTransport(undefined)).toBe(undefined);
   });
 
+  it("tags a Map so its entries survive", () => {
+    expect(cloneForTransport({ m: new Map([["a", 1]]) })).toEqual({
+      m: { "[Map]": [["a", 1]] }
+    });
+  });
+
+  it("tags a Set so its members survive", () => {
+    expect(cloneForTransport({ s: new Set([1, 2]) })).toEqual({ s: { "[Set]": [1, 2] } });
+  });
+
+  it("tags a typed array with its concrete type", () => {
+    expect(cloneForTransport({ bytes: new Uint8Array([1, 2, 3]) })).toEqual({
+      bytes: { "[Uint8Array]": [1, 2, 3] }
+    });
+  });
+
+  it("describes buffers and views without inventing contents", () => {
+    expect(cloneForTransport({ buffer: new ArrayBuffer(8) })).toEqual({
+      buffer: "[ArrayBuffer byteLength=8]"
+    });
+    expect(cloneForTransport({ view: new DataView(new ArrayBuffer(4)) })).toEqual({
+      view: "[DataView byteLength=4]"
+    });
+  });
+
+  it("marks a nested undefined instead of dropping the key", () => {
+    // The bug this guards: an omitted key makes "explicitly unset" and "never
+    // present" indistinguishable to whoever is reading the payload.
+    const result = cloneForTransport({ selectedId: undefined }) as Record<string, unknown>;
+
+    expect("selectedId" in result).toBe(true);
+    expect(result.selectedId).toBe("[undefined]");
+  });
+
+  it("preserves non-finite numbers that JSON would flatten to null", () => {
+    expect(cloneForTransport({ a: NaN, b: Infinity, c: -Infinity })).toEqual({
+      a: "[NaN]",
+      b: "[Infinity]",
+      c: "[-Infinity]"
+    });
+  });
+
+  it("marks array holes rather than reporting them as null", () => {
+    expect(cloneForTransport([1, undefined, 3])).toEqual([1, "[undefined]", 3]);
+  });
+
+  it("renders a RegExp in its source form", () => {
+    expect(cloneForTransport({ pattern: /ab+c/gi })).toEqual({ pattern: "/ab+c/gi" });
+  });
+
+  it("identifies values by tag, not prototype, so foreign realms still serialize", () => {
+    // `structuredClone` hands back values carrying another realm's prototype:
+    // `instanceof ArrayBuffer` is false for this one even though it is a real
+    // ArrayBuffer. Values arriving from an iframe, a worker, or an extension
+    // port behave the same way, which is exactly this module's input.
+    const foreign = structuredClone({ buffer: new ArrayBuffer(8) }).buffer;
+    expect(foreign instanceof ArrayBuffer).toBe(false);
+
+    expect(cloneForTransport({ foreign })).toEqual({ foreign: "[ArrayBuffer byteLength=8]" });
+  });
+
+  it("detects a cycle that closes through a Map value", () => {
+    const root: Record<string, unknown> = {};
+    root.entries = new Map<string, unknown>([["back", root]]);
+
+    const result = cloneForTransport(root) as { entries: { "[Map]": [string, unknown][] } };
+    expect(result.entries["[Map]"][0]?.[1]).toBe("[Circular]");
+  });
+
   it("falls back to String when an object cannot be cloned or serialized", () => {
     const value = {
       toJSON() {
@@ -193,6 +262,15 @@ describe("serializeError", () => {
   it("serializes an unknown non-Error value", () => {
     const result = serializeError(42);
     expect(result).toEqual({ name: null, message: "Unknown error", stack: null, cause: 42 });
+  });
+
+  it("keeps cause as an explicit null for a thrown undefined", () => {
+    // `cause: undefined` would be dropped by JSON.stringify, leaving consumers
+    // with no `cause` property at all rather than a declared empty one.
+    const result = serializeError(undefined);
+
+    expect(result.cause).toBeNull();
+    expect("cause" in (JSON.parse(JSON.stringify(result)) as object)).toBe(true);
   });
 
   it("wraps plain-object throws as cause", () => {
