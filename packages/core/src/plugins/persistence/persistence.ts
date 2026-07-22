@@ -8,6 +8,7 @@ import type {
   PersistenceApi,
   PersistencePluginOptions
 } from "./persistence.types";
+import { reportListenerError } from "../../core/helpers";
 import type { JourneyPersistOption, JourneyPlugin } from "../../core/types";
 
 export { buildPersistedState, parsePersistedState } from "./persistence.helpers";
@@ -39,7 +40,13 @@ export function createPersistencePlugin(
       const save = () => {
         const state = buildPersistedState(host.getSnapshot(), now());
         lastWritten = state;
-        void options.storage.setItem(options.key, JSON.stringify(state));
+        // `setItem` may be async. Discarding that promise turned a rejecting
+        // adapter into an unhandled rejection, which terminates the process
+        // under Node's default `--unhandled-rejections=throw`. A synchronous
+        // throw is already contained by the runtime's listener isolation; this
+        // gives the async path the same containment.
+        const written = options.storage.setItem(options.key, JSON.stringify(state));
+        if (written !== undefined) void written.catch(reportListenerError);
       };
 
       host.onTransition(save);
