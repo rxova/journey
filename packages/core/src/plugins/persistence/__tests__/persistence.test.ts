@@ -114,7 +114,12 @@ describe("persist creation option", () => {
 
     const state = parsePersistedState(storage.getItem("wizard"));
     expect(state?.timeline).toEqual(["a", "b"]);
-    const persistence = machine.plugins.persistence as PersistenceApi | undefined;
+    // The `persist` option registers the persistence plugin at runtime, but it
+    // is not reflected in TPlugins, so the API is not statically reachable —
+    // pass `createPersistencePlugin` explicitly when you need it typed.
+    const persistence = (machine.plugins as Record<string, unknown>).persistence as
+      | PersistenceApi
+      | undefined;
     expect(persistence?.readPersisted()?.currentIndex).toBe(1);
   });
 

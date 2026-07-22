@@ -8,7 +8,10 @@ export type {
   LinearStepInput
 } from "./linear/linear.types";
 
-export { createGraphJourney, normalizeGraphDefinition } from "./graph/graph";
+// normalizeGraphDefinition is deliberately not exported: its return type names
+// RuntimeStep/RuntimeTransition, which are internal and have no export path, so
+// publishing it would freeze those shapes into the 1.0 contract.
+export { createGraphJourney } from "./graph/graph";
 export type {
   GraphHookArgs,
   GraphJourneyDefinition,
