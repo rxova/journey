@@ -13,8 +13,8 @@ were removed, and `1.0.0` is the baseline contract. See
 ## What semver covers at 1.0
 
 - **Factories and entry points** — `createLinearJourney`, `createGraphJourney`,
-  `createGraphJourneyBuilder`, `normalizeGraphDefinition`, `MAX_RAISED_EVENTS`, and the exported
-  public types from the main entry.
+  `createGraphJourneyBuilder`, `MAX_RAISED_EVENTS`, and the exported public types from the main
+  entry.
 - **The grouped machine surface** — `getSnapshot`, `controls`, `navigate`, `subscriptions`,
   `context`, `async`, `plugins`, `dispose`, and graph `send`, with their documented return
   contracts (boolean controls, `NavigationResult` navigation).
@@ -52,7 +52,9 @@ were removed, and `1.0.0` is the baseline contract. See
   function controls notification.
 - Automatic cancellation of user-created promises or I/O.
 - A bounded history timeline: the timeline is unbounded in 1.0, and a `maxHistory` option is
-  planned post-1.0 as a compatible addition.
+  planned post-1.0 as a compatible addition. Per-navigation cost grows linearly with timeline
+  length — see [History growth](./history#history-growth) for the measured curve and when it
+  starts to matter.
 - Undocumented details in generated declarations or source files.
 
 ## Plugin compatibility
