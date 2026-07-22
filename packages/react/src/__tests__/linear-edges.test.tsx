@@ -128,6 +128,66 @@ describe("render chrome", () => {
     expect(new Set(seen).size).toBe(1);
   });
 
+  it("keeps the committed selection stable under StrictMode's double render", async () => {
+    const journey = createLinearJourney({ context: { attempts: 0 }, steps: ["a"] });
+    const seen: unknown[] = [];
+    const Probe = ({ tick }: { tick: number }) => {
+      // Both the selector and the equality fn are fresh closures every render,
+      // and StrictMode renders each pass twice — the committed reference must
+      // still survive, because the baseline only advances on commit.
+      const slice = journey.useSelector(
+        (snapshot) => ({ attempts: snapshot.context.attempts }),
+        (a, b) => a.attempts === b.attempts
+      );
+      seen.push(slice);
+      return <span data-testid="tick">{tick}</span>;
+    };
+    const view = render(
+      <React.StrictMode>
+        <Probe tick={0} />
+      </React.StrictMode>
+    );
+    await flush();
+
+    // Uncommitted renders may derive fresh references; only what commits counts.
+    seen.length = 0;
+    view.rerender(
+      <React.StrictMode>
+        <Probe tick={1} />
+      </React.StrictMode>
+    );
+    view.rerender(
+      <React.StrictMode>
+        <Probe tick={2} />
+      </React.StrictMode>
+    );
+    expect(seen.length).toBeGreaterThan(1);
+    expect(new Set(seen).size).toBe(1);
+  });
+
+  it("delivers a consistent selection when navigation runs inside startTransition", async () => {
+    const journey = createLinearJourney({ context: { n: 0 }, steps: ["a", "b", "c"] });
+    const Probe = () => {
+      const id = journey.useSelector((snapshot) => snapshot.currentStep?.id ?? "idle");
+      const n = journey.useSelector((snapshot) => snapshot.context.n);
+      // Both hooks read the same machine; a torn render would pair a step id
+      // with a context value from a different snapshot.
+      return <span data-testid="pair">{`${id}:${n}`}</span>;
+    };
+    render(<Probe />);
+    await flush();
+    expect(screen.getByTestId("pair").textContent).toBe("a:0");
+
+    await act(async () => {
+      React.startTransition(() => {
+        journey.updateContext((context) => ({ n: context.n + 1 }));
+      });
+      await journey.navigate.goToNextStep();
+    });
+    await flush();
+    expect(screen.getByTestId("pair").textContent).toBe("b:1");
+  });
+
   it("bails out of re-renders when equalityFn reports the slice unchanged", async () => {
     const journey = createLinearJourney({ context: { attempts: 0 }, steps: ["a"] });
     let renders = 0;

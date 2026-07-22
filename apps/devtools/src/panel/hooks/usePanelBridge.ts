@@ -40,6 +40,11 @@ export const usePanelBridge = (): UsePanelBridgeResult => {
   const [connectionWarning, setConnectionWarning] = React.useState<PanelWarning | null>(null);
   const [displayConnected, setDisplayConnected] = React.useState(false);
   const portRef = React.useRef<chrome.runtime.Port | null>(null);
+  // Mirrors `portRef` for rendering. The ref is the identity the message
+  // handlers compare against; this is the part the UI reads, and it has to be
+  // state or the command channel's readiness never re-renders when the port
+  // connects or drops.
+  const [portConnected, setPortConnected] = React.useState(false);
   const statusDisconnectTimerRef = React.useRef<number | null>(null);
   const clearMachinesTimerRef = React.useRef<number | null>(null);
 
@@ -102,6 +107,7 @@ export const usePanelBridge = (): UsePanelBridgeResult => {
 
       activePort = port;
       portRef.current = port;
+      setPortConnected(true);
 
       const initMessage: PanelInitMessage = {
         type: "panel-init",
@@ -152,6 +158,7 @@ export const usePanelBridge = (): UsePanelBridgeResult => {
         if (activePort === port) {
           activePort = null;
           portRef.current = null;
+          setPortConnected(false);
         }
 
         dispatch({ type: "set-connected", connected: false });
@@ -183,6 +190,7 @@ export const usePanelBridge = (): UsePanelBridgeResult => {
       }
       activePort = null;
       portRef.current = null;
+      setPortConnected(false);
     };
   }, []);
 
@@ -228,7 +236,7 @@ export const usePanelBridge = (): UsePanelBridgeResult => {
     panelState,
     connectionWarning,
     displayConnected,
-    isCommandChannelReady: panelState.connected && portRef.current !== null,
+    isCommandChannelReady: panelState.connected && portConnected,
     invokeOperation,
     selectMachine: React.useCallback(
       (machineId: string) => dispatch({ type: "select-machine", machineId }),

@@ -94,42 +94,45 @@ export const createJourneyBindings = <
    * The one React bridge in this bundle. useSyncExternalStore requires the
    * getter to return a STABLE reference while the selected value is unchanged
    * (an unstable object identity re-renders forever), and the machine
-   * subscription must not churn with inline selectors — the render-scoped
-   * cache below provides both; everything else reads the machine directly.
+   * subscription must not churn with inline selectors.
+   *
+   * This mirrors React's own `useSyncExternalStoreWithSelector`: a per-
+   * derivation cache built in `useMemo` handles the same-snapshot fast path,
+   * and the last *committed* selection lives in a ref written from an effect.
+   * Nothing is written during render — a render React starts and then discards
+   * must not be able to poison the baseline that `equalityFn` compares against.
    */
   const useSelector = <TSelected,>(
     selector: (snapshot: TSnapshot) => TSelected,
     equalityFn?: (a: TSelected, b: TSelected) => boolean
   ): TSelected => {
-    const isEqual = equalityFn ?? Object.is;
-    const cacheRef = React.useRef<{
-      snapshot: unknown;
-      selected: TSelected;
-      selector: unknown;
-      isEqual: unknown;
-    } | null>(null);
+    const committedRef = React.useRef<{ value: TSelected } | null>(null);
 
-    const getSelected = (): TSelected => {
-      const snapshot = runtime.getSnapshot();
-      const cached = cacheRef.current;
-      const sameDerivation =
-        cached !== null &&
-        Object.is(cached.selector, selector) &&
-        Object.is(cached.isEqual, isEqual);
+    // Rebuilt whenever the derivation changes. Inline selectors are fresh
+    // closures every render, so this memo is often rebuilt — value identity is
+    // preserved across those rebuilds by the committed ref, not by this cache.
+    const getSelected = React.useMemo(() => {
+      let cached: { snapshot: TSnapshot; selected: TSelected } | null = null;
+      return (): TSelected => {
+        const snapshot = runtime.getSnapshot();
+        if (cached !== null && Object.is(cached.snapshot, snapshot)) return cached.selected;
 
-      if (sameDerivation && Object.is(cached.snapshot, snapshot)) {
-        return cached.selected;
-      }
-      // Value reuse must not require selector identity: inline selectors are
-      // fresh closures every render, and the previously selected reference
-      // must survive them or equalityFn is dead code off the fast path.
-      const next = selector(snapshot);
-      const selected = cached !== null && isEqual(cached.selected, next) ? cached.selected : next;
-      cacheRef.current = { snapshot, selected, selector, isEqual };
-      return selected;
-    };
+        const next = selector(snapshot);
+        const committed = committedRef.current;
+        const isEqual = equalityFn ?? Object.is;
+        const selected =
+          committed !== null && isEqual(committed.value, next) ? committed.value : next;
+        cached = { snapshot, selected };
+        return selected;
+      };
+    }, [selector, equalityFn]);
 
     const selected = React.useSyncExternalStore(subscribe, getSelected, getSelected);
+
+    // The baseline advances only once a render commits.
+    useSafeLayoutEffect(() => {
+      committedRef.current = { value: selected };
+    }, [selected]);
     // Declared last on purpose: layout effects fire in hook order, so the store
     // subscription above is live before the start effect can emit stepEnter.
     useAutoStart();
@@ -173,9 +176,13 @@ export const createJourneyBindings = <
     useContext: () => useSelector(selectContext) as TContext,
     useSubscribeEvent: (event, listener) => {
       // Latest-ref: inline listeners change identity every render; the machine
-      // subscription must not tear down (and miss events) on each one.
+      // subscription must not tear down (and miss events) on each one. The ref
+      // advances from an effect, never during render, so a discarded render
+      // cannot leave it pointing at a closure that was never committed.
       const listenerRef = React.useRef(listener);
-      listenerRef.current = listener;
+      useSafeLayoutEffect(() => {
+        listenerRef.current = listener;
+      });
       useSafeLayoutEffect(
         () =>
           runtime.subscriptions.subscribeEvent(event, (payload) =>
