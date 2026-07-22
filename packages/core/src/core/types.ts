@@ -248,6 +248,29 @@ export type OnEnterHook<
   TSnap = JourneySnapshot<TContext, TStepId>
 > = (args: StepHookArgs<TContext, TStepId, TEvents, TSnap>) => void | Promise<void>;
 
+/**
+ * Completion and termination payload types supplied to a journey factory.
+ *
+ * Shared by both tiers: linear takes it as a generic parameter, graph names it
+ * through the definition's `$payloads` phantom carrier.
+ */
+export type JourneyTerminationPayloads = {
+  readonly complete?: unknown;
+  readonly terminate?: unknown;
+};
+
+export type CompletePayloadOf<TTypes extends JourneyTerminationPayloads> = TTypes extends {
+  readonly complete: infer TPayload;
+}
+  ? TPayload
+  : unknown;
+
+export type TerminatePayloadOf<TTypes extends JourneyTerminationPayloads> = TTypes extends {
+  readonly terminate: infer TPayload;
+}
+  ? TPayload
+  : unknown;
+
 /** Subscription event names. */
 export type JourneySubscriptionEvent =
   | "stepEnter"

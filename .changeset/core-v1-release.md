@@ -13,9 +13,9 @@ Release the final V1 Core API on a new, smaller shared runtime. This is a full r
 - Replace `createJourneyBuilder` with `createGraphJourneyBuilder`. Its single `JourneyTypeBag`
   generic names `context`, `stepId`, `events`, optional `meta`, and optional `handlers` instead of
   relying on positional generic parameters.
-- Add `normalizeGraphDefinition` and the `@rxova/journey-core/convert` entry point. Its
-  `linearToGraphDefinition` helper converts a pure linear definition to `NEXT`/`PREVIOUS` graph
-  transitions and can optionally generate `GO_TO_<ID>` jump events.
+- Add the `@rxova/journey-core/convert` entry point. Its `linearToGraphDefinition` helper converts
+  a pure linear definition to `NEXT`/`PREVIOUS` graph transitions and can optionally generate
+  `GO_TO_<ID>` jump events.
 - Context is no longer restricted to a JSON object at the type level. Runtime consumers are still
   responsible for serializability where persistence or DevTools transport requires it.
 - Add an explicit `engines.node >=20.11.0` package requirement.

@@ -1,30 +1,22 @@
 import type {
   AnyJourneyPlugin,
+  CompletePayloadOf,
   JourneyMachineBase,
+  JourneyTerminationPayloads,
   LinearSnapshot,
   NavigationResult,
   OnEnterHook,
   OnLeaveHook,
-  PluginApis
+  PluginApis,
+  TerminatePayloadOf
 } from "../core/types";
 
-/** Completion and termination payload types supplied to a journey factory. */
-export type JourneyTerminationPayloads = {
-  readonly complete?: unknown;
-  readonly terminate?: unknown;
-};
-
-export type CompletePayloadOf<TTypes extends JourneyTerminationPayloads> = TTypes extends {
-  readonly complete: infer TPayload;
-}
-  ? TPayload
-  : unknown;
-
-export type TerminatePayloadOf<TTypes extends JourneyTerminationPayloads> = TTypes extends {
-  readonly terminate: infer TPayload;
-}
-  ? TPayload
-  : unknown;
+// Termination payload helpers moved to core/types: both tiers name them now.
+export type {
+  CompletePayloadOf,
+  JourneyTerminationPayloads,
+  TerminatePayloadOf
+} from "../core/types";
 
 /** Full linear step config; a bare string is shorthand for `{ id, metadata: {} }`. */
 export type LinearStepConfig<

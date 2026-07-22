@@ -13,7 +13,6 @@ import {
   createLinearJourney,
   createGraphJourney,
   createGraphJourneyBuilder,
-  normalizeGraphDefinition,
   MAX_RAISED_EVENTS
 } from "@rxova/journey-core";
 ```

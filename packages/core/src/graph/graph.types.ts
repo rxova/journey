@@ -1,4 +1,4 @@
-import type { AnySendWork, RuntimeStep, RuntimeTransition } from "../core/runtime.types";
+import type { RuntimeStep, RuntimeTransition } from "../core/runtime.types";
 import type {
   AnyJourneyPlugin,
   ContextUpdater,
@@ -7,6 +7,7 @@ import type {
   JourneyEventPayload,
   JourneyMachineBase,
   JourneyRuntimeOptions,
+  JourneyTerminationPayloads,
   NavigationResult,
   OnEnterHook,
   OnLeaveHook,
@@ -92,16 +93,34 @@ export type GraphJourneyDefinition<
   TStepId extends string = string,
   TEvents extends JourneyEventObject = JourneyEventObject,
   THandlers = unknown,
-  TMeta = Record<string, unknown>
+  TMeta = Record<string, unknown>,
+  TTerminationPayloads extends JourneyTerminationPayloads = JourneyTerminationPayloads
 > = {
   readonly steps: Readonly<Record<TStepId, GraphStepConfig<TContext, TStepId, TEvents, TMeta>>>;
   readonly transitions: GraphTransitionsMap<TContext, TStepId, TEvents, THandlers, TMeta>;
   readonly initial: TStepId;
   readonly context: TContext;
   readonly handlers?: THandlers;
-  /** Work declared on an event, keyed by origin step and event (builder-produced). */
-  readonly eventWork?: Readonly<Record<string, AnySendWork>>;
+  /**
+   * Work declared on an event, produced by `createGraphJourneyBuilder`.
+   *
+   * @internal Its keys are a private encoding of the (origin step, event) pair
+   * and its values are internal work shapes. Typed as `unknown` on purpose so
+   * neither is nameable from the public surface: hand this field straight back
+   * to a factory, never construct or read it.
+   */
+  readonly eventWork?: Readonly<Record<string, unknown>>;
+  /**
+   * Phantom type carrier — never read at runtime. Names the event union, which
+   * the definition's other fields cannot infer on their own.
+   */
   readonly $events?: TEvents;
+  /**
+   * Phantom type carrier — never read at runtime. Names the completion and
+   * termination payload types, so `controls.complete`/`terminate` and
+   * `snapshot.machine.outcome` are typed instead of `unknown`.
+   */
+  readonly $payloads?: TTerminationPayloads;
 };
 
 export type GraphJourneyOptions<
@@ -229,8 +248,16 @@ export type GraphJourneyMachine<
   TEvents extends JourneyEventObject = JourneyEventObject,
   TMeta = Record<string, unknown>,
   TPlugins extends readonly AnyJourneyPlugin[] = readonly [],
-  THandlers = unknown
-> = JourneyMachineBase<TContext, TStepId, GraphSnapshot<TContext, TStepId, TMeta, TEvents>> & {
+  THandlers = unknown,
+  TCompletePayload = unknown,
+  TTerminatePayload = unknown
+> = JourneyMachineBase<
+  TContext,
+  TStepId,
+  GraphSnapshot<TContext, TStepId, TMeta, TEvents, TCompletePayload, TTerminatePayload>,
+  TCompletePayload,
+  TTerminatePayload
+> & {
   /**
    * The graph's primary verb — its presence is itself the machine-type
    * discriminant (linear has no events).
@@ -239,7 +266,7 @@ export type GraphJourneyMachine<
     TStepId,
     TEvents,
     TContext,
-    GraphSnapshot<TContext, TStepId, TMeta, TEvents>,
+    GraphSnapshot<TContext, TStepId, TMeta, TEvents, TCompletePayload, TTerminatePayload>,
     THandlers
   >;
   readonly plugins: PluginApis<TPlugins>;
