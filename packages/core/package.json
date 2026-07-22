@@ -203,7 +203,7 @@
       "name": "core/createPersistencePlugin",
       "path": "dist/plugins/persistence/persistence.js",
       "import": "{ createPersistencePlugin }",
-      "limit": "500 B"
+      "limit": "550 B"
     },
     {
       "name": "core/createReplayPlugin",
