@@ -55,7 +55,14 @@ export function createAnalyticsPlugin(
           record({ source, tracked, success: true });
         } catch (error) {
           record({ source, tracked, success: false, error });
-          options.onError?.(error, tracked);
+          // The error handler sits inside the guard: a throwing onError used to
+          // escape trackSafely, which made "the sink failed" indistinguishable
+          // from "your error handler failed" at the isolation boundary.
+          try {
+            options.onError?.(error, tracked);
+          } catch (handlerError) {
+            host.reportError(handlerError);
+          }
         }
         return tracked;
       };

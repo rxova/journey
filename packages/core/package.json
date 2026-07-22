@@ -150,13 +150,13 @@
       "name": "core/createLinearJourney",
       "path": "dist/index.js",
       "import": "{ createLinearJourney }",
-      "limit": "6.05 kB"
+      "limit": "6.2 kB"
     },
     {
       "name": "core/createGraphJourney",
       "path": "dist/index.js",
       "import": "{ createGraphJourney }",
-      "limit": "6.25 kB"
+      "limit": "6.4 kB"
     },
     {
       "name": "core/createGraphJourneyBuilder",
@@ -192,7 +192,7 @@
       "name": "core/createAutosavePlugin",
       "path": "dist/plugins/autosave/autosave.js",
       "import": "{ createAutosavePlugin }",
-      "limit": "850 B"
+      "limit": "1.05 kB"
     },
     {
       "name": "core/createDiagnosticsPlugin",
@@ -204,7 +204,7 @@
       "name": "core/createPersistencePlugin",
       "path": "dist/plugins/persistence/persistence.js",
       "import": "{ createPersistencePlugin }",
-      "limit": "775 B"
+      "limit": "950 B"
     },
     {
       "name": "core/createReplayPlugin",

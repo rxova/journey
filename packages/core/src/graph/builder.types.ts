@@ -180,27 +180,38 @@ export type JourneyStepTransitions<TBag extends JourneyTypeBag> = {
       }) => readonly JourneyToBuilder<TBag, TType>[] | JourneyEventWork<TBag, TType>);
 };
 
+/**
+ * What `createStep` accepts as its second argument.
+ *
+ * Named because authoring steps in separate files — the type bag's whole
+ * purpose — means annotating this shape, and reaching through
+ * `JourneyStepBuilder["_config"]` made an underscore-prefixed member part of
+ * everyday usage.
+ */
+export type JourneyStepConfig<TBag extends JourneyTypeBag> = {
+  readonly metadata?: MetaOf<TBag>;
+  readonly onEnter?: OnEnterHook<
+    TBag["context"],
+    TBag["stepId"],
+    TBag["events"],
+    BagSnapshot<TBag>
+  >;
+  readonly onLeave?: OnLeaveHook<
+    TBag["context"],
+    TBag["stepId"],
+    TBag["events"],
+    BagSnapshot<TBag>
+  >;
+  readonly on?: JourneyStepTransitions<TBag>;
+};
+
 export type JourneyStepBuilder<
   TBag extends JourneyTypeBag,
   TStepId extends TBag["stepId"] = TBag["stepId"]
 > = {
   readonly id: TStepId;
-  readonly _config: {
-    readonly metadata?: MetaOf<TBag>;
-    readonly onEnter?: OnEnterHook<
-      TBag["context"],
-      TBag["stepId"],
-      TBag["events"],
-      BagSnapshot<TBag>
-    >;
-    readonly onLeave?: OnLeaveHook<
-      TBag["context"],
-      TBag["stepId"],
-      TBag["events"],
-      BagSnapshot<TBag>
-    >;
-    readonly on?: JourneyStepTransitions<TBag>;
-  };
+  /** @internal Use {@link JourneyStepConfig} to name this shape. */
+  readonly _config: JourneyStepConfig<TBag>;
 };
 
 export type JourneyBuilder<TBag extends JourneyTypeBag> = {

@@ -1,3 +1,4 @@
+import { warnInDevelopment } from "@rxova/journey-common/dev";
 import {
   buildPersistedState,
   parsePersistedState,
@@ -33,9 +34,19 @@ export function createPersistencePlugin(
   options: PersistencePluginOptions
 ): JourneyPlugin<"persistence", PersistenceApi, PersistenceState> {
   const now = options.now ?? Date.now;
+  // Per plugin *instance*, not per machine: mutable state is scoped to setup(),
+  // but `options` is not — two machines sharing one instance write the same key
+  // and silently clobber each other.
+  let setupCount = 0;
   return {
     name: "persistence",
     setup(host) {
+      setupCount += 1;
+      if (setupCount > 1) {
+        warnInDevelopment(
+          `journey: persistence plugin instance shared by ${setupCount} machines; they overwrite key "${options.key}". Create one per machine.`
+        );
+      }
       let lastWritten: JourneyPersistedState | null = null;
       let lastError: unknown = null;
 
@@ -91,7 +102,14 @@ export function createPersistencePlugin(
           readPersisted: () => parsePersistedState(options.storage.getItem(options.key)),
           clearPersisted: () => {
             lastWritten = null;
-            options.storage.removeItem(options.key);
+            // Called directly by user code; record the failure here rather than
+            // throwing out of an API whose sibling writes are all contained.
+            try {
+              options.storage.removeItem(options.key);
+            } catch (error) {
+              lastError = error;
+              host.reportError(error);
+            }
           }
         },
         deriveSnapshot: (_snapshot, previous) => {
