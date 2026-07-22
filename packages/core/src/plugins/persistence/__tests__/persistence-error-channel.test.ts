@@ -167,6 +167,17 @@ describe("parsePersistedState validation", () => {
     expect(Object.getPrototypeOf(merged)).toBe(Object.prototype);
   });
 
+  it("strips them from objects inside context arrays", () => {
+    const raw =
+      '{"status":"running","context":{"items":[{"__proto__":{"x":1},"id":"a"},{"id":"b"}]},"timeline":["a"],"currentIndex":0,"savedAt":1}';
+
+    const parsed = parsePersistedState(raw);
+    const items = (parsed?.context as { items: Record<string, unknown>[] }).items;
+
+    expect(items.map((item) => item.id)).toEqual(["a", "b"]);
+    expect(Object.prototype.hasOwnProperty.call(items[0], "__proto__")).toBe(false);
+  });
+
   it("strips them from nested context values too", () => {
     const raw =
       '{"status":"running","context":{"nested":{"__proto__":{"x":1},"ok":2}},"timeline":["a"],"currentIndex":0,"savedAt":1}';
