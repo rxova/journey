@@ -483,18 +483,28 @@ export class JourneyRuntime {
         this.disposeCallbacks.push(callback);
       }
     };
-    for (const plugin of this.config.plugins) {
-      if (hasOwn(this.pluginApis, plugin.name)) {
-        throw new Error(`journey: duplicate plugin name "${plugin.name}"`);
+    // A failure part-way through leaves earlier plugins already subscribed and
+    // holding onDispose callbacks — but the machine is never returned, so
+    // dispose() is unreachable and their timers and subscriptions would live
+    // for the process lifetime. Tear down before rethrowing, so a rejected
+    // construction leaks nothing.
+    try {
+      for (const plugin of this.config.plugins) {
+        if (hasOwn(this.pluginApis, plugin.name)) {
+          throw new Error(`journey: duplicate plugin name "${plugin.name}"`);
+        }
+        const contribution = plugin.setup(host);
+        this.pluginApis[plugin.name] = contribution.api;
+        if (contribution.deriveSnapshot) {
+          this.snapshotDerivers.set(
+            plugin.name,
+            contribution.deriveSnapshot as (snapshot: JourneySnapshot, previous: unknown) => unknown
+          );
+        }
       }
-      const contribution = plugin.setup(host);
-      this.pluginApis[plugin.name] = contribution.api;
-      if (contribution.deriveSnapshot) {
-        this.snapshotDerivers.set(
-          plugin.name,
-          contribution.deriveSnapshot as (snapshot: JourneySnapshot, previous: unknown) => unknown
-        );
-      }
+    } catch (error) {
+      this.dispose();
+      throw error;
     }
   }
 
@@ -1069,7 +1079,19 @@ export class JourneyRuntime {
     if (this.snapshotDerivers.size > 0) {
       const extensions: Record<string, unknown> = {};
       for (const [name, derive] of this.snapshotDerivers) {
-        extensions[name] = derive(snapshot, this.lastPluginExtensions[name]);
+        // Derivers run on every publish and in the constructor, so an
+        // unguarded throw here took down every transition. Isolate like any
+        // other plugin tap: report, then carry the plugin's previous slice
+        // forward so consumers reading snapshot.plugins[name] do not see it
+        // blink to undefined.
+        try {
+          extensions[name] = derive(snapshot, this.lastPluginExtensions[name]);
+        } catch (error) {
+          this.store.report(error);
+          if (hasOwn(this.lastPluginExtensions, name)) {
+            extensions[name] = this.lastPluginExtensions[name];
+          }
+        }
       }
       this.lastPluginExtensions = extensions;
       const previousPlugins = previous?.plugins;

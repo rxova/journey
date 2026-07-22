@@ -33,13 +33,37 @@ export function parsePersistedState(raw: string | null): JourneyPersistedState |
   return candidate as unknown as JourneyPersistedState;
 }
 
-/** Resolves the `persist` option's storage; throws when none is available. */
+/**
+ * Resolves the `persist` option's storage; throws when none is available.
+ *
+ * Reading `globalThis.localStorage` can itself throw — a third-party iframe
+ * with storage blocked, or Safari's Lockdown Mode — rather than returning
+ * undefined. Unguarded, that surfaced as a raw `SecurityError` out of
+ * `createLinearJourney`, which reads as a library crash rather than an
+ * environment that cannot persist. The failure stays loud (silently disabling
+ * persistence loses data with no signal) but is now a `journey:` error naming
+ * the fix, with the original kept as `cause`.
+ */
 export function resolvePersistStorage(option: JourneyPersistOption): JourneyStorage {
-  const storage = option.storage ?? (globalThis.localStorage as JourneyStorage | undefined);
-  if (!storage) {
+  if (option.storage) return option.storage;
+
+  let ambient: JourneyStorage | undefined;
+  try {
+    ambient = globalThis.localStorage as JourneyStorage | undefined;
+  } catch (error) {
+    const blocked = new Error(
+      "journey: localStorage access was blocked by the environment; pass persist.storage explicitly"
+    );
+    // Assigned rather than passed to the constructor: `cause` is ES2022 and the
+    // compilation target is ES2020, so the two-argument form does not typecheck.
+    (blocked as { cause?: unknown }).cause = error;
+    throw blocked;
+  }
+
+  if (!ambient) {
     throw new Error("journey: persist.storage is required when localStorage is unavailable");
   }
-  return storage;
+  return ambient;
 }
 
 /**
