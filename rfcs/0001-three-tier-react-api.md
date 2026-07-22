@@ -1,6 +1,6 @@
 # RFC 0001 — Three-Tier React API: `<Wizard>`, Graph, Headless
 
-- **Status:** Accepted — implemented on branch with renames (`Wizard` → `LinearJourney`); §3.12 amendment accepted 2026-07-18 (verbatim wrapper, four core absorptions); see "Shipped divergences" below for where the implementation superseded this document's sketches
+- **Status:** **Superseded by [RFC 0003](./0003-react-standalone-bundles.md) (2026-07-22) for the React tier.** Historical from here on: the shipped design reversed this document's headline API, its headless tier, its per-Provider graph machine, and its SSR stance, and the "Shipped divergences" block below is itself stale. Read RFC 0003 for the contract. Retained because §3.12's verbatim-wrapper rule and its start-out-of-construction requirement survive, and because the motivation in §1 still explains why the redesign happened.
 - **Branch:** `feat/react-api-redesign`
 - **Date:** 2026-07-14 (accepted 2026-07-19)
 - **Scope:** `@rxova/journey-react` (full redesign), `@rxova/journey-core` (snapshot family + three small additions), `@rxova/journey-devtools-bridge` (type-aware presentation)
