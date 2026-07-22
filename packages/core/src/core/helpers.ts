@@ -1,4 +1,4 @@
-import type { StepAsyncState } from "./types";
+import type { StepAsyncState } from "./types.js";
 
 /** Hard cap on events processed from one raise cascade before it is dropped. */
 export const MAX_RAISED_EVENTS = 25;

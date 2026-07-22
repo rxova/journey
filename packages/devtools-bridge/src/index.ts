@@ -1,15 +1,15 @@
-export { attachJourneyDevtools } from "./bridge";
+export { attachJourneyDevtools } from "./bridge.js";
 export {
   buildOperationRunners,
   createJourneyMachineId,
   OperationRateLimiter,
   serializeSnapshot
-} from "./bridge.helpers";
+} from "./bridge.helpers.js";
 export type {
   JourneyDevtoolsAttachableMachine,
   JourneyDevtoolsBridgeOptions,
   OperationRunner
-} from "./bridge.types";
+} from "./bridge.types.js";
 
 export {
   JOURNEY_DEVTOOLS_CHANNEL,
@@ -23,7 +23,7 @@ export {
   isJourneyDevtoolsEnvelope,
   isJourneyDevtoolsBridgeEnvelope,
   isJourneyDevtoolsExtensionEnvelope
-} from "./protocol";
+} from "./protocol.js";
 
 export type {
   JourneyDevtoolsBridgeEnvelope,
@@ -47,4 +47,4 @@ export type {
   JourneyDevtoolsSerializableSnapshot,
   JourneyDevtoolsSerializedError,
   JourneyDevtoolsStepFeatureDescriptor
-} from "./protocol.types";
+} from "./protocol.types.js";

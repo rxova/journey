@@ -7,7 +7,7 @@ import type {
   NavigationWork,
   NavigationResult,
   StepHookArgs
-} from "./types";
+} from "./types.js";
 
 /** Internal, kind-agnostic hook shapes (public typing lives in the creators). */
 export type AnyHookArgs = StepHookArgs<unknown, string, JourneyEventObject>;

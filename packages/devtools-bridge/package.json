@@ -62,7 +62,7 @@
     "test": "pnpm --workspace-root vitest run packages/devtools-bridge/src --coverage.enabled=false",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "publint": "publint",
-    "attw": "attw --pack .",
+    "attw": "attw --pack . --profile node16",
     "size": "pnpm run size:check",
     "size:check": "pnpm run build && size-limit"
   },

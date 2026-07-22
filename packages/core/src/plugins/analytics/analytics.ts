@@ -1,20 +1,20 @@
-import { RECENT_EVENT_CAPACITY } from "./analytics.helpers";
+import { RECENT_EVENT_CAPACITY } from "./analytics.helpers.js";
 
-export { RECENT_EVENT_CAPACITY } from "./analytics.helpers";
+export { RECENT_EVENT_CAPACITY } from "./analytics.helpers.js";
 import type {
   AnalyticsApi,
   AnalyticsPluginOptions,
   AnalyticsRecentEvent,
   AnalyticsTrackedEvent
-} from "./analytics.types";
-import type { JourneyPlugin } from "../../core/types";
+} from "./analytics.types.js";
+import type { JourneyPlugin } from "../../core/types.js";
 
 export type {
   AnalyticsApi,
   AnalyticsPluginOptions,
   AnalyticsRecentEvent,
   AnalyticsTrackedEvent
-} from "./analytics.types";
+} from "./analytics.types.js";
 
 /**
  * Converts journey observations (transitions, lifecycle, blocked navigations,

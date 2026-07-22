@@ -2,9 +2,9 @@ import type {
   GraphJourneyDefinition,
   GraphStepConfig,
   GraphTransitionCandidate
-} from "./graph.types";
-import { eventWorkKey } from "../core/helpers";
-import type { AnySendWork } from "../core/runtime.types";
+} from "./graph.types.js";
+import { eventWorkKey } from "../core/helpers.js";
+import type { AnySendWork } from "../core/runtime.types.js";
 import type {
   HandlersOf,
   JourneyBuilder,
@@ -16,7 +16,7 @@ import type {
   StayFactory,
   ToFactory,
   WorkFactory
-} from "./builder.types";
+} from "./builder.types.js";
 
 /**
  * The totality warning is authoring feedback, not runtime behavior, so it is

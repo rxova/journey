@@ -1,5 +1,5 @@
-import type { JourneyRuntime } from "./runtime";
-import type { AnyNavigationWork } from "./runtime.types";
+import type { JourneyRuntime } from "./runtime.js";
+import type { AnyNavigationWork } from "./runtime.types.js";
 import type {
   ContextUpdater,
   JourneyEventPayloads,
@@ -7,7 +7,7 @@ import type {
   JourneySnapshot,
   JourneySubscriptionEvent,
   Unsubscribe
-} from "./types";
+} from "./types.js";
 
 /**
  * Builds the stable machine surface over a runtime. The object (and every

@@ -1,7 +1,7 @@
 import React from "react";
 import { createLinearJourney as coreCreateLinearJourney } from "@rxova/journey-core";
-import { createAutoStartHook, createJourneyBindings } from "./react.helpers";
-import { useSafeLayoutEffect } from "./use-safe-layout-effect";
+import { createAutoStartHook, createJourneyBindings } from "./react.helpers.js";
+import { useSafeLayoutEffect } from "./use-safe-layout-effect.js";
 import type { AnyJourneyPlugin, LinearStepIdOf, LinearStepInput } from "@rxova/journey-core";
 import type {
   LinearJourneyBundle,
@@ -10,7 +10,7 @@ import type {
   LinearJourneyMachine,
   LinearJourneySnapshot,
   LinearJourneyStepHandler
-} from "./react.types";
+} from "./react.types.js";
 
 const stepIdOf = (step: string | { readonly id: string }): string =>
   typeof step === "string" ? step : step.id;
@@ -45,13 +45,16 @@ const stepIdOf = (step: string | { readonly id: string }): string =>
  * nothing. All Providers and hooks share the one machine, journey state
  * survives remounts (reset explicitly — `controls.restart()` after a terminal
  * status, `terminate()` first when mid-flight), and in SSR a module-scope
- * machine is shared across requests — for per-mount or per-request isolation,
- * create the bundle inside a component with a `useState` lazy initializer
- * (the reference must stay stable for the component's lifetime), or own a
- * core machine yourself and read it with `React.useSyncExternalStore`.
- * `autoStart` defaults to `true` here (the React-tier default); pass
- * `{ autoStart: false }` and call `bundle.machine.controls.start()` to defer
- * the initial entry.
+ * machine is shared across every request in the process — for per-mount or
+ * per-request isolation, wrap the factory in `useJourney()`, which owns and
+ * disposes one bundle per component instance.
+ *
+ * By default the machine starts when the first Provider or hook mounts, so
+ * subscribers attach before the journey's first `stepEnter` and SSR renders
+ * `fallback` on both sides. Pass `{ autoStart: true }` to start eagerly here
+ * instead — needed for server-rendered step content, and for a bundle driven
+ * entirely from non-React code, since nothing mounts to start it. Pass
+ * `{ autoStart: false }` to start it yourself with `controls.start()`.
  */
 export const createLinearJourney = <
   TContext,

@@ -6,7 +6,7 @@ import type {
   JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
   JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION,
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION
-} from "./protocol";
+} from "./protocol.js";
 
 /** Protocol versions accepted on the wire (current, prior, and legacy). */
 export type JourneyDevtoolsProtocolVersion =

@@ -1,8 +1,8 @@
-import { buildMachineSurface } from "../core/machine";
-import { JourneyRuntime } from "../core/runtime";
-import { persistOptionToPlugin } from "../plugins/persistence/persistence";
-import { readRestorableState } from "../plugins/persistence/persistence.helpers";
-import type { RuntimeStep } from "../core/runtime.types";
+import { buildMachineSurface } from "../core/machine.js";
+import { JourneyRuntime } from "../core/runtime.js";
+import { persistOptionToPlugin } from "../plugins/persistence/persistence.js";
+import { readRestorableState } from "../plugins/persistence/persistence.helpers.js";
+import type { RuntimeStep } from "../core/runtime.types.js";
 import type {
   CompletePayloadOf,
   JourneyTerminationPayloads,
@@ -10,8 +10,8 @@ import type {
   LinearJourneyMachine,
   LinearStepConfig,
   TerminatePayloadOf
-} from "./linear.types";
-import type { AnyJourneyPlugin, JourneyRuntimeOptions } from "../core/types";
+} from "./linear.types.js";
+import type { AnyJourneyPlugin, JourneyRuntimeOptions } from "../core/types.js";
 
 /**
  * Creates a linear journey runtime from a pure-data definition.

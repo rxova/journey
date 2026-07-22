@@ -1,5 +1,5 @@
-export { createLinearJourney } from "./create-linear-journey";
-export { useJourney } from "./use-journey";
+export { createLinearJourney } from "./create-linear-journey.js";
+export { useJourney } from "./use-journey.js";
 
 export type {
   AnyJourneyMachine,
@@ -19,7 +19,7 @@ export type {
   OwnedJourneyBundle,
   SnapshotOf,
   StepIdOf
-} from "./react.types";
+} from "./react.types.js";
 
 export type {
   AnyJourneyPlugin,

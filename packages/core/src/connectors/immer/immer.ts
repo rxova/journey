@@ -1,8 +1,8 @@
 import { produce } from "immer";
-import type { ContextUpdater } from "../../core/types";
-import type { ImmerContextRecipe } from "./immer.types";
+import type { ContextUpdater } from "../../core/types.js";
+import type { ImmerContextRecipe } from "./immer.types.js";
 
-export type { ImmerContextRecipe } from "./immer.types";
+export type { ImmerContextRecipe } from "./immer.types.js";
 
 /**
  * Converts a synchronous Immer recipe into a Journey context updater.

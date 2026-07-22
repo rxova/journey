@@ -1,5 +1,5 @@
 import { createGraphJourney as coreCreateGraphJourney } from "@rxova/journey-core";
-import { createAutoStartHook, createJourneyBindings } from "./react.helpers";
+import { createAutoStartHook, createJourneyBindings } from "./react.helpers.js";
 import type {
   AnyJourneyPlugin,
   GraphJourneyMachine,
@@ -9,14 +9,14 @@ import type {
   GraphTransitionsMap,
   JourneyEventObject
 } from "@rxova/journey-core";
-import type { GraphJourneyBundle } from "./react.types";
+import type { GraphJourneyBundle } from "./react.types.js";
 
 export type {
   GraphJourneyBundle,
   JourneyProviderProps,
   JourneyStepRendererProps,
   JourneyViews
-} from "./react.types";
+} from "./react.types.js";
 
 /**
  * Creates a graph journey bundle for React around **one standalone machine**,
@@ -43,13 +43,17 @@ export type {
  * Consequences of the standalone machine: all Providers and hooks share the
  * one machine, journey state survives remounts (reset explicitly —
  * `controls.restart()` after a terminal status, `terminate()` first when
- * mid-flight), and in SSR a module-scope machine is shared across requests —
- * for per-mount or per-request isolation, create the bundle inside a
- * component with a `useState` lazy initializer (the reference must stay
- * stable for the component's lifetime), or own a core machine yourself and
- * read it with `React.useSyncExternalStore`. `autoStart` defaults to `true`
- * here (the React-tier default); pass `{ autoStart: false }` and call
- * `bundle.machine.controls.start()` to defer the initial entry.
+ * mid-flight), and in SSR a module-scope machine is shared across every
+ * request in the process — for per-mount or per-request isolation, wrap the
+ * factory in `useJourney()`, which owns and disposes one bundle per component
+ * instance.
+ *
+ * By default the machine starts when the first Provider or hook mounts, so
+ * subscribers attach before the journey's first `stepEnter` and SSR renders
+ * `fallback` on both sides. Pass `{ autoStart: true }` to start eagerly here
+ * instead — needed for server-rendered step content, and for a bundle driven
+ * entirely from non-React code, since nothing mounts to start it. Pass
+ * `{ autoStart: false }` to start it yourself with `controls.start()`.
  */
 export function createGraphJourney<
   TContext,

@@ -1,7 +1,7 @@
-import type { ExecutionPathsApi, ExecutionPathsSnapshot } from "./execution-paths.types";
-import type { JourneyPlugin } from "../../core/types";
+import type { ExecutionPathsApi, ExecutionPathsSnapshot } from "./execution-paths.types.js";
+import type { JourneyPlugin } from "../../core/types.js";
 
-export type { ExecutionPathsApi, ExecutionPathsSnapshot } from "./execution-paths.types";
+export type { ExecutionPathsApi, ExecutionPathsSnapshot } from "./execution-paths.types.js";
 
 /**
  * First-party plugin: tracks execution paths through the journey. Observes

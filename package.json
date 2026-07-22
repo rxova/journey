@@ -57,11 +57,13 @@
     "size": "pnpm -r --reporter=append-only --workspace-concurrency=1 size",
     "size:check": "pnpm -r --reporter=append-only --workspace-concurrency=1 size:check",
     "publint": "pnpm -r --filter \"./packages/*\" publint",
-    "packaging:check": "pnpm -r --filter \"./packages/*\" --filter apps-devtools build && pnpm run publint",
+    "packaging:check": "pnpm -r --filter \"./packages/*\" --filter apps-devtools build && pnpm run publint && pnpm run attw",
     "pack:smoke": "node --import tsx ./packages/common/tooling/pack-smoke.ts",
-    "release:verify": "node --import tsx ./packages/common/tooling/release-verify.ts"
+    "release:verify": "node --import tsx ./packages/common/tooling/release-verify.ts",
+    "attw": "pnpm -r --filter \"./packages/*\" attw"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
     "@changesets/cli": "^2.31.0",
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",

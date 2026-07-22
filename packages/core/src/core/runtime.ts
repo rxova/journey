@@ -5,8 +5,8 @@ import {
   MAX_RAISED_EVENTS,
   shallowEqual,
   SUCCESS_ASYNC
-} from "./helpers";
-import { JourneyStore } from "./store";
+} from "./helpers.js";
+import { JourneyStore } from "./store.js";
 import type {
   AnyHookArgs,
   AnyNavigationWork,
@@ -19,7 +19,7 @@ import type {
   TimelineOp,
   TransitionListener,
   WorkDirection
-} from "./runtime.types";
+} from "./runtime.types.js";
 import type {
   ContextUpdater,
   CurrentStepBase,
@@ -32,7 +32,7 @@ import type {
   PluginHost,
   StepAsyncState,
   StepEnterDirection
-} from "./types";
+} from "./types.js";
 
 const EMPTY_METADATA: Readonly<Record<string, unknown>> = Object.freeze({});
 const EMPTY_PLUGINS: Readonly<Record<string, unknown>> = Object.freeze({});

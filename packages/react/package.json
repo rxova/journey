@@ -85,7 +85,7 @@
     "test": "pnpm --workspace-root vitest run packages/react --coverage.enabled=false",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.tooling.json",
     "publint": "publint",
-    "attw": "attw --pack .",
+    "attw": "attw --pack . --profile node16",
     "size": "pnpm run size:check",
     "size:check": "pnpm run build && size-limit"
   },
@@ -101,6 +101,18 @@
       "path": "dist/graph.js",
       "import": "{ createGraphJourney }",
       "limit": "2.5 kB"
+    },
+    {
+      "name": "react/client",
+      "path": "dist/client.js",
+      "import": "{ createLinearJourney }",
+      "limit": "2.5 kB"
+    },
+    {
+      "name": "react/useJourney",
+      "path": "dist/index.js",
+      "import": "{ useJourney }",
+      "limit": "1 kB"
     }
   ],
   "devDependencies": {

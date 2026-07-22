@@ -1,6 +1,6 @@
-import { normalizeGraphDefinition } from "../../graph/graph";
-import type { DiagnosticsIssue, DiagnosticsResult } from "./diagnostics.types";
-import type { JourneyStructure } from "../../core/types";
+import { normalizeGraphDefinition } from "../../graph/graph.js";
+import type { DiagnosticsIssue, DiagnosticsResult } from "./diagnostics.types.js";
+import type { JourneyStructure } from "../../core/types.js";
 
 /**
  * Structural analysis of a journey's transition graph: unreachable steps,
