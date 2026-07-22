@@ -4,11 +4,11 @@ import type {
   JourneyDevtoolsAttachableMachine,
   LooseMachine,
   OperationRunner
-} from "./bridge.types.js";
+} from "./bridge.types";
 import type {
   JourneyDevtoolsOperationResultPayload,
   JourneyDevtoolsSerializableSnapshot
-} from "./protocol.types.js";
+} from "./protocol.types";
 
 /** Creates a collision-resistant default id for a machine attached to DevTools. */
 export const createJourneyMachineId = (): string =>

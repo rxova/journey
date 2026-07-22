@@ -2,21 +2,21 @@ import {
   buildPersistedState,
   parsePersistedState,
   resolvePersistStorage
-} from "./persistence.helpers.js";
+} from "./persistence.helpers";
 import type {
   JourneyPersistedState,
   PersistenceApi,
   PersistencePluginOptions
-} from "./persistence.types.js";
-import type { JourneyPersistOption, JourneyPlugin } from "../../core/types.js";
+} from "./persistence.types";
+import type { JourneyPersistOption, JourneyPlugin } from "../../core/types";
 
-export { buildPersistedState, parsePersistedState } from "./persistence.helpers.js";
+export { buildPersistedState, parsePersistedState } from "./persistence.helpers";
 export type {
   JourneyPersistedState,
   JourneyStorage,
   PersistenceApi,
   PersistencePluginOptions
-} from "./persistence.types.js";
+} from "./persistence.types";
 
 /**
  * Persists a serializable slice of machine state (status, context, timeline)

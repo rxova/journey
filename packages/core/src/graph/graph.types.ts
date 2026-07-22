@@ -1,4 +1,4 @@
-import type { AnySendWork, RuntimeStep, RuntimeTransition } from "../core/runtime.types.js";
+import type { AnySendWork, RuntimeStep, RuntimeTransition } from "../core/runtime.types";
 import type {
   AnyJourneyPlugin,
   ContextUpdater,
@@ -12,7 +12,7 @@ import type {
   OnLeaveHook,
   PluginApis,
   StepHookArgs
-} from "../core/types.js";
+} from "../core/types";
 
 /**
  * Guards are sync and pure: they are evaluated during snapshot derivation to

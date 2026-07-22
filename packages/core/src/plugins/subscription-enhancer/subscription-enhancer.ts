@@ -1,11 +1,11 @@
-import type { StatusListener, SubscriptionEnhancerApi } from "./subscription-enhancer.types.js";
-import type { JourneyPlugin, JourneyStatus, Unsubscribe } from "../../core/types.js";
+import type { StatusListener, SubscriptionEnhancerApi } from "./subscription-enhancer.types";
+import type { JourneyPlugin, JourneyStatus, Unsubscribe } from "../../core/types";
 
 export type {
   StatusChangeInfo,
   StatusListener,
   SubscriptionEnhancerApi
-} from "./subscription-enhancer.types.js";
+} from "./subscription-enhancer.types";
 
 export function createSubscriptionEnhancerPlugin(): JourneyPlugin<
   "subscription-enhancer",

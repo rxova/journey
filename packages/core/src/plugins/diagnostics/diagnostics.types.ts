@@ -1,4 +1,4 @@
-import type { JourneyStructure } from "../../core/types.js";
+import type { JourneyStructure } from "../../core/types";
 
 export type DiagnosticsIssue = {
   readonly code: "unreachable-step" | "shadowed-transition" | "cycle-detected" | "no-terminal-path";

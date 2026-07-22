@@ -1,5 +1,5 @@
-import type { GraphHookArgs, GraphJourneyDefinition } from "./graph.types.js";
-import type { GraphSnapshot, JourneyEventObject, OnEnterHook, OnLeaveHook } from "../core/types.js";
+import type { GraphHookArgs, GraphJourneyDefinition } from "./graph.types";
+import type { GraphSnapshot, JourneyEventObject, OnEnterHook, OnLeaveHook } from "../core/types";
 
 /**
  * One declaration point for a journey's types — steps can then be authored in

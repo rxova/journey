@@ -1,7 +1,7 @@
 import React from "react";
 import { createLinearJourney as coreCreateLinearJourney } from "@rxova/journey-core";
-import { createAutoStartHook, createJourneyBindings } from "./react.helpers.js";
-import { useSafeLayoutEffect } from "./use-safe-layout-effect.js";
+import { createAutoStartHook, createJourneyBindings } from "./react.helpers";
+import { useSafeLayoutEffect } from "./use-safe-layout-effect";
 import type { AnyJourneyPlugin, LinearStepIdOf, LinearStepInput } from "@rxova/journey-core";
 import type {
   LinearJourneyBundle,
@@ -10,7 +10,7 @@ import type {
   LinearJourneyMachine,
   LinearJourneySnapshot,
   LinearJourneyStepHandler
-} from "./react.types.js";
+} from "./react.types";
 
 const stepIdOf = (step: string | { readonly id: string }): string =>
   typeof step === "string" ? step : step.id;

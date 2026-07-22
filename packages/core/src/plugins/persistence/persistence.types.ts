@@ -1,4 +1,4 @@
-import type { JourneyStatus } from "../../core/types.js";
+import type { JourneyStatus } from "../../core/types";
 
 /** localStorage-compatible adapter; `setItem` may be async. */
 export type JourneyStorage = {

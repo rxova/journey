@@ -1,5 +1,5 @@
 import { createGraphJourney as coreCreateGraphJourney } from "@rxova/journey-core";
-import { createAutoStartHook, createJourneyBindings } from "./react.helpers.js";
+import { createAutoStartHook, createJourneyBindings } from "./react.helpers";
 import type {
   AnyJourneyPlugin,
   GraphJourneyMachine,
@@ -9,14 +9,14 @@ import type {
   GraphTransitionsMap,
   JourneyEventObject
 } from "@rxova/journey-core";
-import type { GraphJourneyBundle } from "./react.types.js";
+import type { GraphJourneyBundle } from "./react.types";
 
 export type {
   GraphJourneyBundle,
   JourneyProviderProps,
   JourneyStepRendererProps,
   JourneyViews
-} from "./react.types.js";
+} from "./react.types";
 
 /**
  * Creates a graph journey bundle for React around **one standalone machine**,

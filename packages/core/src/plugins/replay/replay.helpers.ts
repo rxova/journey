@@ -1,4 +1,4 @@
-import type { ReplayExportOptions, ReplaySession } from "./replay.types.js";
+import type { ReplayExportOptions, ReplaySession } from "./replay.types";
 
 export function normalizeMaxEntries(value: number | undefined): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return 500;

@@ -1,6 +1,6 @@
 import React from "react";
-import { useSafeLayoutEffect } from "./use-safe-layout-effect.js";
-import type { OwnedJourneyBundle } from "./react.types.js";
+import { useSafeLayoutEffect } from "./use-safe-layout-effect";
+import type { OwnedJourneyBundle } from "./react.types";
 
 /**
  * Owns a bundle for one component instance: creates it once, keeps it across
