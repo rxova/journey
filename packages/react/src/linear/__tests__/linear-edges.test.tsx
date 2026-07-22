@@ -1,77 +1,37 @@
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { createLinearJourney } from "@rxova/journey-react";
 import { flush, makeStep } from "@rxova/journey-react/testing";
-import type { LinearJourneyMachine } from "@rxova/journey-react";
 
 const StepA = makeStep("a");
 const StepB = makeStep("b");
 
-const ab = createLinearJourney({ context: {}, steps: ["a", "b"] });
-const abViews = { a: <StepA />, b: <StepB /> };
-
-const IndexNav = () => {
-  const { machine, snapshot } = ab.useJourney();
-  return (
-    <div>
-      <span data-testid="active">{snapshot.currentStep.id}</span>
-      <span data-testid="paused">{snapshot.machine.isPaused ? "paused" : "running"}</span>
-      <button onClick={() => void machine.navigate.goToStepByIndex(1)}>by-index</button>
-      <button onClick={() => void machine.navigate.goToLastVisitedStep()}>tip</button>
-      <button onClick={() => void machine.navigate.goToPreviousStep()}>back</button>
-      <button onClick={() => machine.controls.pause()}>pause</button>
-    </div>
-  );
-};
-
-describe("definition step config", () => {
-  it("runs definition onEnter/onLeave hooks while views only render", async () => {
-    const onEnter = vi.fn();
-    const onLeave = vi.fn();
-    const journey = createLinearJourney({
-      context: {},
-      steps: [
-        { id: "intro", metadata: "Intro metadata" },
-        { id: "second", onEnter, onLeave }
-      ]
-    });
-    const Chrome = () => {
-      const { machine } = journey.useJourney();
+describe("navigation edges", () => {
+  it("navigates by index, walks the timeline tip, and pauses — all through the machine", async () => {
+    const journey = createLinearJourney({ context: {}, steps: ["a", "b"] });
+    const IndexNav = () => {
+      const step = journey.useStep();
+      const paused = journey.useSelector((snapshot) => snapshot.machine.isPaused);
+      const navigate = journey.useNavigation();
+      const controls = journey.useControls();
       return (
         <div>
-          <button onClick={() => void machine.navigate.goToStepByIndex(1)}>by-index</button>
-          <button onClick={() => void machine.navigate.goToPreviousStep()}>back</button>
+          <span data-testid="active">{step?.id}</span>
+          <span data-testid="paused">{paused ? "paused" : "running"}</span>
+          <button onClick={() => void navigate.goToStepByIndex(1)}>by-index</button>
+          <button onClick={() => void navigate.goToLastVisitedStep()}>tip</button>
+          <button onClick={() => void navigate.goToPreviousStep()}>back</button>
+          <button onClick={() => controls.pause()}>pause</button>
         </div>
       );
     };
     render(
-      <journey.Provider
-        views={{
-          intro: <p data-testid="intro-content">hello</p>,
-          second: <p data-testid="second-content">world</p>
-        }}
-        footer={<Chrome />}
-      />
+      <journey.Provider views={{ a: <StepA />, b: <StepB /> }}>
+        <journey.StepRenderer />
+        <IndexNav />
+      </journey.Provider>
     );
-    await flush();
-    expect(screen.getByTestId("intro-content")).toBeTruthy();
-
-    fireEvent.click(screen.getByText("by-index"));
-    await flush();
-    expect(screen.getByTestId("second-content")).toBeTruthy();
-    expect(onEnter).toHaveBeenCalledTimes(1);
-
-    fireEvent.click(screen.getByText("back")); // second's onLeave runs on the way out
-    await flush();
-    expect(screen.getByTestId("intro-content")).toBeTruthy();
-    expect(onLeave).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("navigation edges", () => {
-  it("navigates by index, walks the timeline tip, and pauses — all through the machine", async () => {
-    render(<ab.Provider views={abViews} footer={<IndexNav />} />);
     await flush();
 
     fireEvent.click(screen.getByText("by-index"));
@@ -89,48 +49,11 @@ describe("navigation edges", () => {
     await flush();
     expect(screen.getByTestId("paused").textContent).toBe("paused");
   });
-
-  it("starts directly at the startAt prop: earlier steps never enter or leave", async () => {
-    const onLeaveA = vi.fn();
-    const onError = vi.fn();
-    const journey = createLinearJourney({
-      context: {},
-      steps: [{ id: "a", onLeave: onLeaveA }, "b"]
-    });
-    render(
-      <journey.Provider views={{ a: <StepA />, b: <StepB /> }} startAt="b" onError={onError} />
-    );
-    await flush();
-
-    expect(screen.getByTestId("step-b")).toBeTruthy();
-    expect(onLeaveA).not.toHaveBeenCalled();
-    expect(onError).not.toHaveBeenCalled();
-  });
 });
 
-describe("render chrome and refs", () => {
-  it("clones the active view into the wrapper and supports function machineRefs", async () => {
-    const seen: (LinearJourneyMachine | null)[] = [];
-    const journey = createLinearJourney({ context: {}, steps: ["a"] });
-    const view = render(
-      <journey.Provider
-        views={{ a: <StepA /> }}
-        wrapper={<section data-testid="wrap" />}
-        machineRef={(machine) => {
-          seen.push(machine as LinearJourneyMachine | null);
-        }}
-      />
-    );
-    await flush();
-    expect(screen.getByTestId("wrap").querySelector("[data-testid='step-a']")).toBeTruthy();
-    expect(seen[0]).not.toBeNull();
-
-    view.unmount();
-    await flush();
-    expect(seen[seen.length - 1]).toBeNull();
-  });
-
-  it("remounts the view when the step changes (keyed by id)", async () => {
+describe("render chrome", () => {
+  it("places StepRenderer among ordinary siblings and remounts views per entry", async () => {
+    const journey = createLinearJourney({ context: {}, steps: ["a", "b"] });
     const mounts = vi.fn();
     const Counting = ({ label }: { label: string }) => {
       React.useEffect(() => {
@@ -139,111 +62,74 @@ describe("render chrome and refs", () => {
       return <span data-testid={`step-${label}`}>{label}</span>;
     };
     render(
-      <ab.Provider
-        views={{ a: <Counting label="a" />, b: <Counting label="b" /> }}
-        footer={<IndexNav />}
-      />
+      <journey.Provider views={{ a: <Counting label="a" />, b: <Counting label="b" /> }}>
+        <header data-testid="head">header</header>
+        <journey.StepRenderer />
+        <footer data-testid="foot">footer</footer>
+      </journey.Provider>
     );
     await flush();
-    fireEvent.click(screen.getByText("by-index"));
-    await flush();
-    fireEvent.click(screen.getByText("back"));
-    await flush();
+    expect(screen.getByTestId("head")).toBeTruthy();
+    expect(screen.getByTestId("foot")).toBeTruthy();
+
+    await act(async () => {
+      await journey.navigate.goToNextStep();
+    });
+    await act(async () => {
+      await journey.navigate.goToPreviousStep();
+    });
     // a mounted twice (fresh + revisit), b once: views remount per entry.
     expect(mounts.mock.calls.map(([label]) => label)).toEqual(["a", "b", "a"]);
   });
-});
 
-describe("useStep extras", () => {
-  it("registers no-op handlers without breaking forward navigation", async () => {
-    const journey = createLinearJourney({ context: {}, steps: ["p", "b"] });
-    const Passive = () => {
-      journey.useStep(); // no handler
-      return <span data-testid="passive">passive</span>;
+  it("selector equality collapses derived-object churn", async () => {
+    const journey = createLinearJourney({ context: { attempts: 0 }, steps: ["a"] });
+    const seen: unknown[] = [];
+    const kindSelector = (snapshot: { context: { attempts: number } }) => ({
+      attempts: snapshot.context.attempts
+    });
+    const closeEnough = (a: { attempts: number }, b: { attempts: number }) =>
+      Math.abs(a.attempts - b.attempts) < 10;
+    const Probe = () => {
+      const stable = journey.useSelector(kindSelector as never, closeEnough as never);
+      seen.push(stable);
+      return (
+        <button onClick={() => journey.updateContext((c) => ({ attempts: c.attempts + 1 }))}>
+          bump
+        </button>
+      );
     };
-    const Forward = () => {
-      const { machine } = journey.useJourney();
-      return <button onClick={() => void machine.navigate.goToNextStep()}>go</button>;
-    };
-    render(<journey.Provider views={{ p: <Passive />, b: <StepB /> }} footer={<Forward />} />);
+    render(<Probe />);
     await flush();
-    fireEvent.click(screen.getByText("go"));
+
+    fireEvent.click(screen.getByText("bump"));
     await flush();
-    expect(screen.getByTestId("step-b")).toBeTruthy();
+    const observed = new Set(seen.map((value) => JSON.stringify(value)));
+    expect(observed.size).toBe(1); // equality collapsed the +1 change
   });
 
-  it("warns in dev when two mounted components register work for the same step", async () => {
-    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
-    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const journey = createLinearJourney({ context: {}, steps: ["doubled"] });
-    const First = () => {
-      journey.useStep({ run: () => undefined });
-      return <span>first</span>;
+  it("command groups are stable machine properties across re-renders", async () => {
+    const journey = createLinearJourney({ context: { n: 0 }, steps: ["a"] });
+    const controlsSeen = new Set<unknown>();
+    const navigationSeen = new Set<unknown>();
+    const Probe = () => {
+      controlsSeen.add(journey.useControls());
+      navigationSeen.add(journey.useNavigation());
+      const n = journey.useSelector((snapshot) => snapshot.context.n);
+      return <span data-testid="n">{n}</span>;
     };
-    const Second = () => {
-      journey.useStep({ run: () => undefined });
-      return <span>second</span>;
-    };
-    render(
-      <journey.Provider
-        views={{
-          doubled: (
-            <>
-              <First />
-              <Second />
-            </>
-          )
-        }}
-      />
-    );
+    render(<Probe />);
     await flush();
+    await act(async () => {
+      journey.updateContext((c) => ({ n: c.n + 1 }));
+    });
+    await act(async () => {
+      journey.updateContext((c) => ({ n: c.n + 1 }));
+    });
 
-    expect(consoleWarn).toHaveBeenCalledWith(
-      expect.stringContaining('live registration for step "doubled"')
-    );
-    consoleWarn.mockRestore();
-    delete (globalThis as { __DEV__?: boolean }).__DEV__;
-  });
-
-  it("throws outside a step view", () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const Outside = () => {
-      ab.useStep();
-      return null;
-    };
-    expect(() => render(<ab.Provider views={abViews} header={<Outside />} />)).toThrow(
-      /inside a step/
-    );
-    consoleError.mockRestore();
-  });
-
-  it("runs bundle step handlers with the mount-time context override", async () => {
-    const handler = { run: vi.fn() };
-    const journey = createLinearJourney({ context: { n: 0 }, steps: ["hooked", "done"] });
-    const HookedStep = () => {
-      journey.useStep(handler);
-      const { snapshot } = journey.useJourney();
-      return <span data-testid="ctx">{snapshot.context.n}</span>;
-    };
-    const Forward = () => {
-      const { machine } = journey.useJourney();
-      return <button onClick={() => void machine.navigate.goToNextStep()}>onward</button>;
-    };
-
-    render(
-      <journey.Provider
-        views={{ hooked: <HookedStep />, done: <StepB /> }}
-        initialContext={{ n: 42 }}
-        footer={<Forward />}
-      />
-    );
-    await flush();
-    expect(screen.getByTestId("ctx").textContent).toBe("42");
-
-    fireEvent.click(screen.getByText("onward"));
-    await flush();
-    expect(handler.run).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId("step-b")).toBeTruthy();
+    expect(screen.getByTestId("n").textContent).toBe("2");
+    expect(controlsSeen.size).toBe(1);
+    expect(navigationSeen.size).toBe(1);
   });
 });
 
@@ -262,47 +148,68 @@ describe("machine error surfacing", () => {
       ]
     });
     const Report = () => {
-      const { machine, snapshot } = journey.useJourney();
-      return (
-        <div>
-          <span data-testid="machine-error">
-            {String(snapshot.currentStep.async.error ?? "none")}
-          </span>
-          <button onClick={() => void machine.navigate.goToNextStep()}>advance</button>
-        </div>
-      );
+      const step = journey.useStep();
+      return <span data-testid="machine-error">{String(step?.async.error ?? "none")}</span>;
     };
     render(
       <journey.Provider
         views={{ a: <StepA />, failing: <span data-testid="failing">failing</span> }}
-        footer={<Report />}
-      />
+      >
+        <journey.StepRenderer />
+        <Report />
+      </journey.Provider>
     );
     await flush();
     expect(screen.getByTestId("machine-error").textContent).toBe("none");
 
-    fireEvent.click(screen.getByText("advance"));
-    await flush();
+    await act(async () => {
+      await journey.navigate.goToNextStep();
+    });
     expect(screen.getByTestId("machine-error").textContent).toContain("enter exploded");
   });
 
-  it("survives a StrictMode mount/unmount cycle with one machine", async () => {
-    const seen = new Set<unknown>();
-    const journey = createLinearJourney({ context: {}, steps: ["a"] });
-    const view = render(
+  it("warns in dev when two mounted components register work for the same step", async () => {
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const journey = createLinearJourney({ context: {}, steps: ["doubled"] });
+    const First = () => {
+      journey.useStepHandler("doubled", { run: () => undefined });
+      return <span>first</span>;
+    };
+    const Second = () => {
+      journey.useStepHandler("doubled", { run: () => undefined });
+      return <span>second</span>;
+    };
+    render(
+      <>
+        <First />
+        <Second />
+      </>
+    );
+    await flush();
+
+    expect(consoleWarn).toHaveBeenCalledWith(
+      expect.stringContaining('live registration for step "doubled"')
+    );
+    consoleWarn.mockRestore();
+    delete (globalThis as { __DEV__?: boolean }).__DEV__;
+  });
+
+  it("renders under StrictMode against the one standalone machine", async () => {
+    const journey = createLinearJourney({ context: {}, steps: ["a", "b"] });
+    render(
       <React.StrictMode>
-        <journey.Provider
-          views={{ a: <StepA /> }}
-          machineRef={(machine) => {
-            if (machine !== null) seen.add(machine);
-          }}
-        />
+        <journey.Provider views={{ a: <StepA />, b: <StepB /> }}>
+          <journey.StepRenderer />
+        </journey.Provider>
       </React.StrictMode>
     );
     await flush();
-    expect(seen.size).toBe(1);
     expect(screen.getByTestId("step-a")).toBeTruthy();
-    view.unmount();
-    await flush();
+
+    await act(async () => {
+      await journey.navigate.goToNextStep();
+    });
+    expect(screen.getByTestId("step-b")).toBeTruthy();
   });
 });

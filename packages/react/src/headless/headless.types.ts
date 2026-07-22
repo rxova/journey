@@ -47,3 +47,9 @@ export type StepIdOf<TMachine> =
 /** The context type of a machine, inferred from its snapshot. */
 export type ContextOf<TMachine> =
   SnapshotOf<TMachine> extends { context: infer TContext } ? TContext : never;
+
+/** The payload a machine delivers for one of its subscription events. */
+export type EventPayloadOf<
+  TMachine,
+  TEvent extends JourneySubscriptionEvent
+> = JourneyEventPayloads<ContextOf<TMachine>, StepIdOf<TMachine>, SnapshotOf<TMachine>>[TEvent];

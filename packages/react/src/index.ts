@@ -9,9 +9,16 @@ export type {
   LinearJourneySnapshot,
   LinearJourneyStepHandler,
   LinearJourneyViews,
-  LinearProviderProps,
-  UseLinearJourneyResult
+  LinearProviderProps
 } from "./linear/linear.types";
+
+export type {
+  AnyJourneyMachine,
+  ContextOf,
+  EventPayloadOf,
+  SnapshotOf,
+  StepIdOf
+} from "./headless/headless.types";
 
 export type {
   AnyJourneyPlugin,
