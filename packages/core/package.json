@@ -156,7 +156,7 @@
       "name": "core/createGraphJourney",
       "path": "dist/index.js",
       "import": "{ createGraphJourney }",
-      "limit": "5.5 kB"
+      "limit": "5.75 kB"
     },
     {
       "name": "core/createGraphJourneyBuilder",

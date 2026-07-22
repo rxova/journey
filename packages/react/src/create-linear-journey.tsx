@@ -78,8 +78,14 @@ export const createLinearJourney = <
     );
   }
 
+  // The one boundary cast in this factory: core anchors its step-id union on
+  // the definition generic, while this tier re-anchors inference on the steps
+  // tuple (`LinearStepIdOf<TSteps>`) so `context` alone types the bundle. The
+  // two derivations name the same union, but TypeScript cannot prove it
+  // through the generic call, so core infers `string` and the result is
+  // re-branded here.
   const machine = coreCreateLinearJourney(
-    { steps: definition.steps as never, context: definition.context as unknown },
+    { steps: definition.steps, context: definition.context },
     { ...options, autoStart: options?.autoStart ?? true }
   ) as unknown as Machine;
 
@@ -101,7 +107,7 @@ export const createLinearJourney = <
           run: (args) => handlerRef.current.run(args),
           commit: (args) => handlerRef.current.commit?.(args)
         };
-        return machine.navigate.registerNextStepInterceptor(stepId, work as never);
+        return machine.navigate.registerNextStepInterceptor(stepId, work);
       }, [stepId]);
     },
     navigate: machine.navigate

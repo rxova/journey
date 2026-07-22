@@ -146,6 +146,8 @@ export const createJourneyBindings = <
       useSafeLayoutEffect(
         () =>
           runtime.subscriptions.subscribeEvent(event, (payload) =>
+            // Correlated-union cast: TypeScript cannot connect the generic
+            // event name to its payload through the ref indirection.
             listenerRef.current(payload as never)
           ),
         [event]

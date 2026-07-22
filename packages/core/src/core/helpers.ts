@@ -30,3 +30,13 @@ export const LOADING_ASYNC: StepAsyncState = Object.freeze({
 export function reportListenerError(error: unknown): void {
   console.error("[journey] subscriber threw:", error);
 }
+
+/** Object.is over own enumerable keys — for flat snapshot sub-objects. */
+export const shallowEqual = (
+  a: Readonly<Record<string, unknown>>,
+  b: Readonly<Record<string, unknown>>
+): boolean => {
+  const keys = Object.keys(a);
+  if (keys.length !== Object.keys(b).length) return false;
+  return keys.every((key) => Object.is(a[key], b[key]));
+};
