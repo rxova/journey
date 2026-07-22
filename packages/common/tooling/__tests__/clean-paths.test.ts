@@ -11,8 +11,11 @@ const tsxLoaderPath = resolve(__dirname, "../../../../node_modules/tsx/dist/load
 
 const execNode = (args: string[]): { stdout: string; stderr: string; status: number } => {
   try {
+    // `stdio: "pipe"` is explicit: execFileSync otherwise forwards the child's
+    // stderr to the parent, leaking the CLI's usage message into the test run.
     const stdout = execFileSync(process.execPath, ["--import", tsxLoaderPath, ...args], {
-      encoding: "utf8"
+      encoding: "utf8",
+      stdio: "pipe"
     });
     return { stdout, stderr: "", status: 0 };
   } catch (err: unknown) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isPlainObject, isPromiseLike, isRecord } from "./predicates";
+import { isPlainObject, isRecord } from "@rxova/journey-common/predicates";
 
 describe("isRecord", () => {
   it("returns true for plain objects", () => {
@@ -52,25 +52,8 @@ describe("isPlainObject", () => {
     expect(isPlainObject("string")).toBe(false);
     expect(isPlainObject(42)).toBe(false);
   });
-});
 
-describe("isPromiseLike", () => {
-  it("returns true for a native Promise", () => {
-    expect(isPromiseLike(Promise.resolve(1))).toBe(true);
-  });
-
-  it("returns true for a thenable object", () => {
-    expect(isPromiseLike({ then: () => {} })).toBe(true);
-  });
-
-  it("returns false for objects without then", () => {
-    expect(isPromiseLike({ then: "not-a-function" })).toBe(false);
-    expect(isPromiseLike({})).toBe(false);
-  });
-
-  it("returns false for primitives and null", () => {
-    expect(isPromiseLike(null)).toBe(false);
-    expect(isPromiseLike(42)).toBe(false);
-    expect(isPromiseLike("string")).toBe(false);
+  it("returns false for functions", () => {
+    expect(isPlainObject(() => {})).toBe(false);
   });
 });

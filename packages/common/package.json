@@ -12,16 +12,16 @@
     ".": "./src/index.ts",
     "./predicates": "./src/predicates.ts",
     "./serialization": "./src/serialization.ts",
-    "./async": "./src/async.ts",
     "./bindings": "./src/bindings.ts",
     "./dev": "./src/dev.ts",
-    "./origin": "./src/origin.ts",
-    "./memoize": "./src/memoize.ts"
+    "./origin": "./src/origin.ts"
   },
   "sideEffects": false,
   "scripts": {
     "build": "pnpm run clean && tsc -p tsconfig.build.json",
     "clean": "node -e \"import('node:fs').then(({rmSync}) => { rmSync('dist', {recursive:true, force:true}); rmSync('tsconfig.build.tsbuildinfo', {force:true}); })\"",
+    "coverage": "JOURNEY_COVERAGE_INCLUDE=packages/common/src/** JOURNEY_COVERAGE_DIR=coverage/common pnpm --workspace-root vitest run packages/common/src --coverage --coverage.reporter=text-summary",
+    "test": "pnpm --workspace-root vitest run packages/common --coverage.enabled=false",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   }
 }

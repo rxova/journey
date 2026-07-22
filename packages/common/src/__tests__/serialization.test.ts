@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { cloneForTransport, serializeError, serializeTransportError } from "./serialization";
+import {
+  cloneForTransport,
+  serializeError,
+  serializeTransportError
+} from "@rxova/journey-common/serialization";
 
 describe("cloneForTransport", () => {
   it("preserves nested Error details", () => {
@@ -66,6 +70,67 @@ describe("cloneForTransport", () => {
     expect(result.self).toBe("[Circular]");
   });
 
+  it("replaces a cycle that closes through several levels", () => {
+    const root: Record<string, unknown> = { name: "root" };
+    root.child = { grandchild: { backToRoot: root } };
+
+    const result = cloneForTransport(root) as {
+      child: { grandchild: { backToRoot: unknown } };
+    };
+    expect(result.child.grandchild.backToRoot).toBe("[Circular]");
+  });
+
+  it("clones a value referenced twice from sibling keys rather than calling it circular", () => {
+    const shared = { id: 1 };
+
+    // A diamond is not a cycle: `b` is perfectly serializable and blanking it
+    // out would silently lose data at the far end of the transport.
+    expect(cloneForTransport({ a: shared, b: shared })).toEqual({
+      a: { id: 1 },
+      b: { id: 1 }
+    });
+  });
+
+  it("clones a value repeated in an array rather than calling it circular", () => {
+    const shared = { id: 1 };
+    expect(cloneForTransport([shared, shared, shared])).toEqual([{ id: 1 }, { id: 1 }, { id: 1 }]);
+  });
+
+  it("clones a value referenced at two different depths", () => {
+    const shared = { id: 1 };
+    expect(cloneForTransport({ deep: { nested: shared }, shallow: shared })).toEqual({
+      deep: { nested: { id: 1 } },
+      shallow: { id: 1 }
+    });
+  });
+
+  it("keeps a nested Error's null stack and absent cause as null", () => {
+    const error = new Error("nested stackless");
+    delete error.stack;
+
+    expect(cloneForTransport({ error })).toEqual({
+      error: { name: "Error", message: "nested stackless", stack: null, cause: null }
+    });
+  });
+
+  it("normalizes a nested Error's explicitly undefined cause to null", () => {
+    // `new Error(msg, { cause: undefined })` installs the property, so the
+    // presence check passes and the coalesce is what produces the null.
+    const error = Object.assign(new Error("undefined cause"), { cause: undefined });
+
+    expect(cloneForTransport({ error })).toMatchObject({
+      error: { message: "undefined cause", cause: null }
+    });
+  });
+
+  it("replaces an Error that causes itself", () => {
+    const error: Error & { cause?: unknown } = new Error("self-caused");
+    error.cause = error;
+
+    const result = cloneForTransport({ error }) as { error: { cause: unknown } };
+    expect(result.error.cause).toBe("[Circular]");
+  });
+
   it("returns undefined for undefined input", () => {
     expect(cloneForTransport(undefined)).toBe(undefined);
   });
@@ -78,6 +143,17 @@ describe("cloneForTransport", () => {
       toString: () => "fallback value"
     };
     expect(cloneForTransport(value)).toBe("fallback value");
+  });
+
+  it("falls back to a placeholder when even String() throws", () => {
+    // A null-prototype bag has no `toString`, so the last-resort conversion
+    // throws too. The helper still has to return something.
+    const value: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+    value.toJSON = () => {
+      throw new Error("cannot serialize");
+    };
+
+    expect(cloneForTransport(value)).toBe("[Unserializable]");
   });
 
   it("serializes without structuredClone when it is unavailable", () => {
@@ -155,6 +231,24 @@ describe("serializeTransportError", () => {
 
   it("normalizes an explicitly undefined record cause", () => {
     expect(serializeTransportError({ message: "failed", cause: undefined }).cause).toBeNull();
+  });
+
+  it("sanitizes a record cause so the result can cross another boundary", () => {
+    const result = serializeTransportError({
+      message: "failed",
+      cause: { retry: function retry() {}, size: BigInt(7) }
+    });
+
+    expect(result.cause).toEqual({ retry: "[Function retry]", size: "7" });
+  });
+
+  it("sanitizes a circular record cause", () => {
+    const cause: Record<string, unknown> = { code: 42 };
+    cause.self = cause;
+
+    const result = serializeTransportError({ message: "failed", cause });
+    expect(result.cause).toEqual({ code: 42, self: "[Circular]" });
+    expect(result.cause).not.toBe(cause);
   });
 
   it("falls back to Unknown transport error for records without message", () => {

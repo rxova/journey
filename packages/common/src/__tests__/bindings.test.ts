@@ -1,20 +1,35 @@
 import { describe, expect, it, vi } from "vitest";
-import { createSelectorCache, createSnapshotSource, type JourneyReadable } from "./bindings";
+import {
+  createSelectorCache,
+  createSnapshotSource,
+  type JourneyReadable
+} from "@rxova/journey-common/bindings";
 
 type Snap = { n: number; slice: { id: string } };
 
-/** A machine stub that reports how many core subscriptions are actually open. */
+/**
+ * A machine stub that reports how many core subscriptions are actually open.
+ *
+ * It runs the selector it is handed and passes the result to the listener,
+ * exactly as core does. A stub that ignored the selector would never execute
+ * the identity selector the source registers, leaving that path untested.
+ */
 const makeMachine = (initial: Snap = { n: 0, slice: { id: "a" } }) => {
   let snapshot = initial;
   const notifiers = new Set<() => void>();
+  const selected: unknown[] = [];
   let subscribeCalls = 0;
 
   const machine: JourneyReadable<Snap> = {
     getSnapshot: () => snapshot,
     subscriptions: {
-      subscribeSelector: (_selector, listener) => {
+      subscribeSelector: (selector, listener) => {
         subscribeCalls += 1;
-        const notify = () => listener(undefined);
+        const notify = () => {
+          const value = selector(snapshot);
+          selected.push(value);
+          listener(value);
+        };
         notifiers.add(notify);
         return () => notifiers.delete(notify);
       }
@@ -26,6 +41,10 @@ const makeMachine = (initial: Snap = { n: 0, slice: { id: "a" } }) => {
     publish: (next?: Snap) => {
       snapshot = next ?? { ...snapshot, n: snapshot.n + 1 };
       for (const notify of [...notifiers]) notify();
+    },
+    /** Every value the registered selector produced, in publish order. */
+    get selectedValues() {
+      return selected;
     },
     get subscribeCalls() {
       return subscribeCalls;
@@ -128,6 +147,33 @@ describe("createSnapshotSource", () => {
     expect(source.getSnapshot().n).toBe(0);
     host.publish();
     expect(source.getSnapshot().n).toBe(1);
+  });
+
+  it("subscribes with an identity selector so every snapshot change fans out", () => {
+    const host = makeMachine();
+    const source = createSnapshotSource(host.machine);
+    source.subscribe(vi.fn());
+
+    host.publish({ n: 9, slice: { id: "z" } });
+
+    // An identity selector means core compares whole snapshots and the source
+    // sees every change; a narrower selector would silently drop updates the
+    // wrapper's own selectors still care about.
+    expect(host.selectedValues).toEqual([{ n: 9, slice: { id: "z" } }]);
+    expect(host.selectedValues[0]).toBe(source.getSnapshot());
+  });
+
+  it("does not notify a listener released before the publish", () => {
+    const host = makeMachine();
+    const source = createSnapshotSource(host.machine);
+    const stay = vi.fn();
+    const gone = vi.fn();
+    source.subscribe(stay);
+    source.subscribe(gone)();
+
+    host.publish();
+    expect(stay).toHaveBeenCalledOnce();
+    expect(gone).not.toHaveBeenCalled();
   });
 });
 
