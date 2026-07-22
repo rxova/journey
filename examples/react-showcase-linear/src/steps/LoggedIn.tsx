@@ -4,7 +4,8 @@ import React from "react";
 import { loginJourney } from "../journey";
 
 export const LoggedIn = () => {
-  const { machine, snapshot } = loginJourney.useJourney();
+  const snapshot = loginJourney.useSnapshot();
+  const controls = loginJourney.useControls();
   const context = snapshot.context;
   const status = snapshot.status;
   const isSettled = !snapshot.transition.pending;
@@ -20,11 +21,11 @@ export const LoggedIn = () => {
       return;
     }
     if (isBlocked) {
-      machine.controls.terminate();
+      controls.terminate();
     } else {
-      machine.controls.complete();
+      controls.complete();
     }
-  }, [status, isSettled, isBlocked, machine]);
+  }, [status, isSettled, isBlocked, controls]);
 
   return (
     <div className="step">
@@ -44,7 +45,7 @@ export const LoggedIn = () => {
         )}
       </div>
       <div className="actions" style={{ justifyContent: "center" }}>
-        <button className="secondary" onClick={() => machine.controls.restart()}>
+        <button className="secondary" onClick={() => controls.restart()}>
           Start Over
         </button>
       </div>

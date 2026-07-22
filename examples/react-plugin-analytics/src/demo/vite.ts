@@ -49,10 +49,6 @@ export const createExampleViteConfig = ({ reactApp = false }: { reactApp?: boole
           replacement: workspacePath("packages/core/src/index.ts")
         },
         {
-          find: "@rxova/journey-react/headless",
-          replacement: workspacePath("packages/react/src/headless/headless.ts")
-        },
-        {
           find: "@rxova/journey-react/graph",
           replacement: workspacePath("packages/react/src/graph/graph.tsx")
         },

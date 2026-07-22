@@ -1,19 +1,17 @@
 "use client";
 
 import React from "react";
-import { useJourneyEvent } from "@rxova/journey-react/headless";
 
 import { loginJourney } from "../journey";
 
 const EventLog = () => {
-  const { machine } = loginJourney.useJourney();
   const [events, setEvents] = React.useState<string[]>([]);
 
   const log = (entry: string) =>
     setEvents((prev) => [...prev.slice(-19), `${new Date().toLocaleTimeString()} ${entry}`]);
 
-  useJourneyEvent(machine, "stepEnter", ({ to }) => log(`stepEnter → ${to}`));
-  useJourneyEvent(machine, "statusChange", ({ current }) => {
+  loginJourney.useSubscribeEvent("stepEnter", ({ to }) => log(`stepEnter → ${to}`));
+  loginJourney.useSubscribeEvent("statusChange", ({ current }) => {
     // A restart resets the journey; start the log fresh with it.
     if (current === "running") {
       setEvents([]);
@@ -35,8 +33,8 @@ const EventLog = () => {
 };
 
 const ProgressBar = () => {
-  const { snapshot } = loginJourney.useJourney();
-  const index = snapshot.currentStep.index;
+  const snapshot = loginJourney.useSnapshot();
+  const index = snapshot.currentStep?.index ?? 0;
   const stepCount = snapshot.steps.totalSteps;
   const pct = stepCount > 1 ? (index / (stepCount - 1)) * 100 : 0;
 
@@ -48,7 +46,7 @@ const ProgressBar = () => {
 };
 
 export const Shell = ({ children }: { children?: React.ReactNode }) => {
-  const { snapshot } = loginJourney.useJourney();
+  const snapshot = loginJourney.useSnapshot();
   const currentStep = snapshot.currentStep;
 
   return (
@@ -67,9 +65,9 @@ export const Shell = ({ children }: { children?: React.ReactNode }) => {
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.75rem" }}>
           <span className={`status status-${snapshot.status}`}>{snapshot.status}</span>
           <span style={{ fontSize: "0.8rem", color: "#888" }}>
-            Step {currentStep.index + 1} of {snapshot.steps.totalSteps}
-            {currentStep.isFirstStep && " (first)"}
-            {currentStep.isLastStep && " (last)"}
+            Step {(currentStep?.index ?? 0) + 1} of {snapshot.steps.totalSteps}
+            {currentStep?.isFirstStep && " (first)"}
+            {currentStep?.isLastStep && " (last)"}
           </span>
         </div>
 

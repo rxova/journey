@@ -7,7 +7,6 @@ import { createDiagnosticsPlugin } from "@rxova/journey-core/diagnostics";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
 import { createPersistencePlugin } from "@rxova/journey-core/persistence";
 import { createReplayPlugin } from "@rxova/journey-core/replay";
-import { useJourneyEvent, useJourneySnapshot } from "@rxova/journey-react/headless";
 import {
   pluginStorageKey,
   pluginTitles,
@@ -16,7 +15,45 @@ import {
   type PluginStepId
 } from "../fixtures/plugin-fixtures";
 import { createLogStore, createStoragePreview, formatJson } from "../fixtures/support";
+import type { AnyJourneyMachine, EventPayloadOf, SnapshotOf } from "@rxova/journey-react";
+import type { JourneySubscriptionEvent } from "@rxova/journey-core";
 import "../styles/demo.css";
+
+// Machine-argument bridges over React's own primitives — all a caller-owned
+// core machine needs (the headless hook package is gone by design).
+const useJourneySnapshot = <TMachine extends AnyJourneyMachine>(
+  machine: TMachine
+): SnapshotOf<TMachine> => {
+  const subscribe = React.useCallback(
+    (onStoreChange: () => void) =>
+      machine.subscriptions.subscribeSelector((snapshot) => snapshot, onStoreChange),
+    [machine]
+  );
+  const getSnapshot = React.useCallback(
+    () => machine.getSnapshot() as SnapshotOf<TMachine>,
+    [machine]
+  );
+  return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+};
+
+const useJourneyEvent = <
+  TMachine extends AnyJourneyMachine,
+  TEvent extends JourneySubscriptionEvent
+>(
+  machine: TMachine,
+  event: TEvent,
+  listener: (payload: EventPayloadOf<TMachine, TEvent>) => void
+): void => {
+  const listenerRef = React.useRef(listener);
+  listenerRef.current = listener;
+  React.useEffect(
+    () =>
+      machine.subscriptions.subscribeEvent(event, (payload) =>
+        listenerRef.current(payload as EventPayloadOf<TMachine, TEvent>)
+      ),
+    [machine, event]
+  );
+};
 
 type PluginEvent = { type: "next" };
 type AnalyticsEvent = { name: string; payload: unknown };
