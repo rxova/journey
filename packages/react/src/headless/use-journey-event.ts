@@ -1,8 +1,7 @@
 import React from "react";
+import { useSafeLayoutEffect } from "./use-safe-layout-effect";
 import type { JourneyEventPayloads, JourneySubscriptionEvent } from "@rxova/journey-core";
 import type { AnyJourneyMachine, ContextOf, SnapshotOf, StepIdOf } from "./headless.types";
-
-const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
 
 /** The payload a machine delivers for one of its subscription events. */
 export type EventPayloadOf<

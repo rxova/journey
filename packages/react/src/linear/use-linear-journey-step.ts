@@ -1,8 +1,7 @@
 import React from "react";
+import { useSafeLayoutEffect } from "../headless/use-safe-layout-effect";
 import { LinearJourneyActiveStepContext } from "./active-step-context";
 import type { LinearJourneyMachine, LinearJourneyStepHandler } from "./linear.types";
-
-const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
 
 /**
  * Implementation behind every bundle's `journey.useStep()` — registers

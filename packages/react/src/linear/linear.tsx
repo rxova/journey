@@ -2,6 +2,8 @@ import React from "react";
 import { createLinearJourney as coreCreateLinearJourney } from "@rxova/journey-core";
 import { errorInDevelopment } from "@rxova/journey-common/dev";
 import { useJourneySnapshot } from "../headless/use-journey-snapshot";
+import { useOwnedJourney } from "../headless/use-owned-journey";
+import { useSafeLayoutEffect } from "../headless/use-safe-layout-effect";
 import { LinearJourneyActiveStepContext } from "./active-step-context";
 import type {
   LinearJourneyBundleDefinition,
@@ -10,8 +12,6 @@ import type {
   LinearJourneyViews,
   LinearProviderProps
 } from "./linear.types";
-
-const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
 
 const assignMachineRef = <TContext, TStepId extends string>(
   ref: LinearProviderProps<TContext, TStepId>["machineRef"],
@@ -104,14 +104,13 @@ export const LinearJourneyProvider = <TContext, TStepId extends string>(
   const callbacksRef = React.useRef({ onStart, onStepEnter, onStepLeave, onComplete, onError });
   callbacksRef.current = { onStart, onStepEnter, onStepLeave, onComplete, onError };
 
-  // Machine ownership: lazy ref init so StrictMode's double render creates
-  // exactly one machine, fixed for the lifetime of the mount. Options and the
-  // initialContext/startAt overrides are frozen at mount.
-  const machineRefInternal = React.useRef<LinearJourneyMachine<TContext, TStepId> | null>(null);
+  // Machine ownership: useOwnedJourney runs the factory once (StrictMode-safe)
+  // and disposes on real unmount. Options and the initialContext/startAt
+  // overrides are frozen at mount because the factory only runs then.
   const autoStartRef = React.useRef(runtimeOptions?.autoStart ?? true);
-  if (machineRefInternal.current === null) {
+  const machine = useOwnedJourney(() => {
     const resolvedStartAt = startAt ?? runtimeOptions?.startAt;
-    machineRefInternal.current = coreCreateLinearJourney(
+    return coreCreateLinearJourney(
       {
         steps: definition.steps as never,
         context: (initialContext ?? definition.context) as unknown
@@ -122,25 +121,7 @@ export const LinearJourneyProvider = <TContext, TStepId extends string>(
         ...(resolvedStartAt !== undefined ? { startAt: resolvedStartAt } : {})
       }
     ) as unknown as LinearJourneyMachine<TContext, TStepId>;
-  }
-  const machine = machineRefInternal.current;
-
-  // Dispose on real unmount; a StrictMode remount cancels the scheduled
-  // disposal so the live machine is preserved.
-  const scheduledDisposeRef = React.useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
-  useSafeLayoutEffect(() => {
-    if (scheduledDisposeRef.current !== null) {
-      globalThis.clearTimeout(scheduledDisposeRef.current);
-      scheduledDisposeRef.current = null;
-    }
-    return () => {
-      scheduledDisposeRef.current = globalThis.setTimeout(() => {
-        scheduledDisposeRef.current = null;
-        machineRefInternal.current?.dispose();
-        machineRefInternal.current = null;
-      }, 0);
-    };
-  }, []);
+  });
 
   // Imperative machineRef, verbatim event → prop forwarding, and the start.
   const startReportedRef = React.useRef(false);

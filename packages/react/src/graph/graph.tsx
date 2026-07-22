@@ -4,7 +4,9 @@ import { useJourneyEvent } from "../headless/use-journey-event";
 import { useJourneySelector } from "../headless/use-journey-selector";
 import { useJourneySnapshot } from "../headless/use-journey-snapshot";
 import { useJourneyStepLifecycle } from "../headless/use-journey-step-lifecycle";
+import { useOwnedJourney } from "../headless/use-owned-journey";
 import { useStepAsyncState } from "../headless/use-step-async-state";
+import { useSafeLayoutEffect } from "../headless/use-safe-layout-effect";
 import type { AnyJourneyMachine } from "../headless/headless.types";
 import type {
   AnyJourneyPlugin,
@@ -18,8 +20,6 @@ import type {
 import type { GraphJourneyBundle, GraphProviderProps } from "./graph.types";
 
 export type { GraphJourneyBundle, GraphProviderProps } from "./graph.types";
-
-const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
 
 /**
  * Creates a graph journey bundle for React. **No machine is created at module
@@ -94,39 +94,22 @@ export function createGraphJourney<
     const onErrorRef = React.useRef(onError);
     onErrorRef.current = onError;
 
-    // Machine per mount: lazy ref init (StrictMode-safe single creation),
-    // scheduled dispose cancelled by a StrictMode remount. `autoStart` is a
-    // creation option, so the first snapshot already has the initial step.
-    const machineInternalRef = React.useRef<Machine | null>(null);
-    if (machineInternalRef.current === null) {
+    // Machine per mount: useOwnedJourney runs the factory once (StrictMode-safe)
+    // and disposes on real unmount. `autoStart` is a creation option, so the
+    // first snapshot already has the initial step.
+    const machine = useOwnedJourney(() => {
       const mergedDefinition =
         contextOverride === undefined
           ? definition
           : { ...definition, context: { ...definition.context, ...contextOverride } };
-      machineInternalRef.current = coreCreateGraphJourney(
+      return coreCreateGraphJourney(
         mergedDefinition as never,
         {
           ...options,
           autoStart
         } as never
       ) as unknown as Machine;
-    }
-    const machine = machineInternalRef.current;
-
-    const scheduledDisposeRef = React.useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
-    useSafeLayoutEffect(() => {
-      if (scheduledDisposeRef.current !== null) {
-        globalThis.clearTimeout(scheduledDisposeRef.current);
-        scheduledDisposeRef.current = null;
-      }
-      return () => {
-        scheduledDisposeRef.current = globalThis.setTimeout(() => {
-          scheduledDisposeRef.current = null;
-          machineInternalRef.current?.dispose();
-          machineInternalRef.current = null;
-        }, 0);
-      };
-    }, []);
+    });
 
     useSafeLayoutEffect(() => {
       if (typeof machineRef === "function") {

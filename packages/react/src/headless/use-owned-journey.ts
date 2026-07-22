@@ -1,6 +1,5 @@
 import React from "react";
-
-const useSafeLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
+import { useSafeLayoutEffect } from "./use-safe-layout-effect";
 
 /**
  * Owns a journey machine (or any disposable runtime) for the lifetime of the
