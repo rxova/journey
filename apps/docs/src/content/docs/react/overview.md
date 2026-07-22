@@ -10,14 +10,15 @@ the same immutable snapshots and invoke the same command groups as any other Cor
 
 The package has three surfaces because ownership and authoring style differ across applications.
 
-| Surface        | Import                          | Machine ownership                     | Best fit                               |
-| -------------- | ------------------------------- | ------------------------------------- | -------------------------------------- |
-| Linear bundle  | `@rxova/journey-react`          | Each bundle Provider owns one machine | Ordinary ordered wizards               |
-| Graph bundle   | `@rxova/journey-react/graph`    | Each bundle Provider owns one machine | Branching event-driven flows           |
-| Headless hooks | `@rxova/journey-react/headless` | The caller supplies a Core machine    | Existing machines and custom rendering |
+| Surface        | Import                          | Machine ownership                       | Best fit                               |
+| -------------- | ------------------------------- | --------------------------------------- | -------------------------------------- |
+| Linear bundle  | `@rxova/journey-react`          | Each bundle Provider owns one machine   | Ordinary ordered wizards               |
+| Graph bundle   | `@rxova/journey-react/graph`    | The factory owns one standalone machine | Branching event-driven flows           |
+| Headless hooks | `@rxova/journey-react/headless` | The caller supplies a Core machine      | Existing machines and custom rendering |
 
-The linear and graph tiers share one factory shape: capture a definition once, get a bundle of
-Provider and typed hooks back, and let each Provider mount own one machine.
+The linear and graph tiers both render from a typed `views` record, but ownership differs
+deliberately: linear is React-owned (a machine per Provider mount, disposed on unmount), graph is
+machine-first (one standalone machine created by the factory, usable outside React).
 
 ## Linear journey bundles
 
@@ -137,8 +138,9 @@ instances. When a journey outgrows the linear tier, hand the same definition obj
 
 ## Graph journey bundles
 
-Graph definitions stay in Core. The React graph factory captures a definition and returns a bundle
-of Provider, renderer, and namespaced hooks:
+Graph definitions stay in Core. The React graph factory captures a definition, creates **one
+standalone machine** right in the factory, and returns a bundle of that machine, a Provider, a
+renderer, and namespaced hooks:
 
 ```tsx
 import { createGraphJourney } from "@rxova/journey-react/graph";
@@ -148,24 +150,14 @@ const checkout = createGraphJourney(checkoutDefinition, {
   plugins: [createReplayPlugin()] as const
 });
 
-const views = {
-  cart: CartStep,
-  shipping: ShippingStep,
-  payment: PaymentStep,
-  done: DoneStep
-};
-
 function CheckoutControls() {
-  const snapshot = checkout.useSnapshot();
-  const api = checkout.useApi();
-
-  const canContinue = snapshot.availableEvents.includes("continue");
+  const canContinue = checkout.useSelector((snapshot) =>
+    snapshot.availableEvents.includes("continue")
+  );
+  const isLoading = checkout.useSelector((snapshot) => snapshot.machine.isLoading);
 
   return (
-    <button
-      disabled={!canContinue || snapshot.machine.isLoading}
-      onClick={() => void api.send("continue")}
-    >
+    <button disabled={!canContinue || isLoading} onClick={() => void checkout.send("continue")}>
       Continue
     </button>
   );
@@ -173,7 +165,15 @@ function CheckoutControls() {
 
 export function Checkout() {
   return (
-    <checkout.Provider views={views}>
+    <checkout.Provider
+      views={{
+        cart: <CartStep />,
+        shipping: <ShippingStep />,
+        payment: <PaymentStep />,
+        done: <DoneStep />
+      }}
+    >
+      <ProgressHeader />
       <checkout.StepRenderer fallback={<p>No view for this step.</p>} />
       <CheckoutControls />
     </checkout.Provider>
@@ -181,42 +181,35 @@ export function Checkout() {
 }
 ```
 
-No machine is created at module scope. Each Provider mount owns an independent machine with its own
-context, history, plugin instances, subscriptions, and lifecycle. It starts automatically by default
-and is disposed when the Provider unmounts. This makes rendering the same bundle twice safe.
+The machine outlives any component: every hook closes over it and works with or without the
+Provider, and non-React code drives the same machine via `checkout.machine`, `checkout.send(...)`,
+and `checkout.updateContext(...)` (verbatim delegates). The Provider carries only `views` and
+`children`—`GraphJourneyViews<TStepId>` follows the same contract as the linear tier: keyed by
+step ID, exhaustively type-checked, element values. `<checkout.StepRenderer />` is the only piece
+that must render inside the Provider, and its placement is the point: headers, controls, and
+footers are ordinary siblings around it. `autoStart` defaults to `true` in the factory options
+(the React-tier default over core's `false`); with `{ autoStart: false }`, `StepRenderer` shows
+its `fallback` until `checkout.machine.controls.start()`.
 
 Graph bundle hooks are:
 
-- `useSnapshot()` for the full typed graph snapshot;
-- `useSelector(selector, equalityFn?)` for a narrow subscription;
-- `useApi()` for `controls`, `navigate`, typed `send`, and `updateContext`;
-- `useStepAsyncState(stepId)` for entry async state;
-- `useEvent(event, listener)` for exact Core observation payloads;
-- `useStepLifecycle(stepId, callbacks)` for step-specific enter/leave observation;
-- `useMachine()` for integration code that needs the owned machine.
+- reactive: `useSnapshot()` for the full typed graph snapshot; `useSelector(selector, equalityFn?)`
+  for a narrow subscription; `useStep()` for the whole current step—ID, metadata, async state—or
+  `null` while idle; `useContext()` for the context value; `useSubscribeEvent(event, listener)`
+  for exact Core observation payloads;
+- stable accessors: `useMachine()`, `useControls()`, and `useNavigation()` for the machine and its
+  command groups, verbatim.
 
-All graph bundle hooks must run under that bundle's Provider. A hook from one bundle cannot consume a
-different bundle's Provider.
+None of them needs a Provider; each bundle's hooks always read that bundle's machine.
 
-### Per-mount configuration
+### One machine, explicit resets
 
-The Provider accepts a shallow context override, `autoStart`, startup error handling, and a
-`machineRef`:
-
-```tsx
-<checkout.Provider
-  views={views}
-  context={{ cartId: props.cartId }}
-  autoStart
-  onError={(error, { phase }) => report(error, phase)}
-  machineRef={setMachine}
->
-  <checkout.StepRenderer />
-</checkout.Provider>
-```
-
-Use `machineRef` as an integration escape hatch, not as component state. Ordinary rendering should
-stay on bundle hooks so React receives snapshot updates correctly.
+All Providers and hooks of a bundle share the one machine, so rendering the same bundle twice
+shows the same journey, and state survives remounts. Reset is explicit: call
+`checkout.machine.controls.restart()` from a terminal status (`terminate()` first when
+mid-flight). In SSR the module-scope machine is shared across requests. When you need per-mount or
+per-request isolation for a graph, that is the headless tier's job: `useOwnedJourney` with core's
+`createGraphJourney`.
 
 ## Headless machine-argument hooks
 

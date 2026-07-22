@@ -143,29 +143,19 @@ import { checkoutDefinition } from "./checkout-definition";
 
 const checkout = createGraphJourney(checkoutDefinition);
 
-const views = {
-  cart: Cart,
-  shipping: Shipping,
-  payment: Payment,
-  done: Done
-};
-
 function GraphControls() {
-  const snapshot = checkout.useSnapshot();
-  const api = checkout.useApi();
+  const navigate = checkout.useNavigation();
+  const canGoBack = checkout.useSelector((snapshot) => snapshot.history.canGoBack);
+  const canContinue = checkout.useSelector((snapshot) =>
+    snapshot.availableEvents.includes("continue")
+  );
 
   return (
     <nav>
-      <button
-        disabled={!snapshot.history.canGoBack}
-        onClick={() => void api.navigate.goToPreviousStep()}
-      >
+      <button disabled={!canGoBack} onClick={() => void navigate.goToPreviousStep()}>
         Back
       </button>
-      <button
-        disabled={!snapshot.availableEvents.includes("continue")}
-        onClick={() => void api.send("continue")}
-      >
+      <button disabled={!canContinue} onClick={() => void checkout.send("continue")}>
         Continue
       </button>
     </nav>
@@ -174,7 +164,14 @@ function GraphControls() {
 
 export function Checkout() {
   return (
-    <checkout.Provider views={views}>
+    <checkout.Provider
+      views={{
+        cart: <Cart />,
+        shipping: <Shipping />,
+        payment: <Payment />,
+        done: <Done />
+      }}
+    >
       <checkout.StepRenderer fallback={<p>Unknown step</p>} />
       <GraphControls />
     </checkout.Provider>
@@ -182,9 +179,14 @@ export function Checkout() {
 }
 ```
 
-Both factories share one shape: capture a definition, get a bundle back, and let each Provider
-mount own one machine. A second Provider creates a separate machine; the two do not share context
-or history.
+Both tiers render from a typed `views` record, but ownership differs deliberately. The graph
+factory creates **one standalone machine** right there at module scope: every bundle hook closes
+over it and works with or without the Provider, and non-React code drives the same machine via
+`checkout.machine`, `checkout.send(...)`, and `checkout.updateContext(...)`. The Provider only
+hands `views` to `<checkout.StepRenderer />`, which is the one piece that must render inside it—
+place it among ordinary siblings like headers and controls. Because the machine is standalone,
+state survives remounts; reset is explicit via `checkout.machine.controls.restart()` from a
+terminal status.
 
 ## Render an existing machine
 

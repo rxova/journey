@@ -92,21 +92,26 @@ The result type from `run` flows into `commit.result`. When the handler is writt
 
 - `createGraphJourney`
 - `GraphJourneyBundle`
+- `GraphJourneyViews`
 - `GraphProviderProps`
 
 The factory infers context, step IDs, event objects, handlers, metadata, and the plugin tuple from the
-Core definition and options.
+Core definition and options; the factory creates the bundle's standalone machine, and every hook
+and delegate is pre-bound to those inferred types.
 
 ```ts
 const checkout = createGraphJourney(definition, {
   plugins: [createReplayPlugin()] as const
 });
 
-const api = checkout.useApi();
-// api.send is narrowed to definition events
+await checkout.send("continue");
+// send is narrowed to definition events — callable from React or anywhere else
 ```
 
-The plugin tuple remains present on `checkout.useMachine().plugins`.
+`GraphJourneyViews<TStepId>` is the same mapped `{ [K in TStepId]: ReactNode }` record as the
+linear tier, so `views` exhaustiveness is compile-time checked. `GraphProviderProps<TStepId>` is
+just `{ views, children }` — the Provider carries no machine props. The plugin tuple remains
+present on `checkout.machine.plugins`.
 
 ## Headless entrypoint exports
 

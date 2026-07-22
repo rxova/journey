@@ -84,31 +84,37 @@ attachJourneyDevtools(graphMachine, {
 
 ## React-owned machines
 
-A React bundle Provider — graph or linear — creates its machine during mount. Capture that mount
-with `machineRef` and attach it in an effect; a graph journey looks like this:
+A linear bundle's Provider creates its machine during mount. Capture that mount with `machineRef`
+and attach it in an effect:
 
 ```tsx
-function Checkout() {
+function Signup() {
   const [machine, setMachine] = React.useState(null);
 
   React.useEffect(() => {
     if (!machine) return;
     return attachJourneyDevtools(machine, {
-      label: "Checkout",
+      label: "Signup",
       mutationsEnabled: false
     });
   }, [machine]);
 
-  return (
-    <checkout.Provider views={views} machineRef={setMachine}>
-      <checkout.StepRenderer />
-    </checkout.Provider>
-  );
+  return <signup.Provider views={views} machineRef={setMachine} />;
 }
 ```
 
-Returning the detach function removes message listeners and unregisters the machine. The Provider
-sets the ref to `null` and disposes its machine on unmount.
+Returning the detach function removes message listeners and unregisters the machine. The linear
+Provider sets the ref to `null` and disposes its machine on unmount.
+
+A graph bundle's machine is standalone — created by the factory, not by a Provider — so skip the
+ref and attach to `bundle.machine` directly, in an effect or outside React entirely:
+
+```ts
+const detach = attachJourneyDevtools(checkout.machine, {
+  label: "Checkout",
+  mutationsEnabled: false
+});
+```
 
 ## Troubleshooting checklist
 

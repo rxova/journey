@@ -17,10 +17,10 @@ context and handlers. Network validation, file writes, and submissions belong in
 ```tsx
 function ContinueButton() {
   const snapshot = checkout.useSnapshot();
-  const api = checkout.useApi();
+  const navigate = checkout.useNavigation();
 
   const continueJourney = async () => {
-    const result = await api.navigate.goToNextStep({
+    const result = await navigate.goToNextStep({
       run: ({ snapshot }) => orders.save(snapshot.context),
       commit: ({ result: order, updateContext }) => {
         updateContext((context) => ({
@@ -62,19 +62,19 @@ must prevent movement.
 - `snapshot.transition` shows pending state, phase, source, and destination.
 - `snapshot.currentStep.async` records loading, success, error, and the error value for the current
   entry.
-- Graph `useStepAsyncState(stepId)` and headless `useStepAsyncState(machine, stepId)` provide a
-  focused React subscription.
+- Graph `useStep()` returns the whole current step — including its `async` state — and headless
+  `useStepAsyncState(machine, stepId)` provides a focused per-step subscription.
 
 ```tsx
 function ReviewError() {
-  const asyncState = checkout.useStepAsyncState("review");
+  const step = checkout.useStep();
   const machine = checkout.useMachine();
 
-  if (!asyncState.isError) return null;
+  if (step?.id !== "review" || !step.async.isError) return null;
 
   return (
     <aside>
-      <ErrorMessage error={asyncState.error} />
+      <ErrorMessage error={step.async.error} />
       <button onClick={() => machine.async.clearError()}>Dismiss</button>
     </aside>
   );
@@ -85,7 +85,7 @@ function ReviewError() {
 
 Only one navigation settles at a time. A concurrent attempt resolves with
 `{ ok: false, reason: "transitioning" }`. Expected navigation failures resolve rather than reject,
-so `void api.navigate.goToNextStep()` is safe in a click handler.
+so `void navigate.goToNextStep()` is safe in a click handler.
 
 Termination, restart, and disposal invalidate stale async continuations. A late hook completion
 cannot resurrect a terminated or disposed machine.

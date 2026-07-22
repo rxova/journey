@@ -37,17 +37,24 @@ final Core machine contract.
 
 ## Graph and headless entry points
 
-- Add `@rxova/journey-react/graph`. `createGraphJourney(definition, options?)` returns a typed
-  `Provider`, `StepRenderer`, `useSnapshot`, `useSelector`, `useApi`, `useStepAsyncState`,
-  `useEvent`, `useStepLifecycle`, and `useMachine` bundle. Every Provider mount creates an isolated
-  machine, applies an optional context override, starts by default, and disposes on unmount.
+- Add `@rxova/journey-react/graph`. `createGraphJourney(definition, options?)` creates **one
+  standalone machine in the factory** and returns a typed bundle around it: `machine`, `Provider`,
+  `StepRenderer`, reactive hooks (`useSnapshot`, `useSelector`, `useStep`, `useContext`,
+  `useSubscribeEvent`), stable accessors (`useMachine`, `useControls`, `useNavigation`), and
+  verbatim `send` / `updateContext` delegates callable outside React. Hooks work with or without
+  the Provider — the Provider only carries the `views` record (elements keyed exhaustively by step
+  id, same contract as the linear tier) for `StepRenderer`. The machine starts by default
+  (`autoStart: true` is the React-tier default), survives remounts, and is never disposed by React;
+  per-mount or per-request isolation is the headless tier's job (`useOwnedJourney` + core's
+  factory).
 - Add `@rxova/journey-react/headless` for existing Core machines: `useOwnedJourney`,
   `useJourneySnapshot`, `useJourneySelector`, `useJourneyEvent`, `useJourneyStepLifecycle`, and
   `useStepAsyncState`. `useOwnedJourney(factory)` creates once, remains StrictMode-safe, and disposes
   its machine on unmount.
-- Keep `@rxova/journey-react/client` as the `"use client"` re-export of the root linear API. The
-  linear and graph factories now share one shape: capture a definition, create one machine per
-  Provider mount, render from a typed `views` record.
+- Keep `@rxova/journey-react/client` as the `"use client"` re-export of the root linear API. Both
+  factories render from a typed `views` record but differ in ownership on purpose: linear is
+  React-owned (one machine per Provider mount), graph is machine-first (one standalone machine per
+  factory call).
 
 ## Migration
 
@@ -57,8 +64,10 @@ final Core machine contract.
   and rendering must remain separate.
 - Align all React snapshots, controls, navigation results, events, plugins, and graph definitions
   with the new Core V1 types. Graph custom events are discriminated `{ type; payload? }` unions.
-- Make ownership safe for SSR and React Server Component applications: no API creates a module-level
-  singleton implicitly, and Provider/owner mounts do not share runtime state.
+- Make ownership explicit for SSR and React Server Component applications: the linear tier and
+  headless owners never create module-level state, and the graph factory's standalone machine is a
+  deliberate, visible module-scope singleton — use the headless tier where per-request isolation
+  matters.
 - Require React `>=18.2.0`, `@rxova/journey-core` V1, and Node `>=20.11.0`.
 - Rewrite the React documentation and examples around the linear, graph, and headless ownership
   models.

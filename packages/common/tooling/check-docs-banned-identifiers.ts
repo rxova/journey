@@ -51,7 +51,12 @@ export const BANNED_IDENTIFIERS: readonly BannedIdentifier[] = [
   { name: "LinearJourneyProps", pattern: /\bLinearJourneyProps\b/ },
   { name: "LinearJourneyStepConfig", pattern: /\bLinearJourneyStepConfig\b/ },
   { name: "LinearJourneyStepProps", pattern: /\bLinearJourneyStepProps\b/ },
-  { name: "bundle.toGraphDefinition", pattern: /\btoGraphDefinition\b/ }
+  { name: "bundle.toGraphDefinition", pattern: /\btoGraphDefinition\b/ },
+  // Graph bundle surfaces removed by the standalone-machine redesign (2026-07).
+  // (useStepAsyncState is NOT banned: the headless tier still exports it.)
+  { name: "useApi", pattern: /\buseApi\b/ },
+  { name: "useEvent", pattern: /\buseEvent\b/ },
+  { name: "useStepLifecycle", pattern: /\buseStepLifecycle\b/ }
 ];
 
 /**

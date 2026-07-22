@@ -215,29 +215,45 @@ const checkout = createLinearJourney(definition);
 const graphDefinition = linearToGraphDefinition(definition);
 ```
 
-## Graph Provider
+## Graph bundle
 
-`createGraphJourney(definition, options?)` returns a bundle. It captures pure inputs, but creates a
-Core machine only when its Provider mounts.
+`createGraphJourney(definition, options?)` returns a bundle built around **one standalone
+machine**, created by the factory itself at module scope. The machine outlives any component:
+every hook closes over it and works with or without the Provider, and non-React code drives the
+same machine through `checkout.machine`, `checkout.send(...)`, and `checkout.updateContext(...)` —
+verbatim delegates. `autoStart` defaults to `true` in the factory options (the React-tier default
+over Core's `false`); pass `{ autoStart: false }` and call `checkout.machine.controls.start()` to
+defer the initial entry.
 
 ```tsx
+const checkout = createGraphJourney(checkoutDefinition);
+
 <checkout.Provider
   views={{
-    cart: Cart,
-    shipping: Shipping,
-    review: Review,
-    done: Done
+    cart: <Cart />,
+    shipping: <Shipping />,
+    review: <Review />,
+    done: <Done />
   }}
-  context={{ cartId }}
-  autoStart
 >
+  <ProgressHeader />
   <checkout.StepRenderer fallback={<MissingStep />} />
   <Toolbar />
-</checkout.Provider>
+</checkout.Provider>;
 ```
 
-Each mount is independent. Strict Mode remount behavior does not create duplicate live machines, and
-the owned machine is disposed after final unmount.
+The Provider exists only to hand `views` to `<StepRenderer>`, which is the one piece that must
+render inside it. `views` is `GraphJourneyViews<TStepId>` — `{ [K in TStepId]: ReactNode }`, the
+same contract as the linear tier: exhaustively type-checked, element values so props and wrappers
+stay inline. `StepRenderer` renders the active step's view wherever you place it (headers and
+footers are ordinary siblings), keys it by step id so each entry mounts the view fresh, and shows
+its optional `fallback` while the machine is idle.
+
+The standalone machine has consequences worth stating plainly: all Providers and hooks share the
+one machine; journey state survives unmounts and remounts, so reset explicitly —
+`controls.restart()` from a terminal status, `terminate()` first when mid-flight; and under SSR
+the module-scope machine is shared across requests. When you need per-mount or per-request
+isolation, use the headless tier: `useOwnedJourney` with Core's `createGraphJourney`.
 
 ### Graph `useSnapshot()` and `useSelector()`
 
@@ -247,64 +263,48 @@ const stepId = checkout.useSelector((value) => value.currentStep?.id);
 ```
 
 Use the snapshot when several related values must be rendered together. Use a selector for leaf
-components that should not re-render on unrelated context or plugin changes.
+components that should not re-render on unrelated context or plugin changes. Neither needs a
+Provider above it — they subscribe to the bundle's machine directly.
 
-### Graph `useApi()`
-
-```tsx
-const api = checkout.useApi();
-
-api.controls.pause();
-api.controls.resume();
-await api.navigate.goToPreviousStep();
-await api.navigate.goToLastVisitedStep();
-await api.send("continue");
-api.updateContext((context) => ({ ...context, dirty: true }));
-```
-
-The returned command objects are the machine's stable grouped methods. `send` is narrowed to the
-event union inferred from the definition.
-
-### Graph event and lifecycle hooks
+### Graph `useStep()`, `useContext()`, and `useSubscribeEvent()`
 
 ```tsx
-checkout.useEvent("navigationBlocked", ({ reason, error }) => {
+const step = checkout.useStep();
+const context = checkout.useContext();
+
+checkout.useSubscribeEvent("navigationBlocked", ({ reason, error }) => {
   report(reason, error);
 });
-
-checkout.useStepLifecycle("review", {
-  onEnter: ({ context }) => analytics.viewed("review", context),
-  onLeave: ({ context }) => analytics.left("review", context)
-});
-
-const reviewAsync = checkout.useStepAsyncState("review");
 ```
 
-`useEvent` requires an exact Core subscription name and receives its exact payload. The listener
-reference can change without forcing a new subscription. Step lifecycle callbacks observe a
-specific step and do not replace authored Core `onEnter` or `onLeave` hooks.
+`useStep()` returns the whole `currentStep` — id, metadata, async state — or `null` while the
+machine is idle. `useContext()` returns the live context value. `useSubscribeEvent` requires an
+exact Core subscription name and receives its exact payload; the listener reference can change
+without forcing a new subscription, and the subscription lasts for the component's lifetime.
 
-### `useMachine()` and `machineRef`
-
-`useMachine()` is appropriate for a child integration component. `machineRef` is useful when the
-attachment must live above or beside the Provider:
+### Stable accessors and outside-React commands
 
 ```tsx
-const [machine, setMachine] = React.useState(null);
+const machine = checkout.useMachine();
+const controls = checkout.useControls();
+const navigate = checkout.useNavigation();
 
-React.useEffect(() => {
-  if (!machine) return;
-  return attachJourneyDevtools(machine, { mutationsEnabled: false });
-}, [machine]);
-
-return (
-  <checkout.Provider views={views} machineRef={setMachine}>
-    <checkout.StepRenderer />
-  </checkout.Provider>
-);
+controls.pause();
+controls.resume();
+await navigate.goToPreviousStep();
+await navigate.goToLastVisitedStep();
+await checkout.send("continue");
+checkout.updateContext((context) => ({ ...context, dirty: true }));
 ```
 
-The ref receives `null` on unmount. Do not retain a Provider-owned machine after that point.
+The accessors return the machine and its stable grouped methods without subscribing — they never
+cause a re-render. `send` is narrowed to the event union inferred from the definition, and both
+`send` and `updateContext` are plain functions on the bundle, callable from React or anywhere
+else. Integrations attach to the machine directly — no Provider or ref involved:
+
+```tsx
+React.useEffect(() => attachJourneyDevtools(checkout.machine, { mutationsEnabled: false }), []);
+```
 
 ## Headless hooks
 
