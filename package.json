@@ -51,6 +51,8 @@
     "prepare": "husky",
     "commitlint": "node --import tsx ./packages/common/tooling/commitlint.ts",
     "test": "vitest run --coverage --pool=threads",
+    "react:min:install": "pnpm --filter @rxova/journey-react add -D react@18.2.0 react-dom@18.2.0 @types/react@18.3.27 @types/react-dom@18.3.7",
+    "test:react-min": "pnpm run react:min:install && pnpm --workspace-root vitest run packages/react --coverage.enabled=false",
     "packages:coverage": "pnpm -r --workspace-concurrency=1 --filter @rxova/journey-core --filter @rxova/journey-react --filter @rxova/journey-devtools-bridge --filter apps-devtools coverage",
     "test:precommit": "vitest run --coverage --pool=threads --coverage.reporter=text-summary",
     "test:watch": "vitest",

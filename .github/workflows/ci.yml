@@ -54,6 +54,25 @@ jobs:
       - name: Enforce per-file package coverage
         run: pnpm run packages:coverage
 
+  # The peer range allows React 18.2, but the lockfile only ever installs 19, so
+  # without this the minimum supported version is an untested claim. It is a
+  # separate job rather than a matrix dimension because it has to rewrite the
+  # React version, which --frozen-lockfile forbids.
+  react-minimum-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-pnpm
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - name: Install the minimum supported React
+        run: pnpm run react:min:install
+      - name: Typecheck against React 18 types
+        run: pnpm --filter @rxova/journey-react typecheck
+      - name: Run the React suite against React 18.2
+        run: pnpm --workspace-root vitest run packages/react --coverage.enabled=false
+
   examples:
     runs-on: ubuntu-latest
     steps:

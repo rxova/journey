@@ -18,14 +18,22 @@ import type { OwnedJourneyBundle } from "./react.types";
  * );
  * ```
  *
- * The factory runs exactly once per component instance; later renders ignore it,
- * so it may close over props freely but changing them will not rebuild the
- * bundle — that is deliberate, since the machine is the journey's identity.
+ * Later renders ignore the factory, so it may close over props freely, but
+ * changing them will not rebuild the bundle — deliberate, since the machine is
+ * the journey's identity.
  *
  * Disposal is deferred by a macrotask so StrictMode's synchronous
  * unmount/remount cycle cancels it: a real unmount disposes, a simulated one
  * does not. Module-scope bundles are unaffected — they are never disposed, by
  * design.
+ *
+ * **React 18 caveat.** React 18's StrictMode re-mounts hooks on its second
+ * render pass, handing the component a fresh ref, so the factory runs twice
+ * there in development (once on React 19, and once everywhere in production).
+ * Only the committed bundle is ever started — the discarded one never mounts,
+ * so its start effect never runs and it holds no timers, no subscriptions, and
+ * no journey state before being collected. Avoid side effects in the factory
+ * beyond building the bundle.
  */
 export const useJourney = <TBundle extends OwnedJourneyBundle>(factory: () => TBundle): TBundle => {
   const bundleRef = React.useRef<TBundle | null>(null);
