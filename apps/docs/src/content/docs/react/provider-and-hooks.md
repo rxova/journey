@@ -58,9 +58,11 @@ Provider, non-React code drives it via `checkout.machine`, `checkout.navigate`, 
 `checkout.updateContext(...)`, and unmounting disposes nothing. The consequences are worth stating
 plainly: all Providers and hooks share the one machine; journey state survives unmounts and
 remounts, so reset explicitly — `controls.restart()` from a terminal status, `terminate()` first
-when mid-flight; and under SSR the module-scope machine is shared across requests. For per-mount
-or per-request isolation, own a Core machine yourself and read it with
-`React.useSyncExternalStore` (see [Caller-owned machines](#caller-owned-machines)).
+when mid-flight; and under SSR a module-scope machine is shared across requests. For per-mount
+or per-request isolation, create the bundle inside a component with a `useState` lazy initializer
+(see [Own a bundle inside a component](./patterns.md#own-a-bundle-inside-a-component)), or own a
+Core machine yourself and read it with `React.useSyncExternalStore`
+(see [Caller-owned machines](#caller-owned-machines)).
 
 ## `<Provider>`, `views`, and `<StepRenderer>`
 
@@ -84,7 +86,7 @@ a view supplies markup, nothing else.
 </checkout.Provider>
 ```
 
-`views` is typed as `LinearJourneyViews<TStepId>` — `{ [K in TStepId]: ReactNode }` — so coverage
+`views` is typed as `JourneyViews<TStepId>` — `{ [K in TStepId]: ReactNode }` — so coverage
 is checked entirely at compile time: a missing key and an undeclared key are both TS errors, and
 there is no runtime assertion. A `null` view value is legal and renders nothing. `StepRenderer`
 shows its optional `fallback` whenever no view can render: while the machine is idle
@@ -266,7 +268,7 @@ const checkout = createGraphJourney(checkoutDefinition);
 ```
 
 The Provider exists only to hand `views` to `<StepRenderer>`, which is the one piece that must
-render inside it. `views` is `GraphJourneyViews<TStepId>` — `{ [K in TStepId]: ReactNode }`, the
+render inside it. `views` is `JourneyViews<TStepId>` — `{ [K in TStepId]: ReactNode }`, the
 same contract as the linear tier: exhaustively type-checked, element values so props and wrappers
 stay inline. `StepRenderer` renders the active step's view wherever you place it (headers and
 footers are ordinary siblings), keys it by step id so each entry mounts the view fresh, and shows

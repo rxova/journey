@@ -20,8 +20,8 @@ Its primary React-specific types are:
 | `LinearJourneyBundle<TContext, TStepId>`          | Factory result: `machine`, `Provider`, `StepRenderer`, hooks, and delegates |
 | `LinearJourneyBundleDefinition<TContext, TSteps>` | The `{ context, steps, name? }` definition the factory captures             |
 | `LinearJourneyBundleOptions<TStepId>`             | Core's `JourneyRuntimeOptions`, frozen per bundle                           |
-| `LinearProviderProps<TStepId>`                    | The Provider's props: `{ views, children }`                                 |
-| `LinearJourneyViews<TStepId>`                     | The `views` record: `{ [K in TStepId]: ReactNode }`                         |
+| `JourneyProviderProps<TStepId>`                   | The Provider's props: `{ views, children }` — shared by both tiers          |
+| `JourneyViews<TStepId>`                           | The `views` record: `{ [K in TStepId]: ReactNode }` — shared by both tiers  |
 | `LinearJourneySnapshot<TContext, TStepId>`        | Core linear snapshot, verbatim — `currentStep` null while idle              |
 | `LinearJourneyMachine<TContext, TStepId>`         | Underlying Core machine, verbatim                                           |
 | `LinearJourneyEventPayloads<TContext, TStepId>`   | Core event payloads, as `useSubscribeEvent` listeners receive them          |
@@ -62,7 +62,7 @@ which is why the factory takes an annotated context value as the type anchor ins
 The step tuple's literal ids type the whole bundle: the keys of the Provider's `views` record, the
 factory options' `startAt`, `useStepHandler`'s step-id argument, and `machine.navigate` targets
 are all the declared union. Coverage is compile-time checked too — `views` is
-`LinearJourneyViews<TStepId>`, a mapped `{ [K in TStepId]: ReactNode }` record, so a missing key
+`JourneyViews<TStepId>`, a mapped `{ [K in TStepId]: ReactNode }` record, so a missing key
 and an undeclared key are both TS errors; there is no runtime assertion (in plain JS, an absent
 key makes `StepRenderer` render its `fallback`).
 
@@ -97,8 +97,9 @@ annotation needed.
 
 - `createGraphJourney`
 - `GraphJourneyBundle`
-- `GraphJourneyViews`
-- `GraphProviderProps`
+- `JourneyViews`
+- `JourneyProviderProps`
+- `JourneyStepRendererProps`
 
 The factory infers context, step IDs, event objects, handlers, metadata, and the plugin tuple from the
 Core definition and options; the factory creates the bundle's standalone machine, and every hook
@@ -113,9 +114,9 @@ await checkout.send("continue");
 // send is narrowed to definition events — callable from React or anywhere else
 ```
 
-`GraphJourneyViews<TStepId>` is the same mapped `{ [K in TStepId]: ReactNode }` record as the
-linear tier, so `views` exhaustiveness is compile-time checked. `GraphProviderProps<TStepId>` is
-just `{ views, children }` — the Provider carries no machine props. The plugin tuple remains
+`JourneyViews<TStepId>` is the same mapped `{ [K in TStepId]: ReactNode }` record in both tiers,
+so `views` exhaustiveness is compile-time checked. `JourneyProviderProps<TStepId>` is just
+`{ views, children }` — the Provider carries no machine props. The plugin tuple remains
 present on `checkout.machine.plugins`.
 
 ## Typing caller-owned machines

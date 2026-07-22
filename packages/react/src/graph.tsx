@@ -1,6 +1,5 @@
-import React from "react";
 import { createGraphJourney as coreCreateGraphJourney } from "@rxova/journey-core";
-import { useSafeLayoutEffect } from "./use-safe-layout-effect";
+import { createJourneyBindings } from "./react.helpers";
 import type {
   AnyJourneyPlugin,
   GraphJourneyMachine,
@@ -10,12 +9,7 @@ import type {
   GraphTransitionsMap,
   JourneyEventObject
 } from "@rxova/journey-core";
-import type {
-  GraphJourneyBundle,
-  JourneyProviderProps,
-  JourneyStepRendererProps,
-  JourneyViews
-} from "./react.types";
+import type { GraphJourneyBundle } from "./react.types";
 
 export type {
   GraphJourneyBundle,
@@ -49,11 +43,13 @@ export type {
  * Consequences of the standalone machine: all Providers and hooks share the
  * one machine, journey state survives remounts (reset explicitly —
  * `controls.restart()` after a terminal status, `terminate()` first when
- * mid-flight), and in SSR the module-scope machine is shared across
- * requests — for per-mount or per-request isolation, own a core machine
- * yourself and read it with `React.useSyncExternalStore`. `autoStart`
- * defaults to `true` here (the React-tier default); pass `{ autoStart: false }`
- * and call `bundle.machine.controls.start()` to defer the initial entry.
+ * mid-flight), and in SSR a module-scope machine is shared across requests —
+ * for per-mount or per-request isolation, create the bundle inside a
+ * component with a `useState` lazy initializer (the reference must stay
+ * stable for the component's lifetime), or own a core machine yourself and
+ * read it with `React.useSyncExternalStore`. `autoStart` defaults to `true`
+ * here (the React-tier default); pass `{ autoStart: false }` and call
+ * `bundle.machine.controls.start()` to defer the initial entry.
  */
 export function createGraphJourney<
   TContext,
@@ -78,106 +74,22 @@ export function createGraphJourney<
     readonly context: TContext;
     readonly handlers?: THandlers;
     readonly $events?: TEvents;
+    /** Optional bundle name, used for the React DevTools display names. */
+    readonly name?: string;
   },
   options?: GraphJourneyOptions<NoInfer<THandlers>, TPlugins>
 ): GraphJourneyBundle<TContext, TStepId, TEvents, TMeta, TPlugins> {
   type Machine = GraphJourneyMachine<TContext, TStepId, TEvents, TMeta, TPlugins>;
   type Snapshot = GraphSnapshot<TContext, TStepId, TMeta, TEvents>;
 
+  const { name, ...coreDefinition } = definition;
   const machine = coreCreateGraphJourney(
-    definition as never,
+    coreDefinition as never,
     { ...options, autoStart: options?.autoStart ?? true } as never
   ) as unknown as Machine;
 
-  // The machine is a factory-scoped singleton, so this subscribe adapter is a
-  // stable plain function — useSyncExternalStore never resubscribes on it.
-  const subscribe = (onStoreChange: () => void) =>
-    machine.subscriptions.subscribeSelector((snapshot) => snapshot, onStoreChange);
-
-  /**
-   * The one React bridge in this bundle. useSyncExternalStore requires the
-   * getter to return a STABLE reference while the selected value is unchanged
-   * (an unstable object identity re-renders forever), and the machine
-   * subscription must not churn with inline selectors — the render-scoped
-   * cache below provides both; everything else reads the machine directly.
-   */
-  const useSelector = <TSelected,>(
-    selector: (snapshot: Snapshot) => TSelected,
-    equalityFn?: (a: TSelected, b: TSelected) => boolean
-  ): TSelected => {
-    const isEqual = equalityFn ?? Object.is;
-    const cacheRef = React.useRef<{
-      snapshot: unknown;
-      selected: TSelected;
-      selector: unknown;
-      isEqual: unknown;
-    } | null>(null);
-
-    const getSelected = (): TSelected => {
-      const snapshot = machine.getSnapshot() as unknown as Snapshot;
-      const cached = cacheRef.current;
-      const sameDerivation =
-        cached !== null &&
-        Object.is(cached.selector, selector) &&
-        Object.is(cached.isEqual, isEqual);
-
-      if (sameDerivation && Object.is(cached.snapshot, snapshot)) {
-        return cached.selected;
-      }
-      const next = selector(snapshot);
-      const selected = sameDerivation && isEqual(cached.selected, next) ? cached.selected : next;
-      cacheRef.current = { snapshot, selected, selector, isEqual };
-      return selected;
-    };
-
-    return React.useSyncExternalStore(subscribe, getSelected, getSelected);
-  };
-
-  const ViewsContext = React.createContext<JourneyViews<TStepId> | null>(null);
-
-  const Provider = ({ views, children }: JourneyProviderProps<TStepId>) => (
-    <ViewsContext.Provider value={views}>{children}</ViewsContext.Provider>
-  );
-
-  const StepRenderer = ({ fallback = null }: JourneyStepRendererProps) => {
-    const views = React.useContext(ViewsContext);
-    if (views === null) {
-      throw new Error("StepRenderer must be rendered inside this bundle's <Provider>.");
-    }
-    const currentStepId = useSelector((snapshot) => snapshot.currentStep?.id);
-    if (currentStepId === undefined || !(currentStepId in views)) {
-      return <>{fallback}</>;
-    }
-    // Keyed by id: moving steps remounts the view instead of reconciling
-    // across steps.
-    return <React.Fragment key={currentStepId}>{views[currentStepId]}</React.Fragment>;
-  };
-
   return {
-    machine,
-    Provider,
-    StepRenderer,
-    useSnapshot: () => useSelector((snapshot) => snapshot),
-    useSelector,
-    useStep: () => useSelector((snapshot) => snapshot.currentStep),
-    useContext: () => useSelector((snapshot) => snapshot.context),
-    useSubscribeEvent: (event, listener) => {
-      // Latest-ref: inline listeners change identity every render; the machine
-      // subscription must not tear down (and miss events) on each one.
-      const listenerRef = React.useRef(listener);
-      listenerRef.current = listener;
-      useSafeLayoutEffect(
-        () =>
-          machine.subscriptions.subscribeEvent(event, (payload) =>
-            listenerRef.current(payload as never)
-          ),
-        [event]
-      );
-    },
-    useMachine: () => machine,
-    useControls: () => machine.controls,
-    useNavigation: () => machine.navigate,
-    send: machine.send,
-    updateContext: (updater) => machine.context.update(updater)
+    ...createJourneyBindings<Machine, TContext, TStepId, Snapshot>(machine, name ?? "GraphJourney"),
+    send: machine.send
   };
 }

@@ -91,7 +91,7 @@ Provider, and non-React code drives the same machine via `signup.machine`, `sign
 `children`; `<signup.StepRenderer />` is the only piece that must render inside it, and its
 placement is the point—headers, footers, and observers are ordinary siblings around it.
 
-The `views` record (`LinearJourneyViews<TStepId>`) only supplies what each step renders, keyed by
+The `views` record (`JourneyViews<TStepId>`) only supplies what each step renders, keyed by
 step ID; the definition alone drives order. Exhaustiveness is checked at compile time—a missing
 key or an undeclared key is a TS error. There is no runtime assertion: for plain-JS callers a
 missing key makes `StepRenderer` render its `fallback`. A `null` view value is legal and renders
@@ -182,7 +182,7 @@ export function Checkout() {
 The graph bundle mirrors the linear one—`machine`, Provider with `views` and `children` only,
 `StepRenderer`, reactive `useSnapshot` / `useSelector` / `useStep` / `useContext` /
 `useSubscribeEvent`, stable `useMachine` / `useControls` / `useNavigation`—with the verbatim
-delegates being `checkout.send(...)` and `checkout.updateContext(...)`. `GraphJourneyViews`
+delegates being `checkout.send(...)` and `checkout.updateContext(...)`. `views` (`JourneyViews`)
 follows the same contract as the linear tier: keyed by step ID, exhaustively type-checked, element
 values. None of the hooks needs a Provider.
 
@@ -196,10 +196,12 @@ identical across tiers:
 - State survives remounts—unmounting disposes nothing.
 - Reset is explicit: call `machine.controls.restart()` from a terminal status (`terminate()` first
   when mid-flight).
-- In SSR the module-scope machine is shared across requests.
+- In SSR a module-scope machine is shared across requests.
 
-When you need per-mount or per-request isolation, own a Core machine yourself and read it with
-`useSyncExternalStore`—the next section.
+When you need per-mount or per-request isolation, either create the bundle inside a component
+with a `useState` lazy initializer — the reference must stay stable for the component's lifetime,
+see [Own a bundle inside a component](./patterns.md#own-a-bundle-inside-a-component) — or own a
+Core machine yourself and read it with `useSyncExternalStore`, the next section.
 
 ## Bring your own machine
 

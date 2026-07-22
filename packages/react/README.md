@@ -126,12 +126,18 @@ namespaced on `useMachine().plugins`.
 
 In both tiers, all Providers and hooks share the bundle's one machine: state survives remounts,
 reset is explicit (`machine.controls.restart()` from a terminal status, `terminate()` first when
-mid-flight), and in SSR the module-scope machine is shared across requests.
+mid-flight), and in SSR a module-scope machine is shared across requests.
+
+The machine works everywhere: every method is pre-bound, so Redux middleware, reducers' thunks,
+WebSocket handlers, and tests can call `bundle.send`, `bundle.navigate`, `bundle.updateContext`,
+or `machine.subscriptions` directly — no React in sight.
 
 ## Bring your own machine
 
-For per-mount or per-request isolation, own a Core machine yourself—no package entry needed,
-React's `useSyncExternalStore` is the whole bridge:
+For per-mount or per-request isolation, create the bundle inside a component with a `useState`
+lazy initializer (`const [signup] = useState(() => createLinearJourney(...))` — the reference
+must stay stable for the component's lifetime), or drop a tier lower and own a Core machine
+yourself — no package entry needed, React's `useSyncExternalStore` is the whole bridge:
 
 ```tsx
 import React from "react";
