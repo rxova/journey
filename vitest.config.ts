@@ -92,7 +92,7 @@ export default defineConfig({
       },
       {
         find: "@rxova/journey-react/graph",
-        replacement: fileURLToPath(new URL("./packages/react/src/graph/graph.tsx", import.meta.url))
+        replacement: fileURLToPath(new URL("./packages/react/src/graph.tsx", import.meta.url))
       },
       {
         find: "@rxova/journey-react/testing",

@@ -1,6 +1,6 @@
 import React from "react";
 import { createGraphJourney as coreCreateGraphJourney } from "@rxova/journey-core";
-import { useSafeLayoutEffect } from "../headless/use-safe-layout-effect";
+import { useSafeLayoutEffect } from "./use-safe-layout-effect";
 import type {
   AnyJourneyPlugin,
   GraphJourneyMachine,

@@ -50,7 +50,7 @@ export const createExampleViteConfig = ({ reactApp = false }: { reactApp?: boole
         },
         {
           find: "@rxova/journey-react/graph",
-          replacement: workspacePath("packages/react/src/graph/graph.tsx")
+          replacement: workspacePath("packages/react/src/graph.tsx")
         },
         {
           find: /^@rxova\/journey-react$/,
