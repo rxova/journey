@@ -131,6 +131,10 @@ export default defineConfig({
         replacement: fileURLToPath(new URL("./packages/common/src/async.ts", import.meta.url))
       },
       {
+        find: "@rxova/journey-common/bindings",
+        replacement: fileURLToPath(new URL("./packages/common/src/bindings.ts", import.meta.url))
+      },
+      {
         find: "@rxova/journey-common/dev",
         replacement: fileURLToPath(new URL("./packages/common/src/dev.ts", import.meta.url))
       },
