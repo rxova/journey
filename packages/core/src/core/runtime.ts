@@ -481,7 +481,8 @@ export class JourneyRuntime {
       onError: (callback) => this.store.subscribeEvent("error", callback),
       onDispose: (callback) => {
         this.disposeCallbacks.push(callback);
-      }
+      },
+      reportError: (error) => this.store.report(error)
     };
     // A failure part-way through leaves earlier plugins already subscribed and
     // holding onDispose callbacks — but the machine is never returned, so
