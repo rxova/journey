@@ -243,6 +243,25 @@ describe("graph bundle edges", () => {
     expect(navigationSeen.size).toBe(1);
   });
 
+  it("names the Provider and StepRenderer for DevTools from the definition name", () => {
+    const named = createGraphJourney({
+      steps: { form: {}, done: {} },
+      transitions: { FINISH: { from: "form", to: "done" } },
+      initial: "form",
+      context: {},
+      name: "checkout"
+    });
+    expect((named.Provider as { displayName?: string }).displayName).toBe("checkout.Provider");
+    expect((named.StepRenderer as { displayName?: string }).displayName).toBe(
+      "checkout.StepRenderer"
+    );
+
+    const anonymous = makeBundle();
+    expect((anonymous.Provider as { displayName?: string }).displayName).toBe(
+      "GraphJourney.Provider"
+    );
+  });
+
   it("renders under StrictMode without duplicating machines or subscriptions", async () => {
     const bundle = makeBundle();
     render(

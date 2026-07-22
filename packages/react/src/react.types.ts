@@ -22,10 +22,10 @@ import type {
 type AnyEventPayload = JourneyEventPayloads<unknown, string>[JourneySubscriptionEvent];
 
 /**
- * The structural machine surface the headless hooks require. Every core
- * `create*Journey` result satisfies it; the hooks infer their concrete
- * snapshot/step types from the machine you pass, so a store-held, prop-passed,
- * or `useOwnedJourney`-owned machine all type identically.
+ * The structural surface every core `create*Journey` machine satisfies. Use
+ * it to type a caller-owned machine held outside a bundle — in a store, a
+ * prop, or a `useState` initializer — and let `SnapshotOf`/`StepIdOf`/
+ * `ContextOf` infer the concrete types from whichever machine you pass.
  *
  * Method syntax (not arrow-property syntax) is deliberate: method signatures
  * compare parameters bivariantly, so concretely-typed machines satisfy this
