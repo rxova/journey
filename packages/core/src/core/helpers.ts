@@ -31,12 +31,16 @@ export function reportListenerError(error: unknown): void {
   console.error("[journey] subscriber threw:", error);
 }
 
-/** Object.is over own enumerable keys — for flat snapshot sub-objects. */
+/**
+ * Object.is over own enumerable keys — for flat snapshot sub-objects. The
+ * key check is load-bearing: equal key counts alone would call `{a: undefined}`
+ * and `{b: undefined}` equal, since both read `undefined` at every compared key.
+ */
 export const shallowEqual = (
   a: Readonly<Record<string, unknown>>,
   b: Readonly<Record<string, unknown>>
 ): boolean => {
   const keys = Object.keys(a);
   if (keys.length !== Object.keys(b).length) return false;
-  return keys.every((key) => Object.is(a[key], b[key]));
+  return keys.every((key) => key in b && Object.is(a[key], b[key]));
 };
