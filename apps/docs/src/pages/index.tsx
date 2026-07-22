@@ -85,23 +85,23 @@ export function PayButton() {
 /** Surfaces and ownership match the table in `docs/react/overview.md`. */
 const reactTiers = [
   {
-    name: "Declarative linear",
+    name: "Linear bundle",
     importPath: "@rxova/journey-react",
-    body: "createLinearJourney captures your definition once and returns a typed Provider, Step, and hooks — one machine per mount, no generics at call sites. Reach for it first.",
+    body: "createLinearJourney captures your definition once and owns one standalone machine — typed Provider, StepRenderer, hooks, and verbatim navigate/updateContext, no generics at call sites. Reach for it first.",
     bestFit: "Ordinary ordered wizards",
     href: "/docs/react/quickstart"
   },
   {
     name: "Graph bundle",
     importPath: "@rxova/journey-react/graph",
-    body: "A typed bundle around one standalone machine — hooks, send, and updateContext work with or without the Provider. Named events and guards choose the route instead of a fixed order.",
+    body: "The same bundle shape with graph verbs: named events, guards, and send choose the route instead of a fixed order. Hooks work with or without the Provider.",
     bestFit: "Branching, event-driven flows",
     href: "/docs/react/overview"
   },
   {
-    name: "Headless hooks",
-    importPath: "@rxova/journey-react/headless",
-    body: "You build the machine and own the rendering. useOwnedJourney keeps it for the component's lifetime and disposes it on unmount; the rest just subscribe.",
+    name: "Bring your own machine",
+    importPath: "@rxova/journey-core",
+    body: "No bindings required: create a core machine yourself and read it with React's useSyncExternalStore. The react package exports the structural types (AnyJourneyMachine, SnapshotOf, …) to keep it typed.",
     bestFit: "Existing machines, custom rendering",
     href: "/docs/react/overview"
   }

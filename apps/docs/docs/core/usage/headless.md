@@ -53,11 +53,21 @@ Drive rendering (or logging, or nothing at all) from `subscribeSelector`, `subsc
 
 ## Headless in React
 
-When a React app owns the machine outside the rendering tiers, `@rxova/journey-react/headless`
-provides machine-argument hooks over any core machine: `useJourneySnapshot(machine)`,
-`useJourneySelector(machine, selector)`, `useJourneyEvent(machine, event, listener)`, and
-`useOwnedJourney(factory)` for a component-owned machine with StrictMode-safe disposal. See the
-React package documentation for the full tier.
+When a React app owns the machine outside the bundle factories, React's own
+`useSyncExternalStore` is the whole bridge — no bindings required:
+
+```tsx
+const subscribe = (onStoreChange: () => void) =>
+  machine.subscriptions.subscribeSelector((snapshot) => snapshot, onStoreChange);
+
+const useJourneySnapshot = () =>
+  React.useSyncExternalStore(subscribe, machine.getSnapshot, machine.getSnapshot);
+```
+
+Subscribe to events with `machine.subscriptions.subscribeEvent` inside an effect. The
+`@rxova/journey-react` root exports structural types (`AnyJourneyMachine`, `SnapshotOf`,
+`EventPayloadOf`, …) to keep generic wrappers typed. See the React package documentation for the
+full pattern.
 
 ## Where to next
 

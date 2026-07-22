@@ -40,9 +40,9 @@ const detach = attachJourneyDevtools(machine, {
 The panel should show a machine labelled Checkout. Its first register envelope already includes the
 current immutable snapshot.
 
-This is Core's machine-creating factory. `@rxova/journey-react` exports a `createLinearJourney` of
-its own that creates no machine — each of its Providers does, at mount; attach those through
-`machineRef` as shown in [React-owned machines](#react-owned-machines).
+This is Core's factory. `@rxova/journey-react` exports a `createLinearJourney` of its own that
+also creates one standalone machine, exposed as `bundle.machine` — attach that directly, as shown
+in [React-owned machines](#react-owned-machines).
 
 Attachment is observational with respect to lifecycle: it does not start, pause, resume, navigate,
 complete, or terminate the machine. Use `autoStart: true` or call
@@ -84,30 +84,8 @@ attachJourneyDevtools(graphMachine, {
 
 ## React-owned machines
 
-A linear bundle's Provider creates its machine during mount. Capture that mount with `machineRef`
-and attach it in an effect:
-
-```tsx
-function Signup() {
-  const [machine, setMachine] = React.useState(null);
-
-  React.useEffect(() => {
-    if (!machine) return;
-    return attachJourneyDevtools(machine, {
-      label: "Signup",
-      mutationsEnabled: false
-    });
-  }, [machine]);
-
-  return <signup.Provider views={views} machineRef={setMachine} />;
-}
-```
-
-Returning the detach function removes message listeners and unregisters the machine. The linear
-Provider sets the ref to `null` and disposes its machine on unmount.
-
-A graph bundle's machine is standalone — created by the factory, not by a Provider — so skip the
-ref and attach to `bundle.machine` directly, in an effect or outside React entirely:
+Both React bundles — linear and graph — create their machine in the factory, not in a Provider.
+Attach to `bundle.machine` directly, at module scope or in an effect:
 
 ```ts
 const detach = attachJourneyDevtools(checkout.machine, {
@@ -115,6 +93,22 @@ const detach = attachJourneyDevtools(checkout.machine, {
   mutationsEnabled: false
 });
 ```
+
+```tsx
+function Checkout() {
+  React.useEffect(() => attachJourneyDevtools(checkout.machine, { label: "Checkout" }), []);
+
+  return (
+    <checkout.Provider views={views}>
+      <checkout.StepRenderer />
+    </checkout.Provider>
+  );
+}
+```
+
+Returning the detach function from the effect removes message listeners and unregisters the
+machine. React never disposes a bundle's machine — it is a module-scope singleton — so a detached
+panel simply re-registers on the next attach.
 
 ## Troubleshooting checklist
 

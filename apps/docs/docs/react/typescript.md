@@ -15,18 +15,21 @@ contracts from each plugin's dedicated entrypoint.
 
 Its primary React-specific types are:
 
-| Type                                              | Purpose                                                         |
-| ------------------------------------------------- | --------------------------------------------------------------- |
-| `LinearJourneyBundle<TContext, TStepId>`          | Factory result: `Provider` and the hooks                        |
-| `LinearJourneyBundleDefinition<TContext, TSteps>` | The `{ context, steps, name? }` definition the factory captures |
-| `LinearJourneyBundleOptions<TStepId>`             | Core's `JourneyRuntimeOptions`, frozen per bundle               |
-| `LinearProviderProps<TContext, TStepId>`          | Props for the bundle's Provider                                 |
-| `LinearJourneyViews<TStepId>`                     | The Provider's `views` record: `{ [K in TStepId]: ReactNode }`  |
-| `UseLinearJourneyResult<TContext, TStepId>`       | Hook result: `{ machine, snapshot }`                            |
-| `LinearJourneySnapshot<TContext, TStepId>`        | Core linear snapshot with non-null `currentStep`                |
-| `LinearJourneyMachine<TContext, TStepId>`         | Underlying Core machine, verbatim                               |
-| `LinearJourneyEventPayloads<TContext, TStepId>`   | Core event payloads for the callback props                      |
-| `LinearJourneyStepHandler<TContext, TResult>`     | Transactional navigation work                                   |
+| Type                                              | Purpose                                                                     |
+| ------------------------------------------------- | --------------------------------------------------------------------------- |
+| `LinearJourneyBundle<TContext, TStepId>`          | Factory result: `machine`, `Provider`, `StepRenderer`, hooks, and delegates |
+| `LinearJourneyBundleDefinition<TContext, TSteps>` | The `{ context, steps, name? }` definition the factory captures             |
+| `LinearJourneyBundleOptions<TStepId>`             | Core's `JourneyRuntimeOptions`, frozen per bundle                           |
+| `LinearProviderProps<TStepId>`                    | The Provider's props: `{ views, children }`                                 |
+| `LinearJourneyViews<TStepId>`                     | The `views` record: `{ [K in TStepId]: ReactNode }`                         |
+| `LinearJourneySnapshot<TContext, TStepId>`        | Core linear snapshot, verbatim — `currentStep` null while idle              |
+| `LinearJourneyMachine<TContext, TStepId>`         | Underlying Core machine, verbatim                                           |
+| `LinearJourneyEventPayloads<TContext, TStepId>`   | Core event payloads, as `useSubscribeEvent` listeners receive them          |
+| `LinearJourneyStepHandler<TContext, TResult>`     | Transactional navigation work for `useStepHandler`                          |
+
+It also exports the structural helpers `AnyJourneyMachine`, `SnapshotOf`, `ContextOf`,
+`StepIdOf`, and `EventPayloadOf` for typing wrappers around
+[caller-owned machines](#typing-caller-owned-machines).
 
 ### Inference from the definition
 
@@ -44,7 +47,7 @@ const signup = createLinearJourney({
   steps: ["email", { id: "password" }, "review"]
 });
 
-// snapshot.currentStep.id and machine.navigate targets are "email" | "password" | "review"
+// snapshot.currentStep?.id and machine.navigate targets are "email" | "password" | "review"
 ```
 
 Annotate the context variable; do not cast. An annotation checks the initial value against the
@@ -56,20 +59,21 @@ has no partial type-argument inference: an explicit `TContext` would also force 
 whole steps tuple by hand. Inferring everything from the one definition argument sidesteps that,
 which is why the factory takes an annotated context value as the type anchor instead of a generic.
 
-The step tuple's literal ids type the whole bundle: the keys of the Provider's `views` record, its
-`startAt` prop, and `machine.navigate` targets are all the declared union. Coverage is
-compile-time checked too — `views` is `LinearJourneyViews<TStepId>`, a mapped
-`{ [K in TStepId]: ReactNode }` record, so a missing key and an undeclared key are both TS errors.
-The runtime check that remains (a missing key throws, an undeclared key is a development-mode
-error) exists only for plain-JS callers.
+The step tuple's literal ids type the whole bundle: the keys of the Provider's `views` record, the
+factory options' `startAt`, `useStepHandler`'s step-id argument, and `machine.navigate` targets
+are all the declared union. Coverage is compile-time checked too — `views` is
+`LinearJourneyViews<TStepId>`, a mapped `{ [K in TStepId]: ReactNode }` record, so a missing key
+and an undeclared key are both TS errors; there is no runtime assertion (in plain JS, an absent
+key makes `StepRenderer` render its `fallback`).
 
-`LinearJourneySnapshot` is Core's linear snapshot with one narrowing: `currentStep` is non-null,
-because a rendered journey never observes the idle state (only `fallback` renders before start).
+`LinearJourneySnapshot` is Core's linear snapshot, verbatim: `currentStep` is `null` while the
+machine is idle (`autoStart: false` before `controls.start()`), exactly as in the graph tier —
+read it with the optional chain or an explicit null check.
 
-For imperative escape hatches such as `machineRef`, derive the machine type from the bundle:
+For integrations and escape hatches, the machine is a plain property on the bundle:
 
 ```ts
-type SignupMachine = ReturnType<typeof signup.useJourney>["machine"];
+type SignupMachine = typeof signup.machine;
 ```
 
 ### Navigation work
@@ -84,7 +88,8 @@ const createAccount: LinearJourneyStepHandler<SignupContext, { accountId: string
 ```
 
 The result type from `run` flows into `commit.result`. When the handler is written inline,
-`signup.useStep({ ... })` infers `TResult` from `run`'s return type — no annotation needed.
+`signup.useStepHandler("email", { ... })` infers `TResult` from `run`'s return type — no
+annotation needed.
 
 ## Graph entrypoint exports
 
@@ -113,26 +118,37 @@ linear tier, so `views` exhaustiveness is compile-time checked. `GraphProviderPr
 just `{ views, children }` — the Provider carries no machine props. The plugin tuple remains
 present on `checkout.machine.plugins`.
 
-## Headless entrypoint exports
+## Typing caller-owned machines
 
-`@rxova/journey-react/headless` exports:
-
-- `useOwnedJourney`
-- `useJourneySnapshot`
-- `useJourneySelector`
-- `useJourneyEvent`
-- `useJourneyStepLifecycle`
-- `useStepAsyncState`
-
-It also exports `AnyJourneyMachine`, `ContextOf`, `SnapshotOf`, `StepIdOf`, and
-`EventPayloadOf`.
+There is no headless hook package — a caller-owned Core machine is consumed with React's own
+`useSyncExternalStore`. The main entrypoint's structural helpers type any wrapper you build around
+one: `AnyJourneyMachine` is the machine surface every Core `create*Journey` result satisfies, and
+`SnapshotOf<TMachine>`, `ContextOf<TMachine>`, `StepIdOf<TMachine>`, and
+`EventPayloadOf<TMachine, TEvent>` infer the concrete types from the machine you pass.
 
 ```ts
-useJourneyEvent(machine, "navigationBlocked", (payload) => {
+import type { AnyJourneyMachine, EventPayloadOf, SnapshotOf } from "@rxova/journey-react";
+
+const useJourneySnapshot = <TMachine extends AnyJourneyMachine>(
+  machine: TMachine
+): SnapshotOf<TMachine> => {
+  const subscribe = React.useCallback(
+    (onStoreChange: () => void) =>
+      machine.subscriptions.subscribeSelector((snapshot) => snapshot, onStoreChange),
+    [machine]
+  );
+  const getSnapshot = React.useCallback(
+    () => machine.getSnapshot() as SnapshotOf<TMachine>,
+    [machine]
+  );
+  return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+};
+
+const onBlocked = (payload: EventPayloadOf<typeof machine, "navigationBlocked">) => {
   payload.reason;
   payload.error;
   payload.snapshot;
-});
+};
 ```
 
 The event name selects the listener payload from Core's `JourneyEventPayloads`.

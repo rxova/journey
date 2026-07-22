@@ -2,8 +2,9 @@
 
 React bindings for `@rxova/journey-core`.
 
-The package offers three integration levels without changing Core semantics: a declarative linear
-component, Provider-owned graph bundles, and machine-argument headless hooks.
+The package offers two bundle tiers without changing Core semantics—a linear factory and a graph
+factory, deliberate twins around one standalone machine each—plus a bring-your-own-machine
+pattern for machines the caller owns.
 
 ## Install
 
@@ -14,27 +15,33 @@ npm install @rxova/journey-react @rxova/journey-core react
 React 19 is supported. The package uses `useSyncExternalStore` to subscribe to immutable Core
 snapshots.
 
-## Declarative linear journeys
+## Linear journeys
 
 ```tsx
-import { LinearJourney, useLinearJourney } from "@rxova/journey-react";
+import { createLinearJourney } from "@rxova/journey-react";
 
 type Context = {
   email: string;
 };
 
+const initialContext: Context = { email: "" };
+
+const signup = createLinearJourney({
+  name: "signup",
+  context: initialContext,
+  steps: ["email", "password", "review"]
+});
+
 function Controls() {
-  const journey = useLinearJourney<Context>();
+  const canGoBack = signup.useSelector((snapshot) => snapshot.history.canGoBack);
+  const isLoading = signup.useSelector((snapshot) => snapshot.machine.isLoading);
 
   return (
     <nav>
-      <button
-        disabled={!journey.snapshot.history.canGoBack}
-        onClick={() => void journey.goToPreviousStep()}
-      >
+      <button disabled={!canGoBack} onClick={() => void signup.navigate.goToPreviousStep()}>
         Back
       </button>
-      <button disabled={journey.isLoading} onClick={() => void journey.goToNextStep()}>
+      <button disabled={isLoading} onClick={() => void signup.navigate.goToNextStep()}>
         Continue
       </button>
     </nav>
@@ -43,32 +50,32 @@ function Controls() {
 
 export function Signup() {
   return (
-    <LinearJourney
-      context={{ email: "" }}
-      footer={<Controls />}
-      onComplete={({ context }) => submit(context)}
-    >
-      <Email id="email" />
-      <Password id="password" />
-      <Review id="review" />
-    </LinearJourney>
+    <signup.Provider views={{ email: <Email />, password: <Password />, review: <Review /> }}>
+      <signup.StepRenderer />
+      <Controls />
+    </signup.Provider>
   );
 }
 ```
 
-The mounted component owns one Core linear machine. It derives the declared order from direct child
-IDs, starts the machine, renders the active child, and disposes the machine on unmount. The child ID
-list remains fixed for the mount.
+The factory creates **one standalone machine** at module scope and starts it (`autoStart` defaults
+to `true`; runtime options such as `startAt`, `persist`, and `plugins` go in the factory's second
+argument). `TContext` is inferred from `definition.context`—annotate the value, do not cast—and
+the step-ID union from the `steps` tuple; the `views` record is exhaustively type-checked against
+that union. Every hook closes over the machine and works with or without the Provider; non-React
+code drives it via `signup.machine`, `signup.navigate`, and `signup.updateContext`. The Provider
+carries only `views` and `children`, and `StepRenderer` (optional `fallback`) is the one piece
+that must render inside it—siblings like `Controls` are ordinary components.
 
-`useLinearJourney()` provides position, visit tracking, status, loading/error state, navigation,
-lifecycle `controls`, context updates, metadata, the immutable snapshot, and the underlying
-machine.
+Hooks: reactive `useSnapshot`, `useSelector`, `useStep` (the current step or `null` while idle),
+`useContext`, `useSubscribeEvent`; stable `useMachine`, `useControls`, `useNavigation`; and
+`useStepHandler` below.
 
 ### Transactional step work
 
 ```tsx
 function Review() {
-  useLinearJourneyStep({
+  signup.useStepHandler("review", {
     run: ({ snapshot }) => api.submit(snapshot.context),
     commit: ({ result, updateContext }) => {
       updateContext((context) => ({ ...context, receiptId: result.id }));
@@ -79,18 +86,10 @@ function Review() {
 }
 ```
 
-Step work runs before forward movement. Failure keeps the source step current; a successful commit
-publishes its context updates atomically with movement.
-
-### Typed bundles
-
-```ts
-const signup = createLinearJourney<Context>()(["email", "password", "review"] as const);
-```
-
-Use `signup.LinearJourney`, `signup.useLinearJourney()`,
-`signup.useLinearJourneySelector()`, and `signup.useLinearJourneyStep()`. The literal tuple
-preserves the step-ID union. The bundle creates no machine until its component mounts.
+`useStepHandler(stepId, handler)` registers work for that step while the component is mounted.
+The work runs before forward movement; failure keeps the source step current and lands in
+`currentStep.async.error`, while a successful commit publishes its context updates atomically with
+movement.
 
 ## Graph journeys
 
@@ -102,73 +101,81 @@ const checkout = createGraphJourney(definition, {
 });
 
 function Continue() {
-  const snapshot = checkout.useSnapshot();
-  const api = checkout.useApi();
+  const canContinue = checkout.useSelector((snapshot) =>
+    snapshot.availableEvents.includes("continue")
+  );
 
   return (
-    <button
-      disabled={!snapshot.availableEvents.includes("continue")}
-      onClick={() => void api.send("continue")}
-    >
+    <button disabled={!canContinue} onClick={() => void checkout.send("continue")}>
       Continue
     </button>
   );
 }
 
-<checkout.Provider views={{ cart: Cart, shipping: Shipping, done: Done }}>
+<checkout.Provider views={{ cart: <Cart />, shipping: <Shipping />, done: <Done /> }}>
   <checkout.StepRenderer fallback={<p>Missing view</p>} />
   <Continue />
 </checkout.Provider>;
 ```
 
-Each Provider mount owns an independent Core graph machine. Bundle hooks must run under that
-Provider. Available hooks are `useSnapshot`, `useSelector`, `useApi`,
-`useStepAsyncState`, `useEvent`, `useStepLifecycle`, and `useMachine`.
+The graph bundle has the same shape as the linear one—standalone machine, `views` Provider,
+`StepRenderer`, reactive `useSnapshot` / `useSelector` / `useStep` / `useContext` /
+`useSubscribeEvent`, stable `useMachine` / `useControls` / `useNavigation`—with `send` and
+`updateContext` as the verbatim delegates. No hook needs the Provider. Plugin APIs remain
+namespaced on `useMachine().plugins`.
 
-`useApi()` returns the machine's grouped `controls` and `navigate` objects, typed `send`, and
-`updateContext`. Plugin APIs remain namespaced on `useMachine().plugins`.
+In both tiers, all Providers and hooks share the bundle's one machine: state survives remounts,
+reset is explicit (`machine.controls.restart()` from a terminal status, `terminate()` first when
+mid-flight), and in SSR the module-scope machine is shared across requests.
 
-## Headless hooks
+## Bring your own machine
 
-Use an existing Core machine without a Journey Provider:
+For per-mount or per-request isolation, own a Core machine yourself—no package entry needed,
+React's `useSyncExternalStore` is the whole bridge:
 
 ```tsx
-import { useJourneyEvent, useJourneySnapshot } from "@rxova/journey-react/headless";
+import React from "react";
+import { createLinearJourney } from "@rxova/journey-core";
 
-function Inspector({ machine }) {
-  const snapshot = useJourneySnapshot(machine);
+const machine = createLinearJourney({ context: initialContext, steps }, { autoStart: true });
 
-  useJourneyEvent(machine, "navigationBlocked", ({ reason, error }) => {
-    report(reason, error);
-  });
+const subscribe = (onStoreChange: () => void) =>
+  machine.subscriptions.subscribeSelector((snapshot) => snapshot, onStoreChange);
+
+function Inspector() {
+  const snapshot = React.useSyncExternalStore(subscribe, machine.getSnapshot, machine.getSnapshot);
+
+  React.useEffect(
+    () =>
+      machine.subscriptions.subscribeEvent("navigationBlocked", ({ reason, error }) => {
+        report(reason, error);
+      }),
+    []
+  );
 
   return <output>{snapshot.currentStep?.id}</output>;
 }
 ```
 
-Also available: `useJourneySelector`, `useJourneyStepLifecycle`,
-`useStepAsyncState`, and `useOwnedJourney`. Every headless hook takes the machine as its first
-argument. Except for `useOwnedJourney`, the caller retains start/dispose ownership.
+The caller retains start/dispose ownership. `@rxova/journey-react` exports structural types for
+generic adapters: `AnyJourneyMachine`, `SnapshotOf`, `ContextOf`, `StepIdOf`, and
+`EventPayloadOf`.
 
 ## Async UI
 
-Read `snapshot.machine.isLoading` for the broad loading state,
-`snapshot.transition` for phase/source/destination, and `snapshot.currentStep.async` for the
-current entry result. Guards are synchronous; work that must complete before movement belongs in
-Core navigation work.
+Read `snapshot.machine.isLoading` for the broad loading state, `snapshot.transition` for
+phase/source/destination, and `snapshot.currentStep?.async` for the current entry result. Guards
+are synchronous; work that must complete before movement belongs in Core navigation work.
 
 ## DevTools
 
-Provider-owned machines are available through `machineRef`:
+The bundle's machine is standalone—attach devtools to it directly in an effect:
 
 ```tsx
-<checkout.Provider views={views} machineRef={setMachine}>
-  <checkout.StepRenderer />
-</checkout.Provider>
+React.useEffect(() => attachJourneyDevtools(checkout.machine, { enabled: true }), []);
 ```
 
-Attach that machine in an effect, return the bridge detach function, and use
-`mutationsEnabled: false` for inspect-only sessions.
+Return the bridge detach function, and use `mutationsEnabled: false` for inspect-only sessions.
 
 See the [React documentation](https://rxova.org/docs/react/overview) for complete guides and API
 reference.
