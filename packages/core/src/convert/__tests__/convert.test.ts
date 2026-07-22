@@ -70,7 +70,10 @@ describe("linearToGraphDefinition", () => {
 
     expect(await machine.send("NEXT")).toEqual({ ok: true, from: "a", to: "b" });
     expect(await machine.send("NEXT")).toEqual({ ok: true, from: "b", to: "c" });
-    expect(await machine.send("NEXT")).toEqual({ ok: false, reason: "no-enabled-transition" });
+    expect(await machine.send("NEXT")).toMatchObject({
+      ok: false,
+      reason: "no-enabled-transition"
+    });
     expect(await machine.send("PREVIOUS")).toEqual({ ok: true, from: "c", to: "b" });
   });
 });

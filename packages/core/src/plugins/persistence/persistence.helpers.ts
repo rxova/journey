@@ -99,14 +99,12 @@ export function resolvePersistStorage(option: JourneyPersistOption): JourneyStor
   try {
     ambient = globalThis.localStorage as JourneyStorage | undefined;
   } catch (error) {
-    const blocked = new JourneyError(
+    throw new JourneyError(
       "storage-unavailable",
-      "localStorage access was blocked by the environment; pass persist.storage explicitly"
+      "localStorage access was blocked by the environment; pass persist.storage explicitly",
+      {},
+      error
     );
-    // Assigned rather than passed to the constructor: `cause` is ES2022 and the
-    // compilation target is ES2020, so the two-argument form does not typecheck.
-    (blocked as { cause?: unknown }).cause = error;
-    throw blocked;
   }
 
   if (!ambient) {

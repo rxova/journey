@@ -1,5 +1,5 @@
 import { JourneyError } from "../core/errors";
-import type { LinearToGraphOptions } from "./convert.types";
+import type { LinearGraphEvent, LinearToGraphOptions } from "./convert.types";
 import type {
   GraphJourneyDefinition,
   GraphStepConfig,
@@ -11,7 +11,7 @@ import type {
   LinearStepConfig
 } from "../linear/linear.types";
 
-export type { LinearToGraphOptions } from "./convert.types";
+export type { LinearGraphEvent, LinearToGraphOptions } from "./convert.types";
 
 /**
  * Definition transformer: converts a pure-data linear definition into the
@@ -19,18 +19,35 @@ export type { LinearToGraphOptions } from "./convert.types";
  * events with one candidate per adjacent pair; `initial` is the first step;
  * hooks, metadata, and context carry over unchanged.
  */
-export function linearToGraphDefinition<TContext, TMeta = Record<string, unknown>>(
-  definition: LinearJourneyDefinition<string, TContext, JourneyTerminationPayloads, TMeta>,
+export function linearToGraphDefinition<
+  const TStepId extends string,
+  TContext,
+  TMeta = Record<string, unknown>
+>(
+  definition: LinearJourneyDefinition<TStepId, TContext, JourneyTerminationPayloads, TMeta>,
   options: LinearToGraphOptions = {}
-): GraphJourneyDefinition<TContext, string, { type: string }, unknown, TMeta> {
+): GraphJourneyDefinition<TContext, TStepId, LinearGraphEvent<TStepId>, unknown, TMeta> {
   if (definition.steps.length === 0) {
     throw new JourneyError("empty-definition", "a linear journey needs at least one step");
   }
 
-  const normalized: LinearStepConfig<TContext, string, TMeta>[] = definition.steps.map((input) =>
-    typeof input === "string" ? { id: input } : input
+  const normalized: LinearStepConfig<TContext, TStepId, TMeta>[] = definition.steps.map((input) =>
+    typeof input === "string"
+      ? ({ id: input } as LinearStepConfig<TContext, TStepId, TMeta>)
+      : input
   );
   const ids = normalized.map((step) => step.id);
+
+  // createLinearJourney rejects duplicates; without the same guard a round trip
+  // through here turned a definition that would have thrown into a silently
+  // different, cyclic graph (["a","b","a"] became a <-> b).
+  const seen = new Set<string>();
+  for (const id of ids) {
+    if (seen.has(id)) {
+      throw new JourneyError("duplicate-step-id", `duplicate step id "${id}"`, { stepId: id });
+    }
+    seen.add(id);
+  }
 
   const steps: Record<string, GraphStepConfig> = {};
   for (const step of normalized) {
@@ -72,5 +89,11 @@ export function linearToGraphDefinition<TContext, TMeta = Record<string, unknown
     transitions,
     initial: ids[0] as string,
     context: definition.context
-  } as GraphJourneyDefinition<TContext, string, { type: string }, unknown, TMeta>;
+  } as unknown as GraphJourneyDefinition<
+    TContext,
+    TStepId,
+    LinearGraphEvent<TStepId>,
+    unknown,
+    TMeta
+  >;
 }

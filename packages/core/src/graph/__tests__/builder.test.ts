@@ -116,7 +116,10 @@ describe("createGraphJourneyBuilder", () => {
     // @ts-expect-error submitCode requires its payload
     void machine.send("submitCode");
 
-    expect(await machine.send("reset")).toEqual({ ok: false, reason: "no-enabled-transition" });
+    expect(await machine.send("reset")).toMatchObject({
+      ok: false,
+      reason: "no-enabled-transition"
+    });
   });
 
   it("throws on duplicate step ids", () => {

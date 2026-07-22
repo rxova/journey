@@ -59,7 +59,7 @@ describe("step-id guards reject inherited properties", () => {
 
       const result = await machine.navigate.goToStepById(key as "a");
 
-      expect(result).toEqual({ ok: false, reason: "invalid-target" });
+      expect(result).toMatchObject({ ok: false, reason: "invalid-target" });
       const snapshot = machine.getSnapshot();
       expect(snapshot.currentStep?.id).toBe("a");
       expect(snapshot.currentStep?.index).toBe(0);

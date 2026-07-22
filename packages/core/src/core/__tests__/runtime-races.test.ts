@@ -11,7 +11,7 @@ describe("runtime race branches", () => {
     const navigation = machine.navigate.goToNextStep({ run: () => wait(30) });
     expect(machine.controls.terminate()).toBe(true);
 
-    expect(await navigation).toEqual({ ok: false, reason: "not-running" });
+    expect(await navigation).toMatchObject({ ok: false, reason: "not-running" });
     expect(machine.getSnapshot().currentStep?.id).toBe("a");
     expect(machine.getSnapshot().currentStep?.async.isLoading).toBe(false);
   });

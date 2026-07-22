@@ -89,7 +89,13 @@ export type RuntimeConfig = {
   readonly plugins: readonly AnyJourneyPlugin[];
 };
 
-export type NavigationFailure = Extract<NavigationResult, { ok: false }>;
+/**
+ * The reason half of a failed navigation. `from`/`to` are deliberately absent:
+ * `blocked()` is the single place that knows both, and it fills them in when
+ * building the public `NavigationResult`. Deriving this straight from
+ * `NavigationResult` would force every internal call site to repeat them.
+ */
+export type NavigationFailure = Omit<Extract<NavigationResult, { ok: false }>, "from" | "to">;
 
 export type TimelineOp =
   | { readonly kind: "pointer"; readonly index: number }

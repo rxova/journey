@@ -160,7 +160,7 @@ describe("parsePersistedState validation", () => {
     expect(parsed).not.toBeNull();
     const context = parsed?.context as Record<string, unknown>;
     expect(context.keep).toBe(1);
-    expect(Object.prototype.hasOwnProperty.call(context, "__proto__")).toBe(false);
+    expect(Object.hasOwn(context, "__proto__")).toBe(false);
     // The danger was downstream: spreading an own `__proto__` key into a fresh
     // object reassigns that object's prototype.
     const merged = { ...context };
@@ -175,7 +175,7 @@ describe("parsePersistedState validation", () => {
     const items = (parsed?.context as { items: Record<string, unknown>[] }).items;
 
     expect(items.map((item) => item.id)).toEqual(["a", "b"]);
-    expect(Object.prototype.hasOwnProperty.call(items[0], "__proto__")).toBe(false);
+    expect(Object.hasOwn(items[0] as object, "__proto__")).toBe(false);
   });
 
   it("strips them from nested context values too", () => {
@@ -186,6 +186,6 @@ describe("parsePersistedState validation", () => {
     const nested = (parsed?.context as { nested: Record<string, unknown> }).nested;
 
     expect(nested.ok).toBe(2);
-    expect(Object.prototype.hasOwnProperty.call(nested, "__proto__")).toBe(false);
+    expect(Object.hasOwn(nested, "__proto__")).toBe(false);
   });
 });

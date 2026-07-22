@@ -39,7 +39,7 @@ describe("lifecycle meta-state-machine", () => {
     expect(machine.getSnapshot().machine.isPaused).toBe(true);
 
     const blocked = await machine.navigate.goToNextStep();
-    expect(blocked).toEqual({ ok: false, reason: "not-running" });
+    expect(blocked).toMatchObject({ ok: false, reason: "not-running" });
 
     expect(machine.controls.resume()).toBe(true);
     const moved = await machine.navigate.goToNextStep();
@@ -52,7 +52,7 @@ describe("lifecycle meta-state-machine", () => {
 
     // goToNextStep on the last step never auto-completes.
     const past = await machine.navigate.goToNextStep();
-    expect(past).toEqual({ ok: false, reason: "out-of-bounds" });
+    expect(past).toMatchObject({ ok: false, reason: "out-of-bounds" });
     expect(machine.getSnapshot().status).toBe("running");
 
     expect(machine.controls.complete({ score: 10 })).toBe(true);
@@ -148,9 +148,12 @@ describe("lifecycle meta-state-machine", () => {
     expect(machine.controls.start()).toBe(false);
     expect(machine.controls.resume()).toBe(false);
     expect(machine.controls.terminate()).toBe(false);
-    expect(await machine.navigate.goToNextStep()).toEqual({ ok: false, reason: "disposed" });
-    expect(await machine.navigate.goToStepById("a")).toEqual({ ok: false, reason: "disposed" });
-    expect(await machine.navigate.goToLastVisitedStep()).toEqual({
+    expect(await machine.navigate.goToNextStep()).toMatchObject({ ok: false, reason: "disposed" });
+    expect(await machine.navigate.goToStepById("a")).toMatchObject({
+      ok: false,
+      reason: "disposed"
+    });
+    expect(await machine.navigate.goToLastVisitedStep()).toMatchObject({
       ok: false,
       reason: "disposed"
     });
