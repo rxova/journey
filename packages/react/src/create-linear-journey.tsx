@@ -81,28 +81,33 @@ export const createLinearJourney = <
     );
   }
 
+  // `name` is this tier's own field; everything else is core's definition and is
+  // forwarded whole. Listing core's fields by hand here would silently drop any
+  // field core adds later — the graph factory already destructures this way.
+  const { name, ...coreDefinition } = definition;
+
   // The one boundary cast in this factory: core anchors its step-id union on
   // the definition generic, while this tier re-anchors inference on the steps
   // tuple (`LinearStepIdOf<TSteps>`) so `context` alone types the bundle. The
   // two derivations name the same union, but TypeScript cannot prove it
   // through the generic call, so core infers `string` and the result is
   // re-branded here.
+  //
   // Three-way autoStart in this tier: `undefined` (the default) starts the
   // machine from a layout effect on first mount, so subscribers attach before
   // the initial stepEnter; `true` keeps the eager in-factory start for callers
   // who need SSR to emit step content; `false` defers to controls.start().
-  const eagerStart = options?.autoStart === true;
-  const machine = coreCreateLinearJourney(
-    { steps: definition.steps, context: definition.context },
-    { ...options, autoStart: eagerStart }
-  ) as unknown as Machine;
+  const machine = coreCreateLinearJourney(coreDefinition, {
+    ...options,
+    autoStart: options?.autoStart === true
+  }) as unknown as Machine;
 
   const useAutoStart = createAutoStartHook(machine, options?.autoStart === undefined);
 
   return {
     ...createJourneyBindings<Machine, TContext, TStepId, Snapshot>(
       machine,
-      definition.name ?? "LinearJourney",
+      name ?? "LinearJourney",
       useAutoStart
     ),
     useStepHandler: <TResult = void,>(
