@@ -48,7 +48,7 @@ describe("server-side rendering (no window)", () => {
       context: {}
     });
     const html = renderToString(
-      <bundle.Provider views={{ form: Form, done: Form }}>
+      <bundle.Provider views={{ form: <Form />, done: <Form /> }}>
         <bundle.StepRenderer />
       </bundle.Provider>
     );

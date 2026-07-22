@@ -71,9 +71,10 @@ export function graphBundleTypes() {
   type Snapshot = ReturnType<typeof bundle.useSnapshot>;
   type _kind = Expect<Equal<Snapshot["type"], "graph">>;
   type _context = Expect<Equal<Snapshot["context"], { attempts: number }>>;
+  type _machine = Expect<Equal<typeof bundle.machine, ReturnType<typeof bundle.useMachine>>>;
 
   // @ts-expect-error views must cover the declared step ids
-  const incomplete: Views = { form: Component };
+  const incomplete: Views = { form: null };
   void incomplete;
 
   return bundle;

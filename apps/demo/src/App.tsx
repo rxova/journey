@@ -65,18 +65,16 @@ const ReactBridge = () => {
 
 const useCloseReactJourney = () => {
   const snapshot = reactJourney.useSnapshot();
-  const api = reactJourney.useApi();
   return () => {
     if (snapshot.context.dirty) {
-      return api.send("requestClose");
+      return reactJourney.send("requestClose");
     }
-    return api.controls.terminate();
+    return reactJourney.machine.controls.terminate();
   };
 };
 
 const ReactStart = () => {
   const snapshot = reactJourney.useSnapshot();
-  const api = reactJourney.useApi();
   const close = useCloseReactJourney();
   return (
     <div className="step">
@@ -86,7 +84,7 @@ const ReactStart = () => {
         <input
           value={snapshot.context.name}
           onChange={(event) =>
-            api.updateContext((context) => ({
+            reactJourney.updateContext((context) => ({
               ...context,
               name: event.target.value,
               dirty: true
@@ -99,7 +97,7 @@ const ReactStart = () => {
         <input
           checked={snapshot.context.includeDetails}
           onChange={(event) =>
-            api.updateContext((context) => ({
+            reactJourney.updateContext((context) => ({
               ...context,
               includeDetails: event.target.checked,
               dirty: true
@@ -110,7 +108,7 @@ const ReactStart = () => {
         Visit details step
       </label>
       <div className="actions">
-        <button onClick={() => void api.send("next")}>Next</button>
+        <button onClick={() => void reactJourney.send("next")}>Next</button>
         <button className="secondary" onClick={() => void close()}>
           Close
         </button>
@@ -120,16 +118,18 @@ const ReactStart = () => {
 };
 
 const ReactDetails = () => {
-  const api = reactJourney.useApi();
   return (
     <div className="step">
       <h3>Details</h3>
       <p>Example intermediate step to verify transitions and timeline behavior.</p>
       <div className="actions">
-        <button className="secondary" onClick={() => void api.navigate.goToPreviousStep()}>
+        <button
+          className="secondary"
+          onClick={() => void reactJourney.machine.navigate.goToPreviousStep()}
+        >
           Go to previous step
         </button>
-        <button onClick={() => void api.send("next")}>Next</button>
+        <button onClick={() => void reactJourney.send("next")}>Next</button>
       </div>
     </div>
   );
@@ -137,7 +137,6 @@ const ReactDetails = () => {
 
 const ReactReview = () => {
   const snapshot = reactJourney.useSnapshot();
-  const api = reactJourney.useApi();
   const close = useCloseReactJourney();
   return (
     <div className="step">
@@ -146,44 +145,48 @@ const ReactReview = () => {
         Ready to submit for <strong>{snapshot.context.name || "Anonymous"}</strong>?
       </p>
       <div className="actions">
-        <button className="secondary" onClick={() => void api.navigate.goToPreviousStep()}>
+        <button
+          className="secondary"
+          onClick={() => void reactJourney.machine.navigate.goToPreviousStep()}
+        >
           Go to previous step
         </button>
         <button className="secondary" onClick={() => void close()}>
           Close
         </button>
-        <button onClick={() => api.controls.complete()}>Submit</button>
+        <button onClick={() => reactJourney.machine.controls.complete()}>Submit</button>
       </div>
     </div>
   );
 };
 
 const ReactConfirmExit = () => {
-  const api = reactJourney.useApi();
   return (
     <div className="step">
       <h3>Confirm Exit</h3>
       <p>You have unsaved changes. Confirm close?</p>
       <div className="actions">
-        <button className="secondary" onClick={() => void api.navigate.goToPreviousStep()}>
+        <button
+          className="secondary"
+          onClick={() => void reactJourney.machine.navigate.goToPreviousStep()}
+        >
           Keep editing
         </button>
-        <button onClick={() => api.controls.terminate()}>Confirm close</button>
+        <button onClick={() => reactJourney.machine.controls.terminate()}>Confirm close</button>
       </div>
     </div>
   );
 };
 
-const reactViews: Record<ReactStepId, React.ComponentType> = {
-  start: ReactStart,
-  details: ReactDetails,
-  review: ReactReview,
-  confirmExit: ReactConfirmExit
+const reactViews: Record<ReactStepId, React.ReactNode> = {
+  start: <ReactStart />,
+  details: <ReactDetails />,
+  review: <ReactReview />,
+  confirmExit: <ReactConfirmExit />
 };
 
 const ReactMachinePanel = () => {
   const snapshot = reactJourney.useSnapshot();
-  const api = reactJourney.useApi();
   return (
     <section className="card">
       <div className="card-head">
@@ -192,10 +195,13 @@ const ReactMachinePanel = () => {
       </div>
       <reactJourney.StepRenderer fallback={<p>Missing step component.</p>} />
       <div className="actions card-actions">
-        <button className="secondary" onClick={() => api.controls.restart()}>
+        <button className="secondary" onClick={() => reactJourney.machine.controls.restart()}>
           Restart
         </button>
-        <button className="secondary" onClick={() => void api.navigate.goToLastVisitedStep()}>
+        <button
+          className="secondary"
+          onClick={() => void reactJourney.machine.navigate.goToLastVisitedStep()}
+        >
           Go to last visited step
         </button>
       </div>

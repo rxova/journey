@@ -4,25 +4,35 @@ import type {
   GraphJourneyMachine,
   GraphSnapshot,
   JourneyEventObject,
-  JourneySubscriptionEvent,
-  StepAsyncState
+  JourneySubscriptionEvent
 } from "@rxova/journey-core";
 import type { EventPayloadOf } from "../headless/use-journey-event";
 
-export type GraphProviderProps<TContext, TStepId extends string> = {
-  /** Step id → component. The definition stays pure data; views live here. */
-  views: Record<TStepId, React.ComponentType>;
-  /** Per-mount context override, shallow-merged over the definition's context. */
-  context?: Partial<TContext>;
-  /** Start the journey automatically on mount. Default true. */
-  autoStart?: boolean;
-  onError?: (error: unknown, context: { phase: "start" }) => void;
-  /** Imperative escape hatch to this mount's machine. */
-  machineRef?: React.Ref<unknown>;
+/**
+ * What each step renders, keyed by step id. Exhaustiveness is type-checked: a
+ * missing key or an undeclared key is a compile error. Values are elements
+ * (not component types), so props and wrappers stay inline — same contract as
+ * the linear tier.
+ */
+export type GraphJourneyViews<TStepId extends string> = {
+  readonly [K in TStepId]: React.ReactNode;
+};
+
+/**
+ * The Provider carries only the views for `<StepRenderer>` — the machine is
+ * standalone on the bundle and needs no React context.
+ */
+export type GraphProviderProps<TStepId extends string> = {
+  views: GraphJourneyViews<TStepId>;
   children: React.ReactNode;
 };
 
-/** The graph bundle: Provider/StepRenderer plus prefix-less namespaced hooks. */
+/**
+ * The graph bundle: one standalone machine plus the React shell around it.
+ * Every hook closes over the bundle's machine, so all of them work with or
+ * without the Provider — the Provider exists to hand `views` to
+ * `<StepRenderer>`, which is the only piece that must render inside it.
+ */
 export type GraphJourneyBundle<
   TContext,
   TStepId extends string,
@@ -30,22 +40,25 @@ export type GraphJourneyBundle<
   TMeta = Record<string, unknown>,
   TPlugins extends readonly AnyJourneyPlugin[] = readonly []
 > = {
-  Provider: React.ComponentType<GraphProviderProps<TContext, TStepId>>;
+  /** The bundle's machine — created by the factory, usable outside React. */
+  machine: GraphJourneyMachine<TContext, TStepId, TEvents, TMeta, TPlugins>;
+  Provider: React.ComponentType<GraphProviderProps<TStepId>>;
+  /** Renders the active step's view; place it anywhere inside the Provider. */
   StepRenderer: React.ComponentType<{ fallback?: React.ReactNode }>;
+
+  /** The machine's live snapshot (reactive). */
   useSnapshot: () => GraphSnapshot<TContext, TStepId, TMeta, TEvents>;
+  /** A derived slice of the snapshot; re-renders only when it changes (reactive). */
   useSelector: <TSelected>(
     selector: (snapshot: GraphSnapshot<TContext, TStepId, TMeta, TEvents>) => TSelected,
     equalityFn?: (a: TSelected, b: TSelected) => boolean
   ) => TSelected;
-  /** The machine's command groups (`controls`, `navigate`, `send`), verbatim. */
-  useApi: () => {
-    controls: GraphJourneyMachine<TContext, TStepId, TEvents, TMeta, TPlugins>["controls"];
-    navigate: GraphJourneyMachine<TContext, TStepId, TEvents, TMeta, TPlugins>["navigate"];
-    send: GraphJourneyMachine<TContext, TStepId, TEvents, TMeta, TPlugins>["send"];
-    updateContext: (updater: (context: TContext) => TContext) => void;
-  };
-  useStepAsyncState: (stepId: TStepId) => StepAsyncState;
-  useEvent: <TEvent extends JourneySubscriptionEvent>(
+  /** The current step — id, metadata, async state — or null while idle (reactive). */
+  useStep: () => GraphSnapshot<TContext, TStepId, TMeta, TEvents>["currentStep"];
+  /** The machine's context value (reactive). */
+  useContext: () => TContext;
+  /** Subscribes a listener to a machine event for the component's lifetime. */
+  useSubscribeEvent: <TEvent extends JourneySubscriptionEvent>(
     event: TEvent,
     listener: (
       payload: EventPayloadOf<
@@ -54,12 +67,14 @@ export type GraphJourneyBundle<
       >
     ) => void
   ) => void;
-  useStepLifecycle: (
-    stepId: TStepId,
-    callbacks: {
-      onEnter?: (args: { context: TContext }) => void;
-      onLeave?: (args: { context: TContext }) => void;
-    }
-  ) => void;
+
+  /** The machine and its command groups, verbatim (stable — not reactive). */
   useMachine: () => GraphJourneyMachine<TContext, TStepId, TEvents, TMeta, TPlugins>;
+  useControls: () => GraphJourneyMachine<TContext, TStepId, TEvents, TMeta, TPlugins>["controls"];
+  useNavigation: () => GraphJourneyMachine<TContext, TStepId, TEvents, TMeta, TPlugins>["navigate"];
+
+  /** `machine.send`, verbatim — callable from anywhere, React or not. */
+  send: GraphJourneyMachine<TContext, TStepId, TEvents, TMeta, TPlugins>["send"];
+  /** `machine.context.update`, verbatim — callable from anywhere, React or not. */
+  updateContext: (updater: (context: TContext) => TContext) => void;
 };
