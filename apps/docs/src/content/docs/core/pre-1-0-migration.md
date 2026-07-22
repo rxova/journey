@@ -137,13 +137,18 @@ Cancel app-side timers from `onLeave` when the step can be exited early.
   saved record at the first `start()`; explicit `startAt` wins), `defaultTimeoutMs`,
   `onListenerError`. See the [creation options](/docs/core/api#creation-options).
 
-## React: runtime-object API → three tiers
+## React: runtime-object API → twin bundle factories
 
 `@rxova/journey-react` removed `createJourney`, `createJourneyFactory`, the bound runtime object,
 `JourneyProvider`, `StepRenderer` (root export), and the legacy hooks (`useJourneySnapshot` root
-form, `useJourneyApi`, `useStepApi`, `useJourneyComputed`). Choose one of three tiers per flow.
+form, `useJourneyApi`, `useStepApi`, `useJourneyComputed`).
 
-### Root tier: component-defined linear wizards
+What replaces them is two factories with the same shape — `createLinearJourney` from the root
+entry and `createGraphJourney` from `@rxova/journey-react/graph`. Each creates **one standalone
+machine** and returns a bundle around it. They differ only in their verb: linear has `navigate`
+and `useStepHandler`, graph has `send`.
+
+### Linear tier: a bundle around one machine
 
 ```tsx
 // rc.2
@@ -158,34 +163,50 @@ api.goToNextStep();
 ```
 
 ```tsx
-// 1.0 — the component is the machine boundary; steps are JSX children
-import { LinearJourney, useLinearJourney } from "@rxova/journey-react";
+// 1.0 — the factory is the machine boundary; views are a typed record
+import { createLinearJourney } from "@rxova/journey-react";
 
-<LinearJourney context={{ name: "" }} onStepEnter={({ to, direction }) => track(to, direction)}>
-  <LinearJourney.Step id="intro">
-    <Intro />
-  </LinearJourney.Step>
-  <LinearJourney.Step id="details" metadata={{ title: "Details" }}>
-    <Details />
-  </LinearJourney.Step>
-</LinearJourney>;
+const signup = createLinearJourney({
+  name: "signup",
+  context: { name: "" },
+  steps: ["intro", { id: "details", metadata: { title: "Details" } }]
+});
+
+<signup.Provider views={{ intro: <Intro />, details: <Details /> }}>
+  <signup.StepRenderer />
+</signup.Provider>;
 
 function Details() {
-  const { machine, snapshot } = useLinearJourney(); // verbatim core machine + snapshot
+  const isLoading = signup.useSelector((snapshot) => snapshot.machine.isLoading);
+  const isLastStep = signup.useSelector((snapshot) => snapshot.currentStep?.isLastStep);
+
   return (
-    <button disabled={snapshot.machine.isLoading} onClick={() => machine.navigate.goToNextStep()}>
-      {snapshot.currentStep.isLastStep ? "Finish" : "Next"}
+    <button disabled={isLoading} onClick={() => void signup.navigate.goToNextStep()}>
+      {isLastStep ? "Finish" : "Next"}
     </button>
   );
 }
 ```
 
-`useLinearJourney()` returns `{ machine, snapshot }` verbatim — no reshaped fields. The `options`
-prop passes core `JourneyRuntimeOptions` through unchanged (`persist`, `plugins`, `startAt`,
-`defaultTimeoutMs`; `autoStart` defaults to `true` here). `useLinearJourneySelector` subscribes to
-a slice; `useLinearJourneyStep` registers per-step forward-navigation work.
+Three differences worth calling out, because they change how you structure a flow:
 
-### Graph tier: definition-driven rendering
+- **Steps are no longer JSX children.** `views` is a `{ [id in StepId]: ReactNode }` record,
+  exhaustively type-checked against the step-ID union, so a missing or undeclared key is a compile
+  error. Only `StepRenderer` has to render inside the Provider — everything else is an ordinary
+  sibling.
+- **The bundle's hooks work with or without the Provider**, because they close over the machine
+  rather than reading context. Non-React code drives the same machine through `signup.machine`,
+  `signup.navigate`, and `signup.updateContext`.
+- **`onStepEnter` as a prop is gone.** Subscribe with `signup.useSubscribeEvent("stepEnter", …)`,
+  or from outside React with `signup.machine.subscriptions.subscribeEvent`.
+
+The factory's second argument takes core's `JourneyRuntimeOptions` unchanged (`persist`, `plugins`,
+`startAt`, `defaultTimeoutMs`, `onListenerError`). `autoStart` is three-way in this tier: omitted
+starts the machine when the bundle's first Provider or hook mounts, `true` starts it eagerly inside
+the factory, and `false` waits for `controls.start()`. Per-step forward-navigation work moved to
+`signup.useStepHandler(stepId, handler)`.
+
+### Graph tier: the same shape with `send`
 
 ```tsx
 // rc.2
@@ -199,46 +220,81 @@ import { createGraphJourney } from "@rxova/journey-react/graph";
 
 const checkout = createGraphJourney(definition);
 
-<checkout.Provider views={{ form: Form, review: Review, done: Done }}>
+<checkout.Provider views={{ form: <Form />, review: <Review />, done: <Done /> }}>
   <checkout.StepRenderer />
 </checkout.Provider>;
 
 function Form() {
-  const snapshot = checkout.useSnapshot();
-  const status = checkout.useSelector((s) => s.status);
-  const api = checkout.useApi(); // { controls, navigate, send, updateContext }
-  return <button onClick={() => api.send("SUBMIT", { email: snapshot.context.email })}>Go</button>;
+  const email = checkout.useSelector((snapshot) => snapshot.context.email);
+
+  return <button onClick={() => void checkout.send("SUBMIT", { email })}>Go</button>;
 }
 ```
 
-Every `Provider` mount creates an isolated machine (StrictMode-safe) and disposes it on unmount.
-The bundle also exposes `useStepAsyncState`, `useEvent`, `useStepLifecycle`, and `useMachine`.
+Reactive hooks are `useSnapshot`, `useSelector`, `useStep`, `useContext`, and `useSubscribeEvent`;
+stable accessors are `useMachine`, `useControls`, and `useNavigation`. Plugin APIs stay namespaced
+on `useMachine().plugins`.
 
-### Headless tier: machine-argument hooks
+**Ownership changed here, and it is the easiest thing to get wrong on upgrade.** The factory
+creates one machine, not one per Provider mount. All Providers and hooks of a bundle share it,
+state survives unmounting, and React never disposes it — reset is explicit via
+`controls.terminate()` then `controls.restart()`. Under SSR, a module-scope bundle is shared by
+every request in the process.
+
+### Per-component ownership: `useJourney`
+
+When a journey's lifetime should match a component instance instead of the module — per-mount
+wizards, per-request isolation, tests — own the bundle:
 
 ```tsx
-// rc.2: hooks reached the machine through context only
-const snapshot = useJourneySnapshot();
-```
-
-```tsx
-// 1.0 — hooks take the machine as an argument; ownership stays yours
-import {
-  useJourneySnapshot,
-  useJourneySelector,
-  useOwnedJourney
-} from "@rxova/journey-react/headless";
+// 1.0
+import { createLinearJourney, useJourney } from "@rxova/journey-react";
 
 function Wizard() {
-  const machine = useOwnedJourney(() => createLinearJourney(definition)); // owned + disposed by this component
-  const snapshot = useJourneySnapshot(machine);
-  const stepId = useJourneySelector(machine, (s) => s.currentStep?.id);
-  return <CurrentStep id={stepId} onNext={() => machine.navigate.goToNextStep()} />;
+  const signup = useJourney(() => createLinearJourney(definition));
+  const step = signup.useStep();
+
+  return <signup.Provider views={views}>{/* … */}</signup.Provider>;
 }
 ```
 
-Use this tier when machine ownership and rendering must stay separate (module-owned machines, tests,
-multiple renderers over one machine).
+The factory runs once per mounted instance and the machine is disposed on a real unmount. Do not
+substitute a `useState` lazy initializer: React double-invokes those under StrictMode, which builds
+two fully-configured machines — two plugin setups, two persistence reads and writes, two armed
+autosave timers — and abandons one undisposed.
+
+### Caller-owned machines: no headless entry point
+
+There is no `@rxova/journey-react/headless`. When ownership and rendering must stay separate, own a
+Core machine and read it with React's own `useSyncExternalStore` — that is the whole bridge:
+
+```tsx
+// 1.0
+import React from "react";
+import { createLinearJourney } from "@rxova/journey-core";
+
+const machine = createLinearJourney(definition, { autoStart: true });
+
+const subscribe = (onStoreChange: () => void) =>
+  machine.subscriptions.subscribeSelector((snapshot) => snapshot, onStoreChange);
+
+function Wizard() {
+  const snapshot = React.useSyncExternalStore(subscribe, machine.getSnapshot, machine.getSnapshot);
+
+  return (
+    <CurrentStep
+      id={snapshot.currentStep?.id}
+      onNext={() => void machine.navigate.goToNextStep()}
+    />
+  );
+}
+```
+
+Snapshots are structurally shared, so identity changes exactly when content does — which is what
+makes `getSnapshot` safe to pass directly. The root entry exports the structural types for this
+pattern: `AnyJourneyMachine`, `SnapshotOf`, `ContextOf`, `StepIdOf`, and `EventPayloadOf`. Keep the
+`subscribe` reference stable (module scope, or `useCallback`) or `useSyncExternalStore` will
+resubscribe on every render.
 
 ## Devtools bridge: protocol 6 → 7
 
