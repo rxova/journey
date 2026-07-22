@@ -5,19 +5,18 @@ import { journey } from "../journey";
 
 export const LoggedIn = () => {
   const snapshot = journey.useSnapshot();
-  const api = journey.useApi();
+  const controls = journey.useControls();
 
   // React alternative to onEnter/onLeave on the step definition.
   // Useful when the callback needs access to component state or React context.
-  journey.useStepLifecycle("loggedIn", {
-    onLeave: ({ context }) => {
-      console.log("[journey] loggedIn: leaving session for", context.username);
-    }
+  journey.useSubscribeEvent("stepLeave", ({ from, snapshot }) => {
+    if (from !== "loggedIn") return;
+    console.log("[journey] loggedIn: leaving session for", snapshot.context.username);
   });
 
   React.useEffect(() => {
-    api.controls.complete();
-  }, [api]);
+    controls.complete();
+  }, [controls]);
 
   return (
     <div className="step">
@@ -28,7 +27,7 @@ export const LoggedIn = () => {
         </p>
       </div>
       <div className="actions" style={{ justifyContent: "center" }}>
-        <button className="secondary" onClick={() => api.controls.restart()}>
+        <button className="secondary" onClick={() => controls.restart()}>
           Start Over
         </button>
       </div>
