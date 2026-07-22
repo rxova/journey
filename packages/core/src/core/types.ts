@@ -486,6 +486,15 @@ export type PluginHost<TContext = unknown, TStepId extends string = string> = {
   ): Unsubscribe;
   onError(callback: (info: JourneyEventPayloads<TContext, TStepId>["error"]) => void): Unsubscribe;
   onDispose(callback: () => void): void;
+  /**
+   * Routes a plugin's own failure to the machine's `onListenerError`.
+   *
+   * A plugin tap that throws synchronously is already isolated and reported.
+   * Work that outlives the tap — an awaited storage write, a debounced flush —
+   * has no such path, and would otherwise have to choose between an unhandled
+   * rejection and a `console.error` that ignores the configured reporter.
+   */
+  reportError(error: unknown): void;
 };
 
 /**

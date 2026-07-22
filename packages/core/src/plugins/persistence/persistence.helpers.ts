@@ -11,7 +11,44 @@ export function buildPersistedState(snapshot: JourneySnapshot, now: number): Jou
   };
 }
 
-/** Parses a stored value; malformed or foreign payloads yield `null`. */
+const JOURNEY_STATUSES = new Set([
+  "idle",
+  "running",
+  "paused",
+  "completed",
+  "terminated"
+]) as ReadonlySet<string>;
+
+/**
+ * Keys that must never survive `JSON.parse` into machine state.
+ *
+ * `JSON.parse` creates `__proto__` as an ordinary own property rather than
+ * reassigning the prototype, so the parsed object is safe in isolation. It stops
+ * being safe the moment application code spreads or `Object.assign`s it into a
+ * fresh object — the own key is then copied as a *prototype assignment*. Storage
+ * is attacker-reachable, so the shape is scrubbed before it can reach a context.
+ */
+const UNSAFE_KEYS = ["__proto__", "constructor", "prototype"] as const;
+
+function scrub(value: unknown, depth = 0): unknown {
+  if (depth > 50 || value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map((item) => scrub(item, depth + 1));
+
+  const output: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value)) {
+    if ((UNSAFE_KEYS as readonly string[]).includes(key)) continue;
+    output[key] = scrub(item, depth + 1);
+  }
+  return output;
+}
+
+/**
+ * Parses a stored value; malformed or foreign payloads yield `null`.
+ *
+ * Validation is deliberately total: this is the only gate between an untrusted
+ * storage entry and machine state, and `readPersisted()` hands the result
+ * straight to application code typed as `JourneyPersistedState`.
+ */
 export function parsePersistedState(raw: string | null): JourneyPersistedState | null {
   if (raw === null) return null;
   let value: unknown;
@@ -24,13 +61,23 @@ export function parsePersistedState(raw: string | null): JourneyPersistedState |
   const candidate = value as Record<string, unknown>;
   if (
     typeof candidate.status !== "string" ||
+    !JOURNEY_STATUSES.has(candidate.status) ||
     !Array.isArray(candidate.timeline) ||
+    !candidate.timeline.every((id) => typeof id === "string") ||
     typeof candidate.currentIndex !== "number" ||
-    typeof candidate.savedAt !== "number"
+    !Number.isInteger(candidate.currentIndex) ||
+    typeof candidate.savedAt !== "number" ||
+    !Number.isFinite(candidate.savedAt)
   ) {
     return null;
   }
-  return candidate as unknown as JourneyPersistedState;
+  return {
+    status: candidate.status,
+    context: scrub(candidate.context),
+    timeline: candidate.timeline,
+    currentIndex: candidate.currentIndex,
+    savedAt: candidate.savedAt
+  } as JourneyPersistedState;
 }
 
 /**

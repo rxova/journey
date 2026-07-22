@@ -25,10 +25,22 @@ export type PersistencePluginOptions = {
   now?: () => number;
 };
 
+export type PersistenceState = {
+  /** When the last **confirmed** write landed, not when one was attempted. */
+  readonly lastSavedAt: number | null;
+  /** The most recent write failure, cleared by the next successful write. */
+  readonly error: unknown | null;
+};
+
 export type PersistenceApi = {
-  /** The last state written by this run (not re-read from storage). */
+  /**
+   * The last state this run confirmed to storage (not re-read from it), or
+   * `null` if nothing has been written yet.
+   */
   inspectPersistedState(): JourneyPersistedState | null;
-  /** Re-reads and parses storage; `null` when absent or malformed. */
+  /** Last confirmed write time and last write failure. */
+  getPersistenceState(): PersistenceState;
+  /** Re-reads and parses storage; `null` when absent, malformed, or foreign. */
   readPersisted(): JourneyPersistedState | null;
   clearPersisted(): void;
 };
