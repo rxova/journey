@@ -6,6 +6,7 @@ export type {
   EventPayloadOf,
   JourneyBundleBase,
   JourneyProviderProps,
+  JourneyStepRendererProps,
   JourneyViews,
   LinearJourneyBundle,
   LinearJourneyBundleDefinition,

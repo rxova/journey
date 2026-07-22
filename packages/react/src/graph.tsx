@@ -10,9 +10,19 @@ import type {
   GraphTransitionsMap,
   JourneyEventObject
 } from "@rxova/journey-core";
-import type { GraphJourneyBundle, JourneyProviderProps, JourneyViews } from "./react.types";
+import type {
+  GraphJourneyBundle,
+  JourneyProviderProps,
+  JourneyStepRendererProps,
+  JourneyViews
+} from "./react.types";
 
-export type { GraphJourneyBundle, JourneyProviderProps, JourneyViews } from "./react.types";
+export type {
+  GraphJourneyBundle,
+  JourneyProviderProps,
+  JourneyStepRendererProps,
+  JourneyViews
+} from "./react.types";
 
 /**
  * Creates a graph journey bundle for React around **one standalone machine**,
@@ -129,7 +139,7 @@ export function createGraphJourney<
     <ViewsContext.Provider value={views}>{children}</ViewsContext.Provider>
   );
 
-  const StepRenderer = ({ fallback = null }: { fallback?: React.ReactNode }) => {
+  const StepRenderer = ({ fallback = null }: JourneyStepRendererProps) => {
     const views = React.useContext(ViewsContext);
     if (views === null) {
       throw new Error("StepRenderer must be rendered inside this bundle's <Provider>.");

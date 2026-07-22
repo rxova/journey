@@ -9,6 +9,7 @@ import {
   createLinearJourney,
   createGraphJourney as coreCreateGraphJourney
 } from "@rxova/journey-core";
+import { createSubscriptionEnhancerPlugin } from "@rxova/journey-core/subscription-enhancer";
 import { createLinearJourney as createLinearJourneyBundle } from "@rxova/journey-react";
 import { createGraphJourney } from "@rxova/journey-react/graph";
 
@@ -35,6 +36,15 @@ export function linearJourneyTypes() {
   type _machine = Expect<Equal<typeof bundle.machine, ReturnType<typeof bundle.useMachine>>>;
   type _gate = Expect<
     Equal<Parameters<typeof bundle.useStepHandler>[0], "intro" | "details" | "done">
+  >;
+
+  // The hooks' snapshot IS the machine's snapshot — no reshaped/widened copy.
+  type _verbatimSnapshot = Expect<Equal<Snapshot, ReturnType<typeof bundle.machine.getSnapshot>>>;
+
+  // Step handlers see the narrow id union, not string.
+  type Handler = Parameters<typeof bundle.useStepHandler<void>>[1];
+  type _handlerIds = Expect<
+    Equal<Parameters<Handler["run"]>[0]["to"], "intro" | "details" | "done">
   >;
 
   type Views = Parameters<typeof bundle.Provider>[0]["views"];
@@ -77,6 +87,21 @@ export function graphBundleTypes() {
   // @ts-expect-error views must cover the declared step ids
   const incomplete: Views = { form: null };
   void incomplete;
+
+  return bundle;
+}
+
+// ── plugin apis flow from the options into machine.plugins ──────────────────
+
+export function pluginThreadingTypes() {
+  const bundle = createLinearJourneyBundle(
+    { context: { n: 0 }, steps: ["a", "b"] },
+    { plugins: [createSubscriptionEnhancerPlugin()] }
+  );
+
+  type _pluginApis = Expect<
+    Equal<keyof ReturnType<typeof bundle.useMachine>["plugins"], "subscription-enhancer">
+  >;
 
   return bundle;
 }

@@ -1,9 +1,10 @@
 import React from "react";
 import { createLinearJourney as coreCreateLinearJourney } from "@rxova/journey-core";
 import { useSafeLayoutEffect } from "./use-safe-layout-effect";
-import type { LinearStepIdOf, LinearStepInput } from "@rxova/journey-core";
+import type { AnyJourneyPlugin, LinearStepIdOf, LinearStepInput } from "@rxova/journey-core";
 import type {
   JourneyProviderProps,
+  JourneyStepRendererProps,
   JourneyViews,
   LinearJourneyBundle,
   LinearJourneyBundleDefinition,
@@ -57,13 +58,14 @@ export const createLinearJourney = <
   const TSteps extends readonly [
     LinearStepInput<NoInfer<TContext>, unknown>,
     ...LinearStepInput<NoInfer<TContext>, unknown>[]
-  ]
+  ],
+  const TPlugins extends readonly AnyJourneyPlugin[] = readonly []
 >(
   definition: LinearJourneyBundleDefinition<TContext, TSteps>,
-  options?: LinearJourneyBundleOptions<LinearStepIdOf<TSteps>>
-): LinearJourneyBundle<TContext, LinearStepIdOf<TSteps>> => {
+  options?: LinearJourneyBundleOptions<LinearStepIdOf<TSteps>, TPlugins>
+): LinearJourneyBundle<TContext, LinearStepIdOf<TSteps>, TPlugins> => {
   type TStepId = LinearStepIdOf<TSteps>;
-  type Machine = LinearJourneyMachine<TContext, TStepId>;
+  type Machine = LinearJourneyMachine<TContext, TStepId, TPlugins>;
   type Snapshot = LinearJourneySnapshot<TContext, TStepId>;
 
   const declaredStepIds = definition.steps.map(stepIdOf);
@@ -132,7 +134,7 @@ export const createLinearJourney = <
   );
   Provider.displayName = definition.name ? `${definition.name}.Provider` : "LinearJourney.Provider";
 
-  const StepRenderer = ({ fallback = null }: { fallback?: React.ReactNode }) => {
+  const StepRenderer = ({ fallback = null }: JourneyStepRendererProps) => {
     const views = React.useContext(ViewsContext);
     if (views === null) {
       throw new Error("StepRenderer must be rendered inside this bundle's <Provider>.");
@@ -172,13 +174,13 @@ export const createLinearJourney = <
     useNavigation: () => machine.navigate,
     useStepHandler: <TResult = void,>(
       stepId: TStepId,
-      handler: LinearJourneyStepHandler<TContext, TResult>
+      handler: LinearJourneyStepHandler<TContext, TResult, TStepId>
     ): void => {
       // Latest-ref, same reason as above; registration is per mounted caller.
       const handlerRef = React.useRef(handler);
       handlerRef.current = handler;
       useSafeLayoutEffect(() => {
-        const work: LinearJourneyStepHandler<TContext, TResult> = {
+        const work: LinearJourneyStepHandler<TContext, TResult, TStepId> = {
           run: (args) => handlerRef.current.run(args),
           commit: (args) => handlerRef.current.commit?.(args)
         };

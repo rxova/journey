@@ -91,6 +91,11 @@ export type JourneyProviderProps<TStepId extends string> = {
   children: React.ReactNode;
 };
 
+/** Props of `<StepRenderer>`: what to render while idle or when the active id has no view. */
+export type JourneyStepRendererProps = {
+  fallback?: React.ReactNode;
+};
+
 /**
  * The surface both bundles share: one standalone machine created by the
  * factory, the Provider/StepRenderer pair, and hooks that close over the
@@ -108,7 +113,7 @@ export type JourneyBundleBase<
   machine: TMachine;
   Provider: (props: JourneyProviderProps<TStepId>) => React.ReactElement;
   /** Renders the active step's view; place it anywhere inside the Provider. */
-  StepRenderer: React.ComponentType<{ fallback?: React.ReactNode }>;
+  StepRenderer: (props: JourneyStepRendererProps) => React.ReactElement;
 
   /** The machine's live snapshot (reactive). */
   useSnapshot: () => TSnapshot;
@@ -140,16 +145,22 @@ export type JourneyBundleBase<
 // Linear tier
 // ---------------------------------------------------------------------------
 
-/** A linear journey's underlying core machine, verbatim. */
+/**
+ * A linear journey's underlying core machine, verbatim. Step `metadata` is
+ * `unknown` in this tier (the definition accepts any metadata value; narrow it
+ * where you read it).
+ */
 export type LinearJourneyMachine<
   TContext = unknown,
-  TStepId extends string = string
-> = CoreLinearJourneyMachine<TContext, TStepId>;
+  TStepId extends string = string,
+  TPlugins extends readonly AnyJourneyPlugin[] = readonly []
+> = CoreLinearJourneyMachine<TContext, TStepId, unknown, TPlugins>;
 
 /**
- * A linear journey's core snapshot, verbatim. `currentStep` is null while the
- * machine is idle (`autoStart: false` before `controls.start()`), exactly as
- * in the graph tier.
+ * A linear journey's core snapshot, verbatim — the exact type
+ * `machine.getSnapshot()` returns. `currentStep` is null while the machine is
+ * idle (`autoStart: false` before `controls.start()`), exactly as in the
+ * graph tier.
  */
 export type LinearJourneySnapshot<
   TContext = unknown,
@@ -163,12 +174,11 @@ export type LinearJourneyEventPayloads<
 > = JourneyEventPayloads<TContext, TStepId, LinearJourneySnapshot<TContext, TStepId>>;
 
 /** Transactional Core work registered for a step's forward navigation. */
-export type LinearJourneyStepHandler<TContext = unknown, TResult = void> = NavigationWork<
-  TContext,
-  string,
-  LinearJourneySnapshot<TContext>,
-  TResult
->;
+export type LinearJourneyStepHandler<
+  TContext = unknown,
+  TResult = void,
+  TStepId extends string = string
+> = NavigationWork<TContext, TStepId, LinearJourneySnapshot<TContext, TStepId>, TResult>;
 
 /**
  * The pure-data definition `createLinearJourney()` captures: core's own
@@ -193,18 +203,23 @@ export type LinearJourneyBundleDefinition<
 };
 
 /** Core's creation options, passed through verbatim and frozen per bundle. */
-export type LinearJourneyBundleOptions<TStepId extends string = string> = JourneyRuntimeOptions<
-  readonly AnyJourneyPlugin[],
-  TStepId
->;
+export type LinearJourneyBundleOptions<
+  TStepId extends string = string,
+  TPlugins extends readonly AnyJourneyPlugin[] = readonly AnyJourneyPlugin[]
+> = JourneyRuntimeOptions<TPlugins, TStepId>;
 
 /**
  * What `createLinearJourney()` returns: the shared bundle surface with the
  * linear verbs — `navigate` where graph has `send`, and `useStepHandler` to
- * gate `goToNextStep` from a component.
+ * gate `goToNextStep` from a component. `TPlugins` flows from the options'
+ * `plugins` tuple into `machine.plugins`, exactly as in the graph tier.
  */
-export type LinearJourneyBundle<TContext, TStepId extends string> = JourneyBundleBase<
-  LinearJourneyMachine<TContext, TStepId>,
+export type LinearJourneyBundle<
+  TContext,
+  TStepId extends string,
+  TPlugins extends readonly AnyJourneyPlugin[] = readonly []
+> = JourneyBundleBase<
+  LinearJourneyMachine<TContext, TStepId, TPlugins>,
   TContext,
   TStepId,
   LinearJourneySnapshot<TContext, TStepId>
@@ -217,11 +232,11 @@ export type LinearJourneyBundle<TContext, TStepId extends string> = JourneyBundl
    */
   useStepHandler: <TResult = void>(
     stepId: TStepId,
-    handler: LinearJourneyStepHandler<TContext, TResult>
+    handler: LinearJourneyStepHandler<TContext, TResult, TStepId>
   ) => void;
 
   /** `machine.navigate`, verbatim — callable from anywhere, React or not. */
-  navigate: LinearJourneyMachine<TContext, TStepId>["navigate"];
+  navigate: LinearJourneyMachine<TContext, TStepId, TPlugins>["navigate"];
 };
 
 // ---------------------------------------------------------------------------
