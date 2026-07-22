@@ -20,6 +20,16 @@ misdirection.
   `useLinearJourney`, and `<LinearJourney>`. Replaced with the linear bundle, the graph bundle,
   `useJourney`, and the caller-owned `useSyncExternalStore` pattern.
 
+- **The rc.2 → 1.0 migration guide's React section is rewritten.** Its "migrate to this" side
+  taught a three-tier design that never shipped: `<LinearJourney>` with `LinearJourney.Step`
+  children, `useLinearJourney`, and a `@rxova/journey-react/headless` entry point with
+  `useOwnedJourney` and machine-argument hooks. It now describes the twin bundle factories,
+  `useJourney` for per-component ownership, and the caller-owned `useSyncExternalStore` pattern,
+  and it corrects the graph tier's ownership claim — the factory creates one machine, not one per
+  Provider mount.
+
 The banned-identifier check now scans `README.md` and every `packages/*/README.md` in addition to
 the docs site. It already banned each removed identifier — the READMEs were simply never scanned,
-which is exactly how the headless section survived.
+which is exactly how the headless section survived. The migration guide is deliberately exempt from
+that check, since it must name rc-era identifiers to teach the mapping; that exemption is also why
+its stale 1.0 side went unnoticed, so it is worth reading manually whenever the API moves.
