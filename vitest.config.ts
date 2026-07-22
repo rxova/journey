@@ -131,10 +131,6 @@ export default defineConfig({
         )
       },
       {
-        find: "@rxova/journey-common/async",
-        replacement: fileURLToPath(new URL("./packages/common/src/async.ts", import.meta.url))
-      },
-      {
         find: "@rxova/journey-common/bindings",
         replacement: fileURLToPath(new URL("./packages/common/src/bindings.ts", import.meta.url))
       },
@@ -147,10 +143,6 @@ export default defineConfig({
         replacement: fileURLToPath(new URL("./packages/common/src/origin.ts", import.meta.url))
       },
       {
-        find: "@rxova/journey-common/memoize",
-        replacement: fileURLToPath(new URL("./packages/common/src/memoize.ts", import.meta.url))
-      },
-      {
         find: "@rxova/journey-common",
         replacement: fileURLToPath(new URL("./packages/common/src/index.ts", import.meta.url))
       }
@@ -161,7 +153,9 @@ export default defineConfig({
       "packages/**/src/**/__tests__/**/*.test.{ts,tsx}",
       "packages/**/test/**/*.test.ts",
       "packages/**/test/**/*.test.tsx",
-      "packages/common/**/*.test.ts",
+      // Repo tooling lives outside any package's `src`, so the patterns above
+      // do not reach it.
+      "packages/common/tooling/__tests__/**/*.test.ts",
       "apps/**/src/**/__tests__/**/*.test.{ts,tsx}",
       "apps/**/test/**/*.test.ts",
       "apps/**/test/**/*.test.tsx",

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { isExpectedWindowOrigin, resolveWindowTargetOrigin } from "./origin";
+import { isExpectedWindowOrigin, resolveWindowTargetOrigin } from "@rxova/journey-common/origin";
 
 describe("resolveWindowTargetOrigin", () => {
   afterEach(() => {

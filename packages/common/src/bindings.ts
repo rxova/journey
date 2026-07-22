@@ -64,6 +64,10 @@ const identity = <TSnapshot>(snapshot: TSnapshot): TSnapshot => snapshot;
  * from inside a listener affects the next publish instead of corrupting the
  * current one. A throwing listener does not stop the rest; the first error is
  * rethrown after the pass so the wrapper's error handling still sees it.
+ *
+ * @typeParam TSnapshot - The machine's snapshot type.
+ * @param machine - The machine to read and subscribe to. Held for the lifetime of the source.
+ * @returns A source whose machine subscription opens on the first listener and closes with the last.
  */
 export const createSnapshotSource = <TSnapshot>(
   machine: JourneyReadable<TSnapshot>
@@ -124,6 +128,12 @@ export const createSnapshotSource = <TSnapshot>(
  *   that was discarded is exactly the staleness this avoids.
  *
  * Rebuild the cache when the selector or equality function changes identity.
+ *
+ * @typeParam TSnapshot - The machine's snapshot type.
+ * @typeParam TSelected - The derived slice type.
+ * @param selector - Derives the slice. Must be pure; it is skipped for a repeated snapshot.
+ * @param equalityFn - Compares a fresh selection against the committed one. Defaults to `Object.is`.
+ * @returns A cache for this one `(selector, equalityFn)` pair, not safe to share across pairs.
  */
 export const createSelectorCache = <TSnapshot, TSelected>(
   selector: (snapshot: TSnapshot) => TSelected,

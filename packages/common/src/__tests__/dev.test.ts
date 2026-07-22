@@ -1,11 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  errorInDevelopment,
   isDevelopmentEnvironment,
   resolveNonProductionEnvironment,
   warnInDevelopment
-} from "./dev";
+} from "@rxova/journey-common/dev";
 
 type DiagnosticGlobal = typeof globalThis & {
   __DEV__?: boolean;
@@ -43,6 +42,21 @@ describe("isDevelopmentEnvironment", () => {
     delete process.env.NODE_ENV;
     expect(isDevelopmentEnvironment()).toBe(true);
   });
+
+  it("ignores a non-boolean __DEV__ and falls through to NODE_ENV", () => {
+    (globalThis as typeof globalThis & { __DEV__?: unknown }).__DEV__ = "true";
+    process.env.NODE_ENV = "production";
+    expect(isDevelopmentEnvironment()).toBe(false);
+  });
+
+  it("treats NODE_ENV=test as non-development", () => {
+    delete (globalThis as DiagnosticGlobal).__DEV__;
+    process.env.NODE_ENV = "test";
+
+    // Deliberate: test runs stay quiet unless a test opts in via __DEV__,
+    // which is how the other packages exercise their warning paths.
+    expect(isDevelopmentEnvironment()).toBe(false);
+  });
 });
 
 describe("warnInDevelopment", () => {
@@ -71,33 +85,15 @@ describe("warnInDevelopment", () => {
     warnInDevelopment("heads up");
     expect(spy).not.toHaveBeenCalled();
   });
-});
 
-describe("errorInDevelopment", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-    delete (globalThis as DiagnosticGlobal).__DEV__;
-  });
-
-  it("calls console.error in development without detail", () => {
+  it("stays silent where there is no console at all", () => {
     (globalThis as DiagnosticGlobal).__DEV__ = true;
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    errorInDevelopment("bad");
-    expect(spy).toHaveBeenCalledWith("bad");
-  });
+    vi.stubGlobal("console", undefined);
 
-  it("calls console.error in development with detail", () => {
-    (globalThis as DiagnosticGlobal).__DEV__ = true;
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    errorInDevelopment("bad", 42);
-    expect(spy).toHaveBeenCalledWith("bad", 42);
-  });
-
-  it("does not call console.error in production", () => {
-    (globalThis as DiagnosticGlobal).__DEV__ = false;
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    errorInDevelopment("bad");
-    expect(spy).not.toHaveBeenCalled();
+    // Some embedded and worker runtimes have no console; a diagnostic helper
+    // must not be the thing that crashes them.
+    expect(() => warnInDevelopment("heads up", { extra: true })).not.toThrow();
+    vi.unstubAllGlobals();
   });
 });
 
@@ -130,5 +126,36 @@ describe("resolveNonProductionEnvironment", () => {
 
   it("returns false when bundlerEnv is null and nodeEnv is explicitly undefined", () => {
     expect(resolveNonProductionEnvironment({ bundlerEnv: null, nodeEnv: undefined })).toBe(false);
+  });
+
+  it("prefers bundlerEnv.PROD over a development nodeEnv", () => {
+    expect(
+      resolveNonProductionEnvironment({ bundlerEnv: { PROD: true }, nodeEnv: "development" })
+    ).toBe(false);
+  });
+
+  it("ignores non-true bundler flags and falls through to nodeEnv", () => {
+    expect(
+      resolveNonProductionEnvironment({
+        bundlerEnv: { DEV: "yes", PROD: 0 },
+        nodeEnv: "development"
+      })
+    ).toBe(true);
+  });
+
+  it("returns false where there is no process global to read NODE_ENV from", () => {
+    vi.stubGlobal("process", undefined);
+
+    // A browser or worker bundle has no `process`; an environment that never
+    // said it was safe must be treated as production.
+    expect(resolveNonProductionEnvironment()).toBe(false);
+    vi.unstubAllGlobals();
+  });
+
+  it("reads the ambient NODE_ENV when no options are given at all", () => {
+    const original = process.env.NODE_ENV;
+    process.env.NODE_ENV = "development";
+    expect(resolveNonProductionEnvironment()).toBe(true);
+    process.env.NODE_ENV = original;
   });
 });
