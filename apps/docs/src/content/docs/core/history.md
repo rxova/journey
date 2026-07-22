@@ -63,6 +63,25 @@ evicted while a run is live. Long-lived journeys therefore accumulate one entry 
 `restart()` resets the timeline (with the rest of the run state). A `maxHistory` bound is planned
 post-1.0 as a compatible addition; see the roadmap.
 
+The cost shows up as **latency before it shows up as memory**. Each navigation copies the timeline
+and re-derives the history slice, so per-navigation work grows linearly with timeline length and
+total work grows quadratically. Measured on a two-step journey (ms per navigation, at a given
+timeline length):
+
+| Timeline length | ms per navigation |
+| --------------- | ----------------- |
+| 600             | 0.036             |
+| 1,500           | 0.073             |
+| 5,500           | 0.169             |
+| 20,500          | 1.203             |
+
+For ordinary journeys this is irrelevant — a wizard runs tens of navigations, not thousands. It
+matters for sessions that never restart: kiosks, embedded flows, and long-lived single-page apps.
+The threshold is high (~1.2 ms per navigation at 20,000, still imperceptible; you need roughly
+100,000 to feel it), and `terminate()` + `restart()` returns cost to baseline immediately —
+measured at 0.036 ms per navigation after a reset from 20,000 entries. Size against a restart
+policy rather than against available memory.
+
 ## Hooks still apply
 
 Timeline moves bypass graph transition gating. Optional next/previous work may stop before commit;
