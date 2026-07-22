@@ -3,10 +3,6 @@ import { createGraphJourney as coreCreateGraphJourney } from "@rxova/journey-cor
 import { useJourneyEvent } from "../headless/use-journey-event";
 import { useJourneySelector } from "../headless/use-journey-selector";
 import { useJourneySnapshot } from "../headless/use-journey-snapshot";
-import { useJourneyStepLifecycle } from "../headless/use-journey-step-lifecycle";
-import { useOwnedJourney } from "../headless/use-owned-journey";
-import { useStepAsyncState } from "../headless/use-step-async-state";
-import { useSafeLayoutEffect } from "../headless/use-safe-layout-effect";
 import type { AnyJourneyMachine } from "../headless/headless.types";
 import type {
   AnyJourneyPlugin,
@@ -17,27 +13,40 @@ import type {
   GraphTransitionsMap,
   JourneyEventObject
 } from "@rxova/journey-core";
-import type { GraphJourneyBundle, GraphProviderProps } from "./graph.types";
+import type { GraphJourneyBundle, GraphJourneyViews, GraphProviderProps } from "./graph.types";
 
-export type { GraphJourneyBundle, GraphProviderProps } from "./graph.types";
+export type { GraphJourneyBundle, GraphJourneyViews, GraphProviderProps } from "./graph.types";
 
 /**
- * Creates a graph journey bundle for React. **No machine is created at module
- * scope** — the definition is captured and a machine is created per
- * `<Provider>` mount (StrictMode-safe, disposed on unmount). Multiple
- * Providers are independent instances.
+ * Creates a graph journey bundle for React around **one standalone machine**,
+ * created right here in the factory. The machine outlives any component:
+ * every hook closes over it and works with or without the Provider, non-React
+ * code drives it via `bundle.machine` / `bundle.send` / `bundle.updateContext`,
+ * and unmounting disposes nothing. The Provider only hands `views` to
+ * `<StepRenderer>` — which renders the active step wherever you place it, so
+ * headers and footers are ordinary siblings:
  *
  * ```tsx
  * const checkout = createGraphJourney({ steps, transitions, initial: "cart", context });
  *
- * <checkout.Provider views={{ cart: Cart, shipping: Shipping }}>
+ * <checkout.Provider views={{ cart: <Cart />, shipping: <Shipping /> }}>
  *   <ProgressHeader />
  *   <checkout.StepRenderer fallback={<Spinner />} />
- * </checkout.Provider>
+ *   <Footer />
+ * </checkout.Provider>;
+ *
+ * checkout.send("SUBMIT");            // from anywhere
+ * const step = checkout.useStep();    // from any component
  * ```
  *
- * Hooks are namespaced on the bundle (`checkout.useApi()`); the machine's
- * command groups pass through verbatim.
+ * Consequences of the standalone machine: all Providers and hooks share the
+ * one machine, journey state survives remounts (reset explicitly —
+ * `controls.restart()` after a terminal status, `terminate()` first when
+ * mid-flight), and in SSR the module-scope machine is shared across
+ * requests — per-request or per-mount isolation is the headless tier's job
+ * (`useOwnedJourney` + core's `createGraphJourney`). `autoStart` defaults to
+ * `true` here (the React-tier default); pass `{ autoStart: false }` and call
+ * `bundle.machine.controls.start()` to defer the initial entry.
  */
 export function createGraphJourney<
   TContext,
@@ -66,72 +75,23 @@ export function createGraphJourney<
   options?: GraphJourneyOptions<NoInfer<THandlers>, TPlugins>
 ): GraphJourneyBundle<TContext, TStepId, TEvents, TMeta, TPlugins> {
   type Machine = GraphJourneyMachine<TContext, TStepId, TEvents, TMeta, TPlugins>;
+  type Snapshot = GraphSnapshot<TContext, TStepId, TMeta, TEvents>;
 
-  const MachineContext = React.createContext<Machine | null>(null);
-  const ViewsContext = React.createContext<Record<string, React.ComponentType> | null>(null);
-
-  const useMachine = (): Machine => {
-    const machine = React.useContext(MachineContext);
-    if (machine === null) {
-      throw new Error("Graph journey hooks must be called inside this bundle's <Provider>.");
-    }
-    return machine;
-  };
+  const machine = coreCreateGraphJourney(
+    definition as never,
+    { ...options, autoStart: options?.autoStart ?? true } as never
+  ) as unknown as Machine;
 
   // Inside this generic body the machine's type parameters are unresolved,
   // which defeats method-bivariance against AnyJourneyMachine — the headless
   // hooks get the erased view and the bundle re-asserts the concrete types.
-  const useLooseMachine = (): AnyJourneyMachine => useMachine() as unknown as AnyJourneyMachine;
+  const looseMachine = machine as unknown as AnyJourneyMachine;
 
-  const Provider = ({
-    views,
-    context: contextOverride,
-    autoStart = true,
-    onError,
-    machineRef,
-    children
-  }: GraphProviderProps<TContext, TStepId>) => {
-    const onErrorRef = React.useRef(onError);
-    onErrorRef.current = onError;
+  const ViewsContext = React.createContext<GraphJourneyViews<TStepId> | null>(null);
 
-    // Machine per mount: useOwnedJourney runs the factory once (StrictMode-safe)
-    // and disposes on real unmount. `autoStart` is a creation option, so the
-    // first snapshot already has the initial step.
-    const machine = useOwnedJourney(() => {
-      const mergedDefinition =
-        contextOverride === undefined
-          ? definition
-          : { ...definition, context: { ...definition.context, ...contextOverride } };
-      return coreCreateGraphJourney(
-        mergedDefinition as never,
-        {
-          ...options,
-          autoStart
-        } as never
-      ) as unknown as Machine;
-    });
-
-    useSafeLayoutEffect(() => {
-      if (typeof machineRef === "function") {
-        machineRef(machine);
-      } else if (machineRef) {
-        (machineRef as React.MutableRefObject<unknown>).current = machine;
-      }
-      return () => {
-        if (typeof machineRef === "function") {
-          machineRef(null);
-        } else if (machineRef) {
-          (machineRef as React.MutableRefObject<unknown>).current = null;
-        }
-      };
-    }, [machine, machineRef]);
-
-    return (
-      <MachineContext.Provider value={machine}>
-        <ViewsContext.Provider value={views}>{children}</ViewsContext.Provider>
-      </MachineContext.Provider>
-    );
-  };
+  const Provider = ({ views, children }: GraphProviderProps<TStepId>) => (
+    <ViewsContext.Provider value={views}>{children}</ViewsContext.Provider>
+  );
 
   const StepRenderer = ({ fallback = null }: { fallback?: React.ReactNode }) => {
     const views = React.useContext(ViewsContext);
@@ -139,55 +99,35 @@ export function createGraphJourney<
       throw new Error("StepRenderer must be rendered inside this bundle's <Provider>.");
     }
     const currentStepId = useJourneySelector(
-      useLooseMachine(),
-      (snapshot) => snapshot.currentStep?.id
+      looseMachine,
+      (snapshot) => snapshot.currentStep?.id as TStepId | undefined
     );
-    const StepComponent = currentStepId === undefined ? undefined : views[currentStepId];
-
-    if (!StepComponent) {
+    if (currentStepId === undefined || !(currentStepId in views)) {
       return <>{fallback}</>;
     }
-
-    return (
-      <React.Fragment key={currentStepId}>
-        <StepComponent />
-      </React.Fragment>
-    );
+    // Keyed by id: moving steps remounts the view instead of reconciling
+    // across steps.
+    return <React.Fragment key={currentStepId}>{views[currentStepId]}</React.Fragment>;
   };
 
-  const bundle: GraphJourneyBundle<TContext, TStepId, TEvents, TMeta, TPlugins> = {
+  const useSelector = <TSelected,>(
+    selector: (snapshot: Snapshot) => TSelected,
+    equalityFn?: (a: TSelected, b: TSelected) => boolean
+  ): TSelected => useJourneySelector(looseMachine, selector as never, equalityFn) as TSelected;
+
+  return {
+    machine,
     Provider,
     StepRenderer,
-    useSnapshot: () =>
-      useJourneySnapshot(useLooseMachine()) as unknown as GraphSnapshot<
-        TContext,
-        TStepId,
-        TMeta,
-        TEvents
-      >,
-    useSelector: (selector, equalityFn) =>
-      useJourneySelector(useLooseMachine(), selector as never, equalityFn as never) as ReturnType<
-        typeof selector
-      >,
-    useApi: () => {
-      const machine = useMachine();
-      return React.useMemo(
-        () => ({
-          controls: machine.controls,
-          navigate: machine.navigate,
-          send: machine.send,
-          updateContext: (updater: (context: TContext) => TContext) =>
-            machine.context.update(updater)
-        }),
-        [machine]
-      );
-    },
-    useStepAsyncState: (stepId) => useStepAsyncState(useLooseMachine(), stepId as never),
-    useEvent: (event, listener) => useJourneyEvent(useLooseMachine(), event, listener as never),
-    useStepLifecycle: (stepId, callbacks) =>
-      useJourneyStepLifecycle(useLooseMachine(), stepId as never, callbacks as never),
-    useMachine
+    useSnapshot: () => useJourneySnapshot(looseMachine) as unknown as Snapshot,
+    useSelector,
+    useStep: () => useSelector((snapshot) => snapshot.currentStep),
+    useContext: () => useSelector((snapshot) => snapshot.context),
+    useSubscribeEvent: (event, listener) => useJourneyEvent(looseMachine, event, listener as never),
+    useMachine: () => machine,
+    useControls: () => machine.controls,
+    useNavigation: () => machine.navigate,
+    send: machine.send,
+    updateContext: (updater) => machine.context.update(updater)
   };
-
-  return bundle;
 }

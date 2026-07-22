@@ -18,27 +18,22 @@ const makeBundle = () =>
     context: { attempts: 0 } as Ctx
   });
 
-const views = {
-  form: makeStep("form"),
-  review: makeStep("review"),
-  done: makeStep("done")
-};
+const Form = makeStep("form");
+const Review = makeStep("review");
+const Done = makeStep("done");
+const views = { form: <Form />, review: <Review />, done: <Done /> };
 
 describe("graph bundle", () => {
-  it("renders the initial view and moves via useApi().send", async () => {
+  it("renders the initial view and moves via the bundle's verbatim send", async () => {
     const bundle = makeBundle();
     const Controls = () => {
-      const api = bundle.useApi();
+      const navigate = bundle.useNavigation();
       const available = bundle.useSelector((snapshot) => snapshot.availableEvents.join(","));
       return (
         <div>
           <span data-testid="events">{available}</span>
-          <button onClick={() => void api.send("SUBMIT")}>submit</button>
-          <button onClick={() => void api.navigate.goToPreviousStep()}>back</button>
-          <button onClick={() => api.controls.complete()}>complete</button>
-          <button onClick={() => api.updateContext((c) => ({ attempts: c.attempts + 1 }))}>
-            bump
-          </button>
+          <button onClick={() => void bundle.send("SUBMIT")}>submit</button>
+          <button onClick={() => void navigate.goToPreviousStep()}>back</button>
         </div>
       );
     };
@@ -64,40 +59,56 @@ describe("graph bundle", () => {
     expect(screen.getByTestId("step-form")).toBeTruthy();
   });
 
-  it("exposes snapshot, step async state, lifecycle, and events through bundle hooks", async () => {
+  it("exposes the snapshot, current step data, and events through bundle hooks", async () => {
     const bundle = makeBundle();
     const entered: string[] = [];
-    const lifecycle = vi.fn();
     const Probe = () => {
       const snapshot = bundle.useSnapshot();
-      const asyncState = bundle.useStepAsyncState("form");
-      bundle.useEvent("stepEnter", ({ to }) => entered.push(to));
-      bundle.useStepLifecycle("review", { onEnter: lifecycle });
-      const api = bundle.useApi();
+      const step = bundle.useStep();
+      bundle.useSubscribeEvent("stepEnter", ({ to }) => entered.push(to));
       return (
-        <div>
-          <span data-testid="status">
-            {snapshot.status}:{snapshot.currentStep?.id}:{asyncState.isSuccess ? "ok" : "…"}
-          </span>
-          <button onClick={() => void api.send("SUBMIT")}>go</button>
-        </div>
+        <span data-testid="status">
+          {snapshot.status}:{step?.id}:{step?.async.isSuccess ? "ok" : "…"}
+        </span>
       );
     };
-    render(
-      <bundle.Provider views={views}>
-        <Probe />
-      </bundle.Provider>
-    );
+    render(<Probe />);
     await flush();
     expect(screen.getByTestId("status").textContent).toBe("running:form:ok");
 
-    fireEvent.click(screen.getByText("go"));
-    await flush();
+    await act(async () => {
+      await bundle.send("SUBMIT");
+    });
     expect(entered).toEqual(["review"]);
-    expect(lifecycle).toHaveBeenCalledWith({ context: { attempts: 0 } });
+    expect(screen.getByTestId("status").textContent).toBe("running:review:ok");
   });
 
-  it("merges per-mount context overrides and keeps Providers independent", async () => {
+  it("works fully outside the Provider: the machine is standalone", async () => {
+    const bundle = makeBundle();
+
+    // Non-React access before anything renders.
+    expect(bundle.machine.getSnapshot().currentStep?.id).toBe("form");
+    bundle.updateContext((context) => ({ attempts: context.attempts + 1 }));
+
+    const Lost = () => {
+      const context = bundle.useContext();
+      const controls = bundle.useControls();
+      return (
+        <button data-testid="ctx" onClick={() => controls.complete()}>
+          {context.attempts}
+        </button>
+      );
+    };
+    render(<Lost />);
+    await flush();
+    expect(screen.getByTestId("ctx").textContent).toBe("1");
+
+    fireEvent.click(screen.getByTestId("ctx"));
+    await flush();
+    expect(bundle.machine.getSnapshot().status).toBe("completed");
+  });
+
+  it("shares the one machine across every Provider and hook", async () => {
     const bundle = makeBundle();
     const Attempts = ({ testId }: { testId: string }) => {
       const attempts = bundle.useSelector((snapshot) => snapshot.context.attempts);
@@ -105,7 +116,7 @@ describe("graph bundle", () => {
     };
     render(
       <>
-        <bundle.Provider views={views} context={{ attempts: 7 }}>
+        <bundle.Provider views={views}>
           <Attempts testId="first" />
         </bundle.Provider>
         <bundle.Provider views={views}>
@@ -114,15 +125,54 @@ describe("graph bundle", () => {
       </>
     );
     await flush();
+
+    await act(async () => {
+      bundle.updateContext((context) => ({ attempts: context.attempts + 7 }));
+    });
     expect(screen.getByTestId("first").textContent).toBe("7");
-    expect(screen.getByTestId("second").textContent).toBe("0");
+    expect(screen.getByTestId("second").textContent).toBe("7");
+    expect(bundle.useMachine()).toBe(bundle.machine);
   });
 
-  it("honours autoStart=false (fallback until started via machineRef)", async () => {
+  it("state survives a remount; restart is the explicit reset", async () => {
     const bundle = makeBundle();
-    const machineRef = React.createRef<ReturnType<typeof bundle.useMachine>>();
+    const journey = (
+      <bundle.Provider views={views}>
+        <bundle.StepRenderer />
+      </bundle.Provider>
+    );
+    const first = render(journey);
+    await flush();
+    await act(async () => {
+      await bundle.send("SUBMIT");
+    });
+    first.unmount();
+
+    render(journey);
+    await flush();
+    expect(screen.getByTestId("step-review")).toBeTruthy(); // not reset by React
+
+    // restart() applies from a terminal status only — terminate first.
+    await act(async () => {
+      bundle.machine.controls.terminate();
+      bundle.machine.controls.restart();
+    });
+    await flush();
+    expect(screen.getByTestId("step-form")).toBeTruthy();
+  });
+
+  it("honours autoStart: false — fallback until started explicitly", async () => {
+    const bundle = createGraphJourney(
+      {
+        steps: { form: {}, done: {} },
+        transitions: { FINISH: { from: "form", to: "done" } },
+        initial: "form",
+        context: {}
+      },
+      { autoStart: false }
+    );
     render(
-      <bundle.Provider views={views} autoStart={false} machineRef={machineRef as never}>
+      <bundle.Provider views={{ form: <Form />, done: <Done /> }}>
         <bundle.StepRenderer fallback={<span data-testid="fallback">waiting</span>} />
       </bundle.Provider>
     );
@@ -130,102 +180,84 @@ describe("graph bundle", () => {
     expect(screen.getByTestId("fallback")).toBeTruthy();
 
     await act(async () => {
-      machineRef.current!.controls.start();
+      bundle.machine.controls.start();
     });
     await flush();
     expect(screen.getByTestId("step-form")).toBeTruthy();
   });
 
-  it("disposes the per-mount machine on unmount and guards hooks outside the Provider", async () => {
+  it("guards only StepRenderer against missing views", () => {
     const bundle = makeBundle();
-    const machineRef = React.createRef<ReturnType<typeof bundle.useMachine>>();
-    const view = render(
-      <bundle.Provider views={views} machineRef={machineRef as never}>
-        <bundle.StepRenderer />
-      </bundle.Provider>
-    );
-    await flush();
-    const machine = machineRef.current!;
-    view.unmount();
-    await flush();
-    expect(await machine.send("SUBMIT")).toEqual({ ok: false, reason: "disposed" });
-
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const Lost = () => {
-      bundle.useSnapshot();
-      return null;
-    };
-    expect(() => render(<Lost />)).toThrow(/inside this bundle's <Provider>/);
+    expect(() => render(<bundle.StepRenderer />)).toThrow(/inside this bundle's <Provider>/);
     consoleError.mockRestore();
   });
 });
 
 describe("graph bundle edges", () => {
-  it("updates context through useApi and honours custom selector equality", async () => {
+  it("updates context through the bundle and honours custom selector equality", async () => {
     const bundle = makeBundle();
     const seen: unknown[] = [];
     const kindSelector = (snapshot: { context: Ctx }) => ({ attempts: snapshot.context.attempts });
     const closeEnough = (a: { attempts: number }, b: { attempts: number }) =>
       Math.abs(a.attempts - b.attempts) < 10;
     const Probe = () => {
-      const api = bundle.useApi();
       const stable = bundle.useSelector(kindSelector as never, closeEnough as never);
       seen.push(stable);
       return (
-        <button onClick={() => api.updateContext((c) => ({ attempts: c.attempts + 1 }))}>
+        <button onClick={() => bundle.updateContext((c) => ({ attempts: c.attempts + 1 }))}>
           bump
         </button>
       );
     };
-    render(
-      <bundle.Provider views={views}>
-        <Probe />
-      </bundle.Provider>
-    );
+    render(<Probe />);
     await flush();
 
     fireEvent.click(screen.getByText("bump"));
     await flush();
-    const machineContexts = new Set(seen.map((value) => JSON.stringify(value)));
-    expect(machineContexts.size).toBe(1); // equality collapsed the +1 change
+    const observed = new Set(seen.map((value) => JSON.stringify(value)));
+    expect(observed.size).toBe(1); // equality collapsed the +1 change
   });
 
-  it("supports function machineRefs with null cleanup and guards StepRenderer placement", async () => {
+  it("command groups are stable machine properties across re-renders", async () => {
     const bundle = makeBundle();
-    const seen: unknown[] = [];
-    const view = render(
-      <bundle.Provider views={views} machineRef={(machine) => void seen.push(machine)}>
-        <bundle.StepRenderer />
-      </bundle.Provider>
-    );
+    const controlsSeen = new Set<unknown>();
+    const navigationSeen = new Set<unknown>();
+    const Probe = () => {
+      controlsSeen.add(bundle.useControls());
+      navigationSeen.add(bundle.useNavigation());
+      const n = bundle.useSelector((snapshot) => snapshot.context.attempts);
+      return <span data-testid="n">{n}</span>;
+    };
+    render(<Probe />);
     await flush();
-    expect(seen[0]).not.toBeNull();
-    view.unmount();
-    await flush();
-    expect(seen[seen.length - 1]).toBeNull();
+    await act(async () => {
+      bundle.updateContext((c) => ({ attempts: c.attempts + 1 }));
+    });
+    await act(async () => {
+      bundle.updateContext((c) => ({ attempts: c.attempts + 1 }));
+    });
 
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    expect(() => render(<bundle.StepRenderer />)).toThrow(/inside this bundle's <Provider>/);
-    consoleError.mockRestore();
+    expect(screen.getByTestId("n").textContent).toBe("2");
+    expect(controlsSeen.size).toBe(1);
+    expect(navigationSeen.size).toBe(1);
   });
 
-  it("mounts exactly one machine under StrictMode", async () => {
+  it("renders under StrictMode without duplicating machines or subscriptions", async () => {
     const bundle = makeBundle();
-    const refs = new Set<unknown>();
     render(
       <React.StrictMode>
-        <bundle.Provider
-          views={views}
-          machineRef={(machine) => {
-            if (machine !== null) refs.add(machine);
-          }}
-        >
+        <bundle.Provider views={views}>
           <bundle.StepRenderer />
         </bundle.Provider>
       </React.StrictMode>
     );
     await flush();
-    expect(refs.size).toBe(1);
     expect(screen.getByTestId("step-form")).toBeTruthy();
+
+    await act(async () => {
+      await bundle.send("SUBMIT");
+    });
+    expect(screen.getByTestId("step-review")).toBeTruthy();
   });
 });
