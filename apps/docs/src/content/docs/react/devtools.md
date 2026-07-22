@@ -4,8 +4,8 @@ title: "Devtools Bridge (Chrome)"
 
 Install the [Journey Chrome DevTools extension](https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm).
 
-A graph bundle's machine is standalone — created by the factory, not by a Provider — so attach to
-`bundle.machine` directly:
+A bundle's machine — linear or graph — is standalone, created by the factory rather than by a
+Provider, so attach to `bundle.machine` directly:
 
 ```tsx
 function Checkout() {
@@ -26,9 +26,8 @@ function Checkout() {
 }
 ```
 
-A linear bundle's Provider creates its machine per mount instead: pass a ref through its
-`machineRef` prop and attach the current machine in an effect. For headless React, attach the same
-Core machine passed to the hooks.
+The same call also works at module scope, outside React entirely. For a caller-owned Core machine,
+attach the machine you render from with `useSyncExternalStore`.
 
 The bridge is disabled in production by default. An explicitly enabled bridge permits mutations
 unless `mutationsEnabled: false` is supplied. Always return the detach function.

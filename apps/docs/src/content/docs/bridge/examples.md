@@ -38,23 +38,22 @@ panel must be unable to navigate, change context, or invoke another mutating ope
 
 ```tsx
 function Checkout() {
-  const [machine, setMachine] = React.useState(null);
-
-  React.useEffect(() => {
-    if (!machine) return;
-    return attachJourneyDevtools(machine, {
-      label: "Checkout",
-      mutationsEnabled: false
-    });
-  }, [machine]);
+  React.useEffect(
+    () =>
+      attachJourneyDevtools(checkout.machine, {
+        label: "Checkout",
+        mutationsEnabled: false
+      }),
+    []
+  );
 
   return (
-    <checkout.Provider views={views} machineRef={setMachine}>
+    <checkout.Provider views={views}>
       <checkout.StepRenderer />
     </checkout.Provider>
   );
 }
 ```
 
-`machineRef` exposes the machine owned by that Provider mount. The callback receives `null` on
-unmount, and the Provider disposes its machine.
+The bundle's machine is standalone, so devtools attach to `checkout.machine` directly — in an
+effect as above, or at module scope right after the factory call. React never disposes it.

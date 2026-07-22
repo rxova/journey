@@ -20,16 +20,16 @@ const INDEX_SNIPPET = `const [step, setStep] = useState(0);
  * union from the steps tuple (`create-linear-journey.tsx`), so the hooks and
  * the Provider's `views` record are fully typed with no generics at call
  * sites — a missing or typo'd view key is a compile error
- * (`LinearJourneyViews` in `linear.types.ts` maps every declared id).
+ * (`LinearJourneyViews` in `linear.types.ts` maps every declared id). The
+ * factory owns one standalone machine: hooks, `navigate`, and
+ * `updateContext` close over it and work with or without the Provider.
  *
- * Why the submit lives in `signup.useStep` and not in `onComplete`:
- * `onComplete` is an observer, not a gate — the runtime forwards core's
- * `statusChange` after the status is already committed, and core's emit is
- * synchronous and drops listener results. The awaited gate is
- * `NavigationWork.run`, reached on the linear tier via `useStep` — a shell
- * over `registerNextStepInterceptor` (`use-linear-journey-step.ts`) whose
- * rejection cancels the move and lands in `currentStep.async.error`, with
- * `machine.isLoading` true meanwhile.
+ * Why the submit lives in `signup.useStepHandler` and not in the completion
+ * observer: `statusChange` fires after the status is already committed, and
+ * core's emit is synchronous and drops listener results. The awaited gate is
+ * `NavigationWork.run`, reached via `useStepHandler` — a shell over
+ * `registerNextStepInterceptor` whose rejection cancels the move and lands
+ * in `currentStep.async.error`, with `machine.isLoading` true meanwhile.
  *
  * The work is attached to `review`, which has a successor on purpose:
  * `goToNextStep` returns `out-of-bounds` at the last declared step *before*
@@ -40,21 +40,27 @@ const JOURNEY_SNIPPET = `import { createLinearJourney } from "@rxova/journey-rea
 type SignupContext = { email: string; orderId: string | null };
 const initialContext: SignupContext = { email: "", orderId: null };
 
-// The typed factory: context and step ids are inferred once, here. No machine
-// yet — each <signup.Provider> mount owns one.
+// The typed factory: context and step ids are inferred once, here, and the
+// bundle owns one standalone machine.
 const signup = createLinearJourney({
+  name: "signup",
   context: initialContext,
   steps: ["email", "review", "done"]
 });
 
+// Observer only (the status is already committed): no React required.
+signup.machine.subscriptions.subscribeEvent("statusChange", ({ current, snapshot }) => {
+  if (current === "completed") analytics.track("signup_complete", snapshot.context);
+});
+
 function EmailStep() {
-  const { machine, snapshot } = signup.useJourney();
+  const context = signup.useContext();
 
   return (
     <input
-      value={snapshot.context.email}
+      value={context.email}
       onChange={(event) =>
-        machine.context.update((context) => ({ ...context, email: event.target.value }))
+        signup.updateContext((context) => ({ ...context, email: event.target.value }))
       }
     />
   );
@@ -63,7 +69,7 @@ function EmailStep() {
 function ReviewStep() {
   // The awaited gate: \`run\` holds the machine on this step until it settles, and
   // a rejection cancels the move and lands in \`currentStep.async.error\`.
-  signup.useStep<{ orderId: string }>({
+  signup.useStepHandler("review", {
     run: ({ snapshot }) => submitOrder(snapshot.context.email),
     commit: ({ result, updateContext }) =>
       updateContext((context) => ({ ...context, orderId: result.orderId }))
@@ -73,28 +79,26 @@ function ReviewStep() {
 }
 
 function DoneStep() {
-  const { machine, snapshot } = signup.useJourney();
+  const context = signup.useContext();
+  const controls = signup.useControls();
 
   // Position and outcome are separate: reaching the last step does not finish it.
   return (
-    <button onClick={() => machine.controls.complete()}>
-      Order {snapshot.context.orderId} placed — finish
+    <button onClick={() => controls.complete()}>
+      Order {context.orderId} placed — finish
     </button>
   );
 }
 
 function Controls() {
-  const { machine, snapshot } = signup.useJourney();
-  const { error } = snapshot.currentStep.async;
+  const step = signup.useStep();
+  const isLoading = signup.useSelector((snapshot) => snapshot.machine.isLoading);
 
   return (
     <>
-      {error ? <p role="alert">{String(error)}</p> : null}
-      <button
-        disabled={snapshot.machine.isLoading}
-        onClick={() => void machine.navigate.goToNextStep()}
-      >
-        {snapshot.machine.isLoading ? "Working…" : "Continue"}
+      {step?.async.error ? <p role="alert">{String(step.async.error)}</p> : null}
+      <button disabled={isLoading} onClick={() => void signup.navigate.goToNextStep()}>
+        {isLoading ? "Working…" : "Continue"}
       </button>
     </>
   );
@@ -105,10 +109,10 @@ export function Signup() {
     <signup.Provider
       // Typed exhaustively: a missing or misspelled step id fails to compile.
       views={{ email: <EmailStep />, review: <ReviewStep />, done: <DoneStep /> }}
-      footer={<Controls />}
-      // Observer only: the status is already committed before this runs.
-      onComplete={({ snapshot }) => analytics.track("signup_complete", snapshot.context)}
-    />
+    >
+      <signup.StepRenderer />
+      <Controls />
+    </signup.Provider>
   );
 }`;
 

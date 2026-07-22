@@ -6,11 +6,12 @@ sidebar_label: Patterns
 
 These patterns keep React rendering predictable while Core remains the source of runtime truth.
 
-## Keep definitions outside render
+## Keep definitions and bundles outside render
 
-Core definitions are pure data and can live at module scope. React graph bundles can also live at
-module scope because `createGraphJourney` captures the definition without creating a machine.
-Machines are created per Provider mount.
+Core definitions are pure data and live at module scope. React bundles — linear and graph — live
+there too, and deliberately so: both factories capture the definition and create their one
+standalone machine on the spot. Never call a bundle factory inside a component; a Provider only
+distributes `views`, it creates nothing.
 
 ## Select the smallest useful state
 
@@ -63,19 +64,20 @@ do not perform network work.
 
 ## Respect machine ownership
 
-Ownership differs per tier, on purpose. A linear Provider owns its machine per mount — do not cache
-it globally or keep it after unmount; use hooks for rendering and `machineRef` only for integration
-boundaries such as DevTools. A graph bundle's machine is standalone on the bundle — `bundle.machine`
-is the integration boundary, and React never disposes it.
+Both bundles are machine-first: the factory creates one standalone machine that React never
+disposes. `bundle.machine` is the integration boundary — DevTools, module-scope subscribers, and
+non-React callers all use it directly. State survives unmounts and remounts, so reset explicitly:
+`controls.restart()` from a terminal status, `terminate()` first when mid-flight.
 
-Headless hooks are the third model: the caller owns the supplied Core machine and decides when it
-starts and disposes.
+A caller-owned Core machine is the isolation path — per mount, per request, or per test. You
+create it, start it, read it with `React.useSyncExternalStore`, and call `machine.dispose()` when
+its owner goes away.
 
 ## Model branches as a graph
 
-Avoid adding/removing linear JSX children in response to context. The declared linear order is
-frozen for a mount. When context changes the valid path, express it with graph candidates and guards
-so routing remains introspectable.
+Avoid deriving the step list or the `views` record from context. The linear order is fixed in the
+definition, and `views` must stay exhaustive over the declared ids. When context changes the valid
+path, express it with graph candidates and guards so routing remains introspectable.
 
 ## Handle navigation results deliberately
 

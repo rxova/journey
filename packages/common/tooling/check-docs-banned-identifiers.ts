@@ -53,10 +53,20 @@ export const BANNED_IDENTIFIERS: readonly BannedIdentifier[] = [
   { name: "LinearJourneyStepProps", pattern: /\bLinearJourneyStepProps\b/ },
   { name: "bundle.toGraphDefinition", pattern: /\btoGraphDefinition\b/ },
   // Graph bundle surfaces removed by the standalone-machine redesign (2026-07).
-  // (useStepAsyncState is NOT banned: the headless tier still exports it.)
   { name: "useApi", pattern: /\buseApi\b/ },
   { name: "useEvent", pattern: /\buseEvent\b/ },
-  { name: "useStepLifecycle", pattern: /\buseStepLifecycle\b/ }
+  { name: "useStepLifecycle", pattern: /\buseStepLifecycle\b/ },
+  // Removed with the headless entry point and the standalone linear bundle
+  // (2026-07). useJourneySnapshot/useJourneySelector/useJourneyEvent are NOT
+  // banned: they survive as conventional local-helper names in the documented
+  // bring-your-own-machine pattern.
+  { name: "journey-react/headless", pattern: /journey-react\/headless/ },
+  { name: "useOwnedJourney", pattern: /\buseOwnedJourney\b/ },
+  { name: "useJourneyStepLifecycle", pattern: /\buseJourneyStepLifecycle\b/ },
+  { name: "useStepAsyncState", pattern: /\buseStepAsyncState\b/ },
+  { name: "useJourney", pattern: /\buseJourney\b/ },
+  { name: "UseLinearJourneyResult", pattern: /\bUseLinearJourneyResult\b/ },
+  { name: "machineRef", pattern: /\bmachineRef\b/ }
 ];
 
 /**

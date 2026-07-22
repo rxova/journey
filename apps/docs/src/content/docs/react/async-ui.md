@@ -47,6 +47,11 @@ While `run` is pending, the source step remains current and
 `snapshot.transition.phase === "working"`. If it fails, position and context stay unchanged. A
 successful synchronous `commit` publishes context and position together.
 
+A step component can register the same work instead of passing it at the call site: the linear
+bundle's `useStepHandler(stepId, work)` gates plain `goToNextStep()` for that step while the
+component is mounted. A throw or rejection cancels the move and lands in
+`currentStep.async.error`; timeline moves and `goToStepById` bypass the gate.
+
 ## Post-commit hooks
 
 Core step `onLeave` and `onEnter` hooks run after movement commits. During them, the destination
@@ -60,10 +65,11 @@ must prevent movement.
 
 - `snapshot.machine.isLoading` is the normal whole-flow flag.
 - `snapshot.transition` shows pending state, phase, source, and destination.
-- `snapshot.currentStep.async` records loading, success, error, and the error value for the current
-  entry.
-- Graph `useStep()` returns the whole current step — including its `async` state — and headless
-  `useStepAsyncState(machine, stepId)` provides a focused per-step subscription.
+- `snapshot.currentStep?.async` records loading, success, error, and the error value for the
+  current entry.
+- Bundle `useStep()` — linear and graph alike — returns the whole current step, including its
+  `async` state, or `null` while the machine is idle; `useStep()?.async` is the focused per-step
+  read.
 
 ```tsx
 function ReviewError() {

@@ -8,23 +8,23 @@ sidebar_label: Overview
 state machine or translate snapshots into a legacy React-only shape. React components subscribe to
 the same immutable snapshots and invoke the same command groups as any other Core consumer.
 
-The package has three surfaces because ownership and authoring style differ across applications.
+The package has two bundle tiers, plus a pattern for machines you own yourself.
 
-| Surface        | Import                          | Machine ownership                       | Best fit                               |
-| -------------- | ------------------------------- | --------------------------------------- | -------------------------------------- |
-| Linear bundle  | `@rxova/journey-react`          | Each bundle Provider owns one machine   | Ordinary ordered wizards               |
-| Graph bundle   | `@rxova/journey-react/graph`    | The factory owns one standalone machine | Branching event-driven flows           |
-| Headless hooks | `@rxova/journey-react/headless` | The caller supplies a Core machine      | Existing machines and custom rendering |
+| Surface        | Import                       | Machine ownership                       | Best fit                                  |
+| -------------- | ---------------------------- | --------------------------------------- | ----------------------------------------- |
+| Linear bundle  | `@rxova/journey-react`       | The factory owns one standalone machine | Ordinary ordered wizards                  |
+| Graph bundle   | `@rxova/journey-react/graph` | The factory owns one standalone machine | Branching event-driven flows              |
+| Bring your own | (pattern, no package entry)  | The caller supplies a Core machine      | Per-mount/per-request isolation, plumbing |
 
-The linear and graph tiers both render from a typed `views` record, but ownership differs
-deliberately: linear is React-owned (a machine per Provider mount, disposed on unmount), graph is
-machine-first (one standalone machine created by the factory, usable outside React).
+The two bundles are deliberate twins: one standalone machine created in the factory, a typed
+`views` record on the Provider, a `StepRenderer`, and the same reactive and stable hooks. They
+differ only in their verbs—linear speaks `navigate`, graph speaks `send`.
 
 ## Linear journey bundles
 
 `createLinearJourney()` captures a definition—core's own `LinearJourneyDefinition` shape—and
-returns a bundle. The Provider builds a machine from that definition at mount, starts it, and
-renders the active step's view from its `views` record.
+creates **one standalone machine** right in the factory. The bundle wraps that machine with a
+Provider, a renderer, and hooks:
 
 ```tsx
 import { createLinearJourney } from "@rxova/journey-react";
@@ -46,20 +46,15 @@ const signup = createLinearJourney({
 });
 
 function SignupFooter() {
-  const { machine, snapshot } = signup.useJourney();
+  const canGoBack = signup.useSelector((snapshot) => snapshot.history.canGoBack);
+  const isLoading = signup.useSelector((snapshot) => snapshot.machine.isLoading);
 
   return (
     <nav>
-      <button
-        disabled={!snapshot.history.canGoBack}
-        onClick={() => void machine.navigate.goToPreviousStep()}
-      >
+      <button disabled={!canGoBack} onClick={() => void signup.navigate.goToPreviousStep()}>
         Back
       </button>
-      <button
-        disabled={snapshot.machine.isLoading}
-        onClick={() => void machine.navigate.goToNextStep()}
-      >
+      <button disabled={isLoading} onClick={() => void signup.navigate.goToNextStep()}>
         Continue
       </button>
     </nav>
@@ -74,9 +69,10 @@ export function Signup() {
         terms: <TermsStep />,
         review: <ReviewStep />
       }}
-      footer={<SignupFooter />}
-      onComplete={({ snapshot }) => submitSignup(snapshot.context)}
-    />
+    >
+      <signup.StepRenderer />
+      <SignupFooter />
+    </signup.Provider>
   );
 }
 ```
@@ -89,58 +85,60 @@ those step objects, never in JSX. The optional `name` becomes the Provider's Rea
 displayName. History, visit tracking, and index derivations all follow the definition's declared
 order.
 
+The machine outlives any component: every hook closes over it and works with or without the
+Provider, and non-React code drives the same machine via `signup.machine`, `signup.navigate`, and
+`signup.updateContext(...)` (verbatim delegates). The Provider carries only `views` and
+`children`; `<signup.StepRenderer />` is the only piece that must render inside it, and its
+placement is the point—headers, footers, and observers are ordinary siblings around it.
+
 The `views` record (`LinearJourneyViews<TStepId>`) only supplies what each step renders, keyed by
 step ID; the definition alone drives order. Exhaustiveness is checked at compile time—a missing
-key or an undeclared key is a TS error—and plain-JS callers get a runtime error for a missing key
-plus a dev-mode warning for undeclared keys. A `null` view value is legal and renders nothing, and
-because values are elements rather than component types, props and wrappers stay inline. If steps
-need to branch dynamically, represent that choice in a graph instead.
+key or an undeclared key is a TS error. There is no runtime assertion: for plain-JS callers a
+missing key makes `StepRenderer` render its `fallback`. A `null` view value is legal and renders
+nothing, and because values are elements rather than component types, props and wrappers stay
+inline. If steps need to branch dynamically, represent that choice in a graph instead.
 
-`signup.useJourney()` returns `{ machine, snapshot }` — the underlying Core machine and its live
-snapshot, verbatim. There is no renamed React-side shape:
+Linear bundle hooks are:
 
-- reads come from the snapshot: `snapshot.currentStep.id/.index/.isFirstStep/.isLastStep/` (the linear tier autostarts, so `currentStep` is never null)
-  `.isFirstTimeVisit/.metadata/.async`, `snapshot.steps`, `snapshot.history`, `snapshot.status`,
-  `snapshot.machine`, and `snapshot.context`;
-- commands come from the machine groups: `machine.navigate.*` (including linear
-  `goToStepByIndex`), `machine.controls.*`, `machine.context.update`, and
-  `machine.async.clearError`.
+- reactive: `useSnapshot()` for the machine's live snapshot; `useSelector(selector, equalityFn?)`
+  for a narrow subscription; `useStep()` for the whole current step—ID, index flags, metadata,
+  async state—or `null` while idle; `useContext()` for the context value;
+  `useSubscribeEvent(event, listener)` for exact Core observation payloads;
+- stable accessors: `useMachine()`, `useControls()`, and `useNavigation()` for the machine and its
+  command groups, verbatim;
+- `useStepHandler(stepId, handler)`: registers forward-navigation work for `stepId` while the
+  calling component is mounted. `run` gates `goToNextStep()`, a throw or rejection cancels the
+  move and lands in `currentStep.async.error`, and `commit` stages its context update
+  transactionally with the movement.
 
-`signup.useSelector(selector, equalityFn?)` subscribes to a derived slice, and
-`signup.useStep(handler)` registers transactional forward-navigation work for the step component
-calling it. Each bundle owns a private React context, so its hooks only work under its own
-Provider.
+None of them needs a Provider; each bundle's hooks always read that bundle's machine. Reads come
+from the snapshot (`snapshot.currentStep`, `snapshot.steps`, `snapshot.history`,
+`snapshot.status`, `snapshot.machine`, `snapshot.context`); commands come from the machine groups
+(`machine.navigate.*` including linear `goToStepByIndex`, `machine.controls.*`,
+`machine.context.update`, `machine.async.clearError`).
 
-### Bundle options and per-mount overrides
+### Bundle options
 
 The factory's second argument passes Core's creation options through verbatim, frozen per bundle:
 `persist`, `plugins`, `autoStart`, `startAt`, `defaultTimeoutMs`, and `onListenerError`.
+`autoStart` defaults to `true` here (the React-tier default over core's `false`); with
+`{ autoStart: false }` the machine is idle—`snapshot.currentStep` is `null` and `StepRenderer`
+shows its `fallback`—until `signup.machine.controls.start()`.
 
 ```ts
 const signup = createLinearJourney(
-  { context: initialContext, steps: ["email", "terms", "review"] },
+  { name: "signup", context: initialContext, steps: ["email", "terms", "review"] },
   { persist: sessionPersist, startAt: "email" }
 );
 ```
 
-Per-mount variation goes on the Provider instead, read once at mount: `initialContext` overrides
-the definition's context value (route params, server data—the definition stays the type anchor; it
-is a whole-object replacement, not a merge, so spread the definition's context yourself for a
-partial override), and `startAt` overrides the starting step and wins over the bundle options'
-`startAt`. Besides `views`, the Provider also takes `header`, `footer`, `wrapper`, `fallback`, the
-`onStart` / `onStepEnter` / `onStepLeave` / `onComplete` / `onError` callbacks, and a `machineRef`
-escape hatch.
-
-No machine is created in the factory; one machine is created per Provider mount
-(StrictMode-safe, disposed on unmount), and multiple Providers of one bundle are independent
-instances. When a journey outgrows the linear tier, hand the same definition object to
+When a journey outgrows the linear tier, hand the same definition object to
 `linearToGraphDefinition()` from `@rxova/journey-core/convert`.
 
 ## Graph journey bundles
 
-Graph definitions stay in Core. The React graph factory captures a definition, creates **one
-standalone machine** right in the factory, and returns a bundle of that machine, a Provider, a
-renderer, and namespaced hooks:
+Graph definitions stay in Core. The React graph factory captures a definition, creates its
+standalone machine, and returns the same bundle shape with graph verbs:
 
 ```tsx
 import { createGraphJourney } from "@rxova/journey-react/graph";
@@ -181,73 +179,79 @@ export function Checkout() {
 }
 ```
 
-The machine outlives any component: every hook closes over it and works with or without the
-Provider, and non-React code drives the same machine via `checkout.machine`, `checkout.send(...)`,
-and `checkout.updateContext(...)` (verbatim delegates). The Provider carries only `views` and
-`children`—`GraphJourneyViews<TStepId>` follows the same contract as the linear tier: keyed by
-step ID, exhaustively type-checked, element values. `<checkout.StepRenderer />` is the only piece
-that must render inside the Provider, and its placement is the point: headers, controls, and
-footers are ordinary siblings around it. `autoStart` defaults to `true` in the factory options
-(the React-tier default over core's `false`); with `{ autoStart: false }`, `StepRenderer` shows
-its `fallback` until `checkout.machine.controls.start()`.
+The graph bundle mirrors the linear one—`machine`, Provider with `views` and `children` only,
+`StepRenderer`, reactive `useSnapshot` / `useSelector` / `useStep` / `useContext` /
+`useSubscribeEvent`, stable `useMachine` / `useControls` / `useNavigation`—with the verbatim
+delegates being `checkout.send(...)` and `checkout.updateContext(...)`. `GraphJourneyViews`
+follows the same contract as the linear tier: keyed by step ID, exhaustively type-checked, element
+values. None of the hooks needs a Provider.
 
-Graph bundle hooks are:
+## One machine per bundle, explicit resets
 
-- reactive: `useSnapshot()` for the full typed graph snapshot; `useSelector(selector, equalityFn?)`
-  for a narrow subscription; `useStep()` for the whole current step—ID, metadata, async state—or
-  `null` while idle; `useContext()` for the context value; `useSubscribeEvent(event, listener)`
-  for exact Core observation payloads;
-- stable accessors: `useMachine()`, `useControls()`, and `useNavigation()` for the machine and its
-  command groups, verbatim.
+Both factories create their machine at module scope and start it by default. The consequences are
+identical across tiers:
 
-None of them needs a Provider; each bundle's hooks always read that bundle's machine.
+- All Providers and hooks of a bundle share the one machine, so rendering the same bundle twice
+  shows the same journey.
+- State survives remounts—unmounting disposes nothing.
+- Reset is explicit: call `machine.controls.restart()` from a terminal status (`terminate()` first
+  when mid-flight).
+- In SSR the module-scope machine is shared across requests.
 
-### One machine, explicit resets
+When you need per-mount or per-request isolation, own a Core machine yourself and read it with
+`useSyncExternalStore`—the next section.
 
-All Providers and hooks of a bundle share the one machine, so rendering the same bundle twice
-shows the same journey, and state survives remounts. Reset is explicit: call
-`checkout.machine.controls.restart()` from a terminal status (`terminate()` first when
-mid-flight). In SSR the module-scope machine is shared across requests. When you need per-mount or
-per-request isolation for a graph, that is the headless tier's job: `useOwnedJourney` with core's
-`createGraphJourney`.
+## Bring your own machine
 
-## Headless machine-argument hooks
-
-Headless hooks are useful when a Core machine is created by a router, service, test harness, or
-higher application layer:
+There is no separate headless package entry: a caller-owned Core machine needs nothing beyond
+React's own `useSyncExternalStore`. Create the machine wherever it belongs—a router, service,
+test harness, or request scope—and bridge it in a few lines:
 
 ```tsx
-import {
-  useJourneyEvent,
-  useJourneySelector,
-  useJourneySnapshot,
-  useStepAsyncState
-} from "@rxova/journey-react/headless";
+import React from "react";
+import { createLinearJourney } from "@rxova/journey-core";
 
-function MachinePanel({ machine }) {
-  const snapshot = useJourneySnapshot(machine);
-  const canGoBack = useJourneySelector(machine, (value) => value.history.canGoBack);
-  const asyncState = useStepAsyncState(machine, "review");
+export const machine = createLinearJourney(
+  { context: initialContext, steps: ["email", "review"] },
+  { autoStart: true }
+);
 
-  useJourneyEvent(machine, "navigationBlocked", ({ reason, error }) => {
-    reportNavigationFailure(reason, error);
-  });
+// The machine is a module-scope singleton, so the subscribe adapter is a
+// stable plain function — useSyncExternalStore never resubscribes on it.
+const subscribe = (onStoreChange: () => void) =>
+  machine.subscriptions.subscribeSelector((snapshot) => snapshot, onStoreChange);
+
+export const useJourneySnapshot = () =>
+  React.useSyncExternalStore(subscribe, machine.getSnapshot, machine.getSnapshot);
+
+function MachinePanel() {
+  const snapshot = useJourneySnapshot();
+
+  React.useEffect(
+    () =>
+      machine.subscriptions.subscribeEvent("navigationBlocked", ({ reason, error }) => {
+        reportNavigationFailure(reason, error);
+      }),
+    []
+  );
 
   return (
     <section>
       <h2>{snapshot.currentStep?.id ?? "Not started"}</h2>
-      <button disabled={!canGoBack} onClick={() => void machine.navigate.goToPreviousStep()}>
+      <button
+        disabled={!snapshot.history.canGoBack}
+        onClick={() => void machine.navigate.goToPreviousStep()}
+      >
         Back
       </button>
-      {asyncState.isError && <ErrorNotice error={asyncState.error} />}
     </section>
   );
 }
 ```
 
-Every headless hook takes the machine as its first argument. There is no hidden global runtime and no
-Provider lookup. `useOwnedJourney(factory)` is available when a component should create and dispose
-an arbitrary Core machine without using either Journey factory surface.
+The layer that created the machine keeps lifecycle ownership. For writing such adapters
+generically, `@rxova/journey-react` exports structural types: `AnyJourneyMachine`, `SnapshotOf`,
+`ContextOf`, `StepIdOf`, and `EventPayloadOf`.
 
 ## Snapshot and command semantics
 
@@ -256,9 +260,9 @@ React reads the current Core snapshot:
 ```ts
 snapshot.status;
 snapshot.context;
-snapshot.currentStep.id; // non-null in the linear tier (autostart); nullable on bare core machines
-snapshot.currentStep.metadata;
-snapshot.currentStep.async;
+snapshot.currentStep?.id; // null while idle (before start); both bundles autostart by default
+snapshot.currentStep?.metadata;
+snapshot.currentStep?.async;
 snapshot.history.timeline;
 snapshot.history.currentIndex;
 snapshot.transition;
@@ -281,4 +285,4 @@ screen.”
 - [Provider and Hooks](./provider-and-hooks) documents ownership and hook contracts.
 - [Async UI](./async-ui) explains pre-commit work and post-commit lifecycle effects.
 - [TypeScript](./typescript) lists the current React exports.
-- [DevTools](./devtools) shows the `machineRef` attachment pattern.
+- [DevTools](./devtools) shows how to attach devtools to a bundle's `machine`.
