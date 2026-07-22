@@ -34,12 +34,8 @@ export const LOADING_ASYNC: StepAsyncState = Object.freeze({
  * `__proto__`, `hasOwnProperty` and friends pass as declared steps — including
  * ids arriving from a persisted record or a route parameter, which are not
  * developer-authored. Own-property checks are the only correct test here.
- *
- * `Object.prototype.hasOwnProperty.call` rather than `Object.hasOwn` because
- * the compilation target is ES2020 and `Object.hasOwn` is ES2022.
  */
-export const hasOwn = (target: object, key: string): boolean =>
-  Object.prototype.hasOwnProperty.call(target, key);
+export const hasOwn = (target: object, key: string): boolean => Object.hasOwn(target, key);
 
 /** Subscriber exceptions are isolated so one listener cannot break the pipeline. */
 export function reportListenerError(error: unknown): void {

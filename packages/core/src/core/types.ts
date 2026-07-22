@@ -40,10 +40,23 @@ export type NavigationFailureReason =
   | "no-op"
   | "disposed";
 
-/** Result of every navigation verb (and of graph `send`). */
+/**
+ * Result of every navigation verb (and of graph `send`).
+ *
+ * The failure arm carries `from`/`to` so a caller awaiting the result can log
+ * *which* target was rejected without also subscribing to `navigationBlocked`.
+ * `to` is null when the machine never resolved one — a graph `send` with no
+ * enabled candidate, for instance.
+ */
 export type NavigationResult<TStepId extends string = string> =
   | { readonly ok: true; readonly from: TStepId | null; readonly to: TStepId }
-  | { readonly ok: false; readonly reason: NavigationFailureReason; readonly error?: unknown };
+  | {
+      readonly ok: false;
+      readonly reason: NavigationFailureReason;
+      readonly from: TStepId | null;
+      readonly to: TStepId | null;
+      readonly error?: unknown;
+    };
 
 /** Journey outcome recorded by `complete(payload?)` / `terminate(payload?)`. */
 export type JourneyOutcome<TCompletePayload = unknown, TTerminatePayload = unknown> =

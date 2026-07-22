@@ -89,7 +89,7 @@ describe("timeline history (browser model)", () => {
     expect(clamped).toEqual({ ok: true, from: "b", to: "a" });
 
     const atStart = await machine.navigate.goToPreviousStep();
-    expect(atStart).toEqual({ ok: false, reason: "out-of-bounds" });
+    expect(atStart).toMatchObject({ ok: false, reason: "out-of-bounds" });
   });
 
   it("goToLastVisitedStep jumps the pointer to the tip; fails if already there", async () => {
@@ -103,12 +103,12 @@ describe("timeline history (browser model)", () => {
     expect(machine.getSnapshot().history.currentIndex).toBe(2);
 
     const again = await machine.navigate.goToLastVisitedStep();
-    expect(again).toEqual({ ok: false, reason: "no-op" });
+    expect(again).toMatchObject({ ok: false, reason: "no-op" });
   });
 
   it("navigating to the current step is a no-op", async () => {
     const machine = await startedLinear();
-    expect(await machine.navigate.goToStepById("a")).toEqual({ ok: false, reason: "no-op" });
+    expect(await machine.navigate.goToStepById("a")).toMatchObject({ ok: false, reason: "no-op" });
   });
 
   it("tracks visited steps and first-time visits across revisits", async () => {

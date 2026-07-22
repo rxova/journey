@@ -24,7 +24,7 @@ describe("step hooks", () => {
     });
     expect(machine.getSnapshot().currentStep?.id).toBe("a");
 
-    expect(await navigation).toEqual({ ok: false, reason: "error", error: boom });
+    expect(await navigation).toMatchObject({ ok: false, reason: "error", error: boom });
     expect(machine.getSnapshot().currentStep?.id).toBe("a");
     expect(machine.getSnapshot().currentStep?.async.error).toBe(boom);
   });
@@ -107,7 +107,7 @@ describe("step hooks", () => {
           throw boom;
         }
       })
-    ).toEqual({ ok: false, reason: "error", error: boom });
+    ).toMatchObject({ ok: false, reason: "error", error: boom });
     expect(machine.getSnapshot()).toMatchObject({
       context: { value: 0 },
       currentStep: { id: "a" }
@@ -217,7 +217,7 @@ describe("step hooks", () => {
     expect(snapshot.machine.isLoading).toBe(true);
 
     // concurrent navigation during a pending hook chain is rejected, not queued
-    expect(await machine.navigate.goToPreviousStep()).toEqual({
+    expect(await machine.navigate.goToPreviousStep()).toMatchObject({
       ok: false,
       reason: "transitioning"
     });

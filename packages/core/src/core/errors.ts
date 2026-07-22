@@ -50,8 +50,13 @@ export class JourneyError extends Error {
   readonly event: string | undefined;
   readonly pluginName: string | undefined;
 
-  constructor(code: JourneyErrorCode, message: string, details: JourneyErrorDetails = {}) {
-    super(`journey: ${message}`);
+  constructor(
+    code: JourneyErrorCode,
+    message: string,
+    details: JourneyErrorDetails = {},
+    cause?: unknown
+  ) {
+    super(`journey: ${message}`, cause === undefined ? undefined : { cause });
     this.name = "JourneyError";
     this.code = code;
     this.stepId = details.stepId;

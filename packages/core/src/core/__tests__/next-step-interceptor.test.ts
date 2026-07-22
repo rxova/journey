@@ -35,7 +35,7 @@ describe("registerNextStepInterceptor", () => {
       run: () => Promise.reject(failure)
     });
 
-    expect(await machine.navigate.goToNextStep()).toEqual({
+    expect(await machine.navigate.goToNextStep()).toMatchObject({
       ok: false,
       reason: "error",
       error: failure

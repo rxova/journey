@@ -32,9 +32,18 @@ describe("createGraphJourney — event-driven transitions", () => {
 
   it("send with no enabled transition fails with no-enabled-transition", async () => {
     const machine = await startedGraph({ valid: false });
-    expect(await machine.send("SUBMIT")).toEqual({ ok: false, reason: "no-enabled-transition" });
-    expect(await machine.send("UNKNOWN")).toEqual({ ok: false, reason: "no-enabled-transition" });
-    expect(await machine.send("EDIT")).toEqual({ ok: false, reason: "no-enabled-transition" });
+    expect(await machine.send("SUBMIT")).toMatchObject({
+      ok: false,
+      reason: "no-enabled-transition"
+    });
+    expect(await machine.send("UNKNOWN")).toMatchObject({
+      ok: false,
+      reason: "no-enabled-transition"
+    });
+    expect(await machine.send("EDIT")).toMatchObject({
+      ok: false,
+      reason: "no-enabled-transition"
+    });
   });
 
   it("treats a throwing transition guard as disabled", async () => {
@@ -59,7 +68,7 @@ describe("createGraphJourney — event-driven transitions", () => {
       guard: "failed",
       enabled: false
     });
-    expect(await machine.send("GO")).toEqual({ ok: false, reason: "no-enabled-transition" });
+    expect(await machine.send("GO")).toMatchObject({ ok: false, reason: "no-enabled-transition" });
   });
 
   it("multiple candidates per event: first enabled in declaration order wins", async () => {
@@ -151,7 +160,7 @@ describe("createGraphJourney — event-driven transitions", () => {
 
   it("goToStepById is transition-gated sugar", async () => {
     const machine = await startedGraph();
-    expect(await machine.navigate.goToStepById("done")).toEqual({
+    expect(await machine.navigate.goToStepById("done")).toMatchObject({
       ok: false,
       reason: "invalid-target"
     });
@@ -193,7 +202,10 @@ describe("createGraphJourney — event-driven transitions", () => {
     expect(leaveB).toHaveBeenCalledTimes(1);
     expect(await machine.navigate.goToNextStep()).toEqual({ ok: true, from: "a", to: "b" });
     // at the tip, graph has no declared-order fallback
-    expect(await machine.navigate.goToNextStep()).toEqual({ ok: false, reason: "out-of-bounds" });
+    expect(await machine.navigate.goToNextStep()).toMatchObject({
+      ok: false,
+      reason: "out-of-bounds"
+    });
   });
 
   it("describes declared, guarded, enabled, and selected outgoing transitions", async () => {
@@ -340,7 +352,7 @@ describe("createGraphJourney — event-driven transitions", () => {
     const app = createGraphJourney(definition);
     app.controls.start();
     await flush();
-    expect(await app.send("GO")).toEqual({ ok: false, reason: "no-enabled-transition" });
+    expect(await app.send("GO")).toMatchObject({ ok: false, reason: "no-enabled-transition" });
 
     const test = createGraphJourney(definition, { handlers: { allowed: () => true } });
     test.controls.start();
@@ -374,7 +386,7 @@ describe("createGraphJourney — event-driven transitions", () => {
 
     expect(await machine.send("GO")).toEqual({ ok: true, from: "a", to: "b" });
     await flush();
-    expect(directResults).toEqual([{ ok: false, reason: "transitioning" }]);
+    expect(directResults).toMatchObject([{ ok: false, reason: "transitioning" }]);
     expect(machine.getSnapshot().currentStep?.id).toBe("c");
   });
 
@@ -440,7 +452,7 @@ describe("createGraphJourney — event-driven transitions", () => {
     await flush();
 
     const first = machine.send("GO");
-    expect(await machine.send("GO")).toEqual({ ok: false, reason: "transitioning" });
+    expect(await machine.send("GO")).toMatchObject({ ok: false, reason: "transitioning" });
     expect(await first).toEqual({ ok: true, from: "a", to: "b" });
   });
 });

@@ -1,6 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2020",
+    // Emit stays ES2020; `lib` only says which runtime APIs may be *typed*.
+    // Journey targets evergreen browsers and Node >= 20.11, all of which have
+    // had `Object.hasOwn` and `Error`'s `cause` since 2021 — without this,
+    // every use needed a workaround. Matches tsconfig.test.json.
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "strict": true,

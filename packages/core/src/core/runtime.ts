@@ -601,7 +601,7 @@ export class JourneyRuntime {
       if ("error" in failure) payload.error = failure.error;
       this.store.emit("navigationBlocked", payload);
     }
-    return Promise.resolve(failure);
+    return Promise.resolve({ ...failure, from: this.currentStepId(), to: target });
   }
 
   private hookArgs(from: string | null, to: string, event: JourneyEventObject | null): AnyHookArgs {
@@ -921,7 +921,12 @@ export class JourneyRuntime {
   }
 
   private staleResult(): NavigationResult {
-    return this.disposed ? { ok: false, reason: "disposed" } : { ok: false, reason: "not-running" };
+    // The operation was invalidated mid-flight (terminate/restart/dispose), so
+    // its target is no longer meaningful — only where the machine ended up is.
+    const from = this.currentStepId();
+    return this.disposed
+      ? { ok: false, reason: "disposed", from, to: null }
+      : { ok: false, reason: "not-running", from, to: null };
   }
 
   private publish(): JourneySnapshot {

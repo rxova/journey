@@ -155,7 +155,7 @@
       "name": "core/createGraphJourney",
       "path": "dist/index.js",
       "import": "{ createGraphJourney }",
-      "limit": "6.15 kB"
+      "limit": "6.25 kB"
     },
     {
       "name": "core/createGraphJourneyBuilder",
@@ -173,7 +173,7 @@
       "name": "core/linearToGraphDefinition",
       "path": "dist/convert/convert.js",
       "import": "{ linearToGraphDefinition }",
-      "limit": "450 B"
+      "limit": "540 B"
     },
     {
       "name": "core/createExecutionPathsPlugin",

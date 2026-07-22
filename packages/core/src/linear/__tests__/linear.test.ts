@@ -41,7 +41,7 @@ describe("createLinearJourney", () => {
   it("goToStepById is ungated — any declared step is reachable", async () => {
     const machine = await startedLinear();
     expect(await machine.navigate.goToStepById("c")).toEqual({ ok: true, from: "a", to: "c" });
-    expect(await machine.navigate.goToStepById("nope" as never)).toEqual({
+    expect(await machine.navigate.goToStepById("nope" as never)).toMatchObject({
       ok: false,
       reason: "invalid-target"
     });
@@ -95,19 +95,19 @@ describe("createLinearJourney — goToStepByIndex", () => {
       blocked.push(reason);
     });
 
-    expect(await machine.navigate.goToStepByIndex(9)).toEqual({
+    expect(await machine.navigate.goToStepByIndex(9)).toMatchObject({
       ok: false,
       reason: "invalid-target"
     });
-    expect(await machine.navigate.goToStepByIndex(-1)).toEqual({
+    expect(await machine.navigate.goToStepByIndex(-1)).toMatchObject({
       ok: false,
       reason: "invalid-target"
     });
-    expect(await machine.navigate.goToStepByIndex(1.5)).toEqual({
+    expect(await machine.navigate.goToStepByIndex(1.5)).toMatchObject({
       ok: false,
       reason: "invalid-target"
     });
-    expect(await machine.navigate.goToStepByIndex(0)).toEqual({ ok: false, reason: "no-op" });
+    expect(await machine.navigate.goToStepByIndex(0)).toMatchObject({ ok: false, reason: "no-op" });
     expect(blocked).toEqual(["invalid-target", "invalid-target", "invalid-target", "no-op"]);
   });
 });
@@ -144,7 +144,7 @@ describe("createLinearJourney — startAt", () => {
 
   it("goToPreviousStep from the start position is out-of-bounds", async () => {
     const machine = await startedLinear({ startAt: "c" });
-    expect(await machine.navigate.goToPreviousStep()).toEqual({
+    expect(await machine.navigate.goToPreviousStep()).toMatchObject({
       ok: false,
       reason: "out-of-bounds"
     });

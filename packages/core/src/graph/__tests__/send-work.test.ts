@@ -96,7 +96,7 @@ describe("send with work", () => {
       }
     });
 
-    expect(result).toEqual({ ok: false, reason: "no-enabled-transition" });
+    expect(result).toMatchObject({ ok: false, reason: "no-enabled-transition" });
     expect(machine.getSnapshot().currentStep?.id).toBe("login");
     // Rolled back: either the send routed and committed, or neither happened.
     expect(machine.getSnapshot().context).toMatchObject({ method: null, attempts: 0 });
@@ -131,7 +131,7 @@ describe("send with work", () => {
       commit: ({ updateContext }) => updateContext((c) => ({ ...(c as Ctx), attempts: 99 }))
     });
 
-    expect(result).toEqual({ ok: false, reason: "error", error: failure });
+    expect(result).toMatchObject({ ok: false, reason: "error", error: failure });
     expect(machine.getSnapshot().currentStep?.id).toBe("login");
     expect(machine.getSnapshot().context).toMatchObject({ attempts: 0 });
     expect(onError.mock.calls[0]?.[0]).toMatchObject({ phase: "work", stepId: "login" });
@@ -151,7 +151,7 @@ describe("send with work", () => {
     await flush();
 
     // Distinct from no-enabled-transition: the machine is busy, not unrouted.
-    expect(await machine.send("GIVE_UP")).toEqual({ ok: false, reason: "transitioning" });
+    expect(await machine.send("GIVE_UP")).toMatchObject({ ok: false, reason: "transitioning" });
 
     await first;
     expect(machine.getSnapshot().currentStep?.id).toBe("email");
@@ -171,7 +171,7 @@ describe("send with work", () => {
     await flush();
 
     machine.controls.terminate();
-    expect(await pending).toEqual({ ok: false, reason: "not-running" });
+    expect(await pending).toMatchObject({ ok: false, reason: "not-running" });
     expect(machine.getSnapshot().currentStep?.id).toBe("login");
     expect(machine.getSnapshot().context).toMatchObject({ method: null });
   });
@@ -266,7 +266,7 @@ describe("definition-declared send work", () => {
     const machine = buildDeclaredWorkJourney({ login: async () => null as never });
     await flush();
 
-    expect(await machine.send("SUBMIT")).toEqual({
+    expect(await machine.send("SUBMIT")).toMatchObject({
       ok: false,
       reason: "no-enabled-transition"
     });

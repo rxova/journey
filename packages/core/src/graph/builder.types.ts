@@ -13,12 +13,24 @@ export type JourneyTypeBag = {
   handlers?: unknown;
 };
 
-export type MetaOf<TBag extends JourneyTypeBag> = TBag extends { meta: infer TMeta }
-  ? TMeta
+/**
+ * `meta` and `handlers` are optional on the bag, so these must infer from an
+ * optional property. Matching `{ meta: infer T }` — a *required* property —
+ * silently skipped anyone who mirrored the constraint and wrote `meta?: MyMeta`:
+ * they got the fallback instead of their own type, and the eventual error
+ * pointed nowhere near the bag declaration. `NonNullable` strips the `undefined`
+ * that optionality adds.
+ */
+export type MetaOf<TBag extends JourneyTypeBag> = TBag extends { meta?: infer TMeta }
+  ? [TMeta] extends [undefined]
+    ? Record<string, unknown>
+    : NonNullable<TMeta>
   : Record<string, unknown>;
 
-export type HandlersOf<TBag extends JourneyTypeBag> = TBag extends { handlers: infer THandlers }
-  ? THandlers
+export type HandlersOf<TBag extends JourneyTypeBag> = TBag extends { handlers?: infer THandlers }
+  ? [THandlers] extends [undefined]
+    ? Record<string, never>
+    : NonNullable<THandlers>
   : Record<string, never>;
 
 export type BagSnapshot<TBag extends JourneyTypeBag> = GraphSnapshot<
