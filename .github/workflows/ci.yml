@@ -92,8 +92,8 @@ jobs:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Audit dependencies
-        run: pnpm audit --audit-level=high
+      # The dependency audit is the first step of release:verify, so it runs
+      # here and on the publish path from one definition.
       - name: Run release verification
         run: pnpm run release:verify
       - name: Add coverage summary

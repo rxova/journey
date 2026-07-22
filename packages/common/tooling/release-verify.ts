@@ -22,6 +22,10 @@ export type ReleaseVerifyOptions = {
 };
 
 export const releaseVerifySteps: readonly ReleaseVerifyStep[] = [
+  // First because it is cheap and because the publish path runs only this
+  // script: keeping the audit in the CI workflow alone meant a release on main
+  // could publish dependencies that a pull request would have been blocked on.
+  { name: "Audit dependencies", script: "audit:check" },
   { name: "Check package major versions", script: "version:major:check" },
   { name: "Check dependency dedupe", script: "dedupe:check" },
   { name: "Check formatting", script: "format:check" },

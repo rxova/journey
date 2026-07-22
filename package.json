@@ -42,6 +42,7 @@
     "releases": "pnpm run changeset:version && pnpm run release",
     "typecheck": "pnpm run packages:typecheck",
     "docs:check": "pnpm run docs:banned:check && pnpm -C apps/docs build",
+    "audit:check": "pnpm audit --audit-level=high",
     "dedupe:check": "pnpm dedupe --check",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
