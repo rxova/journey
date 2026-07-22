@@ -89,6 +89,60 @@ describe("registerNextStepInterceptor", () => {
     expect(first).not.toHaveBeenCalled();
   });
 
+  it("restores the shadowed registration when the newer one unregisters", async () => {
+    const machine = await startedLinear();
+    const first = vi.fn();
+    const second = vi.fn();
+
+    // Two owners guard the same step — the React tier produces this whenever two
+    // mounted components call useStepHandler("a", ...).
+    machine.navigate.registerNextStepInterceptor("a", { run: first });
+    const unregisterSecond = machine.navigate.registerNextStepInterceptor("a", { run: second });
+
+    // Last registration wins while both are live.
+    await machine.navigate.goToNextStep();
+    expect(second).toHaveBeenCalledOnce();
+    expect(first).not.toHaveBeenCalled();
+    await machine.navigate.goToPreviousStep();
+
+    // The second owner goes away; the first is still live and must guard again.
+    unregisterSecond();
+    await machine.navigate.goToNextStep();
+    expect(first).toHaveBeenCalledOnce();
+    expect(second).toHaveBeenCalledOnce();
+  });
+
+  it("removes a shadowed registration from the middle without disturbing the active one", async () => {
+    const machine = await startedLinear();
+    const shadowed = vi.fn();
+    const active = vi.fn();
+
+    const unregisterShadowed = machine.navigate.registerNextStepInterceptor("a", {
+      run: shadowed
+    });
+    machine.navigate.registerNextStepInterceptor("a", { run: active });
+    unregisterShadowed();
+
+    await machine.navigate.goToNextStep();
+    expect(active).toHaveBeenCalledOnce();
+    expect(shadowed).not.toHaveBeenCalled();
+  });
+
+  it("leaves the step ungated once every registration is gone", async () => {
+    const machine = await startedLinear();
+    const first = vi.fn();
+    const second = vi.fn();
+
+    const unregisterFirst = machine.navigate.registerNextStepInterceptor("a", { run: first });
+    const unregisterSecond = machine.navigate.registerNextStepInterceptor("a", { run: second });
+    unregisterSecond();
+    unregisterFirst();
+
+    await machine.navigate.goToNextStep();
+    expect(first).not.toHaveBeenCalled();
+    expect(second).not.toHaveBeenCalled();
+  });
+
   it("throws for an unknown step id", async () => {
     const machine = await startedLinear();
     expect(() =>

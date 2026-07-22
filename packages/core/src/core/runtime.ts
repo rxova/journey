@@ -93,7 +93,14 @@ export class JourneyRuntime {
   /** The last built snapshot — the sharing baseline for buildSnapshot(). */
   private lastSnapshot: JourneySnapshot | null = null;
   private readonly frozenStepOrder: readonly string[];
-  private readonly nextStepInterceptors = new Map<string, AnyNavigationWork>();
+  /**
+   * Per-step registration stacks, innermost last. Resolution is last-wins, but
+   * a stack (rather than a single slot) is what lets an unregister restore the
+   * registration it shadowed — two owners guarding one step is the normal case
+   * for component-scoped wrappers, and dropping to "ungated" when the newer one
+   * unmounts would fail silently.
+   */
+  private readonly nextStepInterceptors = new Map<string, AnyNavigationWork[]>();
   private readonly transitionListeners = new Set<TransitionListener>();
   private readonly disposeCallbacks: (() => void)[] = [];
   private readonly snapshotDerivers = new Map<
@@ -242,7 +249,8 @@ export class JourneyRuntime {
   goToNextStep(work?: AnyNavigationWork): Promise<NavigationResult> {
     const rejected = this.checkNavigable();
     if (rejected) return this.blocked(rejected, null);
-    const effectiveWork = work ?? this.nextStepInterceptors.get(this.currentStepId() as string);
+    const registered = this.nextStepInterceptors.get(this.currentStepId() as string);
+    const effectiveWork = work ?? registered?.[registered.length - 1];
     if (this.currentIndex < this.timeline.length - 1) {
       const index = this.currentIndex + 1;
       const target = this.timeline[index] as string;
@@ -267,22 +275,29 @@ export class JourneyRuntime {
   /**
    * Registers forward-navigation work for `stepId`, consulted by `goToNextStep`
    * when no explicit work is passed. Last registration wins; the returned
-   * unsubscribe removes the registration only while it is still the active one.
+   * unsubscribe removes only its own registration, so unregistering the active
+   * one reinstates whichever registration it had shadowed.
    */
   registerNextStepInterceptor(stepId: string, work: AnyNavigationWork): () => void {
     if (!(stepId in this.config.steps)) {
       throw new Error(`journey: registerNextStepInterceptor references unknown step "${stepId}"`);
     }
-    if (this.nextStepInterceptors.has(stepId)) {
+    const stack = this.nextStepInterceptors.get(stepId);
+    if (stack) {
       warnInDevelopment(
-        `journey: overwrote a live registration for step "${stepId}" — last registration wins.`
+        `journey: shadowed a live registration for step "${stepId}" — last registration wins.`
       );
+      stack.push(work);
+    } else {
+      this.nextStepInterceptors.set(stepId, [work]);
     }
-    this.nextStepInterceptors.set(stepId, work);
     return () => {
-      if (this.nextStepInterceptors.get(stepId) === work) {
-        this.nextStepInterceptors.delete(stepId);
-      }
+      const live = this.nextStepInterceptors.get(stepId);
+      if (!live) return;
+      const index = live.lastIndexOf(work);
+      if (index < 0) return;
+      live.splice(index, 1);
+      if (!live.length) this.nextStepInterceptors.delete(stepId);
     };
   }
 
