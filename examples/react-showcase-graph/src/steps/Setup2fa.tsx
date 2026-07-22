@@ -4,7 +4,6 @@ import { journey } from "../journey";
 
 export const Setup2fa = () => {
   const snapshot = journey.useSnapshot();
-  const api = journey.useApi();
 
   return (
     <div className="step">
@@ -29,7 +28,7 @@ export const Setup2fa = () => {
         <div className="loading">Generating QR code...</div>
       )}
       <div className="actions">
-        <button onClick={() => void api.send("setup2fa", { code: "" })}>
+        <button onClick={() => void journey.send("setup2fa", { code: "" })}>
           I&apos;ve scanned it — continue
         </button>
       </div>

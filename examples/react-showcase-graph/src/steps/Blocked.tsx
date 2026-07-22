@@ -5,11 +5,11 @@ import { journey } from "../journey";
 
 export const Blocked = () => {
   const snapshot = journey.useSnapshot();
-  const api = journey.useApi();
+  const controls = journey.useControls();
 
   React.useEffect(() => {
-    api.controls.terminate();
-  }, [api]);
+    controls.terminate();
+  }, [controls]);
 
   return (
     <div className="step">
@@ -20,7 +20,7 @@ export const Blocked = () => {
         <p style={{ marginTop: "0.5rem", color: "#888" }}>Journey closed automatically.</p>
       </div>
       <div className="actions" style={{ justifyContent: "center" }}>
-        <button className="secondary" onClick={() => api.controls.restart()}>
+        <button className="secondary" onClick={() => controls.restart()}>
           Try Again
         </button>
       </div>

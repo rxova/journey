@@ -6,7 +6,7 @@ import { mockApi } from "../api";
 
 export const Login = () => {
   const snapshot = journey.useSnapshot();
-  const api = journey.useApi();
+  const controls = journey.useControls();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const isLoading = snapshot.currentStep?.async.isLoading ?? false;
   const isBusy = isLoading || isSubmitting;
@@ -23,7 +23,7 @@ export const Login = () => {
     try {
       const result = await mockApi.login(username, password);
       if (!result.success) {
-        await api.updateContext((ctx) => ({
+        await journey.updateContext((ctx) => ({
           ...ctx,
           error: "Login failed. Try a different password."
         }));
@@ -41,14 +41,14 @@ export const Login = () => {
         qrCode = null;
       }
 
-      await api.updateContext((ctx) => ({
+      await journey.updateContext((ctx) => ({
         ...ctx,
         twoFactorMethod: result.method,
         qrCode,
         error: null
       }));
 
-      await api.send("submitLogin", { username, password });
+      await journey.send("submitLogin", { username, password });
     } finally {
       setIsSubmitting(false);
     }
@@ -70,7 +70,7 @@ export const Login = () => {
             disabled={isBusy}
             onChange={(e) => {
               const username = e.target.value;
-              void api.updateContext((ctx) => ({ ...ctx, username }));
+              void journey.updateContext((ctx) => ({ ...ctx, username }));
             }}
             placeholder="alice"
           />
@@ -83,7 +83,7 @@ export const Login = () => {
             disabled={isBusy}
             onChange={(e) => {
               const password = e.target.value;
-              void api.updateContext((ctx) => ({ ...ctx, password }));
+              void journey.updateContext((ctx) => ({ ...ctx, password }));
             }}
             placeholder="password (use 'blocked' to fail)"
           />
@@ -105,7 +105,7 @@ export const Login = () => {
             type="button"
             className="secondary"
             disabled={isBusy}
-            onClick={() => void api.controls.terminate()}
+            onClick={() => void controls.terminate()}
           >
             Cancel
           </button>

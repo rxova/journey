@@ -13,10 +13,12 @@ const EventLog = () => {
     ]);
   }, []);
 
-  journey.useEvent("stepEnter", ({ to }) => append(`stepEnter -> ${to}`));
-  journey.useEvent("stepLeave", ({ from }) => append(`stepLeave -> ${from}`));
-  journey.useEvent("statusChange", ({ current }) => append(`statusChange -> ${current}`));
-  journey.useEvent("navigationBlocked", ({ reason }) => append(`navigationBlocked -> ${reason}`));
+  journey.useSubscribeEvent("stepEnter", ({ to }) => append(`stepEnter -> ${to}`));
+  journey.useSubscribeEvent("stepLeave", ({ from }) => append(`stepLeave -> ${from}`));
+  journey.useSubscribeEvent("statusChange", ({ current }) => append(`statusChange -> ${current}`));
+  journey.useSubscribeEvent("navigationBlocked", ({ reason }) =>
+    append(`navigationBlocked -> ${reason}`)
+  );
 
   return (
     <div className="event-log">
