@@ -64,9 +64,10 @@ export function Signup() {
 }
 ```
 
-The factory creates **one standalone machine** at module scope and starts it (`autoStart` defaults
-to `true`; runtime options such as `startAt`, `persist`, and `plugins` go in the factory's second
-argument). `TContext` is inferred from `definition.context`—annotate the value, do not cast—and
+The factory creates **one standalone machine** at module scope; it starts when the first Provider
+or hook mounts (see [Starting and stopping](#starting-and-stopping); runtime options such as
+`startAt`, `persist`, and `plugins` go in the factory's second argument).
+`TContext` is inferred from `definition.context`—annotate the value, do not cast—and
 the step-ID union from the `steps` tuple; the `views` record is exhaustively type-checked against
 that union. Every hook closes over the machine and works with or without the Provider; non-React
 code drives it via `signup.machine`, `signup.navigate`, and `signup.updateContext`. The Provider

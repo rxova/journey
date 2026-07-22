@@ -24,10 +24,11 @@ over React's `useSyncExternalStore`.
 - `views` is `{ [id in StepId]: ReactNode }`, exhaustively type-checked so a missing or undeclared
   key is a compile error (a `null` view is a legal render-nothing step; a missing key at runtime
   renders `StepRenderer`'s fallback). Machine options (`persist`, `plugins`, `autoStart`,
-  `startAt`, `defaultTimeoutMs`, `onListenerError`) live in the factory's second argument;
-  `autoStart` defaults to `true`, and `currentStep` is null while idle.
-- Hooks work with or without the Provider; the machine starts in the factory, survives remounts,
-  and is never disposed by React — reset explicitly via `controls` (`terminate()` + `restart()`).
+  `startAt`, `defaultTimeoutMs`, `onListenerError`) live in the factory's second argument, and
+  `currentStep` is null while idle. `autoStart` is three-way in this tier — see the deferred-start
+  entry below for the default and its SSR consequences.
+- Hooks work with or without the Provider; the machine survives remounts and is never disposed by
+  React — reset explicitly via `controls` (`terminate()` + `restart()`).
 - Linear→graph migration is core's external `linearToGraphDefinition(definition)` from
   `@rxova/journey-core/convert`, applied to the same definition object the factory captured.
 
@@ -39,9 +40,8 @@ over React's `useSyncExternalStore`.
   `useSubscribeEvent`), stable accessors (`useMachine`, `useControls`, `useNavigation`), and
   verbatim `send` / `updateContext` delegates callable outside React. Hooks work with or without
   the Provider — the Provider only carries the `views` record (elements keyed exhaustively by step
-  id, same contract as the linear tier) for `StepRenderer`. The machine starts by default
-  (`autoStart: true` is the React-tier default), survives remounts, and is never disposed by
-  React.
+  id, same contract as the linear tier) for `StepRenderer`. The machine survives remounts and is
+  never disposed by React; `autoStart` behaves exactly as in the linear tier.
 - There is no headless hook entry point. Caller-owned Core machines are consumed with React's own
   `useSyncExternalStore` over `machine.subscriptions` — the root package exports the structural
   types for it (`AnyJourneyMachine`, `SnapshotOf`, `ContextOf`, `StepIdOf`, `EventPayloadOf`).

@@ -11,8 +11,8 @@ Journey supports:
 
 - **Linear journeys** whose declared step order is the normal path.
 - **Graph journeys** whose named events, synchronous guards, and ordered candidates choose routes.
-- **React bindings** for declarative linear JSX, Provider-owned graph flows, and existing Core
-  machines.
+- **React bindings** — twin linear and graph bundle factories, per-component ownership, and a
+  documented pattern for reading a Core machine you own yourself.
 - **Plugins** for analytics, autosave, diagnostics, execution paths, persistence, replay, and richer
   subscriptions.
 - A [Chrome DevTools extension](https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm)
@@ -20,11 +20,11 @@ Journey supports:
 
 ## Packages
 
-| Package                          | Purpose                                              |
-| -------------------------------- | ---------------------------------------------------- |
-| `@rxova/journey-core`            | Framework-independent linear and graph machines      |
-| `@rxova/journey-react`           | Linear components, graph bundles, and headless hooks |
-| `@rxova/journey-devtools-bridge` | Connect a machine to Journey Chrome DevTools         |
+| Package                          | Purpose                                         |
+| -------------------------------- | ----------------------------------------------- |
+| `@rxova/journey-core`            | Framework-independent linear and graph machines |
+| `@rxova/journey-react`           | Linear and graph bundle factories for React     |
+| `@rxova/journey-devtools-bridge` | Connect a machine to Journey Chrome DevTools    |
 
 ```bash
 npm install @rxova/journey-core
@@ -235,25 +235,31 @@ Every navigation method resolves to `{ ok: true, from, to }` or
 `{ ok: false, reason, error? }`. Expected failures do not reject, which makes fire-and-forget
 button handlers safe from unhandled promise rejections.
 
-## React: declarative linear
+## React: linear bundle
 
-The highest-level React API owns a Core linear machine for the mounted component:
+`createLinearJourney` creates one standalone machine and returns a bundle of hooks and components
+around it. Step IDs and context are inferred from the definition, so nothing needs generics at the
+call site:
 
 ```tsx
-import { LinearJourney, useLinearJourney } from "@rxova/journey-react";
+import { createLinearJourney } from "@rxova/journey-react";
+
+const signup = createLinearJourney({
+  name: "signup",
+  context: { email: "" },
+  steps: ["account", "shipping", "review"]
+});
 
 function Footer() {
-  const journey = useLinearJourney<{ email: string }>();
+  const canGoBack = signup.useSelector((snapshot) => snapshot.history.canGoBack);
+  const isLoading = signup.useSelector((snapshot) => snapshot.machine.isLoading);
 
   return (
     <div>
-      <button
-        disabled={!journey.snapshot.history.canGoBack}
-        onClick={() => void journey.goToPreviousStep()}
-      >
+      <button disabled={!canGoBack} onClick={() => void signup.navigate.goToPreviousStep()}>
         Back
       </button>
-      <button disabled={journey.isLoading} onClick={() => void journey.goToNextStep()}>
+      <button disabled={isLoading} onClick={() => void signup.navigate.goToNextStep()}>
         Continue
       </button>
     </div>
@@ -262,25 +268,28 @@ function Footer() {
 
 export function Signup() {
   return (
-    <LinearJourney context={{ email: "" }} footer={<Footer />}>
-      <Account id="account" />
-      <Shipping id="shipping" />
-      <Review id="review" />
-    </LinearJourney>
+    <signup.Provider views={{ account: <Account />, shipping: <Shipping />, review: <Review /> }}>
+      <signup.StepRenderer />
+      <Footer />
+    </signup.Provider>
   );
 }
 ```
 
-For reusable compile-time step IDs, create a typed linear bundle:
+The `views` record is exhaustively type-checked against the step-ID union — a missing or
+undeclared key is a compile error. Only `StepRenderer` must render inside the Provider; every
+hook closes over the machine and works with or without it, and non-React code drives the same
+machine through `signup.machine`, `signup.navigate`, and `signup.updateContext`.
 
-```ts
-const signup = createLinearJourney<{ email: string }>()(["account", "shipping", "review"] as const);
-```
+By default the machine starts when the first Provider or hook mounts, not when the factory runs —
+that is what makes the first `stepEnter` observable and keeps SSR hydration deterministic. Pass
+`{ autoStart: true }` to start eagerly inside the factory, or `{ autoStart: false }` to start it
+yourself.
 
-## React: graph Provider
+## React: graph bundle
 
-A React graph bundle captures the definition, but it does not create a module-scope machine. Each
-Provider mount owns an independent machine and disposes it on unmount:
+The graph tier is the linear tier's structural twin — same standalone machine, same views-only
+Provider, same `StepRenderer` — differing only in its verb, `send` instead of `navigate`:
 
 ```tsx
 import { createGraphJourney } from "@rxova/journey-react/graph";
@@ -288,13 +297,12 @@ import { createGraphJourney } from "@rxova/journey-react/graph";
 const checkout = createGraphJourney(definition);
 
 function Continue() {
-  const snapshot = checkout.useSnapshot();
-  const api = checkout.useApi();
+  const availableEvents = checkout.useSelector((snapshot) => snapshot.availableEvents);
 
   return (
     <button
-      disabled={!snapshot.availableEvents.includes("continue")}
-      onClick={() => void api.send("continue")}
+      disabled={!availableEvents.includes("continue")}
+      onClick={() => void checkout.send("continue")}
     >
       Continue
     </button>
@@ -307,26 +315,55 @@ function Continue() {
 </checkout.Provider>;
 ```
 
-Bundle hooks are namespaced and must run under that bundle's Provider. `useApi()` returns the Core
-`controls`, `navigate`, and typed `send` groups plus `updateContext`.
+Stable accessors (`useMachine`, `useControls`, `useNavigation`) expose the Core command groups;
+plugin APIs stay namespaced on `useMachine().plugins`.
 
-## React: headless hooks
+## React: owning a bundle per component
 
-When an application already owns a Core machine, use machine-argument hooks with no Provider:
+A module-scope bundle is shared by every mount — and, on a server, by every request. When a
+journey's lifetime should match a component instance instead, `useJourney` owns it:
 
 ```tsx
-import { useJourneyEvent, useJourneySnapshot } from "@rxova/journey-react/headless";
+import { createLinearJourney, useJourney } from "@rxova/journey-react";
 
-function Inspector({ machine }) {
-  const snapshot = useJourneySnapshot(machine);
+function Wizard() {
+  const signup = useJourney(() =>
+    createLinearJourney({ context: { email: "" }, steps: ["email", "review", "done"] })
+  );
 
-  useJourneyEvent(machine, "navigationBlocked", ({ reason }) => {
-    console.warn(reason);
-  });
+  return <signup.Provider views={views}>{/* … */}</signup.Provider>;
+}
+```
+
+The factory runs once per component instance and the machine is disposed on a real unmount. Do
+not reach for a `useState` lazy initializer here: React double-invokes those under StrictMode,
+building two fully-configured machines — two plugin setups, two persistence reads and writes, two
+armed autosave timers — and abandoning one undisposed.
+
+## React: bring your own machine
+
+There is no headless package entry. When an application already owns a Core machine, React's own
+`useSyncExternalStore` is the whole bridge:
+
+```tsx
+import React from "react";
+import { createLinearJourney } from "@rxova/journey-core";
+
+const machine = createLinearJourney({ context: initialContext, steps }, { autoStart: true });
+
+const subscribe = (onStoreChange: () => void) =>
+  machine.subscriptions.subscribeSelector((snapshot) => snapshot, onStoreChange);
+
+function Inspector() {
+  const snapshot = React.useSyncExternalStore(subscribe, machine.getSnapshot, machine.getSnapshot);
 
   return <output>{snapshot.currentStep?.id ?? "Not started"}</output>;
 }
 ```
+
+Snapshots are structurally shared, so identity changes exactly when content does — which is what
+makes `getSnapshot` safe to pass directly. The root entry exports the structural types for this
+pattern: `AnyJourneyMachine`, `SnapshotOf`, `ContextOf`, `StepIdOf`, and `EventPayloadOf`.
 
 ## Plugins
 

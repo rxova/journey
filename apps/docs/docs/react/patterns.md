@@ -23,12 +23,13 @@ section.
 
 Creating the bundle inside a component is legitimate whenever the journey's lifetime should match
 a component instance instead of the module — per-mount wizards, per-request SSR isolation, and
-tests. The consumer's job is to guarantee **one stable reference** for the component's lifetime.
-Use a `useState` lazy initializer:
+tests. Use `useJourney()`:
 
 ```tsx
+import { createLinearJourney, useJourney } from "@rxova/journey-react";
+
 const SignupWizard = () => {
-  const [signup] = React.useState(() =>
+  const signup = useJourney(() =>
     createLinearJourney({ context: { email: "" }, steps: ["email", "review", "done"] })
   );
 
@@ -40,24 +41,32 @@ const SignupWizard = () => {
 };
 ```
 
-The rules that make this correct:
+The factory runs **once per mounted component instance**, the bundle survives re-renders, and the
+machine is disposed when the component really unmounts.
 
-- **`useState(() => create...)`, not `useRef(create...)`.** The lazy initializer runs once per
-  mounted instance. `useRef(createLinearJourney(...))` evaluates its argument on every render (and
-  twice under StrictMode's double render), creating machines that are immediately thrown away. If
-  you prefer a ref, guard it: `if (ref.current === null) ref.current = create...`.
-- **Everything on the bundle closes over that one machine**, so hooks, `navigate`, and
-  `updateContext` all work exactly as they do at module scope — the only difference is who owns
-  the lifetime.
-- **Disposal is optional.** React never disposes a machine, and an unmounted component's machine
-  is garbage-collected once nothing references it — the machine holds no global registrations or
-  timers at rest. If you do want an explicit `machine.dispose()` on unmount, be aware StrictMode
-  runs mount → unmount → mount against the _same_ state value in development: a naive
+What it is doing for you, and why hand-rolling this is harder than it looks:
+
+- **`useState(() => create...)` is not equivalent.** React double-invokes lazy initializers under
+  StrictMode, so that pattern builds _two_ fully-configured machines per mount — two plugin
+  `setup()` passes, two persistence reads and writes, two armed autosave timers — and abandons one
+  without disposing it. `useJourney` initializes into a ref instead, so the factory runs once.
+- **`useRef(createLinearJourney(...))` is worse**: its argument is evaluated on every render,
+  creating machines that are thrown away immediately.
+- **Disposal is not something to leave to GC.** A machine with `persist`, `autosave`, or any
+  plugin holding external resources keeps timers and subscriptions alive after its component is
+  gone. Naive teardown is also wrong: StrictMode runs mount → unmount → mount in development, so
   `useEffect(() => () => signup.machine.dispose(), [])` kills the machine the second mount reuses.
-  Prefer leaving disposal to GC unless a plugin holds external resources.
+  `useJourney` defers disposal by a macrotask, so StrictMode's simulated unmount cancels it while
+  a real unmount still disposes.
+- **Everything on the bundle closes over that one machine**, so hooks, `navigate`, and
+  `updateContext` work exactly as they do at module scope — the only difference is who owns the
+  lifetime.
 - **SSR isolation follows for free**: a bundle created during a server render belongs to that
   render, not to the module, so requests no longer share state. This is the isolation path the
   module-scope caveat points at.
+
+`useJourney` accepts any bundle factory — linear or graph — and returns it typed unchanged, plus
+the `OwnedJourneyBundle` type if you need to name it.
 
 ## Drive the machine from anywhere
 

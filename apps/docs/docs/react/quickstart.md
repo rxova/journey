@@ -113,8 +113,9 @@ export function Signup() {
 }
 ```
 
-The factory creates **one standalone machine** right there at module scope and starts it
-(`autoStart` defaults to `true`). Every bundle hook closes over that machine and works with or
+The factory creates **one standalone machine** right there at module scope; it starts when this
+Provider mounts (`autoStart` is three-way — see
+[Bundle options](./overview.md#bundle-options)). Every bundle hook closes over that machine and works with or
 without the Provider; non-React code drives the same machine via `signup.machine`,
 `signup.navigate`, and `signup.updateContext(...)`. The Provider only hands `views` to
 `<signup.StepRenderer />`—the one piece that must render inside it—so the footer and logger above

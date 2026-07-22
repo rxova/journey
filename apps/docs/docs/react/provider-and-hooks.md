@@ -46,9 +46,10 @@ React — they cannot close over component state or props. Component-scoped asyn
 [`useStepHandler()`](#usestephandler).
 
 The second argument is Core's runtime options, verbatim and frozen per bundle: `startAt`,
-`persist`, `plugins`, `defaultTimeoutMs`, `onListenerError`, and `autoStart` — which defaults to
-`true` in React (over Core's `false`); pass `{ autoStart: false }` and call
-`checkout.machine.controls.start()` to defer the initial entry. The `startAt` option starts the
+`persist`, `plugins`, `defaultTimeoutMs`, `onListenerError`, and `autoStart` — which is three-way
+in this tier: omitted (the default) starts the machine when the bundle's first Provider or hook
+mounts, `true` starts it eagerly inside the factory, and `false` waits for
+`checkout.machine.controls.start()`. See [Bundle options](./overview.md#bundle-options). The `startAt` option starts the
 journey directly at that step: earlier steps are never entered or visited, their
 `onEnter`/`onLeave` hooks never fire, the timeline begins as `[startAt]`, and
 `controls.restart()` returns to it. An unknown `startAt` id throws at creation.
@@ -59,7 +60,7 @@ Provider, non-React code drives it via `checkout.machine`, `checkout.navigate`, 
 plainly: all Providers and hooks share the one machine; journey state survives unmounts and
 remounts, so reset explicitly — `controls.restart()` from a terminal status, `terminate()` first
 when mid-flight; and under SSR a module-scope machine is shared across requests. For per-mount
-or per-request isolation, create the bundle inside a component with a `useState` lazy initializer
+or per-request isolation, own the bundle with `useJourney()`
 (see [Own a bundle inside a component](./patterns.md#own-a-bundle-inside-a-component)), or own a
 Core machine yourself and read it with `React.useSyncExternalStore`
 (see [Caller-owned machines](#caller-owned-machines)).
@@ -246,9 +247,9 @@ const graphDefinition = linearToGraphDefinition(definition);
 the same standalone machine created by the factory at module scope, `send` where linear has
 `navigate` gating. Every hook closes over the machine and works with or without the Provider, and
 non-React code drives it through `checkout.machine`, `checkout.send(...)`, and
-`checkout.updateContext(...)` — verbatim delegates. `autoStart` defaults to `true` in the factory
-options here too; pass `{ autoStart: false }` and call `checkout.machine.controls.start()` to
-defer the initial entry.
+`checkout.updateContext(...)` — verbatim delegates. `autoStart` behaves identically here: omitted
+starts the machine on the first mount, `true` starts it in the factory, `false` waits for
+`checkout.machine.controls.start()`.
 
 ```tsx
 const checkout = createGraphJourney(checkoutDefinition);

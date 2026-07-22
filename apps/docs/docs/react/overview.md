@@ -121,9 +121,19 @@ from the snapshot (`snapshot.currentStep`, `snapshot.steps`, `snapshot.history`,
 
 The factory's second argument passes Core's creation options through verbatim, frozen per bundle:
 `persist`, `plugins`, `autoStart`, `startAt`, `defaultTimeoutMs`, and `onListenerError`.
-`autoStart` defaults to `true` here (the React-tier default over core's `false`); with
-`{ autoStart: false }` the machine is idle—`snapshot.currentStep` is `null` and `StepRenderer`
-shows its `fallback`—until `signup.machine.controls.start()`.
+
+`autoStart` is three-way in this tier:
+
+- **omitted (the default)** — the machine starts from a layout effect when the first Provider,
+  reactive hook, `useSubscribeEvent`, or `useStepHandler` mounts. `controls.start()` is
+  idempotent, so mounting many components still starts it exactly once. This ordering is what
+  makes the journey's first `stepEnter` observable, and it keeps SSR deterministic: layout effects
+  do not run on the server, so both sides render `fallback` and hydration matches.
+- **`true`** — the machine starts eagerly inside the factory. Use it when the server must render
+  step content, or when the bundle is driven entirely from non-React code (nothing ever mounts to
+  start it).
+- **`false`** — nothing starts until you call `signup.machine.controls.start()`. The machine is
+  idle meanwhile: `snapshot.currentStep` is `null` and `StepRenderer` shows its `fallback`.
 
 ```ts
 const signup = createLinearJourney(
@@ -188,8 +198,8 @@ values. None of the hooks needs a Provider.
 
 ## One machine per bundle, explicit resets
 
-Both factories create their machine at module scope and start it by default. The consequences are
-identical across tiers:
+Both factories create their machine at module scope, and it starts when the bundle's first
+Provider or hook mounts. The consequences are identical across tiers:
 
 - All Providers and hooks of a bundle share the one machine, so rendering the same bundle twice
   shows the same journey.
@@ -198,10 +208,10 @@ identical across tiers:
   when mid-flight).
 - In SSR a module-scope machine is shared across requests.
 
-When you need per-mount or per-request isolation, either create the bundle inside a component
-with a `useState` lazy initializer — the reference must stay stable for the component's lifetime,
-see [Own a bundle inside a component](./patterns.md#own-a-bundle-inside-a-component) — or own a
-Core machine yourself and read it with `useSyncExternalStore`, the next section.
+When you need per-mount or per-request isolation, either own the bundle with
+[`useJourney()`](./patterns.md#own-a-bundle-inside-a-component) — which runs the factory once per
+component instance and disposes the machine on a real unmount — or own a Core machine yourself and
+read it with `useSyncExternalStore`, the next section.
 
 ## Bring your own machine
 
