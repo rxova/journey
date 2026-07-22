@@ -45,7 +45,11 @@ const useJourneyEvent = <
   listener: (payload: EventPayloadOf<TMachine, TEvent>) => void
 ): void => {
   const listenerRef = React.useRef(listener);
-  listenerRef.current = listener;
+  // Advanced from an effect, never during render: a render React discards must
+  // not be able to leave the ref pointing at a closure that never committed.
+  React.useEffect(() => {
+    listenerRef.current = listener;
+  });
   React.useEffect(
     () =>
       machine.subscriptions.subscribeEvent(event, (payload) =>

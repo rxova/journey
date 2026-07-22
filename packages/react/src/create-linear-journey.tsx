@@ -108,8 +108,12 @@ export const createLinearJourney = <
     ): void => {
       // Latest-ref: inline handlers change identity every render; the
       // registration must not tear down on each one — it is per mounted caller.
+      // The ref advances from an effect, never during render, so a discarded
+      // render cannot leave it pointing at a closure that was never committed.
       const handlerRef = React.useRef(handler);
-      handlerRef.current = handler;
+      useSafeLayoutEffect(() => {
+        handlerRef.current = handler;
+      });
       useSafeLayoutEffect(() => {
         const work: LinearJourneyStepHandler<TContext, TResult, TStepId> = {
           run: (args) => handlerRef.current.run(args),
