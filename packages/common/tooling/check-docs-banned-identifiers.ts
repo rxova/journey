@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
@@ -64,7 +64,11 @@ export const BANNED_IDENTIFIERS: readonly BannedIdentifier[] = [
   { name: "useOwnedJourney", pattern: /\buseOwnedJourney\b/ },
   { name: "useJourneyStepLifecycle", pattern: /\buseJourneyStepLifecycle\b/ },
   { name: "useStepAsyncState", pattern: /\buseStepAsyncState\b/ },
-  { name: "useJourney", pattern: /\buseJourney\b/ },
+  // `useJourney` is deliberately NOT banned: the rc-era hook of that name was
+  // removed, but the name was then reused for the current per-component
+  // ownership hook. Banning it kept the shipping API out of the hand-written
+  // docs entirely — it survived only in the generated reference, which this
+  // check excludes.
   { name: "UseLinearJourneyResult", pattern: /\bUseLinearJourneyResult\b/ },
   { name: "machineRef", pattern: /\bmachineRef\b/ }
 ];
@@ -90,6 +94,28 @@ export const isExcludedPath = (docsRelativePath: string): boolean => {
 
 const isDocFile = (fileName: string): boolean => {
   return fileName.endsWith(".md") || fileName.endsWith(".mdx");
+};
+
+/**
+ * READMEs are shipped documentation too — each package README is published to
+ * npm, and the root README is the repository landing page — but they sat
+ * outside this check while it only walked the docs site. That is exactly how a
+ * whole section documenting the deleted `journey-react/headless` entry point
+ * survived in the root README: the identifiers were already banned here, the
+ * file just was never scanned.
+ */
+export const collectReadmeFiles = (repoRoot: string): string[] => {
+  const files = existsSync(path.join(repoRoot, "README.md")) ? ["README.md"] : [];
+  const packagesDir = path.join(repoRoot, "packages");
+  if (!existsSync(packagesDir)) return files;
+
+  for (const entry of readdirSync(packagesDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const relativePath = path.posix.join("packages", entry.name, "README.md");
+    if (existsSync(path.join(repoRoot, relativePath))) files.push(relativePath);
+  }
+
+  return files.sort();
 };
 
 /** Recursively collects scannable doc files, as paths relative to `docsRoot`. */
@@ -142,12 +168,20 @@ export const checkDocsBannedIdentifiers = ({
   exit = (code) => process.exit(code)
 }: CheckDocsBannedIdentifiersOptions = {}): { matches: BannedIdentifierMatch[] } => {
   const docsRoot = path.join(repoRoot, DOCS_ROOT);
-  const files = collectDocsFiles(docsRoot);
+  const docsFiles = collectDocsFiles(docsRoot).map((relativePath) => ({
+    absolute: path.join(docsRoot, relativePath),
+    display: path.posix.join(DOCS_ROOT, relativePath)
+  }));
+  const readmeFiles = collectReadmeFiles(repoRoot).map((relativePath) => ({
+    absolute: path.join(repoRoot, relativePath),
+    display: relativePath
+  }));
+  const files = [...docsFiles, ...readmeFiles];
 
-  const matches: BannedIdentifierMatch[] = files.flatMap((relativePath) => {
-    const content = readFileSync(path.join(docsRoot, relativePath), "utf8");
+  const matches: BannedIdentifierMatch[] = files.flatMap(({ absolute, display }) => {
+    const content = readFileSync(absolute, "utf8");
     return scanContent(content).map(({ line, identifier }) => ({
-      file: path.posix.join(DOCS_ROOT, relativePath),
+      file: display,
       line,
       identifier
     }));
