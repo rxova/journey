@@ -3,15 +3,15 @@ import { createLinearJourney as coreCreateLinearJourney } from "@rxova/journey-c
 import { useSafeLayoutEffect } from "./use-safe-layout-effect";
 import type { LinearStepIdOf, LinearStepInput } from "@rxova/journey-core";
 import type {
+  JourneyProviderProps,
+  JourneyViews,
   LinearJourneyBundle,
   LinearJourneyBundleDefinition,
   LinearJourneyBundleOptions,
   LinearJourneyMachine,
   LinearJourneySnapshot,
-  LinearJourneyStepHandler,
-  LinearJourneyViews,
-  LinearProviderProps
-} from "./linear.types";
+  LinearJourneyStepHandler
+} from "./react.types";
 
 const stepIdOf = (step: string | { readonly id: string }): string =>
   typeof step === "string" ? step : step.id;
@@ -125,9 +125,9 @@ export const createLinearJourney = <
     return React.useSyncExternalStore(subscribe, getSelected, getSelected);
   };
 
-  const ViewsContext = React.createContext<LinearJourneyViews<TStepId> | null>(null);
+  const ViewsContext = React.createContext<JourneyViews<TStepId> | null>(null);
 
-  const Provider = ({ views, children }: LinearProviderProps<TStepId>): React.ReactElement => (
+  const Provider = ({ views, children }: JourneyProviderProps<TStepId>): React.ReactElement => (
     <ViewsContext.Provider value={views}>{children}</ViewsContext.Provider>
   );
   Provider.displayName = definition.name ? `${definition.name}.Provider` : "LinearJourney.Provider";

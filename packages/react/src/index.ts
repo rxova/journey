@@ -1,6 +1,12 @@
 export { createLinearJourney } from "./create-linear-journey";
 
 export type {
+  AnyJourneyMachine,
+  ContextOf,
+  EventPayloadOf,
+  JourneyBundleBase,
+  JourneyProviderProps,
+  JourneyViews,
   LinearJourneyBundle,
   LinearJourneyBundleDefinition,
   LinearJourneyBundleOptions,
@@ -8,17 +14,9 @@ export type {
   LinearJourneyMachine,
   LinearJourneySnapshot,
   LinearJourneyStepHandler,
-  LinearJourneyViews,
-  LinearProviderProps
-} from "./linear.types";
-
-export type {
-  AnyJourneyMachine,
-  ContextOf,
-  EventPayloadOf,
   SnapshotOf,
   StepIdOf
-} from "./headless.types";
+} from "./react.types";
 
 export type {
   AnyJourneyPlugin,

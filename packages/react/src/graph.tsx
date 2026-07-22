@@ -10,9 +10,9 @@ import type {
   GraphTransitionsMap,
   JourneyEventObject
 } from "@rxova/journey-core";
-import type { GraphJourneyBundle, GraphJourneyViews, GraphProviderProps } from "./graph.types";
+import type { GraphJourneyBundle, JourneyProviderProps, JourneyViews } from "./react.types";
 
-export type { GraphJourneyBundle, GraphJourneyViews, GraphProviderProps } from "./graph.types";
+export type { GraphJourneyBundle, JourneyProviderProps, JourneyViews } from "./react.types";
 
 /**
  * Creates a graph journey bundle for React around **one standalone machine**,
@@ -123,9 +123,9 @@ export function createGraphJourney<
     return React.useSyncExternalStore(subscribe, getSelected, getSelected);
   };
 
-  const ViewsContext = React.createContext<GraphJourneyViews<TStepId> | null>(null);
+  const ViewsContext = React.createContext<JourneyViews<TStepId> | null>(null);
 
-  const Provider = ({ views, children }: GraphProviderProps<TStepId>) => (
+  const Provider = ({ views, children }: JourneyProviderProps<TStepId>) => (
     <ViewsContext.Provider value={views}>{children}</ViewsContext.Provider>
   );
 
