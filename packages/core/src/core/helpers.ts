@@ -26,6 +26,21 @@ export const LOADING_ASYNC: StepAsyncState = Object.freeze({
   error: null
 });
 
+/**
+ * Own-property membership, for every guard that asks "is this a declared id?".
+ *
+ * `in` walks the prototype chain, so `"toString" in steps` is true for any
+ * object literal. Using it to validate step ids let `toString`, `constructor`,
+ * `__proto__`, `hasOwnProperty` and friends pass as declared steps — including
+ * ids arriving from a persisted record or a route parameter, which are not
+ * developer-authored. Own-property checks are the only correct test here.
+ *
+ * `Object.prototype.hasOwnProperty.call` rather than `Object.hasOwn` because
+ * the compilation target is ES2020 and `Object.hasOwn` is ES2022.
+ */
+export const hasOwn = (target: object, key: string): boolean =>
+  Object.prototype.hasOwnProperty.call(target, key);
+
 /** Subscriber exceptions are isolated so one listener cannot break the pipeline. */
 export function reportListenerError(error: unknown): void {
   console.error("[journey] subscriber threw:", error);
@@ -42,5 +57,5 @@ export const shallowEqual = (
 ): boolean => {
   const keys = Object.keys(a);
   if (keys.length !== Object.keys(b).length) return false;
-  return keys.every((key) => key in b && Object.is(a[key], b[key]));
+  return keys.every((key) => hasOwn(b, key) && Object.is(a[key], b[key]));
 };
