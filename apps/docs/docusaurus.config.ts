@@ -46,8 +46,10 @@ const config: Config = {
     v4: true
   },
 
-  url: "https://rxova.org",
-  baseUrl: "/",
+  // Defaults keep journey's standalone build at the domain root. The rxova.org
+  // aggregator overrides these to mount the docs under /packages/journey/.
+  url: process.env.DOCS_URL ?? "https://rxova.org",
+  baseUrl: process.env.DOCS_BASE_URL ?? "/",
 
   organizationName: "rxova",
   projectName: "journey",
