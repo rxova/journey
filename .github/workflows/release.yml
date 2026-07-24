@@ -66,53 +66,20 @@ jobs:
       publish: true
     secrets: inherit
 
-  deploy-docs:
+  # Docs are published as part of rxova.org (the rxova/rxova-website aggregator),
+  # not from this repo. On a release, notify the aggregator to rebuild instead of
+  # deploying our own GitHub Pages site. Requires secret AGGREGATOR_DISPATCH_TOKEN
+  # (a fine-grained PAT with Contents: write on rxova/rxova-website).
+  notify-website:
     needs: release
     if: github.event_name == 'push' && contains(github.event.head_commit.message, 'Version Packages')
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Pin pnpm
-        run: corepack prepare pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017 --activate
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
+      - name: Trigger rxova.org rebuild
+        continue-on-error: true
+        uses: peter-evans/repository-dispatch@v3
         with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Check public API TSDoc coverage
-        run: pnpm run docs:api:check
-
-      - name: Build docs
-        run: pnpm run docs:check
-
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v6
-        with:
-          token: ${{ github.token }}
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: apps/docs/build
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
+          token: ${{ secrets.AGGREGATOR_DISPATCH_TOKEN }}
+          repository: rxova/rxova-website
+          event-type: docs-journey
+          client-payload: '{"ref": "${{ github.sha }}"}'
