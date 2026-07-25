@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
 </p>
 
-Most flow libraries give you a linear array and basic APIs. That is fine. Journey gives you much more: three modes — linear, branching graph, or fully headless — with async guards, declarative context updates, timeline history, a plugin system, and a native [Chrome DevTools Debugger](https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm). All in a zero-dependency, ≥95% tested coverage, framework-agnostic 7.58 kB core. [→ Documentation](https://rxova.org/)
+Most flow libraries give you a linear array and basic APIs. That is fine. Journey gives you much more: three modes — linear, branching graph, or fully headless — with async guards, declarative context updates, timeline history, a plugin system, and a native [Chrome DevTools Debugger](https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm). All in a zero-dependency, ≥95% tested coverage, framework-agnostic 7.58 kB core. [→ Documentation](https://rxova.org/packages/journey/)
 
 Journey is a state machine built for multi-step UI flows that actually get complicated. Start with a simple `["step1", "step2", "step3"]` array. Graduate to a branching graph when you need conditional routing. Go fully headless when you need total control. Navigation isn't just forward — Journey tracks a full timeline so users can step back through history and time-travel forward to the last visited step at any point. Add persistence with one plugin, or write your own. The core is vanilla JS — drop it into React, Vue, Svelte, or plain TypeScript without a shim.
 
@@ -20,15 +20,15 @@ The current runtime contract being frozen for the upcoming `1.0.0-rc` line is:
 - transition-side state updates through `updateContext(...)`
 - explicit React runtime ownership, with `createJourneyFactory()` as the isolation helper
 
-📖 [Read the documentation](https://rxova.org/)
+📖 [Read the documentation](https://rxova.org/packages/journey/)
 
-🚀 [Core Quickstart](https://rxova.org/docs/core/getting-started)
+🚀 [Core Quickstart](https://rxova.org/packages/journey/docs/core/getting-started)
 
-⚛️ [React Quickstart](https://rxova.org/docs/react/quickstart)
+⚛️ [React Quickstart](https://rxova.org/packages/journey/docs/react/quickstart)
 
-🔧 [Chrome DevTools](https://rxova.org/docs/devtool/overview)
+🔧 [Chrome DevTools](https://rxova.org/packages/journey/docs/devtool/overview)
 
-🧭 [Pre-1.0 Migration](https://rxova.org/docs/core/pre-1-0-migration)
+🧭 [Pre-1.0 Migration](https://rxova.org/packages/journey/docs/core/pre-1-0-migration)
 
 💬 [GitHub Discussions](https://github.com/rxova/journey)
 

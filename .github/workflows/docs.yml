@@ -1,6 +1,20 @@
 name: Docs Check
 
+# Docs are published as part of rxova.org (the rxova/rxova-website aggregator),
+# not from this repo's Pages. On a push to main we build to catch breakage and
+# then notify the aggregator; release.yml also dispatches, but only on a version
+# commit, and a docs-only change deserves to reach the site without waiting for
+# the next release.
 on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/docs/**"
+      - "apps/devtools/**"
+      - "packages/**"
+      - "README.md"
+      - "CHANGELOG.md"
+      - ".github/workflows/docs.yml"
   pull_request:
     paths:
       - "apps/docs/**"
@@ -51,3 +65,31 @@ jobs:
 
       - name: Build docs
         run: pnpm run docs:check
+
+      # Build a second time at the path the aggregator actually mounts these
+      # docs at. Absolute references that only work at the domain root — CSS
+      # url(), raw <a href>, hardcoded <img src> — are invisible in the build
+      # above and break silently once deployed. Since onBrokenLinks is 'throw',
+      # catching them here turns a red rxova.org deploy (which blocks every
+      # project on the site, not just this one) into a failed PR check.
+      - name: Build docs at the aggregator base path
+        env:
+          DOCS_URL: https://rxova.org
+          DOCS_BASE_URL: /packages/journey/
+        run: pnpm run docs:check
+
+  notify-website:
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger rxova.org rebuild
+        # Never fail the workflow over the dispatch: the docs build is the
+        # signal, and a missing token should not read as broken docs.
+        continue-on-error: true
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.AGGREGATOR_DISPATCH_TOKEN }}
+          repository: rxova/rxova-website
+          event-type: docs-journey
+          client-payload: '{"ref": "${{ github.sha }}"}'
