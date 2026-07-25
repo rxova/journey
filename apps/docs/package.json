@@ -11,7 +11,7 @@
     "react",
     "typescript"
   ],
-  "homepage": "https://rxova.org/",
+  "homepage": "https://rxova.org/packages/journey/",
   "bugs": {
     "url": "https://github.com/rxova/journey/issues"
   },
