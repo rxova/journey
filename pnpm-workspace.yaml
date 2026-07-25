@@ -37,7 +37,7 @@ overrides:
   "ws@>=7.0.0 <7.5.11": ">=7.5.11 <8.0.0"
   "@babel/core@<=7.29.0": ">=7.29.6 <8.0.0"
   "brace-expansion@<1.1.16": ">=1.1.16 <2.0.0"
-  "brace-expansion@>=3.0.0 <5.0.7": ">=5.0.7 <6.0.0"
+  "brace-expansion@>=3.0.0 <5.0.8": ">=5.0.8 <6.0.0"
   "svgo@>=3.0.0 <3.3.4": ">=3.3.4 <4.0.0"
   "fast-uri@>=3.0.0 <=3.1.3": ">=3.1.4 <4.0.0"
   "sharp@<0.35.0": ">=0.35.0 <0.36.0"
@@ -47,6 +47,18 @@ overrides:
   "js-yaml@>=3.0.0 <3.15.0": ">=3.15.0 <4.0.0"
   "js-yaml@>=4.0.0 <4.3.0": ">=4.3.0 <5.0.0"
   "uuid@<11.1.1": ">=11.1.1 <12.0.0"
+
+auditConfig:
+  ignoreGhsas:
+    # brace-expansion DoS, reached only via
+    # apps/docs > @docusaurus/core > serve-handler > minimatch@3 > brace-expansion@1.x.
+    # The sole patched release is brace-expansion 5.0.8, whose CommonJS entry
+    # exports { expand } rather than a callable, so minimatch@3 (which calls the
+    # module directly) cannot consume it. minimatch@3.1.5 is the top of the
+    # legacy-v3 line and still declares brace-expansion ^1.1.7, and newer
+    # minimatch majors export an object that serve-handler cannot call either.
+    # Dev-only path: `docusaurus serve` local preview, never shipped in a package.
+    - GHSA-mh99-v99m-4gvg
 
 onlyBuiltDependencies:
   - esbuild
