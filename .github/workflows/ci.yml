@@ -7,6 +7,11 @@ on:
       - "docs/**"
       - "**/*.md"
   pull_request:
+    # `labeled`/`unlabeled` are added on top of the defaults (opened,
+    # synchronize, reopened) so that adding the `skip-changeset` label to an
+    # already-opened PR re-runs the `changeset` gate instead of leaving its
+    # earlier failure stuck red until the next push.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
     paths-ignore:
       - "docs/**"
       - "**/*.md"
