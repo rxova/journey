@@ -47,7 +47,7 @@
     "audit:check": "pnpm audit --audit-level=high",
     "dedupe:check": "pnpm dedupe --check",
     "pack:smoke": "node --import tsx ./scripts/pack-smoke.ts",
-    "verify": "node scripts/verify.js"
+    "verify": "node --import tsx ./scripts/verify.ts"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",

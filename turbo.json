@@ -65,7 +65,7 @@
     //
     // Fixing that is a build change across three published packages, not a CI
     // change, so it is tracked separately. Run `pnpm run attw` to see the
-    // current state; add this to verify.js and the checks job once it is green.
+    // current state; add this to verify.ts and the checks job once it is green.
     "attw": {
       "dependsOn": ["build"],
       "outputs": [],
@@ -86,7 +86,11 @@
         "packages/*/src/**",
         "packages/*/test/**",
         "apps/devtools/src/**",
-        "apps/devtools/test/**"
+        "apps/devtools/test/**",
+        // The repo tooling is covered by this suite too, so a change to a
+        // script or its test has to invalidate it — otherwise editing verify.ts
+        // would replay a pass recorded against the previous version.
+        "scripts/**"
       ],
       "outputLogs": "new-only"
     },
@@ -100,7 +104,8 @@
         "tsconfig.base.json",
         "packages/*/src/**",
         "packages/*/test/**",
-        "apps/*/test/**"
+        "apps/*/test/**",
+        "scripts/**"
       ],
       "outputLogs": "new-only"
     },
@@ -146,7 +151,7 @@
     // tarballs, so the side effect is the point and it must never be cached. It
     // also cannot express what it needs here: a root task's `dependsOn: [build]`
     // resolves to the *root* package's `build` script, which is `turbo run
-    // build` — turbo rejects the recursion outright. verify.js runs it in the
+    // build` — turbo rejects the recursion outright. verify.ts runs it in the
     // step after the build instead, which is the ordering it actually wants.
     "dev": {
       "cache": false,

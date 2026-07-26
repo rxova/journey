@@ -3,19 +3,45 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
-function getEnv(name: string, required = true): string | undefined {
+/**
+ * PR gate: fails when a change to a published package lands without a
+ * changeset. Escape hatches: the `skip-changeset` label, `[skip-changeset]`
+ * in the PR title, or a diff that only touches docs/CI/config.
+ *
+ * Shared, near-verbatim, across the four rxova repos. Keep the differences to
+ * the two constants below so the copies stay diffable — this is one of the
+ * files earmarked for @rxova/repo-tooling. Its behaviour is pinned by
+ * check-changeset.test.ts, which spawns it against a throwaway git repo.
+ */
+
+/** Directory prefixes of packages that are published to npm. */
+const publishedPackageDirs = ["packages/core/", "packages/react/", "packages/devtools-bridge/"];
+
+/**
+ * Files that never require a changeset when they are the whole diff.
+ *
+ * The directory alternatives carry a `/.*` suffix on purpose. An earlier
+ * version wrote them as `^(docs\/|\.github\/|…)$`, where the `$` meant each
+ * branch could only ever match the bare directory string — never a path
+ * beneath it — so those prefixes were dead and files were only skipped when
+ * they happened to carry one of the listed extensions.
+ */
+const allowedPattern =
+  /^((apps|examples|\.github|\.changeset|\.husky|scripts)\/.*|.*\.(md|txt|yml|yaml|json))$/;
+
+const getEnv = (name: string, required = true): string | undefined => {
   const value = process.env[name];
   if (!value && required) {
     throw new Error(`Missing required env: ${name}`);
   }
   return value;
-}
+};
 
-function run(cmd: string): string {
+const run = (cmd: string): string => {
   return execSync(cmd, { encoding: "utf8" }).trim();
-}
+};
 
-function getChangedFiles(baseSha: string, headSha: string, diffFilter?: string): string[] {
+const getChangedFiles = (baseSha: string, headSha: string, diffFilter?: string): string[] => {
   const filterArg = diffFilter ? ` --diff-filter=${diffFilter}` : "";
   const output = run(`git diff --name-only${filterArg} ${baseSha} ${headSha}`);
   if (!output) return [];
@@ -23,16 +49,16 @@ function getChangedFiles(baseSha: string, headSha: string, diffFilter?: string):
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
-}
+};
 
-function getChangesetFiles(files: readonly string[]): string[] {
+const getChangesetFiles = (files: readonly string[]): string[] => {
   return files.filter(
     (file) =>
       file.startsWith(".changeset/") && file.endsWith(".md") && path.basename(file) !== "README.md"
   );
-}
+};
 
-function extractFrontmatterPackageCount(markdown: string): number {
+const extractFrontmatterPackageCount = (markdown: string): number => {
   const match = /^---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/.exec(markdown);
   if (!match) {
     return 0;
@@ -42,12 +68,15 @@ function extractFrontmatterPackageCount(markdown: string): number {
   const packageLines = frontmatter
     .split("\n")
     .map((line) => line.trim())
-    .filter((line) => /^"[^"]+"\s*:\s*(patch|minor|major)(?:\s+#.*)?$/.test(line));
+    // Both quote styles: `changeset add` writes double quotes, but Prettier
+    // with singleQuote rewrites them, and a double-quote-only pattern then
+    // counts zero packages and fails a perfectly valid changeset.
+    .filter((line) => /^("[^"]+"|'[^']+')\s*:\s*(patch|minor|major)(?:\s+#.*)?$/.test(line));
 
   return packageLines.length;
-}
+};
 
-function ensureSinglePackagePerChangeset(files: readonly string[]): void {
+const ensureSinglePackagePerChangeset = (files: readonly string[]): void => {
   const errors: string[] = [];
 
   for (const file of files) {
@@ -61,33 +90,26 @@ function ensureSinglePackagePerChangeset(files: readonly string[]): void {
 
     const packageCount = extractFrontmatterPackageCount(content);
     if (packageCount !== 1) {
-      errors.push(`- ${file}: expected exactly 1 package, found ${packageCount}`);
+      errors.push(`- ${file}: expected exactly 1 package, found ${String(packageCount)}`);
     }
   }
 
   if (errors.length > 0) {
     console.error("Invalid changeset format. Use one changeset file per package.");
-    console.error(
-      'Tip: use "pnpm run changeset:pkg -- <package> <patch|minor|major> <summary>" to create package-scoped entries.'
-    );
     console.error(errors.join("\n"));
     process.exit(1);
   }
-}
+};
 
-function isDocsOrConfigOnly(files: readonly string[]): boolean {
-  const allowedPattern = /^(docs\/|\.github\/|\.changeset\/|.*\.(md|txt|yml|yaml|json))$/;
-  const touchesPackage = files.some(
-    (file) =>
-      file.startsWith("packages/core/") ||
-      file.startsWith("packages/react/") ||
-      file.startsWith("packages/devtools-bridge/")
+const isDocsOrConfigOnly = (files: readonly string[]): boolean => {
+  const touchesPackage = files.some((file) =>
+    publishedPackageDirs.some((dir) => file.startsWith(dir))
   );
 
   return files.length > 0 && files.every((file) => allowedPattern.test(file)) && !touchesPackage;
-}
+};
 
-function getLabels(repo: string, prNumber: string, token: string): string[] {
+const getLabels = (repo: string, prNumber: string, token: string): string[] => {
   try {
     const output = run(
       `gh api -H "Authorization: Bearer ${token}" repos/${repo}/issues/${prNumber}/labels --jq '.[].name'`
@@ -98,12 +120,15 @@ function getLabels(repo: string, prNumber: string, token: string): string[] {
       .map((line) => line.trim())
       .filter(Boolean);
   } catch {
+    // Deliberately not fatal: a transient API blip should not block a PR. Note
+    // that a *permissions* problem looks the same from here, so the changeset
+    // job must grant `pull-requests: read` or the label hatch silently no-ops.
     console.warn("Warning: failed to fetch labels via GH API, proceeding without labels.");
     return [];
   }
-}
+};
 
-function main(): void {
+const main = (): void => {
   const baseSha = getEnv("BASE_SHA");
   const headSha = getEnv("HEAD_SHA");
   const repo = getEnv("GITHUB_REPOSITORY");
@@ -116,6 +141,8 @@ function main(): void {
   }
 
   const files = getChangedFiles(baseSha, headSha);
+  // A second diff excluding deletions: a PR that *removes* a changeset must not
+  // count that removal as "a changeset is present".
   const currentFiles = getChangedFiles(baseSha, headSha, "ACMRTUXB");
   const currentChangesetFiles = getChangesetFiles(currentFiles);
 
@@ -144,9 +171,9 @@ function main(): void {
   }
 
   console.error(
-    "No changeset found. Add one with 'pnpm run changeset:pkg -- <package> <patch|minor|major> <summary>' (or 'pnpm changeset') or apply the 'skip-changeset' label."
+    "No changeset found. Add one with 'pnpm exec changeset' or apply the 'skip-changeset' label."
   );
   process.exit(1);
-}
+};
 
 main();

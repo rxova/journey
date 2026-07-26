@@ -1,5 +1,22 @@
 import { spawnSync } from "node:child_process";
 import process from "node:process";
+import { pathToFileURL } from "node:url";
+
+/** A gate step: either a package.json script, or one Turbo invocation. */
+export type VerifyStep = {
+  readonly name: string;
+  readonly script?: string;
+  readonly turbo?: readonly string[];
+};
+
+/** Just the part of spawnSync's result the runner reads. */
+export type StepResult = { readonly status: number | null };
+
+export type RunVerifyOptions = {
+  log?: (message: string) => void;
+  error?: (message: string) => void;
+  run?: (step: VerifyStep) => StepResult;
+};
 
 /**
  * One ordered definition of "is this releasable", executed locally by the
@@ -24,7 +41,7 @@ import process from "node:process";
  * re-runs exactly the packages that differ. No git state can make it silently
  * under-check, which is the reason to prefer this over `--filter=[HEAD^1]`.
  */
-export const steps = [
+export const steps: readonly VerifyStep[] = [
   { name: "Audit dependencies", script: "audit:check" },
   // Cached by Turbo on the lockfile + manifests (see turbo.json) rather than
   // run directly, which turns the slowest of the cheap steps into a replay
@@ -60,12 +77,16 @@ export const steps = [
   { name: "Pack smoke test", script: "pack:smoke" }
 ];
 
-const runStep = (step) =>
+const runStep = (step: VerifyStep): StepResult =>
   step.turbo
     ? spawnSync("pnpm", ["exec", "turbo", "run", ...step.turbo], { stdio: "inherit" })
-    : spawnSync("pnpm", ["run", step.script], { stdio: "inherit" });
+    : spawnSync("pnpm", ["run", step.script as string], { stdio: "inherit" });
 
-export function runVerify({ log = console.log, error = console.error, run = runStep } = {}) {
+export function runVerify({
+  log = console.log,
+  error = console.error,
+  run = runStep
+}: RunVerifyOptions = {}): number {
   for (const [index, step] of steps.entries()) {
     log(`\n[${index + 1}/${steps.length}] ${step.name}`);
     const result = run(step);
@@ -79,4 +100,12 @@ export function runVerify({ log = console.log, error = console.error, run = runS
   return 0;
 }
 
-process.exit(runVerify());
+// Guarded: without this, importing the module to read `steps` or to exercise
+// `runVerify` with a stubbed runner would execute the whole gate and then kill
+// the test process. That is precisely what kept this file untested.
+const isEntrypoint =
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isEntrypoint) {
+  process.exit(runVerify());
+}
