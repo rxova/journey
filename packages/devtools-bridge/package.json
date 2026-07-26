@@ -57,7 +57,7 @@
     "clean": "node --import tsx ../../scripts/clean-paths.ts dist tsconfig.build.tsbuildinfo",
     "coverage": "pnpm --workspace-root vitest run --coverage --coverage.include=packages/devtools-bridge/src/** --coverage.reporter=text-summary",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "publint": "publint",
+    "check:exports": "publint --strict",
     "attw": "attw --pack .",
     "size": "size-limit"
   },
@@ -70,6 +70,8 @@
     }
   ],
   "devDependencies": {
-    "@rxova/journey-core": "workspace:^"
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@rxova/journey-core": "workspace:^",
+    "publint": "^0.3.18"
   }
 }

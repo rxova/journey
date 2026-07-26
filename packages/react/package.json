@@ -71,7 +71,7 @@
     "clean": "node --import tsx ../../scripts/clean-paths.ts dist tsconfig.build.tsbuildinfo",
     "coverage": "pnpm --workspace-root vitest run --coverage --coverage.include=packages/react/src/** --coverage.reporter=text-summary",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "publint": "publint",
+    "check:exports": "publint --strict",
     "attw": "attw --pack .",
     "size": "size-limit"
   },
@@ -84,10 +84,12 @@
     }
   ],
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
     "@rxova/journey-core": "workspace:^",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "publint": "^0.3.18",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   }

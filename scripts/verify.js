@@ -34,7 +34,7 @@ export const steps = [
   { name: "Lint", script: "lint" },
   { name: "Check major version bumps", script: "version:major:check" },
   // Turbo already knows `^build` must precede typecheck, and that `build` must
-  // precede size and publint, so handing it whole sets lets it parallelise
+  // precede size and check:exports, so handing it whole sets lets it parallelise
   // across the ten workspaces and pay the pnpm+turbo startup once per stage
   // rather than once per task.
   //
@@ -51,7 +51,7 @@ export const steps = [
   },
   {
     name: "Build, size budgets and package contracts",
-    turbo: ["build", "size", "publint"]
+    turbo: ["build", "size", "check:exports"]
   },
   // Last because it is the slowest, and a plain script rather than a Turbo
   // task: it reads the dist the step above produced, but a root task cannot

@@ -1,8 +1,23 @@
 #!/usr/bin/env sh
 set -e
 
-# Staged files only. The full gate (audit, dedupe, docs, typecheck, test, build,
-# size, publint, pack smoke) runs on push instead — see .husky/pre-push and
-# scripts/verify.mjs. Running the whole suite with coverage here made every
-# commit slow enough to invite --no-verify, which is how a gate stops being one.
+# eslint --fix + prettier --write over exactly the staged files.
 pnpm exec lint-staged
+
+# The whole-program checks lint-staged cannot do per-file: types are a property
+# of the program, not of a file, and a unit test can only fail against the whole
+# module graph. Turbo replays all three from cache when their inputs are
+# byte-identical, so in practice this re-checks only what the commit actually
+# touched — without asking git what "changed", which is what keeps it correct
+# mid-rebase, after a cherry-pick and on a merge.
+#
+# `//#test` is a root task here rather than a per-package one: vitest.config.ts
+# aliases the suite onto packages/*/src and runs it in a single pass from the
+# root, so there is nothing to fan out.
+#
+# This replaces the old six-command hook, which ran a full format pass, a
+# full-repo lint, the whole suite with coverage, a typecheck and the size
+# budgets on every commit — slow enough to invite --no-verify, which is how a
+# gate stops being one. The heavier work (audit, dedupe, docs, build, size,
+# package contracts, pack smoke) stays in pre-push; see scripts/verify.js.
+pnpm exec turbo run typecheck typecheck:tests //#test

@@ -8,7 +8,10 @@ on:
     # synchronize, reopened) so that adding the `skip-changeset` label to an
     # already-opened PR re-runs the `changeset` gate instead of leaving its
     # earlier failure stuck red until the next push.
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    #
+    # `edited`: retitling a PR must re-check it, because the title becomes the
+    # squash-merge commit message and nothing else validates it.
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
     # No paths-ignore. The old filter skipped `docs/**` and `**/*.md`, but
     # `.changeset/*.md` matches `**/*.md` — so the one push most likely to need
     # a release, a merge whose only new file is a changeset, was exactly the one
@@ -23,8 +26,61 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The root of the graph: everything else declares `needs: [commitlint]`.
+  # Replaces the standalone Commitlint workflow, which billed a full minute of
+  # its own and gated nothing — a bad message failed a check no other job
+  # depended on.
+  #
+  # It runs on push as well as pull_request on purpose. A job that is skipped
+  # also skips its dependents, so gating this on `pull_request` alone would
+  # silently skip the entire workflow on main — and the alternative, an
+  # `if: always() && !failure()` on every other job, is the kind of expression
+  # that is wrong in a way nobody notices until something ships unchecked.
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint the branch commits
+        if: github.event_name == 'pull_request'
+        run: >-
+          pnpm exec commitlint --verbose
+          --from ${{ github.event.pull_request.base.sha }}
+          --to ${{ github.event.pull_request.head.sha }}
+
+      # The squash-merge subject is the PR *title*, which no commit in the
+      # branch contains and which `edited` lets someone change after CI already
+      # went green. The old wagoid action linted commits only, so the one
+      # message that actually lands on main was the one nothing checked.
+      # Passed through the environment, never interpolated into the shell — a
+      # title is attacker-controlled text.
+      - name: Lint the PR title
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: echo "$PR_TITLE" | pnpm exec commitlint --verbose
+
+      # On main this is the squashed subject already linted above, plus the
+      # changesets `chore: version packages` commit. Cheap, and it is what keeps
+      # this job unskippable.
+      - name: Lint the pushed commit
+        if: github.event_name == 'push'
+        run: pnpm exec commitlint --last --verbose
+
   changeset:
-    if: github.event_name == 'pull_request'
+    needs: [commitlint]
+    if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main'
+    permissions:
+      contents: read
+      # check-changeset.ts reads the skip-changeset label through the API
+      # (`gh api repos/.../labels`). Without this the call 403s, the script
+      # warns and proceeds label-blind, and the documented escape hatch
+      # silently does nothing.
+      pull-requests: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -42,6 +98,7 @@ jobs:
         run: node --import tsx ./scripts/check-changeset.ts
 
   checks:
+    needs: [commitlint]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -72,6 +129,8 @@ jobs:
         run: pnpm exec turbo run build size publint
 
   supply-chain:
+    needs: [commitlint]
+    if: github.head_ref != 'changeset-release/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -91,6 +150,8 @@ jobs:
         run: pnpm run dedupe:check
 
   pack-smoke:
+    needs: [commitlint]
+    if: github.head_ref != 'changeset-release/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -105,6 +166,8 @@ jobs:
         run: pnpm run pack:smoke
 
   test:
+    needs: [commitlint]
+    if: github.head_ref != 'changeset-release/main'
     runs-on: ubuntu-latest
     strategy:
       matrix:

@@ -28,6 +28,14 @@ on:
 permissions:
   contents: read
 
+# Serialised rather than cancelled: two quick merges to main would otherwise
+# race, and the aggregator would be dispatched twice for builds that finished
+# out of order. cancel-in-progress: false because the dispatch is the point —
+# killing a run mid-flight can drop the notification entirely.
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest

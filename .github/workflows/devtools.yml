@@ -31,17 +31,23 @@ jobs:
 
       - uses: ./.github/actions/setup-pnpm
 
+      - uses: ./.github/actions/turbo-cache
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck devtools app
-        run: pnpm --filter apps-devtools typecheck
-
-      - name: Run devtools tests
-        run: pnpm --filter apps-devtools test -- --run apps/devtools/test
-
+      # Only the build, and through Turbo rather than `pnpm --filter`. This job
+      # used to typecheck and test the extension too, but ci.yml's `checks` job
+      # already covers both — `apps-devtools#typecheck` rides the workspace
+      # typecheck, and the suite is the root `//#test` task, whose inputs
+      # include apps/devtools/test. Running them here as well was the same work
+      # twice, with no cache, on every push touching the extension.
+      #
+      # What this workflow uniquely provides is the downloadable artifact, so
+      # that is all it does now. Turbo replays the build from cache when nothing
+      # feeding it changed.
       - name: Build devtools extension
-        run: pnpm --filter apps-devtools build
+        run: pnpm exec turbo run build --filter=apps-devtools
 
       - name: Archive extension bundle
         run: |
