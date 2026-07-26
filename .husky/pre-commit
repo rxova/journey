@@ -19,5 +19,5 @@ pnpm exec lint-staged
 # full-repo lint, the whole suite with coverage, a typecheck and the size
 # budgets on every commit — slow enough to invite --no-verify, which is how a
 # gate stops being one. The heavier work (audit, dedupe, docs, build, size,
-# package contracts, pack smoke) stays in pre-push; see scripts/verify.js.
+# package contracts, pack smoke) stays in pre-push; see scripts/verify.ts.
 pnpm exec turbo run typecheck typecheck:tests //#test
