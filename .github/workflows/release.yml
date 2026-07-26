@@ -1,21 +1,48 @@
 name: Release
 
+# Runs only after CI has gone green on main. This used to trigger on the same
+# `push: main` as ci.yml and then re-run the whole gate itself via
+# `pnpm run verify` — so every merge ran the entire suite twice, concurrently,
+# on the same commit. Gating on CI's conclusion gives the same guarantee ("a
+# push to main cannot publish something a PR would have been blocked on") for
+# half the work, and matches rxova/brand, rxova/react-inputs and
+# rxova/use-everywhere.
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
+# Was missing entirely: two merges landing close together could run the
+# changesets action concurrently, racing on the version commit and the tags.
+concurrency: release-${{ github.ref }}
+
 permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
+  contents: read
 
 jobs:
   release:
+    # workflow_run fires on both success and failure, so the conclusion has to
+    # be checked explicitly. A manual dispatch has no upstream run to gate on.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    env:
+      # The changesets action makes a version commit, which would otherwise fire
+      # the pre-commit hook and run the workspace typecheck and test suite
+      # against a generated bump. CI already gated this code on the PR.
+      HUSKY: "0"
+    permissions:
+      contents: write # version commit and tags
+      pull-requests: write # the version PR
+      id-token: write # npm trusted publishing (OIDC provenance)
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Check out main by name (not the workflow_run's detached SHA) so the
+          # changesets action knows its base branch when opening the version PR.
+          ref: main
+          fetch-depth: 0
       - uses: ./.github/actions/setup-pnpm
         with:
           registry-url: "https://registry.npmjs.org"
@@ -23,18 +50,17 @@ jobs:
       - name: Upgrade npm for Trusted Publishing
         run: npm install -g npm@^11.5.1
       - run: pnpm install --frozen-lockfile
-      # The same gate the pre-push hook runs, replacing the `release:verify`
-      # chain of twelve sequential `pnpm run`s. One definition, in
-      # scripts/verify.js, so the local hook and the release gate cannot drift.
-      # It also adds two checks `release:verify` never had: the dependency audit
-      # and the dedupe check.
-      - name: Verify release surfaces
-        run: pnpm run verify
       - name: Create Release PR or Publish
         uses: changesets/action@v1
         with:
           version: pnpm run changeset:version
           publish: pnpm run release
+          # Conventional, and not optional: commitlint is now the root job of
+          # CI and runs `--last` on every push to main, so the action's default
+          # "Version Packages" subject would fail the whole workflow on the one
+          # commit that must not be blocked. Matches the sibling repos.
+          commit: "chore: version packages"
+          title: "chore: version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
@@ -49,6 +75,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          # By name, matching the release job: under workflow_run the default
+          # ref is not guaranteed to be the branch this released from.
+          ref: main
           fetch-depth: 2
       - name: Check if devtools version changed
         id: check
@@ -73,7 +102,14 @@ jobs:
   # (a fine-grained PAT with Contents: write on rxova/rxova-website).
   notify-website:
     needs: release
-    if: github.event_name == 'push' && contains(github.event.head_commit.message, 'Version Packages')
+    # `github.event.head_commit` does not exist on a workflow_run payload — the
+    # old `github.event_name == 'push'` guard would silently never fire again
+    # after the trigger change, so this reads the upstream run's head commit
+    # instead. The subject is the one the changesets action is configured to
+    # write above; the two have to change together.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.workflow_run.head_commit.message, 'chore: version packages')
     runs-on: ubuntu-latest
     steps:
       - name: Trigger rxova.org rebuild

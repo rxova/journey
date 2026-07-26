@@ -44,7 +44,29 @@
       "outputs": [],
       "outputLogs": "new-only"
     },
-    "publint": {
+    // `publint --strict`, under the name the sibling repos use for it.
+    "check:exports": {
+      "dependsOn": ["build"],
+      "outputs": [],
+      "outputLogs": "new-only"
+    },
+    // Are The Types Wrong. Deliberately NOT in `verify` or CI yet — it does not
+    // pass. All three packages declared an `attw` script before this, but there
+    // was no task, no root script, no CI step and no @arethetypeswrong/cli
+    // dependency, so it had never executed once. Running it surfaces 52 real
+    // problems in the published packages:
+    //
+    //   46x InternalResolutionError — the emitted .d.ts files carry
+    //       extensionless relative specifiers (`from '../types'`), which
+    //       node16/nodenext resolution rejects. Any consumer on modern
+    //       moduleResolution gets broken types.
+    //    6x NoResolution — node10 cannot resolve the subpath exports
+    //       (@rxova/journey-core/analytics and friends); no typesVersions map.
+    //
+    // Fixing that is a build change across three published packages, not a CI
+    // change, so it is tracked separately. Run `pnpm run attw` to see the
+    // current state; add this to verify.js and the checks job once it is green.
+    "attw": {
       "dependsOn": ["build"],
       "outputs": [],
       "outputLogs": "new-only"
@@ -124,7 +146,7 @@
     // tarballs, so the side effect is the point and it must never be cached. It
     // also cannot express what it needs here: a root task's `dependsOn: [build]`
     // resolves to the *root* package's `build` script, which is `turbo run
-    // build` — turbo rejects the recursion outright. verify.mjs runs it in the
+    // build` — turbo rejects the recursion outright. verify.js runs it in the
     // step after the build instead, which is the ordering it actually wants.
     "dev": {
       "cache": false,
