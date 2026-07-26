@@ -7,7 +7,7 @@ Rxova Journey is a small monorepo with package and app workspaces:
 - `packages/core`: headless journey state machine, types, and runtime logic.
 - `packages/react`: React provider/hooks/renderer built on top of core.
 - `packages/devtools-bridge`: bridge API for integrating machines with devtools.
-- `apps/docs`: Docusaurus documentation site.
+- `apps/docs`: Astro Starlight documentation site.
 - `apps/demo`: local playground app for runtime integration checks.
 - `apps/devtools`: browser extension app.
 - `packages/*/scripts`: build pipelines for each package.
@@ -31,13 +31,21 @@ pnpm install
 
 ### Common Commands
 
+Task running goes through [Turborepo](https://turborepo.dev): `build`,
+`typecheck`, `size` and `publint` fan out across the workspaces, and Turbo
+caches each one on a content hash of the files that feed it. A re-run with
+nothing changed replays in milliseconds.
+
 ```bash
+pnpm run verify        # the whole gate, in order — same list CI runs
 pnpm run format:check
 pnpm run lint
 pnpm run typecheck
 pnpm run test
 pnpm run build
-pnpm run version:major:check
+pnpm run docs          # docs dev server on http://localhost:4321
+pnpm run docs:build
+pnpm run dev           # demo app
 ```
 
 ### Package-Scoped Commands
@@ -52,12 +60,23 @@ pnpm --filter @rxova/journey-react run test
 
 ### Pre-PR Checklist
 
-- `pnpm run format:check`
-- `pnpm run lint`
-- `pnpm run docs:api:check`
-- `pnpm run typecheck`
-- `pnpm run test`
-- `pnpm run build`
+`pnpm run verify` covers all of it, and the pre-push hook runs it for you. It is
+one ordered list defined in `scripts/verify.js`, so the local gate and CI cannot
+drift:
+
+1. `audit:check` — dependency advisories
+2. `dedupe:check` — duplicate dependency graph entries
+3. `format:check`
+4. `lint`
+5. `version:major:check`
+6. `docs:api:check`, `docs:release-notes:check`
+7. `typecheck`, `typecheck:tests`, `test`
+8. `build`, `size`, `publint`
+9. `pack:smoke`
+
+Commits run `lint-staged` only — the full gate is on push, because a gate slow
+enough to invite `--no-verify` stops being a gate.
+
 - `pnpm run size`
 - Ensure a changeset exists for user-facing changes. If your PR is docs/CI-only/tooling that doesn't affect the packages, add the `skip-changeset` label.
 
@@ -92,9 +111,8 @@ Releases are automated with Changesets and GitHub Actions.
 
 - `@rxova/journey-core`, `@rxova/journey-react`, and `@rxova/journey-devtools-bridge` are independently versioned with Changesets.
 - Their major versions must stay aligned (`pnpm run version:major:check` enforces this in CI).
-- Private app workspaces `apps-docs` and `apps-devtools` are also versioned with Changesets for docs/version tracking, but they are not published to npm.
+- Private app workspaces `@rxova/journey-docs` and `apps-devtools` are also versioned with Changesets for docs/version tracking, but they are not published to npm.
 - `apps-demo` remains ignored by Changesets.
-- Docs history is tracked with Docusaurus docs version snapshots (`pnpm -C apps/docs run version:cut <version>`).
 - The upcoming `1.0.0-rc` line is the contract-freeze point for the current runtime model.
 - During the `1.0.0-rc` line, only bug fixes, docs fixes, and release-blocking contract fixes should land.
 - If a public contract change is unavoidable during the RC line, call it out explicitly in the changeset, changelog, and migration docs before cutting the next RC.

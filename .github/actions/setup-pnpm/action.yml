@@ -1,0 +1,37 @@
+name: Setup pnpm
+description: Install pnpm (version from the packageManager field) and Node.js with pnpm caching.
+
+# Replaces the corepack enable / corepack prepare pnpm@<version+sha512> / setup-node
+# block that every job repeated verbatim — six copies of a pinned hash that had to
+# be edited together on every pnpm bump.
+
+inputs:
+  node-version:
+    description: Node.js version to install.
+    required: false
+    default: "24"
+  registry-url:
+    description: >-
+      npm registry to configure auth against. Only the release job needs this —
+      it is what writes the .npmrc that Trusted Publishing authenticates with.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v6
+
+    - name: Setup Node
+      uses: actions/setup-node@v6
+      with:
+        node-version: ${{ inputs.node-version }}
+        registry-url: ${{ inputs.registry-url }}
+        cache: pnpm
+
+    - name: Report versions
+      shell: bash
+      run: |
+        node --version
+        pnpm --version

@@ -1,0 +1,145 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "tui",
+  "globalDependencies": ["tsconfig.base.json", "tsconfig.json", ".nvmrc"],
+  // `globalEnv`, not `globalPassThroughEnv`: these two change the docs output
+  // (every URL gets the base path baked in) but not a single file on disk. A
+  // pass-through variable is forwarded to the task without contributing to its
+  // hash, so the aggregator build at /packages/journey/ would hash identically
+  // to the root build and happily replay it — shipping a root-path site to a
+  // sub-path mount, which is exactly the failure the second build exists to
+  // catch. Hashing them keeps the two builds distinct cache entries.
+  "globalEnv": ["DOCS_URL", "DOCS_BASE_URL"],
+  "globalPassThroughEnv": ["CI"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"],
+      // A build only reads src plus its build config. Excluding tests and prose
+      // keeps editing them from busting the build cache — they cannot affect
+      // dist. $TURBO_DEFAULT$ keeps the normal file set.
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!test/**",
+        "!**/__tests__/**",
+        "!**/*.test.*",
+        "!README.md",
+        "!CHANGELOG.md"
+      ],
+      "outputLogs": "new-only"
+    },
+    // `^build` rather than `build`: apps, examples and the demo compile against
+    // the libraries' emitted .d.ts, which is why every CI job used to open by
+    // building the packages by hand. Declared here once, a workspace added
+    // later inherits the guarantee instead of silently typechecking against
+    // stale or absent output.
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "outputLogs": "new-only"
+    },
+    // Both read the package's own dist, so `build`, not `^build`.
+    "size": {
+      "dependsOn": ["build"],
+      "outputs": [],
+      "outputLogs": "new-only"
+    },
+    "publint": {
+      "dependsOn": ["build"],
+      "outputs": [],
+      "outputLogs": "new-only"
+    },
+    // Root tasks (`//#`): each reads the whole workspace in one pass from the
+    // root, so there is nothing to fan out. Narrow `inputs` are what make them
+    // worth caching — the key is exactly the files that feed the check, so an
+    // unrelated source edit replays instead of re-running.
+    //
+    // The suite is aliased onto `packages/*/src` by vitest.config.ts, so it
+    // reads sources directly and needs no build in front of it.
+    "//#test": {
+      "outputs": ["coverage/**"],
+      "inputs": [
+        "vitest.config.ts",
+        "tsconfig.test.json",
+        "packages/*/src/**",
+        "packages/*/test/**",
+        "apps/devtools/src/**",
+        "apps/devtools/test/**"
+      ],
+      "outputLogs": "new-only"
+    },
+    // The suite's own typecheck: a root `tsc -p tsconfig.test.json` pass that
+    // covers `packages/*/test` and is not any package's task, so it cannot ride
+    // along on the fan-out.
+    "//#typecheck:tests": {
+      "outputs": [],
+      "inputs": [
+        "tsconfig.test.json",
+        "tsconfig.base.json",
+        "packages/*/src/**",
+        "packages/*/test/**",
+        "apps/*/test/**"
+      ],
+      "outputLogs": "new-only"
+    },
+    "//#dedupe:check": {
+      "outputs": [],
+      "inputs": [
+        "pnpm-lock.yaml",
+        "pnpm-workspace.yaml",
+        "package.json",
+        "packages/*/package.json",
+        "apps/*/package.json",
+        "examples/*/package.json"
+      ],
+      "outputLogs": "new-only"
+    },
+    // Reads the public entry points and the TSDoc rule script; nothing else can
+    // change its verdict.
+    "//#docs:api:check": {
+      "outputs": [],
+      "inputs": ["scripts/check-public-api-tsdoc.ts", "packages/*/src/**"],
+      "outputLogs": "new-only"
+    },
+    // A pure function of the four changelogs and the four pages generated from
+    // them.
+    "//#docs:release-notes:check": {
+      "outputs": [],
+      "inputs": [
+        "scripts/sync-doc-release-notes.ts",
+        "packages/*/CHANGELOG.md",
+        "apps/devtools/CHANGELOG.md",
+        "apps/docs/src/content/docs/*/releases.md"
+      ],
+      "outputLogs": "new-only"
+    },
+    // Two checks are deliberately absent from this file and stay plain root
+    // scripts:
+    //
+    // `audit:check` — its verdict depends on the upstream advisory database,
+    // which changes without any file here changing, so a cached pass could
+    // replay over a newly-disclosed CVE.
+    //
+    // `pack:smoke` — it packs every publishable package and inspects the
+    // tarballs, so the side effect is the point and it must never be cached. It
+    // also cannot express what it needs here: a root task's `dependsOn: [build]`
+    // resolves to the *root* package's `build` script, which is `turbo run
+    // build` — turbo rejects the recursion outright. verify.mjs runs it in the
+    // step after the build instead, which is the ordering it actually wants.
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "preview": {
+      "cache": false,
+      "persistent": true
+    },
+    "start": {
+      "cache": false,
+      "persistent": true
+    },
+    "clean": {
+      "cache": false
+    }
+  }
+}

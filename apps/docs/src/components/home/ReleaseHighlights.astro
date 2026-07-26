@@ -1,0 +1,134 @@
+---
+/**
+ * The dark "Release candidate highlights" panel that sat inside the Docusaurus
+ * hero. Starlight's own hero owns the headline, tagline and CTAs now, so this
+ * is the part of that block with no Starlight equivalent, lifted out intact.
+ */
+const RELEASE_VERSION = '1.0.0rc';
+
+const highlights = [
+  {
+    title: 'Core + React',
+    body: 'Production-ready graph flows, hooks, and step rendering patterns packaged for the 1.0 line.',
+  },
+  {
+    title: 'Docs polish',
+    body: 'Sharper getting-started paths, package navigation, and release candidate messaging from the first screen.',
+  },
+  {
+    title: 'Chrome DevTools',
+    body: 'Inspect timeline, state diffs, and command outcomes while you push real non-linear flows.',
+  },
+  {
+    title: 'Ready to test',
+    body: 'Kick the tires now, validate your flows, and help close out the final march to 1.0.',
+  },
+];
+---
+
+<section class="panel" aria-label="Release candidate highlights">
+  <p class="label">Release candidate highlights</p>
+  <p class="version">{RELEASE_VERSION}</p>
+  <p class="body">
+    Stable graph modeling, stronger docs, and better observability for flows that do not fit neatly
+    into linear wizards.
+  </p>
+
+  <div class="metrics">
+    {
+      highlights.map((highlight) => (
+        <div class="metric">
+          <p class="metric-title">{highlight.title}</p>
+          <p class="metric-body">{highlight.body}</p>
+        </div>
+      ))
+    }
+  </div>
+</section>
+
+<style>
+  .panel {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(17, 28, 40, 0.08);
+    border-radius: 1.75rem;
+    background:
+      linear-gradient(180deg, rgba(13, 19, 36, 0.96), rgba(14, 29, 47, 0.95)),
+      radial-gradient(circle at top right, rgba(79, 221, 171, 0.22), transparent 44%);
+    padding: 1.35rem;
+    color: #eff7ff;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 26px 52px -34px rgba(9, 15, 27, 0.72);
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    inset: auto -36px -40px auto;
+    width: 180px;
+    height: 180px;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(47, 215, 159, 0.24), rgba(47, 215, 159, 0) 72%);
+    pointer-events: none;
+  }
+
+  .label {
+    margin: 0;
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(210, 243, 232, 0.88);
+  }
+
+  .version {
+    margin: 0.5rem 0 0;
+    font-size: clamp(2.6rem, 6vw, 4rem);
+    line-height: 0.95;
+    letter-spacing: -0.06em;
+    color: #ffffff;
+  }
+
+  .body {
+    margin: 0.9rem 0 0;
+    font-size: 0.98rem;
+    line-height: 1.7;
+    color: rgba(227, 241, 255, 0.86);
+  }
+
+  .metrics {
+    display: grid;
+    gap: 0.85rem;
+    margin-top: 1.25rem;
+  }
+
+  .metric {
+    border: 1px solid rgba(150, 171, 193, 0.14);
+    border-radius: 1.25rem;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.95rem 1rem;
+  }
+
+  .metric-title {
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(193, 219, 242, 0.86);
+  }
+
+  .metric-body {
+    margin: 0.45rem 0 0;
+    font-size: 0.96rem;
+    line-height: 1.55;
+    color: #f4fbff;
+  }
+
+  @media (min-width: 62rem) {
+    .metrics {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+</style>

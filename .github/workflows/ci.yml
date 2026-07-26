@@ -3,18 +3,17 @@ name: CI
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - "docs/**"
-      - "**/*.md"
   pull_request:
     # `labeled`/`unlabeled` are added on top of the defaults (opened,
     # synchronize, reopened) so that adding the `skip-changeset` label to an
     # already-opened PR re-runs the `changeset` gate instead of leaving its
     # earlier failure stuck red until the next push.
     types: [opened, synchronize, reopened, labeled, unlabeled]
-    paths-ignore:
-      - "docs/**"
-      - "**/*.md"
+    # No paths-ignore. The old filter skipped `docs/**` and `**/*.md`, but
+    # `.changeset/*.md` matches `**/*.md` — so the one push most likely to need
+    # a release, a merge whose only new file is a changeset, was exactly the one
+    # whose checks never ran. Turbo's cache is what makes dropping the filter
+    # cheap: on a prose-only change every task replays.
 
 permissions:
   contents: read
@@ -31,20 +30,79 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - run: corepack enable
-      - run: corepack prepare pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017 --activate
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
+      - uses: ./.github/actions/setup-pnpm
       - run: pnpm install --frozen-lockfile
-      - env:
+      - name: Require a changeset for published-package changes
+        env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: node --import tsx ./scripts/check-changeset.ts
+
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/turbo-cache
+      - run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm run lint
+      - name: Check formatting
+        run: pnpm run format:check
+      - name: Check major version bumps
+        run: pnpm run version:major:check
+      - name: Docs API surface and release notes
+        run: pnpm exec turbo run docs:api:check docs:release-notes:check
+      # Turbo knows dependents typecheck and measure against the libraries'
+      # emitted .d.ts, so it builds those first. This replaces the explicit
+      # per-package build these jobs used to open with, and replays whatever
+      # this commit did not touch.
+      #
+      # Unlike the sibling rxova repos, the docs site is NOT filtered out of the
+      # build: journey's Starlight site renders no mermaid, so it needs no
+      # headless chromium and builds here like any other workspace. That is also
+      # why the old standalone `devtools-browser` job is gone — building the
+      # extension is `apps-devtools#build`, which this already covers.
+      - name: Typecheck
+        run: pnpm exec turbo run typecheck typecheck:tests
+      - name: Build, size budgets and package contracts
+        run: pnpm exec turbo run build size publint
+
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/turbo-cache
+      - run: pnpm install --frozen-lockfile
+      # Both are in the local pre-push gate too (scripts/verify.js). Running
+      # them here as well is what keeps a stale local checkout from being the
+      # only thing between a newly-disclosed advisory and a release.
+      #
+      # `audit:check` is deliberately not a Turbo task: its verdict depends on
+      # the upstream advisory database, which changes without any file here
+      # changing, so a cached pass could replay over a fresh CVE.
+      - name: Audit dependencies
+        run: pnpm run audit:check
+      - name: Check dependency dedupe
+        run: pnpm run dedupe:check
+
+  pack-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/turbo-cache
+      - run: pnpm install --frozen-lockfile
+      # `pack:smoke` inspects the real tarballs, so it needs the real dist.
+      # Turbo replays the build from cache when nothing feeding it changed.
+      - name: Build packages
+        run: pnpm exec turbo run build --filter='./packages/*'
+      - name: Pack smoke test
+        run: pnpm run pack:smoke
 
   test:
     runs-on: ubuntu-latest
@@ -53,52 +111,23 @@ jobs:
         node-version: [20, 22, 24]
     steps:
       - uses: actions/checkout@v6
-      - run: corepack enable
-      - run: corepack prepare pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017 --activate
-      - uses: actions/setup-node@v6
+      - uses: ./.github/actions/setup-pnpm
         with:
           node-version: ${{ matrix.node-version }}
-          cache: pnpm
+      # Deliberately no turbo-cache here, and `pnpm run test` rather than a
+      # turbo task. Turbo hashes files and env, not the Node binary, and the
+      # cache action keys on `github.job` — the same string for every leg of a
+      # matrix. All three legs would share one cache, so node 24 could replay a
+      # result computed under node 20, which is exactly what this matrix exists
+      # to prevent.
       - run: pnpm install --frozen-lockfile
-      - name: Typecheck packages and apps
-        run: pnpm run packages:typecheck
-      - name: Run test suite
+      - name: Test with coverage thresholds
         run: pnpm run test
-
-  devtools-browser:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - run: corepack enable
-      - run: corepack prepare pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017 --activate
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-      - name: Build devtools extension
-        run: pnpm --filter apps-devtools build
-  release-verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - run: corepack enable
-      - run: corepack prepare pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017 --activate
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Audit dependencies
-        run: pnpm audit --audit-level=high
-      - name: Run release verification
-        run: pnpm run release:verify
       - name: Add coverage summary
-        if: always()
+        if: always() && matrix.node-version == 24
         run: node --import tsx ./scripts/coverage-summary.ts
       - name: Upload coverage report
-        if: always()
+        if: always() && matrix.node-version == 24
         uses: actions/upload-artifact@v7
         with:
           name: coverage-report

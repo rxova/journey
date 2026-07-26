@@ -20,8 +20,8 @@ export default [
       "node_modules/**",
       "worktrees/**",
       "flow/**",
-      "apps/docs/.docusaurus/**",
-      "apps/docs/build/**",
+      "apps/docs/.astro/**",
+      "apps/docs/dist/**",
       "**/.next/**",
       "**/*.d.ts",
       "**/*.d.ts.map"
@@ -29,7 +29,15 @@ export default [
   },
   js.configs.recommended,
   {
-    files: ["scripts/**/*.ts", "packages/*/scripts/**/*.ts", "*.config.cjs", "*.config.js"],
+    files: [
+      "scripts/**/*.{ts,js}",
+      "packages/*/scripts/**/*.ts",
+      "apps/*/scripts/**/*.js",
+      "apps/*/src/plugins/**/*.js",
+      "*.config.cjs",
+      "*.config.js",
+      "apps/*/*.config.js"
+    ],
     languageOptions: {
       globals: {
         ...globals.node

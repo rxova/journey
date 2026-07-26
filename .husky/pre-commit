@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 set -e
 
-pnpm lint-staged
-pnpm format
-pnpm test:precommit
-pnpm typecheck
-pnpm size:check
+# Staged files only. The full gate (audit, dedupe, docs, typecheck, test, build,
+# size, publint, pack smoke) runs on push instead — see .husky/pre-push and
+# scripts/verify.mjs. Running the whole suite with coverage here made every
+# commit slow enough to invite --no-verify, which is how a gate stops being one.
+pnpm exec lint-staged

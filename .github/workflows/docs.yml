@@ -10,7 +10,6 @@ on:
     branches: [main]
     paths:
       - "apps/docs/**"
-      - "apps/devtools/**"
       - "packages/**"
       - "README.md"
       - "CHANGELOG.md"
@@ -18,17 +17,11 @@ on:
   pull_request:
     paths:
       - "apps/docs/**"
-      - "apps/devtools/**"
       - "packages/**"
-      - "README.md"
-      - "CHANGELOG.md"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
-      - "tsconfig.json"
-      - "tsconfig.base.json"
-      - "vitest.config.ts"
-      - "eslint.config.js"
+      - "turbo.json"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
@@ -41,42 +34,32 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/turbo-cache
+      - run: pnpm install --frozen-lockfile
 
-      - name: Enable Corepack
-        run: corepack enable
+      # `astro check` over the site's own .astro/.mdx sources. Cheap, and it
+      # fails on a broken component prop before the slower build does.
+      - name: Typecheck docs
+        run: pnpm exec turbo run typecheck --filter=@rxova/journey-docs
 
-      - name: Pin pnpm
-        run: corepack prepare pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017 --activate
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Check public API TSDoc coverage
-        run: pnpm run docs:api:check
-
-      - name: Build docs
-        run: pnpm run docs:check
-
-      # Build a second time at the path the aggregator actually mounts these
-      # docs at. Absolute references that only work at the domain root — CSS
-      # url(), raw <a href>, hardcoded <img src> — are invisible in the build
-      # above and break silently once deployed. Since onBrokenLinks is 'throw',
-      # catching them here turns a red rxova.org deploy (which blocks every
-      # project on the site, not just this one) into a failed PR check.
+      # Build at the path the aggregator actually mounts these docs at.
+      # Absolute references that only work at the domain root — a hardcoded
+      # href, an <img src>, a hero action link — are invisible in a root build
+      # and break silently once deployed. starlight-links-validator runs as part
+      # of the build and fails on any broken internal link, so catching them
+      # here turns a red rxova.org deploy (which blocks every project on the
+      # site, not just this one) into a failed PR check.
+      #
+      # Only the base-path build runs here: the root-path build is what the
+      # `checks` job in ci.yml already does as part of `turbo run build`, so
+      # repeating it would be the same work twice.
       - name: Build docs at the aggregator base path
         env:
           DOCS_URL: https://rxova.org
           DOCS_BASE_URL: /packages/journey/
-        run: pnpm run docs:check
+        run: pnpm run docs:build
 
   notify-website:
     needs: build

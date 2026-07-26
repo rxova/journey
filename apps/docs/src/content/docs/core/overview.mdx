@@ -1,0 +1,73 @@
+---
+title: "Overview"
+---
+
+import DocAccordion from "../../../components/DocAccordion.astro";
+import DocAccordionItem from "../../../components/DocAccordionItem.astro";
+
+Journey is a flow runtime for products that need more than “next” and “previous”.
+
+It works well when your UI still looks like a wizard, but the behavior underneath is already a graph: branches, skips, retries, async checks, recovery paths, explicit close behavior, and stable history. The goal is not to force one shape. The goal is to let you model the flow you actually have while keeping the API simple.
+
+## Motivation
+
+The usual stepper model starts with a list and a pointer. That is fine for small flows.
+
+The problem appears when decisions move inside components. One step skips another. A validation call decides where the user goes next. A “close” action opens a confirmation branch. A pointer can still tell you where the user is, but it cannot explain why they got there or which path was taken.
+
+Journey keeps that logic in one place by making transitions explicit and event-driven. That gives teams freedom to model both wizard and graph behavior, simplicity in the runtime shape, and versatility when flows grow beyond a fixed sequence.
+
+## Practical Advantages
+
+- **Graph-Based**: model real branching, retries, skips, and recovery paths without hiding them in UI code.
+- **Transition-First**: put movement rules where they belong instead of scattering them across click handlers.
+- **Snapshot-Persisted**: keep the runtime truth in one snapshot with history, context, status, and async state.
+- **Pluggable**: add runtime capabilities such as persistence or structural path analysis without bloating the base machine.
+- **Observable**: subscribe to state or lifecycle events depending on whether you care about “what is true now” or “what just happened”.
+- **Async-Safe**: make async guards part of the model, with explicit phases and timeout support.
+
+## Under The Hood
+
+Journey processes events through an internal queue. That matters because it gives the runtime a stable order of operations: one event starts, its matching transition is resolved, async work settles, the next snapshot commits, and only then does the next event continue. You do not get overlapping flow mutations fighting each other.
+
+The runtime is snapshot-first. A journey definition describes the static model, but the snapshot describes the live state. That split is deliberate. Definitions stay small and readable, while the snapshot becomes the single place to inspect current step, realized history, context, visited state, status, and async phase.
+
+Transitions are the center of the system. Guards decide whether a move is allowed. `updateContext` derives the next context synchronously once a transition is selected. Ordered matching keeps behavior deterministic, which is one of the reasons the runtime stays easy to test and easier to explain during refactors.
+
+The event stream is just as important as the snapshot. Snapshot subscriptions are useful when you want to render. Lifecycle events are useful when you want to debug, log, or analyze behavior. That event-driven architecture keeps UI concerns and runtime telemetry separate without losing visibility into either.
+
+## Overview Guide
+
+<DocAccordion>
+  <DocAccordionItem
+    title="Architecture"
+    summary="A file-by-file walkthrough of how the machine is assembled, queued, and committed."
+    defaultOpen
+  >
+    Journey is built around a small runtime model: steps, transitions, snapshot, and event
+    processing. Read [Machine Architecture](./architecture.md) when you want the technical picture,
+    including a file-level breakdown of `packages/core/src/journey-machine`, without dropping
+    straight into the API reference.
+  </DocAccordionItem>
+  <DocAccordionItem
+    title="Recipes"
+    summary="Short, practical patterns for the things product teams run into first."
+  >
+    Use [Recipes](./recipes.md) when you need a proven pattern such as explicit back overrides,
+    context updates, close-confirmation flows, timeout-aware transitions, or branch-heavy transition
+    builders.
+  </DocAccordionItem>
+  <DocAccordionItem
+    title="Examples"
+    summary="Longer scenarios that show how Journey feels in real flows."
+  >
+    Use [Examples](./examples.md) when you want to compare list-shaped wizards, graph flows,
+    observable runtimes, or plugin-assisted setups instead of reading features one by one.
+  </DocAccordionItem>
+</DocAccordion>
+
+## Where To Go Next
+
+- Read [About](./about.md) for the product model and design intent.
+- Read [Quickstart](./getting-started.md) if you want a typed example immediately.
+- Read [Usage](./usage.md) if you are choosing between wizard, graph, and headless runtime usage.

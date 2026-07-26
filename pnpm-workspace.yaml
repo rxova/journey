@@ -48,17 +48,14 @@ overrides:
   "js-yaml@>=4.0.0 <4.3.0": ">=4.3.0 <5.0.0"
   "uuid@<11.1.1": ">=11.1.1 <12.0.0"
 
-auditConfig:
-  ignoreGhsas:
-    # brace-expansion DoS, reached only via
-    # apps/docs > @docusaurus/core > serve-handler > minimatch@3 > brace-expansion@1.x.
-    # The sole patched release is brace-expansion 5.0.8, whose CommonJS entry
-    # exports { expand } rather than a callable, so minimatch@3 (which calls the
-    # module directly) cannot consume it. minimatch@3.1.5 is the top of the
-    # legacy-v3 line and still declares brace-expansion ^1.1.7, and newer
-    # minimatch majors export an object that serve-handler cannot call either.
-    # Dev-only path: `docusaurus serve` local preview, never shipped in a package.
-    - GHSA-mh99-v99m-4gvg
+# No auditConfig.ignoreGhsas. The one entry that lived here, GHSA-mh99-v99m-4gvg
+# (brace-expansion DoS), was reachable only through
+# apps/docs > @docusaurus/core > serve-handler > minimatch@3 > brace-expansion@1.x,
+# and it was unfixable because minimatch@3 calls the module directly while the
+# only patched release exports an object. Dropping Docusaurus removed that path
+# entirely — the tree now resolves brace-expansion@5.0.8 — so the exception is
+# gone with it and the audit gate has nothing suppressed.
 
 onlyBuiltDependencies:
   - esbuild
+  - sharp

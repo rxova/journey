@@ -4,6 +4,5 @@ node_modules
 worktrees
 flow
 pnpm-lock.yaml
-apps/docs/.docusaurus
-apps/docs/build
-apps/docs/build-ci-check*
+apps/docs/.astro
+apps/docs/dist

@@ -1,0 +1,25 @@
+---
+/**
+ * The Docusaurus site shipped its own accordion (a React component plus a CSS
+ * module) because MDX had no other way to collapse a block. Starlight has no
+ * equivalent either, so it survives the migration as a pair of Astro
+ * components — no client JS at all now, since `<details>` was always doing the
+ * work and only the styling needed React's className plumbing.
+ *
+ * Colours come from the Starlight theme variables that @rxova/brand maps onto
+ * the rxova tokens, so the accordion follows light/dark without a second set of
+ * hardcoded values the way the CSS module did.
+ */
+---
+
+<div class="doc-accordion">
+  <slot />
+</div>
+
+<style>
+  .doc-accordion {
+    display: grid;
+    gap: 1rem;
+    margin: 1.5rem 0 2rem;
+  }
+</style>

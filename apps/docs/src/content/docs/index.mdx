@@ -1,0 +1,182 @@
+---
+title: Rxova Journey
+description: Rxova Journey docs for building non-linear flows with a declarative journey graph.
+template: splash
+editUrl: false
+hero:
+  title: 'We did it!<br /><span class="hero-accent">Journey 1.0.0rc</span>'
+  tagline: >-
+    The release candidate is here. Journey now lands with a sharper docs experience,
+    production-ready flow primitives, and the tooling needed to inspect real
+    non-linear UI work.
+---
+
+import { Card, CardGrid, LinkButton, LinkCard } from "@astrojs/starlight/components";
+import InstallTypewriter from "../../components/home/InstallTypewriter.astro";
+import FeatureCarousel from "../../components/home/FeatureCarousel.astro";
+import ReleaseHighlights from "../../components/home/ReleaseHighlights.astro";
+import CelebrationModal from "../../components/home/CelebrationModal.astro";
+
+export const base = import.meta.env.BASE_URL;
+
+<div class="hero-actions">
+  <LinkButton href={`${base}core/getting-started/`}>Start with Core</LinkButton>
+  <LinkButton href={`${base}react/overview/`}>Explore React</LinkButton>
+  <LinkButton href={`${base}core/plugins/overview/`} variant="minimal">
+    See the Plugins
+  </LinkButton>
+  <LinkButton href={`${base}core/releases/`} variant="secondary">
+    Read Release Notes
+  </LinkButton>
+</div>
+
+<InstallTypewriter
+  commands={[
+    "npm install @rxova/journey-core",
+    "yarn add @rxova/journey-react",
+    "pnpm install @rxova/journey-devtools-bridge"
+  ]}
+/>
+
+<CelebrationModal />
+
+<FeatureCarousel
+  title="Why Teams Pick Journey"
+  slides={[
+    {
+      title: "Test Coverage",
+      body: "95%+ coverage baseline across critical runtime paths, React bindings, and integration behavior that ships in every release."
+    },
+    {
+      title: "Plugins",
+      body: "Compose persistence, analytics, autosave, execution paths, diagnostics, and replay without bloating the base runtime."
+    },
+    {
+      title: "Zero dependency",
+      body: "Core runtime stays compact with zero runtime dependencies, keeping installs lean and bundle behavior predictable across environments."
+    },
+    {
+      title: "Tree-shakeable",
+      body: "Import only the pieces you need across Core, React bindings, and the bridge package so bundles stay clean and focused."
+    },
+    {
+      title: "DevTools",
+      body: "Inspect timeline, state diffs, and command outcomes directly in Chrome DevTools while your app runs in real time.",
+      href: "https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm"
+    },
+    {
+      title: "CI Quality Gates",
+      body: "8+ CI gates cover multi-node matrix runs, audit checks, size budgets, pack smoke validation, and changeset enforcement."
+    },
+    {
+      title: "Active Development",
+      body: "Active iteration continues with regular releases, updated docs, and expanded tests that track new behavior and fixes."
+    }
+  ]}
+/>
+
+<CardGrid>
+  <Card title="Why Journey">
+    Replace brittle step arrays with a typed transition graph. Handle branching, async guards, and
+    deterministic back behavior without scattered state.
+  </Card>
+  <Card title="Status">
+    Journey just hit release-candidate status. Start with Core or React, exercise the flow edges,
+    and help close the gap to the final 1.0 release.
+  </Card>
+  {/* Plain JSX rather than a markdown list: prettier reflows markdown nested
+      inside JSX onto one line, which silently turns the three bullets into a
+      single run-on paragraph. */}
+  <Card title="Packages">
+    <ul>
+      <li>
+        <a href="https://www.npmjs.com/package/@rxova/journey-core">@rxova/journey-core</a>
+      </li>
+      <li>
+        <a href="https://www.npmjs.com/package/@rxova/journey-react">@rxova/journey-react</a>
+      </li>
+      <li>
+        <a href="https://www.npmjs.com/package/@rxova/journey-devtools-bridge">
+          @rxova/journey-devtools-bridge
+        </a>
+      </li>
+    </ul>
+  </Card>
+</CardGrid>
+
+<ReleaseHighlights />
+
+## Start here
+
+<CardGrid>
+  <LinkCard
+    title="Core: the headless engine"
+    description="Define steps, transitions, lifecycle, history, and persistence without UI assumptions."
+    href={`${base}core/getting-started/`}
+  />
+  <LinkCard
+    title="React: the UI bindings"
+    description="Render active steps with provider/hooks and keep business flow rules in Core."
+    href={`${base}react/overview/`}
+  />
+</CardGrid>
+
+## Core
+
+<CardGrid>
+  <LinkCard
+    title="History"
+    description="Deterministic back behavior with timeline-pointer navigation and fallback previous-step semantics."
+    href={`${base}core/history/`}
+  />
+  <LinkCard
+    title="Persistence"
+    description="Versioned snapshot storage, migrations, reset semantics, and adapter boundaries."
+    href={`${base}core/persistence/`}
+  />
+  <LinkCard
+    title="Snapshot"
+    description="Read currentStepId/context/history/visited/async state with predictable runtime invariants."
+    href={`${base}core/snapshot/`}
+  />
+  <LinkCard
+    title="Lifecycle"
+    description="Transition selection pipeline, terminal behavior, queue semantics, and error lifecycle."
+    href={`${base}core/lifecycle/`}
+  />
+  <LinkCard
+    title="Async"
+    description="Async guards/effects and robust loading/error UI patterns around explicit phases."
+    href={`${base}core/async/`}
+  />
+  <LinkCard
+    title="Examples"
+    description="Headless example catalog mapped to real scenarios and feature-focused flows."
+    href={`${base}core/examples/`}
+  />
+</CardGrid>
+
+## React Guides
+
+<CardGrid>
+  <LinkCard
+    title="Provider + Hooks API"
+    description="Understand bindings.Provider, StepRenderer, and core hooks for production wiring."
+    href={`${base}react/provider-and-hooks/`}
+  />
+  <LinkCard
+    title="Patterns"
+    description="Practical structure patterns for step components, controls, and machine ownership."
+    href={`${base}react/patterns/`}
+  />
+  <LinkCard
+    title="Async UI"
+    description="Render loading and error states from snapshot.async without ad-hoc local state."
+    href={`${base}react/async-ui/`}
+  />
+  <LinkCard
+    title="Examples"
+    description="Explore complete React flows you can adapt directly in your app."
+    href={`${base}react/examples/`}
+  />
+</CardGrid>

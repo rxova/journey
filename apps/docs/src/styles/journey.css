@@ -1,0 +1,27 @@
+/*
+ * Journey-only additions on top of @rxova/brand's Starlight theme. Anything
+ * that should look the same across the three rxova docs sites belongs in the
+ * brand package instead — this file is for what is genuinely journey's.
+ */
+
+/* The homepage headline keeps the two-tone treatment it had on Docusaurus:
+   "We did it!" in the body colour, the version below it in the accent. */
+.hero-accent {
+  display: block;
+  margin-top: 0.14em;
+  color: var(--sl-color-text-accent);
+}
+
+/* The hero's CTAs live in the page body rather than in frontmatter
+   `hero.actions`: Starlight emits an action's `link` verbatim, so
+   `/core/getting-started/` is right at the domain root and 404s under the
+   aggregator's /packages/journey/ mount — starlight-links-validator fails the
+   base-path build on exactly that. index.mdx uses `<LinkButton>` (the same
+   component the hero uses) with the href routed through BASE_URL, so they need
+   the row layout the hero would otherwise have given them. */
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-block: 1.5rem 2rem;
+}
