@@ -108,7 +108,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [20, 22, 24]
+        # pnpm 11 requires Node >= 22.13, so the node 20 leg this matrix used to
+        # carry cannot even install and had to go. The published packages declare
+        # no `engines` of their own, so nothing about what consumers may run has
+        # changed — but node 20 is genuinely no longer exercised here. If that
+        # matters, the way back is a job that installs with an older pnpm purely
+        # to run the suite, not re-adding a leg that cannot install.
+        node-version: [22, 24]
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-pnpm
@@ -117,8 +123,8 @@ jobs:
       # Deliberately no turbo-cache here, and `pnpm run test` rather than a
       # turbo task. Turbo hashes files and env, not the Node binary, and the
       # cache action keys on `github.job` — the same string for every leg of a
-      # matrix. All three legs would share one cache, so node 24 could replay a
-      # result computed under node 20, which is exactly what this matrix exists
+      # matrix. Both legs would share one cache, so node 24 could replay a
+      # result computed under node 22, which is exactly what this matrix exists
       # to prevent.
       - run: pnpm install --frozen-lockfile
       - name: Test with coverage thresholds
