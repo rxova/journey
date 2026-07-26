@@ -1,0 +1,82 @@
+---
+interface Props {
+  title: string;
+  summary?: string;
+  defaultOpen?: boolean;
+}
+
+const { title, summary, defaultOpen = false } = Astro.props;
+---
+
+<details class="doc-accordion-item" open={defaultOpen}>
+  <summary>
+    <span class="summary-text">
+      <span class="title">{title}</span>
+      {summary && <span class="summary-copy">{summary}</span>}
+    </span>
+  </summary>
+  <div class="content">
+    <slot />
+  </div>
+</details>
+
+<style>
+  .doc-accordion-item {
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 1rem;
+    background: var(--sl-color-black);
+    overflow: hidden;
+  }
+
+  summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 1rem 1.1rem 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    font-weight: 600;
+    color: var(--sl-color-white);
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  summary::after {
+    content: '+';
+    flex: 0 0 auto;
+    font-size: 1.3rem;
+    line-height: 1;
+    color: var(--sl-color-text-accent);
+  }
+
+  .doc-accordion-item[open] summary::after {
+    content: '−';
+  }
+
+  .summary-text {
+    display: grid;
+    gap: 0.18rem;
+  }
+
+  .title {
+    font-size: 1.02rem;
+  }
+
+  .summary-copy {
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: var(--sl-color-gray-3);
+  }
+
+  .content {
+    border-top: 1px solid var(--sl-color-gray-5);
+    padding: 1rem 1.25rem 1.25rem;
+  }
+
+  .content > :last-child {
+    margin-bottom: 0;
+  }
+</style>

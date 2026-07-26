@@ -59,8 +59,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "publint": "publint",
     "attw": "attw --pack .",
-    "size": "pnpm run size:check",
-    "size:check": "pnpm run build && size-limit"
+    "size": "size-limit"
   },
   "size-limit": [
     {
@@ -69,5 +68,8 @@
       "import": "{ attachJourneyDevtools }",
       "limit": "3.5 kB"
     }
-  ]
+  ],
+  "devDependencies": {
+    "@rxova/journey-core": "workspace:^"
+  }
 }

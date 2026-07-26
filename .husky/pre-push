@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 set -e
 
-pnpm run lint
-pnpm packaging:check
-pnpm pack:smoke
+# One ordered gate, the same list CI runs, so a green push means a green
+# pipeline. `verify` is defined once in scripts/verify.mjs; Turbo caches
+# unchanged tasks, so a re-push after a docs-only edit replays in seconds.
+pnpm run verify

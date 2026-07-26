@@ -1,0 +1,14 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    // Next writes `.next/`, not the `dist/` the root task declares. A task
+    // whose declared outputs never materialise warns on every run, and an
+    // undeclared output is simply not cached — so the override is per package
+    // rather than loosening the root task for the three Next examples.
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**"]
+    }
+  }
+}

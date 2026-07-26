@@ -8,16 +8,16 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../
 const docsRoots = [
   "README.md",
   "packages/core/README.md",
-  "apps/docs/docs/core",
-  "apps/docs/docs/react",
-  "apps/docs/docs/bridge",
-  "apps/docs/docs/devtool"
+  "apps/docs/src/content/docs/core",
+  "apps/docs/src/content/docs/react",
+  "apps/docs/src/content/docs/bridge",
+  "apps/docs/src/content/docs/devtool"
 ] as const;
 
 const ignoredFiles = new Set([
-  "apps/docs/docs/core/releases.md",
-  "apps/docs/docs/react/releases.md",
-  "apps/docs/docs/bridge/releases.md"
+  "apps/docs/src/content/docs/core/releases.md",
+  "apps/docs/src/content/docs/react/releases.md",
+  "apps/docs/src/content/docs/bridge/releases.md"
 ]);
 
 const forbiddenPatterns = [

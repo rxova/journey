@@ -1,0 +1,20 @@
+name: Turbo cache
+description: Restore and save Turborepo's local .turbo cache across CI runs.
+
+# pnpm's store is cached by setup-pnpm; this caches Turbo's task cache so a
+# clean runner can replay unchanged tasks instead of recomputing them. Keyed
+# per job (each job runs a different task subset) with a restore-keys prefix
+# for cross-run reuse on the same branch.
+#
+# Never add this to a Node-version matrix job: Turbo hashes files and env, not
+# the Node binary, and the key below uses `github.job` — one string for every
+# leg of a matrix. Both legs would share a cache, so the node 24 leg could
+# replay a result computed under node 20, defeating the point of the matrix.
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@v6
+      with:
+        path: .turbo
+        key: turbo-${{ github.job }}-${{ runner.os }}-${{ github.sha }}
+        restore-keys: turbo-${{ github.job }}-${{ runner.os }}-

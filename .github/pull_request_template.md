@@ -9,11 +9,11 @@
 ## Testing
 
 - [ ] Tests not needed
+- [ ] `pnpm run verify` — the whole gate; this is what the pre-push hook runs
 - [ ] `pnpm test`
-- [ ] `pnpm typecheck`
-- [ ] `pnpm run docs:check`
-- [ ] `pnpm run release:verify` when touching release-critical surfaces
-- [ ] `pnpm lint`
+- [ ] `pnpm run typecheck`
+- [ ] `pnpm run lint`
+- [ ] `pnpm run docs:build`
 
 ## Docs
 

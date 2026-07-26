@@ -1,0 +1,321 @@
+---
+/**
+ * The 1.0.0rc celebration dialog: shown once per visitor (localStorage), with
+ * confetti, escape-to-close, backdrop-to-close and a reopen link — the same
+ * behaviour the React version had.
+ *
+ * Ported to a native `<dialog>`, which hands the focus trap, the backdrop and
+ * the escape key to the platform. The React version reimplemented all three by
+ * hand (a portal, a keydown listener, a body `overflow: hidden`) because
+ * Docusaurus had no better primitive to reach for.
+ */
+const RELEASE_VERSION = '1.0.0rc';
+const base = import.meta.env.BASE_URL;
+---
+
+<button type="button" class="reopen" data-celebration-open>
+  Reopen the {RELEASE_VERSION} celebration
+</button>
+
+<dialog
+  class="celebration"
+  data-celebration
+  data-storage-key={`rxova-journey-docs-release-celebration:${RELEASE_VERSION}`}
+  aria-labelledby="release-celebration-title"
+>
+  <canvas data-confetti aria-hidden="true"></canvas>
+
+  <div class="inner">
+    <div class="header">
+      <div class="eyebrow">
+        <span aria-hidden="true" class="dot"></span>
+        Release candidate unlocked
+      </div>
+      <button type="button" class="close" aria-label="Close release celebration" data-celebration-close
+        >×</button
+      >
+    </div>
+
+    <h2 id="release-celebration-title" class="title">
+      We did it! <span class="version">{RELEASE_VERSION}</span>
+    </h2>
+    <p class="copy">
+      Journey has crossed into release-candidate territory. Explore the docs, pressure-test your
+      flows, and help us close out the final stretch to 1.0.
+    </p>
+
+    <div class="actions">
+      <button type="button" class="primary" data-celebration-close>Start exploring</button>
+      <a class="secondary" href={`${base}core/releases/`} data-celebration-close>See what shipped</a>
+    </div>
+  </div>
+</dialog>
+
+<script>
+  import confetti from 'canvas-confetti';
+
+  const dialog = document.querySelector<HTMLDialogElement>('[data-celebration]');
+  if (dialog) {
+    const storageKey = dialog.dataset.storageKey!;
+    const canvas = dialog.querySelector<HTMLCanvasElement>('[data-confetti]')!;
+    const colors = ['#57f1c4', '#ffd166', '#7cc6ff', '#f78fb3', '#c4f268'];
+    let timeouts: number[] = [];
+
+    const fire = () => {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const burst = confetti.create(canvas, { resize: true, useWorker: true });
+      timeouts = [
+        window.setTimeout(
+          () =>
+            burst({
+              particleCount: 90,
+              spread: 88,
+              startVelocity: 34,
+              origin: { x: 0.22, y: 0.18 },
+              colors,
+              ticks: 220,
+            }),
+          0
+        ),
+        window.setTimeout(
+          () =>
+            burst({
+              particleCount: 72,
+              spread: 78,
+              startVelocity: 30,
+              origin: { x: 0.78, y: 0.22 },
+              colors,
+              ticks: 200,
+            }),
+          180
+        ),
+        window.setTimeout(
+          () =>
+            burst({
+              particleCount: 54,
+              spread: 110,
+              startVelocity: 26,
+              scalar: 0.9,
+              origin: { x: 0.5, y: 0.12 },
+              colors,
+              ticks: 180,
+            }),
+          320
+        ),
+      ];
+    };
+
+    const open = () => {
+      dialog.showModal();
+      fire();
+    };
+
+    const close = () => {
+      timeouts.forEach((id) => window.clearTimeout(id));
+      timeouts = [];
+      dialog.close();
+      // Storage is unavailable in some privacy modes; the dialog closing is
+      // what matters, so a failure here must not break the page.
+      try {
+        window.localStorage.setItem(storageKey, 'seen');
+      } catch {}
+    };
+
+    dialog.querySelectorAll('[data-celebration-close]').forEach((element) => {
+      element.addEventListener('click', close);
+    });
+
+    // A native modal's backdrop is part of the dialog element, so a click
+    // landing on the dialog itself rather than its content is a backdrop click.
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) close();
+    });
+    dialog.addEventListener('cancel', (event) => {
+      event.preventDefault();
+      close();
+    });
+
+    document
+      .querySelector('[data-celebration-open]')
+      ?.addEventListener('click', () => open());
+
+    let seen = true;
+    try {
+      seen = window.localStorage.getItem(storageKey) === 'seen';
+    } catch {
+      seen = false;
+    }
+    if (!seen) open();
+  }
+</script>
+
+<style>
+  .reopen {
+    width: fit-content;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    color: var(--sl-color-text-accent);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  .reopen:hover {
+    transform: translateX(2px);
+  }
+
+  .celebration {
+    /* `margin: auto` is what centres a modal `<dialog>` in its viewport-sized
+       containing block. The UA stylesheet sets it, but declaring `width` here
+       is enough to lose the centring in the process, so it is restated. */
+    margin: auto;
+    width: min(720px, calc(100% - 2rem));
+    max-height: calc(100% - 2rem);
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 1.875rem;
+    background:
+      radial-gradient(circle at top left, rgba(76, 243, 186, 0.18), transparent 28%),
+      linear-gradient(180deg, rgba(15, 24, 36, 0.98), rgba(10, 17, 27, 0.98));
+    color: #f8fcff;
+    box-shadow: 0 34px 90px -34px rgba(0, 0, 0, 0.68);
+  }
+
+  .celebration::backdrop {
+    background: rgba(11, 16, 24, 0.62);
+    backdrop-filter: blur(14px);
+  }
+
+  canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    pointer-events: none;
+  }
+
+  .inner {
+    position: relative;
+    display: grid;
+    gap: 1rem;
+    padding: 1.5rem;
+  }
+
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    border: 1px solid rgba(212, 234, 229, 0.18);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    padding: 0.45rem 0.75rem;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(219, 246, 237, 0.92);
+  }
+
+  .dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #0f8f6a, #33c794);
+    box-shadow: 0 0 0 6px rgba(35, 178, 132, 0.14);
+  }
+
+  .close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    flex: none;
+    border: 1px solid rgba(208, 224, 241, 0.18);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #eff7ff;
+    font: inherit;
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+
+  .close:hover {
+    border-color: rgba(76, 243, 186, 0.38);
+    background: rgba(76, 243, 186, 0.12);
+  }
+
+  .title {
+    margin: 0;
+    font-size: clamp(2.5rem, 8vw, 4rem);
+    line-height: 0.9;
+    letter-spacing: -0.06em;
+    color: #ffffff;
+  }
+
+  .version {
+    display: inline-block;
+    color: #7df7ca;
+  }
+
+  .copy {
+    max-width: 32rem;
+    margin: 0;
+    font-size: 1.03rem;
+    line-height: 1.7;
+    color: rgba(224, 240, 255, 0.86);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .primary {
+    border: 0;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #57f1c4, #18a076);
+    padding: 0.85rem 1.25rem;
+    color: #0d1324;
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 18px 30px -20px rgba(87, 241, 196, 0.68);
+  }
+
+  .secondary {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid rgba(217, 231, 247, 0.18);
+    border-radius: 999px;
+    padding: 0.85rem 1.2rem;
+    color: #eff7ff;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .secondary:hover {
+    border-color: rgba(76, 243, 186, 0.34);
+    background: rgba(76, 243, 186, 0.08);
+    color: #ffffff;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reopen:hover {
+      transform: none;
+    }
+  }
+</style>
