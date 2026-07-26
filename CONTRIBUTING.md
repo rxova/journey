@@ -20,7 +20,7 @@ rendering.
 
 ### Requirements
 
-- Node.js `>= 20.11.0`
+- Node.js `>= 22.13.0` (pnpm 11 requires it; `.nvmrc` pins 24)
 - pnpm (see `packageManager` in `package.json`)
 
 ### Install

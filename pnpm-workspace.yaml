@@ -61,6 +61,20 @@ overrides:
 # entirely — the tree now resolves brace-expansion@5.0.8 — so the exception is
 # gone with it and the audit gate has nothing suppressed.
 
-onlyBuiltDependencies:
-  - esbuild
-  - sharp
+# pnpm 11 refuses lockfile entries published inside a 24h window — a
+# supply-chain guard against freshly-published malicious releases. `@rxova/brand`
+# is our own package from the sibling rxova/brand repo, so the window buys
+# nothing and would instead mean the docs site could not pick up a brand fix for
+# a day. Same exclusion the use-everywhere repo carries. Everything third-party
+# stays subject to the policy.
+minimumReleaseAgeExclude:
+  - "@rxova/brand"
+
+# `allowBuilds` replaces pnpm 10's `onlyBuiltDependencies`. Same meaning — which
+# dependencies may run install scripts — but explicit per package rather than an
+# allowlist, so a new script-running dependency fails loudly instead of being
+# silently skipped. Both entries are build-time only: esbuild compiles the
+# packages, sharp optimises the docs images.
+allowBuilds:
+  esbuild: true
+  sharp: true
