@@ -5,7 +5,12 @@ packages:
 
 overrides:
   lodash: 4.18.1
-  svgo: 3.3.3
+  # No exact `svgo` pin. There used to be `svgo: 3.3.3`, which silently defeated
+  # the `svgo@>=3.0.0 <3.3.4` range override below — an exact pin wins, so the
+  # range that exists to force >=3.3.4 never applied and the tree resolved to the
+  # vulnerable 3.3.3 (GHSA-2p49-hgcm-8545, removeScripts leaves some executable
+  # scripts intact). Latent under Docusaurus; live once Astro started pulling
+  # svgo, and only visible because `pnpm audit` works again on pnpm 11.
   jsdom>undici: ">=7.28.0 <8.0.0"
   cheerio>undici: ">=7.28.0 <8.0.0"
   "@crxjs/vite-plugin>rollup": 2.80.0
