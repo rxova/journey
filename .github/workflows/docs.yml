@@ -1,10 +1,19 @@
 name: Docs Check
 
 # Docs are published as part of rxova.org (the rxova/rxova-website aggregator),
-# not from this repo's Pages. On a push to main we build to catch breakage and
-# then notify the aggregator; release.yml also dispatches, but only on a version
-# commit, and a docs-only change deserves to reach the site without waiting for
-# the next release.
+# not from this repo's Pages. The aggregator does not build them: this workflow
+# builds the dist for /packages/journey/, uploads it as the `docs-dist`
+# artifact, and dispatches a `docs` event naming this run — gate 1 of the
+# contract in rxova/rxova-website docs/INPUTS-CONTRACT.md. rxova.org validates
+# what arrives, persists it, and republishes; a rejection leaves the live site
+# untouched.
+#
+# This is the only sender in the repo. release.yml used to dispatch as well, on
+# a version commit; under the contract a dispatch has to name a run that holds a
+# docs-dist artifact, and the release run holds no such thing. The version
+# commit is itself a push to main touching packages/**, so it triggers this
+# workflow and the release's docs reach the site through the same path as every
+# other change.
 on:
   push:
     branches: [main]
@@ -69,18 +78,48 @@ jobs:
           DOCS_BASE_URL: /packages/journey/
         run: pnpm run docs:build
 
+      # The dist the aggregator will publish verbatim. `docs-dist` is the fixed
+      # artifact name in the contract — ingest.yml downloads it by that name from
+      # this run — so it is not ours to rename. Pointing `path` at the dist
+      # directory (not its parent) is what puts index.html at the artifact root,
+      # which is gate 2b's check.
+      #
+      # Uploaded on pull requests too: the artifact is then the reviewable
+      # output of the check, and an empty dist fails here rather than at ingest.
+      - name: Upload docs-dist
+        uses: actions/upload-artifact@v7
+        with:
+          name: docs-dist
+          path: apps/docs/dist
+          if-no-files-found: error
+
+  # Gate 1 of the docs pipeline: tell rxova.org that this run holds a dist built
+  # for /packages/journey/. The aggregator validates the payload, downloads the
+  # artifact above, and persists + publishes it — it never builds these docs
+  # itself. Contract: rxova/rxova-website docs/INPUTS-CONTRACT.md.
   notify-website:
     needs: build
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger rxova.org rebuild
-        # Never fail the workflow over the dispatch: the docs build is the
-        # signal, and a missing token should not read as broken docs.
-        continue-on-error: true
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.AGGREGATOR_DISPATCH_TOKEN }}
-          repository: rxova/rxova-website
-          event-type: docs-journey
-          client-payload: '{"ref": "${{ github.sha }}"}'
+      - name: Dispatch docs ingest to rxova.org
+        # No continue-on-error, unlike the pre-contract dispatch this replaces.
+        # Back then the aggregator rebuilt the docs from source on its own
+        # schedule, so a dropped notification only delayed a publish. Now the
+        # dispatch *is* the publish: swallowing a failure would leave the site
+        # serving stale docs with a green tick here and nothing to look at.
+        env:
+          GH_TOKEN: ${{ secrets.AGGREGATOR_DISPATCH_TOKEN }}
+        # `-F` only for schema, which the receiver compares as the number 1;
+        # everything else goes through `-f` so it stays a string, and an
+        # all-digit ref or sha cannot arrive as a number.
+        run: |
+          gh api repos/rxova/rxova-website/dispatches \
+            -f event_type=docs \
+            -F 'client_payload[schema]=1' \
+            -f 'client_payload[project]=journey' \
+            -f "client_payload[ref]=${GITHUB_REF_NAME}" \
+            -f "client_payload[sha]=${GITHUB_SHA}" \
+            -f "client_payload[run_id]=${GITHUB_RUN_ID}" \
+            -f 'client_payload[base]=/packages/journey/' \
+            -f 'client_payload[framework]=astro'
