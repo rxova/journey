@@ -87,8 +87,22 @@ pnpm run docs:api:check
 ## Deploy
 
 Docs are published as part of rxova.org by the `rxova/rxova-website` aggregator,
-not from this repo's Pages. `.github/workflows/docs.yml` builds the site at the
-aggregator base path to catch breakage, then dispatches a rebuild.
+not from this repo's Pages. The aggregator never builds them — it only validates
+and publishes what it is sent, so this repo owns the build end to end.
+
+`.github/workflows/docs.yml` is the sender (gate 1 of the contract in
+`rxova/rxova-website` `docs/INPUTS-CONTRACT.md`). On a push to main it:
+
+1. builds the site with `DOCS_BASE_URL=/packages/journey/`,
+2. uploads `apps/docs/dist` as the workflow artifact **`docs-dist`** — the fixed
+   name the aggregator downloads by, with `index.html` at the artifact root,
+3. fires a `docs` `repository_dispatch` at `rxova/rxova-website` naming this run
+   (`{ schema: 1, project: journey, ref, sha, run_id, base, framework }`).
+
+The aggregator then re-validates the metadata and the dist, persists the dist as
+a release asset, and redeploys. A rejection at either gate fails that ingest run
+and leaves the live site untouched — a bad push here cannot take rxova.org down,
+it just does not publish.
 
 ## Migration note
 

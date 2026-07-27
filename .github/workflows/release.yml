@@ -96,27 +96,10 @@ jobs:
       publish: true
     secrets: inherit
 
-  # Docs are published as part of rxova.org (the rxova/rxova-website aggregator),
-  # not from this repo. On a release, notify the aggregator to rebuild instead of
-  # deploying our own GitHub Pages site. Requires secret AGGREGATOR_DISPATCH_TOKEN
-  # (a fine-grained PAT with Contents: write on rxova/rxova-website).
-  notify-website:
-    needs: release
-    # `github.event.head_commit` does not exist on a workflow_run payload — the
-    # old `github.event_name == 'push'` guard would silently never fire again
-    # after the trigger change, so this reads the upstream run's head commit
-    # instead. The subject is the one the changesets action is configured to
-    # write above; the two have to change together.
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      contains(github.event.workflow_run.head_commit.message, 'chore: version packages')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger rxova.org rebuild
-        continue-on-error: true
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.AGGREGATOR_DISPATCH_TOKEN }}
-          repository: rxova/rxova-website
-          event-type: docs-journey
-          client-payload: '{"ref": "${{ github.sha }}"}'
+# No docs dispatch here any more. Under the rxova.org ingest contract
+# (rxova/rxova-website docs/INPUTS-CONTRACT.md) a `docs` dispatch names the run
+# holding a `docs-dist` artifact, and this run has none — it publishes packages,
+# it does not build the site. Rebuilding the docs a second time here just to
+# satisfy that would duplicate what docs.yml already does on the same commit:
+# the "chore: version packages" commit is a push to main touching packages/**,
+# so docs.yml builds and sends the released docs on its own.
