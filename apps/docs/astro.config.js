@@ -36,7 +36,8 @@ export default defineConfig({
     starlight({
       ...sharedStarlightConfig({
         project: "journey",
-        customCss: ["./src/styles/journey.css"],
+        components: { Footer: "./src/components/PageFooter.astro" },
+        customCss: ["./src/styles/journey.css", "./src/styles/page-component.css"],
         // Docusaurus served the four products as four plugin instances with a
         // navbar tab each. Starlight is one site with one sidebar, so they
         // become four top-level groups.
