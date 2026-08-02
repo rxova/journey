@@ -121,7 +121,7 @@ describe("checkDocsBannedIdentifiers", () => {
     ]);
     expect(exit).toHaveBeenCalledWith(1);
     expect(error).toHaveBeenCalledWith(
-      expect.stringContaining("apps/docs/docs/core/stale.md:2 (useJourneyApi)")
+      expect.stringContaining("apps/docs/src/content/docs/core/stale.md:2 (useJourneyApi)")
     );
   });
 

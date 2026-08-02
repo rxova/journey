@@ -1,9 +1,6 @@
 ---
-id: step-behavior
-title: Step behavior
+title: "Step behavior"
 ---
-
-# Step behavior
 
 Step configs keep static UI metadata and lifecycle behavior beside the step they describe.
 

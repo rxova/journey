@@ -1,9 +1,6 @@
 ---
-id: transitions-syntax
-title: Transitions syntax
+title: "Transitions syntax"
 ---
-
-# Transitions syntax
 
 Linear order and graph events are separate definition forms in V1.
 

@@ -1,9 +1,6 @@
 ---
-id: machine-surface
-title: Machine surface
+title: "Machine surface"
 ---
-
-# Machine surface
 
 `buildMachineSurface` (`src/core/machine.ts`) creates the public machine object once. Its grouped
 methods close over a runtime; they do not hold independent copies of journey state.

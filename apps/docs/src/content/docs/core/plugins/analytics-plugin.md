@@ -1,9 +1,6 @@
 ---
-id: analytics-plugin
-title: Analytics
+title: "Analytics"
 ---
-
-# Analytics
 
 The analytics plugin converts runtime observations into a stable event envelope and sends them to
 your analytics sink.

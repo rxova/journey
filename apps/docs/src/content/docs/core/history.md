@@ -1,9 +1,6 @@
 ---
-id: history
-title: Timeline & history
+title: "Timeline & history"
 ---
-
-# Timeline & history
 
 Journey records a browser-like timeline for the current run.
 

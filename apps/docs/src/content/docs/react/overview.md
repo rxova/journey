@@ -1,7 +1,7 @@
 ---
-id: overview
-title: React Overview
-sidebar_label: Overview
+title: "React Overview"
+sidebar:
+  label: "Overview"
 ---
 
 `@rxova/journey-react` is the UI layer for `@rxova/journey-core`. It does not introduce another

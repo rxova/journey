@@ -1,10 +1,6 @@
 ---
-id: examples
-title: Examples
-sidebar_label: Examples
+title: "Examples"
 ---
-
-# Examples
 
 ## Core machine
 

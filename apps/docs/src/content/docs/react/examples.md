@@ -1,7 +1,5 @@
 ---
 title: "React Examples"
-sidebar:
-  label: "Examples"
 ---
 
 The repository's `examples/` workspace contains runnable Vite applications for every supported

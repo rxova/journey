@@ -55,9 +55,12 @@ export const steps: readonly VerifyStep[] = [
   // across the ten workspaces and pay the pnpm+turbo startup once per stage
   // rather than once per task.
   //
-  // Unlike the sibling repos, the docs site is *not* excluded here: journey's
-  // Starlight build renders no mermaid, so it needs no headless browser and a
-  // fresh clone can run this hook without installing one.
+  // Unlike the sibling repos, the docs site is *not* excluded here: the
+  // Starlight build needs no headless browser, so a fresh clone can run this
+  // hook without installing one. The two mermaid fences the v1 docs carry
+  // render as plain code blocks for the same reason — see the note in
+  // apps/docs/astro.config.js.
+  { name: "Docs banned identifiers", script: "docs:banned:check" },
   {
     name: "Docs, API surface and release notes",
     turbo: ["docs:api:check", "docs:release-notes:check"]

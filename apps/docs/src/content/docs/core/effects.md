@@ -1,9 +1,6 @@
 ---
-id: effects
-title: Effects
+title: "Effects"
 ---
-
-# Effects
 
 V1 models side effects with step hooks and graph transition hooks. There is no separate `effect`
 object or delayed `after` transition.

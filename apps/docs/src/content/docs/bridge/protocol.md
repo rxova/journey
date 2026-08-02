@@ -1,9 +1,6 @@
 ---
-title: Protocol
-sidebar_label: Protocol
+title: "Protocol"
 ---
-
-# Protocol
 
 The bridge and Chrome extension communicate through versioned `window.postMessage` envelopes. Most
 applications never construct an envelope directly, but the format matters when diagnosing

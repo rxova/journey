@@ -1,10 +1,6 @@
 ---
-id: async-ui
-title: Async UI
-sidebar_label: Async UI
+title: "Async UI"
 ---
-
-# Async UI
 
 Journey separates work that must succeed **before** movement from effects that settle **after**
 movement. React renders both from the Core snapshot; it does not need a parallel local loading state.

@@ -1,9 +1,6 @@
 ---
-id: replay-plugin
-title: Replay
+title: "Replay"
 ---
-
-# Replay
 
 Replay records a bounded session of status, transition, context, blocked-navigation, and error
 observations.

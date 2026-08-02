@@ -1,9 +1,6 @@
 ---
-id: concepts
-title: Core concepts
+title: "Core concepts"
 ---
-
-# Core concepts
 
 ## Definition and machine
 

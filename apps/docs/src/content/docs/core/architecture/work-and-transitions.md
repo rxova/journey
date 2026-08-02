@@ -1,22 +1,19 @@
 ---
-id: work-and-transitions
-title: Work and transitions
+title: "Work and transitions"
 ---
-
-# Work and transitions
 
 Journey splits decision-making sharply: guards are synchronous and pure; everything asynchronous
 that must succeed before movement is transactional **work**; side effects run post-commit and
 cannot block.
 
-## Sync, pure guards {#guards}
+## Sync, pure guards
 
 A graph transition's `when({ context, handlers })` guard runs synchronously and must stay pure,
 because guards are evaluated both while routing a send and while deriving snapshot fields
 (`availableEvents`, `availableSteps`, `outgoingTransitions`). A throwing guard is treated as
 disabled.
 
-## Sending a graph event {#sending-an-event}
+## Sending a graph event
 
 `send(type, payload?)` follows this selection path:
 
@@ -28,7 +25,7 @@ disabled.
 
 No match returns `no-enabled-transition`.
 
-## Transactional work {#transactional-work}
+## Transactional work
 
 Next/previous navigation and builder-declared work-sends carry the same transaction shape: an
 asynchronous `run` executes first, an optional synchronous `commit` stages a context update, and
@@ -60,14 +57,14 @@ If `run` throws, rejects, or times out — or no candidate is enabled — nothin
 stays on the source step and staged context updates are discarded. The caller receives a failed
 `NavigationResult`.
 
-## `stay()` totality {#stay-totality}
+## `stay()` totality
 
 `stay()` is an unguarded candidate pointing back at the declaring step — the named totality
 fallback. The builder's `build()` emits a dev-mode warning when a work declaration has no unguarded
 fallback candidate; `allowRollback: true` silences it when discarding the work result on rollback
 is intended.
 
-## Committing a move {#committing-a-move}
+## Committing a move
 
 ```mermaid
 sequenceDiagram
@@ -97,7 +94,7 @@ sequenceDiagram
 Pointer moves update only `currentIndex`. Appending a destination truncates timeline entries after
 the pointer, then appends the new id.
 
-## Async state {#async-state}
+## Async state
 
 The runtime exposes three related views:
 

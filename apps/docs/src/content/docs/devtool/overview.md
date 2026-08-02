@@ -1,7 +1,7 @@
 ---
-id: overview
-title: Chrome DevTools Overview
-sidebar_label: Overview
+title: "Chrome DevTools Overview"
+sidebar:
+  label: "Overview"
 ---
 
 Journey DevTools consists of the runtime bridge and the Chrome panel.
@@ -25,5 +25,5 @@ Snapshot inspection follows the current Core envelope:
 Timeline row selection is local to the panel. It changes the Action, State, and Diff views but never
 rewinds or mutates the inspected machine.
 
-See [Bridge API](/docs/bridge/bridge-api), [Protocol](/docs/bridge/protocol), and the
+See [Bridge API](../bridge/bridge-api.md), [Protocol](../bridge/protocol.md), and the
 [Panel Guide](./panel-guide).

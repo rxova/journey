@@ -1,7 +1,7 @@
 ---
-id: patterns
-title: React Patterns
-sidebar_label: Patterns
+title: "React Patterns"
+sidebar:
+  label: "Patterns"
 ---
 
 These patterns keep React rendering predictable while Core remains the source of runtime truth.

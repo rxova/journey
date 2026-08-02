@@ -1,16 +1,13 @@
 ---
-id: runtime
-title: Runtime
+title: "Runtime"
 ---
-
-# Runtime
 
 `JourneyRuntime` (`src/core/runtime.ts`) is the single class that owns changing state. No
 controller-per-concern layer sits between this state and the operation changing it: a lifecycle
 control, context update, navigation, or graph send updates runtime state and publishes a new
 snapshot at its defined boundaries.
 
-## Runtime state {#runtime-state}
+## Runtime state
 
 The runtime owns:
 
@@ -22,13 +19,13 @@ The runtime owns:
 - a generation counter and a one-shot restore seed;
 - plugin APIs, snapshot derivers, and dispose callbacks.
 
-## The generation counter {#generation}
+## The generation counter
 
 Terminate, restart, and dispose increment a generation counter. Every async continuation — awaited
 navigation work, hook chains, raised-event draining — captures the generation it started under and
 bails out when the counter has moved on, so stale continuations cannot settle a newer run.
 
-## Initial entry and restore {#initial-entry}
+## Initial entry and restore
 
 `start()` moves `idle` to `running` and enters the initial step: no `onLeave` runs, `from` is
 `null`, and `stepEnter` reports `direction: "jump"`.
@@ -39,9 +36,9 @@ timeline, and pointer from the record and re-enters the persisted current step i
 first/initial one. Visit counts are reconstructed from the restored timeline, so the re-entered
 step reports `isFirstTimeVisit: false`. The seed is consumed on first use: `restart()` always
 begins a fresh run at the first/initial step (or `startAt`). An explicit `startAt` option wins over
-a persisted record. See [Persistence](../persistence#restore) for the record validity rules.
+a persisted record. See [Persistence](../persistence#restore-behavior) for the record validity rules.
 
-## Lifecycle and context changes {#out-of-band-changes}
+## Lifecycle and context changes
 
 Controls update status directly and publish a snapshot plus `statusChange`. Context updates replace
 context synchronously and publish a snapshot plus `contextChange`.
@@ -50,13 +47,13 @@ Pause, complete, and normal navigation reject while a hook chain is pending. Ter
 wins: it invalidates pending work and clears raised events. Restart is available only after complete
 or terminate and rebuilds the initial run state.
 
-## Raised events {#raised-events}
+## Raised events
 
 Hook `raise(event)` appends to a graph-only FIFO. The runtime starts draining only after the current
 transition settles. One cascade is capped at `MAX_RAISED_EVENTS` (25); exceeding it drops the queue
 and emits an `error` event with phase `raise`.
 
-## Timeouts {#timeouts}
+## Timeouts
 
 `defaultTimeoutMs` wraps navigation `run` and each hook promise. A work timeout blocks movement and
 returns `reason: "error"`; a post-commit hook timeout surfaces as the destination step's async

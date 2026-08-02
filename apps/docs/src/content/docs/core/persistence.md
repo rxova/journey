@@ -1,9 +1,6 @@
 ---
-id: persistence
-title: Persistence
+title: "Persistence"
 ---
-
-# Persistence
 
 The persistence plugin writes a serializable state slice whenever transitions settle, context
 changes, or status changes.
@@ -42,7 +39,7 @@ and defaults to `globalThis.localStorage`; creation throws when neither a `stora
 fails at creation as a duplicate plugin name. Use the explicit plugin form when you need
 `clearOnTerminate` or an injected clock.
 
-Unlike the explicit plugin, `persist` also [restores](#restore): a valid record found at creation
+Unlike the explicit plugin, `persist` also [restores](#restore-behavior): a valid record found at creation
 seeds the machine so the first `start()` resumes where the record left off.
 
 ## Persisted shape
@@ -74,7 +71,7 @@ machine.getSnapshot().plugins.persistence;
 
 Malformed or structurally invalid storage values return `null`.
 
-## Restore behavior {#restore}
+## Restore behavior
 
 The creation-time `persist` option restores. At creation, the factory reads the stored record; when
 it is restorable, the record seeds context, timeline, and pointer, and the first `start()` re-enters

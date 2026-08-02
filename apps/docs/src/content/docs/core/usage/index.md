@@ -1,10 +1,6 @@
 ---
-id: index
-title: Choosing a mode
-sidebar_label: Choosing a mode
+title: "Choosing a mode"
 ---
-
-# Choosing a mode
 
 Journey has two definition shapes. They share one runtime and machine API.
 

@@ -1,9 +1,6 @@
 ---
-id: stability
-title: Stability contract
+title: "Stability contract"
 ---
-
-# Stability contract
 
 The documented V1 public surface follows semantic versioning from `1.0.0`. Stability promises made
 by pre-1.0 release candidates do not carry forward: the rc-era factory and flat machine surface

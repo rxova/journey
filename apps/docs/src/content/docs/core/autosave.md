@@ -1,9 +1,6 @@
 ---
-id: autosave
-title: Autosave
+title: "Autosave"
 ---
-
-# Autosave
 
 Autosave debounces persisted-state writes driven by context, settled transitions, and status
 changes.
@@ -29,7 +26,7 @@ const machine = createLinearJourney(definition, {
 plugin.
 
 Autosave is save-side only. It never seeds a machine: the creation-time restore behavior belongs to
-the [`persist` option](./persistence#restore), which reads the persistence key, not the autosave
+the [`persist` option](./persistence#restore-behavior), which reads the persistence key, not the autosave
 key. Read autosaved drafts yourself via `readPersisted()`.
 
 ## API

@@ -133,8 +133,10 @@
     "size": "size-limit"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
     "@rxova/journey-common": "workspace:*",
-    "immer": "^11.1.15"
+    "immer": "^11.1.15",
+    "publint": "^0.3.18"
   },
   "peerDependencies": {
     "immer": "^11.1.15"
@@ -217,9 +219,5 @@
       "import": "{ createSubscriptionEnhancerPlugin }",
       "limit": "250 B"
     }
-  ],
-  "devDependencies": {
-    "@arethetypeswrong/cli": "^0.18.5",
-    "publint": "^0.3.18"
-  }
+  ]
 }

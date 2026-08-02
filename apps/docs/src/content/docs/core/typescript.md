@@ -1,9 +1,6 @@
 ---
-id: typescript
-title: TypeScript
+title: "TypeScript"
 ---
-
-# TypeScript
 
 Journey infers linear step ids from tuples and supports explicit graph event unions for exact send
 payloads.

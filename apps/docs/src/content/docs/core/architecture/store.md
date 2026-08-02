@@ -1,9 +1,6 @@
 ---
-id: store
-title: Store
+title: "Store"
 ---
-
-# Store
 
 `JourneyStore` (`src/core/store.ts`) holds the latest immutable snapshot and distributes it. It has
 two jobs:
@@ -15,13 +12,13 @@ two jobs:
 The store never derives state itself. Snapshots are rebuilt by the runtime; the store only
 publishes them.
 
-## Selector notification {#selectors}
+## Selector notification
 
 `subscribeSelector(selector, listener, equals?)` stores the last selected value per subscription.
 On every publish the store re-runs the selector against the new snapshot and calls the listener
 only when the equality function (`Object.is` by default) reports a change.
 
-## Listener isolation {#listener-isolation}
+## Listener isolation
 
 Selector and event-listener failures are caught per listener, so one subscriber cannot interrupt
 the runtime, the publish loop, or other subscribers. A throwing selector skips that subscription
@@ -38,7 +35,7 @@ const machine = createLinearJourney(definition, {
 });
 ```
 
-## Disposal {#disposal}
+## Disposal
 
 Disposing the machine drops every selector and event subscription. Later `subscribe*` calls return
 a no-op unsubscribe.

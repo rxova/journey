@@ -1,9 +1,6 @@
 ---
-id: graph
-title: Graph
+title: "Graph"
 ---
-
-# Graph
 
 A graph journey moves through named events. Each event can have one transition candidate or an
 ordered list of guarded candidates.

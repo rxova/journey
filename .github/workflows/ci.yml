@@ -95,7 +95,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
-        run: node --import tsx ./scripts/check-changeset.ts
+        run: node --import tsx ./packages/common/tooling/check-changeset.ts
 
   checks:
     needs: [commitlint]
@@ -137,7 +137,7 @@ jobs:
       - uses: ./.github/actions/setup-pnpm
       - uses: ./.github/actions/turbo-cache
       - run: pnpm install --frozen-lockfile
-      # Both are in the local pre-push gate too (scripts/verify.ts). Running
+      # Both are in the local pre-push gate too (packages/common/tooling/verify.ts). Running
       # them here as well is what keeps a stale local checkout from being the
       # only thing between a newly-disclosed advisory and a release.
       #
@@ -225,4 +225,3 @@ jobs:
         run: pnpm --filter @rxova/journey-react typecheck
       - name: Run the React suite against React 18.2
         run: pnpm --workspace-root vitest run packages/react --coverage.enabled=false
-

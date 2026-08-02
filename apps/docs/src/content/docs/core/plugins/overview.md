@@ -1,8 +1,6 @@
 ---
-title: Plugins
+title: "Plugins"
 ---
-
-# Plugins
 
 Plugins observe a journey and add namespaced APIs or snapshot data. They do not intercept
 navigation, replace snapshots, or merge methods into the base machine.

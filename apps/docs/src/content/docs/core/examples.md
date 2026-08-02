@@ -1,9 +1,6 @@
 ---
-id: examples
-title: Examples
+title: "Examples"
 ---
-
-# Examples
 
 The Core test suites are the source-aligned executable examples for the V1 runtime:
 

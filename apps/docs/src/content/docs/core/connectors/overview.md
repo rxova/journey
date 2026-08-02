@@ -1,8 +1,6 @@
 ---
-title: Connectors
+title: "Connectors"
 ---
-
-# Connectors
 
 Connectors adapt another library to an existing Journey primitive. They do not attach to a machine,
 observe lifecycle events, or add anything under `machine.plugins`. A connector instead returns a

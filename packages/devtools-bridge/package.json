@@ -66,7 +66,10 @@
     "size": "size-limit"
   },
   "devDependencies": {
-    "@rxova/journey-common": "workspace:*"
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@rxova/journey-common": "workspace:*",
+    "@rxova/journey-core": "workspace:^",
+    "publint": "^0.3.18"
   },
   "size-limit": [
     {
@@ -75,10 +78,5 @@
       "import": "{ attachJourneyDevtools }",
       "limit": "4 kB"
     }
-  ],
-  "devDependencies": {
-    "@arethetypeswrong/cli": "^0.18.5",
-    "@rxova/journey-core": "workspace:^",
-    "publint": "^0.3.18"
-  }
+  ]
 }

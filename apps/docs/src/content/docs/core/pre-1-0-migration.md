@@ -1,9 +1,6 @@
 ---
-id: pre-1-0-migration
-title: rc.2 → 1.0 migration
+title: "rc.2 → 1.0 migration"
 ---
-
-# rc.2 → 1.0 migration
 
 `1.0.0` ships three coordinated majors — `@rxova/journey-core`, `@rxova/journey-react`, and
 `@rxova/journey-devtools-bridge` — that together replace the `1.0.0-rc.2` contracts. This is a
@@ -135,7 +132,7 @@ Cancel app-side timers from `onLeave` when the step can be exited early.
   `error` event, and isolated subscriber failures route through the new `onListenerError` option.
 - New options: `startAt`, `persist` (registers the persistence plugin **and restores** a valid
   saved record at the first `start()`; explicit `startAt` wins), `defaultTimeoutMs`,
-  `onListenerError`. See the [creation options](/docs/core/api#creation-options).
+  `onListenerError`. See the [creation options](./api/overview.md#creation-options).
 
 ## React: runtime-object API → twin bundle factories
 

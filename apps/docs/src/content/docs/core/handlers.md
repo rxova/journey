@@ -1,9 +1,6 @@
 ---
-id: handlers
-title: Handlers
+title: "Handlers"
 ---
-
-# Handlers
 
 Graph guards and event work can call injected handlers without closing over application services.
 This keeps graph definitions reusable and makes guard decisions straightforward to test.

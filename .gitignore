@@ -18,3 +18,8 @@ assets/social
 # Local planning notes at the repo root. Anchored: a bare `docs/` would also
 # match apps/docs/src/content/docs and silently ignore new pages.
 /docs/
+
+# Generated TypeDoc trees; produced by the docs `prebuild` hook.
+apps/docs/src/content/docs/core/api/reference
+apps/docs/src/content/docs/react/api/reference
+apps/docs/src/content/docs/bridge/api/reference

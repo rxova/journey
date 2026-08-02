@@ -1,8 +1,6 @@
 ---
-title: Immer connector
+title: "Immer connector"
 ---
-
-# Immer connector
 
 The Immer connector turns an Immer producer into the same `ContextUpdater` accepted throughout
 Core. It is useful when nested immutable updates would otherwise require several object and array

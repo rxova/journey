@@ -31,7 +31,7 @@
     "docs": "turbo run dev --filter=@rxova/journey-docs",
     "docs:build": "turbo run build --filter=@rxova/journey-docs",
     "docs:banned:check": "node --import tsx ./packages/common/tooling/check-docs-banned-identifiers.ts",
-    "docs:api:generate": "pnpm docs:api:generate:core && pnpm docs:api:generate:react && pnpm docs:api:generate:bridge",
+    "docs:api:generate": "pnpm docs:api:generate:core && pnpm docs:api:generate:react && pnpm docs:api:generate:bridge && node ./apps/docs/scripts/frontmatter-api-reference.js",
     "docs:api:generate:core": "typedoc --options typedoc.core.json",
     "docs:api:generate:react": "typedoc --options typedoc.react.json",
     "docs:api:generate:bridge": "typedoc --options typedoc.bridge.json",

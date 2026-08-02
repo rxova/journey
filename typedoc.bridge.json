@@ -2,7 +2,7 @@
   "entryPoints": ["packages/devtools-bridge/src/index.ts"],
   "tsconfig": "packages/devtools-bridge/tsconfig.json",
   "plugin": ["typedoc-plugin-markdown"],
-  "out": "apps/docs/docs/bridge/api/reference",
+  "out": "apps/docs/src/content/docs/bridge/api/reference",
   "readme": "none",
   "excludeInternal": true,
   "excludePrivate": true,

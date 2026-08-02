@@ -1,9 +1,6 @@
 ---
-id: coming-from-xstate
-title: Coming from XState
+title: "Coming from XState"
 ---
-
-# Coming from XState
 
 Journey borrows familiar ideas such as context, events, guards, and entry/exit work, but it targets
 step-based product flows rather than general statecharts.

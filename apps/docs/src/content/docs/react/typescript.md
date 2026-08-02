@@ -1,6 +1,5 @@
 ---
-title: TypeScript Types
-sidebar_position: 7
+title: "TypeScript Types"
 ---
 
 React keeps Core types intact and adds types for the linear bundle, its Provider props, and hook

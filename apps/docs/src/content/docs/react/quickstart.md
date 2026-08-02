@@ -1,6 +1,5 @@
 ---
-title: Quickstart
-sidebar_position: 2
+title: "Quickstart"
 ---
 
 Choose the React surface based on how the flow is authored and who should own the machine.

@@ -1,15 +1,12 @@
 ---
-id: overview
-title: Overview
+title: "Overview"
 ---
-
-# Overview
 
 Journey is a small, framework-independent runtime for multi-step flows. A journey owns the current
 step, context, history, lifecycle status, and async transition state. Your UI reads one immutable
 snapshot and drives the machine through a stable set of methods.
 
-## Why a runtime at all {#motivation}
+## Why a runtime at all
 
 Component-local step state works until branching, async gates, backtracking, lifecycle outcomes, and
 observation must agree. Journey keeps those rules in one runtime so every consumer reads the same

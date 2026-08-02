@@ -1,9 +1,6 @@
 ---
-id: plugin-host
-title: Plugin host
+title: "Plugin host"
 ---
-
-# Plugin host
 
 Plugins are initialized once, at machine creation, with an observe-only `PluginHost`. The host
 exposes the current snapshot, a frozen structural view of the definition, observation taps, and
@@ -23,7 +20,7 @@ host
 There is no interception in V1: plugins cannot block, redirect, or rewrite navigation, and they
 cannot seed runtime state. Movement policy belongs in the definition.
 
-## Contributions {#contributions}
+## Contributions
 
 A plugin's `setup(host)` may return:
 
@@ -34,7 +31,7 @@ Extensions are always namespaced under the plugin's name, never merged into core
 plugin names fail machine creation. Because `setup` runs once per machine, per-instance state lives
 in the setup closure — reusing one plugin object across machines does not share buffers or timers.
 
-## Referential stability {#referential-stability}
+## Referential stability
 
 `deriveSnapshot` runs on every publish and receives its previous extension value. Returning
 `previous` when nothing relevant changed keeps the extension referentially stable, so selectors
@@ -47,7 +44,7 @@ deriveSnapshot(snapshot, previous) {
 }
 ```
 
-## Isolation {#isolation}
+## Isolation
 
 Plugin observer exceptions are caught and reported like any other listener failure (see
 [Store — listener isolation](./store#listener-isolation)); a throwing plugin cannot interrupt a

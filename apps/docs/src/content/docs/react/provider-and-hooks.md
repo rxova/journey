@@ -1,11 +1,10 @@
 ---
-title: Provider and Hooks API
-sidebar_position: 3
+title: "Provider and Hooks API"
 ---
 
 This page focuses on React ownership and subscription behavior. Runtime navigation, lifecycle, and
-snapshot semantics come directly from Core; see [Core API](/docs/core/api) and
-[Lifecycle](/docs/core/lifecycle).
+snapshot semantics come directly from Core; see [Core API](../core/api/overview.md) and
+[Lifecycle](../core/lifecycle.md).
 
 ## `createLinearJourney()`
 
@@ -38,7 +37,7 @@ const checkout = createLinearJourney({
 
 `TContext` is inferred from `definition.context` — annotate the value, as above, rather than
 casting — and the step-id union is inferred from the `steps` tuple; call sites never pass
-generics. See [TypeScript Types](/docs/react/typescript) for the inference story.
+generics. See [TypeScript Types](./typescript.md) for the inference story.
 
 Declared `metadata` surfaces at `snapshot.currentStep.metadata` while the step is current; there is
 no separate per-step metadata lookup. Definition `onEnter`/`onLeave` hooks run in Core, outside
@@ -139,7 +138,7 @@ Every read is a snapshot field: `snapshot.currentStep.id/.index/.isFirstStep/.is
 `.isFirstTimeVisit/.metadata/.async`, `snapshot.steps.totalSteps/.stepOrder`,
 `snapshot.history.visited`, `snapshot.status`, `snapshot.machine.isLoading/.isPaused`, and
 `snapshot.context`. `snapshot.currentStep` is `null` while the machine is idle — exactly as in
-the graph tier. See [Snapshot](/docs/core/snapshot) for the complete contract.
+the graph tier. See [Snapshot](../core/snapshot.md) for the complete contract.
 
 ```tsx
 const isLoading = checkout.useSelector((snapshot) => snapshot.machine.isLoading);
@@ -191,7 +190,7 @@ the machine directly:
 React.useEffect(() => attachJourneyDevtools(checkout.machine, { mutationsEnabled: false }), []);
 ```
 
-See [Machine API](/docs/core/api/machine-api) for the complete contracts.
+See [Machine API](../core/api/machine-api.md) for the complete contracts.
 
 ## `useStepHandler()`
 

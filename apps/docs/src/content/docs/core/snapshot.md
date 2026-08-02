@@ -1,9 +1,6 @@
 ---
-id: snapshot
-title: Snapshot
+title: "Snapshot"
 ---
-
-# Snapshot
 
 `machine.getSnapshot()` returns the complete immutable read model for one point in time.
 

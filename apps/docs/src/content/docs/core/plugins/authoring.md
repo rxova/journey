@@ -1,9 +1,6 @@
 ---
-title: Writing a plugin
-sidebar_position: 2
+title: "Writing a plugin"
 ---
-
-# Writing a plugin
 
 A plugin has a unique name and one `setup(host)` method. Setup returns a namespaced API, a snapshot
 deriver, or both.

@@ -1,9 +1,6 @@
 ---
-id: machine-api
-title: Machine API reference
+title: "Machine API reference"
 ---
-
-# Machine API reference
 
 Linear and graph factories return the same grouped base surface. Graph machines additionally expose
 `send`.

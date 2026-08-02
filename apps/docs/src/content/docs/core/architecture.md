@@ -1,9 +1,6 @@
 ---
-id: architecture
-title: How it works
+title: "How it works"
 ---
-
-# How it works
 
 V1 has one runtime for linear and graph journeys. Factories normalize their definition shape into a
 small shared configuration, `JourneyRuntime` owns changing state, `JourneyStore` distributes
@@ -23,7 +20,7 @@ flowchart LR
 Everything that changes is rebuilt into an immutable linear or graph snapshot. The machine object
 itself never changes after creation.
 
-## Resolving definitions {#resolving-the-definition}
+## Resolving definitions
 
 `createLinearJourney` validates a non-empty, duplicate-free step tuple, normalizes string shorthand,
 and uses the first id as `initial`.
@@ -53,7 +50,7 @@ The graph builder is an authoring transform. Its `build()` result enters the sam
 | [Plugin host](./architecture/plugin-host)                   | Observe-only taps, namespaced APIs, snapshot extension stability.         |
 | [Work and transitions](./architecture/work-and-transitions) | Sync guards, transactional work, result routing, and the commit pipeline. |
 
-## Snapshot derivation {#snapshot-derivation}
+## Snapshot derivation
 
 Every publish rebuilds shared fields, then adds kind-specific fields:
 
@@ -63,7 +60,7 @@ Every publish rebuilds shared fields, then adds kind-specific fields:
 
 The completed object and its nested runtime-owned records/arrays are frozen.
 
-## Source map {#source-map}
+## Source map
 
 | File                   | Responsibility                                                         |
 | ---------------------- | ---------------------------------------------------------------------- |

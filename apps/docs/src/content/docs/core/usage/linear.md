@@ -1,9 +1,6 @@
 ---
-id: linear
-title: Linear
+title: "Linear"
 ---
-
-# Linear
 
 A linear journey uses declared step order as its default forward path.
 

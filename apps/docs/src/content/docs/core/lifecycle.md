@@ -1,9 +1,6 @@
 ---
-id: lifecycle
-title: Lifecycle & events
+title: "Lifecycle & events"
 ---
-
-# Lifecycle & events
 
 ## Controls
 

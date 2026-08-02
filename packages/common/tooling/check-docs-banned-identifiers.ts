@@ -6,7 +6,7 @@ import { pathToFileURL } from "node:url";
 const defaultRepoRoot = process.cwd();
 
 /** Hand-written docs root, relative to the repo root. */
-export const DOCS_ROOT = "apps/docs/docs";
+export const DOCS_ROOT = "apps/docs/src/content/docs";
 
 export type BannedIdentifier = {
   name: string;

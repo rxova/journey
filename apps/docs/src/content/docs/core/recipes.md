@@ -1,9 +1,6 @@
 ---
-id: recipes
-title: Recipes
+title: "Recipes"
 ---
-
-# Recipes
 
 ## Validate before moving forward
 
@@ -101,7 +98,7 @@ const machine = createLinearJourney(definition, { persist: { key: "checkout" } }
 machine.controls.start(); // resumes where the record left off
 ```
 
-See [Persistence](./persistence#restore) for the record validity rules — invalid or drifted records
+See [Persistence](./persistence#restore-behavior) for the record validity rules — invalid or drifted records
 are ignored and the journey starts fresh.
 
 When your restore policy is application-owned instead (approval gates, partial restores, a custom

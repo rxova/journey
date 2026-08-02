@@ -1,9 +1,6 @@
 ---
-id: headless
-title: Headless
+title: "Headless"
 ---
-
-# Headless
 
 Headless is a usage pattern, not a third machine kind: a core machine consumed without any
 rendering tier. There are exactly two factories — `createLinearJourney` and `createGraphJourney` —

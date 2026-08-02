@@ -1,9 +1,6 @@
 ---
-id: async
-title: Async behavior
+title: "Async behavior"
 ---
-
-# Async behavior
 
 Async work can run before a next/previous move and in post-commit lifecycle effects. The snapshot
 keeps both paths in the machine's transition state.

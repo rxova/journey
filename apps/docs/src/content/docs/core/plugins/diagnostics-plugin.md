@@ -1,9 +1,6 @@
 ---
-id: diagnostics-plugin
-title: Diagnostics
+title: "Diagnostics"
 ---
-
-# Diagnostics
 
 The diagnostics plugin analyzes the normalized structural definition once and caches the result.
 

@@ -1,9 +1,6 @@
 ---
-id: execution-paths-plugin
-title: Execution paths
+title: "Execution paths"
 ---
-
-# Execution paths
 
 The execution-paths plugin records paths that actually run. It does not enumerate possible graph
 paths.

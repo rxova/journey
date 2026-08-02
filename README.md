@@ -401,7 +401,7 @@ mutating operations unless `mutationsEnabled: false` is supplied. The transport 
 
 ## Documentation and development
 
-Full guides and generated API reference are available at [rxova.org](https://rxova.org/).
+Full guides and generated API reference are available at [rxova.org](https://rxova.org/packages/journey/).
 
 ```bash
 pnpm install

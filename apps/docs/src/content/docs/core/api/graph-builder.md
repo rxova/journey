@@ -1,9 +1,6 @@
 ---
-id: graph-builder
-title: Graph builder
+title: "Graph builder"
 ---
-
-# Graph builder
 
 `createGraphJourneyBuilder` gives a graph one shared type bag and lets each step declare its outgoing
 transitions beside its hooks and metadata. `build()` returns the same definition shape accepted by

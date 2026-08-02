@@ -1,9 +1,6 @@
 ---
-id: comparison
-title: Comparison
+title: "Comparison"
 ---
-
-# Comparison
 
 Journey sits between a step-index hook and a general statechart engine.
 

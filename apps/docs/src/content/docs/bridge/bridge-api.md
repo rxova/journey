@@ -1,9 +1,6 @@
 ---
-title: Bridge API
-sidebar_label: Bridge API
+title: "Bridge API"
 ---
-
-# Bridge API
 
 `attachJourneyDevtools(machine, options?)` connects a current Core linear or graph machine to the
 Journey Chrome DevTools channel. It registers the machine, streams immutable snapshots and named

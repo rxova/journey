@@ -1,9 +1,6 @@
 ---
-id: subscription-enhancer-plugin
-title: Subscription enhancer
+title: "Subscription enhancer"
 ---
-
-# Subscription enhancer
 
 This plugin adds status-filtered convenience subscriptions while keeping the base machine surface
 small.
