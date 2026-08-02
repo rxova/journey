@@ -36,8 +36,15 @@ export default defineConfig({
     starlight({
       ...sharedStarlightConfig({
         project: "journey",
-        components: { Footer: "./src/components/PageFooter.astro" },
-        customCss: ["./src/styles/journey.css", "./src/styles/page-component.css"],
+        // These docs ship as a page component: rxova.org composes each rendered
+        // body into its own header and footer, so this build must not draw the
+        // umbrella footer itself. It was doing that by overriding Starlight's
+        // `Footer` with a local wrapper around the default, and reconciling the
+        // two sticky headers in a `page-component.css` of its own — both copies
+        // of what @rxova/brand ships behind this flag since 0.9.0. One flag now
+        // says what the build is, and the theme owns how that looks.
+        pageComponent: true,
+        customCss: ["./src/styles/journey.css"],
         // Docusaurus served the four products as four plugin instances with a
         // navbar tab each. Starlight is one site with one sidebar, so they
         // become four top-level groups.
