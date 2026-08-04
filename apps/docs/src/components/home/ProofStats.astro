@@ -1,0 +1,224 @@
+---
+/**
+ * The credibility band, and the replacement for the old ReleaseHighlights panel.
+ *
+ * That panel was a hardcoded navy slab carrying a 4rem "1.0.0rc" — a second
+ * headline halfway down a page that already had one, in a palette the rest of
+ * the site stopped using. This says the same thing in the page's own colours,
+ * and says it with numbers rather than an announcement.
+ *
+ * This is the one section that spends the full brand gradient: a lit frame, a
+ * blurred glow behind it, and figures that count up the first time the panel
+ * scrolls into view. The brand's rule is that the gradient earns very few
+ * placements — this page spends it exactly twice, here and on the one
+ * <Section accent> hairline, because the proof band is the part of the page
+ * that has to stop the scroll.
+ */
+interface Stat {
+  value: string;
+  label: string;
+  note: string;
+}
+
+interface Props {
+  stats: readonly Stat[];
+}
+
+const { stats } = Astro.props;
+---
+
+<div class="rx-stats">
+  <div class="rx-stats__glow" aria-hidden="true"></div>
+  <div class="rx-stats__frame">
+    <ul class="rx-stats__grid">
+      {
+        stats.map((stat) => (
+          <li class="rx-stats__item">
+            <p class="rx-stats__value">{stat.value}</p>
+            <p class="rx-stats__label">{stat.label}</p>
+            <p class="rx-stats__note">{stat.note}</p>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</div>
+
+<script>
+  const panel = document.querySelector<HTMLElement>(".rx-stats");
+
+  if (panel && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    // Values arrive as display strings — "7.58 kB", "95%", "0". Animate the
+    // leading number and keep whatever follows it. Anything with no leading
+    // digit ("MIT") is left alone.
+    const figures = [...panel.querySelectorAll<HTMLElement>(".rx-stats__value")].flatMap((el) => {
+      const match = /^(\d+(?:\.\d+)?)(.*)$/s.exec(el.textContent ?? "");
+      if (!match) return [];
+      return [
+        {
+          el,
+          target: Number(match[1]),
+          decimals: (match[1].split(".")[1] ?? "").length,
+          suffix: match[2],
+          final: el.textContent ?? ""
+        }
+      ];
+    });
+
+    const DURATION = 1100;
+
+    const frame = (start: number) => {
+      const t = Math.min(1, (performance.now() - start) / DURATION);
+      // easeOutExpo: quick to nearly-there, then settles.
+      const eased = t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+      for (const f of figures) {
+        f.el.textContent = t === 1 ? f.final : (f.target * eased).toFixed(f.decimals) + f.suffix;
+      }
+      if (t < 1) requestAnimationFrame(() => frame(start));
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          observer.disconnect(); // once only
+          for (const f of figures) f.el.textContent = "0" + f.suffix;
+          requestAnimationFrame(() => frame(performance.now()));
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    observer.observe(panel);
+  }
+</script>
+
+<style>
+  .rx-stats {
+    position: relative;
+    isolation: isolate;
+  }
+
+  /* A blurred copy of the frame's gradient, sitting behind it. Its own element
+     rather than a pseudo-element, because the frame paints a background and a
+     z-index:-1 pseudo would be hidden underneath it. */
+  .rx-stats__glow {
+    position: absolute;
+    z-index: -1;
+    inset: -1.25rem -0.5rem;
+    border-radius: calc(var(--rx-radius) + 1rem);
+    background: var(--rx-gradient);
+    background-size: 220% 100%;
+    filter: blur(38px);
+    opacity: 0.2;
+    animation: rx-stats-sweep 14s linear infinite;
+  }
+
+  /* 1px of padding over a gradient background *is* the border: a real `border`
+     cannot take a gradient without border-image, and border-image does not
+     follow border-radius. */
+  .rx-stats__frame {
+    padding: 1px;
+    border-radius: var(--rx-radius);
+    background: var(--rx-gradient);
+    background-size: 220% 100%;
+    animation: rx-stats-sweep 14s linear infinite;
+  }
+
+  @keyframes rx-stats-sweep {
+    to {
+      background-position: 220% 0;
+    }
+  }
+
+  .rx-stats__grid {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    background: var(--rx-card);
+    border-radius: calc(var(--rx-radius) - 1px);
+    overflow: hidden;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 38rem) {
+    .rx-stats__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 58rem) {
+    .rx-stats__grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  /* Dividers drawn by each tile's own outline rather than a 1px grid gap over a
+     rule-coloured backdrop — with an odd tile count the gap technique leaves a
+     rule-coloured rectangle that reads as a tile that failed to render. */
+  .rx-stats__item {
+    position: relative;
+    padding: 1.7rem 1.5rem;
+    box-shadow: 0 0 0 1px var(--rx-rule);
+  }
+
+  /* A gradient wash that fades up from the bottom of the hovered tile. */
+  .rx-stats__item::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--rx-gradient);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    mask-image: linear-gradient(to top, #000, transparent 72%);
+  }
+
+  .rx-stats__item:hover::after {
+    opacity: 0.1;
+  }
+
+  .rx-stats__value,
+  .rx-stats__label,
+  .rx-stats__note {
+    position: relative;
+  }
+
+  .rx-stats__value {
+    margin: 0;
+    color: var(--rx-fg);
+    font-size: clamp(2rem, 1.5rem + 1.9vw, 2.9rem);
+    font-weight: 640;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    /* Tabular figures so a counting number cannot jitter its own width. */
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rx-stats__label {
+    margin: 0.7rem 0 0;
+    color: var(--rx-fg);
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .rx-stats__note {
+    margin: 0.35rem 0 0;
+    color: var(--rx-muted);
+    font-size: 0.82rem;
+    line-height: 1.5;
+    text-wrap: pretty;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rx-stats__glow,
+    .rx-stats__frame {
+      animation: none;
+    }
+
+    .rx-stats__item::after {
+      transition: none;
+    }
+  }
+</style>

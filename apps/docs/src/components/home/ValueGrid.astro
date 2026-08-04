@@ -1,0 +1,163 @@
+---
+/**
+ * The six things that make Journey worth choosing, as a static grid.
+ *
+ * This replaces the old FeatureCarousel, which showed one of seven cards at a
+ * time on a 5s auto-advance. A carousel hides five-sixths of its own argument
+ * and moves the remaining one out from under the reader; a grid lets someone
+ * scan the whole case in a couple of seconds.
+ *
+ * Icons are Lucide, imported as raw SVG through Vite's `?raw` and inlined at
+ * build time — no icon font, no sprite request, and nothing shipped to the
+ * client. Lucide draws on `currentColor` at stroke-width 2.
+ */
+import braces from "lucide-static/icons/braces.svg?raw";
+import history from "lucide-static/icons/history.svg?raw";
+import timer from "lucide-static/icons/timer.svg?raw";
+import blocks from "lucide-static/icons/blocks.svg?raw";
+import unplug from "lucide-static/icons/unplug.svg?raw";
+import layers from "lucide-static/icons/layers.svg?raw";
+
+const ICONS = {
+  typed: braces,
+  history,
+  async: timer,
+  plugins: blocks,
+  zero: unplug,
+  agnostic: layers
+};
+
+interface Item {
+  title: string;
+  body: string;
+  icon: keyof typeof ICONS;
+}
+
+interface Props {
+  items: readonly Item[];
+}
+
+/** Keep only what is inside the root <svg>, so this component's own element
+ *  owns the size and the accessibility attributes. */
+const glyph = (name: keyof typeof ICONS) =>
+  ICONS[name].replace(/^[\s\S]*?<svg[^>]*>/, "").replace(/<\/svg>[\s\S]*$/, "");
+
+const { items } = Astro.props;
+---
+
+<ul class="rx-vg">
+  {
+    items.map((item) => (
+      <li class="rx-vg__item">
+        <span class="rx-vg__badge">
+          <svg
+            class="rx-vg__icon"
+            viewBox="0 0 24 24"
+            width="22"
+            height="22"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            set:html={glyph(item.icon)}
+          />
+        </span>
+        <h3 class="rx-vg__title">{item.title}</h3>
+        <p class="rx-vg__body" set:html={item.body} />
+      </li>
+    ))
+  }
+</ul>
+
+<style>
+  /* Explicit column counts rather than auto-fit: there are six cards, and
+     auto-fit at this container width lands on four, which leaves the last row
+     half empty and reads as a card that failed to load. Two rows of three. */
+  .rx-vg {
+    display: grid;
+    gap: 1.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 38rem) {
+    .rx-vg {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 60rem) {
+    .rx-vg {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  /* The whole card language: a card-coloured fill against the page, one
+     hairline, the brand radius. The old cards used --sl-color-black for their
+     fill, which the brand maps to --rx-bg — the page colour — so they were
+     invisible apart from the border. */
+  .rx-vg__item {
+    padding: 1.5rem;
+    background: var(--rx-card);
+    border: 1px solid var(--rx-rule);
+    border-radius: var(--rx-radius);
+    transition: border-color 0.25s ease;
+  }
+
+  .rx-vg__item:hover {
+    border-color: var(--rx-rule-strong);
+  }
+
+  /* A tinted rounded well behind the glyph, so the icon reads as an object
+     rather than as a stray mark above the heading. */
+  .rx-vg__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    color: var(--rx-primary);
+    background: var(--rx-tag-bg);
+    border-radius: var(--rx-radius-sm);
+  }
+
+  .rx-vg__icon {
+    display: block;
+  }
+
+  .rx-vg__title {
+    margin: 1rem 0 0;
+    color: var(--rx-fg);
+    font-size: 1.05rem;
+    font-weight: 620;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .rx-vg__body {
+    margin: 0.5rem 0 0;
+    color: var(--rx-muted);
+    font-size: 0.95rem;
+    line-height: 1.62;
+    text-wrap: pretty;
+  }
+
+  /* `body` carries inline <code> for API names. */
+  .rx-vg__body :global(code) {
+    padding: 0.1em 0.35em;
+    background: var(--rx-tag-bg);
+    border-radius: var(--rx-radius-sm);
+    font-family: var(--rx-font-mono);
+    font-size: 0.86em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rx-vg__item {
+      transition: none;
+    }
+  }
+</style>

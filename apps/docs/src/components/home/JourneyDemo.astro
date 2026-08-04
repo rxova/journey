@@ -1,0 +1,478 @@
+---
+/**
+ * The one interactive thing on the page: a real @rxova/journey-core machine,
+ * running in the browser, driving a four-step checkout that branches on plan.
+ *
+ * It uses the core package rather than the React bindings on purpose. The claim
+ * the page makes is that the runtime is framework-agnostic vanilla JS, and the
+ * cheapest way to prove that is to run it here with no framework at all — no
+ * @astrojs/react, no react-dom, one workspace dependency.
+ *
+ * Everything below is server-rendered at the machine's initial state, so the
+ * section reads correctly with JS off or still loading; the script then takes
+ * over and re-renders from the snapshot. The markup is deliberately the same
+ * shape in both cases, so there is nothing to reconcile.
+ */
+interface Props {
+  /** Steps, in the order the diagram lists them. Must match the machine below. */
+  steps: readonly { id: string; label: string }[];
+}
+
+const { steps } = Astro.props;
+---
+
+<div class="rx-demo" data-demo>
+  <div class="rx-demo__stage">
+    <ol class="rx-demo__steps">
+      {
+        steps.map((step) => (
+          <li
+            class="rx-demo__step"
+            data-step={step.id}
+            data-state={step.id === "plan" ? "current" : "upcoming"}
+          >
+            <span class="rx-demo__dot" aria-hidden="true" />
+            <span class="rx-demo__label">{step.label}</span>
+          </li>
+        ))
+      }
+    </ol>
+
+    <div class="rx-demo__panel">
+      <p class="rx-demo__eyebrow">Snapshot</p>
+      <dl class="rx-demo__facts">
+        <div class="rx-demo__fact">
+          <dt>currentStepId</dt>
+          <dd data-current>plan</dd>
+        </div>
+        <div class="rx-demo__fact">
+          <dt>status</dt>
+          <dd data-status>running</dd>
+        </div>
+        <div class="rx-demo__fact">
+          <dt>context.plan</dt>
+          <dd data-plan>free</dd>
+        </div>
+      </dl>
+
+      <p class="rx-demo__eyebrow">
+        Timeline
+        <span class="rx-demo__hint">history.timeline</span>
+      </p>
+      <ol class="rx-demo__timeline" data-timeline>
+        <li class="rx-demo__chip" data-at="true">plan</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="rx-demo__controls">
+    <div class="rx-demo__group" role="group" aria-label="Plan">
+      <button type="button" class="rx-demo__toggle" data-plan-set="free" aria-pressed="true">
+        Free
+      </button>
+      <button type="button" class="rx-demo__toggle" data-plan-set="pro" aria-pressed="false">
+        Pro
+      </button>
+    </div>
+
+    <div class="rx-demo__group">
+      <button type="button" class="rx-demo__btn" data-action="back">Back</button>
+      <button type="button" class="rx-demo__btn rx-demo__btn--primary" data-action="next">
+        Next
+      </button>
+      <button type="button" class="rx-demo__btn" data-action="latest">Last visited</button>
+      <button type="button" class="rx-demo__btn" data-action="reset">Restart</button>
+    </div>
+  </div>
+
+  {/* Kept on one line per sentence: Astro trims the whitespace around a line
+      break that sits next to an element, which silently glues "pick" to the
+      <strong> that follows it. */}
+  <p class="rx-demo__note" data-note>
+    Pick <strong>Pro</strong> and the flow routes through the <code>payment</code> step. Pick <strong>Free</strong> and it skips straight to <code>review</code>.
+    Step back, change your mind, and the guard is re-evaluated on the way forward.
+  </p>
+</div>
+
+<script>
+  import { createJourneyMachine } from "@rxova/journey-core";
+
+  type Context = { plan: "free" | "pro" };
+  type StepId = "plan" | "account" | "payment" | "review";
+
+  const root = document.querySelector<HTMLElement>("[data-demo]");
+
+  if (root) {
+    const machine = createJourneyMachine<Context, StepId>({
+      initial: "plan",
+      context: { plan: "free" },
+      steps: { plan: {}, account: {}, payment: {}, review: {} },
+      transitions: {
+        plan: { goToNextStep: [{ to: "account" }] },
+        // The whole point of the demo: one guard, evaluated in order, so `pro`
+        // takes the payment detour and `free` never sees it.
+        account: {
+          goToNextStep: [
+            { to: "payment", when: ({ context }) => context.plan === "pro" },
+            { to: "review" }
+          ]
+        },
+        payment: { goToNextStep: [{ to: "review" }] },
+        review: { completeJourney: true }
+      }
+    });
+
+    const el = <T extends Element>(sel: string) => root.querySelector<T>(sel);
+    const timelineList = el<HTMLElement>("[data-timeline]");
+    const currentOut = el<HTMLElement>("[data-current]");
+    const statusOut = el<HTMLElement>("[data-status]");
+    const planOut = el<HTMLElement>("[data-plan]");
+
+    const render = () => {
+      const snapshot = machine.getSnapshot();
+      const { currentStepId, status, context, history } = snapshot;
+
+      if (currentOut) currentOut.textContent = currentStepId;
+      if (statusOut) statusOut.textContent = status;
+      if (planOut) planOut.textContent = context.plan;
+
+      // A step is "done" only if it is actually on the realized timeline —
+      // `visited` would also light up the payment step someone backed out of.
+      const seen = new Set<string>(history.timeline.slice(0, history.index));
+      for (const node of root.querySelectorAll<HTMLElement>("[data-step]")) {
+        const id = node.dataset.step ?? "";
+        node.dataset.state =
+          id === currentStepId ? "current" : seen.has(id) ? "done" : "upcoming";
+      }
+
+      if (timelineList) {
+        timelineList.replaceChildren(
+          ...history.timeline.map((id, index) => {
+            const chip = document.createElement("li");
+            chip.className = "rx-demo__chip";
+            chip.textContent = id;
+            // Marks where the pointer sits, which is what makes stepping back
+            // legible: the entries ahead of it stay on the timeline.
+            if (index === history.index) chip.dataset.at = "true";
+            else if (index > history.index) chip.dataset.ahead = "true";
+            return chip;
+          })
+        );
+      }
+
+      for (const button of root.querySelectorAll<HTMLButtonElement>("[data-plan-set]")) {
+        button.setAttribute("aria-pressed", String(button.dataset.planSet === context.plan));
+      }
+
+      const atStart = history.index === 0;
+      const finished = status === "completed" || status === "terminated";
+      const setDisabled = (action: string, disabled: boolean) => {
+        const button = el<HTMLButtonElement>(`[data-action="${action}"]`);
+        if (button) button.disabled = disabled;
+      };
+      setDisabled("back", atStart);
+      setDisabled("next", finished);
+      setDisabled("latest", history.index >= history.timeline.length - 1);
+    };
+
+    root.addEventListener("click", (event) => {
+      const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button");
+      if (!button || button.disabled) return;
+
+      const plan = button.dataset.planSet as Context["plan"] | undefined;
+      if (plan) {
+        void machine.updateContext((context) => ({ ...context, plan }));
+        return;
+      }
+
+      switch (button.dataset.action) {
+        case "next":
+          void machine.goToNextStep();
+          break;
+        case "back":
+          void machine.goToPreviousStep();
+          break;
+        case "latest":
+          void machine.goToLastVisitedStep();
+          break;
+        case "reset":
+          void machine.resetJourney().then(() => machine.startJourney());
+          break;
+      }
+    });
+
+    machine.subscribe(render);
+    void machine.startJourney().then(render);
+  }
+</script>
+
+<style>
+  .rx-demo {
+    padding: clamp(1.25rem, 0.75rem + 2vw, 2rem);
+    background: var(--rx-card);
+    border: 1px solid var(--rx-rule);
+    border-radius: var(--rx-radius);
+  }
+
+  .rx-demo__stage {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 50rem) {
+    .rx-demo__stage {
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+  }
+
+  .rx-demo__steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .rx-demo__step {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.7rem 0;
+  }
+
+  /* The connector between dots. Drawn on the item rather than as a border on
+     the dot so it can stop short of both circles. */
+  .rx-demo__step:not(:last-child)::before {
+    content: "";
+    position: absolute;
+    left: 0.44rem;
+    top: 2rem;
+    bottom: -0.35rem;
+    width: 1px;
+    background: var(--rx-rule-strong);
+  }
+
+  .rx-demo__dot {
+    flex: none;
+    width: 0.9rem;
+    height: 0.9rem;
+    border: 2px solid var(--rx-rule-strong);
+    border-radius: var(--rx-radius-pill);
+    background: var(--rx-bg);
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+  }
+
+  .rx-demo__label {
+    color: var(--rx-muted);
+    font-family: var(--rx-font-mono);
+    font-size: 0.9rem;
+    transition: color 0.2s ease;
+  }
+
+  .rx-demo__step[data-state="done"] .rx-demo__dot {
+    border-color: var(--rx-primary);
+    background: var(--rx-primary);
+  }
+
+  .rx-demo__step[data-state="done"] .rx-demo__label {
+    color: var(--rx-fg);
+  }
+
+  .rx-demo__step[data-state="current"] .rx-demo__dot {
+    border-color: var(--rx-primary);
+    background: var(--rx-bg);
+    box-shadow: 0 0 0 4px var(--rx-glow-tint);
+  }
+
+  .rx-demo__step[data-state="current"] .rx-demo__label {
+    color: var(--rx-fg);
+    font-weight: 500;
+  }
+
+  .rx-demo__panel {
+    min-width: 0;
+    padding: 1.1rem 1.25rem;
+    background: var(--rx-bg);
+    border: 1px solid var(--rx-rule);
+    border-radius: var(--rx-radius-sm);
+  }
+
+  .rx-demo__eyebrow {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin: 0 0 0.7rem;
+    color: var(--rx-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .rx-demo__eyebrow:not(:first-child) {
+    margin-top: 1.4rem;
+  }
+
+  /* --rx-muted, not --rx-faint: faint on this card measures ~3.6:1, and at
+     0.7rem this is small text needing 4.5:1. */
+  .rx-demo__hint {
+    color: var(--rx-muted);
+    font-family: var(--rx-font-mono);
+    font-size: 0.7rem;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .rx-demo__facts {
+    display: grid;
+    gap: 0.4rem;
+    margin: 0;
+  }
+
+  .rx-demo__fact {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-family: var(--rx-font-mono);
+    font-size: 0.82rem;
+  }
+
+  .rx-demo__fact dt {
+    color: var(--rx-muted);
+  }
+
+  .rx-demo__fact dd {
+    margin: 0;
+    color: var(--rx-fg);
+  }
+
+  .rx-demo__timeline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* :global, and scoped by hand to .rx-demo__timeline instead.
+     The script rebuilds these chips with createElement on every render, and a
+     created element does not carry Astro's data-astro-cid-* scope attribute —
+     so a scoped rule would style the server-rendered chip and nothing after
+     the first update. */
+  .rx-demo__timeline :global(.rx-demo__chip) {
+    padding: 0.25rem 0.6rem;
+    color: var(--rx-muted);
+    background: var(--rx-tag-bg);
+    border: 1px solid transparent;
+    border-radius: var(--rx-radius-pill);
+    font-family: var(--rx-font-mono);
+    font-size: 0.78rem;
+  }
+
+  /* Where the history pointer is right now. */
+  .rx-demo__timeline :global(.rx-demo__chip[data-at="true"]) {
+    color: var(--rx-primary);
+    border-color: var(--rx-primary);
+  }
+
+  /* Entries the pointer has stepped back past. They stay on the timeline —
+     that is what "last visited" walks forward to.
+     Distinguished by an outline rather than by dimming the text: --rx-faint
+     here fails AA at this size, and "ahead of the pointer" is real state, not
+     decoration. */
+  .rx-demo__timeline :global(.rx-demo__chip[data-ahead="true"]) {
+    color: var(--rx-muted);
+    background: transparent;
+    border-color: var(--rx-rule-strong);
+    border-style: dashed;
+  }
+
+  .rx-demo__controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: space-between;
+    margin-top: 1.75rem;
+  }
+
+  .rx-demo__group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .rx-demo__btn,
+  .rx-demo__toggle {
+    padding: 0.45rem 0.95rem;
+    color: var(--rx-fg);
+    background: var(--rx-bg);
+    border: 1px solid var(--rx-rule-strong);
+    border-radius: var(--rx-radius-pill);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .rx-demo__btn:hover:not(:disabled),
+  .rx-demo__toggle:hover:not([aria-pressed="true"]) {
+    border-color: var(--rx-primary);
+  }
+
+  .rx-demo__btn--primary {
+    color: var(--rx-on-primary);
+    background: var(--rx-primary);
+    border-color: var(--rx-primary);
+  }
+
+  .rx-demo__btn--primary:hover:not(:disabled) {
+    background: var(--rx-primary-dark);
+  }
+
+  .rx-demo__btn:disabled {
+    color: var(--rx-faint);
+    border-color: var(--rx-rule);
+    background: transparent;
+    cursor: not-allowed;
+  }
+
+  .rx-demo__toggle[aria-pressed="true"] {
+    color: var(--rx-on-primary);
+    background: var(--rx-primary);
+    border-color: var(--rx-primary);
+  }
+
+  .rx-demo__note {
+    margin: 1.5rem 0 0;
+    color: var(--rx-muted);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    text-wrap: pretty;
+  }
+
+  .rx-demo__note code {
+    padding: 0.1em 0.35em;
+    background: var(--rx-tag-bg);
+    border-radius: var(--rx-radius-sm);
+    font-family: var(--rx-font-mono);
+    font-size: 0.86em;
+  }
+
+  .rx-demo__note strong {
+    color: var(--rx-fg);
+    font-weight: 600;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rx-demo__dot,
+    .rx-demo__label {
+      transition: none;
+    }
+  }
+</style>

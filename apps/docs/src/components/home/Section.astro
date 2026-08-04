@@ -1,0 +1,112 @@
+---
+/**
+ * The shell every landing section sits in: optional eyebrow, heading, optional
+ * lede, then whatever the page slots in.
+ *
+ * `not-content` is load-bearing. Starlight scopes its prose rules with
+ * `:where(.not-content *)` exclusions, so this class opts the whole subtree out
+ * of docs typography — otherwise every stat figure and card title inherits the
+ * measure and spacing meant for paragraphs.
+ */
+interface Props {
+  id?: string;
+  eyebrow?: string;
+  title: string;
+  lede?: string;
+  /** Draws the gradient hairline above the heading. Reserved for the proof band. */
+  accent?: boolean;
+}
+
+const { id, eyebrow, title, lede, accent = false } = Astro.props;
+---
+
+<section class:list={["rx-sec", "not-content", { "rx-sec--accent": accent }]} id={id}>
+  <header class="rx-sec__head">
+    {eyebrow && <p class="rx-sec__eyebrow">{eyebrow}</p>}
+    <h2 class="rx-sec__title">{title}</h2>
+    {lede && <p class="rx-sec__lede">{lede}</p>}
+  </header>
+  <slot />
+</section>
+
+<style>
+  .rx-sec {
+    margin-block: 5.5rem 0;
+  }
+
+  @media (min-width: 50rem) {
+    .rx-sec {
+      margin-block: 7rem 0;
+    }
+  }
+
+  /* rem, not ch. `ch` resolves against the element's OWN font-size, and this is
+     a 1rem block wrapping a ~2.35rem heading. */
+  .rx-sec__head {
+    max-width: 48rem;
+    margin-bottom: 2rem;
+  }
+
+  .rx-sec__eyebrow {
+    margin: 0 0 0.75rem;
+    color: var(--rx-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .rx-sec__title {
+    margin: 0;
+    color: var(--rx-fg);
+    font-size: clamp(1.6rem, 1.15rem + 1.7vw, 2.35rem);
+    font-weight: 640;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  .rx-sec__lede {
+    max-width: 62ch;
+    margin: 0.9rem 0 0;
+    color: var(--rx-muted);
+    font-size: 1.05rem;
+    line-height: 1.6;
+    text-wrap: pretty;
+  }
+
+  /* The brand's rule is that the logo gradient is the only chroma and earns very
+     few placements. This is one of the two this page spends — see ProofStats for
+     the other, and the note there about why the proof band is worth it. */
+  .rx-sec--accent .rx-sec__head {
+    padding-top: 1.75rem;
+    border-top: 2px solid transparent;
+    border-image: var(--rx-gradient) 1;
+  }
+
+  /* Direct children only. A descendant selector here would outrank the child
+     components' own scoped rules — `.rx-sec p` is (0,1,1) against
+     `.rx-stats__value` at (0,1,0) — and repaint every stat value as body copy. */
+  .rx-sec > :global(pre) {
+    margin: 0;
+    padding: 1.1rem 1.25rem;
+    background: var(--rx-card);
+    border: 1px solid var(--rx-rule);
+    border-radius: var(--rx-radius);
+    overflow-x: auto;
+    font-size: 0.86rem;
+    line-height: 1.65;
+  }
+
+  .rx-sec > :global(p) {
+    margin: 1.5rem 0 0;
+    color: var(--rx-muted);
+    font-size: 0.98rem;
+    line-height: 1.62;
+  }
+
+  .rx-sec > :global(p a) {
+    color: var(--rx-primary);
+    font-weight: 500;
+  }
+</style>

@@ -1,0 +1,142 @@
+---
+/**
+ * The Chrome extension, shown rather than described.
+ *
+ * These three screenshots already lived in src/assets/devtool/ and were used
+ * only on the devtool docs pages — the landing page claimed a debugger existed
+ * and never showed it.
+ *
+ * Run through Astro's <Image> so they get width/height (no layout shift) and a
+ * generated srcset. They are 1280x800 source PNGs of a dark DevTools panel;
+ * that darkness is the screenshot's own, not a themed surface, so each one sits
+ * in a normal card frame rather than bleeding to the page.
+ */
+import { Image } from "astro:assets";
+import panelOverview from "../../assets/devtool/panel-overview.png";
+import panelLogs from "../../assets/devtool/panel-logs.png";
+import panelCommands from "../../assets/devtool/panel-commands.png";
+
+interface Props {
+  href: string;
+}
+
+const { href } = Astro.props;
+
+const SHOTS = [
+  {
+    src: panelOverview,
+    title: "Timeline and state",
+    body: "The realized timeline, the current step, and the context behind it."
+  },
+  {
+    src: panelLogs,
+    title: "Transition log",
+    body: "Every event, the transition it matched, and the diff it committed."
+  },
+  {
+    src: panelCommands,
+    title: "Live commands",
+    body: "Send events into the running machine and watch the snapshot answer."
+  }
+];
+---
+
+<div class="rx-dt">
+  <ul class="rx-dt__grid">
+    {
+      SHOTS.map((shot) => (
+        <li class="rx-dt__item">
+          <div class="rx-dt__shot">
+            <Image src={shot.src} alt={`Rxova Journey DevTools: ${shot.title}`} loading="lazy" />
+          </div>
+          <h3 class="rx-dt__title">{shot.title}</h3>
+          <p class="rx-dt__body">{shot.body}</p>
+        </li>
+      ))
+    }
+  </ul>
+
+  <a class="rx-dt__link" href={href} rel="noopener">
+    Get it from the Chrome Web Store
+    <svg
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path>
+    </svg>
+  </a>
+</div>
+
+<style>
+  .rx-dt__grid {
+    display: grid;
+    gap: 1.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 60rem) {
+    .rx-dt__grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .rx-dt__item {
+    min-width: 0;
+  }
+
+  /* The frame, not the image, owns the radius: a border-radius on the <img>
+     alone leaves the card's corners square behind it at the top. */
+  .rx-dt__shot {
+    overflow: hidden;
+    background: var(--rx-card);
+    border: 1px solid var(--rx-rule);
+    border-radius: var(--rx-radius);
+  }
+
+  .rx-dt__shot :global(img) {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .rx-dt__title {
+    margin: 1rem 0 0;
+    color: var(--rx-fg);
+    font-size: 1rem;
+    font-weight: 620;
+    letter-spacing: -0.01em;
+  }
+
+  .rx-dt__body {
+    margin: 0.4rem 0 0;
+    color: var(--rx-muted);
+    font-size: 0.92rem;
+    line-height: 1.6;
+    text-wrap: pretty;
+  }
+
+  .rx-dt__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-top: 1.75rem;
+    color: var(--rx-primary);
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .rx-dt__link:hover {
+    text-decoration: underline;
+  }
+</style>
