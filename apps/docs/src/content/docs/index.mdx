@@ -1,182 +1,257 @@
 ---
 title: Rxova Journey
-description: Rxova Journey docs for building non-linear flows with a declarative journey graph.
+description: A typed flow runtime for multi-step UI that branches, skips, retries and resumes — with timeline history, async guards, a plugin system and Chrome DevTools, in a zero-dependency, framework-agnostic core.
 template: splash
 editUrl: false
 hero:
-  title: 'We did it!<br /><span class="hero-accent">Journey 1.0.0rc</span>'
+  title: '<span class="rx-tag">1.0.0-rc.2</span><br />Your wizard became a graph'
   tagline: >-
-    The release candidate is here. Journey now lands with a sharper docs experience,
-    production-ready flow primitives, and the tooling needed to inspect real
-    non-linear UI work.
+    Journey is a flow runtime for product steps that branch, skip, retry, recover
+    and resume. Start with an array of step names, graduate to a transition graph
+    when the flow earns it, and keep the navigation rules in one place instead of
+    scattered across click handlers.
 ---
 
-import { Card, CardGrid, LinkButton, LinkCard } from "@astrojs/starlight/components";
-import InstallTypewriter from "../../components/home/InstallTypewriter.astro";
-import FeatureCarousel from "../../components/home/FeatureCarousel.astro";
-import ReleaseHighlights from "../../components/home/ReleaseHighlights.astro";
-import CelebrationModal from "../../components/home/CelebrationModal.astro";
+import Section from "../../components/home/Section.astro";
+import CtaBand from "../../components/home/CtaBand.astro";
+import QuickStart from "../../components/home/QuickStart.astro";
+import JourneyDemo from "../../components/home/JourneyDemo.astro";
+import ModeTabs from "../../components/home/ModeTabs.astro";
+import ValueGrid from "../../components/home/ValueGrid.astro";
+import ProofStats from "../../components/home/ProofStats.astro";
+import DevtoolsShowcase from "../../components/home/DevtoolsShowcase.astro";
+import { packageSizes, coverageFloor, packageCount } from "../../lib/proof";
+
+export const sizes = packageSizes();
+export const coverage = coverageFloor();
+export const packages = packageCount();
+export const react = sizes[1];
 
 export const base = import.meta.env.BASE_URL;
+export const chromeStore =
+  "https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm";
 
-<div class="hero-actions">
-  <LinkButton href={`${base}core/getting-started/`}>Start with Core</LinkButton>
-  <LinkButton href={`${base}react/overview/`}>Explore React</LinkButton>
-  <LinkButton href={`${base}core/plugins/overview/`} variant="minimal">
-    See the Plugins
-  </LinkButton>
-  <LinkButton href={`${base}core/releases/`} variant="secondary">
-    Read Release Notes
-  </LinkButton>
-</div>
-
-<InstallTypewriter
-  commands={[
-    "npm install @rxova/journey-core",
-    "yarn add @rxova/journey-react",
-    "pnpm install @rxova/journey-devtools-bridge"
+<CtaBand
+  title="Model the flow, not the click handlers"
+  lede={`Install the core and have a running machine in about eight lines. The React bindings are a separate ${react.value} package — take them when you want them.`}
+  actions={[
+    { text: "Start with Core", href: `${base}core/getting-started/`, variant: "primary" },
+    { text: "React quickstart", href: `${base}react/quickstart/` },
+    { text: "GitHub", href: "https://github.com/rxova/journey", external: true }
   ]}
 />
 
-<CelebrationModal />
+<Section
+  title="One import to a running machine"
+  lede="No provider to mount, no store to configure, no scheduler to reason about. Define the steps, define how they connect, and start it."
+>
+  <QuickStart command="npm i @rxova/journey-core">
 
-<FeatureCarousel
-  title="Why Teams Pick Journey"
-  slides={[
-    {
-      title: "Test Coverage",
-      body: "95%+ coverage baseline across critical runtime paths, React bindings, and integration behavior that ships in every release."
-    },
-    {
-      title: "Plugins",
-      body: "Compose persistence, analytics, autosave, execution paths, diagnostics, and replay without bloating the base runtime."
-    },
-    {
-      title: "Zero dependency",
-      body: "Core runtime stays compact with zero runtime dependencies, keeping installs lean and bundle behavior predictable across environments."
-    },
-    {
-      title: "Tree-shakeable",
-      body: "Import only the pieces you need across Core, React bindings, and the bridge package so bundles stay clean and focused."
-    },
-    {
-      title: "DevTools",
-      body: "Inspect timeline, state diffs, and command outcomes directly in Chrome DevTools while your app runs in real time.",
-      href: "https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm"
-    },
-    {
-      title: "CI Quality Gates",
-      body: "8+ CI gates cover multi-node matrix runs, audit checks, size budgets, pack smoke validation, and changeset enforcement."
-    },
-    {
-      title: "Active Development",
-      body: "Active iteration continues with regular releases, updated docs, and expanded tests that track new behavior and fixes."
-    }
+```ts
+import { createJourneyMachine } from "@rxova/journey-core";
+
+const machine = createJourneyMachine({
+  context: { name: "" },
+  steps: { account: {}, review: {} },
+  transitions: ["account", "review"]
+});
+
+machine.startJourney();
+await machine.send({ type: "goToNextStep" });
+```
+
+  </QuickStart>
+</Section>
+
+<Section
+  eyebrow="See for yourself"
+  title="This is not a diagram. Drive it."
+  lede="A real machine from @rxova/journey-core, running in this page with no framework around it. Change the plan, walk the flow, then step back through the timeline and watch the guard re-decide."
+>
+  <JourneyDemo
+    steps={[
+      { id: "plan", label: "plan" },
+      { id: "account", label: "account" },
+      { id: "payment", label: "payment" },
+      { id: "review", label: "review" }
+    ]}
+  />
+</Section>
+
+<Section
+  eyebrow="Three modes, one field"
+  title="Start as a list. Become a graph."
+  lede="The transitions field is the only thing that changes as a flow grows. There is no rewrite between these three, and no new runtime concepts to learn on the way."
+>
+  <ModeTabs
+    modes={[
+      {
+        name: "Linear",
+        slot: "linear",
+        summary:
+          "A fixed sequence. Use the array shorthand when every step just goes to the next one."
+      },
+      {
+        name: "Graph",
+        slot: "graph",
+        summary:
+          "Branching, retries and conditional routing. Keyed by step, then by event, matched in order."
+      },
+      {
+        name: "Headless",
+        slot: "headless",
+        summary:
+          "No transitions at all. You own navigation entirely and drive it with goToStepById."
+      }
+    ]}
+  >
+    <Fragment slot="linear">
+
+```ts
+transitions: ["account", "details", "payment", "review"];
+```
+
+    </Fragment>
+    <Fragment slot="graph">
+
+```ts
+transitions: {
+  login: {
+    goToNextStep: [
+      { to: "admin", when: ({ context }) => context.role === "admin" },
+      { to: "dashboard" }
+    ]
+  },
+  admin: { completeJourney: true }
+}
+```
+
+    </Fragment>
+    <Fragment slot="headless">
+
+```ts
+// Omit `transitions` entirely.
+await machine.goToStepById("step3");
+```
+
+    </Fragment>
+
+  </ModeTabs>
+</Section>
+
+<Section
+  eyebrow="Why this one"
+  title="Explicit enough to model real flows, small enough to stay practical"
+  lede="Journey sits between step arrays that collapse the moment a flow branches and general statechart engines whose modelling surface is wider than product journeys need."
+>
+  <ValueGrid
+    items={[
+      {
+        icon: "typed",
+        title: "Typed step IDs",
+        body: "Invalid step names, events and transition targets are compile errors, not runtime bugs. The types are checked where the flow is authored."
+      },
+      {
+        icon: "history",
+        title: "Timeline history",
+        body: "The runtime keeps the realized path, so <code>goToPreviousStep()</code> and <code>goToLastVisitedStep()</code> are deterministic instead of guesswork."
+      },
+      {
+        icon: "async",
+        title: "Async guards",
+        body: "Loading, failure, timeout and retry are part of flow behaviour. Check with async <code>when</code>, and read the phase off the snapshot."
+      },
+      {
+        icon: "plugins",
+        title: "Plugins, not baggage",
+        body: "Persistence, autosave, analytics, replay, diagnostics and execution paths extend the machine without adding to the base cost."
+      },
+      {
+        icon: "zero",
+        title: "Zero dependencies",
+        body: "Nothing to inherit and nothing to audit. Tree-shakeable, so you ship the parts of it you actually reach for."
+      },
+      {
+        icon: "agnostic",
+        title: "Framework-agnostic core",
+        body: "The runtime is vanilla TypeScript. React bindings are a thin separate package; Vue, Svelte and plain TS need no shim at all."
+      }
+    ]}
+  />
+</Section>
+
+<Section
+  accent
+  eyebrow="Proof"
+  title="The numbers, and where to check them"
+  lede="Every figure below is read out of the thing that enforces it, at the moment this page is built. The bundle sizes are measured by running size-limit against each package's built output — brotli-compressed, dependencies included — not restated from a changelog."
+>
+  <ProofStats
+    stats={[
+      {
+        value: "0",
+        label: "Runtime dependencies",
+        note: "Across core, the React bindings and the DevTools bridge"
+      },
+      ...sizes.map((pkg) => ({ value: pkg.value, label: pkg.label, note: pkg.note })),
+      {
+        value: `${coverage.statements}%`,
+        label: "Coverage floor, per file",
+        note: `Statements, branches, functions and lines — enforced by vitest in CI`
+      },
+      {
+        value: `${packages}`,
+        label: "Published packages",
+        note: "Take only what you need — each one is independently installable"
+      },
+      {
+        value: "MIT",
+        label: "Licensed, every package",
+        note: "Open source, developed in the open at github.com/rxova/journey"
+      }
+    ]}
+  />
+</Section>
+
+<Section
+  eyebrow="DevTools"
+  title="Watch the runtime tell the truth"
+  lede="A native Chrome extension that reads the machine while your app runs: the realized timeline, the context behind the current step, the transition each event matched, and a command panel to send events back in."
+>
+  <DevtoolsShowcase href={chromeStore} />
+</Section>
+
+<Section
+  eyebrow="React"
+  title="Thin bindings, not a second state system"
+  lede="The React package exposes the runtime and gets out of the way. Flow rules stay in the definition; components render the active step."
+>
+
+```tsx
+import { createJourney, type JourneyViews } from "@rxova/journey-react";
+
+const signup = createJourney(definition);
+
+const views: JourneyViews<StepId> = { start: Start, review: Review };
+
+const App = () => (
+  <signup.JourneyProvider views={views}>
+    <signup.StepRenderer />
+  </signup.JourneyProvider>
+);
+```
+
+Need one runtime per request, route boundary or owned component boundary? Use <a href={`${base}react/overview/`}><code>createJourneyFactory</code></a> instead of creating the machine at module scope.
+
+</Section>
+
+<CtaBand
+  title="Take it for a flow"
+  lede="Start with the core quickstart, wire up the React bindings, or read how the transition graph resolves before you commit to it."
+  actions={[
+    { text: "Core quickstart", href: `${base}core/getting-started/`, variant: "primary" },
+    { text: "React quickstart", href: `${base}react/quickstart/` },
+    { text: "Plugins", href: `${base}core/plugins/overview/` },
+    { text: "Star on GitHub", href: "https://github.com/rxova/journey", external: true }
   ]}
 />
-
-<CardGrid>
-  <Card title="Why Journey">
-    Replace brittle step arrays with a typed transition graph. Handle branching, async guards, and
-    deterministic back behavior without scattered state.
-  </Card>
-  <Card title="Status">
-    Journey just hit release-candidate status. Start with Core or React, exercise the flow edges,
-    and help close the gap to the final 1.0 release.
-  </Card>
-  {/* Plain JSX rather than a markdown list: prettier reflows markdown nested
-      inside JSX onto one line, which silently turns the three bullets into a
-      single run-on paragraph. */}
-  <Card title="Packages">
-    <ul>
-      <li>
-        <a href="https://www.npmjs.com/package/@rxova/journey-core">@rxova/journey-core</a>
-      </li>
-      <li>
-        <a href="https://www.npmjs.com/package/@rxova/journey-react">@rxova/journey-react</a>
-      </li>
-      <li>
-        <a href="https://www.npmjs.com/package/@rxova/journey-devtools-bridge">
-          @rxova/journey-devtools-bridge
-        </a>
-      </li>
-    </ul>
-  </Card>
-</CardGrid>
-
-<ReleaseHighlights />
-
-## Start here
-
-<CardGrid>
-  <LinkCard
-    title="Core: the headless engine"
-    description="Define steps, transitions, lifecycle, history, and persistence without UI assumptions."
-    href={`${base}core/getting-started/`}
-  />
-  <LinkCard
-    title="React: the UI bindings"
-    description="Render active steps with provider/hooks and keep business flow rules in Core."
-    href={`${base}react/overview/`}
-  />
-</CardGrid>
-
-## Core
-
-<CardGrid>
-  <LinkCard
-    title="History"
-    description="Deterministic back behavior with timeline-pointer navigation and fallback previous-step semantics."
-    href={`${base}core/history/`}
-  />
-  <LinkCard
-    title="Persistence"
-    description="Versioned snapshot storage, migrations, reset semantics, and adapter boundaries."
-    href={`${base}core/persistence/`}
-  />
-  <LinkCard
-    title="Snapshot"
-    description="Read currentStepId/context/history/visited/async state with predictable runtime invariants."
-    href={`${base}core/snapshot/`}
-  />
-  <LinkCard
-    title="Lifecycle"
-    description="Transition selection pipeline, terminal behavior, queue semantics, and error lifecycle."
-    href={`${base}core/lifecycle/`}
-  />
-  <LinkCard
-    title="Async"
-    description="Async guards/effects and robust loading/error UI patterns around explicit phases."
-    href={`${base}core/async/`}
-  />
-  <LinkCard
-    title="Examples"
-    description="Headless example catalog mapped to real scenarios and feature-focused flows."
-    href={`${base}core/examples/`}
-  />
-</CardGrid>
-
-## React Guides
-
-<CardGrid>
-  <LinkCard
-    title="Provider + Hooks API"
-    description="Understand bindings.Provider, StepRenderer, and core hooks for production wiring."
-    href={`${base}react/provider-and-hooks/`}
-  />
-  <LinkCard
-    title="Patterns"
-    description="Practical structure patterns for step components, controls, and machine ownership."
-    href={`${base}react/patterns/`}
-  />
-  <LinkCard
-    title="Async UI"
-    description="Render loading and error states from snapshot.async without ad-hoc local state."
-    href={`${base}react/async-ui/`}
-  />
-  <LinkCard
-    title="Examples"
-    description="Explore complete React flows you can adapt directly in your app."
-    href={`${base}react/examples/`}
-  />
-</CardGrid>

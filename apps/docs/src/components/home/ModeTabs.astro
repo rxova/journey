@@ -1,0 +1,135 @@
+---
+/**
+ * Linear -> Graph -> Headless, the progression the README leads with and the
+ * homepage never showed.
+ *
+ * Three panes rather than tabs: the argument is that the same `transitions`
+ * field grows with you, and you can only see that if you can see all three at
+ * once. Tabs would hide two-thirds of the point behind a click.
+ *
+ * Each pane's code arrives through a named slot so the page can write fenced
+ * blocks and get the same Shiki highlighting as the docs.
+ */
+interface Mode {
+  name: string;
+  slot: "linear" | "graph" | "headless";
+  summary: string;
+}
+
+interface Props {
+  modes: readonly Mode[];
+}
+
+const { modes } = Astro.props;
+---
+
+<ol class="rx-modes">
+  {
+    modes.map((mode, index) => (
+      <li class="rx-modes__item">
+        <div class="rx-modes__prose">
+          <div class="rx-modes__head">
+            <span class="rx-modes__step" aria-hidden="true">
+              {index + 1}
+            </span>
+            <h3 class="rx-modes__name">{mode.name}</h3>
+          </div>
+          <p class="rx-modes__summary">{mode.summary}</p>
+        </div>
+        <div class="rx-modes__code">
+          {mode.slot === "linear" && <slot name="linear" />}
+          {mode.slot === "graph" && <slot name="graph" />}
+          {mode.slot === "headless" && <slot name="headless" />}
+        </div>
+      </li>
+    ))
+  }
+</ol>
+
+<style>
+  .rx-modes {
+    display: grid;
+    gap: 1.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Stacked full-width rows rather than three columns. In three columns each
+     pane is about 18rem wide, and every one of these snippets is wider than
+     that — they came out truncated behind a scrollbar, which is a bad way to
+     show code whose whole point is that you can read it at a glance. As rows,
+     the prose takes a fixed column and the code gets all the width left. */
+  .rx-modes__item {
+    display: grid;
+    gap: 1.25rem;
+    min-width: 0;
+    padding: 1.5rem;
+    background: var(--rx-card);
+    border: 1px solid var(--rx-rule);
+    border-radius: var(--rx-radius);
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 50rem) {
+    .rx-modes__item {
+      grid-template-columns: 17rem 1fr;
+      align-items: start;
+      gap: 2rem;
+    }
+  }
+
+  .rx-modes__head {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+  }
+
+  .rx-modes__step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    flex: none;
+    color: var(--rx-primary);
+    background: var(--rx-tag-bg);
+    border-radius: var(--rx-radius-pill);
+    font-family: var(--rx-font-mono);
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+
+  .rx-modes__name {
+    margin: 0;
+    color: var(--rx-fg);
+    font-size: 1.05rem;
+    font-weight: 620;
+    letter-spacing: -0.01em;
+  }
+
+  .rx-modes__summary {
+    margin: 0.7rem 0 0;
+    color: var(--rx-muted);
+    font-size: 0.92rem;
+    line-height: 1.6;
+    text-wrap: pretty;
+  }
+
+  /* min-width: 0 so a long line scrolls inside the pane instead of widening
+     the grid column and pushing the card past the page. */
+  .rx-modes__code {
+    min-width: 0;
+  }
+
+  .rx-modes__code :global(pre) {
+    margin: 0;
+    padding: 0.95rem 1.1rem;
+    background: var(--rx-bg);
+    border: 1px solid var(--rx-rule);
+    border-radius: var(--rx-radius-sm);
+    overflow-x: auto;
+    font-size: 0.8rem;
+    line-height: 1.6;
+  }
+</style>

@@ -1,0 +1,166 @@
+---
+/**
+ * Install command beside the first snippet, directly under the hero.
+ *
+ * The command is a terminal-looking box with a copy button; the snippet comes
+ * in through the slot so the page can use a fenced block and get the same Shiki
+ * highlighting as the rest of the docs, rather than this component reinventing
+ * it.
+ *
+ * This replaces the old InstallTypewriter, which rotated three install commands
+ * on a CSS keyframe inside a hardcoded navy panel left over from Docusaurus.
+ * The animation cost a reader who wanted the npm line a wait for it to come
+ * back around, and the panel ignored the theme entirely.
+ */
+interface Props {
+  command: string;
+}
+
+const { command } = Astro.props;
+---
+
+<div class="rx-qs">
+  <div class="rx-qs__pane">
+    <p class="rx-qs__label">Install</p>
+    <div class="rx-qs__term">
+      {/* tabindex + label because the command is `white-space: nowrap` over
+          `overflow-x: auto`: on a narrow screen that is a scrollable region,
+          and a scrollable region that cannot take focus is a keyboard dead end
+          (axe `scrollable-region-focusable`). */}
+      <code class="rx-qs__cmd" tabindex="0" role="region" aria-label="Install command"
+        ><span class="rx-qs__prompt" aria-hidden="true">$</span>{command}</code
+      >
+      <button class="rx-qs__copy" type="button" data-copy={command}>
+        <span class="rx-qs__copy-idle">Copy</span>
+        <span class="rx-qs__copy-done" aria-hidden="true">Copied</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="rx-qs__pane">
+    <p class="rx-qs__label">Use</p>
+    <div class="rx-qs__code"><slot /></div>
+  </div>
+</div>
+
+<script>
+  const button = document.querySelector<HTMLButtonElement>(".rx-qs__copy");
+
+  button?.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(button.dataset.copy ?? "");
+    } catch {
+      // Clipboard access can be denied (permissions, insecure context). Saying
+      // nothing is better than a toast claiming a copy that did not happen.
+      return;
+    }
+    button.dataset.state = "done";
+    window.setTimeout(() => delete button.dataset.state, 1600);
+  });
+</script>
+
+<style>
+  .rx-qs {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+  }
+
+  .rx-qs__pane {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .rx-qs__label {
+    margin: 0 0 0.6rem;
+    /* --rx-muted, not --rx-faint: faint on the card is ~3.4:1 and fails AA here. */
+    color: var(--rx-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Deliberately not `flex: 1`. The snippet beside it is a dozen lines tall, and
+     stretching a one-line command to match leaves it floating in the middle of
+     an empty box. The terminal hugs its content and the panes top-align. */
+  .rx-qs__term {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1rem 1rem 1.15rem;
+    background: var(--rx-card);
+    border: 1px solid var(--rx-rule);
+    border-radius: var(--rx-radius);
+  }
+
+  .rx-qs__cmd {
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    color: var(--rx-fg);
+    font-family: var(--rx-font-mono);
+    font-size: 0.88rem;
+    white-space: nowrap;
+  }
+
+  .rx-qs__prompt {
+    margin-right: 0.6rem;
+    color: var(--rx-primary);
+    user-select: none;
+  }
+
+  /* One label sits on top of the other so the button does not resize — and so
+     the row does not reflow — when the state flips. */
+  .rx-qs__copy {
+    display: grid;
+    flex: none;
+    padding: 0.4rem 0.85rem;
+    color: var(--rx-muted);
+    background: var(--rx-bg);
+    border: 1px solid var(--rx-rule-strong);
+    border-radius: var(--rx-radius-pill);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .rx-qs__copy:hover {
+    color: var(--rx-fg);
+    border-color: var(--rx-primary);
+  }
+
+  .rx-qs__copy-idle,
+  .rx-qs__copy-done {
+    grid-area: 1 / 1;
+  }
+
+  .rx-qs__copy-done,
+  .rx-qs__copy[data-state="done"] .rx-qs__copy-idle {
+    visibility: hidden;
+  }
+
+  .rx-qs__copy[data-state="done"] .rx-qs__copy-done {
+    visibility: visible;
+    color: var(--rx-primary);
+  }
+
+  .rx-qs__code {
+    flex: 1;
+  }
+
+  /* The slotted code block renders its own <pre>; frame it like the terminal so
+     the two panes read as a pair. */
+  .rx-qs__code :global(pre) {
+    height: 100%;
+    margin: 0;
+    padding: 1rem 1.15rem;
+    border: 1px solid var(--rx-rule);
+    border-radius: var(--rx-radius);
+    overflow-x: auto;
+    font-size: 0.84rem;
+    line-height: 1.6;
+  }
+</style>
