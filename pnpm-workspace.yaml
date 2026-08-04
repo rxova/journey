@@ -10,8 +10,8 @@ overrides:
   # vulnerable 3.3.3 (GHSA-2p49-hgcm-8545, removeScripts leaves some executable
   # scripts intact). Latent under Docusaurus; live once Astro started pulling
   # svgo, and only visible because `pnpm audit` works again on pnpm 11.
-  jsdom>undici: ">=7.28.0 <8.0.0"
-  cheerio>undici: ">=7.28.0 <8.0.0"
+  jsdom>undici: ">=7.29.0 <8.0.0"
+  cheerio>undici: ">=7.29.0 <8.0.0"
   "@crxjs/vite-plugin>rollup": 2.80.0
   "picomatch@<2.3.2": ">=2.3.2 <3.0.0"
   "picomatch@>=4.0.0 <4.0.4": ">=4.0.4 <5.0.0"
@@ -36,6 +36,9 @@ overrides:
   "postcss@<=8.5.11": ">=8.5.12 <9.0.0"
   "js-yaml@>=3.0.0 <3.15.0": ">=3.15.0 <4.0.0"
   "js-yaml@>=4.0.0 <4.3.0": ">=4.3.0 <5.0.0"
+  "undici@>=7.0.0 <7.29.0": ">=7.29.0 <8.0.0"
+  "fast-uri@>=3.0.0 <3.1.5": ">=3.1.5 <4.0.0"
+  "brace-expansion@>=4.0.0 <5.0.9": ">=5.0.9 <6.0.0"
 
 # No auditConfig.ignoreGhsas. The one entry that lived here, GHSA-mh99-v99m-4gvg
 # (brace-expansion DoS), was reachable only through
