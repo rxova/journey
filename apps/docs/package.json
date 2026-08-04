@@ -1,6 +1,6 @@
 {
   "name": "@rxova/journey-docs",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "Astro Starlight documentation website for Rxova Journey.",
