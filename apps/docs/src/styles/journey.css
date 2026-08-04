@@ -1,27 +1,129 @@
 /*
- * Journey-only additions on top of @rxova/brand's Starlight theme. Anything
- * that should look the same across the three rxova docs sites belongs in the
- * brand package instead — this file is for what is genuinely journey's.
+ * The landing page's own layout, and nothing else.
+ *
+ * Everything visual belongs in the scoped <style> of the component that draws
+ * it (src/components/home/*.astro). What cannot live there is here: the few
+ * Starlight selectors the page has to reach into, and one token. Anything that
+ * should look the same across the three rxova docs sites belongs in the brand
+ * package instead — this file is for what is genuinely Journey's.
+ *
+ * This file is loaded last through `customCss`, which Starlight emits
+ * UNLAYERED. Starlight's own rules sit in @layer starlight.*, and an unlayered
+ * rule beats a layered one at any specificity — so none of this needs
+ * !important, and the selectors below are as narrow as they can be.
  */
 
-/* The homepage headline keeps the two-tone treatment it had on Docusaurus:
-   "We did it!" in the body colour, the version below it in the accent. */
-.hero-accent {
-  display: block;
-  margin-top: 0.14em;
-  color: var(--sl-color-text-accent);
+/* Text on a --rx-primary fill.
+ *
+ * The brand lightens --rx-primary in dark mode (#6b3df0 -> #9375f5) so it stays
+ * legible as *text* on a dark surface. That makes it a pale fill, and white on
+ * it lands near 2.9:1 — under AA. Flipping to the page background colour gets
+ * back over 7:1 in both modes. Mirrors tokens.css's own three-way structure:
+ * an explicit choice wins, OS preference only decides when none was stored. */
+:root,
+:root[data-theme="light"] {
+  --rx-on-primary: #ffffff;
+}
+
+:root[data-theme="dark"] {
+  --rx-on-primary: #100f0d;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --rx-on-primary: #100f0d;
+  }
+}
+
+/* Starlight constrains content to --sl-content-width (45rem) in ContentPanel's
+ * .sl-container. That measure is right for prose and wrong for a marketing
+ * page: a six-up stat band, a three-up mode grid and a six-card feature grid
+ * all need the brand's wider bound.
+ *
+ * Gated on [data-has-hero], which Starlight puts on <html> only when the entry
+ * has a `hero` block — and index.mdx is the only page in this site that does.
+ * So this widens the landing and cannot reach a docs page. If a second hero
+ * page ever appears, this needs a page-specific attribute instead. */
+html[data-has-hero] .sl-container {
+  max-width: var(--rx-max-wide);
+}
+
+/* Starlight puts 1.5rem between every top-level child of .sl-container. The
+ * landing's sections carry their own much larger rhythm (Section.astro), and
+ * the two compound into an uneven gap. Zero it out for this page only and let
+ * the sections own their spacing. */
+html[data-has-hero] .sl-container > * + * {
+  margin-top: 0;
+}
+
+/* Starlight's clamp tops out at 10rem of vertical padding, which pushed the
+ * first call to action a full screen below the fold. */
+html[data-has-hero] .hero {
+  padding-block: clamp(2.5rem, 1rem + 6vmin, 5rem);
+}
+
+/* Starlight lays the splash hero out as a two-column grid, the second column
+ * being the hero image. This page has no hero image — Journey has no mark of
+ * its own, and the rxova logo already sits in the site title — so that column
+ * was ~400px of dead space holding the headline off to one side. Collapse to a
+ * single column when there is nothing to put in it; the measure caps below
+ * keep the copy from running the full width. */
+html[data-has-hero] .hero:not(:has(img)) {
+  grid-template-columns: 1fr;
+}
+
+/* Starlight caps every hero child at 50ch, which is a good measure for the
+ * tagline and far too wide for a display headline. Split them: the headline
+ * wants to break into two or three short lines, the tagline wants to read as a
+ * paragraph. */
+html[data-has-hero] .hero h1 {
+  max-width: 22ch;
+  /* Splits the headline evenly instead of dropping its last word alone onto a
+   * second line. */
+  text-wrap: balance;
+}
+
+html[data-has-hero] .hero .tagline {
+  max-width: 56ch;
+  text-wrap: pretty;
+}
+
+/* Sections carry a 7rem top margin so they separate from each other. The first
+ * one is separating from the hero, which already ends in its own padding, and
+ * the two together leave a dead screen between them.
+ *
+ * The child selector is .sl-markdown-content, not .sl-container: Starlight
+ * renders the splash body inside that wrapper, so a `.sl-container > section`
+ * rule matches nothing. */
+html[data-has-hero] .sl-markdown-content > :first-child {
+  margin-top: 2rem;
+}
+
+/* The version pill above the headline.
+ *
+ * The hero title is rendered from frontmatter as HTML, so this is styled by
+ * class from here rather than from a component. It replaces the old
+ * `.hero-accent` treatment, which put the version on its own line at display
+ * size and made the release, rather than the library, the subject of the page. */
+html[data-has-hero] .hero .rx-tag {
+  display: inline-block;
+  margin-bottom: 0.9rem;
+  padding: 0.28rem 0.7rem;
+  color: var(--rx-primary);
+  background: var(--rx-tag-bg);
+  border-radius: var(--rx-radius-pill);
+  font-family: var(--rx-font-mono);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  /* Must not inherit the headline's display size or line-height. */
+  line-height: 1.4;
 }
 
 /* The hero's CTAs live in the page body rather than in frontmatter
-   `hero.actions`: Starlight emits an action's `link` verbatim, so
-   `/core/getting-started/` is right at the domain root and 404s under the
-   aggregator's /packages/journey/ mount — starlight-links-validator fails the
-   base-path build on exactly that. index.mdx uses `<LinkButton>` (the same
-   component the hero uses) with the href routed through BASE_URL, so they need
-   the row layout the hero would otherwise have given them. */
-.hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-block: 1.5rem 2rem;
-}
+ * `hero.actions`: Starlight emits an action's `link` verbatim, so
+ * `/core/getting-started/` is right at the domain root and 404s under the
+ * aggregator's /packages/journey/ mount — starlight-links-validator fails the
+ * base-path build on exactly that. index.mdx routes every href through
+ * BASE_URL instead, which is why the landing page uses its own CtaBand rather
+ * than `hero.actions`. */

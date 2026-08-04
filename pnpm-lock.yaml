@@ -204,14 +204,14 @@ importers:
         specifier: ^0.41.4
         version: 0.41.4(@astrojs/markdown-remark@7.2.1(supports-color@10.2.2))(astro@7.1.3(@astrojs/markdown-remark@7.2.1(supports-color@10.2.2))(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.2)(@types/node@25.6.0)(jiti@2.6.1)(rollup@4.62.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.3))(supports-color@10.2.2)(typescript@5.9.3)
       '@rxova/brand':
-        specifier: ^0.2.0
-        version: 0.2.0(@astrojs/starlight@0.41.4(@astrojs/markdown-remark@7.2.1(supports-color@10.2.2))(astro@7.1.3(@astrojs/markdown-remark@7.2.1(supports-color@10.2.2))(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.2)(@types/node@25.6.0)(jiti@2.6.1)(rollup@4.62.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.3))(supports-color@10.2.2)(typescript@5.9.3))(astro@7.1.3(@astrojs/markdown-remark@7.2.1(supports-color@10.2.2))(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.2)(@types/node@25.6.0)(jiti@2.6.1)(rollup@4.62.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: ^0.11.0
+        version: 0.11.0(@astrojs/starlight@0.41.4(@astrojs/markdown-remark@7.2.1(supports-color@10.2.2))(astro@7.1.3(@astrojs/markdown-remark@7.2.1(supports-color@10.2.2))(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.2)(@types/node@25.6.0)(jiti@2.6.1)(rollup@4.62.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.3))(supports-color@10.2.2)(typescript@5.9.3))(astro@7.1.3(@astrojs/markdown-remark@7.2.1(supports-color@10.2.2))(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.2)(@types/node@25.6.0)(jiti@2.6.1)(rollup@4.62.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.3))
+      '@rxova/journey-core':
+        specifier: workspace:^
+        version: link:../../packages/core
       astro:
         specifier: ^7.1.3
         version: 7.1.3(@astrojs/markdown-remark@7.2.1(supports-color@10.2.2))(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.2)(@types/node@25.6.0)(jiti@2.6.1)(rollup@4.62.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.3)
-      canvas-confetti:
-        specifier: ^1.9.4
-        version: 1.9.4
       sharp:
         specifier: ^0.35.0
         version: 0.35.3(@types/node@25.6.0)
@@ -225,9 +225,15 @@ importers:
       '@astrojs/check':
         specifier: ^0.9.9
         version: 0.9.9(prettier@3.8.2)(typescript@5.9.3)
-      '@types/canvas-confetti':
-        specifier: ^1.9.0
-        version: 1.9.0
+      '@rxova/journey-devtools-bridge':
+        specifier: workspace:^
+        version: link:../../packages/devtools-bridge
+      '@rxova/journey-react':
+        specifier: workspace:^
+        version: link:../../packages/react
+      lucide-static:
+        specifier: ^1.28.0
+        version: 1.28.0
       typescript:
         specifier: ~5.9.3
         version: 5.9.3
@@ -1727,8 +1733,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@rxova/brand@0.2.0':
-    resolution: {integrity: sha512-A3iL6vVh8guCo1/mE61dZyEIccyN/pdTdHJBJGuMhbfNJajmExF72idsM8paekrmr7oH/hyEzNHmNbzRTbUOrw==}
+  '@rxova/brand@0.11.0':
+    resolution: {integrity: sha512-a3ARNBjSKjlarEzjXanwuJWYXlci8hlGtbkwbnPjC/mdX3lbsHpj05I+fS3i3R+y1/YzShkMHQeFxtdnGyrF3w==}
     engines: {node: '>=24.0.0'}
     peerDependencies:
       '@astrojs/starlight': '>=0.36.0'
@@ -1864,9 +1870,6 @@ packages:
 
   '@types/babel__traverse@7.28.0':
     resolution: {integrity: sha512-8PvcXf70gTDZBgt9ptxJ8elBeBjcLOAcOtoO/mPJjtji1+CdGbHgm77om1GrsPxsiE+uXIpNSK64UYaIwQXd4Q==}
-
-  '@types/canvas-confetti@1.9.0':
-    resolution: {integrity: sha512-aBGj/dULrimR1XDZLtG9JwxX1b4HPRF6CX9Yfwh3NvstZEm1ZL7RBnel4keCPSqs1ANRu1u2Aoz9R+VmtjYuTg==}
 
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
@@ -2270,9 +2273,6 @@ packages:
 
   caniuse-lite@1.0.30001775:
     resolution: {integrity: sha512-s3Qv7Lht9zbVKE9XoTyRG6wVDCKdtOFIjBGg3+Yhn6JaytuNKPIjBMTMIY1AnOH3seL5mvF+x33oGAyK3hVt3A==}
-
-  canvas-confetti@1.9.4:
-    resolution: {integrity: sha512-yxQbJkAVrFXWNbTUjPqjF7G+g6pDotOUHGbkZq2NELZUMDpiJ85rIEazVb8GTaAptNW2miJAXbs1BtioA251Pw==}
 
   ccount@2.0.1:
     resolution: {integrity: sha512-eyrF0jiFpY+3drT6383f1qhkbGsLSifNAjA61IUjZjmLCWjItY6LB9ft9YhoDgwfmclB2zhu51Lc7+95b8NRAg==}
@@ -3346,6 +3346,9 @@ packages:
 
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
+
+  lucide-static@1.28.0:
+    resolution: {integrity: sha512-dC3VJwRFsjEVX7Iaq4rY88pm7Fi2OmOb8P0WRzXsUMgbt7sCmFX8bLhaDBeNW6JdRjuele+jKqqFaam4yr+Ygg==}
 
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
@@ -6253,7 +6256,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.62.2':
     optional: true
 
-  '@rxova/brand@0.2.0(@astrojs/starlight@0.41.4(@astrojs/markdown-remark@7.2.1(supports-color@10.2.2))(astro@7.1.3(@astrojs/markdown-remark@7.2.1(supports-color@10.2.2))(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.2)(@types/node@25.6.0)(jiti@2.6.1)(rollup@4.62.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.3))(supports-color@10.2.2)(typescript@5.9.3))(astro@7.1.3(@astrojs/markdown-remark@7.2.1(supports-color@10.2.2))(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.2)(@types/node@25.6.0)(jiti@2.6.1)(rollup@4.62.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.3))':
+  '@rxova/brand@0.11.0(@astrojs/starlight@0.41.4(@astrojs/markdown-remark@7.2.1(supports-color@10.2.2))(astro@7.1.3(@astrojs/markdown-remark@7.2.1(supports-color@10.2.2))(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.2)(@types/node@25.6.0)(jiti@2.6.1)(rollup@4.62.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.3))(supports-color@10.2.2)(typescript@5.9.3))(astro@7.1.3(@astrojs/markdown-remark@7.2.1(supports-color@10.2.2))(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.2)(@types/node@25.6.0)(jiti@2.6.1)(rollup@4.62.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.3))':
     dependencies:
       '@fontsource/ibm-plex-mono': 5.3.0
       '@fontsource/space-grotesk': 5.3.0
@@ -6391,8 +6394,6 @@ snapshots:
   '@types/babel__traverse@7.28.0':
     dependencies:
       '@babel/types': 7.29.7
-
-  '@types/canvas-confetti@1.9.0': {}
 
   '@types/chai@5.2.3':
     dependencies:
@@ -6928,8 +6929,6 @@ snapshots:
   callsites@3.1.0: {}
 
   caniuse-lite@1.0.30001775: {}
-
-  canvas-confetti@1.9.4: {}
 
   ccount@2.0.1: {}
 
@@ -8119,6 +8118,8 @@ snapshots:
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
+
+  lucide-static@1.28.0: {}
 
   lz-string@1.5.0: {}
 

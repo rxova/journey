@@ -1,0 +1,129 @@
+---
+/**
+ * The ask. Used twice: once under the hero to get people moving, once at the
+ * foot of the page as the closing call.
+ *
+ * Internal hrefs must arrive already routed through BASE_URL — see index.mdx.
+ * The site builds under /packages/journey/, and starlight-links-validator fails
+ * the build on any internal link that does not resolve there.
+ */
+interface Action {
+  text: string;
+  href: string;
+  variant?: "primary" | "minimal";
+  external?: boolean;
+}
+
+interface Props {
+  title: string;
+  lede: string;
+  actions: readonly Action[];
+}
+
+const { title, lede, actions } = Astro.props;
+---
+
+<aside class="rx-cta not-content">
+  <h2 class="rx-cta__title">{title}</h2>
+  <p class="rx-cta__lede">{lede}</p>
+  <div class="rx-cta__actions">
+    {
+      actions.map((action) => (
+        <a
+          class:list={["rx-btn", `rx-btn--${action.variant ?? "minimal"}`]}
+          href={action.href}
+          rel={action.external ? "noopener" : undefined}
+        >
+          {action.text}
+          {action.external && (
+            <svg
+              viewBox="0 0 24 24"
+              width="14"
+              height="14"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+            </svg>
+          )}
+        </a>
+      ))
+    }
+  </div>
+</aside>
+
+<style>
+  .rx-cta {
+    margin-block: 6rem 1rem;
+    padding: clamp(2rem, 1rem + 4vw, 3.5rem);
+    text-align: center;
+    background: var(--rx-card);
+    border: 1px solid var(--rx-rule);
+    border-radius: var(--rx-radius);
+    box-shadow: var(--rx-shadow-soft);
+  }
+
+  .rx-cta__title {
+    margin: 0;
+    color: var(--rx-fg);
+    font-size: clamp(1.5rem, 1.15rem + 1.5vw, 2.1rem);
+    font-weight: 640;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  .rx-cta__lede {
+    max-width: 46ch;
+    margin: 0.9rem auto 0;
+    color: var(--rx-muted);
+    font-size: 1rem;
+    line-height: 1.6;
+    text-wrap: pretty;
+  }
+
+  .rx-cta__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+    margin-top: 2rem;
+  }
+
+  .rx-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.4rem;
+    border: 1px solid transparent;
+    border-radius: var(--rx-radius-pill);
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  /* --rx-on-primary, not #fff: the brand lightens --rx-primary in dark mode to
+     keep it readable *as text*, which leaves white-on-violet around 2.9:1 as a
+     fill. The token is defined in src/styles/journey.css. */
+  .rx-btn--primary {
+    color: var(--rx-on-primary);
+    background: var(--rx-primary);
+  }
+
+  .rx-btn--primary:hover {
+    background: var(--rx-primary-dark);
+  }
+
+  .rx-btn--minimal {
+    color: var(--rx-fg);
+    border-color: var(--rx-rule-strong);
+  }
+
+  .rx-btn--minimal:hover {
+    border-color: var(--rx-primary);
+  }
+</style>
