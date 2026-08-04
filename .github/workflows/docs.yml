@@ -78,7 +78,10 @@ jobs:
           DOCS_BASE_URL: /packages/journey/
         run: pnpm run docs:build
 
-      # The dist the aggregator will publish verbatim. `docs-dist` is the fixed
+      - name: Mark the page-component bundle
+        run: node --import tsx apps/docs/scripts/write-page-bundle.ts
+
+      # The dist the aggregator will compose into its shell. `docs-dist` is the fixed
       # artifact name in the contract — ingest.yml downloads it by that name from
       # this run — so it is not ours to rename. Pointing `path` at the dist
       # directory (not its parent) is what puts index.html at the artifact root,
@@ -110,13 +113,13 @@ jobs:
         # serving stale docs with a green tick here and nothing to look at.
         env:
           GH_TOKEN: ${{ secrets.AGGREGATOR_DISPATCH_TOKEN }}
-        # `-F` only for schema, which the receiver compares as the number 1;
+        # `-F` only for schema, which the receiver compares as the number 2;
         # everything else goes through `-f` so it stays a string, and an
         # all-digit ref or sha cannot arrive as a number.
         run: |
           gh api repos/rxova/rxova-website/dispatches \
             -f event_type=docs \
-            -F 'client_payload[schema]=1' \
+            -F 'client_payload[schema]=2' \
             -f 'client_payload[project]=journey' \
             -f "client_payload[ref]=${GITHUB_REF_NAME}" \
             -f "client_payload[sha]=${GITHUB_SHA}" \
