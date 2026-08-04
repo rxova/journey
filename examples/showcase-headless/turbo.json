@@ -1,5 +1,5 @@
 {
-  "$schema": "https://turbo.build/schema.json",
+  "$schema": "https://v2-10-8.turborepo.dev/schema.json",
   "extends": ["//"],
   "tasks": {
     // Next writes `.next/`, not the `dist/` the root task declares. A task
