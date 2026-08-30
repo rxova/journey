@@ -53,14 +53,18 @@ jobs:
       - name: Create Release PR or Publish
         uses: changesets/action@v2
         with:
-          version: pnpm run changeset:version
-          publish: pnpm run release
+          # v2 renamed every one of these inputs. The old names were accepted
+          # silently as "unexpected input" warnings, so the action ran with its
+          # defaults instead — including the "Version Packages" commit subject
+          # that commitlint rejects.
+          version-script: pnpm run changeset:version
+          publish-script: pnpm run release
           # Conventional, and not optional: commitlint is now the root job of
           # CI and runs `--last` on every push to main, so the action's default
           # "Version Packages" subject would fail the whole workflow on the one
           # commit that must not be blocked. Matches the sibling repos.
-          commit: "chore: version packages"
-          title: "chore: version packages"
+          commit-message: "chore: version packages"
+          pr-title: "chore: version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
