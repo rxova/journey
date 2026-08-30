@@ -1,6 +1,7 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import starlightLinksValidator from "starlight-links-validator";
+import sitemap from "@astrojs/sitemap";
 import { sharedStarlightConfig } from "@rxova/brand";
 import { fileURLToPath } from "node:url";
 import { unified } from "@astrojs/markdown-remark";
@@ -33,6 +34,25 @@ export default defineConfig({
   },
 
   integrations: [
+    // Nothing here enumerated these pages for a crawler. Fifty-eight pages of
+    // prose answering the questions people actually type — branching wizards,
+    // step history, guards that are async — and the only way into any of it was
+    // following links from a site with no inbound ones.
+    //
+    // Emitted at the mount, not the domain root: under the aggregator this build
+    // lives at /packages/journey/, so the file lands at <base>sitemap-index.xml
+    // and claims only URLs beneath that prefix, which is the scope a sitemap at
+    // a subpath is allowed to claim. rxova.org's root robots.txt is what points
+    // at it — this build cannot serve a robots.txt any crawler would honour,
+    // because robots.txt is read only from the origin root and this build never
+    // owns one.
+    sitemap({
+      // The 404 page is served *as* a 404. Offering it invites Google to index
+      // the error page itself, which is the standard way to earn a soft-404
+      // flag. It is the only route here that is not a destination: this build
+      // has no redirects and no non-HTML endpoints.
+      filter: (page) => !/\/404\/?$/.test(new URL(page).pathname)
+    }),
     starlight({
       ...sharedStarlightConfig({
         project: "journey",

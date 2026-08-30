@@ -8,7 +8,14 @@
     "chrome",
     "debug",
     "state-machine",
-    "typescript"
+    "typescript",
+    "devtools-extension",
+    "time-travel",
+    "inspector",
+    "diagnostics",
+    "react",
+    "flow",
+    "observability"
   ],
   "homepage": "https://github.com/rxova/journey",
   "bugs": {

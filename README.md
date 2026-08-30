@@ -22,15 +22,23 @@ The current runtime contract being frozen for the upcoming `1.0.0-rc` line is:
 
 📖 [Read the documentation](https://rxova.org/packages/journey/)
 
-🚀 [Core Quickstart](https://rxova.org/packages/journey/docs/core/getting-started)
+🚀 [Core Quickstart](https://rxova.org/packages/journey/core/getting-started/)
 
-⚛️ [React Quickstart](https://rxova.org/packages/journey/docs/react/quickstart)
+⚛️ [React Quickstart](https://rxova.org/packages/journey/react/quickstart/)
 
-🔧 [Chrome DevTools](https://rxova.org/packages/journey/docs/devtool/overview)
+🔧 [Chrome DevTools](https://rxova.org/packages/journey/devtool/overview/)
 
-🧭 [Pre-1.0 Migration](https://rxova.org/packages/journey/docs/core/pre-1-0-migration)
+🧭 [Pre-1.0 Migration](https://rxova.org/packages/journey/core/pre-1-0-migration/)
 
 💬 [GitHub Discussions](https://github.com/rxova/journey)
+
+## Reading this with a coding agent
+
+- [`llms.txt`](llms.txt) — the repository index: which package is which, and what to read next.
+- [`MANIFEST.MD`](MANIFEST.MD) — why the library is shaped this way, and what it deliberately is not.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — for an agent _editing_ this repo, not using it.
+- [Runtime reference](https://rxova.org/packages/journey/core/runtime-reference/) — the canonical
+  snapshot, field by field. Read this before writing calling code.
 
 ## Packages
 
