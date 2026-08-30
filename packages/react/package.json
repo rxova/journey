@@ -10,7 +10,18 @@
     "wizard",
     "stepper",
     "typescript",
-    "flow"
+    "flow",
+    "multi-step-form",
+    "wizard-hook",
+    "onboarding",
+    "checkout-flow",
+    "branching",
+    "guards",
+    "use-journey",
+    "provider",
+    "headless",
+    "react-19",
+    "state-management"
   ],
   "homepage": "https://github.com/rxova/journey",
   "bugs": {

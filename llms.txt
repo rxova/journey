@@ -1,0 +1,62 @@
+# Rxova Journey
+
+> A state machine for multi-step product flows — onboarding, checkout, auth,
+> recovery — modelled as a graph of explicit transitions rather than a pointer
+> into an array. Three modes: a linear `["step1", "step2"]` list, a branching
+> graph with ordered transition matching and async guards, or fully headless.
+> The runtime keeps one canonical snapshot — current step, realized history,
+> context, visited state, status, async phase — so a flow can step back through
+> its timeline and time-travel forward again. Persistence, autosave, analytics
+> and replay are plugins, not baseline cost. Zero-dependency framework-agnostic
+> core (7.58 kB brotli), thin typed React bindings, and a Chrome DevTools
+> debugger. MIT.
+
+This file is the map, not the manual. It exists because an agent that reaches
+this project through the repository tree — rather than an install or the docs
+site — has no index at all: `README.md` is written to persuade, `MANIFEST.MD`
+explains why the library exists rather than how to call it, and `CONTRIBUTING.md`
+is for somebody editing the runtime.
+
+Deliberately pointer-only. Every fact about the API belongs to the generated
+reference, which is checked against the source by `docs:api:check`; restating any
+of it here would create a copy that nothing verifies and that drifts on the first
+rename.
+
+## Packages
+
+- [@rxova/journey-core](packages/core): the runtime. `createJourneyMachine` for a
+  machine from a config, `createJourneyBuilder` for a typed fluent one. No
+  framework, no dependencies.
+- [@rxova/journey-react](packages/react): typed React bindings over the same
+  runtime — a provider and hooks, deliberately thin. `createJourneyFactory()` is
+  the isolation helper when a component tree owns its own machine.
+- [@rxova/journey-devtools-bridge](packages/devtools-bridge): connects a running
+  machine to the Chrome DevTools panel. Optional, and not imported by the core.
+
+## Docs
+
+- [Documentation](https://rxova.org/packages/journey/): guides and the API
+  reference, generated from the source.
+- [Core: getting started](https://rxova.org/packages/journey/core/getting-started)
+  · [React: quickstart](https://rxova.org/packages/journey/react/quickstart)
+- [Runtime reference](https://rxova.org/packages/journey/core/runtime-reference):
+  the canonical snapshot, field by field — read this before writing calling code.
+- [Compared to the alternatives](https://rxova.org/packages/journey/core/comparison):
+  XState, hand-rolled wizards, and where this library is the wrong answer.
+- [Async and guards](https://rxova.org/packages/journey/core/async) ·
+  [History and the timeline](https://rxova.org/packages/journey/core/history)
+  · [Plugins](https://rxova.org/packages/journey/core/plugins/overview/)
+- [Stability and the pre-1.0 contract](https://rxova.org/packages/journey/core/stability):
+  what is frozen for the `1.0.0-rc` line, and what is not.
+- [Pre-1.0 migration](https://rxova.org/packages/journey/core/pre-1-0-migration):
+  the breaking changes, in order.
+- [Chrome DevTools](https://rxova.org/packages/journey/devtool/overview) ·
+  [Bridge API](https://rxova.org/packages/journey/bridge/bridge-api)
+
+## Contributing
+
+- [CONTRIBUTING.md](CONTRIBUTING.md): architecture, setup, quality gates,
+  releases.
+- [MANIFEST.MD](MANIFEST.MD): why the library is shaped this way, and what it
+  deliberately is not.
+- [ROADMAP.md](ROADMAP.md): what is planned and what is deferred.

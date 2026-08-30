@@ -11,7 +11,21 @@
     "typescript",
     "graph",
     "finite-state",
-    "workflow"
+    "workflow",
+    "journey-machine",
+    "multi-step-form",
+    "multi-step",
+    "onboarding",
+    "checkout-flow",
+    "branching",
+    "guards",
+    "transitions",
+    "history",
+    "time-travel",
+    "zero-dependency",
+    "vanilla-js",
+    "framework-agnostic",
+    "state-management"
   ],
   "homepage": "https://github.com/rxova/journey",
   "bugs": {
