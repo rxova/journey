@@ -1,6 +1,6 @@
 {
   "name": "@rxova/journey-react",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0-rc.3",
   "description": "React bindings for journey.",
   "keywords": [
     "react",

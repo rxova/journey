@@ -10,6 +10,21 @@ Release notes sourced from the React package changelog (Changesets).
 
 Source: [`packages/react/CHANGELOG.md`](https://github.com/rxova/journey/blob/main/packages/react/CHANGELOG.md)
 
+## 1.0.0-rc.3
+
+### Patch Changes
+
+- [#131](https://github.com/rxova/journey/pull/131) [`5a7c344`](https://github.com/rxova/journey/commit/5a7c344d219cc24b4c2b3bf7ee3c1039a129045e) - Broaden the npm keywords
+
+  Adds `multi-step-form`, `wizard-hook`, `onboarding` and `checkout-flow` — the
+  searches somebody runs before they know a flow runtime is what they want — plus
+  `use-journey` and `provider` for the surface they will actually type, and
+  `headless`, which is the property that decides whether these bindings fit a
+  design system already in place. No code changes.
+
+- Updated dependencies [[`5a7c344`](https://github.com/rxova/journey/commit/5a7c344d219cc24b4c2b3bf7ee3c1039a129045e)]:
+  - @rxova/journey-core@1.0.0-rc.3
+
 ## 1.0.0-rc.2
 
 ### Patch Changes
