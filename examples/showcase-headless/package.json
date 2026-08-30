@@ -1,6 +1,6 @@
 {
   "name": "examples-showcase-headless",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0-rc.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,8 +13,8 @@
     "startCommand": "npm run dev"
   },
   "dependencies": {
-    "@rxova/journey-core": "workspace:1.0.0-rc.2",
-    "@rxova/journey-react": "workspace:1.0.0-rc.2",
+    "@rxova/journey-core": "workspace:1.0.0-rc.3",
+    "@rxova/journey-react": "workspace:1.0.0-rc.3",
     "next": "16.2.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"

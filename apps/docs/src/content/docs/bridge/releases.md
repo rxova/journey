@@ -10,6 +10,20 @@ Release notes sourced from the Devtools Bridge package changelog (Changesets).
 
 Source: [`packages/devtools-bridge/CHANGELOG.md`](https://github.com/rxova/journey/blob/main/packages/devtools-bridge/CHANGELOG.md)
 
+## 1.0.0-rc.3
+
+### Patch Changes
+
+- [#131](https://github.com/rxova/journey/pull/131) [`5a7c344`](https://github.com/rxova/journey/commit/5a7c344d219cc24b4c2b3bf7ee3c1039a129045e) - Broaden the npm keywords
+
+  Adds `devtools-extension`, `inspector`, `time-travel`, `diagnostics` and
+  `observability`. This package is found by somebody debugging a flow that is
+  already misbehaving, which is a different search from the one that finds the
+  runtime, and the registry was answering only the second. No code changes.
+
+- Updated dependencies [[`5a7c344`](https://github.com/rxova/journey/commit/5a7c344d219cc24b4c2b3bf7ee3c1039a129045e)]:
+  - @rxova/journey-core@1.0.0-rc.3
+
 ## 1.0.0-rc.2
 
 ### Patch Changes

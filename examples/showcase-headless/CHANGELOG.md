@@ -1,5 +1,13 @@
 # apps-showcase-headless
 
+## 1.0.0-rc.3
+
+### Patch Changes
+
+- Updated dependencies [[`5a7c344`](https://github.com/rxova/journey/commit/5a7c344d219cc24b4c2b3bf7ee3c1039a129045e), [`5a7c344`](https://github.com/rxova/journey/commit/5a7c344d219cc24b4c2b3bf7ee3c1039a129045e)]:
+  - @rxova/journey-react@1.0.0-rc.3
+  - @rxova/journey-core@1.0.0-rc.3
+
 ## 1.0.0-rc.2
 
 ### Patch Changes
