@@ -69,6 +69,24 @@ overrides:
   "fast-uri@>=3.0.0 <3.1.5": ">=3.1.5 <4.0.0"
   "brace-expansion@>=4.0.0 <5.0.9": ">=5.0.9 <6.0.0"
 
+  # Another round of the widening described above the js-yaml pins. The
+  # `fast-uri@>=3.0.0 <3.1.5` entry resolved the tree to 3.1.5, which was the
+  # floor when it was written; four advisories have since moved the patched
+  # range to >=3.1.6, so the pin that fixed this went stale and the gate went
+  # red without any file here changing. GHSA-f65p-4m7j-42xc and
+  # GHSA-jqff-g426-hqxp (host confusion via percent-encoded scheme
+  # normalization) cover the whole 3.x line; GHSA-fph4-wmhf-6fwf and
+  # GHSA-5jgf-p345-68v8 start at 3.1.2 and 3.1.3. All of it arrives under `ajv`
+  # — commitlint's config validator and, in the docs site, the YAML language
+  # server — so nothing here parses a URI an outsider controls.
+  "fast-uri@>=3.0.0 <3.1.6": ">=3.1.6 <4.0.0"
+
+  # GHSA-73wf-gq98-2v4g / GHSA-c83g-rgw3-j3cx: browserslist resolved to 4.28.1
+  # and both advisories patch at 4.28.7. It is build-time only — the CSS
+  # pipeline's target resolution, never shipped in a published package — but
+  # `audit:check` gates on high and these are high.
+  "browserslist@<=4.28.6": ">=4.28.7 <5.0.0"
+
 # No auditConfig.ignoreGhsas. The one entry that lived here, GHSA-mh99-v99m-4gvg
 # (brace-expansion DoS), was reachable only through
 # apps/docs > @docusaurus/core > serve-handler > minimatch@3 > brace-expansion@1.x,
