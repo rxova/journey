@@ -249,10 +249,10 @@ importers:
   examples/showcase-graph:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:1.0.0-rc.3
         version: link:../../packages/core
       '@rxova/journey-react':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:1.0.0-rc.3
         version: link:../../packages/react
       next:
         specifier: '>=16.2.11 <17.0.0'
@@ -280,10 +280,10 @@ importers:
   examples/showcase-headless:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:1.0.0-rc.3
         version: link:../../packages/core
       '@rxova/journey-react':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:1.0.0-rc.3
         version: link:../../packages/react
       next:
         specifier: '>=16.2.11 <17.0.0'
@@ -311,10 +311,10 @@ importers:
   examples/showcase-linear:
     dependencies:
       '@rxova/journey-core':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:1.0.0-rc.3
         version: link:../../packages/core
       '@rxova/journey-react':
-        specifier: workspace:1.0.0-rc.2
+        specifier: workspace:1.0.0-rc.3
         version: link:../../packages/react
       next:
         specifier: '>=16.2.11 <17.0.0'
