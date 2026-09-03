@@ -10,6 +10,7 @@ import {
   main,
   parseVersion,
   runChangesetVersion,
+  syncLockfile,
   syncRootVersion
 } from "../../../scripts/changeset-version";
 
@@ -108,19 +109,53 @@ describe("changeset-version script", () => {
     });
   });
 
-  it("main orchestrates changeset + root sync", () => {
+  it("runs the lockfile sync with expected args", () => {
+    const runner = vi.fn();
+    syncLockfile({ runner, cwd: "/tmp/repo", stdio: "pipe" });
+    expect(runner).toHaveBeenCalledWith("pnpm", ["install", "--lockfile-only"], {
+      cwd: "/tmp/repo",
+      stdio: "pipe"
+    });
+  });
+
+  it("main orchestrates changeset + root sync + lockfile sync", () => {
     const runChangesetVersionFn = vi.fn();
     const syncRootVersionFn = vi.fn(() => ({ updated: true, targetVersion: "0.6.1" }));
+    const syncLockfileFn = vi.fn();
 
     const result = main({
       repoRoot: "/tmp/repo",
       runChangesetVersionFn,
-      syncRootVersionFn
+      syncRootVersionFn,
+      syncLockfileFn
     });
 
     expect(runChangesetVersionFn).toHaveBeenCalledWith({ cwd: "/tmp/repo", stdio: "inherit" });
     expect(syncRootVersionFn).toHaveBeenCalledWith("/tmp/repo");
+    expect(syncLockfileFn).toHaveBeenCalledWith({ cwd: "/tmp/repo", stdio: "inherit" });
     expect(result).toEqual({ updated: true, targetVersion: "0.6.1" });
+  });
+
+  // Order is the whole guarantee: a lockfile regenerated before `changeset
+  // version` rewrote the manifests would be exactly as stale as having no sync
+  // at all, and every assertion above would still pass.
+  it("regenerates the lockfile only after the versions have been bumped", () => {
+    const calls: string[] = [];
+    const runChangesetVersionFn = vi.fn(() => void calls.push("version"));
+    const syncRootVersionFn = vi.fn(() => {
+      calls.push("root");
+      return { updated: true, targetVersion: "0.6.1" };
+    });
+    const syncLockfileFn = vi.fn(() => void calls.push("lockfile"));
+
+    main({
+      repoRoot: "/tmp/repo",
+      runChangesetVersionFn,
+      syncRootVersionFn,
+      syncLockfileFn
+    });
+
+    expect(calls).toEqual(["version", "root", "lockfile"]);
   });
 
   it("entrypoint detection handles all branches", () => {
