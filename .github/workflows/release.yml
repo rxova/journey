@@ -37,7 +37,7 @@ jobs:
       pull-requests: write # the version PR
       id-token: write # npm trusted publishing (OIDC provenance)
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # Check out main by name (not the workflow_run's detached SHA) so the
           # changesets action knows its base branch when opening the version PR.
@@ -77,7 +77,7 @@ jobs:
     outputs:
       changed: ${{ steps.check.outputs.changed }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # By name, matching the release job: under workflow_run the default
           # ref is not guaranteed to be the branch this released from.
