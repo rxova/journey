@@ -43,6 +43,8 @@ export type RunChangesetVersionOptions = {
   stdio?: StdioOptions;
 };
 
+export type SyncLockfileOptions = RunChangesetVersionOptions;
+
 export type MainOptions = {
   repoRoot?: string;
   runChangesetVersionFn?: (options?: RunChangesetVersionOptions) => void;
@@ -52,6 +54,7 @@ export type MainOptions = {
       log?: Logger;
     }
   ) => SyncRootVersionResult;
+  syncLockfileFn?: (options?: SyncLockfileOptions) => void;
 };
 
 export function readJson<T extends JsonRecord = JsonRecord>(filePath: string): T {
@@ -118,13 +121,40 @@ export function runChangesetVersion({
   runner("pnpm", ["exec", "changeset", "version"], { cwd, stdio });
 }
 
+/**
+ * `changeset version` rewrites the `workspace:` ranges that the examples use to
+ * depend on the published packages, which makes every one of those specifiers
+ * stale in pnpm-lock.yaml. Nothing else in the release path regenerates it, so
+ * without this the version commit lands a lockfile that disagrees with the
+ * manifests it ships alongside and every `pnpm install --frozen-lockfile` in CI
+ * fails on the merge:
+ *
+ *   ERR_PNPM_OUTDATED_LOCKFILE ... @rxova/journey-core
+ *   (lockfile: workspace:1.0.0-rc.2, manifest: workspace:1.0.0-rc.3)
+ *
+ * That is what broke main on 1.0.0-rc.3 (#135). `--lockfile-only` is the whole
+ * point: the release job has already installed, so this rewrites the lockfile
+ * to match the freshly bumped manifests without touching node_modules.
+ */
+export function syncLockfile({
+  runner = execFileSync,
+  cwd = process.cwd(),
+  stdio = "inherit"
+}: SyncLockfileOptions = {}): void {
+  runner("pnpm", ["install", "--lockfile-only"], { cwd, stdio });
+}
+
 export function main({
   repoRoot = process.cwd(),
   runChangesetVersionFn = runChangesetVersion,
-  syncRootVersionFn = syncRootVersion
+  syncRootVersionFn = syncRootVersion,
+  syncLockfileFn = syncLockfile
 }: MainOptions = {}): SyncRootVersionResult {
   runChangesetVersionFn({ cwd: repoRoot, stdio: "inherit" });
-  return syncRootVersionFn(repoRoot);
+  const result = syncRootVersionFn(repoRoot);
+  // Last, so it picks up both the changeset bumps and the root sync above.
+  syncLockfileFn({ cwd: repoRoot, stdio: "inherit" });
+  return result;
 }
 
 export function isEntrypoint(
