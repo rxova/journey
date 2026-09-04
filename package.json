@@ -44,7 +44,7 @@
     "size": "turbo run size",
     "check:exports": "turbo run check:exports --filter=\"./packages/*\"",
     "attw": "turbo run attw --filter=\"./packages/*\"",
-    "audit:check": "pnpm audit --audit-level=high",
+    "audit:check": "pnpm audit --audit-level=high --ignore-registry-errors",
     "dedupe:check": "pnpm dedupe --check",
     "pack:smoke": "node --import tsx ./scripts/pack-smoke.ts",
     "verify": "node --import tsx ./scripts/verify.ts"

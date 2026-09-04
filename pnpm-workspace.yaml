@@ -112,3 +112,15 @@ minimumReleaseAgeExclude:
 allowBuilds:
   esbuild: true
   sharp: true
+
+# The advisory lookup is the one request whose result is advisory rather than
+# required, and pnpm's default schedule -- a 60s fetch timeout and two retries --
+# turns a registry outage into four minutes of waiting before it gives up. One
+# retry and a short timeout is the right amount of patience for it. These are
+# pnpm settings, so they belong here rather than being passed as flags at every
+# call site; `.npmrc` would not do, as pnpm reads only npm-compatible settings
+# such as `registry` and auth from there.
+fetchTimeout: 15000
+fetchRetries: 1
+fetchRetryMintimeout: 5000
+fetchRetryMaxtimeout: 10000

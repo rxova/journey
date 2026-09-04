@@ -1,9 +1,22 @@
 name: Setup pnpm
 description: Install pnpm (version from the packageManager field) and Node.js with pnpm caching.
 
-# Replaces the corepack enable / corepack prepare pnpm@<version+sha512> / setup-node
-# block that every job repeated verbatim — six copies of a pinned hash that had to
-# be edited together on every pnpm bump.
+# pnpm/action-setup reads `packageManager` from package.json itself, so the pnpm
+# version is pinned in exactly one place. An empty registry-url is ignored, which
+# is what lets one step cover both the ordinary and the publishing case.
+#
+# The install itself is cached, because pnpm/action-setup has no cache of its
+# own: it deletes its destination and runs `npm ci` on every job, then
+# `pnpm self-update` to the requested version — two npm registry round trips,
+# in every job. That is invisible while the registry is healthy (~11s) and
+# dominates the run when it is not: this step was measured at 7m06s during a
+# registry outage, while `actions/setup-node` next to it restored a 73MB pnpm
+# store from cache in three seconds.
+#
+# Restoring `~/setup-pnpm` removes that dependency for every run after the
+# first. It is a fast path, never a requirement: the restored install is probed
+# for the exact version wanted, and anything unexpected falls through to the
+# ordinary install rather than failing.
 
 inputs:
   node-version:
@@ -12,16 +25,106 @@ inputs:
     default: "24"
   registry-url:
     description: >-
-      npm registry to configure auth against. Only the release job needs this —
-      it is what writes the .npmrc that Trusted Publishing authenticates with.
+      npm registry to configure auth against. Only the publishing jobs need
+      this — it is what writes the .npmrc that Trusted Publishing authenticates
+      with.
     required: false
     default: ""
 
 runs:
   using: composite
   steps:
+    # The cache key has to name the version being cached, and `packageManager`
+    # is where that lives. The `+<integrity>` suffix the spec allows is stripped,
+    # the same way pnpm/action-setup strips it.
+    - name: Read the pnpm version
+      id: pnpm-version
+      shell: bash
+      run: |
+        version=$(node -p "
+          const pm = require('./package.json').packageManager ?? '';
+          pm.startsWith('pnpm@') ? pm.slice('pnpm@'.length).split('+')[0] : ''
+        ")
+        if [ -z "$version" ]; then
+          echo "::warning::no pnpm version in packageManager; skipping the install cache"
+        fi
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+
+    # Windows is deliberately left on the ordinary path. The fast path has to
+    # put a directory on PATH itself, and a bash-style path written to
+    # $GITHUB_PATH does not resolve for the non-bash steps that follow it there.
+    - name: Decide whether the install can be cached
+      id: cacheable
+      shell: bash
+      run: |
+        if [ -n "${{ steps.pnpm-version.outputs.version }}" ] && [ "$RUNNER_OS" != "Windows" ]; then
+          echo 'yes=true' >> "$GITHUB_OUTPUT"
+        else
+          echo 'yes=false' >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Restore the pnpm install
+      if: steps.cacheable.outputs.yes == 'true'
+      uses: actions/cache@v6
+      with:
+        path: ~/setup-pnpm
+        key: setup-pnpm-${{ runner.os }}-${{ steps.pnpm-version.outputs.version }}
+
+    # Probed rather than trusted. A restored directory is only used when it
+    # actually runs and reports the version asked for, so a partial restore, a
+    # layout change in a future pnpm/action-setup, or a key collision costs one
+    # ordinary install instead of a job that fails somewhere further down.
+    - name: Probe the restored install
+      id: restored
+      if: steps.cacheable.outputs.yes == 'true'
+      shell: bash
+      env:
+        WANT: ${{ steps.pnpm-version.outputs.version }}
+      run: |
+        home="$HOME/setup-pnpm/node_modules/.bin"
+        usable=false
+        # self-update writes the requested version into PNPM_HOME/bin, leaving
+        # the bootstrap it was updated from in PNPM_HOME. Either can be the one
+        # that reports the right version, so both are tried.
+        for candidate in "$home/bin/pnpm" "$home/pnpm"; do
+          if [ -x "$candidate" ] && [ "$("$candidate" --version 2>/dev/null)" = "$WANT" ]; then
+            usable=true
+            break
+          fi
+        done
+        echo "usable=$usable" >> "$GITHUB_OUTPUT"
+        if [ "$usable" = true ]; then
+          echo "restored pnpm $WANT from cache"
+        fi
+
+    # Mirrors what pnpm/action-setup exports, in its order: it calls
+    # addPath(PNPM_HOME) and then addPath(PNPM_HOME/bin), and $GITHUB_PATH
+    # prepends, so writing them in that order leaves `bin` ahead — which is
+    # where self-update put the requested version.
+    - name: Use the restored install
+      if: steps.restored.outputs.usable == 'true'
+      shell: bash
+      run: |
+        home="$HOME/setup-pnpm/node_modules/.bin"
+        echo "PNPM_HOME=$home" >> "$GITHUB_ENV"
+        echo "$home" >> "$GITHUB_PATH"
+        echo "$home/bin" >> "$GITHUB_PATH"
+
+    # The ordinary path, taken on a cache miss. pnpm/action-setup installs pnpm
+    # with npm, so this is the one step in the job that must reach the npm
+    # registry before anything is cached, and it is where a registry outage was
+    # measured stalling for 4m52s. npm's default is 2 retries with a 5-minute
+    # timeout each; unlike pnpm, npm does honour these as environment
+    # variables, so the wait is capped here rather than left to the job
+    # timeout. A cold install is worth ~40s of patience, not five minutes.
     - name: Setup pnpm
+      if: steps.restored.outputs.usable != 'true'
       uses: pnpm/action-setup@v6
+      env:
+        npm_config_fetch_timeout: "20000"
+        npm_config_fetch_retries: "1"
+        npm_config_fetch_retry_mintimeout: "5000"
+        npm_config_fetch_retry_maxtimeout: "10000"
 
     - name: Setup Node
       uses: actions/setup-node@v7
@@ -30,8 +133,18 @@ runs:
         registry-url: ${{ inputs.registry-url }}
         cache: pnpm
 
+    # Asserted, not just reported. The fast path resolves pnpm itself, and the
+    # failure it could cause — silently running a different pnpm than the one
+    # `packageManager` pins — is exactly the kind that surfaces as something
+    # else entirely three steps later.
     - name: Report versions
       shell: bash
+      env:
+        WANT: ${{ steps.pnpm-version.outputs.version }}
       run: |
         node --version
         pnpm --version
+        if [ -n "$WANT" ] && [ "$(pnpm --version)" != "$WANT" ]; then
+          echo "::error::pnpm $(pnpm --version) is on PATH but packageManager pins $WANT"
+          exit 1
+        fi

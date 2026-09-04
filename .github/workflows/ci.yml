@@ -144,7 +144,14 @@ jobs:
       # `audit:check` is deliberately not a Turbo task: its verdict depends on
       # the upstream advisory database, which changes without any file here
       # changing, so a cached pass could replay over a fresh CVE.
+      #
+      # `--ignore-registry-errors` keeps an unreachable advisory endpoint from
+      # failing the job: pnpm exits 0 when the registry was at fault and leaves
+      # every other failure alone. How long it waits first is bounded by
+      # `fetchTimeout` / `fetchRetries` in pnpm-workspace.yaml; `timeout-minutes`
+      # is the backstop for pnpm not coming back at all.
       - name: Audit dependencies
+        timeout-minutes: 5
         run: pnpm run audit:check
       - name: Check dependency dedupe
         run: pnpm run dedupe:check
