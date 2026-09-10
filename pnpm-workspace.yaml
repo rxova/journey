@@ -81,6 +81,23 @@ overrides:
   # server — so nothing here parses a URI an outsider controls.
   "fast-uri@>=3.0.0 <3.1.6": ">=3.1.6 <4.0.0"
 
+  # The same widening again, plus two packages that had no entry yet. `next` and
+  # `sharp` already had pins here; both advisories moved their patched range up,
+  # so the existing floors went stale exactly as the js-yaml and fast-uri notes
+  # above describe. `svgo` had only a 3.x entry — the tree moved to the 4.x line
+  # once Astro started pulling it, and that line has its own advisory. `astro`
+  # and `smol-toml` are new: both arrive under apps/docs, and `smol-toml` is
+  # Astro's TOML frontmatter parser, so nothing here parses a document an
+  # outsider controls. All build-time only, none published in a package, but
+  # `audit:check` gates on high and these are high or critical.
+  #
+  # Closed upper bounds per major, matching every other entry in this file.
+  "astro@<7.2.8": ">=7.2.8 <8.0.0"
+  "smol-toml@<=1.7.0": ">=1.7.1 <2.0.0"
+  "svgo@>=4.0.0 <4.1.0": ">=4.1.0 <5.0.0"
+  "sharp@<0.35.4": ">=0.35.4 <0.36.0"
+  "next@>=16.0.0 <16.3.3": ">=16.3.3 <17.0.0"
+
   # GHSA-73wf-gq98-2v4g / GHSA-c83g-rgw3-j3cx: browserslist resolved to 4.28.1
   # and both advisories patch at 4.28.7. It is build-time only — the CSS
   # pipeline's target resolution, never shipped in a published package — but
