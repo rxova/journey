@@ -41,8 +41,6 @@ rename.
   · [React: quickstart](https://rxova.org/packages/journey/react/quickstart)
 - [Runtime reference](https://rxova.org/packages/journey/core/runtime-reference):
   the canonical snapshot, field by field — read this before writing calling code.
-- [Compared to the alternatives](https://rxova.org/packages/journey/core/comparison):
-  XState, hand-rolled wizards, and where this library is the wrong answer.
 - [Async and guards](https://rxova.org/packages/journey/core/async) ·
   [History and the timeline](https://rxova.org/packages/journey/core/history)
   · [Plugins](https://rxova.org/packages/journey/core/plugins/overview/)

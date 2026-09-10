@@ -4,7 +4,7 @@ title: "Panel Guide"
 
 ## Timeline Inspector
 
-The panel uses a Redux-style inspector layout:
+The panel uses an inspector layout:
 
 - Left side: timeline rows (`@@INIT`, `SNAPSHOT/<step>`, `COMMAND/<type>`, `ERROR/<type|requestId>`).
 - Right side: tabs for `Action`, `State`, and `Diff`.

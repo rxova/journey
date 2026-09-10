@@ -142,7 +142,6 @@ export default defineConfig({
                   "core/history"
                 ]
               },
-              "core/comparison",
               "core/faq",
               "core/releases"
             ]
