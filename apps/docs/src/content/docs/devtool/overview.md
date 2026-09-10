@@ -47,7 +47,7 @@ For a full payload example, see [Bridge API](../bridge/bridge-api.md).
 
 Panel supports:
 
-- Redux-style timeline inspector rows with local selection
+- Timeline inspector rows with local selection
 - follow-latest toggle and point-in-time `Action` / `State` / `Diff` inspection
 
 Inspector selection does not mutate runtime machine state.
