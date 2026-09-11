@@ -213,10 +213,11 @@ function ShippingStep() {
 }
 ```
 
-The hook is a thin shell over Core's
-`machine.navigate.registerNextStepInterceptor(stepId, work)`: the registration lasts while the
-calling component is mounted (it unregisters on unmount), and
-`machine.navigate.goToNextStep()` runs the work when no explicit work is passed. `run` happens
+The registration lasts while the calling component is mounted (it unregisters on unmount), and the
+bundle's `goToNextStep()` runs it when no explicit work is passed. The registry is the bundle's, not
+the machine's — Core keeps exactly one channel for pre-move async, `goToNextStep(work)`, and
+register-on-mount is a React lifetime concern. The bundle's `navigate` and its `machine` both expose
+the wrapper, so every path reached through the bundle honours the handlers. `run` happens
 before movement; `commit` publishes its updates atomically with movement. A failed run leaves the
 source step and context in place, and the error lands in `snapshot.currentStep.async.error` until
 `machine.async.clearError()`; `snapshot.machine.isLoading` is `true` while the work is pending.

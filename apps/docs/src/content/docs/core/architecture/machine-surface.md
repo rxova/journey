@@ -10,7 +10,7 @@ machine
   getSnapshot()
   controls.*          start, pause, resume, complete, terminate, restart
   navigate.*          goToStepById, goToNextStep, goToPreviousStep,
-                      goToLastVisitedStep, registerNextStepInterceptor
+                      goToLastVisitedStep
   subscriptions.*     subscribe, subscribeEvent
   context.update()
   async.clearError()

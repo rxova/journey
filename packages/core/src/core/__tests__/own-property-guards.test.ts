@@ -65,14 +65,6 @@ describe("step-id guards reject inherited properties", () => {
       expect(snapshot.history.timeline).toEqual(["a"]);
     });
 
-    it("is rejected by registerNextStepInterceptor", async () => {
-      const machine = await startedLinear();
-
-      expect(() =>
-        machine.navigate.registerNextStepInterceptor(key as "a", { run: () => undefined })
-      ).toThrow(/references unknown step/);
-    });
-
     it("is rejected in a persisted timeline, leaving a fresh start", async () => {
       const storage = memoryStorage(
         JSON.stringify({

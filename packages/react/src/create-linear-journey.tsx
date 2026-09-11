@@ -1,8 +1,19 @@
 import React from "react";
+import { warnInDevelopment } from "@rxova/journey-common/dev";
 import { createLinearJourney as coreCreateLinearJourney } from "@rxova/journey-core";
 import { createAutoStartHook, createJourneyBindings } from "./react.helpers";
 import { useSafeLayoutEffect } from "./use-safe-layout-effect";
 import type { AnyJourneyPlugin, LinearStepIdOf, LinearStepInput } from "@rxova/journey-core";
+/**
+ * The generics-erased handler shape the registry stores. `unknown` args rather
+ * than `never`: the registry is written by `useStepHandler`, which has the
+ * concrete types, and read by the wrapper, which does not.
+ */
+type AnyStepHandler = {
+  run: (args: never) => unknown;
+  commit?: (args: never) => void;
+};
+
 import type {
   LinearJourneyBundle,
   LinearJourneyBundleDefinition,
@@ -104,9 +115,40 @@ export const createLinearJourney = <
 
   const useAutoStart = createAutoStartHook(machine, options?.autoStart === undefined);
 
+  /**
+   * Per-step handlers registered by mounted components, stacked so a remount
+   * that overlaps an unmount does not strand the survivor: the last entry wins
+   * and each caller removes only its own.
+   *
+   * This registry lives in the bundle rather than in core. Core keeps exactly
+   * one channel for pre-move async — `goToNextStep(work)` — and register-on-
+   * mount is a React lifetime concern, so the bundle wraps `goToNextStep` to
+   * consult it. The wrapper is what `bundle.navigate` and `bundle.machine`
+   * expose, so every path reached through the bundle honours the handlers.
+   */
+  const stepHandlers = new Map<string, { current: AnyStepHandler }[]>();
+
+  type NextStepWork = Parameters<Machine["navigate"]["goToNextStep"]>[0];
+
+  const goToNextStep = ((work?: NextStepWork) => {
+    if (work) return machine.navigate.goToNextStep(work);
+    const stepId = machine.getSnapshot().currentStep?.id;
+    const stack = stepId === undefined ? undefined : stepHandlers.get(stepId);
+    const registered = stack?.[stack.length - 1];
+    if (!registered) return machine.navigate.goToNextStep();
+    const handler = registered.current as unknown as NonNullable<NextStepWork>;
+    return machine.navigate.goToNextStep({
+      run: (args) => handler.run(args),
+      commit: (args) => handler.commit?.(args)
+    } as NonNullable<NextStepWork>);
+  }) as Machine["navigate"]["goToNextStep"];
+
+  const navigate: Machine["navigate"] = { ...machine.navigate, goToNextStep };
+  const boundMachine: Machine = { ...machine, navigate };
+
   return {
     ...createJourneyBindings<Machine, TContext, TStepId, Snapshot>(
-      machine,
+      boundMachine,
       name ?? "LinearJourney",
       useAutoStart
     ),
@@ -123,16 +165,31 @@ export const createLinearJourney = <
         handlerRef.current = handler;
       });
       useSafeLayoutEffect(() => {
-        const work: LinearJourneyStepHandler<TContext, TResult, TStepId> = {
-          run: (args) => handlerRef.current.run(args),
-          commit: (args) => handlerRef.current.commit?.(args)
+        const entry = handlerRef as unknown as { current: AnyStepHandler };
+        const stack = stepHandlers.get(stepId) ?? [];
+        if (stack.length > 0) {
+          // Two components mounted against one step is almost always a mistake:
+          // only the last registration runs, so the other's work silently never
+          // fires. StrictMode's double-mount is exempt — it unregisters first.
+          warnInDevelopment(
+            `journey: shadowed a live registration for step "${stepId}" — last registration wins.`
+          );
+        }
+        stack.push(entry);
+        stepHandlers.set(stepId, stack);
+        return () => {
+          const live = stepHandlers.get(stepId);
+          if (!live) return;
+          const index = live.lastIndexOf(entry);
+          if (index >= 0) live.splice(index, 1);
+          if (!live.length) stepHandlers.delete(stepId);
         };
-        return machine.navigate.registerNextStepInterceptor(stepId, work);
       }, [stepId]);
-      // Declared last on purpose: the interceptor must be registered before the
+      // Declared last on purpose: the handler must be registered before the
       // start effect runs, so it can gate a navigation from the very first step.
       useAutoStart();
     },
-    navigate: machine.navigate
+    machine: boundMachine,
+    navigate
   };
 };

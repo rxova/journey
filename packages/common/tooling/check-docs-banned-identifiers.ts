@@ -98,6 +98,10 @@ export const BANNED_IDENTIFIERS: readonly BannedIdentifier[] = [
   // than a factory returning three.
   { name: "createGraphJourneyBuilder", pattern: /\bcreateGraphJourneyBuilder\b/ },
   { name: "JourneyTypeBag", pattern: /\bJourneyTypeBag\b/ },
+  // Core keeps one channel for pre-move async, `goToNextStep(work)`. The
+  // register-on-mount variant is React's `useStepHandler`, and a graph declares
+  // its async on the step under the triggering event.
+  { name: "registerNextStepInterceptor", pattern: /\bregisterNextStepInterceptor\b/ },
   // `useJourney` is deliberately NOT banned: the rc-era hook of that name was
   // removed, but the name was then reused for the current per-component
   // ownership hook. Banning it kept the shipping API out of the hand-written

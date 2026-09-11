@@ -25,20 +25,14 @@ await machine.navigate.goToNextStep({
 `run` may be asynchronous. `commit` is synchronous and its updates publish atomically with the
 step change. A failure leaves both the current step and context unchanged.
 
-Work can also be registered per step instead of passed at each call site:
+`goToNextStep(work?)` is the only place a linear journey takes pre-move async. Backward navigation
+and `goToStepById` take none: update the context and then move.
 
-```ts
-const stop = machine.navigate.registerNextStepInterceptor("payment", {
-  run: async ({ snapshot }) => authorize(snapshot.context.cardToken),
-  commit: ({ result, updateContext }) => {
-    updateContext((context) => ({ ...context, authorizationId: result.id }));
-  }
-});
-```
+In React, `useStepHandler(stepId, work)` registers the same work for as long as the calling
+component is mounted, and the bundle's `goToNextStep()` runs it when no explicit work is passed.
 
-`goToNextStep()` consults the registration for the current step when no explicit work is passed.
-The last registration for a step wins, the returned function removes only its own registration,
-and an unknown step id throws.
+A graph declares its async on the step instead, under the event that triggers it — see
+[Transitions syntax](./api/transitions-syntax).
 
 ## Work after a move
 

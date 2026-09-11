@@ -1,23 +1,40 @@
 import { describe, expect, it, vi } from "vitest";
-import { createGraphJourney, withGraphTypes } from "@rxova/journey-core";
+import { withGraphTypes, type GraphStep } from "@rxova/journey-core";
 import { flush, wait } from "@rxova/journey-core/testing";
 
 type Ctx = { method: "email" | "sms" | null; attempts: number };
+type SubmitResult = { method: "email" | "sms" | null } | undefined;
+
+type SubmitBag = {
+  context: Ctx;
+  stepId: "login" | "email" | "sms" | "blocked";
+  events: { type: "SUBMIT" } | { type: "GIVE_UP" };
+  results: { SUBMIT: SubmitResult };
+};
+
+/** The declared-work arm of an `on` entry — the object form, not the shorthands. */
+type SubmitWork = Extract<NonNullable<GraphStep<SubmitBag>["on"]>["SUBMIT"], { run: unknown }>;
+
+const candidates = [
+  { to: "email", when: ({ context }) => context.method === "email" },
+  { to: "sms", when: ({ context }) => context.method === "sms" }
+] satisfies NonNullable<GraphStep<SubmitBag>["on"]>["SUBMIT"];
 
 /**
  * Routing depends entirely on `method`, which starts null — so no candidate is
- * enabled until some work has supplied it. That is the shape the work-carrying
- * send exists for: the async produces the fact the guards route on.
+ * enabled until some work has supplied it. That is what declared work exists
+ * for: the async produces the fact the guards route on.
+ *
+ * The work is a parameter because each test needs its own run/commit, but it is
+ * always declared on the step: that is the only channel a graph has now that
+ * `send` no longer takes work.
  */
-async function startedGraph(context: Partial<Ctx> = {}) {
-  const machine = createGraphJourney({
+async function startedGraph(context: Partial<Ctx> = {}, submitWork?: SubmitWork) {
+  const machine = withGraphTypes<SubmitBag>()({
     steps: {
       login: {
         on: {
-          SUBMIT: [
-            { to: "email", when: ({ context: c }) => (c as Ctx).method === "email" },
-            { to: "sms", when: ({ context: c }) => (c as Ctx).method === "sms" }
-          ],
+          SUBMIT: submitWork ? { ...submitWork, candidates } : candidates,
           GIVE_UP: "blocked"
         }
       },
@@ -33,24 +50,27 @@ async function startedGraph(context: Partial<Ctx> = {}) {
   return machine;
 }
 
-describe("send with work", () => {
-  it("stages context before routing, so guards decide on the work's result", async () => {
-    const machine = await startedGraph();
+describe("declared work on an event", () => {
+  it("stages context before routing, so guards decide on what the work staged", async () => {
+    const machine = await startedGraph(
+      {},
+      {
+        run: async () => {
+          await wait(1);
+          return { method: "sms" as const };
+        },
+        commit: ({ result, updateContext }) =>
+          updateContext((c) => ({ ...c, method: result?.method ?? null })),
+        candidates
+      }
+    );
 
     // SUBMIT is declared from login but has no enabled candidate up front:
     // method is still null, so both its guards fail.
     expect(machine.getSnapshot().declaredEvents).toContain("SUBMIT");
     expect(machine.getSnapshot().availableEvents).not.toContain("SUBMIT");
 
-    const result = await machine.send("SUBMIT", {
-      run: async () => {
-        await wait(1);
-        return { method: "sms" as const };
-      },
-      commit: ({ result: r, updateContext }) => {
-        updateContext((c) => ({ ...(c as Ctx), method: r.method }));
-      }
-    });
+    const result = await machine.send("SUBMIT");
 
     expect(result).toEqual({ ok: true, from: "login", to: "sms" });
     expect(machine.getSnapshot().currentStep?.id).toBe("sms");
@@ -58,16 +78,20 @@ describe("send with work", () => {
   });
 
   it("holds position with an unresolved target during the working phase", async () => {
-    const machine = await startedGraph();
+    const machine = await startedGraph(
+      {},
+      {
+        run: async () => {
+          await wait(5);
+          return { method: "email" as const };
+        },
+        commit: ({ result, updateContext }) =>
+          updateContext((c) => ({ ...c, method: result?.method ?? null })),
+        candidates
+      }
+    );
 
-    const pending = machine.send("SUBMIT", {
-      run: async () => {
-        await wait(5);
-        return { method: "email" as const };
-      },
-      commit: ({ result: r, updateContext }) =>
-        updateContext((c) => ({ ...(c as Ctx), method: r.method }))
-    });
+    const pending = machine.send("SUBMIT");
 
     await flush();
     const working = machine.getSnapshot();
@@ -83,15 +107,17 @@ describe("send with work", () => {
   });
 
   it("rolls back the staged context when no candidate is enabled", async () => {
-    const machine = await startedGraph();
-
-    const result = await machine.send("SUBMIT", {
-      run: async () => ({ method: null }),
-      commit: ({ updateContext }) => {
+    const machine = await startedGraph(
+      {},
+      {
+        run: async () => ({ method: null }),
         // Real work, real data — but it routes nowhere.
-        updateContext((c) => ({ ...(c as Ctx), attempts: 7 }));
+        commit: ({ updateContext }) => updateContext((c) => ({ ...c, attempts: 7 })),
+        candidates
       }
-    });
+    );
+
+    const result = await machine.send("SUBMIT");
 
     expect(result).toMatchObject({ ok: false, reason: "no-enabled-transition" });
     expect(machine.getSnapshot().currentStep?.id).toBe("login");
@@ -102,11 +128,11 @@ describe("send with work", () => {
   });
 
   it("emits navigationBlocked on the rolled-back no-match", async () => {
-    const machine = await startedGraph();
+    const machine = await startedGraph({}, { run: () => undefined, candidates });
     const blocked = vi.fn();
     machine.subscriptions.subscribeEvent("navigationBlocked", blocked);
 
-    await machine.send("SUBMIT", { run: () => undefined });
+    await machine.send("SUBMIT");
 
     expect(blocked).toHaveBeenCalledTimes(1);
     expect(blocked.mock.calls[0]?.[0]).toMatchObject({
@@ -116,17 +142,21 @@ describe("send with work", () => {
   });
 
   it("a throwing run commits nothing and reports the error", async () => {
-    const machine = await startedGraph();
+    const failure = new Error("network down");
+    const machine = await startedGraph(
+      {},
+      {
+        run: async () => {
+          throw failure;
+        },
+        commit: ({ updateContext }) => updateContext((c) => ({ ...c, attempts: 99 })),
+        candidates
+      }
+    );
     const onError = vi.fn();
     machine.subscriptions.subscribeEvent("error", onError);
 
-    const failure = new Error("network down");
-    const result = await machine.send("SUBMIT", {
-      run: async () => {
-        throw failure;
-      },
-      commit: ({ updateContext }) => updateContext((c) => ({ ...(c as Ctx), attempts: 99 }))
-    });
+    const result = await machine.send("SUBMIT");
 
     expect(result).toMatchObject({ ok: false, reason: "error", error: failure });
     expect(machine.getSnapshot().currentStep?.id).toBe("login");
@@ -135,16 +165,20 @@ describe("send with work", () => {
   });
 
   it("rejects a concurrent send while work is in flight", async () => {
-    const machine = await startedGraph();
+    const machine = await startedGraph(
+      {},
+      {
+        run: async () => {
+          await wait(5);
+          return { method: "email" as const };
+        },
+        commit: ({ result, updateContext }) =>
+          updateContext((c) => ({ ...c, method: result?.method ?? null })),
+        candidates
+      }
+    );
 
-    const first = machine.send("SUBMIT", {
-      run: async () => {
-        await wait(5);
-        return { method: "email" as const };
-      },
-      commit: ({ result: r, updateContext }) =>
-        updateContext((c) => ({ ...(c as Ctx), method: r.method }))
-    });
+    const first = machine.send("SUBMIT");
     await flush();
 
     // Distinct from no-enabled-transition: the machine is busy, not unrouted.
@@ -155,16 +189,20 @@ describe("send with work", () => {
   });
 
   it("bails out when the machine is terminated mid-work", async () => {
-    const machine = await startedGraph();
+    const machine = await startedGraph(
+      {},
+      {
+        run: async () => {
+          await wait(5);
+          return { method: "email" as const };
+        },
+        commit: ({ result, updateContext }) =>
+          updateContext((c) => ({ ...c, method: result?.method ?? null })),
+        candidates
+      }
+    );
 
-    const pending = machine.send("SUBMIT", {
-      run: async () => {
-        await wait(5);
-        return { method: "email" as const };
-      },
-      commit: ({ result: r, updateContext }) =>
-        updateContext((c) => ({ ...(c as Ctx), method: r.method }))
-    });
+    const pending = machine.send("SUBMIT");
     await flush();
 
     machine.controls.terminate();
@@ -173,18 +211,17 @@ describe("send with work", () => {
     expect(machine.getSnapshot().context).toMatchObject({ method: null });
   });
 
-  it("work is optional — send without it keeps the original behaviour", async () => {
+  it("an event with no declared work routes straight off its candidates", async () => {
     const machine = await startedGraph({ method: "email" });
     expect(await machine.send("SUBMIT")).toEqual({ ok: true, from: "login", to: "email" });
   });
 
   it("a commit returning a promise is rejected as an error", async () => {
-    const machine = await startedGraph();
-    const result = await machine.send("SUBMIT", {
-      run: () => undefined,
-      commit: (() => Promise.resolve()) as never
-    });
-    expect(result).toMatchObject({ ok: false, reason: "error" });
+    const machine = await startedGraph(
+      {},
+      { run: () => undefined, commit: (() => Promise.resolve()) as never, candidates }
+    );
+    expect(await machine.send("SUBMIT")).toMatchObject({ ok: false, reason: "error" });
   });
 });
 

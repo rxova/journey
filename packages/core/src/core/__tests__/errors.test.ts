@@ -116,16 +116,6 @@ describe("creation-time failures carry a code", () => {
 });
 
 describe("runtime failures carry a code", () => {
-  it("registering an interceptor for an unknown step", async () => {
-    const machine = await startedLinear();
-
-    expect(
-      codeOf(() =>
-        machine.navigate.registerNextStepInterceptor("zzz" as "a", { run: () => undefined })
-      )
-    ).toBe("unknown-step");
-  });
-
   it("navigation work whose commit returns a promise", async () => {
     const machine = await startedLinear();
 

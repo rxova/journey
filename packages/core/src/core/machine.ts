@@ -28,15 +28,9 @@ export function buildMachineSurface(
     dispose: () => runtime.dispose(),
     navigate: {
       goToStepById: (id: string) => runtime.goToStepById(id),
-      goToPreviousStep: ((nOrWork?: number | AnyNavigationWork, work?: AnyNavigationWork) =>
-        runtime.goToPreviousStep(nOrWork, work)) as JourneyMachineBase<
-        unknown,
-        string
-      >["navigate"]["goToPreviousStep"],
+      goToPreviousStep: (n?: number) => runtime.goToPreviousStep(n),
       goToNextStep: (work) => runtime.goToNextStep(work as AnyNavigationWork | undefined),
-      goToLastVisitedStep: () => runtime.goToLastVisitedStep(),
-      registerNextStepInterceptor: (stepId, work) =>
-        runtime.registerNextStepInterceptor(stepId, work as AnyNavigationWork)
+      goToLastVisitedStep: () => runtime.goToLastVisitedStep()
     },
     subscriptions: {
       subscribe: (listener: () => void): Unsubscribe => runtime.store.subscribe(listener),

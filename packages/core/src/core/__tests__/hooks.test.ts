@@ -75,21 +75,22 @@ describe("step hooks", () => {
     });
   });
 
-  it("runs the same work contract before backward navigation", async () => {
+  it("work args carry the direction and both step ids", async () => {
+    // Backward navigation no longer takes work — `goToNextStep` is the one
+    // channel — so the direction-aware contract is asserted on a forward move.
     const machine = createLinearJourney({ steps: ["a", "b"], context: { saved: false } });
     machine.controls.start();
     await flush();
-    await machine.navigate.goToNextStep();
 
     expect(
-      await machine.navigate.goToPreviousStep({
+      await machine.navigate.goToNextStep({
         run: ({ direction, from, to }) => ({ direction, from, to }),
         commit: ({ result, updateContext }) => {
-          expect(result).toEqual({ direction: "backward", from: "b", to: "a" });
+          expect(result).toEqual({ direction: "forward", from: "a", to: "b" });
           updateContext((context) => ({ ...context, saved: true }));
         }
       })
-    ).toEqual({ ok: true, from: "b", to: "a" });
+    ).toEqual({ ok: true, from: "a", to: "b" });
     expect(machine.getSnapshot().context.saved).toBe(true);
   });
 

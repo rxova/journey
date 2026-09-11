@@ -161,7 +161,6 @@ export function createGraphJourney<
   TEvents,
   TMeta,
   TPlugins,
-  THandlers,
   CompletePayloadOf<TTerminationPayloads>,
   TerminatePayloadOf<TTerminationPayloads>
 > {
@@ -209,19 +208,9 @@ export function createGraphJourney<
     ]
   });
 
-  // `send(type, work)` and `send(type, payload)` are told apart structurally:
-  // work is the only second argument carrying a `run` function.
-  const isSendWork = (candidate: unknown): candidate is AnySendWork =>
-    typeof candidate === "object" &&
-    candidate !== null &&
-    typeof (candidate as { run?: unknown }).run === "function";
-
   const machine = {
     ...buildMachineSurface(runtime),
-    send: (type: string, payloadOrWork?: unknown, work?: AnySendWork) =>
-      isSendWork(payloadOrWork)
-        ? runtime.send(type, undefined, payloadOrWork)
-        : runtime.send(type, payloadOrWork, work)
+    send: (type: string, payload?: unknown) => runtime.send(type, payload)
   };
   return machine as unknown as GraphJourneyMachine<
     TContext,
@@ -229,7 +218,6 @@ export function createGraphJourney<
     TEvents,
     TMeta,
     TPlugins,
-    THandlers,
     CompletePayloadOf<TTerminationPayloads>,
     TerminatePayloadOf<TTerminationPayloads>
   >;
@@ -261,14 +249,7 @@ export const withGraphTypes =
   <const TPlugins extends readonly AnyJourneyPlugin[] = readonly []>(
     definition: GraphDefinition<TBag>,
     options: GraphJourneyOptions<HandlersOf<TBag>, TPlugins, TBag["stepId"]> = {}
-  ): GraphJourneyMachine<
-    TBag["context"],
-    TBag["stepId"],
-    TBag["events"],
-    MetaOf<TBag>,
-    TPlugins,
-    HandlersOf<TBag>
-  > =>
+  ): GraphJourneyMachine<TBag["context"], TBag["stepId"], TBag["events"], MetaOf<TBag>, TPlugins> =>
     createGraphJourney(
       definition as unknown as Parameters<typeof createGraphJourney>[0],
       options as unknown as Parameters<typeof createGraphJourney>[1]
@@ -277,6 +258,5 @@ export const withGraphTypes =
       TBag["stepId"],
       TBag["events"],
       MetaOf<TBag>,
-      TPlugins,
-      HandlersOf<TBag>
+      TPlugins
     >;

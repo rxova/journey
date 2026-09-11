@@ -47,8 +47,10 @@ export function linearTypes() {
       updateContext((context) => ({ n: context.n + result.amount }));
     }
   });
+  void machine.navigate.goToPreviousStep();
+  void machine.navigate.goToPreviousStep(2);
+  // @ts-expect-error backward navigation takes a step count, never work
   void machine.navigate.goToPreviousStep({ run: () => Promise.resolve() });
-  void machine.navigate.goToPreviousStep(2, { run: () => Promise.resolve() });
 
   // linear machines have no events — send's absence is the discriminant
   // @ts-expect-error linear machines expose no send verb

@@ -1,4 +1,4 @@
-import { isDevelopmentEnvironment, warnInDevelopment } from "@rxova/journey-common/dev";
+import { isDevelopmentEnvironment } from "@rxova/journey-common/dev";
 import { JourneyError } from "./errors";
 import {
   eventWorkKey,
@@ -119,7 +119,6 @@ export class JourneyRuntime {
    * for component-scoped wrappers, and dropping to "ungated" when the newer one
    * unmounts would fail silently.
    */
-  private readonly nextStepInterceptors = new Map<string, AnyNavigationWork[]>();
   private readonly transitionListeners = new Set<TransitionListener>();
   private readonly disposeCallbacks: (() => void)[] = [];
   private readonly snapshotDerivers = new Map<
@@ -210,7 +209,6 @@ export class JourneyRuntime {
         // dispose callbacks must never break teardown
       }
     }
-    this.nextStepInterceptors.clear();
     this.transitionListeners.clear();
     this.store.dispose();
   }
@@ -253,77 +251,37 @@ export class JourneyRuntime {
     return this.runNavigation(id, { kind: "append" }, null, null);
   }
 
-  goToPreviousStep(
-    nOrWork: number | AnyNavigationWork = 1,
-    suppliedWork?: AnyNavigationWork
-  ): Promise<NavigationResult> {
+  goToPreviousStep(n = 1): Promise<NavigationResult> {
     const rejected = this.checkNavigable();
     if (rejected) return this.blocked(rejected, null);
     if (this.currentIndex <= 0) return this.blocked({ ok: false, reason: "out-of-bounds" }, null);
-    const n = typeof nOrWork === "number" ? nOrWork : 1;
-    const work = typeof nOrWork === "number" ? suppliedWork : nOrWork;
     const index = Math.max(0, this.currentIndex - Math.max(1, Math.floor(n)));
     const target = this.timeline[index] as string;
-    return this.runNavigation(target, { kind: "pointer", index }, null, null, work, "backward");
+    return this.runNavigation(
+      target,
+      { kind: "pointer", index },
+      null,
+      null,
+      undefined,
+      "backward"
+    );
   }
 
   goToNextStep(work?: AnyNavigationWork): Promise<NavigationResult> {
     const rejected = this.checkNavigable();
     if (rejected) return this.blocked(rejected, null);
-    const registered = this.nextStepInterceptors.get(this.currentStepId() as string);
-    const effectiveWork = work ?? registered?.[registered.length - 1];
     if (this.currentIndex < this.timeline.length - 1) {
       const index = this.currentIndex + 1;
       const target = this.timeline[index] as string;
-      return this.runNavigation(
-        target,
-        { kind: "pointer", index },
-        null,
-        null,
-        effectiveWork,
-        "forward"
-      );
+      return this.runNavigation(target, { kind: "pointer", index }, null, null, work, "forward");
     }
     if (this.config.kind === "linear") {
       const orderIndex = this.config.stepIds.indexOf(this.currentStepId() ?? "");
       const target = this.config.stepIds[orderIndex + 1];
       if (target === undefined) return this.blocked({ ok: false, reason: "out-of-bounds" }, null);
-      return this.runNavigation(target, { kind: "append" }, null, null, effectiveWork, "forward");
+      return this.runNavigation(target, { kind: "append" }, null, null, work, "forward");
     }
     return this.blocked({ ok: false, reason: "out-of-bounds" }, null);
-  }
-
-  /**
-   * Registers forward-navigation work for `stepId`, consulted by `goToNextStep`
-   * when no explicit work is passed. Last registration wins; the returned
-   * unsubscribe removes only its own registration, so unregistering the active
-   * one reinstates whichever registration it had shadowed.
-   */
-  registerNextStepInterceptor(stepId: string, work: AnyNavigationWork): () => void {
-    if (!hasOwn(this.config.steps, stepId)) {
-      throw new JourneyError(
-        "unknown-step",
-        `registerNextStepInterceptor references unknown step "${stepId}"`,
-        { stepId }
-      );
-    }
-    const stack = this.nextStepInterceptors.get(stepId);
-    if (stack) {
-      warnInDevelopment(
-        `journey: shadowed a live registration for step "${stepId}" — last registration wins.`
-      );
-      stack.push(work);
-    } else {
-      this.nextStepInterceptors.set(stepId, [work]);
-    }
-    return () => {
-      const live = this.nextStepInterceptors.get(stepId);
-      if (!live) return;
-      const index = live.lastIndexOf(work);
-      if (index < 0) return;
-      live.splice(index, 1);
-      if (!live.length) this.nextStepInterceptors.delete(stepId);
-    };
   }
 
   goToLastVisitedStep(): Promise<NavigationResult> {

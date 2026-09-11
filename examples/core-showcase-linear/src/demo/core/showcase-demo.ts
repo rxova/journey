@@ -225,21 +225,13 @@ export const mountCoreShowcase = (root: HTMLElement) => {
   };
 
   const goBack = async () => {
-    if (currentStepId() !== "verifyCode") {
-      await machine.navigate.goToPreviousStep();
-      return;
+    // Leaving verifyCode clears its attempt state. Backward navigation takes no
+    // work — `goToNextStep` is the one channel for pre-move async — so this is
+    // an ordinary context update before the move.
+    if (currentStepId() === "verifyCode") {
+      machine.context.update((current) => ({ ...current, attempts: 0, error: null }));
     }
-
-    await machine.navigate.goToPreviousStep({
-      run: () => undefined,
-      commit: ({ updateContext }) => {
-        updateContext((current) => ({
-          ...current,
-          attempts: 0,
-          error: null
-        }));
-      }
-    });
+    await machine.navigate.goToPreviousStep();
   };
 
   const resetJourney = () => {

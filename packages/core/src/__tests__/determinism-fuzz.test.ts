@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { createGraphJourney, createLinearJourney } from "@rxova/journey-core";
+import { createGraphJourney, createLinearJourney, withGraphTypes } from "@rxova/journey-core";
 import { flush, wait } from "@rxova/journey-core/testing";
 import type { JourneySnapshot } from "@rxova/journey-core";
 
@@ -26,6 +26,52 @@ const graphDefinition = {
   initial: "a",
   context: { n: 0 } as Ctx
 } as const;
+
+/**
+ * The same graph, but `NEXT` from "a" carries declared work — the race property
+ * needs slow async it can interrupt, and declared work is the only channel a
+ * graph has for it. `delayMs`/`updateDuringWork` are read from module state
+ * because the definition is built once, outside the property.
+ */
+let workDelayMs = 0;
+let workUpdatesDuringRun = false;
+
+type FuzzBag = {
+  context: Ctx;
+  stepId: "a" | "b" | "c" | "d";
+  events: { type: "NEXT" } | { type: "SELF" } | { type: "BRANCH" };
+};
+
+const createWorkingMachine = () =>
+  withGraphTypes<FuzzBag>()({
+    initial: "a",
+    context: { n: 0 },
+    steps: {
+      a: {
+        on: {
+          NEXT: {
+            run: async () => {
+              await wait(workDelayMs);
+              return "done";
+            },
+            commit: ({ updateContext }) => {
+              if (workUpdatesDuringRun) updateContext((previous) => ({ n: previous.n + 10 }));
+            },
+            candidates: [{ to: "b" }]
+          },
+          SELF: "a"
+        }
+      },
+      b: {
+        on: {
+          NEXT: "c",
+          BRANCH: [{ to: "d", when: ({ context }) => context.n % 2 === 0 }, { to: "c" }]
+        }
+      },
+      c: { on: { NEXT: "d" } },
+      d: {}
+    }
+  });
 
 type Op =
   | { kind: "start" }
@@ -202,19 +248,13 @@ describe("determinism fuzz", () => {
         raceOp,
         fc.boolean(),
         async (delayMs, interrupt, updateDuringWork) => {
-          const machine = createGraphJourney(graphDefinition);
+          workDelayMs = delayMs;
+          workUpdatesDuringRun = updateDuringWork;
+          const machine = createWorkingMachine();
           machine.controls.start();
           await flush();
 
-          const pendingSend = machine.send("NEXT", {
-            run: async () => {
-              await wait(delayMs);
-              return "done";
-            },
-            commit: ({ updateContext }) => {
-              if (updateDuringWork) updateContext((previous) => ({ n: previous.n + 10 }));
-            }
-          });
+          const pendingSend = machine.send("NEXT");
 
           if (interrupt === "terminate") machine.controls.terminate();
           if (interrupt === "restart") {

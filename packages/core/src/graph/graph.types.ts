@@ -238,61 +238,21 @@ export type SendWork<
 };
 
 /**
- * Declared events (builder type bag / explicit generic) get exact payload
- * tuples; undeclared events fall back to `(type, payload?)`.
+ * Declared events get exact payload tuples; undeclared events fall back to
+ * `(type, payload?)`.
+ *
+ * `send` takes no work: async that decides an event's outcome is declared on
+ * the step, which is the graph's one channel for it.
  */
 export type SendVerb<
   TStepId extends string,
-  TEvents extends JourneyEventObject,
-  TContext = unknown,
-  TSnap = unknown,
-  THandlers = unknown
+  TEvents extends JourneyEventObject
 > = JourneyEventObject extends TEvents
-  ? {
-      // Work overloads come first: `payload?: unknown` would otherwise match a
-      // work object and swallow it as a payload, losing all inference.
-      <TResult = void>(
-        type: string,
-        work: SendWork<TContext, TStepId, TEvents, TSnap, THandlers, TResult>
-      ): Promise<NavigationResult<TStepId>>;
-      <TResult = void>(
-        type: string,
-        payload: unknown,
-        work: SendWork<TContext, TStepId, TEvents, TSnap, THandlers, TResult>
-      ): Promise<NavigationResult<TStepId>>;
-      (type: string, payload?: unknown): Promise<NavigationResult<TStepId>>;
-    }
-  : {
-      <TType extends TEvents["type"]>(
-        type: TType,
-        ...payload: SendArgs<TEvents, TType>
-      ): Promise<NavigationResult<TStepId>>;
-      /** Call-site work — the escape hatch when the async does not belong to the definition. */
-      <TType extends TEvents["type"], TResult = void>(
-        type: TType,
-        payload: JourneyEventPayload<TEvents, TType>,
-        work: SendWork<
-          TContext,
-          TStepId,
-          Extract<TEvents, { type: TType }>,
-          TSnap,
-          THandlers,
-          TResult
-        >
-      ): Promise<NavigationResult<TStepId>>;
-      /** Payload-free events take work as the second argument. */
-      <TType extends TEvents["type"], TResult = void>(
-        type: JourneyEventPayload<TEvents, TType> extends undefined ? TType : never,
-        work: SendWork<
-          TContext,
-          TStepId,
-          Extract<TEvents, { type: TType }>,
-          TSnap,
-          THandlers,
-          TResult
-        >
-      ): Promise<NavigationResult<TStepId>>;
-    };
+  ? (type: string, payload?: unknown) => Promise<NavigationResult<TStepId>>
+  : <TType extends TEvents["type"]>(
+      type: TType,
+      ...payload: SendArgs<TEvents, TType>
+    ) => Promise<NavigationResult<TStepId>>;
 
 export type GraphJourneyMachine<
   TContext,
@@ -300,7 +260,6 @@ export type GraphJourneyMachine<
   TEvents extends JourneyEventObject = JourneyEventObject,
   TMeta = Record<string, unknown>,
   TPlugins extends readonly AnyJourneyPlugin[] = readonly [],
-  THandlers = unknown,
   TCompletePayload = unknown,
   TTerminatePayload = unknown
 > = JourneyMachineBase<
@@ -314,13 +273,7 @@ export type GraphJourneyMachine<
    * The graph's primary verb — its presence is itself the machine-type
    * discriminant (linear has no events).
    */
-  send: SendVerb<
-    TStepId,
-    TEvents,
-    TContext,
-    GraphSnapshot<TContext, TStepId, TMeta, TEvents, TCompletePayload, TTerminatePayload>,
-    THandlers
-  >;
+  send: SendVerb<TStepId, TEvents>;
   readonly plugins: PluginApis<TPlugins>;
 };
 

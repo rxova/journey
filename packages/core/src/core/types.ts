@@ -413,31 +413,13 @@ export type NavigationWork<TContext, TStepId extends string, TSnap, TResult = vo
 export type JourneyNavigation<TContext, TStepId extends string, TSnap> = {
   goToStepById(id: TStepId): Promise<NavigationResult<TStepId>>;
   /** Timeline pointer back `n`; clamps to start; fails only at index 0. */
-  goToPreviousStep: {
-    (n?: number): Promise<NavigationResult<TStepId>>;
-    <TResult = void>(
-      work?: NavigationWork<TContext, TStepId, TSnap, TResult>
-    ): Promise<NavigationResult<TStepId>>;
-    <TResult = void>(
-      n: number,
-      work?: NavigationWork<TContext, TStepId, TSnap, TResult>
-    ): Promise<NavigationResult<TStepId>>;
-  };
+  goToPreviousStep(n?: number): Promise<NavigationResult<TStepId>>;
   /** Timeline forward; linear falls back to next-in-declared-order at tip. */
   goToNextStep<TResult = void>(
     work?: NavigationWork<TContext, TStepId, TSnap, TResult>
   ): Promise<NavigationResult<TStepId>>;
   /** Pointer → timeline tip; fails if already there. */
   goToLastVisitedStep(): Promise<NavigationResult<TStepId>>;
-  /**
-   * Registers forward-navigation work for `stepId`, used by `goToNextStep`
-   * when no explicit work is passed. Last registration wins; the returned
-   * unsubscribe removes only its own registration. Unknown step ids throw.
-   */
-  registerNextStepInterceptor<TResult = void>(
-    stepId: TStepId,
-    work: NavigationWork<TContext, TStepId, TSnap, TResult>
-  ): Unsubscribe;
 };
 
 /** Machine surface shared by linear and graph journeys. */

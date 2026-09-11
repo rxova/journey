@@ -98,7 +98,7 @@ Metadata is available on the current step as `snapshot.currentStep.metadata`.
 
 ## Transactional navigation work
 
-Both directions accept work that must succeed before movement. The optional `commit` applies staged
+`goToNextStep` accepts work that must succeed before movement. The optional `commit` applies staged
 context updates atomically with the destination:
 
 ```ts
@@ -108,10 +108,14 @@ await machine.navigate.goToNextStep({
     updateContext((context) => ({ ...context, shippingId: result.id }));
   }
 });
+```
 
-await machine.navigate.goToPreviousStep({
-  run: async () => saveDraft()
-});
+It is the only place a linear journey takes pre-move async. Backward navigation and `goToStepById`
+take none — update the context, then move:
+
+```ts
+machine.context.update((context) => ({ ...context, draftSaved: true }));
+await machine.navigate.goToPreviousStep();
 ```
 
 Step `onLeave` and `onEnter` are awaited post-commit effects. Their failures are reported but cannot
