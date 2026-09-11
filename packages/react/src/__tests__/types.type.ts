@@ -32,8 +32,12 @@ export function linearJourneyTypes() {
   type _ids = Expect<
     Equal<NonNullable<Snapshot["currentStep"]>["id"], "intro" | "details" | "done">
   >;
-  type _context = Expect<Equal<ReturnType<typeof bundle.useContext>, { email: string }>>;
-  type _machine = Expect<Equal<typeof bundle.machine, ReturnType<typeof bundle.useMachine>>>;
+  // The selector's parameter is the context, so this pins both the argument
+  // type and the fact that an identity selector returns the whole context.
+  type _context = Expect<
+    Equal<Parameters<Parameters<typeof bundle.useContextSelector>[0]>[0], { email: string }>
+  >;
+  type _controls = Expect<Equal<typeof bundle.controls, typeof bundle.machine.controls>>;
   type _gate = Expect<
     Equal<Parameters<typeof bundle.useStepHandler>[0], "intro" | "details" | "done">
   >;
@@ -81,7 +85,7 @@ export function graphBundleTypes() {
   type Snapshot = ReturnType<typeof bundle.useSnapshot>;
   type _kind = Expect<Equal<Snapshot["type"], "graph">>;
   type _context = Expect<Equal<Snapshot["context"], { attempts: number }>>;
-  type _machine = Expect<Equal<typeof bundle.machine, ReturnType<typeof bundle.useMachine>>>;
+  type _controls = Expect<Equal<typeof bundle.controls, typeof bundle.machine.controls>>;
 
   // @ts-expect-error views must cover the declared step ids
   const incomplete: Views = { form: null };
@@ -98,9 +102,7 @@ export function pluginThreadingTypes() {
     { plugins: [createAnalyticsPlugin({ track: () => undefined })] }
   );
 
-  type _pluginApis = Expect<
-    Equal<keyof ReturnType<typeof bundle.useMachine>["plugins"], "analytics">
-  >;
+  type _pluginApis = Expect<Equal<keyof (typeof bundle.machine)["plugins"], "analytics">>;
 
   return bundle;
 }

@@ -5,7 +5,13 @@ import { journey } from "../journey";
 
 export const Blocked = () => {
   const snapshot = journey.useSnapshot();
-  const controls = journey.useControls();
+  const { controls } = journey;
+
+  // Mounting is entering this step — see the note in LoggedIn.tsx.
+  React.useEffect(() => {
+    const { attempts } = journey.machine.getSnapshot().context;
+    console.warn("[journey] blocked: account locked after", attempts, "failed attempts");
+  }, []);
 
   React.useEffect(() => {
     controls.terminate();

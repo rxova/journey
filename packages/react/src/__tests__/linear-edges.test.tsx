@@ -13,8 +13,8 @@ describe("navigation edges", () => {
     const IndexNav = () => {
       const step = journey.useStep();
       const paused = journey.useSelector((snapshot) => snapshot.machine.isPaused);
-      const navigate = journey.useNavigation();
-      const controls = journey.useControls();
+      const navigate = journey.machine.navigate;
+      const { controls } = journey;
       return (
         <div>
           <span data-testid="active">{step?.id}</span>
@@ -213,8 +213,8 @@ describe("render chrome", () => {
     const controlsSeen = new Set<unknown>();
     const navigationSeen = new Set<unknown>();
     const Probe = () => {
-      controlsSeen.add(journey.useControls());
-      navigationSeen.add(journey.useNavigation());
+      controlsSeen.add(journey.controls);
+      navigationSeen.add(journey.machine.navigate);
       const n = journey.useSelector((snapshot) => snapshot.context.n);
       return <span data-testid="n">{n}</span>;
     };
@@ -238,7 +238,7 @@ describe("subscription lifecycle", () => {
     const journey = createLinearJourney({ context: {}, steps: ["a", "b", "c"] });
     const entered: string[] = [];
     const Probe = () => {
-      journey.useSubscribeEvent("stepEnter", ({ to }) => entered.push(to));
+      journey.useEventEffect("stepEnter", ({ to }) => entered.push(to));
       return null;
     };
     const view = render(<Probe />);
@@ -260,7 +260,7 @@ describe("subscription lifecycle", () => {
     const journey = createLinearJourney({ context: { n: 0 }, steps: ["a", "b"] });
     const delivered: string[] = [];
     const Probe = ({ event }: { event: "stepEnter" | "contextChange" }) => {
-      journey.useSubscribeEvent(event, () => delivered.push(event));
+      journey.useEventEffect(event, () => delivered.push(event));
       return null;
     };
     const view = render(<Probe event="stepEnter" />);
@@ -350,41 +350,12 @@ describe("subscription lifecycle", () => {
   });
 });
 
+// A definition `onEnter` that throws is Core's concern and Core's test —
+// `core/__tests__/hooks.test.ts` asserts it lands in `currentStep.async.error`.
+// This tier no longer accepts the hook, and the React-side half of that
+// assertion (a machine error reaching the view through `useStep`) is covered by
+// linear.test.tsx's `useStepHandler` error case.
 describe("machine error surfacing", () => {
-  it("exposes a definition onEnter error through the snapshot's async state", async () => {
-    const journey = createLinearJourney({
-      context: {},
-      steps: [
-        "a",
-        {
-          id: "failing",
-          onEnter: () => {
-            throw new Error("enter exploded");
-          }
-        }
-      ]
-    });
-    const Report = () => {
-      const step = journey.useStep();
-      return <span data-testid="machine-error">{String(step?.async.error ?? "none")}</span>;
-    };
-    render(
-      <journey.Provider
-        views={{ a: <StepA />, failing: <span data-testid="failing">failing</span> }}
-      >
-        <journey.StepRenderer />
-        <Report />
-      </journey.Provider>
-    );
-    await flush();
-    expect(screen.getByTestId("machine-error").textContent).toBe("none");
-
-    await act(async () => {
-      await journey.navigate.goToNextStep();
-    });
-    expect(screen.getByTestId("machine-error").textContent).toContain("enter exploded");
-  });
-
   it("warns in dev when two mounted components register work for the same step", async () => {
     (globalThis as { __DEV__?: boolean }).__DEV__ = true;
     const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);

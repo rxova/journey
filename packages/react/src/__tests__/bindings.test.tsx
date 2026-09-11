@@ -17,11 +17,9 @@ const SHARED_KEYS = [
   "useSnapshot",
   "useSelector",
   "useStep",
-  "useContext",
-  "useSubscribeEvent",
-  "useMachine",
-  "useControls",
-  "useNavigation",
+  "useContextSelector",
+  "useEventEffect",
+  "controls",
   "updateContext"
 ] as const;
 
@@ -75,7 +73,9 @@ describe("bundle parity", () => {
 
   it("hands both tiers a machine whose commands are stable references", () => {
     for (const bundle of [makeLinear(), makeGraph()]) {
-      expect(bundle.useControls).toBeTypeOf("function");
+      // `controls` is a plain property, so it must be the machine's own object
+      // rather than a per-read copy — components compare it across renders.
+      expect(bundle.controls).toBe(bundle.machine.controls);
       expect(bundle.machine.controls).toBe(bundle.machine.controls);
       expect(bundle.machine.navigate).toBe(bundle.machine.navigate);
     }

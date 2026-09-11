@@ -33,9 +33,6 @@ const selectSnapshot = <TSnapshot,>(snapshot: TSnapshot): TSnapshot => snapshot;
 const selectStep = <TSnapshot extends { currentStep: unknown }>(
   snapshot: TSnapshot
 ): TSnapshot["currentStep"] => snapshot.currentStep;
-const selectContext = <TSnapshot extends { context: unknown }>(
-  snapshot: TSnapshot
-): TSnapshot["context"] => snapshot.context;
 const selectStepId = <TSnapshot extends { currentStep: { readonly id: string } | null }>(
   snapshot: TSnapshot
 ): string | undefined => snapshot.currentStep?.id;
@@ -168,8 +165,19 @@ export const createJourneyBindings = <
     useSnapshot: () => useSelector(selectSnapshot),
     useSelector,
     useStep: () => useSelector(selectStep),
-    useContext: () => useSelector(selectContext) as TContext,
-    useSubscribeEvent: (event, listener) => {
+    useContextSelector: (selector, equalityFn) => {
+      // Composed once per distinct `selector` rather than inline at the
+      // useSelector call: an inline composition would be a fresh closure every
+      // render, rebuilding useSelector's cache each time. Value identity would
+      // still hold (the committed ref guarantees that), but the cache would
+      // never hit its same-snapshot fast path.
+      const selectFromSnapshot = React.useMemo(
+        () => (snapshot: TSnapshot) => selector(snapshot.context),
+        [selector]
+      );
+      return useSelector(selectFromSnapshot, equalityFn);
+    },
+    useEventEffect: (event, listener) => {
       // Latest-ref: inline listeners change identity every render; the machine
       // subscription must not tear down (and miss events) on each one. The ref
       // advances from an effect, never during render, so a discarded render
@@ -191,9 +199,7 @@ export const createJourneyBindings = <
       // start effect runs, or it misses the journey's very first stepEnter.
       useAutoStart();
     },
-    useMachine: () => machine,
-    useControls: () => machine.controls,
-    useNavigation: () => machine.navigate,
+    controls: machine.controls,
     updateContext: (updater) => runtime.context.update(updater)
   };
 };

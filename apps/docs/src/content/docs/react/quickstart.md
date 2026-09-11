@@ -87,7 +87,7 @@ function Footer() {
 }
 
 function CompletionLogger() {
-  signup.useSubscribeEvent("statusChange", ({ current, snapshot }) => {
+  signup.useEventEffect("statusChange", ({ current, snapshot }) => {
     if (current === "completed") {
       console.log(snapshot.context.accountId);
     }
@@ -143,9 +143,10 @@ const signup = createLinearJourney(definition, { startAt: "review", autoStart: f
 ```
 
 With `autoStart: false` the journey is idle (`snapshot.currentStep` is `null`, `StepRenderer`
-shows its `fallback`) until `signup.machine.controls.start()`. Step configuration (`metadata`,
-`onEnter`, `onLeave`) lives in the definition's step objects, never in JSX—the `views` values only
-supply what each step renders.
+shows its `fallback`) until `signup.machine.controls.start()`. Step `metadata` lives in the
+definition's step objects, never in JSX—the `views` values only supply what each step renders.
+Core's per-step `onEnter`/`onLeave` hooks are not accepted in this tier: a step's view mounts on
+enter and unmounts on leave, so a `useEffect` with a cleanup is the equivalent.
 
 ## Build a graph checkout
 
@@ -158,7 +159,7 @@ import { checkoutDefinition } from "./checkout-definition";
 const checkout = createGraphJourney(checkoutDefinition);
 
 function GraphControls() {
-  const navigate = checkout.useNavigation();
+  const navigate = checkout.machine.navigate;
   const canGoBack = checkout.useSelector((snapshot) => snapshot.history.canGoBack);
   const canContinue = checkout.useSelector((snapshot) =>
     snapshot.availableEvents.includes("continue")

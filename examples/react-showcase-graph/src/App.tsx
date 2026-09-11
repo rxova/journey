@@ -22,7 +22,7 @@ const views: Record<StepId, React.ReactNode> = {
 };
 
 const EventLogger = () => {
-  journey.useSubscribeEvent("statusChange", (event) => {
+  journey.useEventEffect("statusChange", (event) => {
     console.log(`[react graph] ${event.previous} -> ${event.current}`, event);
   });
   return null;

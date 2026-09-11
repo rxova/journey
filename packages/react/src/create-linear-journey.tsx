@@ -3,7 +3,7 @@ import { warnInDevelopment } from "@rxova/journey-common/dev";
 import { createLinearJourney as coreCreateLinearJourney } from "@rxova/journey-core";
 import { createAutoStartHook, createJourneyBindings } from "./react.helpers";
 import { useSafeLayoutEffect } from "./use-safe-layout-effect";
-import type { AnyJourneyPlugin, LinearStepIdOf, LinearStepInput } from "@rxova/journey-core";
+import type { AnyJourneyPlugin, LinearStepIdOf } from "@rxova/journey-core";
 /**
  * The generics-erased handler shape the registry stores. `unknown` args rather
  * than `never`: the registry is written by `useStepHandler`, which has the
@@ -20,7 +20,8 @@ import type {
   LinearJourneyBundleOptions,
   LinearJourneyMachine,
   LinearJourneySnapshot,
-  LinearJourneyStepHandler
+  LinearJourneyStepHandler,
+  ReactLinearStepInput
 } from "./react.types";
 
 const stepIdOf = (step: string | { readonly id: string }): string =>
@@ -70,8 +71,8 @@ const stepIdOf = (step: string | { readonly id: string }): string =>
 export const createLinearJourney = <
   TContext,
   const TSteps extends readonly [
-    LinearStepInput<NoInfer<TContext>, unknown>,
-    ...LinearStepInput<NoInfer<TContext>, unknown>[]
+    ReactLinearStepInput<NoInfer<TContext>, unknown>,
+    ...ReactLinearStepInput<NoInfer<TContext>, unknown>[]
   ],
   const TPlugins extends readonly AnyJourneyPlugin[] = readonly []
 >(

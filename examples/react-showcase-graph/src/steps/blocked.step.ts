@@ -1,13 +1,6 @@
-import type { GraphStep } from "@rxova/journey-core";
+import type { ReactGraphStep } from "@rxova/journey-react/graph";
 import type { AuthBag } from "../types";
 
-export const blockedStep: GraphStep<AuthBag> = {
-  metadata: { label: "Blocked", icon: "\ud83d\udeab" },
-  onEnter: ({ snapshot }) => {
-    console.warn(
-      "[journey] blocked: account locked after",
-      snapshot.context.attempts,
-      "failed attempts"
-    );
-  }
+export const blockedStep: ReactGraphStep<AuthBag> = {
+  metadata: { label: "Blocked", icon: "\ud83d\udeab" }
 };

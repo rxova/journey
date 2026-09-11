@@ -324,8 +324,10 @@ function Continue() {
 </checkout.Provider>;
 ```
 
-Stable accessors (`useMachine`, `useControls`, `useNavigation`) expose the Core command groups;
-plugin APIs stay namespaced on `useMachine().plugins`.
+The Core command groups are plain bundle properties, not hooks — `machine`, `controls`,
+`navigate` (linear) or `send` (graph), and `updateContext`. They are frozen objects with stable
+references, so reading one can neither subscribe nor re-render. Plugin APIs stay namespaced on
+`checkout.machine.plugins`.
 
 ## React: owning a bundle per component
 

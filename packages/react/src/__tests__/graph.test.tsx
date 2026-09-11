@@ -26,7 +26,7 @@ describe("graph bundle", () => {
   it("renders the initial view and moves via the bundle's verbatim send", async () => {
     const bundle = makeBundle();
     const Controls = () => {
-      const navigate = bundle.useNavigation();
+      const navigate = bundle.machine.navigate;
       const available = bundle.useSelector((snapshot) => snapshot.availableEvents.join(","));
       return (
         <div>
@@ -64,7 +64,7 @@ describe("graph bundle", () => {
     const Probe = () => {
       const snapshot = bundle.useSnapshot();
       const step = bundle.useStep();
-      bundle.useSubscribeEvent("stepEnter", ({ to }) => entered.push(to));
+      bundle.useEventEffect("stepEnter", ({ to }) => entered.push(to));
       return (
         <span data-testid="status">
           {snapshot.status}:{step?.id}:{step?.async.isSuccess ? "ok" : "…"}
@@ -92,8 +92,8 @@ describe("graph bundle", () => {
     bundle.updateContext((context) => ({ attempts: context.attempts + 1 }));
 
     const Lost = () => {
-      const context = bundle.useContext();
-      const controls = bundle.useControls();
+      const context = bundle.useContextSelector((value) => value);
+      const { controls } = bundle;
       return (
         <button data-testid="ctx" onClick={() => controls.complete()}>
           {context.attempts}
@@ -134,7 +134,6 @@ describe("graph bundle", () => {
     });
     expect(screen.getByTestId("first").textContent).toBe("7");
     expect(screen.getByTestId("second").textContent).toBe("7");
-    expect(bundle.useMachine()).toBe(bundle.machine);
   });
 
   it("state survives a remount; restart is the explicit reset", async () => {
@@ -226,8 +225,8 @@ describe("graph bundle edges", () => {
     const controlsSeen = new Set<unknown>();
     const navigationSeen = new Set<unknown>();
     const Probe = () => {
-      controlsSeen.add(bundle.useControls());
-      navigationSeen.add(bundle.useNavigation());
+      controlsSeen.add(bundle.controls);
+      navigationSeen.add(bundle.machine.navigate);
       const n = bundle.useSelector((snapshot) => snapshot.context.attempts);
       return <span data-testid="n">{n}</span>;
     };

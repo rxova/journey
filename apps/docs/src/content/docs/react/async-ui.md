@@ -13,7 +13,7 @@ context and handlers. Network validation, file writes, and submissions belong in
 ```tsx
 function ContinueButton() {
   const snapshot = checkout.useSnapshot();
-  const navigate = checkout.useNavigation();
+  const navigate = checkout.machine.navigate;
 
   const continueJourney = async () => {
     const result = await navigate.goToNextStep({
@@ -48,14 +48,20 @@ bundle's `useStepHandler(stepId, work)` gates plain `goToNextStep()` for that st
 component is mounted. A throw or rejection cancels the move and lands in
 `currentStep.async.error`; timeline moves and `goToStepById` bypass the gate.
 
-## Post-commit hooks
+## After the move commits
 
-Core step `onLeave` and `onEnter` hooks run after movement commits. During them, the destination
-is already current and `transition.phase` is `"leaving"` or `"entering"`. A hook error is
-observable but does not roll navigation back.
+This tier's step configs carry no `onEnter`/`onLeave` — `<StepRenderer>` keys the active view by
+step id, so a step's component mounts on enter and unmounts on leave, and a `useEffect` with a
+cleanup covers both while still reaching component state. For an observer that is not the step's
+own view, `useEventEffect("stepEnter" | "stepLeave", …)` sees every move.
 
-Use hooks for analytics, cleanup, or loading destination data. Use navigation work whenever failure
-must prevent movement.
+Either way the work runs _after_ movement commits: the destination is already current and
+`transition.phase` is `"leaving"` or `"entering"`. Nothing there can roll navigation back. Use it
+for analytics, cleanup, or loading destination data; use navigation work
+([`useStepHandler`](#pre-commit-navigation-work)) whenever failure must prevent the move.
+
+Core keeps `onEnter`/`onLeave` on its own step configs, for machines driven outside React — see
+[Effects](../core/effects.md).
 
 ## Which loading field to read
 
@@ -70,7 +76,7 @@ must prevent movement.
 ```tsx
 function ReviewError() {
   const step = checkout.useStep();
-  const machine = checkout.useMachine();
+  const { machine } = checkout;
 
   if (step?.id !== "review" || !step.async.isError) return null;
 

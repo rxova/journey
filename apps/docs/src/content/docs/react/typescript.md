@@ -23,12 +23,20 @@ Its primary React-specific types are:
 | `JourneyViews<TStepId>`                           | The `views` record: `{ [K in TStepId]: ReactNode }` — shared by both tiers  |
 | `LinearJourneySnapshot<TContext, TStepId>`        | Core linear snapshot, verbatim — `currentStep` null while idle              |
 | `LinearJourneyMachine<TContext, TStepId>`         | Underlying Core machine, verbatim                                           |
-| `LinearJourneyEventPayloads<TContext, TStepId>`   | Core event payloads, as `useSubscribeEvent` listeners receive them          |
+| `LinearJourneyEventPayloads<TContext, TStepId>`   | Core event payloads, as `useEventEffect` listeners receive them             |
 | `LinearJourneyStepHandler<TContext, TResult>`     | Transactional navigation work for `useStepHandler`                          |
+| `ReactLinearStepConfig<TContext, TStepId, TMeta>` | Core's linear step config minus `onEnter`/`onLeave`                         |
+| `ReactLinearStepInput<TContext, TMeta, TStepId>`  | A bare step id, or a `ReactLinearStepConfig`                                |
 
 It also exports the structural helpers `AnyJourneyMachine`, `SnapshotOf`, `ContextOf`,
 `StepIdOf`, and `EventPayloadOf` for typing wrappers around
 [caller-owned machines](#typing-caller-owned-machines).
+
+`@rxova/journey-react/graph` exports the graph twins — `ReactGraphStepConfig`, `ReactGraphStep<TBag>`
+and `ReactGraphDefinition<TBag>`. Use them wherever you would reach for Core's `GraphStepConfig`,
+`GraphStep` or `GraphDefinition` in a React journey: they are the same types with `onEnter` and
+`onLeave` declared `never`, so a step authored in its own file cannot smuggle a lifecycle hook past
+the tier that does not run them.
 
 ### Inference from the definition
 

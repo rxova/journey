@@ -10,8 +10,8 @@ const EventLog = () => {
   const log = (entry: string) =>
     setEvents((prev) => [...prev.slice(-19), `${new Date().toLocaleTimeString()} ${entry}`]);
 
-  loginJourney.useSubscribeEvent("stepEnter", ({ to }) => log(`stepEnter → ${to}`));
-  loginJourney.useSubscribeEvent("statusChange", ({ current }) => {
+  loginJourney.useEventEffect("stepEnter", ({ to }) => log(`stepEnter → ${to}`));
+  loginJourney.useEventEffect("statusChange", ({ current }) => {
     // A restart resets the journey; start the log fresh with it.
     if (current === "running") {
       setEvents([]);

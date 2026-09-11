@@ -6,8 +6,21 @@ import { mockApi } from "../api";
 
 export const Login = () => {
   const snapshot = journey.useSnapshot();
-  const controls = journey.useControls();
+  const { controls } = journey;
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  // Unmounting is leaving this step — see the note in LoggedIn.tsx. Read the
+  // context from the machine rather than the render-time snapshot, so the log
+  // reports the values as they are at the moment of the move.
+  React.useEffect(
+    () => () => {
+      console.log(
+        "[journey] login: submitting for",
+        journey.machine.getSnapshot().context.username
+      );
+    },
+    []
+  );
   const isLoading = snapshot.currentStep?.async.isLoading ?? false;
   const isBusy = isLoading || isSubmitting;
 

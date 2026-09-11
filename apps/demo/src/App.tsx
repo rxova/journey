@@ -52,7 +52,7 @@ const reactDefinition = {
 const reactJourney = withGraphTypes<ReactBag>()(reactDefinition);
 
 const ReactBridge = () => {
-  const machine = reactJourney.useMachine();
+  const { machine } = reactJourney;
   React.useEffect(
     () =>
       attachJourneyDevtools(machine, {

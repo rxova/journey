@@ -5,7 +5,7 @@ import { loginJourney } from "../journey";
 
 export const LoggedIn = () => {
   const snapshot = loginJourney.useSnapshot();
-  const controls = loginJourney.useControls();
+  const { controls } = loginJourney;
   const context = snapshot.context;
   const status = snapshot.status;
   const isSettled = !snapshot.transition.pending;

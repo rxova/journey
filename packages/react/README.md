@@ -75,8 +75,15 @@ carries only `views` and `children`, and `StepRenderer` (optional `fallback`) is
 that must render inside it—siblings like `Controls` are ordinary components.
 
 Hooks: reactive `useSnapshot`, `useSelector`, `useStep` (the current step or `null` while idle),
-`useContext`, `useSubscribeEvent`; stable `useMachine`, `useControls`, `useNavigation`; and
-`useStepHandler` below.
+`useContextSelector`, `useEventEffect`; and `useStepHandler` below. The machine and its command
+groups are plain properties — `machine`, `controls`, `navigate`, `updateContext` — not hooks:
+they are frozen objects with stable references, so reading one can neither subscribe nor
+re-render.
+
+Step configs here carry `metadata` only. Core's `onEnter`/`onLeave` are rejected in this tier —
+`StepRenderer` keys the active view by step id, so a step's own component mounts on enter and
+unmounts on leave, and a `useEffect` with a cleanup says both while still reaching component
+state.
 
 ### Transactional step work
 
@@ -126,10 +133,10 @@ function Continue() {
 ```
 
 The graph bundle has the same shape as the linear one—standalone machine, `views` Provider,
-`StepRenderer`, reactive `useSnapshot` / `useSelector` / `useStep` / `useContext` /
-`useSubscribeEvent`, stable `useMachine` / `useControls` / `useNavigation`—with `send` and
-`updateContext` as the verbatim delegates. No hook needs the Provider. Plugin APIs remain
-namespaced on `useMachine().plugins`.
+`StepRenderer`, reactive `useSnapshot` / `useSelector` / `useStep` / `useContextSelector` /
+`useEventEffect`, plain `machine` / `controls`—with `send` and `updateContext` as the verbatim
+delegates. No hook needs the Provider. Plugin APIs remain namespaced on
+`checkout.machine.plugins`.
 
 In both tiers, all Providers and hooks share the bundle's one machine: state survives remounts,
 reset is explicit (`machine.controls.restart()` from a terminal status, `terminate()` first when
@@ -144,7 +151,7 @@ needs `{ autoStart: true }`, since nothing ever mounts to start it.
 
 By default the machine starts when the first Provider or hook mounts, not when the factory runs.
 That ordering is what makes the journey's first `stepEnter` observable through
-`useSubscribeEvent`, and it keeps SSR deterministic — layout effects do not run on the server, so
+`useEventEffect`, and it keeps SSR deterministic — layout effects do not run on the server, so
 both sides render `fallback` and hydration matches. `controls.start()` is idempotent, so mounting
 many components still starts the journey exactly once.
 

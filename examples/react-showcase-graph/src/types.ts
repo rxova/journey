@@ -39,8 +39,9 @@ export type AuthHandlers = {
 
 /**
  * One declaration point for this journey's types. Each step lives in its own
- * file and annotates itself `GraphStep<AuthBag>`, so nothing has to thread
- * generics through them.
+ * file and annotates itself `ReactGraphStep<AuthBag>` — Core's `GraphStep`
+ * minus the lifecycle hooks, which this tier expresses as effects in the step's
+ * own view — so nothing has to thread generics through them.
  */
 export type AuthBag = {
   context: LoginContext;

@@ -13,10 +13,10 @@ const EventLog = () => {
     ]);
   }, []);
 
-  journey.useSubscribeEvent("stepEnter", ({ to }) => append(`stepEnter -> ${to}`));
-  journey.useSubscribeEvent("stepLeave", ({ from }) => append(`stepLeave -> ${from}`));
-  journey.useSubscribeEvent("statusChange", ({ current }) => append(`statusChange -> ${current}`));
-  journey.useSubscribeEvent("navigationBlocked", ({ reason }) =>
+  journey.useEventEffect("stepEnter", ({ to }) => append(`stepEnter -> ${to}`));
+  journey.useEventEffect("stepLeave", ({ from }) => append(`stepLeave -> ${from}`));
+  journey.useEventEffect("statusChange", ({ current }) => append(`statusChange -> ${current}`));
+  journey.useEventEffect("navigationBlocked", ({ reason }) =>
     append(`navigationBlocked -> ${reason}`)
   );
 
@@ -47,7 +47,7 @@ const StepMetaDisplay = () => {
 
 const ExecutionPathsViewer = () => {
   const snapshot = journey.useSnapshot();
-  const machine = journey.useMachine();
+  const { machine } = journey;
   const paths = machine.plugins["execution-paths"] as ExecutionPathsApi;
   const allPaths = [paths.getCurrentPath(), ...paths.getCompletedPaths()];
 

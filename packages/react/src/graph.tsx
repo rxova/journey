@@ -1,21 +1,23 @@
 import { createGraphJourney as coreCreateGraphJourney } from "@rxova/journey-core";
 import { createAutoStartHook, createJourneyBindings } from "./react.helpers";
-import type { Bag, GraphDefinition, HandlersOf, MetaOf } from "@rxova/journey-core";
+import type { Bag, HandlersOf, MetaOf } from "@rxova/journey-core";
 import type {
   AnyJourneyPlugin,
   GraphJourneyMachine,
   GraphJourneyOptions,
   GraphSnapshot,
-  GraphStepConfig,
   JourneyEventObject
 } from "@rxova/journey-core";
-import type { GraphJourneyBundle } from "./react.types";
+import type { GraphJourneyBundle, ReactGraphDefinition, ReactGraphStepConfig } from "./react.types";
 
 export type {
   GraphJourneyBundle,
   JourneyProviderProps,
   JourneyStepRendererProps,
-  JourneyViews
+  JourneyViews,
+  ReactGraphDefinition,
+  ReactGraphStep,
+  ReactGraphStepConfig
 } from "./react.types";
 
 /**
@@ -67,7 +69,7 @@ export function createGraphJourney<
     readonly steps: Readonly<
       Record<
         TStepId,
-        GraphStepConfig<
+        ReactGraphStepConfig<
           NoInfer<TContext>,
           NoInfer<TStepId>,
           NoInfer<TEvents>,
@@ -121,7 +123,7 @@ export function createGraphJourney<
 export const withGraphTypes =
   <TBag extends Bag>() =>
   <const TPlugins extends readonly AnyJourneyPlugin[] = readonly []>(
-    definition: GraphDefinition<TBag> & { readonly name?: string },
+    definition: ReactGraphDefinition<TBag> & { readonly name?: string },
     options?: GraphJourneyOptions<HandlersOf<TBag>, TPlugins, TBag["stepId"]>
   ): GraphJourneyBundle<TBag["context"], TBag["stepId"], TBag["events"], MetaOf<TBag>, TPlugins> =>
     createGraphJourney(

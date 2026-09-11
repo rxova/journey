@@ -55,7 +55,7 @@ machine.plugins.autosave.flushAutosave();
 ```tsx
 function Controls() {
   const snapshot = checkout.useSnapshot();
-  const navigate = checkout.useNavigation();
+  const navigate = checkout.machine.navigate;
 
   return (
     <>

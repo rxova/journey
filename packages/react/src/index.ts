@@ -17,6 +17,8 @@ export type {
   LinearJourneySnapshot,
   LinearJourneyStepHandler,
   OwnedJourneyBundle,
+  ReactLinearStepConfig,
+  ReactLinearStepInput,
   SnapshotOf,
   StepIdOf
 } from "./react.types";

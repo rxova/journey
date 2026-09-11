@@ -12,11 +12,11 @@ snapshot semantics come directly from Core; see [Core API](../core/api/overview.
 `{ context, steps }`, plus an optional `name` used for the Provider's React DevTools displayName —
 and creates **one standalone machine** right in the factory, at module scope. It returns a bundle
 around that machine: `machine`, `Provider`, `StepRenderer`, the reactive hooks `useSnapshot`,
-`useSelector`, `useStep`, `useContext`, and `useSubscribeEvent`, the stable accessors
-`useMachine`, `useControls`, and `useNavigation`, the forward gate `useStepHandler`, and the
-verbatim delegates `navigate` and `updateContext` — each pre-bound to the definition's context and
-step-id types. A bare string in `steps` is shorthand for `{ id }`; a config object also carries
-Core's per-step config: `metadata` plus `onEnter`/`onLeave` hooks.
+`useSelector`, `useStep`, `useContextSelector`, and `useEventEffect`, the forward gate
+`useStepHandler`, and the verbatim delegates `controls`, `navigate` and `updateContext` — each
+pre-bound to the definition's context and step-id types. A bare string in `steps` is shorthand for
+`{ id }`; a config object also carries `metadata`. Core's per-step `onEnter`/`onLeave` hooks are
+**not** accepted in this tier — see [Enter and leave are effects](#enter-and-leave-are-effects).
 
 ```tsx
 import { createLinearJourney } from "@rxova/journey-react";
@@ -40,18 +40,37 @@ casting — and the step-id union is inferred from the `steps` tuple; call sites
 generics. See [TypeScript Types](./typescript.md) for the inference story.
 
 Declared `metadata` surfaces at `snapshot.currentStep.metadata` while the step is current; there is
-no separate per-step metadata lookup. Definition `onEnter`/`onLeave` hooks run in Core, outside
-React — they cannot close over component state or props. Component-scoped async work belongs in
+no separate per-step metadata lookup. Component-scoped async work belongs in
 [`useStepHandler()`](#usestephandler).
+
+### Enter and leave are effects
+
+This tier's step configs carry no `onEnter`/`onLeave`. `<StepRenderer>` keys the active view by
+step id, so the step's own component **mounts when the step is entered and unmounts when it is
+left** — a `useEffect` with a cleanup already says both, and unlike a hook running inside Core it
+can read component state, props and React context:
+
+```tsx
+function Review() {
+  React.useEffect(() => {
+    analytics.track("review_entered");
+    return () => analytics.track("review_left");
+  }, []);
+  // …
+}
+```
+
+Use `useEventEffect("stepEnter" | "stepLeave", …)` instead when the observer is not the step's own
+view — a header that logs every move, say. Core keeps `onEnter`/`onLeave` for machines driven
+outside React; passing either here is a type error.
 
 The second argument is Core's runtime options, verbatim and frozen per bundle: `startAt`,
 `persist`, `plugins`, `defaultTimeoutMs`, `onListenerError`, and `autoStart` — which is three-way
 in this tier: omitted (the default) starts the machine when the bundle's first Provider or hook
 mounts, `true` starts it eagerly inside the factory, and `false` waits for
 `checkout.machine.controls.start()`. See [Bundle options](./overview.md#bundle-options). The `startAt` option starts the
-journey directly at that step: earlier steps are never entered or visited, their
-`onEnter`/`onLeave` hooks never fire, the timeline begins as `[startAt]`, and
-`controls.restart()` returns to it. An unknown `startAt` id throws at creation.
+journey directly at that step: earlier steps are never entered or visited, the timeline begins as
+`[startAt]`, and `controls.restart()` returns to it. An unknown `startAt` id throws at creation.
 
 The machine outlives any component: every hook closes over it and works with or without the
 Provider, non-React code drives it via `checkout.machine`, `checkout.navigate`, and
@@ -96,7 +115,7 @@ The active view is keyed by its step id: every entry into a step mounts the view
 component state does not survive leaving the step.
 
 There are no other Provider props. Starting position and runtime configuration are factory
-options, step config lives in the definition, and events are observed with `useSubscribeEvent` in
+options, step config lives in the definition, and events are observed with `useEventEffect` in
 a component — or with `machine.subscriptions` at module scope, no React involved:
 
 ```ts
@@ -105,7 +124,7 @@ checkout.machine.subscriptions.subscribeEvent("statusChange", ({ current }) => {
 });
 ```
 
-## Reactive hooks: `useSnapshot()`, `useSelector()`, `useStep()`, `useContext()`, and `useSubscribeEvent()`
+## Reactive hooks: `useSnapshot()`, `useSelector()`, `useStep()`, `useContextSelector()`, and `useEventEffect()`
 
 The reactive hooks subscribe to the bundle's machine directly — none of them needs a Provider
 above it:
@@ -113,7 +132,7 @@ above it:
 ```tsx
 function Controls() {
   const snapshot = checkout.useSnapshot();
-  const navigate = checkout.useNavigation();
+  const navigate = checkout.machine.navigate;
 
   const currentStep = snapshot.currentStep;
   if (currentStep === null) return null; // idle: autoStart: false, not started yet
@@ -143,9 +162,9 @@ the graph tier. See [Snapshot](../core/snapshot.md) for the complete contract.
 ```tsx
 const isLoading = checkout.useSelector((snapshot) => snapshot.machine.isLoading);
 const step = checkout.useStep();
-const context = checkout.useContext();
+const email = checkout.useContextSelector((context) => context.email);
 
-checkout.useSubscribeEvent("stepEnter", ({ from, to, direction }) =>
+checkout.useEventEffect("stepEnter", ({ from, to, direction }) =>
   analytics.track("step", { from, to, direction })
 );
 ```
@@ -153,9 +172,11 @@ checkout.useSubscribeEvent("stepEnter", ({ from, to, direction }) =>
 Prefer `useSelector` when a component needs only one changing value; the optional equality
 function controls when React re-renders, and selectors should be pure and not mutate snapshot
 data. `useStep()` returns the whole `currentStep` — id, metadata, async state — or `null` while
-idle. `useContext()` returns the live context value.
+idle. `useContextSelector(selector, equalityFn?)` is `useSelector` narrowed to the context: the
+selector is required, so `useContextSelector((context) => context)` is the explicit way to ask for
+the whole object and re-render on every context write.
 
-`useSubscribeEvent` requires an exact Core subscription name and receives its exact payload; the
+`useEventEffect` requires an exact Core subscription name and receives its exact payload; the
 listener reference can change without forcing a new subscription, and the subscription lasts for
 the component's lifetime. `stepEnter` carries `{ snapshot, from, to, direction }`, where
 `direction` is `"forward" | "backward" | "jump"` by intent: only `goToNextStep` and
@@ -164,12 +185,10 @@ the component's lifetime. `stepEnter` carries `{ snapshot, from, to, direction }
 `{ snapshot, from, to }`, `statusChange` carries `{ snapshot, previous, current }`, and `error`
 carries `{ snapshot, error, phase, stepId }`.
 
-## Stable accessors and outside-React commands
+## Commands, in React or outside it
 
 ```tsx
-const machine = checkout.useMachine();
-const controls = checkout.useControls();
-const navigate = checkout.useNavigation();
+const { machine, controls, navigate } = checkout;
 
 controls.pause();
 controls.resume();
@@ -178,13 +197,13 @@ await checkout.navigate.goToNextStep();
 checkout.updateContext((context) => ({ ...context, dirty: true }));
 ```
 
-The accessors return the machine and its stable grouped methods without subscribing — they never
-cause a re-render. Every command is a machine group: `machine.navigate.*` (including linear
-`goToStepByIndex`), `machine.controls.*`, `machine.context.update(updater)`, and
-`machine.async.clearError()`; navigation methods return Core `NavigationResult` values. `navigate`
-and `updateContext` are also plain properties on the bundle — `machine.navigate` and
-`machine.context.update`, verbatim — callable from React or anywhere else. Integrations attach to
-the machine directly:
+These are plain bundle properties, not hooks: the machine's command groups are frozen objects, the
+same reference on every render, so reading them can neither subscribe nor re-render. Every command
+is a machine group: `machine.navigate.*` (including linear `goToStepByIndex`), `machine.controls.*`,
+`machine.context.update(updater)`, and `machine.async.clearError()`; navigation methods return Core
+`NavigationResult` values. `controls`, `navigate` and `updateContext` are the bundle's verbatim
+shortcuts to `machine.controls`, `machine.navigate` and `machine.context.update` — callable from
+React or anywhere else. Integrations attach to the machine directly:
 
 ```tsx
 React.useEffect(() => attachJourneyDevtools(checkout.machine, { mutationsEnabled: false }), []);
@@ -282,28 +301,28 @@ Use the snapshot when several related values must be rendered together. Use a se
 components that should not re-render on unrelated context or plugin changes. Neither needs a
 Provider above it — they subscribe to the bundle's machine directly.
 
-### Graph `useStep()`, `useContext()`, and `useSubscribeEvent()`
+### Graph `useStep()`, `useContextSelector()`, and `useEventEffect()`
 
 ```tsx
 const step = checkout.useStep();
-const context = checkout.useContext();
+const attempts = checkout.useContextSelector((context) => context.attempts);
 
-checkout.useSubscribeEvent("navigationBlocked", ({ reason, error }) => {
+checkout.useEventEffect("navigationBlocked", ({ reason, error }) => {
   report(reason, error);
 });
 ```
 
 `useStep()` returns the whole `currentStep` — id, metadata, async state — or `null` while the
-machine is idle. `useContext()` returns the live context value. `useSubscribeEvent` requires an
+machine is idle. `useContextSelector(selector, equalityFn?)` is `useSelector` narrowed to the
+context; the selector is required. `useEventEffect` requires an
 exact Core subscription name and receives its exact payload; the listener reference can change
 without forcing a new subscription, and the subscription lasts for the component's lifetime.
 
-### Graph stable accessors and outside-React commands
+### Graph commands, in React or outside it
 
 ```tsx
-const machine = checkout.useMachine();
-const controls = checkout.useControls();
-const navigate = checkout.useNavigation();
+const { machine, controls } = checkout;
+const navigate = checkout.machine.navigate;
 
 controls.pause();
 controls.resume();

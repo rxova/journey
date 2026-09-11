@@ -120,8 +120,8 @@ describe("linear bundle rendering and navigation", () => {
     journey.updateContext((context) => ({ n: context.n + 1 }));
 
     const Lost = () => {
-      const context = journey.useContext();
-      const controls = journey.useControls();
+      const context = journey.useContextSelector((value) => value);
+      const { controls } = journey;
       return (
         <button data-testid="ctx" onClick={() => controls.complete()}>
           {context.n}
@@ -137,7 +137,6 @@ describe("linear bundle rendering and navigation", () => {
     fireEvent.click(screen.getByTestId("ctx"));
     await flush();
     expect(journey.machine.getSnapshot().status).toBe("completed");
-    expect(journey.useMachine()).toBe(journey.machine);
   });
 
   it("shares the one machine across Providers; state survives remounts; restart resets", async () => {
@@ -186,12 +185,12 @@ describe("definition step config and start position", () => {
     expect(screen.getByTestId("metadata").textContent).toBe("Alpha");
   });
 
-  it("starts at options.startAt: earlier steps never enter or leave", async () => {
-    const onLeaveA = vi.fn();
-    const journey = createLinearJourney(
-      { context: {}, steps: [{ id: "a", onLeave: onLeaveA }, "b"] },
-      { startAt: "b" }
-    );
+  // That the skipped steps never *enter* is Core's assertion, made against
+  // definition hooks this tier does not accept — see linear.test.ts's startAt
+  // suite. What is React's here: StepRenderer opens on the target's view, not
+  // the first step's.
+  it("starts at options.startAt: StepRenderer opens on the target step", async () => {
+    const journey = createLinearJourney({ context: {}, steps: ["a", "b"] }, { startAt: "b" });
     render(
       <journey.Provider views={{ a: <StepA />, b: <StepB /> }}>
         <journey.StepRenderer />
@@ -200,7 +199,7 @@ describe("definition step config and start position", () => {
     await flush();
 
     expect(screen.getByTestId("step-b")).toBeTruthy();
-    expect(onLeaveA).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("step-a")).toBeNull();
   });
 });
 
@@ -284,11 +283,11 @@ describe("useStepHandler", () => {
 });
 
 describe("events, persistence, and factory validation", () => {
-  it("delivers machine events to useSubscribeEvent listeners", async () => {
+  it("delivers machine events to useEventEffect listeners", async () => {
     const journey = createLinearJourney({ context: {}, steps: ["a", "b"] });
     const entered: (string | null)[] = [];
     const Listen = () => {
-      journey.useSubscribeEvent("stepEnter", ({ to }) => entered.push(to));
+      journey.useEventEffect("stepEnter", ({ to }) => entered.push(to));
       return null;
     };
     render(<Listen />);

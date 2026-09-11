@@ -1,8 +1,12 @@
 import type React from "react";
 import type {
   AnyJourneyPlugin,
+  Bag,
+  GraphDefinition,
   GraphJourneyMachine,
   GraphSnapshot,
+  GraphStep,
+  GraphStepConfig,
   JourneyEventObject,
   JourneyEventPayloads,
   JourneyRuntimeOptions,
@@ -10,7 +14,7 @@ import type {
   JourneySubscriptionEvent,
   LinearJourneyMachine as CoreLinearJourneyMachine,
   LinearSnapshot,
-  LinearStepInput,
+  LinearStepConfig,
   NavigationWork
 } from "@rxova/journey-core";
 
@@ -128,21 +132,96 @@ export type JourneyBundleBase<
   ) => TSelected;
   /** The current step — id, metadata, async state — or null while idle (reactive). */
   useStep: () => TSnapshot["currentStep"];
-  /** The machine's context value (reactive). */
-  useContext: () => TContext;
+  /**
+   * A derived slice of the machine's context; re-renders only when it changes
+   * (reactive). The selector is required — `useContextSelector((c) => c)` is
+   * the explicit way to ask for the whole object, and re-renders on every
+   * context write by construction rather than by accident.
+   */
+  useContextSelector: <TSelected>(
+    selector: (context: TContext) => TSelected,
+    equalityFn?: (a: TSelected, b: TSelected) => boolean
+  ) => TSelected;
   /** Subscribes a listener to a machine event for the component's lifetime. */
-  useSubscribeEvent: <TEvent extends JourneySubscriptionEvent>(
+  useEventEffect: <TEvent extends JourneySubscriptionEvent>(
     event: TEvent,
     listener: (payload: JourneyEventPayloads<TContext, TStepId, TSnapshot>[TEvent]) => void
   ) => void;
 
-  /** The machine and its command groups, verbatim (stable — not reactive). */
-  useMachine: () => TMachine;
-  useControls: () => TMachine["controls"];
-  useNavigation: () => TMachine["navigate"];
+  /**
+   * `machine.controls`, verbatim — callable from anywhere, React or not.
+   *
+   * A plain property rather than a hook: it is the same frozen object on every
+   * render, so a hook around it would only be a second spelling of
+   * `bundle.controls` that happens to require a component to read it. The same
+   * reasoning removed `useMachine`/`useControls`/`useNavigation` — reach the
+   * machine through `bundle.machine`, and navigation through this tier's own
+   * `navigate` (linear) or `send` (graph).
+   */
+  controls: TMachine["controls"];
 
   /** `machine.context.update`, verbatim — callable from anywhere, React or not. */
   updateContext: (updater: (context: TContext) => TContext) => void;
+};
+
+// ---------------------------------------------------------------------------
+// Step configs — core's, minus the lifecycle hooks
+// ---------------------------------------------------------------------------
+
+/**
+ * Why this tier drops step `onEnter`/`onLeave`: `<StepRenderer>` keys the
+ * active view by step id, so mounting *is* enter and unmounting *is* leave. A
+ * `useEffect` with a cleanup already says it, scoped to the component that
+ * cares and able to touch React state — which a definition hook running inside
+ * Core cannot. Core keeps both hooks; only the React definition refuses them.
+ *
+ * `onEnter?: never` rather than a bare `Omit`: excess-property checking fires
+ * only on inline object literals, so a step declared in its own file and
+ * annotated with Core's `LinearStepConfig`/`GraphStep` would otherwise keep its
+ * hooks and compile clean here. The `never` makes the ban structural, which is
+ * the difference between a rule and a suggestion.
+ */
+type NoStepLifecycle = {
+  readonly onEnter?: never;
+  readonly onLeave?: never;
+};
+
+/** Core's linear step config without the lifecycle hooks. */
+export type ReactLinearStepConfig<
+  TContext = unknown,
+  TStepId extends string = string,
+  TMeta = Record<string, unknown>
+> = Omit<LinearStepConfig<TContext, TStepId, TMeta>, "onEnter" | "onLeave"> & NoStepLifecycle;
+
+/**
+ * A React linear step: a bare id, or a config without lifecycle hooks.
+ *
+ * Re-formed as a union rather than `Omit<LinearStepInput, …>`. `Omit` does not
+ * distribute, so omitting over `string | LinearStepConfig` would `Pick` the
+ * keys the two branches share — silently destroying both the string shorthand
+ * and the object branch, with no error at the declaration site.
+ */
+export type ReactLinearStepInput<TContext, TMeta, TStepId extends string = string> =
+  | TStepId
+  | ReactLinearStepConfig<TContext, TStepId, TMeta>;
+
+/** Core's graph step config without the lifecycle hooks. */
+export type ReactGraphStepConfig<
+  TContext,
+  TStepId extends string,
+  TEvents extends JourneyEventObject,
+  TMeta,
+  THandlers
+> = Omit<GraphStepConfig<TContext, TStepId, TEvents, TMeta, THandlers>, "onEnter" | "onLeave"> &
+  NoStepLifecycle;
+
+/** A bag-pinned graph step without the lifecycle hooks. */
+export type ReactGraphStep<TBag extends Bag> = Omit<GraphStep<TBag>, "onEnter" | "onLeave"> &
+  NoStepLifecycle;
+
+/** A bag-pinned graph definition whose steps carry no lifecycle hooks. */
+export type ReactGraphDefinition<TBag extends Bag> = Omit<GraphDefinition<TBag>, "steps"> & {
+  readonly steps: Readonly<Record<TBag["stepId"], ReactGraphStep<TBag>>>;
 };
 
 // ---------------------------------------------------------------------------
@@ -186,14 +265,15 @@ export type LinearJourneyStepHandler<
 
 /**
  * The pure-data definition `createLinearJourney()` captures: core's own
- * `LinearJourneyDefinition` shape. Step configs (`metadata`, `onEnter`,
- * `onLeave`) live here — never in JSX.
+ * `LinearJourneyDefinition` shape, minus the step lifecycle hooks. Step
+ * `metadata` lives here — never in JSX; enter and leave are a `useEffect` with
+ * a cleanup in the step's own view.
  */
 export type LinearJourneyBundleDefinition<
   TContext,
-  TSteps extends readonly LinearStepInput<TContext, unknown>[] = readonly [
-    LinearStepInput<TContext, unknown>,
-    ...LinearStepInput<TContext, unknown>[]
+  TSteps extends readonly ReactLinearStepInput<TContext, unknown>[] = readonly [
+    ReactLinearStepInput<TContext, unknown>,
+    ...ReactLinearStepInput<TContext, unknown>[]
   ]
 > = {
   /** Ordered steps — the machine's source of truth. A bare string is shorthand for `{ id }`. */

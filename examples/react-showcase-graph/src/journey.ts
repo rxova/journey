@@ -1,6 +1,6 @@
 import { withGraphTypes } from "@rxova/journey-react/graph";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
-import type { GraphDefinition } from "@rxova/journey-core";
+import type { ReactGraphDefinition } from "@rxova/journey-react/graph";
 import { mockApi } from "./api";
 import { loginStep } from "./steps/login.step";
 import { setup2faStep } from "./steps/setup2fa.step";
@@ -40,7 +40,7 @@ const definition = {
     loggedIn: loggedInStep,
     blocked: blockedStep
   }
-} satisfies GraphDefinition<AuthBag>;
+} satisfies ReactGraphDefinition<AuthBag>;
 
 const plugins = [createExecutionPathsPlugin()] as const;
 

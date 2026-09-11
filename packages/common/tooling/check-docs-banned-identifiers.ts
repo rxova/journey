@@ -108,7 +108,21 @@ export const BANNED_IDENTIFIERS: readonly BannedIdentifier[] = [
   // docs entirely — it survived only in the generated reference, which this
   // check excludes.
   { name: "UseLinearJourneyResult", pattern: /\bUseLinearJourneyResult\b/ },
-  { name: "machineRef", pattern: /\bmachineRef\b/ }
+  { name: "machineRef", pattern: /\bmachineRef\b/ },
+  // Renamed: the hook is an effect that happens to subscribe, and naming it so
+  // puts it next to `useEffect` in a reader's head rather than next to
+  // `machine.subscriptions`.
+  { name: "useSubscribeEvent", pattern: /\buseSubscribeEvent\b/ },
+  // Replaced by `useContextSelector(selector)`. Matched through the receiver
+  // rather than by word boundary: a bare /\buseContext\b/ would flag React's
+  // own hook, which this repo uses for the views context.
+  { name: "bundle.useContext()", pattern: /\b\w+\.useContext\(/ },
+  // The three pass-through hooks. Each returned an object already reachable on
+  // the bundle (`machine`, `controls`, `machine.navigate`) and none of them was
+  // reactive, so they were three more spellings of a read that has one.
+  { name: "bundle.useMachine()", pattern: /\b\w+\.useMachine\(/ },
+  { name: "bundle.useControls()", pattern: /\b\w+\.useControls\(/ },
+  { name: "bundle.useNavigation()", pattern: /\b\w+\.useNavigation\(/ }
 ];
 
 /**

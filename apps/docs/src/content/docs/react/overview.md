@@ -80,8 +80,10 @@ export function Signup() {
 The definition is the single source of truth. `context` is both the initial value and the type
 anchor—annotate the value (`const initialContext: SignupContext = { ... }`) rather than casting—so
 `TContext` and the step-ID union are inferred and no call site passes generics. A bare string in
-`steps` is shorthand for `{ id }`; step configuration (`metadata`, `onEnter`, `onLeave`) lives in
-those step objects, never in JSX. The optional `name` becomes the Provider's React DevTools
+`steps` is shorthand for `{ id }`; step `metadata` lives in those step objects, never in JSX.
+Core's per-step `onEnter`/`onLeave` hooks are not accepted here — `<StepRenderer>` keys the active
+view by step ID, so a step's own component mounts on enter and unmounts on leave, and a
+`useEffect` with a cleanup says both while still reaching component state. The optional `name` becomes the Provider's React DevTools
 displayName. History, visit tracking, and index derivations all follow the definition's declared
 order.
 
@@ -102,10 +104,11 @@ Linear bundle hooks are:
 
 - reactive: `useSnapshot()` for the machine's live snapshot; `useSelector(selector, equalityFn?)`
   for a narrow subscription; `useStep()` for the whole current step—ID, index flags, metadata,
-  async state—or `null` while idle; `useContext()` for the context value;
-  `useSubscribeEvent(event, listener)` for exact Core observation payloads;
-- stable accessors: `useMachine()`, `useControls()`, and `useNavigation()` for the machine and its
-  command groups, verbatim;
+  async state—or `null` while idle; `useContextSelector(selector, equalityFn?)` for a slice of the
+  context; `useEventEffect(event, listener)` for exact Core observation payloads;
+- plain properties, not hooks: `machine`, `controls`, `navigate` and `updateContext` are the
+  machine and its command groups verbatim. They are frozen objects with stable references, so
+  reading them can neither subscribe nor re-render;
 - `useStepHandler(stepId, handler)`: registers forward-navigation work for `stepId` while the
   calling component is mounted. `run` gates `goToNextStep()`, a throw or rejection cancels the
   move and lands in `currentStep.async.error`, and `commit` stages its context update
@@ -125,7 +128,7 @@ The factory's second argument passes Core's creation options through verbatim, f
 `autoStart` is three-way in this tier:
 
 - **omitted (the default)** — the machine starts from a layout effect when the first Provider,
-  reactive hook, `useSubscribeEvent`, or `useStepHandler` mounts. `controls.start()` is
+  reactive hook, `useEventEffect`, or `useStepHandler` mounts. `controls.start()` is
   idempotent, so mounting many components still starts it exactly once. This ordering is what
   makes the journey's first `stepEnter` observable, and it keeps SSR deterministic: layout effects
   do not run on the server, so both sides render `fallback` and hydration matches.
@@ -190,9 +193,9 @@ export function Checkout() {
 ```
 
 The graph bundle mirrors the linear one—`machine`, Provider with `views` and `children` only,
-`StepRenderer`, reactive `useSnapshot` / `useSelector` / `useStep` / `useContext` /
-`useSubscribeEvent`, stable `useMachine` / `useControls` / `useNavigation`—with the verbatim
-delegates being `checkout.send(...)` and `checkout.updateContext(...)`. `views` (`JourneyViews`)
+`StepRenderer`, reactive `useSnapshot` / `useSelector` / `useStep` / `useContextSelector` /
+`useEventEffect`, plain `machine` / `controls`—with the verbatim delegates being
+`checkout.send(...)` and `checkout.updateContext(...)`. `views` (`JourneyViews`)
 follows the same contract as the linear tier: keyed by step ID, exhaustively type-checked, element
 values. None of the hooks needs a Provider.
 

@@ -129,8 +129,8 @@ consistent emission. Use selectors for leaf components to avoid re-rendering on 
 ## Keep commands grouped
 
 ```tsx
-const controls = checkout.useControls();
-const navigate = checkout.useNavigation();
+const { controls } = checkout;
+const navigate = checkout.machine.navigate;
 
 controls.pause();
 await navigate.goToPreviousStep();

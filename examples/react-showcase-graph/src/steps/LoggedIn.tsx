@@ -5,13 +5,30 @@ import { journey } from "../journey";
 
 export const LoggedIn = () => {
   const snapshot = journey.useSnapshot();
-  const controls = journey.useControls();
+  const { controls } = journey;
 
-  // React alternative to onEnter/onLeave on the step definition.
-  // Useful when the callback needs access to component state or React context.
-  journey.useSubscribeEvent("stepLeave", ({ from, snapshot }) => {
+  // Enter and leave, without definition hooks: StepRenderer keys the active
+  // view by step id, so this component mounts exactly when the step is entered
+  // and unmounts exactly when it is left. Unlike a hook running inside the
+  // machine, an effect can reach component state and React context.
+  React.useEffect(() => {
+    console.log(
+      "[journey] loggedIn: authenticated as",
+      journey.machine.getSnapshot().context.username
+    );
+    return () => {
+      console.log(
+        "[journey] loggedIn: leaving session for",
+        journey.machine.getSnapshot().context.username
+      );
+    };
+  }, []);
+
+  // useEventEffect is the other half: it observes the machine's own events
+  // rather than this component's lifetime, so it sees moves between any steps.
+  journey.useEventEffect("stepLeave", ({ from }) => {
     if (from !== "loggedIn") return;
-    console.log("[journey] loggedIn: leaving session for", snapshot.context.username);
+    console.log("[journey] loggedIn: stepLeave fired");
   });
 
   React.useEffect(() => {
