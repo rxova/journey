@@ -225,20 +225,9 @@ final step (`goToNextStep` on the last step never auto-completes).
 
 ## Growing into the graph tier
 
-The captured definition is Core's own `LinearJourneyDefinition` shape, so the same object converts
-directly when an ordered flow grows into named graph events:
-
-```ts
-import { linearToGraphDefinition } from "@rxova/journey-core/convert";
-
-const definition = {
-  context: initialContext,
-  steps: ["account", "shipping", "review"]
-} as const;
-
-const checkout = createLinearJourney(definition);
-const graphDefinition = linearToGraphDefinition(definition);
-```
+The captured definition is Core's own `LinearJourneyDefinition` shape. When an ordered flow grows
+into named graph events, the context and steps carry over to a graph definition unchanged — each
+step gains an `on` declaring the events it answers.
 
 ## Graph bundle
 
@@ -362,5 +351,5 @@ React.useEffect(
 You own start and disposal: create the machine where its lifetime belongs (module, request, mount,
 or test), and call `machine.dispose()` when that owner goes away. For typing wrappers around a
 caller-owned machine, `@rxova/journey-react` exports the structural helpers `AnyJourneyMachine`,
-`SnapshotOf`, `ContextOf`, `StepIdOf`, and `EventPayloadOf`. The `react-showcase-headless`
-example is the canonical version of this pattern.
+`SnapshotOf`, `ContextOf`, `StepIdOf`, and `EventPayloadOf`. The six `react-plugin-*` examples
+author machines this way.

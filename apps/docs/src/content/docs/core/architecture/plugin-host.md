@@ -11,7 +11,6 @@ host
   getSnapshot()
   structure            kind, stepIds, initial, flattened transitions
   onTransition()       after commit + settle of every successful navigation
-  onStepEnter() / onStepLeave()
   onStatusChange() / onContextChange()
   onNavigationBlocked() / onError()
   onDispose()

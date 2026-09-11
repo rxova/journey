@@ -158,8 +158,7 @@ await checkout.navigate.goToStepById("review");
 ```
 
 It is ungated and can reach any declared linear step. When named jumps, branching, or guarded
-destinations become normal flow behavior, move the definition to graph mode. The optional
-`@rxova/journey-core/convert` entry can convert linear adjacency into graph events.
+destinations become normal flow behavior, move the definition to graph mode.
 
 ## Completion and termination
 

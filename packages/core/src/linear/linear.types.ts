@@ -50,10 +50,7 @@ export type LinearStepInput<
   TTerminatePayload = unknown
 > = TStepId | LinearStepConfig<TContext, TStepId, TMeta, TCompletePayload, TTerminatePayload>;
 
-/**
- * Pure-data linear definition: testable, reusable, and the unit
- * `linearToGraphDefinition` operates on.
- */
+/** Pure-data linear definition: testable and reusable. */
 export type LinearJourneyDefinition<
   TStepId extends string = string,
   TContext = unknown,

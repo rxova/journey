@@ -17,8 +17,7 @@ const common = {
     "react/jsx-runtime",
     "react/jsx-dev-runtime",
     "@rxova/journey-core",
-    "@rxova/journey-core/persistence",
-    "@rxova/journey-core/convert"
+    "@rxova/journey-core/persistence"
   ]
 } satisfies BuildOptions;
 

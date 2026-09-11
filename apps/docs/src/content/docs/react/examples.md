@@ -13,8 +13,6 @@ React surface.
 - `react-showcase-graph` demonstrates a standalone graph bundle machine, typed domain events,
   synchronous route guards, graph snapshot introspection, and DevTools attached straight to
   `journey.machine`.
-- `react-showcase-headless` demonstrates a caller-owned Core machine consumed with React's own
-  `useSyncExternalStore` — no React package surface involved.
 
 Run an example from the repository root:
 

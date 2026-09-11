@@ -263,9 +263,7 @@ describe("generic devtools operations", () => {
           currentStepId="start"
           disabled={false}
           mutationsEnabled={true}
-          mode="graph"
           stepIds={["start", "review", "done"]}
-          eventTypes={["journey.start", "review.submit"]}
           eventTypesBySource={{
             start: ["journey.start"],
             review: ["review.submit"],
@@ -329,9 +327,7 @@ describe("generic devtools operations", () => {
           currentStepId="start"
           disabled={false}
           mutationsEnabled={true}
-          mode="graph"
           stepIds={["start", "review", "done"]}
-          eventTypes={["journey.start", "review.submit"]}
           eventTypesBySource={{
             start: ["journey.start"],
             review: ["review.submit"],
@@ -387,40 +383,6 @@ describe("generic devtools operations", () => {
     expect(state.machines["machine-1"]?.snapshot.status).toBe("running");
   });
 
-  it("shows all step ids for headless goToStepById", async () => {
-    const onInvoke = vi.fn();
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const root = createRoot(container);
-
-    await act(async () => {
-      root.render(
-        <CommandControls
-          features={features}
-          snapshotStatus="running"
-          currentStepId="start"
-          disabled={false}
-          mutationsEnabled={true}
-          mode="headless"
-          stepIds={["start", "review", "done"]}
-          eventTypes={["journey.start", "review.submit"]}
-          eventTypesBySource={{}}
-          goToStepTargetsBySource={{}}
-          onInvoke={onInvoke}
-        />
-      );
-    });
-
-    const navigationSelect = [...container.querySelectorAll("select")].find(
-      (select) => select.querySelector('option[value="start"]') !== null
-    );
-    expect(navigationSelect?.querySelector('option[value="start"]')).toBeTruthy();
-    expect(navigationSelect?.querySelector('option[value="review"]')).toBeTruthy();
-    expect(navigationSelect?.querySelector('option[value="done"]')).toBeTruthy();
-
-    root.unmount();
-  });
-
   it("shows inline json validation and dispatches patchContext with parsed values", async () => {
     const onInvoke = vi.fn();
     const container = document.createElement("div");
@@ -435,9 +397,7 @@ describe("generic devtools operations", () => {
           currentStepId="start"
           disabled={false}
           mutationsEnabled={true}
-          mode="graph"
           stepIds={["start", "review", "done"]}
-          eventTypes={["journey.start", "review.submit"]}
           eventTypesBySource={{
             start: ["journey.start"],
             review: ["review.submit"],

@@ -23,17 +23,12 @@ import { OperationSectionCard } from "./commands/OperationSectionCard";
 const getOperationFieldOptions = (
   operationId: string,
   currentStepId: string,
-  mode: "linear" | "graph" | "headless" | undefined,
   stepIds: readonly string[],
-  eventTypes: readonly string[],
   eventTypesBySource: Record<string, readonly string[]> | undefined,
   goToStepTargetsBySource: Record<string, readonly string[]> | undefined
 ): Partial<Record<string, readonly string[]>> | undefined => {
   switch (operationId) {
     case "core.goToStepById":
-      if (mode === "headless") {
-        return stepIds.length > 0 ? { stepId: stepIds } : undefined;
-      }
       return {
         stepId: [
           ...(goToStepTargetsBySource?.[currentStepId] ?? []),
@@ -46,16 +41,16 @@ const getOperationFieldOptions = (
       };
     case "core.clearStepError":
       return stepIds.length > 0 ? { stepId: stepIds } : undefined;
-    case "core.sendEvent":
-      if (mode === "headless") {
-        return eventTypes.length > 0 ? { type: eventTypes } : undefined;
-      }
-      return {
-        type: [
-          ...(eventTypesBySource?.[currentStepId] ?? []),
-          ...(eventTypesBySource?.["*"] ?? [])
-        ].filter((eventType, index, allEventTypes) => allEventTypes.indexOf(eventType) === index)
-      };
+    case "core.sendEvent": {
+      const eventTypes = [
+        ...(eventTypesBySource?.[currentStepId] ?? []),
+        ...(eventTypesBySource?.["*"] ?? [])
+      ].filter((eventType, index, allEventTypes) => allEventTypes.indexOf(eventType) === index);
+      // No advertised events for this step — an empty select would be a dead
+      // end, so fall back to the free-text input and let the user name the
+      // event. `send` is not select-only, so a typed value is still valid.
+      return eventTypes.length > 0 ? { type: eventTypes } : undefined;
+    }
     default:
       return undefined;
   }
@@ -171,9 +166,7 @@ export const CommandControls = ({
   disabled,
   disabledReason,
   mutationsEnabled,
-  mode,
   stepIds = [],
-  eventTypes = [],
   eventTypesBySource,
   goToStepTargetsBySource
 }: {
@@ -184,9 +177,7 @@ export const CommandControls = ({
   disabled: boolean;
   disabledReason?: string | null;
   mutationsEnabled: boolean;
-  mode: "linear" | "graph" | "headless" | undefined;
   stepIds: readonly string[] | undefined;
-  eventTypes: readonly string[] | undefined;
   eventTypesBySource: Record<string, readonly string[]> | undefined;
   goToStepTargetsBySource: Record<string, readonly string[]> | undefined;
 }) => {
@@ -292,9 +283,7 @@ export const CommandControls = ({
                     fieldOptions={getOperationFieldOptions(
                       operation.id,
                       currentStepId,
-                      mode,
                       stepIds,
-                      eventTypes,
                       eventTypesBySource,
                       goToStepTargetsBySource
                     )}

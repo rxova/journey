@@ -198,6 +198,11 @@ const isMachineMeta = (
     (version === JOURNEY_DEVTOOLS_PROTOCOL_VERSION
       ? typeof value.mutationsEnabled === "boolean"
       : value.mutationsEnabled === undefined || typeof value.mutationsEnabled === "boolean") &&
+    // "headless" is no longer a mode any emitter produces — the bridge sets
+    // `mode: snapshot.type`, which is only "linear" | "graph". It is gone from
+    // JourneyDevtoolsMachineMeta, but still accepted here so a third-party v7
+    // emitter still registers rather than being silently dropped. Retire this
+    // arm with the v8 protocol bump.
     (value.mode === undefined ||
       value.mode === "linear" ||
       value.mode === "graph" ||

@@ -9,7 +9,7 @@ import {
   createLinearJourney,
   createGraphJourney as coreCreateGraphJourney
 } from "@rxova/journey-core";
-import { createSubscriptionEnhancerPlugin } from "@rxova/journey-core/subscription-enhancer";
+import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
 import { createLinearJourney as createLinearJourneyBundle } from "@rxova/journey-react";
 import { createGraphJourney } from "@rxova/journey-react/graph";
 
@@ -96,11 +96,11 @@ export function graphBundleTypes() {
 export function pluginThreadingTypes() {
   const bundle = createLinearJourneyBundle(
     { context: { n: 0 }, steps: ["a", "b"] },
-    { plugins: [createSubscriptionEnhancerPlugin()] }
+    { plugins: [createAnalyticsPlugin({ track: () => undefined })] }
   );
 
   type _pluginApis = Expect<
-    Equal<keyof ReturnType<typeof bundle.useMachine>["plugins"], "subscription-enhancer">
+    Equal<keyof ReturnType<typeof bundle.useMachine>["plugins"], "analytics">
   >;
 
   return bundle;

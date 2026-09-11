@@ -60,24 +60,9 @@ export default defineConfig({
         )
       },
       {
-        find: "@rxova/journey-core/subscription-enhancer",
-        replacement: fileURLToPath(
-          new URL(
-            "./packages/core/src/plugins/subscription-enhancer/subscription-enhancer.ts",
-            import.meta.url
-          )
-        )
-      },
-      {
         find: "@rxova/journey-core/testing",
         replacement: fileURLToPath(
           new URL("./packages/core/src/__tests__/helpers.ts", import.meta.url)
-        )
-      },
-      {
-        find: "@rxova/journey-core/convert",
-        replacement: fileURLToPath(
-          new URL("./packages/core/src/convert/convert.ts", import.meta.url)
         )
       },
       {

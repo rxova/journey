@@ -98,17 +98,15 @@ Registered plugins appear under `machine.plugins`.
 
 ## Optional entry points
 
-| Import                                      | Export                                               |
-| ------------------------------------------- | ---------------------------------------------------- |
-| `@rxova/journey-core/convert`               | `linearToGraphDefinition`                            |
-| `@rxova/journey-core/connectors/immer`      | `immerConnector` and `ImmerContextRecipe`            |
-| `@rxova/journey-core/persistence`           | `createPersistencePlugin` and helpers/types          |
-| `@rxova/journey-core/autosave`              | `createAutosavePlugin` and helpers/types             |
-| `@rxova/journey-core/analytics`             | `createAnalyticsPlugin` and helpers/types            |
-| `@rxova/journey-core/replay`                | `createReplayPlugin` and helpers/types               |
-| `@rxova/journey-core/diagnostics`           | `createDiagnosticsPlugin` and analysis helpers/types |
-| `@rxova/journey-core/execution-paths`       | `createExecutionPathsPlugin`                         |
-| `@rxova/journey-core/subscription-enhancer` | `createSubscriptionEnhancerPlugin`                   |
+| Import                                 | Export                                               |
+| -------------------------------------- | ---------------------------------------------------- |
+| `@rxova/journey-core/connectors/immer` | `immerConnector` and `ImmerContextRecipe`            |
+| `@rxova/journey-core/persistence`      | `createPersistencePlugin` and helpers/types          |
+| `@rxova/journey-core/autosave`         | `createAutosavePlugin` and helpers/types             |
+| `@rxova/journey-core/analytics`        | `createAnalyticsPlugin` and helpers/types            |
+| `@rxova/journey-core/replay`           | `createReplayPlugin` and helpers/types               |
+| `@rxova/journey-core/diagnostics`      | `createDiagnosticsPlugin` and analysis helpers/types |
+| `@rxova/journey-core/execution-paths`  | `createExecutionPathsPlugin`                         |
 
 These entry points are independently tree-shakeable. Connectors adapt optional third-party
 libraries to Core primitives; the Immer connector requires `immer` as a peer only when that entry

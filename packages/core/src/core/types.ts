@@ -482,12 +482,6 @@ export type PluginHost<TContext = unknown, TStepId extends string = string> = {
       readonly snapshot: JourneySnapshot<TContext, TStepId>;
     }) => void
   ): Unsubscribe;
-  onStepEnter(
-    callback: (info: JourneyEventPayloads<TContext, TStepId>["stepEnter"]) => void
-  ): Unsubscribe;
-  onStepLeave(
-    callback: (info: JourneyEventPayloads<TContext, TStepId>["stepLeave"]) => void
-  ): Unsubscribe;
   onNavigationBlocked(
     callback: (info: JourneyEventPayloads<TContext, TStepId>["navigationBlocked"]) => void
   ): Unsubscribe;

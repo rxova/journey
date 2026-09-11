@@ -117,19 +117,11 @@ await machine.navigate.goToPreviousStep({
 Step `onLeave` and `onEnter` are awaited post-commit effects. Their failures are reported but cannot
 roll navigation back.
 
-## Convert to a graph
+## Outgrowing the linear tier
 
-Use the optional `@rxova/journey-core/convert` entry when an ordered flow grows event-driven
-branches:
-
-```ts
-import { linearToGraphDefinition } from "@rxova/journey-core/convert";
-
-const graphDefinition = linearToGraphDefinition(linearDefinition);
-```
-
-Adjacent steps become `NEXT` and `PREVIOUS` transitions. Pass `{ includeJumpEvents: true }` to add a
-`GO_TO_<ID>` event for every step.
+When named events or guarded destinations become normal flow behaviour, rewrite the definition for
+`createGraphJourney`. The steps and context carry over unchanged; declared order becomes explicit
+transitions on each step's `on`.
 
 ## Where to next
 

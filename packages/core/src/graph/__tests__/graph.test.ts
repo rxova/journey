@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { createGraphJourney, MAX_RAISED_EVENTS } from "@rxova/journey-core";
+import { createGraphJourney } from "@rxova/journey-core";
+// Internal cap: asserted here, deliberately not part of the public surface.
+import { MAX_RAISED_EVENTS } from "@rxova/journey-core/testing";
 import { flush, wait } from "@rxova/journey-core/testing";
 
 type Ctx = { valid: boolean; confirmed: boolean; retries: number };

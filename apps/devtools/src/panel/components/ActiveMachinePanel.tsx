@@ -77,9 +77,7 @@ export const ActiveMachinePanel = () => {
           disabled={areCommandsDisabled}
           disabledReason={commandDisabledReason}
           mutationsEnabled={activeMachine.meta.mutationsEnabled}
-          mode={activeMachine.meta.mode}
           stepIds={activeMachine.meta.stepIds}
-          eventTypes={activeMachine.meta.eventTypes}
           eventTypesBySource={eventTypesBySource}
           goToStepTargetsBySource={goToStepTargetsBySource}
           onInvoke={(invocation) => invokeOperation(activeMachine.meta.machineId, invocation)}

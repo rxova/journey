@@ -64,6 +64,25 @@ export const BANNED_IDENTIFIERS: readonly BannedIdentifier[] = [
   { name: "useOwnedJourney", pattern: /\buseOwnedJourney\b/ },
   { name: "useJourneyStepLifecycle", pattern: /\buseJourneyStepLifecycle\b/ },
   { name: "useStepAsyncState", pattern: /\buseStepAsyncState\b/ },
+  // Removed by the v2 subtraction pass. `linearToGraphDefinition` and its
+  // `@rxova/journey-core/convert` entry had no callers;
+  // `createSubscriptionEnhancerPlugin` was six status predicates over an
+  // observation the machine already publishes. Both entry-point strings are
+  // matched literally rather than by word boundary, because the bare words
+  // "convert" and "headless" appear legitimately in prose (CONTRIBUTING.md and
+  // llms.txt both describe a headless state machine; astro.config.js explains
+  // why the docs build avoids a headless browser).
+  { name: "linearToGraphDefinition", pattern: /\blinearToGraphDefinition\b/ },
+  { name: "journey-core/convert", pattern: /journey-core\/convert/ },
+  {
+    name: "createSubscriptionEnhancerPlugin",
+    pattern: /\bcreateSubscriptionEnhancerPlugin\b/
+  },
+  { name: "journey-core/subscription-enhancer", pattern: /journey-core\/subscription-enhancer/ },
+  // Plugin-host taps no first-party plugin ever used; per-step entry and exit
+  // are read from `onTransition`, or subscribed on the machine.
+  { name: "host.onStepEnter", pattern: /\bhost\.onStepEnter\b/ },
+  { name: "host.onStepLeave", pattern: /\bhost\.onStepLeave\b/ },
   // `useJourney` is deliberately NOT banned: the rc-era hook of that name was
   // removed, but the name was then reused for the current per-component
   // ownership hook. Banning it kept the shipping API out of the hand-written

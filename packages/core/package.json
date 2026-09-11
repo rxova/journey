@@ -105,14 +105,6 @@
       "import": "./dist/plugins/replay/replay.js",
       "require": "./dist/plugins/replay/replay.cjs"
     },
-    "./subscription-enhancer": {
-      "types": {
-        "import": "./dist/plugins/subscription-enhancer/subscription-enhancer.d.ts",
-        "require": "./dist/plugins/subscription-enhancer/subscription-enhancer.d.cts"
-      },
-      "import": "./dist/plugins/subscription-enhancer/subscription-enhancer.js",
-      "require": "./dist/plugins/subscription-enhancer/subscription-enhancer.cjs"
-    },
     "./execution-paths": {
       "types": {
         "import": "./dist/plugins/execution-paths/execution-paths.d.ts",
@@ -120,14 +112,6 @@
       },
       "import": "./dist/plugins/execution-paths/execution-paths.js",
       "require": "./dist/plugins/execution-paths/execution-paths.cjs"
-    },
-    "./convert": {
-      "types": {
-        "import": "./dist/convert/convert.d.ts",
-        "require": "./dist/convert/convert.d.cts"
-      },
-      "import": "./dist/convert/convert.js",
-      "require": "./dist/convert/convert.cjs"
     }
   },
   "files": [
@@ -186,12 +170,6 @@
       "limit": "100 B"
     },
     {
-      "name": "core/linearToGraphDefinition",
-      "path": "dist/convert/convert.js",
-      "import": "{ linearToGraphDefinition }",
-      "limit": "540 B"
-    },
-    {
       "name": "core/createExecutionPathsPlugin",
       "path": "dist/plugins/execution-paths/execution-paths.js",
       "import": "{ createExecutionPathsPlugin }",
@@ -226,12 +204,6 @@
       "path": "dist/plugins/replay/replay.js",
       "import": "{ createReplayPlugin }",
       "limit": "850 B"
-    },
-    {
-      "name": "core/createSubscriptionEnhancerPlugin",
-      "path": "dist/plugins/subscription-enhancer/subscription-enhancer.js",
-      "import": "{ createSubscriptionEnhancerPlugin }",
-      "limit": "250 B"
     }
   ]
 }

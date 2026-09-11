@@ -95,19 +95,13 @@ await machine.navigate.goToNextStep();
         slot: "graph",
         summary:
           "Branching, retries and conditional routing. Keyed by step, then by event, matched in order."
-      },
-      {
-        name: "Headless",
-        slot: "headless",
-        summary:
-          "No transitions at all. You own navigation entirely and drive it with goToStepById."
       }
     ]}
   >
     <Fragment slot="linear">
 
 ```ts
-transitions: ["account", "details", "payment", "review"];
+steps: ["account", "details", "payment", "review"];
 ```
 
     </Fragment>
@@ -115,22 +109,11 @@ transitions: ["account", "details", "payment", "review"];
 
 ```ts
 transitions: {
-  login: {
-    goToNextStep: [
-      { to: "admin", when: ({ context }) => context.role === "admin" },
-      { to: "dashboard" }
-    ]
-  },
-  admin: { completeJourney: true }
+  submit: [
+    { from: "login", to: "admin", when: ({ context }) => context.role === "admin" },
+    { from: "login", to: "dashboard" }
+  ];
 }
-```
-
-    </Fragment>
-    <Fragment slot="headless">
-
-```ts
-// Omit `transitions` entirely.
-await machine.goToStepById("step3");
 ```
 
     </Fragment>

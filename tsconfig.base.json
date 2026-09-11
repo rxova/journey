@@ -31,13 +31,9 @@
       "@rxova/journey-core/diagnostics": ["./packages/core/src/plugins/diagnostics/diagnostics.ts"],
       "@rxova/journey-core/persistence": ["./packages/core/src/plugins/persistence/persistence.ts"],
       "@rxova/journey-core/replay": ["./packages/core/src/plugins/replay/replay.ts"],
-      "@rxova/journey-core/subscription-enhancer": [
-        "./packages/core/src/plugins/subscription-enhancer/subscription-enhancer.ts"
-      ],
       "@rxova/journey-core/execution-paths": [
         "./packages/core/src/plugins/execution-paths/execution-paths.ts"
       ],
-      "@rxova/journey-core/convert": ["./packages/core/src/convert/convert.ts"],
       "@rxova/journey-react": ["./packages/react/src/index.ts"],
       "@rxova/journey-react/testing": ["./packages/react/src/__tests__/helpers.tsx"],
       "@rxova/journey-react/graph": ["./packages/react/src/graph.tsx"],

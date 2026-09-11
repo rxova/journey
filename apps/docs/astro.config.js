@@ -29,7 +29,14 @@ export default defineConfig({
   // usage/index.md already resolves to that exact URL.
   redirects: {
     "/core/about": "/core/overview",
-    "/core/runtime-reference": "/core/concepts"
+    "/core/runtime-reference": "/core/concepts",
+    // Headless was never a machine kind, only a usage pattern over the two real
+    // ones, and the page that said so is gone. Both tiers already document
+    // caller-owned machines, which is all it ever described.
+    "/core/usage/headless": "/core/usage/",
+    // The enhancer was six status predicates over an observation the machine
+    // already publishes; the overview covers what replaced it.
+    "/core/plugins/subscription-enhancer-plugin": "/core/plugins/overview/"
   },
 
   // Two pages (core/architecture, core/architecture/work-and-transitions) carry
@@ -110,7 +117,6 @@ export default defineConfig({
                 items: [
                   "core/usage/linear",
                   "core/usage/graph",
-                  "core/usage/headless",
                   "core/usage/step-behavior",
                   "core/effects",
                   "core/handlers",
@@ -156,8 +162,7 @@ export default defineConfig({
                   "core/plugins/analytics-plugin",
                   "core/plugins/replay-plugin",
                   "core/plugins/diagnostics-plugin",
-                  "core/plugins/execution-paths-plugin",
-                  "core/plugins/subscription-enhancer-plugin"
+                  "core/plugins/execution-paths-plugin"
                 ]
               },
               {

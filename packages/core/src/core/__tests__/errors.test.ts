@@ -6,7 +6,6 @@ import {
   createLinearJourney,
   isJourneyError
 } from "@rxova/journey-core";
-import { linearToGraphDefinition } from "@rxova/journey-core/convert";
 import { flush, startedLinear } from "@rxova/journey-core/testing";
 import type { JourneyErrorCode } from "@rxova/journey-core";
 
@@ -130,12 +129,6 @@ describe("creation-time failures carry a code", () => {
     } finally {
       vi.unstubAllGlobals();
     }
-  });
-
-  it("empty definition through the converter", () => {
-    expect(codeOf(() => linearToGraphDefinition({ steps: [], context: {} }))).toBe(
-      "empty-definition"
-    );
   });
 });
 

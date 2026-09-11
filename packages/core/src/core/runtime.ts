@@ -478,8 +478,6 @@ export class JourneyRuntime {
         this.transitionListeners.add(callback as TransitionListener);
         return () => this.transitionListeners.delete(callback as TransitionListener);
       },
-      onStepEnter: (callback) => this.store.subscribeEvent("stepEnter", callback),
-      onStepLeave: (callback) => this.store.subscribeEvent("stepLeave", callback),
       onNavigationBlocked: (callback) => this.store.subscribeEvent("navigationBlocked", callback),
       onStatusChange: (callback) => this.store.subscribeEvent("statusChange", callback),
       onContextChange: (callback) => this.store.subscribeEvent("contextChange", callback),

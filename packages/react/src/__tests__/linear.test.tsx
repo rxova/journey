@@ -2,7 +2,6 @@ import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { createLinearJourney } from "@rxova/journey-react";
-import { linearToGraphDefinition } from "@rxova/journey-core/convert";
 import { flush, makeStep, memoryStorage } from "@rxova/journey-react/testing";
 
 const StepA = makeStep("a");
@@ -367,9 +366,6 @@ describe("events, persistence, and factory validation", () => {
 
     const definition = { context: { n: 1 }, steps: ["intro", "details"] } as const;
     void createLinearJourney(definition);
-    const graphDefinition = linearToGraphDefinition(definition);
-    expect(graphDefinition.initial).toBe("intro");
-    expect(graphDefinition.transitions.NEXT).toMatchObject([{ from: "intro", to: "details" }]);
   });
 
   it("guards only StepRenderer against missing views", () => {

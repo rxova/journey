@@ -35,16 +35,6 @@ export const createExampleViteConfig = ({ reactApp = false }: { reactApp?: boole
           replacement: workspacePath("packages/core/src/plugins/replay/replay.ts")
         },
         {
-          find: "@rxova/journey-core/subscription-enhancer",
-          replacement: workspacePath(
-            "packages/core/src/plugins/subscription-enhancer/subscription-enhancer.ts"
-          )
-        },
-        {
-          find: "@rxova/journey-core/convert",
-          replacement: workspacePath("packages/core/src/convert/convert.ts")
-        },
-        {
           find: /^@rxova\/journey-core$/,
           replacement: workspacePath("packages/core/src/index.ts")
         },

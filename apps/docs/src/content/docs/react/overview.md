@@ -142,8 +142,8 @@ const signup = createLinearJourney(
 );
 ```
 
-When a journey outgrows the linear tier, hand the same definition object to
-`linearToGraphDefinition()` from `@rxova/journey-core/convert`.
+When a journey outgrows the linear tier, rewrite the definition for the graph factory — the steps
+and context carry over unchanged.
 
 ## Graph journey bundles
 

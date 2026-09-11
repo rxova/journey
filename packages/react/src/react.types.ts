@@ -190,9 +190,7 @@ export type LinearJourneyStepHandler<
 
 /**
  * The pure-data definition `createLinearJourney()` captures: core's own
- * `LinearJourneyDefinition` shape, so the same object can feed
- * `linearToGraphDefinition()` from `@rxova/journey-core/convert` when a
- * journey outgrows the linear tier. Step configs (`metadata`, `onEnter`,
+ * `LinearJourneyDefinition` shape. Step configs (`metadata`, `onEnter`,
  * `onLeave`) live here — never in JSX.
  */
 export type LinearJourneyBundleDefinition<

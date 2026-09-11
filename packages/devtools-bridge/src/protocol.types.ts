@@ -75,7 +75,7 @@ export type JourneyDevtoolsMachineMeta = {
   label: string;
   appName: string | null;
   mutationsEnabled?: boolean;
-  mode?: "linear" | "graph" | "headless";
+  mode?: "linear" | "graph";
   stepIds?: readonly string[];
   eventTypes?: readonly string[];
   steps?: Record<string, JourneyDevtoolsStepFeatureDescriptor>;

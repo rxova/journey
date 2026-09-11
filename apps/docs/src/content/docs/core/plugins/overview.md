@@ -37,15 +37,14 @@ derived, observable values suitable for selectors and UI rendering.
 
 ## Built-in plugins
 
-| Plugin                                                  | Purpose                                                       |
-| ------------------------------------------------------- | ------------------------------------------------------------- |
-| [Persistence](../persistence)                           | Write status, context, and timeline on every observed change. |
-| [Autosave](../autosave)                                 | Debounce the same persisted-state write.                      |
-| [Analytics](./analytics-plugin)                         | Normalize lifecycle observations and custom analytics events. |
-| [Replay](./replay-plugin)                               | Record a bounded, exportable runtime session.                 |
-| [Diagnostics](./diagnostics-plugin)                     | Analyze the static journey structure.                         |
-| [Execution paths](./execution-paths-plugin)             | Track realized paths for current and finished runs.           |
-| [Subscription enhancer](./subscription-enhancer-plugin) | Add status-filtered lifecycle helpers.                        |
+| Plugin                                      | Purpose                                                       |
+| ------------------------------------------- | ------------------------------------------------------------- |
+| [Persistence](../persistence)               | Write status, context, and timeline on every observed change. |
+| [Autosave](../autosave)                     | Debounce the same persisted-state write.                      |
+| [Analytics](./analytics-plugin)             | Normalize lifecycle observations and custom analytics events. |
+| [Replay](./replay-plugin)                   | Record a bounded, exportable runtime session.                 |
+| [Diagnostics](./diagnostics-plugin)         | Analyze the static journey structure.                         |
+| [Execution paths](./execution-paths-plugin) | Track realized paths for current and finished runs.           |
 
 Each plugin is published through a separate package entry point so unused integrations do not add
 to a factory's bundle.

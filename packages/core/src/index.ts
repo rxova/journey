@@ -54,7 +54,6 @@ export type {
 export { JourneyError, isJourneyError } from "./core/errors";
 export type { JourneyErrorCode, JourneyErrorDetails } from "./core/errors";
 
-export { MAX_RAISED_EVENTS } from "./core/helpers";
 export type {
   AnyJourneyPlugin,
   ContextUpdater,

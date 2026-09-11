@@ -13,14 +13,12 @@ const common = {
   entryPoints: [
     "src/index.ts",
     "src/connectors/immer/immer.ts",
-    "src/convert/convert.ts",
     "src/plugins/analytics/analytics.ts",
     "src/plugins/autosave/autosave.ts",
     "src/plugins/diagnostics/diagnostics.ts",
     "src/plugins/persistence/persistence.ts",
     "src/plugins/replay/replay.ts",
-    "src/plugins/execution-paths/execution-paths.ts",
-    "src/plugins/subscription-enhancer/subscription-enhancer.ts"
+    "src/plugins/execution-paths/execution-paths.ts"
   ],
   outdir: "dist",
   outbase: "src",

@@ -54,8 +54,6 @@ transition exposes `event`, `from`, `to`, and whether it is guarded.
 
 ```ts
 host.onTransition(listener);
-host.onStepEnter(listener);
-host.onStepLeave(listener);
 host.onNavigationBlocked(listener);
 host.onStatusChange(listener);
 host.onContextChange(listener);
@@ -63,7 +61,8 @@ host.onError(listener);
 ```
 
 Each returns an unsubscribe function. `onTransition` runs after post-commit hooks settle; the named
-event taps follow the same payloads as machine subscriptions.
+event taps follow the same payloads as machine subscriptions. Per-step entry and exit are read from
+`onTransition`'s `from`/`to`, or subscribed on the machine itself with `stepEnter` / `stepLeave`.
 
 ### Disposal
 

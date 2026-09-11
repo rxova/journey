@@ -394,22 +394,6 @@ importers:
         specifier: '>=7.3.5 <8.0.0'
         version: 7.3.6(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
 
-  examples/core-showcase-headless:
-    dependencies:
-      '@rxova/journey-core':
-        specifier: workspace:^
-        version: link:../../packages/core
-    devDependencies:
-      '@vitejs/plugin-react':
-        specifier: ^5.1.4
-        version: 5.1.4(supports-color@10.2.2)(vite@7.3.6(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: '>=7.3.5 <8.0.0'
-        version: 7.3.6(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
-
   examples/core-showcase-linear:
     dependencies:
       '@rxova/journey-core':
@@ -613,40 +597,6 @@ importers:
         version: 7.3.6(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
 
   examples/react-showcase-graph:
-    dependencies:
-      '@rxova/journey-core':
-        specifier: workspace:^
-        version: link:../../packages/core
-      '@rxova/journey-devtools-bridge':
-        specifier: workspace:^
-        version: link:../../packages/devtools-bridge
-      '@rxova/journey-react':
-        specifier: workspace:^
-        version: link:../../packages/react
-      react:
-        specifier: ^19.2.7
-        version: 19.2.7
-      react-dom:
-        specifier: ^19.2.7
-        version: 19.2.7(react@19.2.7)
-    devDependencies:
-      '@types/react':
-        specifier: ^19.2.17
-        version: 19.2.17
-      '@types/react-dom':
-        specifier: ^19.2.3
-        version: 19.2.3(@types/react@19.2.17)
-      '@vitejs/plugin-react':
-        specifier: ^5.1.4
-        version: 5.1.4(supports-color@10.2.2)(vite@7.3.6(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: '>=7.3.5 <8.0.0'
-        version: 7.3.6(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
-
-  examples/react-showcase-headless:
     dependencies:
       '@rxova/journey-core':
         specifier: workspace:^

@@ -833,9 +833,7 @@ describe("panel components", () => {
         disabled={false}
         disabledReason={null}
         mutationsEnabled={false}
-        mode="graph"
         stepIds={["start", "review"]}
-        eventTypes={["custom"]}
         eventTypesBySource={{ start: ["custom"], "*": ["global"] }}
         goToStepTargetsBySource={{ start: ["review"], "*": ["start", "review"] }}
       />
@@ -874,9 +872,7 @@ describe("panel components", () => {
         disabled={false}
         disabledReason={null}
         mutationsEnabled
-        mode="headless"
         stepIds={[]}
-        eventTypes={[]}
         eventTypesBySource={undefined}
         goToStepTargetsBySource={undefined}
       />
@@ -961,9 +957,7 @@ describe("panel components", () => {
         disabled
         disabledReason="Commands are unavailable"
         mutationsEnabled
-        mode="graph"
         stepIds={["start", "review"]}
-        eventTypes={["fallback"]}
         eventTypesBySource={undefined}
         goToStepTargetsBySource={undefined}
       />
@@ -989,9 +983,7 @@ describe("panel components", () => {
         disabled={false}
         disabledReason={null}
         mutationsEnabled
-        mode="graph"
         stepIds={["start", "review"]}
-        eventTypes={["fallback"]}
         eventTypesBySource={undefined}
         goToStepTargetsBySource={undefined}
       />
@@ -1229,9 +1221,7 @@ describe("panel components", () => {
         onInvoke={vi.fn()}
         disabled={false}
         mutationsEnabled
-        mode="graph"
         stepIds={[]}
-        eventTypes={[]}
         eventTypesBySource={{}}
         goToStepTargetsBySource={{}}
       />

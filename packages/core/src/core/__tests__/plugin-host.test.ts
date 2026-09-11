@@ -85,27 +85,29 @@ describe("plugins — observe + extend, never intercept", () => {
     consoleError.mockRestore();
   });
 
-  it("step lifecycle taps can be unsubscribed independently", async () => {
+  it("host taps can be unsubscribed independently", async () => {
     const events: string[] = [];
     let stopTransition: () => void = () => undefined;
     const observer: JourneyPlugin = {
       name: "step-observer",
       setup(host) {
-        host.onStepEnter(({ to }) => events.push(`enter:${to}`));
-        host.onStepLeave(({ from }) => events.push(`leave:${from}`));
+        host.onStatusChange(({ current }) => events.push(`status:${current}`));
+        host.onContextChange(({ current }) => events.push(`context:${String(current)}`));
         stopTransition = host.onTransition(({ to }) => events.push(`transition:${to}`));
         return {};
       }
     };
     const machine = createLinearJourney(
-      { steps: ["a", "b"], context: {} },
+      { steps: ["a", "b"], context: 0 as number },
       { plugins: [observer] as const }
     );
     machine.controls.start();
     await flush();
+    // Only the transition tap is released; the others must keep firing.
     stopTransition();
+    machine.context.update(() => 1);
     await machine.navigate.goToNextStep();
 
-    expect(events).toEqual(["enter:a", "transition:a", "leave:a", "enter:b"]);
+    expect(events).toEqual(["status:running", "transition:a", "context:1"]);
   });
 });
