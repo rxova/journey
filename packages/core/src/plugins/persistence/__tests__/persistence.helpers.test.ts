@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createLinearJourney } from "@rxova/journey-core";
-import { buildPersistedState, parsePersistedState } from "@rxova/journey-core/persistence";
+import { buildPersistedState, parsePersistedState } from "@rxova/journey-core/plugins";
 import { flush } from "@rxova/journey-core/testing";
 
 describe("buildPersistedState", () => {

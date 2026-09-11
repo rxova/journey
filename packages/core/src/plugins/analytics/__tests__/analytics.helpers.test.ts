@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createLinearJourney } from "@rxova/journey-core";
-import { createAnalyticsPlugin, RECENT_EVENT_CAPACITY } from "@rxova/journey-core/analytics";
+import { createAnalyticsPlugin, RECENT_EVENT_CAPACITY } from "@rxova/journey-core/plugins";
 
 describe("RECENT_EVENT_CAPACITY", () => {
   it("is the exact cap the recent-events buffer enforces", () => {

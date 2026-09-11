@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createGraphJourney, createLinearJourney } from "@rxova/journey-core";
 import { flush, startedLinear } from "@rxova/journey-core/testing";
-import type { JourneyStorage } from "@rxova/journey-core/persistence";
+import type { JourneyStorage } from "@rxova/journey-core/plugins";
 
 /**
  * Every "is this a declared step?" guard once used `in`, which walks the

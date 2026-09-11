@@ -9,7 +9,7 @@ import {
   createLinearJourney,
   createGraphJourney as coreCreateGraphJourney
 } from "@rxova/journey-core";
-import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
+import { createAnalyticsPlugin } from "@rxova/journey-core/plugins";
 import { createLinearJourney as createLinearJourneyBundle } from "@rxova/journey-react";
 import { createGraphJourney } from "@rxova/journey-react/graph";
 

@@ -11,20 +11,8 @@ export const createExampleViteConfig = ({ reactApp = false }: { reactApp?: boole
     resolve: {
       alias: [
         {
-          find: "@rxova/journey-core/analytics",
-          replacement: workspacePath("packages/core/src/plugins/analytics/analytics.ts")
-        },
-        {
-          find: "@rxova/journey-core/execution-paths",
-          replacement: workspacePath("packages/core/src/plugins/execution-paths/execution-paths.ts")
-        },
-        {
-          find: "@rxova/journey-core/persistence",
-          replacement: workspacePath("packages/core/src/plugins/persistence/persistence.ts")
-        },
-        {
-          find: "@rxova/journey-core/replay",
-          replacement: workspacePath("packages/core/src/plugins/replay/replay.ts")
+          find: "@rxova/journey-core/plugins",
+          replacement: workspacePath("packages/core/src/plugins/index.ts")
         },
         {
           find: /^@rxova\/journey-core$/,

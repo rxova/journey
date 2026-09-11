@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { createLinearJourney } from "@rxova/journey-core";
-import { createPersistencePlugin, parsePersistedState } from "@rxova/journey-core/persistence";
+import { createPersistencePlugin, parsePersistedState } from "@rxova/journey-core/plugins";
 import { flush } from "@rxova/journey-core/testing";
-import type { JourneyStorage, PersistenceState } from "@rxova/journey-core/persistence";
+import type { JourneyStorage, PersistenceState } from "@rxova/journey-core/plugins";
 
 const KEY = "journey";
 

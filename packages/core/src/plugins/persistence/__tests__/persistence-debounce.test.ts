@@ -4,9 +4,9 @@ import {
   createPersistencePlugin,
   DEFAULT_SAVE_REASONS,
   normalizeDebounceMs
-} from "@rxova/journey-core/persistence";
+} from "@rxova/journey-core/plugins";
 import { flush, wait } from "@rxova/journey-core/testing";
-import type { JourneyStorage } from "@rxova/journey-core/persistence";
+import type { JourneyStorage } from "@rxova/journey-core/plugins";
 
 function memoryStorage(): JourneyStorage & { dump(): Map<string, string> } {
   const data = new Map<string, string>();

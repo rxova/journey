@@ -26,14 +26,7 @@
       "@rxova/journey-core": ["./packages/core/src/index.ts"],
       "@rxova/journey-core/connectors/immer": ["./packages/core/src/connectors/immer/immer.ts"],
       "@rxova/journey-core/testing": ["./packages/core/src/__tests__/helpers.ts"],
-      "@rxova/journey-core/analytics": ["./packages/core/src/plugins/analytics/analytics.ts"],
-      "@rxova/journey-core/autosave": ["./packages/core/src/plugins/autosave/autosave.ts"],
-      "@rxova/journey-core/diagnostics": ["./packages/core/src/plugins/diagnostics/diagnostics.ts"],
-      "@rxova/journey-core/persistence": ["./packages/core/src/plugins/persistence/persistence.ts"],
-      "@rxova/journey-core/replay": ["./packages/core/src/plugins/replay/replay.ts"],
-      "@rxova/journey-core/execution-paths": [
-        "./packages/core/src/plugins/execution-paths/execution-paths.ts"
-      ],
+      "@rxova/journey-core/plugins": ["./packages/core/src/plugins/index.ts"],
       "@rxova/journey-react": ["./packages/react/src/index.ts"],
       "@rxova/journey-react/testing": ["./packages/react/src/__tests__/helpers.tsx"],
       "@rxova/journey-react/graph": ["./packages/react/src/graph.tsx"],

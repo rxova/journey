@@ -6,7 +6,7 @@ Replay records a bounded session of status, transition, context, blocked-navigat
 observations.
 
 ```ts
-import { createReplayPlugin } from "@rxova/journey-core/replay";
+import { createReplayPlugin } from "@rxova/journey-core/plugins";
 
 const machine = createLinearJourney(definition, {
   plugins: [createReplayPlugin({ maxEntries: 500, captureSnapshots: true })]

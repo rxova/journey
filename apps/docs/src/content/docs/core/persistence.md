@@ -9,7 +9,7 @@ burst of them into a single write.
 ## Install and use
 
 ```ts
-import { createPersistencePlugin } from "@rxova/journey-core/persistence";
+import { createPersistencePlugin } from "@rxova/journey-core/plugins";
 
 const machine = createLinearJourney(definition, {
   plugins: [

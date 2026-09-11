@@ -242,7 +242,7 @@ Built-in plugins are separately imported and observe the machine through a read-
 
 ```ts
 import { createLinearJourney } from "@rxova/journey-core";
-import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
+import { createAnalyticsPlugin } from "@rxova/journey-core/plugins";
 
 const machine = createLinearJourney(definition, {
   plugins: [

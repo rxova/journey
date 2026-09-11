@@ -3,7 +3,7 @@ import {
   normalizeMaxEntries,
   serializeReplaySession,
   toSerializable
-} from "@rxova/journey-core/replay";
+} from "@rxova/journey-core/plugins";
 
 describe("normalizeMaxEntries", () => {
   it("defaults non-finite values and clamps to at least one entry", () => {

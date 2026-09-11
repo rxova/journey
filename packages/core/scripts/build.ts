@@ -10,14 +10,7 @@ const common = {
   sourcemap: true,
   legalComments: "none",
   external: ["immer"],
-  entryPoints: [
-    "src/index.ts",
-    "src/connectors/immer/immer.ts",
-    "src/plugins/analytics/analytics.ts",
-    "src/plugins/persistence/persistence.ts",
-    "src/plugins/replay/replay.ts",
-    "src/plugins/execution-paths/execution-paths.ts"
-  ],
+  entryPoints: ["src/index.ts", "src/connectors/immer/immer.ts", "src/plugins/index.ts"],
   outdir: "dist",
   outbase: "src",
   platform: "neutral",

@@ -378,7 +378,7 @@ Plugins are imported from dedicated entrypoints. Their APIs remain namespaced on
 `machine.plugins`, which prevents collisions and preserves inference:
 
 ```ts
-import { createReplayPlugin } from "@rxova/journey-core/replay";
+import { createReplayPlugin } from "@rxova/journey-core/plugins";
 
 const machine = createLinearJourney(definition, {
   plugins: [createReplayPlugin({ maxEntries: 100 })] as const

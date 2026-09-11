@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { parsePersistedState } from "@rxova/journey-core/persistence";
+import { parsePersistedState } from "@rxova/journey-core/plugins";
 import { createLinearJourney } from "@rxova/journey-core";
-import { createPersistencePlugin } from "@rxova/journey-core/persistence";
-import type { JourneyStorage, PersistenceApi } from "@rxova/journey-core/persistence";
+import { createPersistencePlugin } from "@rxova/journey-core/plugins";
+import type { JourneyStorage, PersistenceApi } from "@rxova/journey-core/plugins";
 import { flush } from "@rxova/journey-core/testing";
 
 function memoryStorage(): JourneyStorage & { dump(): Map<string, string> } {

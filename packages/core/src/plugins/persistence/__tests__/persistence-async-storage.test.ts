@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createLinearJourney } from "@rxova/journey-core";
-import { createPersistencePlugin } from "@rxova/journey-core/persistence";
+import { createPersistencePlugin } from "@rxova/journey-core/plugins";
 import { flush } from "@rxova/journey-core/testing";
-import type { JourneyStorage } from "@rxova/journey-core/persistence";
+import type { JourneyStorage } from "@rxova/journey-core/plugins";
 
 const KEY = "journey";
 

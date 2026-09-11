@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createLinearJourney } from "@rxova/journey-core";
-import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
+import { createExecutionPathsPlugin } from "@rxova/journey-core/plugins";
 import { flush } from "@rxova/journey-core/testing";
 
 describe("execution-paths plugin", () => {

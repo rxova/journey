@@ -1,5 +1,5 @@
 import { withGraphTypes } from "@rxova/journey-core";
-import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
+import { createExecutionPathsPlugin } from "@rxova/journey-core/plugins";
 import type { JourneySnapshot, JourneySubscriptionEvent } from "@rxova/journey-core";
 import "../styles/demo.css";
 import {

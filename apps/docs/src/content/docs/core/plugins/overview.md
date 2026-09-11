@@ -9,8 +9,8 @@ navigation, replace snapshots, or merge methods into the base machine.
 
 ```ts
 import { createLinearJourney } from "@rxova/journey-core";
-import { createReplayPlugin } from "@rxova/journey-core/replay";
-import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
+import { createReplayPlugin } from "@rxova/journey-core/plugins";
+import { createAnalyticsPlugin } from "@rxova/journey-core/plugins";
 
 const machine = createLinearJourney(definition, {
   plugins: [createReplayPlugin(), createAnalyticsPlugin({ track })]

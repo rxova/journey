@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import type { ExecutionPathsApi } from "@rxova/journey-core/execution-paths";
+import type { ExecutionPathsApi } from "@rxova/journey-core/plugins";
 import { journey } from "../journey";
 
 const EventLog = () => {

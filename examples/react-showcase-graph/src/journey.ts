@@ -1,5 +1,5 @@
 import { withGraphTypes } from "@rxova/journey-react/graph";
-import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
+import { createExecutionPathsPlugin } from "@rxova/journey-core/plugins";
 import type { ReactGraphDefinition } from "@rxova/journey-react/graph";
 import { mockApi } from "./api";
 import { loginStep } from "./steps/login.step";

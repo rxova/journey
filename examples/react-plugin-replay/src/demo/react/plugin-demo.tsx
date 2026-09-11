@@ -1,10 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { analyzeStructure, createGraphJourney, type GraphDefinition } from "@rxova/journey-core";
-import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
-import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
-import { createPersistencePlugin } from "@rxova/journey-core/persistence";
-import { createReplayPlugin } from "@rxova/journey-core/replay";
+import { createAnalyticsPlugin } from "@rxova/journey-core/plugins";
+import { createExecutionPathsPlugin } from "@rxova/journey-core/plugins";
+import { createPersistencePlugin } from "@rxova/journey-core/plugins";
+import { createReplayPlugin } from "@rxova/journey-core/plugins";
 import {
   pluginStorageKey,
   pluginTitles,

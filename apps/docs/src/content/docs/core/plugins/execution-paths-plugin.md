@@ -6,7 +6,7 @@ The execution-paths plugin records paths that actually run. It does not enumerat
 paths.
 
 ```ts
-import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
+import { createExecutionPathsPlugin } from "@rxova/journey-core/plugins";
 
 const machine = createLinearJourney(definition, {
   plugins: [createExecutionPathsPlugin()]

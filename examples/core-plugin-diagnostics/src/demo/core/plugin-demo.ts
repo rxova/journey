@@ -1,11 +1,8 @@
 import { analyzeStructure, createGraphJourney, createLinearJourney } from "@rxova/journey-core";
-import { createAnalyticsPlugin, type AnalyticsApi } from "@rxova/journey-core/analytics";
-import {
-  createExecutionPathsPlugin,
-  type ExecutionPathsApi
-} from "@rxova/journey-core/execution-paths";
-import { createPersistencePlugin, type PersistenceApi } from "@rxova/journey-core/persistence";
-import { createReplayPlugin, type ReplayApi } from "@rxova/journey-core/replay";
+import { createAnalyticsPlugin, type AnalyticsApi } from "@rxova/journey-core/plugins";
+import { createExecutionPathsPlugin, type ExecutionPathsApi } from "@rxova/journey-core/plugins";
+import { createPersistencePlugin, type PersistenceApi } from "@rxova/journey-core/plugins";
+import { createReplayPlugin, type ReplayApi } from "@rxova/journey-core/plugins";
 import type {
   GraphJourneyMachine,
   JourneySnapshot,

@@ -133,7 +133,21 @@ export const BANNED_IDENTIFIERS: readonly BannedIdentifier[] = [
   { name: "snapshot.machine.isRunning", pattern: /\bmachine\.isRunning\b/ },
   { name: "snapshot.machine.isPaused", pattern: /\bmachine\.isPaused\b/ },
   { name: "snapshot.machine.isCompleted", pattern: /\bmachine\.isCompleted\b/ },
-  { name: "snapshot.machine.isTerminated", pattern: /\bmachine\.isTerminated\b/ }
+  { name: "snapshot.machine.isTerminated", pattern: /\bmachine\.isTerminated\b/ },
+  // Autosave was the persistence plugin with a timer; it is `debounceMs` now.
+  { name: "createAutosavePlugin", pattern: /\bcreateAutosavePlugin\b/ },
+  { name: "journey-core/autosave", pattern: /journey-core\/autosave/ },
+  // Diagnostics stopped being a plugin — checking a definition needs no machine.
+  { name: "createDiagnosticsPlugin", pattern: /\bcreateDiagnosticsPlugin\b/ },
+  { name: "getGraphDiagnostics", pattern: /\bgetGraphDiagnostics\b/ },
+  { name: "journey-core/diagnostics", pattern: /journey-core\/diagnostics/ },
+  // The four plugin subpaths collapsed into one `./plugins` barrel. Matched as
+  // import paths, not bare words: "analytics", "replay" and "persistence" are
+  // ordinary prose on the pages that document them.
+  { name: "journey-core/analytics", pattern: /journey-core\/analytics/ },
+  { name: "journey-core/persistence", pattern: /journey-core\/persistence/ },
+  { name: "journey-core/replay", pattern: /journey-core\/replay/ },
+  { name: "journey-core/execution-paths", pattern: /journey-core\/execution-paths/ }
 ];
 
 /**

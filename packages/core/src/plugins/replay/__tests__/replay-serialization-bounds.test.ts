@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toSerializable } from "@rxova/journey-core/replay";
+import { toSerializable } from "@rxova/journey-core/plugins";
 
 /**
  * The previous walk deleted each node from its `seen` set on the way back up.

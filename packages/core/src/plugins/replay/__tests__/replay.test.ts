@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createLinearJourney } from "@rxova/journey-core";
-import { createReplayPlugin, serializeReplaySession } from "@rxova/journey-core/replay";
+import { createReplayPlugin, serializeReplaySession } from "@rxova/journey-core/plugins";
 import { flush } from "@rxova/journey-core/testing";
 
 describe("replay plugin", () => {

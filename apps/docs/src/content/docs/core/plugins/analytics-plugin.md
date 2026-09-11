@@ -8,7 +8,7 @@ your analytics sink.
 ## Install and use
 
 ```ts
-import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
+import { createAnalyticsPlugin } from "@rxova/journey-core/plugins";
 
 const machine = createGraphJourney(definition, {
   plugins: [

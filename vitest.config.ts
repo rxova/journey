@@ -30,45 +30,13 @@ export default defineConfig({
         )
       },
       {
-        find: "@rxova/journey-core/analytics",
-        replacement: fileURLToPath(
-          new URL("./packages/core/src/plugins/analytics/analytics.ts", import.meta.url)
-        )
-      },
-      {
-        find: "@rxova/journey-core/autosave",
-        replacement: fileURLToPath(
-          new URL("./packages/core/src/plugins/autosave/autosave.ts", import.meta.url)
-        )
-      },
-      {
-        find: "@rxova/journey-core/diagnostics",
-        replacement: fileURLToPath(
-          new URL("./packages/core/src/plugins/diagnostics/diagnostics.ts", import.meta.url)
-        )
-      },
-      {
-        find: "@rxova/journey-core/persistence",
-        replacement: fileURLToPath(
-          new URL("./packages/core/src/plugins/persistence/persistence.ts", import.meta.url)
-        )
-      },
-      {
-        find: "@rxova/journey-core/replay",
-        replacement: fileURLToPath(
-          new URL("./packages/core/src/plugins/replay/replay.ts", import.meta.url)
-        )
+        find: "@rxova/journey-core/plugins",
+        replacement: fileURLToPath(new URL("./packages/core/src/plugins/index.ts", import.meta.url))
       },
       {
         find: "@rxova/journey-core/testing",
         replacement: fileURLToPath(
           new URL("./packages/core/src/__tests__/helpers.ts", import.meta.url)
-        )
-      },
-      {
-        find: "@rxova/journey-core/execution-paths",
-        replacement: fileURLToPath(
-          new URL("./packages/core/src/plugins/execution-paths/execution-paths.ts", import.meta.url)
         )
       },
       {

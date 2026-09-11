@@ -57,6 +57,14 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./plugins": {
+      "types": {
+        "import": "./dist/plugins/index.d.ts",
+        "require": "./dist/plugins/index.d.cts"
+      },
+      "import": "./dist/plugins/index.js",
+      "require": "./dist/plugins/index.cjs"
+    },
     "./connectors/immer": {
       "types": {
         "import": "./dist/connectors/immer/immer.d.ts",
@@ -64,38 +72,6 @@
       },
       "import": "./dist/connectors/immer/immer.js",
       "require": "./dist/connectors/immer/immer.cjs"
-    },
-    "./analytics": {
-      "types": {
-        "import": "./dist/plugins/analytics/analytics.d.ts",
-        "require": "./dist/plugins/analytics/analytics.d.cts"
-      },
-      "import": "./dist/plugins/analytics/analytics.js",
-      "require": "./dist/plugins/analytics/analytics.cjs"
-    },
-    "./persistence": {
-      "types": {
-        "import": "./dist/plugins/persistence/persistence.d.ts",
-        "require": "./dist/plugins/persistence/persistence.d.cts"
-      },
-      "import": "./dist/plugins/persistence/persistence.js",
-      "require": "./dist/plugins/persistence/persistence.cjs"
-    },
-    "./replay": {
-      "types": {
-        "import": "./dist/plugins/replay/replay.d.ts",
-        "require": "./dist/plugins/replay/replay.d.cts"
-      },
-      "import": "./dist/plugins/replay/replay.js",
-      "require": "./dist/plugins/replay/replay.cjs"
-    },
-    "./execution-paths": {
-      "types": {
-        "import": "./dist/plugins/execution-paths/execution-paths.d.ts",
-        "require": "./dist/plugins/execution-paths/execution-paths.d.cts"
-      },
-      "import": "./dist/plugins/execution-paths/execution-paths.js",
-      "require": "./dist/plugins/execution-paths/execution-paths.cjs"
     }
   },
   "files": [
@@ -149,13 +125,13 @@
     },
     {
       "name": "core/createExecutionPathsPlugin",
-      "path": "dist/plugins/execution-paths/execution-paths.js",
+      "path": "dist/plugins/index.js",
       "import": "{ createExecutionPathsPlugin }",
       "limit": "300 B"
     },
     {
       "name": "core/createAnalyticsPlugin",
-      "path": "dist/plugins/analytics/analytics.js",
+      "path": "dist/plugins/index.js",
       "import": "{ createAnalyticsPlugin }",
       "limit": "500 B"
     },
@@ -167,13 +143,13 @@
     },
     {
       "name": "core/createPersistencePlugin",
-      "path": "dist/plugins/persistence/persistence.js",
+      "path": "dist/plugins/index.js",
       "import": "{ createPersistencePlugin }",
       "limit": "1.15 kB"
     },
     {
       "name": "core/createReplayPlugin",
-      "path": "dist/plugins/replay/replay.js",
+      "path": "dist/plugins/index.js",
       "import": "{ createReplayPlugin }",
       "limit": "850 B"
     }
