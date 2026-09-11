@@ -6,7 +6,6 @@ import type {
   GraphJourneyOptions,
   GraphSnapshot,
   GraphStepConfig,
-  GraphTransitionsMap,
   JourneyEventObject
 } from "@rxova/journey-core";
 import type { GraphJourneyBundle } from "./react.types";
@@ -65,14 +64,16 @@ export function createGraphJourney<
 >(
   definition: {
     readonly steps: Readonly<
-      Record<TStepId, GraphStepConfig<NoInfer<TContext>, NoInfer<TStepId>, NoInfer<TEvents>, TMeta>>
-    >;
-    readonly transitions: GraphTransitionsMap<
-      NoInfer<TContext>,
-      NoInfer<TStepId>,
-      NoInfer<TEvents>,
-      NoInfer<THandlers>,
-      NoInfer<TMeta>
+      Record<
+        TStepId,
+        GraphStepConfig<
+          NoInfer<TContext>,
+          NoInfer<TStepId>,
+          NoInfer<TEvents>,
+          TMeta,
+          NoInfer<THandlers>
+        >
+      >
     >;
     readonly initial: NoInfer<TStepId>;
     readonly context: TContext;

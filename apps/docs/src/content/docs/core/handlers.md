@@ -22,12 +22,17 @@ const definition = {
     review: {},
     approved: {}
   },
-  transitions: {
-    APPROVE: {
-      from: "review" as const,
-      to: "approved" as const,
-      when: ({ context, handlers }: { context: { role: string }; handlers: Handlers }) =>
-        handlers.canApprove(context.role)
+  steps: {
+    review: {
+      on: {
+        APPROVE: [
+          {
+            to: "approved" as const,
+            when: ({ context, handlers }: { context: { role: string }; handlers: Handlers }) =>
+              handlers.canApprove(context.role)
+          }
+        ]
+      }
     }
   }
 };

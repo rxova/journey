@@ -61,11 +61,11 @@ describe("runtime race branches", () => {
             onEnter: ({ raise }) => {
               raise({ type: "GO" });
               raise({ type: "GO" });
-            }
+            },
+            on: { GO: "b" }
           },
           b: {}
         },
-        transitions: { GO: [{ from: "a", to: "b" }] },
         initial: "a",
         context: {}
       },

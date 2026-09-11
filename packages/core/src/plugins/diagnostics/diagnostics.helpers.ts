@@ -135,7 +135,6 @@ export function analyzeStructure(structure: JourneyStructure): DiagnosticsResult
 /** Analyzes a graph journey definition without creating a runtime. */
 export function getGraphDiagnostics(definition: {
   readonly steps: object;
-  readonly transitions: object;
   readonly initial: string;
 }): DiagnosticsResult {
   const { stepIds, transitions } = normalizeGraphDefinition(

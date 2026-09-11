@@ -5,14 +5,11 @@ import { createDiagnosticsPlugin, getGraphDiagnostics } from "@rxova/journey-cor
 describe("getGraphDiagnostics", () => {
   it("reports unreachable steps, shadowed transitions, cycles, and terminal facts", () => {
     const result = getGraphDiagnostics({
-      steps: { a: {}, b: {}, orphan: {}, done: {} },
-      transitions: {
-        GO: [
-          { from: "a", to: "b" },
-          { from: "a", to: "done" } // shadowed: unconditional a.GO above always wins
-        ],
-        BACK: { from: "b", to: "a" }, // a <-> b cycle
-        FINISH: { from: "b", to: "done" }
+      steps: {
+        a: { on: { GO: [{ to: "b" }, { to: "done" }] } },
+        b: { on: { BACK: "a", FINISH: "done" } },
+        orphan: {},
+        done: {}
       },
       initial: "a"
     });
@@ -38,11 +35,7 @@ describe("getGraphDiagnostics", () => {
 
   it("flags journeys with no reachable terminal step", () => {
     const result = getGraphDiagnostics({
-      steps: { a: {}, b: {} },
-      transitions: {
-        GO: { from: "a", to: "b" },
-        BACK: { from: "b", to: "a" }
-      },
+      steps: { a: { on: { GO: "b" } }, b: { on: { BACK: "a" } } },
       initial: "a"
     });
     expect(result.issues.map((issue) => issue.code)).toContain("no-terminal-path");
@@ -51,13 +44,7 @@ describe("getGraphDiagnostics", () => {
 
   it("a clean pipeline produces no issues", () => {
     const result = getGraphDiagnostics({
-      steps: { a: {}, b: {}, done: {} },
-      transitions: {
-        NEXT: [
-          { from: "a", to: "b" },
-          { from: "b", to: "done" }
-        ]
-      },
+      steps: { a: { on: { NEXT: "b" } }, b: { on: { NEXT: "done" } }, done: {} },
       initial: "a"
     });
     expect(result.issues).toEqual([]);
@@ -68,8 +55,7 @@ describe("diagnostics plugin", () => {
   it("analyzes the running machine's structure through the host", () => {
     const machine = createGraphJourney(
       {
-        steps: { a: {}, b: {}, orphan: {} },
-        transitions: { GO: { from: "a", to: "b" } },
+        steps: { a: { on: { GO: "b" } }, b: {}, orphan: {} },
         initial: "a",
         context: {}
       },
@@ -98,13 +84,11 @@ describe("diagnostics traversal edges", () => {
   it("deduplicates cycles reached from multiple entry points", () => {
     // a -> b -> c -> b (cycle entered twice: via b directly and via c)
     const result = getGraphDiagnostics({
-      steps: { a: {}, b: {}, c: {}, done: {} },
-      transitions: {
-        START: { from: "a", to: "b" },
-        NEXT: { from: "b", to: "c" },
-        BACK: { from: "c", to: "b" },
-        SKIP: { from: "a", to: "c" },
-        FINISH: { from: "c", to: "done" }
+      steps: {
+        a: { on: { START: "b", SKIP: "c" } },
+        b: { on: { NEXT: "c" } },
+        c: { on: { BACK: "b", FINISH: "done" } },
+        done: {}
       },
       initial: "a"
     });
@@ -116,13 +100,10 @@ describe("diagnostics traversal edges", () => {
 describe("guarded transitions", () => {
   it("guarded candidates never shadow later ones", () => {
     const result = getGraphDiagnostics({
-      steps: { a: {}, b: {}, done: {} },
-      transitions: {
-        GO: [
-          { from: "a", to: "done", when: () => false }, // guarded: not a shadow
-          { from: "a", to: "b" }
-        ],
-        FINISH: { from: "b", to: "done" }
+      steps: {
+        a: { on: { GO: [{ to: "done", when: () => false }, { to: "b" }] } },
+        b: { on: { FINISH: "done" } },
+        done: {}
       },
       initial: "a"
     });

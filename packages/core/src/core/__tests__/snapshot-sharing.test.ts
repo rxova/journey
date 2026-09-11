@@ -54,8 +54,7 @@ describe("snapshot structural sharing", () => {
   it("keeps step order and transition arrays shared across moves (graph)", async () => {
     const machine = createGraphJourney(
       {
-        steps: { form: {}, review: {} },
-        transitions: { SUBMIT: { from: "form", to: "review" } },
+        steps: { form: { on: { SUBMIT: "review" } }, review: {} },
         initial: "form",
         context: { attempts: 0 }
       },

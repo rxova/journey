@@ -17,11 +17,10 @@ type Payloads = {
 const handlers: Handlers = { api: { load: () => Promise.resolve("ok") } };
 
 const definition = {
-  steps: { a: {}, b: {} },
+  steps: { a: { on: { GO: "b" as const } }, b: {} },
   initial: "a" as const,
   context: { n: 0 },
   handlers,
-  transitions: { GO: { from: "a" as const, to: "b" as const } },
   $payloads: {} as Payloads
 };
 

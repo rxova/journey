@@ -63,15 +63,13 @@ describe("createGraphJourneyBuilder", () => {
     expect(Object.keys(definition.steps)).toEqual(["login", "verifyCode", "loggedIn", "blocked"]);
     expect(definition.steps.login.metadata).toEqual({ label: "Login" });
 
-    // central transitions map keyed by event, `from` filled in per candidate
-    expect(definition.transitions.submitCredentials).toMatchObject([
-      { from: "login", to: "verifyCode" }
+    // Colocated on each step; `from` is implicit — it is the declaring step.
+    expect(definition.steps.login.on?.submitCredentials).toMatchObject([{ to: "verifyCode" }]);
+    expect(definition.steps.verifyCode.on?.submitCode).toMatchObject([
+      { to: "blocked" },
+      { to: "loggedIn" }
     ]);
-    expect(definition.transitions.submitCode).toMatchObject([
-      { from: "verifyCode", to: "blocked" },
-      { from: "verifyCode", to: "loggedIn" }
-    ]);
-    expect(definition.transitions.reset).toMatchObject([{ from: "blocked", to: "login" }]);
+    expect(definition.steps.blocked.on?.reset).toMatchObject([{ to: "login" }]);
   });
 
   it("built definitions drive a fully working runtime", async () => {
@@ -144,7 +142,7 @@ describe("createGraphJourneyBuilder", () => {
       steps: [bag.createStep("a", { on: { GO: undefined } as never })]
     });
 
-    expect(definition.transitions).toEqual({});
+    expect(definition.steps.a.on).toBeUndefined();
   });
 });
 

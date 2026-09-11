@@ -59,9 +59,10 @@ type Event =
   | { type: "SAVE"; payload: { draftId: string } }
   | { type: "CANCEL" };
 
-transitions: {
-  SAVE: { from: "edit", to: "review" },
-  CANCEL: { from: "edit", to: "done" }
+steps: {
+  edit: { on: { SAVE: "review", CANCEL: "done" } },
+  review: {},
+  done: {}
 }
 ```
 

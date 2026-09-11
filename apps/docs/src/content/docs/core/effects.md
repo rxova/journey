@@ -56,11 +56,16 @@ Use `onLeave` for source cleanup and `onEnter` for destination setup:
 Use graph `onTransition` when the work belongs to a specific event edge:
 
 ```ts
-SUBMIT: {
-  from: "review",
-  to: "done",
-  onTransition: async ({ event }) => {
-    await auditSubmission(event?.payload);
+review: {
+  on: {
+    SUBMIT: [
+      {
+        to: "done",
+        onTransition: async ({ event }) => {
+          await auditSubmission(event?.payload);
+        }
+      }
+    ];
   }
 }
 ```

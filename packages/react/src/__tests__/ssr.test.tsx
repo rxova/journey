@@ -71,8 +71,7 @@ describe("server-side rendering (no window)", () => {
   it("renders a graph bundle's initial view when the caller opts into the eager start", () => {
     const bundle = createGraphJourney(
       {
-        steps: { form: {}, done: {} },
-        transitions: { FINISH: { from: "form", to: "done" } },
+        steps: { form: { on: { FINISH: "done" } }, done: {} },
         initial: "form",
         context: {}
       },

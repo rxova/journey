@@ -1,4 +1,4 @@
-import type { RuntimeStep, RuntimeTransition } from "../core/runtime.types";
+import type { AnySendWork, RuntimeStep, RuntimeTransition } from "../core/runtime.types";
 import type {
   AnyJourneyPlugin,
   ContextUpdater,
@@ -32,13 +32,85 @@ export type GraphHookArgs<
   TMeta = Record<string, unknown>
 > = StepHookArgs<TContext, TStepId, TEvents, GraphSnapshot<TContext, TStepId, TMeta, TEvents>>;
 
+/** One colocated candidate; `from` is the step that declares it. */
+export type GraphTransition<
+  TContext = unknown,
+  TStepId extends string = string,
+  TEvents extends JourneyEventObject = JourneyEventObject,
+  THandlers = unknown,
+  TMeta = Record<string, unknown>
+> = {
+  readonly to: TStepId;
+  readonly when?: TransitionGuard<TContext, THandlers>;
+  /** Async effect, post-commit, cannot cancel; a throw is handled like an `onEnter` throw. */
+  readonly onTransition?: (
+    args: GraphHookArgs<TContext, TStepId, TEvents, TMeta>
+  ) => void | Promise<void>;
+};
+
+/**
+ * What one event maps to on a step. Three forms, discriminated at the top
+ * level so nothing has to sniff inside a candidate:
+ *
+ * - a step id — one unguarded candidate;
+ * - an array — ordered candidates, first enabled wins;
+ * - an object — async the machine owns, whose staged context the candidates
+ *   are then evaluated against.
+ *
+ * A guarded lone candidate is `[{ to, when }]`: the extra brackets read
+ * honestly, since a guarded lone candidate means the event can fail.
+ */
+export type GraphOnEntry<
+  TContext = unknown,
+  TStepId extends string = string,
+  TEvents extends JourneyEventObject = JourneyEventObject,
+  THandlers = unknown,
+  TMeta = Record<string, unknown>,
+  TResult = unknown
+> =
+  | TStepId
+  | readonly GraphTransition<TContext, TStepId, TEvents, THandlers, TMeta>[]
+  | {
+      readonly run: (
+        args: SendWorkArgs<
+          TStepId,
+          TEvents,
+          GraphSnapshot<TContext, TStepId, TMeta, TEvents>,
+          THandlers
+        >
+      ) => TResult | Promise<TResult>;
+      readonly commit?: (
+        args: SendWorkArgs<
+          TStepId,
+          TEvents,
+          GraphSnapshot<TContext, TStepId, TMeta, TEvents>,
+          THandlers
+        > & {
+          readonly result: TResult;
+          readonly updateContext: (updater: ContextUpdater<TContext>) => void;
+        }
+      ) => void;
+      readonly candidates: readonly GraphTransition<TContext, TStepId, TEvents, THandlers, TMeta>[];
+    };
+
 export type GraphStepConfig<
   TContext = unknown,
   TStepId extends string = string,
   TEvents extends JourneyEventObject = JourneyEventObject,
-  TMeta = Record<string, unknown>
+  TMeta = Record<string, unknown>,
+  THandlers = unknown
 > = {
   readonly metadata?: TMeta;
+  /** Outgoing transitions, keyed by event. */
+  readonly on?: {
+    readonly [TType in TEvents["type"]]?: GraphOnEntry<
+      TContext,
+      TStepId,
+      TEvents,
+      THandlers,
+      TMeta
+    >;
+  };
   readonly onEnter?: OnEnterHook<
     TContext,
     TStepId,
@@ -51,36 +123,6 @@ export type GraphStepConfig<
     TEvents,
     GraphSnapshot<TContext, TStepId, TMeta, TEvents>
   >;
-};
-
-/** One transition candidate; for an event array, first enabled in order wins. */
-export type GraphTransitionCandidate<
-  TContext = unknown,
-  TStepId extends string = string,
-  TEvents extends JourneyEventObject = JourneyEventObject,
-  THandlers = unknown,
-  TMeta = Record<string, unknown>
-> = {
-  readonly from: TStepId;
-  readonly to: TStepId;
-  readonly when?: TransitionGuard<TContext, THandlers>;
-  /** Async effect, post-commit, cannot cancel; a throw is handled like an `onEnter` throw. */
-  readonly onTransition?: (
-    args: GraphHookArgs<TContext, TStepId, TEvents, TMeta>
-  ) => void | Promise<void>;
-};
-
-/** Transitions declared as a map keyed by event name. */
-export type GraphTransitionsMap<
-  TContext = unknown,
-  TStepId extends string = string,
-  TEvents extends JourneyEventObject = JourneyEventObject,
-  THandlers = unknown,
-  TMeta = Record<string, unknown>
-> = {
-  readonly [TType in TEvents["type"]]?:
-    | GraphTransitionCandidate<TContext, TStepId, TEvents, THandlers, TMeta>
-    | readonly GraphTransitionCandidate<TContext, TStepId, TEvents, THandlers, TMeta>[];
 };
 
 /**
@@ -96,8 +138,9 @@ export type GraphJourneyDefinition<
   TMeta = Record<string, unknown>,
   TTerminationPayloads extends JourneyTerminationPayloads = JourneyTerminationPayloads
 > = {
-  readonly steps: Readonly<Record<TStepId, GraphStepConfig<TContext, TStepId, TEvents, TMeta>>>;
-  readonly transitions: GraphTransitionsMap<TContext, TStepId, TEvents, THandlers, TMeta>;
+  readonly steps: Readonly<
+    Record<TStepId, GraphStepConfig<TContext, TStepId, TEvents, TMeta, THandlers>>
+  >;
   readonly initial: TStepId;
   readonly context: TContext;
   readonly handlers?: THandlers;
@@ -272,11 +315,31 @@ export type GraphJourneyMachine<
   readonly plugins: PluginApis<TPlugins>;
 };
 
+/**
+ * Internal, generics-erased view of one colocated `on` entry. The three forms
+ * are discriminated structurally at the top level — string, array, object —
+ * so normalization never has to sniff inside a candidate.
+ */
+export type LooseOnEntry =
+  | string
+  | readonly LooseTransition[]
+  | {
+      readonly run: AnySendWork["run"];
+      readonly commit?: AnySendWork["commit"];
+      readonly candidates: readonly LooseTransition[];
+    };
+
+/** A colocated candidate: `from` is the step that declares it. */
+export type LooseTransition = {
+  readonly to: string;
+  readonly when?: NonNullable<RuntimeTransition["when"]>;
+  readonly onTransition?: NonNullable<RuntimeTransition["onTransition"]>;
+};
+
 /** Internal, generics-erased view of a definition used by normalization. */
 export type LooseGraphDefinition = {
-  readonly steps: Readonly<Record<string, GraphStepConfig>>;
-  readonly transitions: Readonly<
-    Record<string, GraphTransitionCandidate | readonly GraphTransitionCandidate[] | undefined>
+  readonly steps: Readonly<
+    Record<string, GraphStepConfig & { readonly on?: Readonly<Record<string, LooseOnEntry>> }>
   >;
   readonly initial: string;
   readonly context: unknown;
@@ -287,6 +350,11 @@ export type MutableRuntimeStep = {
   metadata: unknown;
   onEnter?: NonNullable<RuntimeStep["onEnter"]>;
   onLeave?: NonNullable<RuntimeStep["onLeave"]>;
+};
+
+export type MutableSendWork = {
+  run: AnySendWork["run"];
+  commit?: AnySendWork["commit"];
 };
 
 export type MutableRuntimeTransition = {

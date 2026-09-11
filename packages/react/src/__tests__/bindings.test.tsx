@@ -31,8 +31,7 @@ const makeLinear = (name?: string) =>
 const makeGraph = (name?: string) =>
   createGraphJourney({
     ...(name === undefined ? {} : { name }),
-    steps: { a: {}, b: {} },
-    transitions: { GO: { from: "a", to: "b" } },
+    steps: { a: { on: { GO: "b" } }, b: {} },
     initial: "a",
     context: {}
   });

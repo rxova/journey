@@ -1,11 +1,6 @@
-import type {
-  GraphJourneyDefinition,
-  GraphStepConfig,
-  GraphTransitionCandidate
-} from "./graph.types";
+import type { GraphJourneyDefinition, GraphStepConfig } from "./graph.types";
 import { JourneyError } from "../core/errors";
-import { eventWorkKey, hasOwn } from "../core/helpers";
-import type { AnySendWork } from "../core/runtime.types";
+import { hasOwn } from "../core/helpers";
 import type {
   HandlersOf,
   JourneyBuilder,
@@ -20,20 +15,10 @@ import type {
 } from "./builder.types";
 
 /**
- * The totality warning is authoring feedback, not runtime behavior, so it is
- * silenced in production bundles. Read through globalThis: the core carries no
- * Node types and must not assume a bundler defines `process`.
- */
-const isDevBuild = (): boolean => {
-  const env = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process?.env?.NODE_ENV;
-  return env !== "production";
-};
-
-/**
  * Returns typed `{ createStep, to, build }` for the given type bag. Steps are
- * authored colocated (each step declares its own outgoing transitions under
- * `on`); `build()` normalizes everything into the canonical definition shape —
- * a steps record plus the central transitions map keyed by event.
+ * authored colocated — each declares its own outgoing transitions under `on` —
+ * and `build()` normalizes them into the canonical definition shape: a steps
+ * record whose entries carry their own `on`.
  */
 export function createGraphJourneyBuilder<TBag extends JourneyTypeBag>(): JourneyBuilder<TBag> {
   type Candidate = JourneyToBuilder<TBag, TBag["events"]["type"]>["_candidate"];
@@ -86,8 +71,6 @@ export function createGraphJourneyBuilder<TBag extends JourneyTypeBag>(): Journe
     MetaOf<TBag>
   > {
     const steps: Record<string, GraphStepConfig> = {};
-    const transitions: Record<string, GraphTransitionCandidate[]> = {};
-    const eventWork: Record<string, AnySendWork> = {};
 
     for (const step of input.steps) {
       if (hasOwn(steps, step.id)) {
@@ -100,6 +83,7 @@ export function createGraphJourneyBuilder<TBag extends JourneyTypeBag>(): Journe
         metadata: Record<string, unknown>;
         onEnter?: NonNullable<GraphStepConfig["onEnter"]>;
         onLeave?: NonNullable<GraphStepConfig["onLeave"]>;
+        on?: Record<string, unknown>;
       } = { metadata: (config.metadata ?? {}) as Record<string, unknown> };
       if (config.onEnter) {
         stepConfig.onEnter = config.onEnter as unknown as NonNullable<GraphStepConfig["onEnter"]>;
@@ -107,7 +91,7 @@ export function createGraphJourneyBuilder<TBag extends JourneyTypeBag>(): Journe
       if (config.onLeave) {
         stepConfig.onLeave = config.onLeave as unknown as NonNullable<GraphStepConfig["onLeave"]>;
       }
-      steps[step.id] = stepConfig;
+      steps[step.id] = stepConfig as unknown as GraphStepConfig;
 
       if (!config.on) continue;
       // `stay()` is sugar for an unguarded candidate back at this step — the
@@ -137,28 +121,17 @@ export function createGraphJourneyBuilder<TBag extends JourneyTypeBag>(): Journe
           builders = (
             typeof source === "function" ? source({ to, stay }) : source
           ) as readonly JourneyToBuilder<TBag, TBag["events"]["type"]>[];
-          eventWork[eventWorkKey(step.id, event)] = bundle._work as unknown as AnySendWork;
-
-          if (
-            isDevBuild() &&
-            !(bundle._work as { allowRollback?: boolean }).allowRollback &&
-            !builders.some((builder) => !builder._candidate.when)
-          ) {
-            console.warn(
-              `journey: "${event}" work on "${step.id}" has only guarded candidates — a no-match send rolls back its staged context. Add stay() or allowRollback: true.`
-            );
-          }
         } else {
           builders = produced as readonly JourneyToBuilder<TBag, TBag["events"]["type"]>[];
         }
 
-        const bucket = (transitions[event] ??= []);
-        for (const builder of builders) {
-          bucket.push({
-            from: step.id,
-            ...builder._candidate
-          } as GraphTransitionCandidate);
-        }
+        const candidates = builders.map((builder) => builder._candidate);
+        const on = (stepConfig.on ??= {});
+        // Declared work keeps its candidates alongside it; a bare list is
+        // emitted as the array form. `from` is implicit — it is this step.
+        on[event] = isWork
+          ? { ...((produced as JourneyEventWork<TBag, never>)._work as object), candidates }
+          : candidates;
       }
     }
 
@@ -166,9 +139,7 @@ export function createGraphJourneyBuilder<TBag extends JourneyTypeBag>(): Journe
       initial: input.initial,
       context: input.context,
       ...(input.handlers !== undefined ? { handlers: input.handlers } : {}),
-      ...(Object.keys(eventWork).length > 0 ? { eventWork } : {}),
-      steps,
-      transitions
+      steps
     } as unknown as GraphJourneyDefinition<
       TBag["context"],
       TBag["stepId"],

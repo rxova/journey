@@ -22,12 +22,16 @@ If validation fails, the machine remains on the current step and staged context 
 ## Ordered graph branches
 
 ```ts
-transitions: {
-  CONTINUE: [
-    { from: "details", to: "vipReview", when: ({ context }) => context.isVip },
-    { from: "details", to: "company", when: ({ context }) => context.isBusiness },
-    { from: "details", to: "review" }
-  ];
+steps: {
+  details: {
+    on: {
+      CONTINUE: [
+        { to: "vipReview", when: ({ context }) => context.isVip },
+        { to: "company", when: ({ context }) => context.isBusiness },
+        { to: "review" }
+      ];
+    }
+  }
 }
 ```
 
@@ -38,14 +42,19 @@ Put the fallback last. First enabled candidate wins.
 ```ts
 type Event = { type: "APPLY_COUPON"; payload: { code: string } };
 
-APPLY_COUPON: {
-  from: "payment",
-  to: "review",
-  onTransition: ({ event, updateContext }) => {
-    updateContext((context) => ({
-      ...context,
-      coupon: event?.payload.code ?? null
-    }));
+payment: {
+  on: {
+    APPLY_COUPON: [
+      {
+        to: "review",
+        onTransition: ({ event, updateContext }) => {
+          updateContext((context) => ({
+            ...context,
+            coupon: event?.payload.code ?? null
+          }));
+        }
+      }
+    ];
   }
 }
 

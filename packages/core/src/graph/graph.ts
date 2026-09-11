@@ -1,5 +1,5 @@
 import { JourneyError } from "../core/errors";
-import { hasOwn } from "../core/helpers";
+import { eventWorkKey, hasOwn } from "../core/helpers";
 import { buildMachineSurface } from "../core/machine";
 import { JourneyRuntime } from "../core/runtime";
 import { persistOptionToPlugin } from "../plugins/persistence/persistence";
@@ -9,9 +9,9 @@ import type {
   GraphJourneyMachine,
   GraphJourneyOptions,
   GraphStepConfig,
-  GraphTransitionCandidate,
-  GraphTransitionsMap,
   LooseGraphDefinition,
+  LooseOnEntry,
+  LooseTransition,
   MutableRuntimeStep,
   MutableRuntimeTransition
 } from "./graph.types";
@@ -24,11 +24,23 @@ import type {
   TerminatePayloadOf
 } from "../core/types";
 
-/** Flattens the transitions map in declaration order and validates step refs. */
+/**
+ * Flattens each step's colocated `on` into the runtime's flat transition list,
+ * in declaration order, and validates every target.
+ *
+ * Order is per step, then per event, then per candidate. That differs from the
+ * old central map's global per-event order, but only for the same event
+ * declared from two steps — and candidates are filtered by `from` before order
+ * is consulted, so the selected edge is unchanged. `first-enabled-in-declared-
+ * order` is asserted directly in graph.test.ts.
+ *
+ * `from` cannot dangle here: it is the key of the step that declares the entry.
+ */
 export function normalizeGraphDefinition(definition: LooseGraphDefinition): {
   stepIds: string[];
   steps: Record<string, RuntimeStep>;
   transitions: RuntimeTransition[];
+  eventWork: Record<string, AnySendWork>;
 } {
   const stepIds = Object.keys(definition.steps);
   if (stepIds.length === 0) {
@@ -56,37 +68,45 @@ export function normalizeGraphDefinition(definition: LooseGraphDefinition): {
   }
 
   const transitions: RuntimeTransition[] = [];
-  for (const [event, entry] of Object.entries(definition.transitions)) {
-    if (entry === undefined) continue;
-    const candidates = (Array.isArray(entry) ? entry : [entry]) as GraphTransitionCandidate[];
-    for (const candidate of candidates) {
-      for (const ref of [candidate.from, candidate.to]) {
-        if (!stepIds.includes(ref)) {
-          throw new JourneyError(
-            "dangling-transition",
-            `transition "${event}" references unknown step "${ref}"`,
-            { event, stepId: ref }
-          );
-        }
+  const eventWork: Record<string, AnySendWork> = {};
+
+  const pushCandidate = (event: string, from: string, candidate: LooseTransition): void => {
+    if (!stepIds.includes(candidate.to)) {
+      throw new JourneyError(
+        "dangling-transition",
+        `transition "${event}" references unknown step "${candidate.to}"`,
+        { event, stepId: candidate.to }
+      );
+    }
+    const runtimeTransition: MutableRuntimeTransition = { event, from, to: candidate.to };
+    if (candidate.when) runtimeTransition.when = candidate.when;
+    if (candidate.onTransition) runtimeTransition.onTransition = candidate.onTransition;
+    transitions.push(runtimeTransition);
+  };
+
+  for (const from of stepIds) {
+    const on = definition.steps[from]?.on;
+    if (!on) continue;
+    for (const [event, entry] of Object.entries(on)) {
+      if (entry === undefined) continue;
+      if (typeof entry === "string") {
+        pushCandidate(event, from, { to: entry });
+        continue;
       }
-      const runtimeTransition: MutableRuntimeTransition = {
-        event,
-        from: candidate.from,
-        to: candidate.to
+      if (Array.isArray(entry)) {
+        for (const candidate of entry) pushCandidate(event, from, candidate);
+        continue;
+      }
+      const declared = entry as Exclude<LooseOnEntry, string | readonly LooseTransition[]>;
+      eventWork[eventWorkKey(from, event)] = {
+        run: declared.run,
+        ...(declared.commit ? { commit: declared.commit } : {})
       };
-      if (candidate.when) {
-        runtimeTransition.when = candidate.when as NonNullable<RuntimeTransition["when"]>;
-      }
-      if (candidate.onTransition) {
-        runtimeTransition.onTransition = candidate.onTransition as unknown as NonNullable<
-          RuntimeTransition["onTransition"]
-        >;
-      }
-      transitions.push(runtimeTransition);
+      for (const candidate of declared.candidates) pushCandidate(event, from, candidate);
     }
   }
 
-  return { stepIds, steps, transitions };
+  return { stepIds, steps, transitions, eventWork };
 }
 
 /**
@@ -111,14 +131,16 @@ export function createGraphJourney<
   // otherwise `initial` would win inference and collapse the id union.
   definition: {
     readonly steps: Readonly<
-      Record<TStepId, GraphStepConfig<NoInfer<TContext>, NoInfer<TStepId>, NoInfer<TEvents>, TMeta>>
-    >;
-    readonly transitions: GraphTransitionsMap<
-      NoInfer<TContext>,
-      NoInfer<TStepId>,
-      NoInfer<TEvents>,
-      NoInfer<THandlers>,
-      NoInfer<TMeta>
+      Record<
+        TStepId,
+        GraphStepConfig<
+          NoInfer<TContext>,
+          NoInfer<TStepId>,
+          NoInfer<TEvents>,
+          TMeta,
+          NoInfer<THandlers>
+        >
+      >
     >;
     readonly initial: NoInfer<TStepId>;
     readonly context: TContext;
@@ -142,7 +164,7 @@ export function createGraphJourney<
   CompletePayloadOf<TTerminationPayloads>,
   TerminatePayloadOf<TTerminationPayloads>
 > {
-  const { stepIds, steps, transitions } = normalizeGraphDefinition(
+  const { stepIds, steps, transitions, eventWork } = normalizeGraphDefinition(
     definition as unknown as LooseGraphDefinition
   );
 
@@ -175,9 +197,7 @@ export function createGraphJourney<
         }
       : {}),
     transitions,
-    ...(definition.eventWork !== undefined
-      ? { eventWork: definition.eventWork as Readonly<Record<string, AnySendWork>> }
-      : {}),
+    ...(Object.keys(eventWork).length > 0 ? { eventWork } : {}),
     handlers: options.handlers ?? definition.handlers,
     autoStart: options.autoStart ?? false,
     defaultTimeoutMs: options.defaultTimeoutMs,

@@ -32,9 +32,7 @@ describe("creation-time failures carry a code", () => {
     expect(
       // With no steps declared the id union is `never`, so the cast is what a
       // JS caller reaching this failure would effectively be doing.
-      codeOf(() =>
-        createGraphJourney({ steps: {}, initial: "a" as never, context: {}, transitions: {} })
-      )
+      codeOf(() => createGraphJourney({ steps: {}, initial: "a" as never, context: {} }))
     ).toBe("empty-definition");
   });
 
@@ -62,8 +60,7 @@ describe("creation-time failures carry a code", () => {
         createGraphJourney({
           steps: { a: {} },
           initial: "zzz" as "a",
-          context: {},
-          transitions: {}
+          context: {}
         })
       )
     ).toBe("unknown-initial-step");
@@ -73,10 +70,9 @@ describe("creation-time failures carry a code", () => {
     expect(
       codeOf(() =>
         createGraphJourney({
-          steps: { a: {} },
+          steps: { a: { on: { GO: "nope" as "a" } } },
           initial: "a",
-          context: {},
-          transitions: { GO: { from: "a", to: "nope" as "a" } }
+          context: {}
         })
       )
     ).toBe("dangling-transition");
@@ -173,10 +169,9 @@ describe("structured fields name the offender", () => {
   it("carries the event and step for a dangling transition", () => {
     try {
       createGraphJourney({
-        steps: { a: {} },
+        steps: { a: { on: { SUBMIT: "missing" as "a" } } },
         initial: "a",
-        context: {},
-        transitions: { SUBMIT: { from: "a", to: "missing" as "a" } }
+        context: {}
       });
       throw new Error("expected a throw");
     } catch (error) {

@@ -58,10 +58,9 @@ describe("a rejected navigation names its source and target", () => {
 
   it("reports a null target when a graph event matches no candidate", async () => {
     const machine = createGraphJourney({
-      steps: { a: {}, b: {} },
+      steps: { a: {}, b: { on: { GO: "a" } } },
       initial: "a",
-      context: {},
-      transitions: { GO: { from: "b", to: "a" } }
+      context: {}
     });
     machine.controls.start();
     await flush();

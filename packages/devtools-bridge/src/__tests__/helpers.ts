@@ -21,8 +21,7 @@ export async function startedLinearMachine() {
 
 export async function startedGraphMachine() {
   const machine = createGraphJourney({
-    steps: { a: {}, b: {} },
-    transitions: { GO: { from: "a", to: "b" } },
+    steps: { a: { on: { GO: "b" } }, b: {} },
     initial: "a",
     context: { n: 0 }
   });

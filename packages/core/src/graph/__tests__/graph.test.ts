@@ -8,14 +8,15 @@ type Ctx = { valid: boolean; confirmed: boolean; retries: number };
 
 async function startedGraph(context: Partial<Ctx> = {}) {
   const machine = createGraphJourney({
-    steps: { form: {}, review: {}, done: {} },
-    transitions: {
-      SUBMIT: { from: "form", to: "review", when: ({ context: c }) => (c as Ctx).valid },
-      EDIT: { from: "review", to: "form" },
-      CONFIRM: [
-        { from: "review", to: "done", when: ({ context: c }) => (c as Ctx).confirmed },
-        { from: "review", to: "form" }
-      ]
+    steps: {
+      form: { on: { SUBMIT: [{ to: "review", when: ({ context: c }) => (c as Ctx).valid }] } },
+      review: {
+        on: {
+          EDIT: "form",
+          CONFIRM: [{ to: "done", when: ({ context: c }) => (c as Ctx).confirmed }, { to: "form" }]
+        }
+      },
+      done: {}
     },
     initial: "form",
     context: { valid: true, confirmed: false, retries: 0, ...context }
@@ -50,15 +51,20 @@ describe("createGraphJourney — event-driven transitions", () => {
 
   it("treats a throwing transition guard as disabled", async () => {
     const machine = createGraphJourney({
-      steps: { a: {}, b: {} },
-      transitions: {
-        GO: {
-          from: "a",
-          to: "b",
-          when: () => {
-            throw new Error("guard exploded");
+      steps: {
+        a: {
+          on: {
+            GO: [
+              {
+                to: "b",
+                when: () => {
+                  throw new Error("guard exploded");
+                }
+              }
+            ]
           }
-        }
+        },
+        b: {}
       },
       initial: "a",
       context: {}
@@ -83,15 +89,39 @@ describe("createGraphJourney — event-driven transitions", () => {
     expect(await confirmed.send("CONFIRM")).toEqual({ ok: true, from: "review", to: "done" });
   });
 
+  it("the same event declared from two steps stays scoped to its own step", async () => {
+    // Colocating transitions changed the flattened order from per-event to
+    // per-step. That is only observable if one event is declared from more than
+    // one step — and it must not be, because candidates are filtered by `from`
+    // before order is consulted. Declaring the later step first would surface a
+    // regression here as a transition to the wrong target.
+    const machine = createGraphJourney({
+      steps: {
+        second: { on: { GO: "fromSecond" } },
+        first: { on: { GO: "fromFirst" } },
+        fromFirst: { on: { GO: "second" } },
+        fromSecond: {}
+      },
+      initial: "first",
+      context: {}
+    });
+    machine.controls.start();
+    await flush();
+
+    expect(await machine.send("GO")).toEqual({ ok: true, from: "first", to: "fromFirst" });
+    expect(await machine.send("GO")).toEqual({ ok: true, from: "fromFirst", to: "second" });
+    expect(await machine.send("GO")).toEqual({ ok: true, from: "second", to: "fromSecond" });
+  });
+
   it("commits before the awaited onLeave → onTransition → onEnter effects", async () => {
     const log: string[] = [];
     const machine = createGraphJourney({
       steps: {
-        a: { onLeave: () => void log.push("onLeave:a") },
+        a: {
+          onLeave: () => void log.push("onLeave:a"),
+          on: { GO: [{ to: "b", onTransition: async () => void log.push("onTransition") }] }
+        },
         b: { onEnter: () => void log.push("onEnter:b") }
-      },
-      transitions: {
-        GO: { from: "a", to: "b", onTransition: async () => void log.push("onTransition") }
       },
       initial: "a",
       context: {}
@@ -109,15 +139,12 @@ describe("createGraphJourney — event-driven transitions", () => {
     const seen: unknown[] = [];
     const machine = createGraphJourney({
       steps: {
-        a: {},
+        a: {
+          on: {
+            GO: [{ to: "b", onTransition: ({ event }) => void seen.push(["transition", event]) }]
+          }
+        },
         b: { onEnter: ({ event }) => void seen.push(["enter", event]) }
-      },
-      transitions: {
-        GO: {
-          from: "a",
-          to: "b",
-          onTransition: ({ event }) => void seen.push(["transition", event])
-        }
       },
       initial: "a",
       context: {}
@@ -136,15 +163,20 @@ describe("createGraphJourney — event-driven transitions", () => {
     const boom = new Error("effect failed");
     const enter = vi.fn();
     const machine = createGraphJourney({
-      steps: { a: {}, b: { onEnter: enter } },
-      transitions: {
-        GO: {
-          from: "a",
-          to: "b",
-          onTransition: () => {
-            throw boom;
+      steps: {
+        a: {
+          on: {
+            GO: [
+              {
+                to: "b",
+                onTransition: () => {
+                  throw boom;
+                }
+              }
+            ]
           }
-        }
+        },
+        b: { onEnter: enter }
       },
       initial: "a",
       context: {}
@@ -176,8 +208,7 @@ describe("createGraphJourney — event-driven transitions", () => {
   it("goToStepById runs the resolved transition's callbacks", async () => {
     const effect = vi.fn();
     const machine = createGraphJourney({
-      steps: { a: {}, b: {} },
-      transitions: { GO: { from: "a", to: "b", onTransition: effect } },
+      steps: { a: { on: { GO: [{ to: "b", onTransition: effect }] } }, b: {} },
       initial: "a",
       context: {}
     });
@@ -191,8 +222,7 @@ describe("createGraphJourney — event-driven transitions", () => {
   it("timeline moves bypass transition gating but step effects still run", async () => {
     const leaveB = vi.fn();
     const machine = createGraphJourney({
-      steps: { a: {}, b: { onLeave: leaveB } },
-      transitions: { GO: { from: "a", to: "b" } }, // no way back via transitions
+      steps: { a: { on: { GO: "b" } }, b: { onLeave: leaveB } }, // no way back via transitions
       initial: "a",
       context: {}
     });
@@ -314,13 +344,17 @@ describe("createGraphJourney — event-driven transitions", () => {
 
   it("supports self-transitions via send (retry loops)", async () => {
     const machine = createGraphJourney({
-      steps: { verify: {} },
-      transitions: {
-        RETRY: {
-          from: "verify",
-          to: "verify",
-          onTransition: ({ updateContext }) =>
-            void updateContext((c) => ({ retries: (c as { retries: number }).retries + 1 }))
+      steps: {
+        verify: {
+          on: {
+            RETRY: [
+              {
+                to: "verify",
+                onTransition: ({ updateContext }) =>
+                  void updateContext((c) => ({ retries: (c as { retries: number }).retries + 1 }))
+              }
+            ]
+          }
         }
       },
       initial: "verify",
@@ -337,14 +371,19 @@ describe("createGraphJourney — event-driven transitions", () => {
 
   it("handlers are injected into guards and can be overridden per runtime", async () => {
     const definition = {
-      steps: { a: {}, b: {} },
-      transitions: {
-        GO: {
-          from: "a",
-          to: "b",
-          when: ({ handlers }: { context: unknown; handlers: unknown }) =>
-            (handlers as { allowed(): boolean }).allowed()
-        }
+      steps: {
+        a: {
+          on: {
+            GO: [
+              {
+                to: "b",
+                when: ({ handlers }: { context: unknown; handlers: unknown }) =>
+                  (handlers as { allowed(): boolean }).allowed()
+              }
+            ]
+          }
+        },
+        b: {}
       },
       initial: "a",
       context: {},
@@ -366,18 +405,15 @@ describe("createGraphJourney — event-driven transitions", () => {
     const directResults: unknown[] = [];
     const machine = createGraphJourney({
       steps: {
-        a: {},
+        a: { on: { GO: "b" } },
         b: {
           onEnter: async ({ raise }) => {
             directResults.push(await machineRef.send("FINISH"));
             raise({ type: "FINISH" });
-          }
+          },
+          on: { FINISH: "c" }
         },
         c: {}
-      },
-      transitions: {
-        GO: { from: "a", to: "b" },
-        FINISH: { from: "b", to: "c" }
       },
       initial: "a",
       context: {}
@@ -400,10 +436,10 @@ describe("createGraphJourney — event-driven transitions", () => {
           onEnter: ({ raise }) => {
             raiseCount += 1;
             raise({ type: "AGAIN" });
-          }
+          },
+          on: { AGAIN: "loop" }
         }
       },
-      transitions: { AGAIN: { from: "loop", to: "loop" } },
       initial: "loop",
       context: {}
     });
@@ -422,21 +458,19 @@ describe("createGraphJourney — event-driven transitions", () => {
   });
 
   it("validates the definition at creation", () => {
-    expect(() =>
-      createGraphJourney({ steps: {}, transitions: {}, initial: "a" as never, context: {} })
-    ).toThrow(/at least one step/);
+    expect(() => createGraphJourney({ steps: {}, initial: "a" as never, context: {} })).toThrow(
+      /at least one step/
+    );
     expect(() =>
       createGraphJourney({
         steps: { a: {} },
-        transitions: {},
         initial: "b" as never,
         context: {}
       })
     ).toThrow(/initial step "b"/);
     expect(() =>
       createGraphJourney({
-        steps: { a: {} },
-        transitions: { GO: { from: "a", to: "ghost" as never } },
+        steps: { a: { on: { GO: "ghost" as never } } },
         initial: "a",
         context: {}
       })
@@ -445,8 +479,7 @@ describe("createGraphJourney — event-driven transitions", () => {
 
   it("rejects navigation while a lifecycle effect chain is pending", async () => {
     const machine = createGraphJourney({
-      steps: { a: { onLeave: () => wait(30) }, b: {} },
-      transitions: { GO: { from: "a", to: "b" } },
+      steps: { a: { onLeave: () => wait(30), on: { GO: "b" } }, b: {} },
       initial: "a",
       context: {}
     });
@@ -463,8 +496,7 @@ describe("createGraphJourney — startAt", () => {
   it("overrides the definition's initial step at start", async () => {
     const machine = createGraphJourney(
       {
-        steps: { form: {}, review: {}, done: {} },
-        transitions: { EDIT: { from: "review", to: "form" } },
+        steps: { form: {}, review: { on: { EDIT: "form" } }, done: {} },
         initial: "form",
         context: {}
       },
@@ -481,7 +513,7 @@ describe("createGraphJourney — startAt", () => {
   it("throws at creation for an unknown startAt id", () => {
     expect(() =>
       createGraphJourney(
-        { steps: { a: {} }, transitions: {}, initial: "a", context: {} },
+        { steps: { a: {} }, initial: "a", context: {} },
         { startAt: "nope" as never }
       )
     ).toThrow(/startAt references unknown step "nope"/);

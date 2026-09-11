@@ -11,13 +11,19 @@ type Ctx = { method: "email" | "sms" | null; attempts: number };
  */
 async function startedGraph(context: Partial<Ctx> = {}) {
   const machine = createGraphJourney({
-    steps: { login: {}, email: {}, sms: {}, blocked: {} },
-    transitions: {
-      SUBMIT: [
-        { from: "login", to: "email", when: ({ context: c }) => (c as Ctx).method === "email" },
-        { from: "login", to: "sms", when: ({ context: c }) => (c as Ctx).method === "sms" }
-      ],
-      GIVE_UP: { from: "login", to: "blocked" }
+    steps: {
+      login: {
+        on: {
+          SUBMIT: [
+            { to: "email", when: ({ context: c }) => (c as Ctx).method === "email" },
+            { to: "sms", when: ({ context: c }) => (c as Ctx).method === "sms" }
+          ],
+          GIVE_UP: "blocked"
+        }
+      },
+      email: {},
+      sms: {},
+      blocked: {}
     },
     initial: "login",
     context: { method: null, attempts: 0, ...context }
@@ -344,62 +350,5 @@ describe("work-result routing and stay()", () => {
     expect(email).toMatchObject({ to: "email", guard: "failed", enabled: false });
     expect(sms).toMatchObject({ to: "sms", guard: "failed", enabled: false });
     expect(self).toMatchObject({ to: "login", guard: "none", enabled: true, selected: true });
-  });
-
-  it("warns at build time when every work candidate is guarded", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    try {
-      buildDeclaredWorkJourney({ login: async () => "email" });
-      expect(warn).toHaveBeenCalledTimes(1);
-      expect(warn.mock.calls[0]?.[0]).toContain('"SUBMIT" work on "login"');
-      expect(warn.mock.calls[0]?.[0]).toContain("stay()");
-    } finally {
-      warn.mockRestore();
-    }
-  });
-
-  it("allowRollback declares a partial event and silences the warning", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    try {
-      const { createStep, build } = createGraphJourneyBuilder<{
-        context: AttemptCtx;
-        stepId: "login" | "email";
-        events: LoginEvent;
-        handlers: LoginHandlers;
-      }>();
-      build({
-        initial: "login",
-        context: { attempts: 0 },
-        handlers: { login: async () => "email" as const },
-        steps: [
-          createStep("login", {
-            on: {
-              SUBMIT: ({ work }) =>
-                work({
-                  run: ({ handlers: h }) => h.login(),
-                  allowRollback: true,
-                  candidates: ({ to: into }) => [
-                    into("email").when(({ result }) => result === "email")
-                  ]
-                })
-            }
-          }),
-          createStep("email", {})
-        ]
-      });
-      expect(warn).not.toHaveBeenCalled();
-    } finally {
-      warn.mockRestore();
-    }
-  });
-
-  it("an unguarded totality fallback silences the warning too", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    try {
-      buildResultRoutedJourney({ login: async () => "email" });
-      expect(warn).not.toHaveBeenCalled();
-    } finally {
-      warn.mockRestore();
-    }
   });
 });

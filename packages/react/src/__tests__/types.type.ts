@@ -70,8 +70,7 @@ export function linearJourneyTypes() {
 
 export function graphBundleTypes() {
   const bundle = createGraphJourney({
-    steps: { form: {}, review: {} },
-    transitions: { SUBMIT: { from: "form", to: "review" } },
+    steps: { form: { on: { SUBMIT: "review" } }, review: {} },
     initial: "form",
     context: { attempts: 0 }
   });
@@ -111,8 +110,7 @@ export function pluginThreadingTypes() {
 export function ownedMachineTypes() {
   const linear = createLinearJourney({ steps: ["a", "b"], context: { n: 0 } });
   const graph = coreCreateGraphJourney({
-    steps: { x: {}, y: {} },
-    transitions: { GO: { from: "x", to: "y" } },
+    steps: { x: { on: { GO: "y" } }, y: {} },
     initial: "x",
     context: {}
   });

@@ -111,8 +111,7 @@ export const inspectDist = async (dist: string): Promise<string[]> => {
   if (hasGraph) {
     try {
       const bundle = (graph?.createGraphJourney as (definition: unknown) => { send: unknown })({
-        steps: { a: {}, b: {} },
-        transitions: { GO: { from: "a", to: "b" } },
+        steps: { a: { on: { GO: "b" } }, b: {} },
         initial: "a",
         context: {}
       });

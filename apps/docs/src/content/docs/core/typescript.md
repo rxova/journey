@@ -59,10 +59,9 @@ type Event = { type: "SUBMIT"; payload: { code: string } } | { type: "RESET" };
 const machine = createGraphJourney<Context, StepId, Event>({
   initial: "form",
   context: { code: "" },
-  steps: { form: {}, done: {} },
-  transitions: {
-    SUBMIT: { from: "form", to: "done" },
-    RESET: { from: "done", to: "form" }
+  steps: {
+    form: { on: { SUBMIT: "done" } },
+    done: { on: { RESET: "form" } }
   }
 });
 

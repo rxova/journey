@@ -88,6 +88,11 @@ export const BANNED_IDENTIFIERS: readonly BannedIdentifier[] = [
   // anyway to keep render identity stable.
   { name: "subscribeSelector", pattern: /\bsubscribeSelector\b/ },
   { name: "createSnapshotSource", pattern: /\bcreateSnapshotSource\b/ },
+  // The central transitions map. Matched as the literal property opener rather
+  // than by word boundary: the bare word collides with `outgoingTransitions`,
+  // `onTransition` and `JourneyStructure.transitions`, all of which are current
+  // API and appear across 30+ pages.
+  { name: "transitions: { (central map)", pattern: /\btransitions:\s*\{/ },
   // `useJourney` is deliberately NOT banned: the rc-era hook of that name was
   // removed, but the name was then reused for the current per-component
   // ownership hook. Banning it kept the shipping API out of the hand-written

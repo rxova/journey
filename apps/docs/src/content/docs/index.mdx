@@ -108,11 +108,15 @@ steps: ["account", "details", "payment", "review"];
     <Fragment slot="graph">
 
 ```ts
-transitions: {
-  submit: [
-    { from: "login", to: "admin", when: ({ context }) => context.role === "admin" },
-    { from: "login", to: "dashboard" }
-  ];
+steps: {
+  login: {
+    on: {
+      submit: [
+        { to: "admin", when: ({ context }) => context.role === "admin" },
+        { to: "dashboard" }
+      ];
+    }
+  }
 }
 ```
 

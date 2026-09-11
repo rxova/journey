@@ -44,10 +44,9 @@ describe("step-id guards reject inherited properties", () => {
       expect(() =>
         createGraphJourney(
           {
-            steps: { a: {}, b: {} },
+            steps: { a: { on: { GO: "b" } }, b: {} },
             initial: "a",
-            context: {},
-            transitions: { GO: { from: "a", to: "b" } }
+            context: {}
           },
           { startAt: key as "a" }
         )

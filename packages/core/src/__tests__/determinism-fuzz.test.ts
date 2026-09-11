@@ -9,18 +9,19 @@ type Ctx = { n: number };
 const linearDefinition = { steps: ["a", "b", "c", "d"], context: { n: 0 } as Ctx } as const;
 
 const graphDefinition = {
-  steps: { a: {}, b: {}, c: {}, d: {} },
-  transitions: {
-    NEXT: [
-      { from: "a", to: "b" },
-      { from: "b", to: "c" },
-      { from: "c", to: "d" }
-    ],
-    BRANCH: [
-      { from: "b", to: "d", when: ({ context }: { context: Ctx }) => context.n % 2 === 0 },
-      { from: "b", to: "c" }
-    ],
-    SELF: { from: "a", to: "a" }
+  steps: {
+    a: { on: { NEXT: "b", SELF: "a" } },
+    b: {
+      on: {
+        NEXT: "c",
+        BRANCH: [
+          { to: "d", when: ({ context }: { context: Ctx }) => context.n % 2 === 0 },
+          { to: "c" }
+        ]
+      }
+    },
+    c: { on: { NEXT: "d" } },
+    d: {}
   },
   initial: "a",
   context: { n: 0 } as Ctx

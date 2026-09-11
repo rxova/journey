@@ -44,11 +44,7 @@ describe("stepEnter direction", () => {
   it("graph send reports jump, with and without work", async () => {
     const entries: Entry[] = [];
     const machine = createGraphJourney({
-      steps: { a: {}, b: {}, c: {} },
-      transitions: {
-        GO: { from: "a", to: "b" },
-        FINISH: { from: "b", to: "c" }
-      },
+      steps: { a: { on: { GO: "b" } }, b: { on: { FINISH: "c" } }, c: {} },
       initial: "a",
       context: {}
     });

@@ -19,14 +19,9 @@ const machine = createGraphJourney<{ valid: boolean }, "form" | "review" | "done
   initial: "form",
   context: { valid: false },
   steps: {
-    form: {},
-    review: {},
+    form: { on: { SUBMIT: [{ to: "review", when: ({ context }) => context.valid }] } },
+    review: { on: { APPROVE: "done", EDIT: "form" } },
     done: {}
-  },
-  transitions: {
-    SUBMIT: { from: "form", to: "review", when: ({ context }) => context.valid },
-    APPROVE: { from: "review", to: "done" },
-    EDIT: { from: "review", to: "form" }
   }
 });
 ```
@@ -59,13 +54,15 @@ const definition = {
   initial: "form" as const,
   context: { role: "member" },
   handlers: { canApprove: (role: string) => role === "admin" },
-  steps: { form: {}, done: {} },
-  transitions: {
-    APPROVE: {
-      from: "form",
-      to: "done",
-      when: ({ context, handlers }) => handlers.canApprove(context.role)
-    }
+  steps: {
+    form: {
+      on: {
+        APPROVE: [
+          { to: "done", when: ({ context, handlers }) => handlers.canApprove(context.role) }
+        ]
+      }
+    },
+    done: {}
   }
 };
 
@@ -146,14 +143,17 @@ Three follow-ups worth knowing:
 Neither can cancel the committed move.
 
 ```ts
-transitions: {
-  SUBMIT: {
-    from: "form",
-    to: "review",
-    onTransition: async ({ event, snapshot, updateContext, raise }) => {
-      updateContext((context) => ({ ...context, email: event?.payload.email ?? "" }));
-      raise({ type: "APPROVE" });
-    }
+form: {
+  on: {
+    SUBMIT: [
+      {
+        to: "review",
+        onTransition: async ({ event, snapshot, updateContext, raise }) => {
+          updateContext((context) => ({ ...context, email: event?.payload.email ?? "" }));
+          raise({ type: "APPROVE" });
+        }
+      }
+    ];
   }
 }
 ```

@@ -8,11 +8,10 @@ type Ctx = { attempts: number };
 
 const makeBundle = () =>
   createGraphJourney({
-    steps: { form: {}, review: {}, done: {} },
-    transitions: {
-      SUBMIT: { from: "form", to: "review" },
-      EDIT: { from: "review", to: "form" },
-      CONFIRM: { from: "review", to: "done" }
+    steps: {
+      form: { on: { SUBMIT: "review" } },
+      review: { on: { EDIT: "form", CONFIRM: "done" } },
+      done: {}
     },
     initial: "form",
     context: { attempts: 0 } as Ctx
@@ -168,8 +167,7 @@ describe("graph bundle", () => {
   it("honours autoStart: false — fallback until started explicitly", async () => {
     const bundle = createGraphJourney(
       {
-        steps: { form: {}, done: {} },
-        transitions: { FINISH: { from: "form", to: "done" } },
+        steps: { form: { on: { FINISH: "done" } }, done: {} },
         initial: "form",
         context: {}
       },
@@ -249,8 +247,7 @@ describe("graph bundle edges", () => {
 
   it("names the Provider and StepRenderer for DevTools from the definition name", () => {
     const named = createGraphJourney({
-      steps: { form: {}, done: {} },
-      transitions: { FINISH: { from: "form", to: "done" } },
+      steps: { form: { on: { FINISH: "done" } }, done: {} },
       initial: "form",
       context: {},
       name: "checkout"

@@ -59,13 +59,7 @@ describe("persist option restore", () => {
   it("resumes a graph journey and keeps navigating from the restored step", async () => {
     const storage = memoryStorage();
     const definition = {
-      steps: { a: {}, b: {}, c: {} },
-      transitions: {
-        NEXT: [
-          { from: "a", to: "b" },
-          { from: "b", to: "c" }
-        ]
-      },
+      steps: { a: { on: { NEXT: "b" } }, b: { on: { NEXT: "c" } }, c: {} },
       initial: "a",
       context: { n: 0 }
     } as const;

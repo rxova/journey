@@ -107,16 +107,20 @@ const { steps } = Astro.props;
     const machine = createGraphJourney<Context, StepId, Events>({
       initial: "plan",
       context: { plan: "free" },
-      steps: { plan: {}, account: {}, payment: {}, review: {} },
-      transitions: {
+      steps: {
+        plan: { on: { next: "account" } },
         // The whole point of the demo: one guard, evaluated in order, so `pro`
         // takes the payment detour and `free` never sees it.
-        next: [
-          { from: "plan", to: "account" },
-          { from: "account", to: "payment", when: ({ context }) => context.plan === "pro" },
-          { from: "account", to: "review" },
-          { from: "payment", to: "review" }
-        ]
+        account: {
+          on: {
+            next: [
+              { to: "payment", when: ({ context }) => context.plan === "pro" },
+              { to: "review" }
+            ]
+          }
+        },
+        payment: { on: { next: "review" } },
+        review: {}
       }
     });
 
