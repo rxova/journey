@@ -44,10 +44,7 @@ export type JourneyDevtoolsAttachableMachine = {
     goToLastVisitedStep(): Promise<unknown>;
   };
   subscriptions: {
-    subscribeSelector(
-      selector: (snapshot: unknown) => unknown,
-      listener: (selected: unknown) => void
-    ): () => void;
+    subscribe(listener: () => void): () => void;
     subscribeEvent(
       event: JourneySubscriptionEvent,
       listener: (payload: unknown) => void
@@ -69,10 +66,7 @@ export type LooseMachine = {
     goToLastVisitedStep(): Promise<NavigationResult>;
   };
   subscriptions: {
-    subscribeSelector(
-      selector: (snapshot: unknown) => unknown,
-      listener: (selected: unknown) => void
-    ): () => void;
+    subscribe(listener: () => void): () => void;
     subscribeEvent(
       event: JourneySubscriptionEvent,
       listener: (payload: Record<string, unknown>) => void

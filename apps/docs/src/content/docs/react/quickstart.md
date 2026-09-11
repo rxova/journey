@@ -213,8 +213,7 @@ const machine = createLinearJourney(
   { autoStart: true }
 );
 
-const subscribe = (onStoreChange: () => void) =>
-  machine.subscriptions.subscribeSelector((snapshot) => snapshot, onStoreChange);
+const subscribe = (onStoreChange: () => void) => machine.subscriptions.subscribe(onStoreChange);
 
 function MachineStatus() {
   const snapshot = React.useSyncExternalStore(subscribe, machine.getSnapshot, machine.getSnapshot);

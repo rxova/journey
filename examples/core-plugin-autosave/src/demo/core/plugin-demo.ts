@@ -311,10 +311,7 @@ export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => 
     })();
   });
 
-  machine.subscriptions.subscribeSelector(
-    (snapshot) => snapshot,
-    () => render()
-  );
+  machine.subscriptions.subscribe(() => render());
   eventStore.subscribe(() => render());
 
   render();

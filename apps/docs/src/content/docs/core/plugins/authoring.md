@@ -93,7 +93,7 @@ deriveSnapshot: (_snapshot, previous) =>
   previous?.transitions === transitions ? previous : { transitions };
 ```
 
-The value appears at `snapshot.plugins.counter` and can be observed with `subscribeSelector`.
+The value appears at `snapshot.plugins.counter` and can be observed with `subscribe`.
 
 Snapshot derivation may run more than once around one lifecycle operation because the runtime
 refreshes plugin-derived state after observation taps.

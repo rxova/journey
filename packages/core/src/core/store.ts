@@ -1,5 +1,4 @@
 import { reportListenerError } from "./helpers";
-import type { SelectorEntry } from "./store.types";
 import type {
   JourneyEventPayloads,
   JourneySnapshot,
@@ -13,7 +12,7 @@ import type {
  */
 export class JourneyStore<TContext, TStepId extends string> {
   private snapshot: JourneySnapshot<TContext, TStepId>;
-  private readonly selectorEntries = new Set<SelectorEntry<TContext, TStepId>>();
+  private readonly listeners = new Set<() => void>();
   private readonly eventListeners = new Map<
     JourneySubscriptionEvent,
     Set<(payload: never) => void>
@@ -50,45 +49,31 @@ export class JourneyStore<TContext, TStepId extends string> {
     return this.snapshot;
   }
 
-  /** Replaces the snapshot and notifies selector subscribers whose value changed. */
+  /** Replaces the snapshot and notifies every subscriber. */
   publish(next: JourneySnapshot<TContext, TStepId>): void {
     // Structural sharing upstream returns the previous object verbatim when
     // nothing changed — such publishes are complete no-ops.
     if (Object.is(this.snapshot, next)) return;
     this.snapshot = next;
-    for (const entry of [...this.selectorEntries]) {
-      let selected: unknown;
+    for (const listener of [...this.listeners]) {
       try {
-        selected = entry.selector(next);
-      } catch (error) {
-        this.report(error);
-        continue;
-      }
-      if (entry.equals(entry.last, selected)) continue;
-      entry.last = selected;
-      try {
-        (entry.listener as (value: unknown) => void)(selected);
+        listener();
       } catch (error) {
         this.report(error);
       }
     }
   }
 
-  subscribeSelector<TSelected>(
-    selector: (snapshot: JourneySnapshot<TContext, TStepId>) => TSelected,
-    listener: (selected: TSelected) => void,
-    equals: (a: TSelected, b: TSelected) => boolean = Object.is
-  ): Unsubscribe {
+  /**
+   * Notifies on every committed snapshot. Deriving a slice and skipping
+   * unchanged values is the caller's job — in React that is `useSelector`,
+   * which has to own the comparison anyway to keep render identity stable.
+   */
+  subscribe(listener: () => void): Unsubscribe {
     if (this.disposed) return () => undefined;
-    const entry: SelectorEntry<TContext, TStepId> = {
-      selector,
-      listener: listener as (selected: never) => void,
-      equals: equals as (a: unknown, b: unknown) => boolean,
-      last: selector(this.snapshot)
-    };
-    this.selectorEntries.add(entry);
+    this.listeners.add(listener);
     return () => {
-      this.selectorEntries.delete(entry);
+      this.listeners.delete(listener);
     };
   }
 
@@ -125,7 +110,7 @@ export class JourneyStore<TContext, TStepId extends string> {
 
   dispose(): void {
     this.disposed = true;
-    this.selectorEntries.clear();
+    this.listeners.clear();
     this.eventListeners.clear();
   }
 }

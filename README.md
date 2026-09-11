@@ -229,10 +229,7 @@ Subscribe to a selected value when a consumer needs one slice, or to a named obs
 it needs lifecycle detail:
 
 ```ts
-const stop = machine.subscriptions.subscribeSelector(
-  (snapshot) => snapshot.currentStep?.id,
-  (stepId) => render(stepId)
-);
+const stop = machine.subscriptions.subscribe(() => render(machine.getSnapshot().currentStep?.id));
 
 machine.subscriptions.subscribeEvent("navigationBlocked", ({ reason, error }) =>
   report(reason, error)
@@ -371,8 +368,7 @@ import { createLinearJourney } from "@rxova/journey-core";
 
 const machine = createLinearJourney({ context: initialContext, steps }, { autoStart: true });
 
-const subscribe = (onStoreChange: () => void) =>
-  machine.subscriptions.subscribeSelector((snapshot) => snapshot, onStoreChange);
+const subscribe = (onStoreChange: () => void) => machine.subscriptions.subscribe(onStoreChange);
 
 function Inspector() {
   const snapshot = React.useSyncExternalStore(subscribe, machine.getSnapshot, machine.getSnapshot);

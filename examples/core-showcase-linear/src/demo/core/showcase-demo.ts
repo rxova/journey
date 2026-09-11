@@ -110,10 +110,10 @@ export const mountCoreShowcase = (root: HTMLElement) => {
   };
 
   // subscribeEvent is for "something happened" (audit/log style, one-shot payloads
-  // like a phase transition or a raw context diff); subscribeSelector further down
-  // is for "render when this derived value changes" (a live view over the snapshot).
-  // Reach for subscribeEvent when logging/side-effecting on discrete occurrences,
-  // subscribeSelector when driving UI off derived state.
+  // like a phase transition or a raw context diff); subscribe further down fires
+  // on every committed snapshot, which is what a render loop wants. Reach for
+  // subscribeEvent when logging or side-effecting on discrete occurrences,
+  // subscribe when re-rendering from the snapshot.
   for (const eventName of OBSERVED_EVENTS) {
     machine.subscriptions.subscribeEvent(eventName, () => {
       pushLogEntry({ label: eventName });
@@ -495,9 +495,6 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     })();
   });
 
-  machine.subscriptions.subscribeSelector(
-    (snapshot) => snapshot,
-    () => render()
-  );
+  machine.subscriptions.subscribe(() => render());
   render();
 };

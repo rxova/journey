@@ -44,10 +44,7 @@ describe("snapshot structural sharing", () => {
     await flush();
 
     const notifications: unknown[] = [];
-    machine.subscriptions.subscribeSelector(
-      (snapshot) => snapshot,
-      (selected) => notifications.push(selected)
-    );
+    machine.subscriptions.subscribe(() => notifications.push(machine.getSnapshot()));
     machine.context.update((context) => context); // no-op
     expect(notifications).toHaveLength(0);
     machine.context.update((context) => ({ ...context, n: 1 }));

@@ -4,7 +4,6 @@ import type {
   ContextUpdater,
   JourneyEventPayloads,
   JourneyMachineBase,
-  JourneySnapshot,
   JourneySubscriptionEvent,
   Unsubscribe
 } from "./types";
@@ -40,11 +39,7 @@ export function buildMachineSurface(
         runtime.registerNextStepInterceptor(stepId, work as AnyNavigationWork)
     },
     subscriptions: {
-      subscribeSelector: <TSelected>(
-        selector: (snapshot: JourneySnapshot<unknown, string>) => TSelected,
-        listener: (selected: TSelected) => void,
-        equals?: (a: TSelected, b: TSelected) => boolean
-      ): Unsubscribe => runtime.store.subscribeSelector(selector, listener, equals),
+      subscribe: (listener: () => void): Unsubscribe => runtime.store.subscribe(listener),
       subscribeEvent: <TEvent extends JourneySubscriptionEvent>(
         event: TEvent,
         listener: (payload: JourneyEventPayloads<unknown, string>[TEvent]) => void

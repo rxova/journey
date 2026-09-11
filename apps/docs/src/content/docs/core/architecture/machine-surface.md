@@ -11,7 +11,7 @@ machine
   controls.*          start, pause, resume, complete, terminate, restart
   navigate.*          goToStepById, goToNextStep, goToPreviousStep,
                       goToLastVisitedStep, registerNextStepInterceptor
-  subscriptions.*     subscribeSelector, subscribeEvent
+  subscriptions.*     subscribe, subscribeEvent
   context.update()
   async.clearError()
   plugins.*           one namespaced entry per plugin

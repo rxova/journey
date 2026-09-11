@@ -113,13 +113,10 @@ the send itself the same guard sees the live result, so a result-dependent candi
 ## Update rules
 
 Do not mutate a snapshot or its context. Use `machine.context.update()` and read the next snapshot.
-Subscribe to slices when a consumer only needs one value:
+Read the slice a consumer needs inside the listener:
 
 ```ts
-machine.subscriptions.subscribeSelector(
-  (next) => next.currentStep?.async,
-  (asyncState) => renderAsyncState(asyncState)
-);
+machine.subscriptions.subscribe(() => renderAsyncState(machine.getSnapshot().currentStep?.async));
 ```
 
 ## Where to next

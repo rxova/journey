@@ -446,15 +446,11 @@ export const mountCoreShowcase = (root: HTMLElement) => {
   };
   root.addEventListener("click", handleClick);
 
-  // subscribeSelector drives the render loop off the whole snapshot; subscribeEvent
-  // above is used for the audit-style log instead, since it needs discrete
-  // occurrences (contextChange/stepEnter/...), not a derived render trigger.
-  disposers.push(
-    machine.subscriptions.subscribeSelector(
-      (snapshot) => snapshot,
-      () => render()
-    )
-  );
+  // subscribe drives the render loop: it fires on every committed snapshot,
+  // which is exactly a render trigger. subscribeEvent above is used for the
+  // audit-style log instead, since it needs discrete occurrences
+  // (contextChange/stepEnter/...) with their payloads.
+  disposers.push(machine.subscriptions.subscribe(() => render()));
   render();
 
   const unmount = () => {

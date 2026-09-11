@@ -133,8 +133,7 @@ const useJourneySnapshot = <TMachine extends AnyJourneyMachine>(
   machine: TMachine
 ): SnapshotOf<TMachine> => {
   const subscribe = React.useCallback(
-    (onStoreChange: () => void) =>
-      machine.subscriptions.subscribeSelector((snapshot) => snapshot, onStoreChange),
+    (onStoreChange: () => void) => machine.subscriptions.subscribe(onStoreChange),
     [machine]
   );
   const getSnapshot = React.useCallback(

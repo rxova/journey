@@ -342,11 +342,13 @@ export type JourneySubscriptions<
   TStepId extends string,
   TSnap = JourneySnapshot<TContext, TStepId>
 > = {
-  subscribeSelector<TSelected>(
-    selector: (snapshot: TSnap) => TSelected,
-    listener: (selected: TSelected) => void,
-    equals?: (a: TSelected, b: TSelected) => boolean
-  ): Unsubscribe;
+  /**
+   * Fires on every committed snapshot; read the current one with
+   * `getSnapshot()`. Deriving a slice and skipping unchanged values belongs to
+   * the caller — React's `useSelector` owns that comparison because it must
+   * anyway, to keep render identity stable.
+   */
+  subscribe(listener: () => void): Unsubscribe;
   subscribeEvent<TEvent extends JourneySubscriptionEvent>(
     event: TEvent,
     listener: (payload: JourneyEventPayloads<TContext, TStepId, TSnap>[TEvent]) => void

@@ -83,6 +83,11 @@ export const BANNED_IDENTIFIERS: readonly BannedIdentifier[] = [
   // are read from `onTransition`, or subscribed on the machine.
   { name: "host.onStepEnter", pattern: /\bhost\.onStepEnter\b/ },
   { name: "host.onStepLeave", pattern: /\bhost\.onStepLeave\b/ },
+  // Core publishes snapshots; selecting a slice and suppressing unchanged
+  // values moved to the framework binding, which has to own that comparison
+  // anyway to keep render identity stable.
+  { name: "subscribeSelector", pattern: /\bsubscribeSelector\b/ },
+  { name: "createSnapshotSource", pattern: /\bcreateSnapshotSource\b/ },
   // `useJourney` is deliberately NOT banned: the rc-era hook of that name was
   // removed, but the name was then reused for the current per-component
   // ownership hook. Banning it kept the shipping API out of the hand-written

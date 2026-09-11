@@ -56,8 +56,7 @@ describe("server-side rendering (no window)", () => {
       { steps: ["watching", "flagged"], context: {} },
       { autoStart: true }
     );
-    const subscribe = (onStoreChange: () => void) =>
-      machine.subscriptions.subscribeSelector((snapshot) => snapshot, onStoreChange);
+    const subscribe = (onStoreChange: () => void) => machine.subscriptions.subscribe(onStoreChange);
     const Owned = () => {
       const snapshot = React.useSyncExternalStore(
         subscribe,

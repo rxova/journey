@@ -35,19 +35,14 @@ Consumers import subpaths, not the barrel:
 import { isRecord } from "@rxova/journey-common/predicates";
 ```
 
-| Subpath          | Exports                                                                                                           |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `/predicates`    | `isRecord`, `isPlainObject`                                                                                       |
-| `/serialization` | `cloneForTransport`, `serializeError`, `serializeTransportError`, `SerializedError`                               |
-| `/bindings`      | `createSnapshotSource`, `createSelectorCache`, `JourneyReadable`, `SnapshotSource`, `EqualityFn`, `SelectorCache` |
-| `/dev`           | `isDevelopmentEnvironment`, `warnInDevelopment`, `resolveNonProductionEnvironment`, `NonProductionBundlerEnv`     |
-| `/origin`        | `resolveWindowTargetOrigin`, `isExpectedWindowOrigin`                                                             |
+| Subpath          | Exports                                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------------------- |
+| `/predicates`    | `isRecord`, `isPlainObject`                                                                                   |
+| `/serialization` | `cloneForTransport`, `serializeError`, `serializeTransportError`, `SerializedError`                           |
+| `/dev`           | `isDevelopmentEnvironment`, `warnInDevelopment`, `resolveNonProductionEnvironment`, `NonProductionBundlerEnv` |
+| `/origin`        | `resolveWindowTargetOrigin`, `isExpectedWindowOrigin`                                                         |
 
 The `.` barrel re-exports all of the above. It exists for completeness; prefer subpaths so a consumer only pulls in what it uses.
-
-### A note on `bindings`
-
-`bindings` is framework-agnostic on purpose. A wrapper is mostly glue, but multiplexing one machine subscription across many views and caching a derived selection are pure logic and identical for React, Vue, or Angular. They live here so the second wrapper inherits them instead of reimplementing them, subtly differently.
 
 ### A note on `dev`
 

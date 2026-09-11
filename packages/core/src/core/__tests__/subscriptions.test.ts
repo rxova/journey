@@ -3,42 +3,54 @@ import { createLinearJourney } from "@rxova/journey-core";
 import { flush, startedLinear } from "@rxova/journey-core/testing";
 
 describe("subscriptions", () => {
-  it("subscribeSelector fires only when the selected value changes (Object.is default)", async () => {
+  it("subscribe fires on every committed snapshot, mid-flight ones included", async () => {
+    const machine = await startedLinear();
+    const seen: string[] = [];
+    machine.subscriptions.subscribe(() => {
+      const snapshot = machine.getSnapshot();
+      seen.push(`${snapshot.currentStep?.id}:${snapshot.transition.phase ?? "settled"}`);
+    });
+
+    await machine.navigate.goToNextStep();
+
+    // A navigation publishes twice — the step id moves first and the
+    // transition settles second. Subscribers see both, which is what lets a
+    // renderer show the in-flight state instead of only the resting one.
+    expect(seen).toEqual(["b:entering", "b:settled"]);
+  });
+
+  it("does not de-duplicate by a derived value", async () => {
     const machine = await startedLinear();
     const ids: (string | undefined)[] = [];
-    machine.subscriptions.subscribeSelector(
-      (snapshot) => snapshot.currentStep?.id,
-      (id) => ids.push(id)
-    );
+    machine.subscriptions.subscribe(() => ids.push(machine.getSnapshot().currentStep?.id));
 
-    await machine.navigate.goToNextStep();
-    machine.context.update((c) => ({ ...c, count: 1 })); // id unchanged → no fire
-    await machine.navigate.goToNextStep();
+    // The step id is unchanged, but the context commit is still a commit. Core
+    // notifies; skipping unchanged slices belongs to the caller, which is what
+    // React's useSelector does (it must own that comparison anyway, to keep
+    // render identity stable).
+    machine.context.update((c) => ({ ...c, count: 1 }));
 
-    expect(ids).toEqual(["b", "c"]);
+    expect(ids).toEqual(["a"]);
   });
 
-  it("supports a custom equality function", async () => {
+  it("a publish that changes nothing is a no-op", async () => {
     const machine = await startedLinear();
-    const seen: number[] = [];
-    machine.subscriptions.subscribeSelector(
-      (snapshot) => snapshot.history.timeline.length,
-      (length) => seen.push(length),
-      () => true // everything equal → never fires
-    );
-    await machine.navigate.goToNextStep();
-    expect(seen).toEqual([]);
+    let calls = 0;
+    machine.subscriptions.subscribe(() => {
+      calls += 1;
+    });
+
+    // Structural sharing returns the previous snapshot verbatim, so no publish.
+    machine.context.update((c) => c);
+    expect(calls).toBe(0);
   });
 
-  it("unsubscribe stops both selector and event listeners", async () => {
+  it("unsubscribe stops both snapshot and event listeners", async () => {
     const machine = await startedLinear();
     const calls: string[] = [];
-    const offSelector = machine.subscriptions.subscribeSelector(
-      (snapshot) => snapshot.currentStep?.id,
-      () => calls.push("selector")
-    );
+    const offSnapshot = machine.subscriptions.subscribe(() => calls.push("snapshot"));
     const offEvent = machine.subscriptions.subscribeEvent("stepEnter", () => calls.push("event"));
-    offSelector();
+    offSnapshot();
     offEvent();
 
     await machine.navigate.goToNextStep();
@@ -85,12 +97,9 @@ describe("subscriptions", () => {
   it("subscriptions registered after dispose are inert", async () => {
     const machine = await startedLinear();
     machine.dispose();
-    const off = machine.subscriptions.subscribeSelector(
-      (snapshot) => snapshot.status,
-      () => {
-        throw new Error("should never fire");
-      }
-    );
+    const off = machine.subscriptions.subscribe(() => {
+      throw new Error("should never fire");
+    });
     expect(off).toBeTypeOf("function");
     expect(() => off()).not.toThrow();
   });

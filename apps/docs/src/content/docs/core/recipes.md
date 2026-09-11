@@ -126,14 +126,17 @@ the timeline begins as `[startAt]`. An unknown id throws at creation.
 ## Observe one UI slice
 
 ```ts
-const stop = machine.subscriptions.subscribeSelector(
-  (snapshot) => ({
-    step: snapshot.currentStep?.id,
-    loading: snapshot.machine.isLoading
-  }),
-  render,
-  (a, b) => a.step === b.step && a.loading === b.loading
-);
+let previous = { step: undefined as string | undefined, loading: false };
+
+const stop = machine.subscriptions.subscribe(() => {
+  const snapshot = machine.getSnapshot();
+  const next = { step: snapshot.currentStep?.id, loading: snapshot.machine.isLoading };
+  // Core notifies on every commit; comparing here is what keeps the render
+  // loop off the publishes this view does not care about.
+  if (next.step === previous.step && next.loading === previous.loading) return;
+  previous = next;
+  render(next);
+});
 ```
 
 ## Observe blocked navigation

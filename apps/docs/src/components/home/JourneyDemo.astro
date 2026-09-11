@@ -203,12 +203,7 @@ const { steps } = Astro.props;
       }
     });
 
-    // Identity selector with a never-equal comparator: re-render on every commit.
-    machine.subscriptions.subscribeSelector(
-      (snapshot) => snapshot,
-      render,
-      () => false
-    );
+    machine.subscriptions.subscribe(render);
     machine.controls.start();
     render();
   }

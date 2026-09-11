@@ -140,17 +140,18 @@ present.
 
 ## Subscriptions
 
-### `subscriptions.subscribeSelector(selector, listener, equals?)`
+### `subscriptions.subscribe(listener)`
 
-Calls `listener` when the selected value changes according to `Object.is` or the supplied equality
-function.
+Calls `listener` after every committed snapshot; read the current one with `getSnapshot()`.
 
 ```ts
-const stop = machine.subscriptions.subscribeSelector(
-  (snapshot) => snapshot.currentStep?.id,
-  (id) => render(id)
-);
+const stop = machine.subscriptions.subscribe(() => render(machine.getSnapshot()));
 ```
+
+A navigation publishes twice — once mid-flight, once settled — so a renderer sees the in-flight
+state (`transition.pending`, `currentStep.async`) rather than only the resting one. Core does not
+de-duplicate by a derived value: skipping unchanged slices belongs to the caller. In React that is
+`useSelector`, which owns the comparison anyway to keep render identity stable.
 
 ### `subscriptions.subscribeEvent(event, listener)`
 

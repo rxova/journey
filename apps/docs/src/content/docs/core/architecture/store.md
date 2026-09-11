@@ -12,17 +12,21 @@ two jobs:
 The store never derives state itself. Snapshots are rebuilt by the runtime; the store only
 publishes them.
 
-## Selector notification
+## Notification
 
-`subscribeSelector(selector, listener, equals?)` stores the last selected value per subscription.
-On every publish the store re-runs the selector against the new snapshot and calls the listener
-only when the equality function (`Object.is` by default) reports a change.
+`subscribe(listener)` registers a plain per-commit callback. Publishing replaces the snapshot and
+calls every listener; a publish whose snapshot is reference-equal to the current one is skipped
+entirely, because structural sharing upstream returns the previous object verbatim when nothing
+changed.
+
+The store holds no selectors and no equality functions. Deriving a slice and suppressing unchanged
+values is a rendering concern, and it needs to know which renders committed — so it lives in the
+framework binding (`useSelector` in `@rxova/journey-react`), not here.
 
 ## Listener isolation
 
-Selector and event-listener failures are caught per listener, so one subscriber cannot interrupt
-the runtime, the publish loop, or other subscribers. A throwing selector skips that subscription
-for the publish; a throwing listener is reported and the loop continues.
+Listener failures are caught per listener, so one subscriber cannot interrupt the runtime, the
+publish loop, or other subscribers. A throwing listener is reported and the loop continues.
 
 Isolation is unconditional. What you can configure is where the report goes: the `onListenerError`
 creation option receives the thrown value. Without it, the store reports through `console.error`.

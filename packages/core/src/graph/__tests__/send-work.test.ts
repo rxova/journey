@@ -53,15 +53,6 @@ describe("send with work", () => {
 
   it("holds position with an unresolved target during the working phase", async () => {
     const machine = await startedGraph();
-    const phases: { phase: string | null; to: string | null; step: string | undefined }[] = [];
-
-    machine.subscriptions.subscribeSelector(
-      (s) => s.transition,
-      () => {
-        const s = machine.getSnapshot();
-        phases.push({ phase: s.transition.phase, to: s.transition.to, step: s.currentStep?.id });
-      }
-    );
 
     const pending = machine.send("SUBMIT", {
       run: async () => {

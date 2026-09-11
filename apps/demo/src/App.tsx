@@ -224,10 +224,7 @@ const coreDefinition: LinearJourneyDefinition<CoreStepId, CoreContext> = {
 
 const coreMachine = createLinearJourney(coreDefinition);
 const subscribeToCoreSnapshot = (onStoreChange: () => void) =>
-  coreMachine.subscriptions.subscribeSelector(
-    (snapshot) => snapshot,
-    () => onStoreChange()
-  );
+  coreMachine.subscriptions.subscribe(() => onStoreChange());
 const useCoreSnapshot = () =>
   React.useSyncExternalStore(
     subscribeToCoreSnapshot,

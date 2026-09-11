@@ -5,12 +5,13 @@ describe("registerNextStepInterceptor", () => {
   it("registered work runs on goToNextStep and its commit stages context atomically", async () => {
     const machine = await startedLinear();
     const seen: { count: number; stepId: string | undefined }[] = [];
-    machine.subscriptions.subscribeSelector(
-      (snapshot) => snapshot.context as { count: number },
-      (context) => {
-        seen.push({ count: context.count, stepId: machine.getSnapshot().currentStep?.id });
-      }
-    );
+    machine.subscriptions.subscribe(() => {
+      const snapshot = machine.getSnapshot();
+      seen.push({
+        count: (snapshot.context as { count: number }).count,
+        stepId: snapshot.currentStep?.id
+      });
+    });
 
     machine.navigate.registerNextStepInterceptor("a", {
       run: () => 41,

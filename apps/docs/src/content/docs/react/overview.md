@@ -230,8 +230,7 @@ export const machine = createLinearJourney(
 
 // The machine is a module-scope singleton, so the subscribe adapter is a
 // stable plain function — useSyncExternalStore never resubscribes on it.
-const subscribe = (onStoreChange: () => void) =>
-  machine.subscriptions.subscribeSelector((snapshot) => snapshot, onStoreChange);
+const subscribe = (onStoreChange: () => void) => machine.subscriptions.subscribe(onStoreChange);
 
 export const useJourneySnapshot = () =>
   React.useSyncExternalStore(subscribe, machine.getSnapshot, machine.getSnapshot);

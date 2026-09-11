@@ -18,20 +18,18 @@ describe("onListenerError creation option", () => {
     expect(seen).toEqual(["b"]);
   });
 
-  it("routes a throwing selector listener to the reporter", async () => {
-    const failure = new Error("bad selector listener");
+  it("routes a throwing snapshot listener to the reporter", async () => {
+    const failure = new Error("bad snapshot listener");
     const reported: unknown[] = [];
     const machine = await startedLinear({ onListenerError: (error) => reported.push(error) });
 
-    machine.subscriptions.subscribeSelector(
-      (snapshot) => snapshot.currentStep?.id,
-      () => {
-        throw failure;
-      }
-    );
+    machine.subscriptions.subscribe(() => {
+      throw failure;
+    });
 
     await machine.navigate.goToNextStep();
-    expect(reported).toEqual([failure]);
+    // Once per publish, and a navigation publishes twice (mid-flight, settled).
+    expect(reported).toEqual([failure, failure]);
   });
 
   it("does not console.error when a reporter is configured", async () => {

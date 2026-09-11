@@ -1,5 +1,5 @@
 import React from "react";
-import { createSelectorCache, createSnapshotSource } from "@rxova/journey-common/bindings";
+import { createSelectorCache } from "./selector-cache";
 import { useSafeLayoutEffect } from "./use-safe-layout-effect";
 import type { JourneySubscriptionEvent } from "@rxova/journey-core";
 import type {
@@ -17,10 +17,7 @@ import type {
 type BindableRuntime<TContext, TSnapshot> = {
   getSnapshot: () => TSnapshot;
   subscriptions: {
-    subscribeSelector: (
-      selector: (snapshot: TSnapshot) => unknown,
-      listener: (selected: unknown) => void
-    ) => () => void;
+    subscribe: (listener: () => void) => () => void;
     subscribeEvent: (
       event: JourneySubscriptionEvent,
       listener: (payload: unknown) => void
@@ -86,12 +83,18 @@ export const createJourneyBindings = <
 ): JourneyBundleBase<TMachine, TContext, TStepId, TSnapshot> => {
   const runtime = machine as unknown as BindableRuntime<TContext, TSnapshot>;
 
-  // One machine subscription for the whole bundle, fanned out to every mounted
-  // hook. Subscribing per hook would make core re-run its selector and equality
-  // check once per subscriber on every publish, for a change that is identical
-  // for all of them. `source.subscribe` is a stable reference, so
-  // useSyncExternalStore never resubscribes on it.
-  const source = createSnapshotSource<TSnapshot>(runtime);
+  // Core's `subscribe` is a plain per-commit callback with no per-subscriber
+  // work, so hooks subscribe to it directly — the multiplexer that used to sit
+  // here existed only because core ran a selector and an equality check once
+  // per subscriber on every publish.
+  //
+  // One closure per bundle, so the reference is stable and
+  // useSyncExternalStore never resubscribes; it dispatches through
+  // `runtime.subscriptions` at call time rather than capturing the method, so a
+  // wrapper placed on the machine after the bundle is built still sees the
+  // calls.
+  const subscribe = (listener: () => void): (() => void) =>
+    runtime.subscriptions.subscribe(listener);
 
   /**
    * The one React bridge in this bundle. useSyncExternalStore requires the
@@ -116,10 +119,10 @@ export const createJourneyBindings = <
     // preserved across those rebuilds by the committed ref, not by this cache.
     const getSelected = React.useMemo(() => {
       const select = createSelectorCache<TSnapshot, TSelected>(selector, equalityFn);
-      return (): TSelected => select(source.getSnapshot(), committedRef.current);
+      return (): TSelected => select(runtime.getSnapshot(), committedRef.current);
     }, [selector, equalityFn]);
 
-    const selected = React.useSyncExternalStore(source.subscribe, getSelected, getSelected);
+    const selected = React.useSyncExternalStore(subscribe, getSelected, getSelected);
 
     // The baseline advances only once a render commits.
     useSafeLayoutEffect(() => {

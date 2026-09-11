@@ -34,11 +34,7 @@ type AnyEventPayload = JourneyEventPayloads<unknown, string>[JourneySubscription
 export type AnyJourneyMachine = {
   getSnapshot(): JourneySnapshot;
   subscriptions: {
-    subscribeSelector(
-      selector: (snapshot: JourneySnapshot) => unknown,
-      listener: (selected: unknown) => void,
-      equals?: (a: unknown, b: unknown) => boolean
-    ): () => void;
+    subscribe(listener: () => void): () => void;
     subscribeEvent(
       event: JourneySubscriptionEvent,
       listener: (payload: AnyEventPayload) => void

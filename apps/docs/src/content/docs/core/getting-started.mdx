@@ -56,15 +56,12 @@ function waitUntilSettled(machine: typeof checkout): Promise<void> {
   if (!machine.getSnapshot().transition.pending) return Promise.resolve();
 
   return new Promise((resolve) => {
-    const stop = machine.subscriptions.subscribeSelector(
-      (snapshot) => snapshot.transition.pending,
-      (pending) => {
-        if (!pending) {
-          stop();
-          resolve();
-        }
+    const stop = machine.subscriptions.subscribe(() => {
+      if (!machine.getSnapshot().transition.pending) {
+        stop();
+        resolve();
       }
-    );
+    });
   });
 }
 
@@ -113,9 +110,8 @@ snapshot.steps.totalSteps; // 3
 Subscriptions are grouped under `machine.subscriptions`.
 
 ```ts
-const stopStepSubscription = checkout.subscriptions.subscribeSelector(
-  (snapshot) => snapshot.currentStep?.id,
-  (stepId) => renderStep(stepId)
+const stopStepSubscription = checkout.subscriptions.subscribe(() =>
+  renderStep(checkout.getSnapshot().currentStep?.id)
 );
 
 const stopErrors = checkout.subscriptions.subscribeEvent("error", ({ error, phase }) => {

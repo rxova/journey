@@ -192,13 +192,10 @@ snapshot.machine.isLoading;
 snapshot.machine.outcome;
 ```
 
-Subscribe to a selected value or a named lifecycle event:
+Subscribe to every committed snapshot, or to a named lifecycle event:
 
 ```ts
-const stop = checkout.subscriptions.subscribeSelector(
-  (snapshot) => snapshot.currentStep?.id,
-  (stepId) => render(stepId)
-);
+const stop = checkout.subscriptions.subscribe(() => render(checkout.getSnapshot().currentStep?.id));
 
 checkout.subscriptions.subscribeEvent("navigationBlocked", ({ reason, error }) => {
   reportNavigationFailure(reason, error);

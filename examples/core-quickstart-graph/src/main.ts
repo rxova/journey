@@ -99,8 +99,5 @@ root.addEventListener("click", (event) => {
   }
 });
 
-machine.subscriptions.subscribeSelector(
-  (snapshot) => snapshot,
-  () => render()
-);
+machine.subscriptions.subscribe(() => render());
 render();

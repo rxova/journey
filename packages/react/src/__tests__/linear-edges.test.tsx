@@ -412,14 +412,14 @@ describe("machine error surfacing", () => {
     delete (globalThis as { __DEV__?: boolean }).__DEV__;
   });
 
-  it("opens one machine subscription for the whole tree, and releases it on unmount", async () => {
+  it("releases every machine subscription on unmount", async () => {
     const journey = createLinearJourney({ context: { n: 0 }, steps: ["a", "b"] });
     // Count live core subscriptions by wrapping the machine's own registrar.
-    const realSubscribe = journey.machine.subscriptions.subscribeSelector;
+    const realSubscribe = journey.machine.subscriptions.subscribe;
     let open = 0;
-    journey.machine.subscriptions.subscribeSelector = ((selector: never, listener: never) => {
+    journey.machine.subscriptions.subscribe = ((listener: () => void) => {
       open += 1;
-      const release = realSubscribe.call(journey.machine.subscriptions, selector, listener);
+      const release = realSubscribe.call(journey.machine.subscriptions, listener);
       return () => {
         open -= 1;
         release();
@@ -438,9 +438,11 @@ describe("machine error surfacing", () => {
     );
     await flush();
 
-    // Five subscribed components, one machine subscription — core does its
-    // selector work once per publish rather than once per component.
-    expect(open).toBe(1);
+    // Each hook subscribes directly. The multiplexer that used to collapse
+    // these into one core subscription bought nothing once core stopped running
+    // a selector per subscriber: five plain callbacks cost the same whether the
+    // store or a wrapper holds them. What still matters is that they all go.
+    expect(open).toBe(5);
 
     view.unmount();
     expect(open).toBe(0);

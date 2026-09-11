@@ -172,12 +172,9 @@ export function attachJourneyDevtools(
   };
 
   const unsubscribes: (() => void)[] = [
-    target.subscriptions.subscribeSelector(
-      (snapshot) => snapshot,
-      (snapshot) => {
-        post({ ...base(), kind: "snapshot", snapshot: serializeSnapshot(snapshot) });
-      }
-    ),
+    target.subscriptions.subscribe(() => {
+      post({ ...base(), kind: "snapshot", snapshot: serializeSnapshot(target.getSnapshot()) });
+    }),
     ...OBSERVED_EVENTS.map((type) =>
       target.subscriptions.subscribeEvent(type, (payload) => {
         // observation envelopes stay lean: the snapshot streams separately

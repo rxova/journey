@@ -83,7 +83,7 @@ await machine.navigate.goToNextStep();
 await machine.navigate.goToLastVisitedStep();
 
 machine.context.update(updater);
-machine.subscriptions.subscribeSelector(selector, listener, equals?);
+machine.subscriptions.subscribe(listener);
 machine.subscriptions.subscribeEvent(eventName, listener);
 machine.dispose();
 ```
