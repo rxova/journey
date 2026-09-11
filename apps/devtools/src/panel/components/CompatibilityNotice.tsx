@@ -1,3 +1,4 @@
+import { JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION } from "@rxova/journey-devtools-bridge";
 import { useActiveMachine, useLegacyProtocolState } from "../context/PanelProvider";
 import panelStyles from "./panelPrimitives.module.css";
 
@@ -15,7 +16,10 @@ export const CompatibilityNotice = () => {
       <p className={panelStyles.statusWarning}>{protocolMismatchReason}</p>
       {isLegacyProtocol ? (
         <p className={`${panelStyles.muted} ${panelStyles.statusGuidance}`}>
-          Legacy protocol v3 machines are read-only in this devtools build.
+          {/* Interpolated, not spelled out: this line read "v3" while the
+              constant was 5, having been missed by two protocol bumps. */}
+          Legacy protocol v{JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION} machines are read-only in this
+          devtools build.
         </p>
       ) : null}
     </section>

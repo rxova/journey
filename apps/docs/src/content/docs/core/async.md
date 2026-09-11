@@ -5,9 +5,9 @@ title: "Async behavior"
 Async work can run before a next/previous move and in post-commit lifecycle effects. The snapshot
 keeps both paths in the machine's transition state.
 
-For ordinary UI loading state, use `snapshot.machine.isLoading`. It mirrors
-`snapshot.transition.pending` across pre-commit work and post-commit effects. Use `transition.phase`
-and `currentStep.async` only when the UI needs more detailed progress or error information.
+For ordinary UI loading state, use `snapshot.transition.pending`. It stays `true` across both
+pre-commit work and post-commit effects. Use `transition.phase` and `currentStep.async` only when
+the UI needs more detailed progress or error information.
 
 ## Working phase
 

@@ -3,7 +3,10 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION } from "@rxova/journey-devtools-bridge";
+import {
+  JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
+  JOURNEY_DEVTOOLS_PROTOCOL_VERSION
+} from "@rxova/journey-devtools-bridge";
 import type { JourneyDevtoolsSerializableSnapshot } from "@rxova/journey-devtools-bridge";
 import type { JourneyPanelStructuredDiff } from "../src/panel/diff";
 import type {
@@ -168,7 +171,7 @@ const createMachineState = (
       }
     ]
   },
-  protocolVersion: 5,
+  protocolVersion: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
   snapshot,
   timelineEntries: [createTimelineEntry()],
   selectedTimelineIndex: 0,
@@ -1133,7 +1136,9 @@ describe("panel components", () => {
 
     const view = await mount(<CompatibilityNotice />);
     expect(view.container.textContent).toContain("Legacy protocol mismatch");
-    expect(view.container.textContent).toContain("Legacy protocol v3 machines are read-only");
+    expect(view.container.textContent).toContain(
+      `Legacy protocol v${JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION} machines are read-only`
+    );
 
     panelProviderMocks.useLegacyProtocolState.mockReturnValue({
       protocolMismatchReason: "Newer protocol mismatch",

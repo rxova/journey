@@ -215,7 +215,7 @@ describe("step hooks", () => {
       from: "a",
       to: "b"
     });
-    expect(snapshot.machine.isLoading).toBe(true);
+    expect(snapshot.transition.pending).toBe(true);
 
     // concurrent navigation during a pending hook chain is rejected, not queued
     expect(await machine.navigate.goToPreviousStep()).toMatchObject({

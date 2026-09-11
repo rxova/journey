@@ -122,7 +122,18 @@ export const BANNED_IDENTIFIERS: readonly BannedIdentifier[] = [
   // reactive, so they were three more spellings of a read that has one.
   { name: "bundle.useMachine()", pattern: /\b\w+\.useMachine\(/ },
   { name: "bundle.useControls()", pattern: /\b\w+\.useControls\(/ },
-  { name: "bundle.useNavigation()", pattern: /\b\w+\.useNavigation\(/ }
+  { name: "bundle.useNavigation()", pattern: /\b\w+\.useNavigation\(/ },
+  // The snapshot's derived lifecycle booleans. Each restated something the
+  // snapshot already said — the five status flags were `status === x`, and
+  // `isLoading` was a second computation of `transition.pending`. Matched
+  // through `machine.` so they cannot collide with `currentStep.async.isLoading`
+  // (a genuinely different, step-level value) or with any local variable.
+  { name: "snapshot.machine.isLoading", pattern: /\bmachine\.isLoading\b/ },
+  { name: "snapshot.machine.isIdle", pattern: /\bmachine\.isIdle\b/ },
+  { name: "snapshot.machine.isRunning", pattern: /\bmachine\.isRunning\b/ },
+  { name: "snapshot.machine.isPaused", pattern: /\bmachine\.isPaused\b/ },
+  { name: "snapshot.machine.isCompleted", pattern: /\bmachine\.isCompleted\b/ },
+  { name: "snapshot.machine.isTerminated", pattern: /\bmachine\.isTerminated\b/ }
 ];
 
 /**

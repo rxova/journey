@@ -385,7 +385,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     const context = snapshot.context;
     const stepId = currentStepId();
     const transition = snapshot.transition;
-    const isLoading = snapshot.machine.isLoading;
+    const isLoading = snapshot.transition.pending;
 
     const token = (label: string, value: string, stateClass = "") =>
       `<span class="token ${stateClass}"><span class="token-label">${label}</span><span class="token-value">${value}</span></span>`;
@@ -428,7 +428,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     }
 
     const action = target.dataset.action;
-    if (!action || machine.getSnapshot().machine.isLoading) {
+    if (!action || machine.getSnapshot().transition.pending) {
       return;
     }
 

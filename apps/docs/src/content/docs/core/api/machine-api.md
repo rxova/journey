@@ -86,7 +86,7 @@ await machine.navigate.goToNextStep({
 `run` is awaited while the source remains current. If it fails, navigation returns `reason:
 "error"`. `commit` must be synchronous; its context updates publish atomically with movement.
 
-Use `snapshot.machine.isLoading` as the normal UI-level loading flag. Inspect
+Use `snapshot.transition.pending` as the normal UI-level loading flag. Inspect
 `snapshot.transition` for phase details and `snapshot.currentStep.async` for the current entry's
 success or error state.
 

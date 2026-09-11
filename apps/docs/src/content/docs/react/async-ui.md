@@ -32,8 +32,8 @@ function ContinueButton() {
   };
 
   return (
-    <button disabled={snapshot.machine.isLoading} onClick={() => void continueJourney()}>
-      {snapshot.machine.isLoading ? "Saving…" : "Continue"}
+    <button disabled={snapshot.transition.pending} onClick={() => void continueJourney()}>
+      {snapshot.transition.pending ? "Saving…" : "Continue"}
     </button>
   );
 }
@@ -65,7 +65,7 @@ Core keeps `onEnter`/`onLeave` on its own step configs, for machines driven outs
 
 ## Which loading field to read
 
-- `snapshot.machine.isLoading` is the normal whole-flow flag.
+- `snapshot.transition.pending` is the normal whole-flow flag.
 - `snapshot.transition` shows pending state, phase, source, and destination.
 - `snapshot.currentStep?.async` records loading, success, error, and the error value for the
   current entry.

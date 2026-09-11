@@ -47,7 +47,7 @@ const signup = createLinearJourney({
 
 function SignupFooter() {
   const canGoBack = signup.useSelector((snapshot) => snapshot.history.canGoBack);
-  const isLoading = signup.useSelector((snapshot) => snapshot.machine.isLoading);
+  const isLoading = signup.useSelector((snapshot) => snapshot.transition.pending);
 
   return (
     <nav>
@@ -165,7 +165,7 @@ function CheckoutControls() {
   const canContinue = checkout.useSelector((snapshot) =>
     snapshot.availableEvents.includes("continue")
   );
-  const isLoading = checkout.useSelector((snapshot) => snapshot.machine.isLoading);
+  const isLoading = checkout.useSelector((snapshot) => snapshot.transition.pending);
 
   return (
     <button disabled={!canContinue || isLoading} onClick={() => void checkout.send("continue")}>
@@ -280,7 +280,7 @@ snapshot.currentStep?.async;
 snapshot.history.timeline;
 snapshot.history.currentIndex;
 snapshot.transition;
-snapshot.machine.isLoading;
+snapshot.transition.pending;
 snapshot.machine.outcome;
 ```
 

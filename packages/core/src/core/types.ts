@@ -98,14 +98,16 @@ export type JourneyHistoryState<TStepId extends string> = {
   readonly canGoForward: boolean;
 };
 
-/** Derived lifecycle booleans (`isLoading === transition.pending`), plus the recorded outcome. */
+/**
+ * How the run ended, once it has.
+ *
+ * This used to also carry six derived booleans — `isLoading` and one per
+ * status. They were each another spelling of something the snapshot already
+ * said: the five status flags were `status === x`, and `isLoading` was
+ * `transition.pending` computed a second time. `outcome` is the only value here
+ * that is not derivable from another field.
+ */
 export type MachineState<TCompletePayload = unknown, TTerminatePayload = unknown> = {
-  readonly isLoading: boolean;
-  readonly isIdle: boolean;
-  readonly isRunning: boolean;
-  readonly isPaused: boolean;
-  readonly isCompleted: boolean;
-  readonly isTerminated: boolean;
   readonly outcome: JourneyOutcome<TCompletePayload, TTerminatePayload> | null;
 };
 

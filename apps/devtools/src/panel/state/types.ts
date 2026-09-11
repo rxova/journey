@@ -99,15 +99,7 @@ export const INITIAL_SNAPSHOT: JourneyDevtoolsSerializableSnapshot = {
   context: {},
   status: "idle",
   transition: { pending: false, phase: null, from: null, to: null },
-  machine: {
-    isLoading: false,
-    isIdle: true,
-    isRunning: false,
-    isPaused: false,
-    isCompleted: false,
-    isTerminated: false,
-    outcome: null
-  },
+  machine: { outcome: null },
   plugins: {},
   steps: { totalSteps: 0, visitedStepCount: 0 },
   declaredEvents: [],

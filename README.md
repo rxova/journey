@@ -206,7 +206,7 @@ snapshot.history.timeline;
 snapshot.history.currentIndex;
 snapshot.history.canGoBack;
 snapshot.transition;
-snapshot.machine.isLoading;
+snapshot.transition.pending;
 snapshot.machine.outcome;
 snapshot.plugins;
 ```
@@ -258,7 +258,7 @@ const signup = createLinearJourney({
 
 function Footer() {
   const canGoBack = signup.useSelector((snapshot) => snapshot.history.canGoBack);
-  const isLoading = signup.useSelector((snapshot) => snapshot.machine.isLoading);
+  const isLoading = signup.useSelector((snapshot) => snapshot.transition.pending);
 
   return (
     <div>

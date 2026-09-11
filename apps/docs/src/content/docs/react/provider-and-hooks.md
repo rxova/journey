@@ -145,7 +145,7 @@ function Controls() {
       <button disabled={currentStep.isFirstStep} onClick={() => void navigate.goToPreviousStep()}>
         Back
       </button>
-      <button disabled={snapshot.machine.isLoading} onClick={() => void navigate.goToNextStep()}>
+      <button disabled={snapshot.transition.pending} onClick={() => void navigate.goToNextStep()}>
         Continue
       </button>
     </nav>
@@ -155,12 +155,12 @@ function Controls() {
 
 Every read is a snapshot field: `snapshot.currentStep.id/.index/.isFirstStep/.isLastStep/`
 `.isFirstTimeVisit/.metadata/.async`, `snapshot.steps.totalSteps/.stepOrder`,
-`snapshot.history.visited`, `snapshot.status`, `snapshot.machine.isLoading/.isPaused`, and
+`snapshot.history.visited`, `snapshot.status`, `snapshot.transition.pending/.phase`, and
 `snapshot.context`. `snapshot.currentStep` is `null` while the machine is idle — exactly as in
 the graph tier. See [Snapshot](../core/snapshot.md) for the complete contract.
 
 ```tsx
-const isLoading = checkout.useSelector((snapshot) => snapshot.machine.isLoading);
+const isLoading = checkout.useSelector((snapshot) => snapshot.transition.pending);
 const step = checkout.useStep();
 const email = checkout.useContextSelector((context) => context.email);
 
@@ -239,7 +239,7 @@ register-on-mount is a React lifetime concern. The bundle's `navigate` and its `
 the wrapper, so every path reached through the bundle honours the handlers. `run` happens
 before movement; `commit` publishes its updates atomically with movement. A failed run leaves the
 source step and context in place, and the error lands in `snapshot.currentStep.async.error` until
-`machine.async.clearError()`; `snapshot.machine.isLoading` is `true` while the work is pending.
+`machine.async.clearError()`; `snapshot.transition.pending` is `true` while the work is pending.
 The gate is forward-only: timeline moves and `goToStepById` bypass it, and it never fires on the
 final step (`goToNextStep` on the last step never auto-completes).
 

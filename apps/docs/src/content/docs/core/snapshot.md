@@ -60,12 +60,14 @@ snapshot.history = {
 
 ### Machine state
 
-`snapshot.machine` provides `isLoading`, `isIdle`, `isRunning`, `isPaused`, `isCompleted`,
-`isTerminated`, and `outcome`. `isLoading` mirrors `snapshot.transition.pending`.
+`snapshot.machine` carries one field, `outcome` — how the run ended, once it has.
 
-Use `snapshot.machine.isLoading` for ordinary UI concerns such as disabling navigation controls.
-Read `snapshot.transition` when the UI needs phase/source/destination detail, and
-`snapshot.currentStep.async` when it needs the current entry's settled success or error.
+It used to carry six more: `isLoading` and one boolean per status. Every one of them restated
+something the snapshot already said, so they are gone. Read `snapshot.status` directly for the
+lifecycle (`"idle" | "running" | "paused" | "completed" | "terminated"`), and
+`snapshot.transition.pending` for "is a move in flight" — `transition` also tells you the `phase`
+and the `from`/`to` of that move, which a bare boolean could not. `snapshot.currentStep.async` is
+the separate, step-level question: whether the current entry's own work settled or failed.
 
 ```ts
 snapshot.machine.outcome = null; // or { type: "completed" | "terminated", payload }

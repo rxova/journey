@@ -12,7 +12,7 @@ describe("navigation edges", () => {
     const journey = createLinearJourney({ context: {}, steps: ["a", "b"] });
     const IndexNav = () => {
       const step = journey.useStep();
-      const paused = journey.useSelector((snapshot) => snapshot.machine.isPaused);
+      const paused = journey.useSelector((snapshot) => snapshot.status === "paused");
       const navigate = journey.machine.navigate;
       const { controls } = journey;
       return (

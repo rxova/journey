@@ -40,7 +40,7 @@ const signup = createLinearJourney({
 
 function Controls() {
   const canGoBack = signup.useSelector((snapshot) => snapshot.history.canGoBack);
-  const isLoading = signup.useSelector((snapshot) => snapshot.machine.isLoading);
+  const isLoading = signup.useSelector((snapshot) => snapshot.transition.pending);
 
   return (
     <nav>
@@ -220,8 +220,8 @@ generic adapters: `AnyJourneyMachine`, `SnapshotOf`, `ContextOf`, `StepIdOf`, an
 
 ## Async UI
 
-Read `snapshot.machine.isLoading` for the broad loading state, `snapshot.transition` for
-phase/source/destination, and `snapshot.currentStep?.async` for the current entry result. Guards
+Read `snapshot.transition.pending` for the broad loading state, the rest of `snapshot.transition`
+for phase/source/destination, and `snapshot.currentStep?.async` for the current entry result. Guards
 are synchronous; work that must complete before movement belongs in Core navigation work.
 
 ## DevTools

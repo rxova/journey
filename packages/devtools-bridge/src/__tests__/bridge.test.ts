@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createLinearJourney } from "@rxova/journey-core";
 import {
   attachJourneyDevtools,
+  JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
   JOURNEY_DEVTOOLS_REPLAY_REQUEST
 } from "@rxova/journey-devtools-bridge";
 import {
@@ -258,7 +259,12 @@ describe("operation invokes", () => {
 
     await postToBridge(buildInvokeEnvelope("someone-else", "machine.inspectSnapshot"));
     await postToBridge(
-      buildInvokeEnvelope("test-machine", "machine.inspectSnapshot", undefined, { version: 5 })
+      // The legacy version registers but may not invoke — named by the
+      // constant rather than a literal, which silently became a different
+      // version every time the protocol window shifted.
+      buildInvokeEnvelope("test-machine", "machine.inspectSnapshot", undefined, {
+        version: JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION
+      })
     );
     await postToBridge({
       ...buildInvokeEnvelope("test-machine", "machine.inspectSnapshot"),

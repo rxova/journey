@@ -137,7 +137,7 @@ let previous = { step: undefined as string | undefined, loading: false };
 
 const stop = machine.subscriptions.subscribe(() => {
   const snapshot = machine.getSnapshot();
-  const next = { step: snapshot.currentStep?.id, loading: snapshot.machine.isLoading };
+  const next = { step: snapshot.currentStep?.id, loading: snapshot.transition.pending };
   // Core notifies on every commit; comparing here is what keeps the render
   // loop off the publishes this view does not care about.
   if (next.step === previous.step && next.loading === previous.loading) return;

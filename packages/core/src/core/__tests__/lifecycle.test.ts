@@ -19,7 +19,7 @@ describe("lifecycle meta-state-machine", () => {
     expect(snapshot.status).toBe("idle");
     expect(snapshot.currentStep).toBeNull();
     expect(snapshot.history.currentIndex).toBe(-1);
-    expect(snapshot.machine.isIdle).toBe(true);
+    expect(snapshot.status).toBe("idle");
   });
 
   // The reason `autoStart: false` exists: auto-start commits the initial entry
@@ -50,7 +50,7 @@ describe("lifecycle meta-state-machine", () => {
   it("pause blocks navigation; resume restores it", async () => {
     const machine = await startedLinear();
     expect(machine.controls.pause()).toBe(true);
-    expect(machine.getSnapshot().machine.isPaused).toBe(true);
+    expect(machine.getSnapshot().status).toBe("paused");
 
     const blocked = await machine.navigate.goToNextStep();
     expect(blocked).toMatchObject({ ok: false, reason: "not-running" });
@@ -73,7 +73,7 @@ describe("lifecycle meta-state-machine", () => {
     const snapshot = machine.getSnapshot();
     expect(snapshot.status).toBe("completed");
     expect(snapshot.machine.outcome).toEqual({ type: "completed", payload: { score: 10 } });
-    expect(snapshot.machine.isCompleted).toBe(true);
+    expect(snapshot.status).toBe("completed");
   });
 
   it("complete is rejected while idle or paused", async () => {

@@ -99,7 +99,7 @@ describe("declared work on an event", () => {
     expect(working.transition.from).toBe("login");
     // The target is genuinely unknown until the guards run.
     expect(working.transition.to).toBeNull();
-    expect(working.machine.isLoading).toBe(true);
+    expect(working.transition.pending).toBe(true);
     expect(working.currentStep?.id).toBe("login");
 
     await pending;
@@ -123,7 +123,7 @@ describe("declared work on an event", () => {
     expect(machine.getSnapshot().currentStep?.id).toBe("login");
     // Rolled back: either the send routed and committed, or neither happened.
     expect(machine.getSnapshot().context).toMatchObject({ method: null, attempts: 0 });
-    expect(machine.getSnapshot().machine.isLoading).toBe(false);
+    expect(machine.getSnapshot().transition.pending).toBe(false);
     expect(machine.getSnapshot().transition.pending).toBe(false);
   });
 

@@ -65,7 +65,7 @@ function ReviewStep() {
 
 function Footer() {
   const canGoBack = signup.useSelector((snapshot) => snapshot.history.canGoBack);
-  const isLoading = signup.useSelector((snapshot) => snapshot.machine.isLoading);
+  const isLoading = signup.useSelector((snapshot) => snapshot.transition.pending);
 
   const next = async () => {
     const result = await signup.navigate.goToNextStep();

@@ -419,7 +419,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     const context = snapshot.context;
     const stepId = currentStepId();
     const transition = snapshot.transition;
-    const isLoading = snapshot.machine.isLoading;
+    const isLoading = snapshot.transition.pending;
     const transitionLabel = transition.pending
       ? `${transition.phase}: ${transition.from ?? "start"} -> ${transition.to ?? "unknown"}`
       : "settled";
@@ -466,7 +466,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     }
 
     const action = target.dataset.action;
-    if (!action || machine.getSnapshot().machine.isLoading) {
+    if (!action || machine.getSnapshot().transition.pending) {
       return;
     }
 

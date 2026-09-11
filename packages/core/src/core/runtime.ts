@@ -936,18 +936,7 @@ export class JourneyRuntime {
         },
         previousHistory
       ),
-      machine: shared(
-        {
-          isLoading: this.pending !== null,
-          isIdle: this.status === "idle",
-          isRunning: this.status === "running",
-          isPaused: this.status === "paused",
-          isCompleted: this.status === "completed",
-          isTerminated: this.status === "terminated",
-          outcome: this.outcome
-        },
-        previous?.machine
-      )
+      machine: shared({ outcome: this.outcome }, previous?.machine)
     };
 
     const currentBase: CurrentStepBase<string, unknown> | null =

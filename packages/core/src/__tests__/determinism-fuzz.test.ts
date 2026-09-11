@@ -199,11 +199,6 @@ function assertInvariants(snapshot: JourneySnapshot): void {
   expect(canGoForward).toBe(currentIndex >= 0 && currentIndex < timeline.length - 1);
 
   expect(["idle", "running", "paused", "completed", "terminated"]).toContain(snapshot.status);
-  expect(snapshot.machine.isIdle).toBe(snapshot.status === "idle");
-  expect(snapshot.machine.isRunning).toBe(snapshot.status === "running");
-  expect(snapshot.machine.isPaused).toBe(snapshot.status === "paused");
-  expect(snapshot.machine.isCompleted).toBe(snapshot.status === "completed");
-  expect(snapshot.machine.isTerminated).toBe(snapshot.status === "terminated");
 
   if (snapshot.status === "idle") {
     expect(snapshot.currentStep).toBeNull();

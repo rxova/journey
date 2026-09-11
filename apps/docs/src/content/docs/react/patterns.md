@@ -120,7 +120,7 @@ memoize by reflex.
 ```tsx
 const stepId = checkout.useSelector((snapshot) => snapshot.currentStep?.id);
 
-const loading = checkout.useSelector((snapshot) => snapshot.machine.isLoading);
+const loading = checkout.useSelector((snapshot) => snapshot.transition.pending);
 ```
 
 Use `useSnapshot()` when a component needs several related fields that should come from one

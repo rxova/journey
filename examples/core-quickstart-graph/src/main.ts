@@ -66,7 +66,7 @@ if (!root) throw new Error("Missing #root");
 const render = () => {
   const snapshot = machine.getSnapshot();
   const { context, status } = snapshot;
-  const busy = snapshot.machine.isLoading;
+  const busy = snapshot.transition.pending;
 
   root.innerHTML =
     snapshot.currentStep?.id === "receipt"

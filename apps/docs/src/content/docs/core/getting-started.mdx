@@ -90,7 +90,7 @@ type NavigationResult<StepId extends string> =
   | { ok: false; reason: NavigationFailureReason; error?: unknown };
 ```
 
-Use `snapshot.machine.isLoading` as the default flag for disabling UI controls while navigation
+Use `snapshot.transition.pending` as the default flag for disabling UI controls while navigation
 work or lifecycle effects settle.
 
 ## Read the snapshot
@@ -104,7 +104,7 @@ snapshot.currentStep?.id; // "shipping"
 snapshot.currentStep?.metadata.title; // "Shipping"
 snapshot.currentStep?.index; // 1
 snapshot.history.timeline; // ["account", "shipping"]
-snapshot.machine.isLoading; // false
+snapshot.transition.pending; // false
 snapshot.steps.totalSteps; // 3
 ```
 

@@ -96,11 +96,11 @@ the destination.
 
 ## Async state
 
-Use `snapshot.machine.isLoading` as the normal UI-level loading flag:
+Use `snapshot.transition.pending` as the normal UI-level loading flag:
 
 ```ts
 const snapshot = checkout.getSnapshot();
-continueButton.disabled = snapshot.machine.isLoading;
+continueButton.disabled = snapshot.transition.pending;
 ```
 
 For diagnostics and richer feedback, `snapshot.transition` identifies the `working`, `leaving`, or
@@ -186,7 +186,7 @@ snapshot.currentStep?.id;
 snapshot.currentStep?.index;
 snapshot.history.timeline;
 snapshot.history.canGoBack;
-snapshot.machine.isLoading;
+snapshot.transition.pending;
 snapshot.machine.outcome;
 ```
 
