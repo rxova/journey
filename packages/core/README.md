@@ -253,8 +253,9 @@ const machine = createLinearJourney(definition, {
 });
 ```
 
-Persistence, analytics, diagnostics, replay, and execution paths each have dedicated export paths
-and documentation.
+Persistence, analytics, replay, and execution paths each have dedicated export paths and
+documentation. `analyzeStructure(definition)` checks a graph for unreachable steps, shadowed
+transitions and cycles without creating a machine.
 
 ## Documentation
 

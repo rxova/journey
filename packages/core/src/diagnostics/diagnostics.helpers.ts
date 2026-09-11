@@ -1,34 +1,10 @@
-import { normalizeGraphDefinition } from "../../graph/graph";
+import { normalizeGraphDefinition } from "../graph/graph";
 import type { DiagnosticsIssue, DiagnosticsResult } from "./diagnostics.types";
-import type { JourneyStructure } from "../../core/types";
+import type { JourneyStructure } from "../core/types";
 
-/**
- * Structural analysis of a journey's transition graph: unreachable steps,
- * shadowed transitions (an earlier unguarded candidate on the same
- * `(from, event)` always wins), cycles, and terminal-path existence.
- * Completion is explicit in this model, so terminal steps are reported as
- * facts in the summary, not as dead-end issues.
- */
-export function analyzeStructure(structure: JourneyStructure): DiagnosticsResult {
+function analyzeJourneyStructure(structure: JourneyStructure): DiagnosticsResult {
   const issues: DiagnosticsIssue[] = [];
   const stepIds = [...structure.stepIds];
-
-  if (structure.kind !== "graph") {
-    return {
-      issues,
-      summary: {
-        kind: structure.kind,
-        stepCount: stepIds.length,
-        reachableStepCount: stepIds.length,
-        unreachableStepCount: 0,
-        terminalStepIds: [],
-        cycleCount: 0,
-        shadowedTransitionCount: 0,
-        terminalPathExists: false,
-        graphChecksSkipped: true
-      }
-    };
-  }
 
   // Shadowed transitions: after an unguarded candidate for (from, event),
   // later candidates for the same key can never be selected.
@@ -119,21 +95,30 @@ export function analyzeStructure(structure: JourneyStructure): DiagnosticsResult
   return {
     issues,
     summary: {
-      kind: structure.kind,
       stepCount: stepIds.length,
       reachableStepCount: reachable.size,
       unreachableStepCount: stepIds.length - reachable.size,
       terminalStepIds,
       cycleCount: cycleKeys.size,
       shadowedTransitionCount: shadowedIndexes.size,
-      terminalPathExists,
-      graphChecksSkipped: false
+      terminalPathExists
     }
   };
 }
 
-/** Analyzes a graph journey definition without creating a runtime. */
-export function getGraphDiagnostics(definition: {
+/**
+ * Structural analysis of a graph definition: unreachable steps, shadowed
+ * transitions (an earlier unguarded candidate on the same `(from, event)`
+ * always wins), cycles, and terminal-path existence. Completion is explicit in
+ * this model, so terminal steps are reported as facts in the summary, not as
+ * dead-end issues.
+ *
+ * A plain function over the definition rather than a plugin over a machine.
+ * Nothing here needs a runtime — it is the definition that is being checked —
+ * so this runs in a test or a build step, before any machine exists. Linear
+ * journeys have no transition graph and so nothing to analyze.
+ */
+export function analyzeStructure(definition: {
   readonly steps: object;
   readonly initial: string;
 }): DiagnosticsResult {
@@ -151,5 +136,5 @@ export function getGraphDiagnostics(definition: {
       guarded: transition.when !== undefined
     }))
   };
-  return analyzeStructure(structure);
+  return analyzeJourneyStructure(structure);
 }

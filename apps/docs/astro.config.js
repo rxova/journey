@@ -42,7 +42,10 @@ export default defineConfig({
     "/core/api/graph-builder": "/core/api/with-types/",
     // Autosave was the persistence plugin with a timer. It is `debounceMs` now,
     // documented on the page it always shared its serializer with.
-    "/core/autosave": "/core/persistence/"
+    "/core/autosave": "/core/persistence/",
+    // Diagnostics stopped being a plugin: checking a definition never needed a
+    // machine, so it is a plain `analyzeStructure(definition)` function now.
+    "/core/plugins/diagnostics-plugin": "/core/api/analyze-structure/"
   },
 
   // Two pages (core/architecture, core/architecture/work-and-transitions) carry
@@ -166,7 +169,6 @@ export default defineConfig({
                   "core/persistence",
                   "core/plugins/analytics-plugin",
                   "core/plugins/replay-plugin",
-                  "core/plugins/diagnostics-plugin",
                   "core/plugins/execution-paths-plugin"
                 ]
               },
@@ -178,6 +180,7 @@ export default defineConfig({
                   "core/api/machine-api",
                   "core/api/transitions-syntax",
                   "core/api/with-types",
+                  "core/api/analyze-structure",
                   "core/typescript",
                   "core/coming-from-xstate",
                   "core/stability",

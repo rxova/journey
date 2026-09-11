@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createGraphJourney, createLinearJourney } from "@rxova/journey-core";
-import { createDiagnosticsPlugin, getGraphDiagnostics } from "@rxova/journey-core/diagnostics";
+import { analyzeStructure } from "@rxova/journey-core";
 
-describe("getGraphDiagnostics", () => {
+describe("analyzeStructure", () => {
   it("reports unreachable steps, shadowed transitions, cycles, and terminal facts", () => {
-    const result = getGraphDiagnostics({
+    const result = analyzeStructure({
       steps: {
         a: { on: { GO: [{ to: "b" }, { to: "done" }] } },
         b: { on: { BACK: "a", FINISH: "done" } },
@@ -21,20 +20,18 @@ describe("getGraphDiagnostics", () => {
     expect(codes).not.toContain("no-terminal-path");
 
     expect(result.summary).toMatchObject({
-      kind: "graph",
       stepCount: 4,
       reachableStepCount: 3,
       unreachableStepCount: 1,
       terminalStepIds: ["orphan", "done"],
       shadowedTransitionCount: 1,
-      terminalPathExists: true,
-      graphChecksSkipped: false
+      terminalPathExists: true
     });
     expect(result.summary.cycleCount).toBeGreaterThan(0);
   });
 
   it("flags journeys with no reachable terminal step", () => {
-    const result = getGraphDiagnostics({
+    const result = analyzeStructure({
       steps: { a: { on: { GO: "b" } }, b: { on: { BACK: "a" } } },
       initial: "a"
     });
@@ -43,7 +40,7 @@ describe("getGraphDiagnostics", () => {
   });
 
   it("a clean pipeline produces no issues", () => {
-    const result = getGraphDiagnostics({
+    const result = analyzeStructure({
       steps: { a: { on: { NEXT: "b" } }, b: { on: { NEXT: "done" } }, done: {} },
       initial: "a"
     });
@@ -51,39 +48,21 @@ describe("getGraphDiagnostics", () => {
   });
 });
 
-describe("diagnostics plugin", () => {
-  it("analyzes the running machine's structure through the host", () => {
-    const machine = createGraphJourney(
-      {
-        steps: { a: { on: { GO: "b" } }, b: {}, orphan: {} },
-        initial: "a",
-        context: {}
-      },
-      { plugins: [createDiagnosticsPlugin()] as const }
-    );
-
-    const result = machine.plugins.diagnostics.getDiagnostics();
+describe("analyzing a definition without a machine", () => {
+  it("reports the same structure the runtime would build from it", () => {
+    const result = analyzeStructure({
+      steps: { a: { on: { GO: "b" } }, b: {}, orphan: {} },
+      initial: "a"
+    });
     expect(result.issues.map((issue) => issue.code)).toContain("unreachable-step");
     expect(result.summary.terminalStepIds).toEqual(["b", "orphan"]);
-    // cached: same object identity on second call
-    expect(machine.plugins.diagnostics.getDiagnostics()).toBe(result);
-  });
-
-  it("skips graph checks for linear journeys", () => {
-    const machine = createLinearJourney(
-      { steps: ["a", "b"], context: {} },
-      { plugins: [createDiagnosticsPlugin()] as const }
-    );
-    const result = machine.plugins.diagnostics.getDiagnostics();
-    expect(result.issues).toEqual([]);
-    expect(result.summary.graphChecksSkipped).toBe(true);
   });
 });
 
 describe("diagnostics traversal edges", () => {
   it("deduplicates cycles reached from multiple entry points", () => {
     // a -> b -> c -> b (cycle entered twice: via b directly and via c)
-    const result = getGraphDiagnostics({
+    const result = analyzeStructure({
       steps: {
         a: { on: { START: "b", SKIP: "c" } },
         b: { on: { NEXT: "c" } },
@@ -99,7 +78,7 @@ describe("diagnostics traversal edges", () => {
 
 describe("guarded transitions", () => {
   it("guarded candidates never shadow later ones", () => {
-    const result = getGraphDiagnostics({
+    const result = analyzeStructure({
       steps: {
         a: { on: { GO: [{ to: "done", when: () => false }, { to: "b" }] } },
         b: { on: { FINISH: "done" } },

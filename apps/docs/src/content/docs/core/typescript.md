@@ -110,11 +110,11 @@ types for reusable helpers.
 Plugin API inference depends on preserving the plugin tuple:
 
 ```ts
-const plugins = [createReplayPlugin(), createDiagnosticsPlugin()] as const;
+const plugins = [createReplayPlugin(), createAnalyticsPlugin({ track })] as const;
 const machine = createLinearJourney(definition, { plugins });
 
 machine.plugins.replay.getReplaySession();
-machine.plugins.diagnostics.getDiagnostics();
+machine.plugins.analytics.getRecentEvents();
 ```
 
 ## Context updates

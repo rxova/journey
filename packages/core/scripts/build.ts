@@ -14,7 +14,6 @@ const common = {
     "src/index.ts",
     "src/connectors/immer/immer.ts",
     "src/plugins/analytics/analytics.ts",
-    "src/plugins/diagnostics/diagnostics.ts",
     "src/plugins/persistence/persistence.ts",
     "src/plugins/replay/replay.ts",
     "src/plugins/execution-paths/execution-paths.ts"

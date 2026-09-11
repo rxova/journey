@@ -1,6 +1,5 @@
-import { createGraphJourney, createLinearJourney } from "@rxova/journey-core";
+import { analyzeStructure, createGraphJourney, createLinearJourney } from "@rxova/journey-core";
 import { createAnalyticsPlugin, type AnalyticsApi } from "@rxova/journey-core/analytics";
-import { createDiagnosticsPlugin, type DiagnosticsApi } from "@rxova/journey-core/diagnostics";
 import {
   createExecutionPathsPlugin,
   type ExecutionPathsApi
@@ -54,9 +53,9 @@ export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => 
   const createMachine = (): DemoMachine => {
     switch (kind) {
       case "diagnostics":
-        return createGraphJourney(structureDefinition, {
-          plugins: [createDiagnosticsPlugin()] as const
-        });
+        // No plugin: analyzeStructure reads the definition, so the machine here
+        // exists only to give the demo something to drive.
+        return createGraphJourney(structureDefinition);
       case "execution-paths":
         return createGraphJourney(structureDefinition, {
           plugins: [createExecutionPathsPlugin()] as const
@@ -91,7 +90,6 @@ export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => 
 
   const pluginApi = machine.plugins as Partial<{
     analytics: AnalyticsApi;
-    diagnostics: DiagnosticsApi;
     "execution-paths": ExecutionPathsApi;
     persistence: PersistenceApi;
     replay: ReplayApi;
@@ -146,7 +144,7 @@ export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => 
     }
 
     if (kind === "diagnostics") {
-      const diagnostics = (pluginApi.diagnostics as DiagnosticsApi).getDiagnostics();
+      const diagnostics = analyzeStructure(structureDefinition);
       return `<div class="log-list">${diagnostics.issues
         .map(
           (issue) =>

@@ -73,14 +73,6 @@
       "import": "./dist/plugins/analytics/analytics.js",
       "require": "./dist/plugins/analytics/analytics.cjs"
     },
-    "./diagnostics": {
-      "types": {
-        "import": "./dist/plugins/diagnostics/diagnostics.d.ts",
-        "require": "./dist/plugins/diagnostics/diagnostics.d.cts"
-      },
-      "import": "./dist/plugins/diagnostics/diagnostics.js",
-      "require": "./dist/plugins/diagnostics/diagnostics.cjs"
-    },
     "./persistence": {
       "types": {
         "import": "./dist/plugins/persistence/persistence.d.ts",
@@ -168,10 +160,10 @@
       "limit": "500 B"
     },
     {
-      "name": "core/createDiagnosticsPlugin",
-      "path": "dist/plugins/diagnostics/diagnostics.js",
-      "import": "{ createDiagnosticsPlugin }",
-      "limit": "850 B"
+      "name": "core/analyzeStructure",
+      "path": "dist/index.js",
+      "import": "{ analyzeStructure }",
+      "limit": "1.5 kB"
     },
     {
       "name": "core/createPersistencePlugin",

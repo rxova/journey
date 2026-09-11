@@ -1,5 +1,3 @@
-import type { JourneyStructure } from "../../core/types";
-
 export type DiagnosticsIssue = {
   readonly code: "unreachable-step" | "shadowed-transition" | "cycle-detected" | "no-terminal-path";
   readonly severity: "warning" | "error";
@@ -13,7 +11,6 @@ export type DiagnosticsIssue = {
 export type DiagnosticsResult = {
   readonly issues: readonly DiagnosticsIssue[];
   readonly summary: {
-    readonly kind: JourneyStructure["kind"];
     readonly stepCount: number;
     readonly reachableStepCount: number;
     readonly unreachableStepCount: number;
@@ -22,12 +19,5 @@ export type DiagnosticsResult = {
     readonly cycleCount: number;
     readonly shadowedTransitionCount: number;
     readonly terminalPathExists: boolean;
-    /** True when the journey has no transition graph to analyze (linear). */
-    readonly graphChecksSkipped: boolean;
   };
-};
-
-export type DiagnosticsApi = {
-  /** Structural diagnostics of the running journey (computed once, cached). */
-  getDiagnostics(): DiagnosticsResult;
 };

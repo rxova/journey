@@ -10,14 +10,14 @@ navigation, replace snapshots, or merge methods into the base machine.
 ```ts
 import { createLinearJourney } from "@rxova/journey-core";
 import { createReplayPlugin } from "@rxova/journey-core/replay";
-import { createDiagnosticsPlugin } from "@rxova/journey-core/diagnostics";
+import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
 
 const machine = createLinearJourney(definition, {
-  plugins: [createReplayPlugin(), createDiagnosticsPlugin()]
+  plugins: [createReplayPlugin(), createAnalyticsPlugin({ track })]
 });
 
 machine.plugins.replay.getReplaySession();
-machine.plugins.diagnostics.getDiagnostics();
+machine.plugins.analytics.getRecentEvents();
 ```
 
 Plugin names must be unique within a machine. Keep a plugin array as a readonly tuple when you need
@@ -42,7 +42,6 @@ derived, observable values suitable for selectors and UI rendering.
 | [Persistence](../persistence)               | Write status, context, and timeline on every observed change. |
 | [Analytics](./analytics-plugin)             | Normalize lifecycle observations and custom analytics events. |
 | [Replay](./replay-plugin)                   | Record a bounded, exportable runtime session.                 |
-| [Diagnostics](./diagnostics-plugin)         | Analyze the static journey structure.                         |
 | [Execution paths](./execution-paths-plugin) | Track realized paths for current and finished runs.           |
 
 Each plugin is published through a separate package entry point so unused integrations do not add

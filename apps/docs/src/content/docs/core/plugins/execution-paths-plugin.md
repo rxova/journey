@@ -42,5 +42,5 @@ Returned collections are readonly copies.
 
 ## Where to next
 
-- [Diagnostics](./diagnostics-plugin)
+- [Analyzing a definition](../api/analyze-structure)
 - [Plugins](./overview)

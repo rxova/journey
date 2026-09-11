@@ -15,10 +15,6 @@ export const createExampleViteConfig = ({ reactApp = false }: { reactApp?: boole
           replacement: workspacePath("packages/core/src/plugins/analytics/analytics.ts")
         },
         {
-          find: "@rxova/journey-core/diagnostics",
-          replacement: workspacePath("packages/core/src/plugins/diagnostics/diagnostics.ts")
-        },
-        {
           find: "@rxova/journey-core/execution-paths",
           replacement: workspacePath("packages/core/src/plugins/execution-paths/execution-paths.ts")
         },

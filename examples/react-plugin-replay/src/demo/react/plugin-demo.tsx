@@ -1,8 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { createGraphJourney, type GraphDefinition } from "@rxova/journey-core";
+import { analyzeStructure, createGraphJourney, type GraphDefinition } from "@rxova/journey-core";
 import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
-import { createDiagnosticsPlugin } from "@rxova/journey-core/diagnostics";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
 import { createPersistencePlugin } from "@rxova/journey-core/persistence";
 import { createReplayPlugin } from "@rxova/journey-core/replay";
@@ -88,7 +87,6 @@ const makeApp = (kind: PluginDemoKind) => {
       createAnalyticsPlugin({
         track: (event) => analyticsStore.push({ name: event.name, payload: event.payload })
       }),
-      createDiagnosticsPlugin(),
       createExecutionPathsPlugin(),
       createPersistencePlugin({
         storage: window.localStorage,
@@ -213,7 +211,7 @@ const makeApp = (kind: PluginDemoKind) => {
           </div>
         );
       case "diagnostics": {
-        const diagnostics = machine.plugins.diagnostics.getDiagnostics();
+        const diagnostics = analyzeStructure(demoDefinition);
         return (
           <div className="stack">
             <div className="log-list">
