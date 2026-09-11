@@ -7,11 +7,17 @@ sidebar:
 ## Main entry point
 
 ```ts
-import { createLinearJourney, createGraphJourney, MAX_RAISED_EVENTS } from "@rxova/journey-core";
+import {
+  createLinearJourney,
+  createGraphJourney,
+  withLinearTypes,
+  withGraphTypes,
+  analyzeStructure
+} from "@rxova/journey-core";
 ```
 
-The package also exports the definition, machine, snapshot, hook, event, navigation, plugin, and
-builder types used by those functions.
+The package also exports the definition, machine, snapshot, hook, event, navigation and plugin
+types used by those functions, plus the `Bag` types that pin them up front.
 
 ## Errors
 

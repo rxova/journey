@@ -154,7 +154,7 @@ export type GraphJourneyDefinition<
   readonly context: TContext;
   readonly handlers?: THandlers;
   /**
-   * Work declared on an event, produced by `createGraphJourneyBuilder`.
+   * Work declared on an event, collected by `normalizeGraphDefinition`.
    *
    * @internal Its keys are a private encoding of the (origin step, event) pair
    * and its values are internal work shapes. Typed as `unknown` on purpose so

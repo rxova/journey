@@ -267,7 +267,7 @@ const makeApp = (kind: PluginDemoKind) => {
             <span className="badge badge-plugin">Plugin</span>
           </div>
           <h1>{`React ${pluginTitles[kind]}`}</h1>
-          <p>Typed Core machine consumed through the machine-argument headless React hooks.</p>
+          <p>Typed Core machine consumed through React&apos;s own useSyncExternalStore.</p>
         </header>
         <div className="split">
           <div className="stack">

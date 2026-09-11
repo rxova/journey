@@ -11,14 +11,14 @@ over React's `useSyncExternalStore`.
 - Add `createLinearJourney(definition, options?)`, the linear tier's single entry point and a
   structural twin of the graph factory. The definition is core's `LinearJourneyDefinition` shape —
   `context` (the initial value and the type anchor) plus ordered `steps` (bare-string shorthand or
-  `{ id, metadata?, onEnter?, onLeave? }`, with an optional `name` used for the Provider's React
+  `{ id, metadata? }` — this tier declines Core's step lifecycle hooks, since a step's view mounts
+  on enter and unmounts on leave — with an optional `name` used for the Provider's React
   DevTools displayName). Both type parameters are inferred from the one definition argument, so
   hooks and components need no generics at call sites.
 - The factory creates **one standalone machine** and returns a bundle around it: `machine`,
   `Provider` (`views` + `children` only), `StepRenderer`, reactive hooks (`useSnapshot`,
-  `useSelector`, `useStep`, `useContext`, `useSubscribeEvent`), stable accessors (`useMachine`,
-  `useControls`, `useNavigation`), verbatim `navigate` / `updateContext` delegates callable outside
-  React, and `useStepHandler(stepId, handler)` — per-step Core navigation work gating
+  `useSelector`, `useStep`, `useContextSelector`, `useEventEffect`), verbatim `controls` /
+  `navigate` / `updateContext` delegates callable outside React, and `useStepHandler(stepId, handler)` — per-step Core navigation work gating
   `goToNextStep`, whose `run` and transactional `commit` use the same machine-owned pending/error
   state as direct navigation.
 - `views` is `{ [id in StepId]: ReactNode }`, exhaustively type-checked so a missing or undeclared
@@ -29,16 +29,14 @@ over React's `useSyncExternalStore`.
   entry below for the default and its SSR consequences.
 - Hooks work with or without the Provider; the machine survives remounts and is never disposed by
   React — reset explicitly via `controls` (`terminate()` + `restart()`).
-- Linear→graph migration is core's external `linearToGraphDefinition(definition)` from
-  `@rxova/journey-core/convert`, applied to the same definition object the factory captured.
 
 ## Graph entry point and caller-owned machines
 
 - Add `@rxova/journey-react/graph`. `createGraphJourney(definition, options?)` creates **one
   standalone machine in the factory** and returns a typed bundle around it: `machine`, `Provider`,
-  `StepRenderer`, reactive hooks (`useSnapshot`, `useSelector`, `useStep`, `useContext`,
-  `useSubscribeEvent`), stable accessors (`useMachine`, `useControls`, `useNavigation`), and
-  verbatim `send` / `updateContext` delegates callable outside React. Hooks work with or without
+  `StepRenderer`, reactive hooks (`useSnapshot`, `useSelector`, `useStep`, `useContextSelector`,
+  `useEventEffect`), and verbatim `controls` / `send` / `updateContext` delegates callable outside
+  React. Hooks work with or without
   the Provider — the Provider only carries the `views` record (elements keyed exhaustively by step
   id, same contract as the linear tier) for `StepRenderer`. The machine survives remounts and is
   never disposed by React; `autoStart` behaves exactly as in the linear tier.

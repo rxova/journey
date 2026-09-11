@@ -4,8 +4,8 @@
 
 Rxova Journey is a small monorepo with package and app workspaces:
 
-- `packages/core`: headless journey state machine, types, and runtime logic.
-- `packages/react`: React provider/hooks/renderer built on top of core.
+- `packages/core`: framework-agnostic journey state machine, types, and runtime logic.
+- `packages/react`: React bindings — one bundle per machine — built on top of core.
 - `packages/devtools-bridge`: bridge API for integrating machines with devtools.
 - `apps/docs`: Astro Starlight documentation site.
 - `apps/demo`: local playground app for runtime integration checks.
@@ -80,7 +80,7 @@ enough to invite `--no-verify` stops being a gate.
 - `pnpm run size`
 - Ensure a changeset exists for user-facing changes. If your PR is docs/CI-only/tooling that doesn't affect the packages, add the `skip-changeset` label.
 - **If you changed behavior, change the prose in the same PR.** A `minor` or `major` changeset that
-  touches `packages/*/src` should almost always come with a diff under `apps/docs/docs/**` or a
+  touches `packages/*/src` should almost always come with a diff under `apps/docs/src/content/docs/**` or a
   package `README.md`. Check three things no linter can:
   1. **Earlier changesets in `.changeset/` still true?** They all land in one changelog entry, so a
      later change that supersedes an earlier one must edit that earlier file, not just add its own.
@@ -121,9 +121,12 @@ Releases are automated with Changesets and GitHub Actions.
 - Their major versions must stay aligned (`pnpm run version:major:check` enforces this in CI).
 - Private app workspaces `@rxova/journey-docs` and `apps-devtools` are also versioned with Changesets for docs/version tracking, but they are not published to npm.
 - `apps-demo` remains ignored by Changesets.
-- The upcoming `1.0.0-rc` line is the contract-freeze point for the current runtime model.
-- During the `1.0.0-rc` line, only bug fixes, docs fixes, and release-blocking contract fixes should land.
-- If a public contract change is unavoidable during the RC line, call it out explicitly in the changeset, changelog, and migration docs before cutting the next RC.
+- The `1.0.0-rc` line is where the public contract is still being settled: breaking changes belong
+  here, not after GA. Leaving prerelease mode is a deliberate act — `.changeset/pre.json` exists to
+  keep the line on the `rc` tag until someone decides otherwise.
+- A breaking change needs a `major` changeset on every package it touches, a mapping entry in the
+  migration guide, and the prose updated in the same PR. Core, React and the bridge share a major,
+  so a `major` on one usually means a `major` on all three (`pnpm run version:major:check`).
 - After `1.0.0`, documented public APIs follow semver.
 
 ## Browser Compatibility

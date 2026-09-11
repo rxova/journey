@@ -69,7 +69,7 @@ export const structureDefinition = {
 
 export const pluginTitles: Record<PluginDemoKind, string> = {
   analytics: "Analytics Plugin",
-  diagnostics: "Diagnostics Plugin",
+  diagnostics: "Structure Analysis",
   "execution-paths": "Execution Paths Plugin",
   persistence: "Persistence Plugin",
   replay: "Replay Plugin"

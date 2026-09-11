@@ -10,12 +10,9 @@ Release the final V1 Core API on a new, smaller shared runtime. This is a full r
 - Replace the all-purpose `createJourneyMachine` factory with explicit `createLinearJourney` and
   `createGraphJourney` factories. Linear journeys use declared step order; graph journeys use
   declared event transitions.
-- Replace `createJourneyBuilder` with `createGraphJourneyBuilder`. Its single `JourneyTypeBag`
-  generic names `context`, `stepId`, `events`, optional `meta`, and optional `handlers` instead of
-  relying on positional generic parameters.
-- Add the `@rxova/journey-core/convert` entry point. Its `linearToGraphDefinition` helper converts
-  a pure linear definition to `NEXT`/`PREVIOUS` graph transitions and can optionally generate
-  `GO_TO_<ID>` jump events.
+- Replace `createJourneyBuilder` with `withGraphTypes<Bag>()`. Its single `Bag` type names
+  `context`, `stepId`, `events`, and optional `meta`, `handlers` and `results`, instead of relying
+  on positional generic parameters. Most definitions infer without it.
 - Context is no longer restricted to a JSON object at the type level. Runtime consumers are still
   responsible for serializability where persistence or DevTools transport requires it.
 - Add an explicit `engines.node >=20.11.0` package requirement.
@@ -26,7 +23,7 @@ Release the final V1 Core API on a new, smaller shared runtime. This is a full r
   `machine.controls.{start,pause,resume,complete,terminate,restart}`,
   `machine.navigate.{goToStepById,goToPreviousStep,goToNextStep,goToLastVisitedStep}`,
   `machine.context.update`, `machine.async.clearError`, and
-  `machine.subscriptions.{subscribeSelector,subscribeEvent}`.
+  `machine.subscriptions.{subscribe,subscribeEvent}`.
 - Lifecycle controls now return a boolean indicating whether the state change applied. Navigation
   methods and graph `send` return `Promise<NavigationResult>` with explicit failure reasons instead
   of relying on thrown errors or implicit no-ops.
@@ -48,7 +45,7 @@ Release the final V1 Core API on a new, smaller shared runtime. This is a full r
 - Make `dispose()` irreversible but safe: listeners are dropped and subsequent machine operations
   become no-ops or rejected results instead of throwing a dedicated disposed error.
 - Replace broad, unfiltered event subscriptions and lifecycle-specific methods with typed
-  `subscribeEvent(eventName, listener)`. Add optional selector equality to `subscribeSelector`.
+  `subscribeEvent(eventName, listener)` alongside a plain per-commit `subscribe(listener)`.
 
 ## Snapshots, navigation, and hooks
 
@@ -130,18 +127,10 @@ Release the final V1 Core API on a new, smaller shared runtime. This is a full r
 The controller-per-concern engine and duplicated linear/graph derivation code were replaced by one
 snapshot/event runtime. Current minified+Brotli measurements against the `rc.2` baseline are:
 
-| Export                             | Before  | After   | Change |
-| ---------------------------------- | ------- | ------- | ------ |
-| `createLinearJourney`              | 9.35 kB | 3.77 kB | -60%   |
-| `createGraphJourney`               | 9.98 kB | 3.93 kB | -61%   |
-| `createPersistencePlugin`          | 3.58 kB | 413 B   | -88%   |
-| `createExecutionPathsPlugin`       | 2.61 kB | 223 B   | -91%   |
-| `createAutosavePlugin`             | 3.98 kB | 616 B   | -85%   |
-| `createDiagnosticsPlugin`          | 3.19 kB | 702 B   | -78%   |
-| `createAnalyticsPlugin`            | 1.24 kB | 377 B   | -70%   |
-| `createGraphJourneyBuilder`        | 675 B   | 410 B   | -39%   |
-| `createReplayPlugin`               | 816 B   | 686 B   | -16%   |
-| `createSubscriptionEnhancerPlugin` | 168 B   | 175 B   | ~flat  |
+Every export shrank against the `rc.2` baseline, several by more than 60%. Per-export budgets are
+enforced on every build by the `size-limit` entries in `packages/core/package.json`, which are the
+current numbers; the figures originally quoted here were `rc.2`-era measurements for a set of
+exports this release no longer ships.
 
 Core documentation and runnable examples were rewritten around this final contract and its migration
 path.

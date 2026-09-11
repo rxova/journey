@@ -26,9 +26,8 @@ were removed, and `1.0.0` is the baseline contract. See
 - **The plugin contract** — `JourneyPlugin`, `PluginHost`, and the observe-only model. Plugins
   stay observe-only throughout V1. Adding new host taps is a non-breaking minor change; removing
   or repurposing an existing tap is never done within a major.
-- **Subpath exports** — `connectors/immer` and the plugin subpaths (`persistence`,
-  `analytics`, `execution-paths`, `replay`) with their documented factories,
-  options, APIs, and helpers.
+- **Subpath exports** — there are three: the root entry, `./plugins` (every bundled plugin
+  factory with its options, API and helpers), and `./connectors/immer`.
 
 ## Behavioral guarantees
 

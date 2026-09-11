@@ -93,9 +93,12 @@ export const BANNED_IDENTIFIERS: readonly BannedIdentifier[] = [
   // `onTransition` and `JourneyStructure.transitions`, all of which are current
   // API and appear across 30+ pages.
   { name: "transitions: { (central map)", pattern: /\btransitions:\s*\{/ },
-  // Replaced by `createGraphJourney.withTypes<Bag>()` plus the `GraphStep<Bag>`
+  // Replaced by the standalone `withGraphTypes<Bag>()` plus the `GraphStep<Bag>`
   // and `GraphDefinition<Bag>` types — one function and two annotations rather
-  // than a factory returning three.
+  // than a factory returning three. Standalone, not a `.withTypes` property on
+  // the factory: attaching it is a module-level side effect, and that defeated
+  // tree-shaking badly enough that importing only `createLinearJourney` pulled
+  // the entire graph tier into the bundle.
   { name: "createGraphJourneyBuilder", pattern: /\bcreateGraphJourneyBuilder\b/ },
   { name: "JourneyTypeBag", pattern: /\bJourneyTypeBag\b/ },
   // Core keeps one channel for pre-move async, `goToNextStep(work)`. The

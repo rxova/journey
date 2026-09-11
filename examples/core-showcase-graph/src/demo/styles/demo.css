@@ -154,11 +154,6 @@ textarea {
   color: #93c5fd;
 }
 
-.badge-headless {
-  background: rgba(192, 132, 252, 0.16);
-  color: #d8b4fe;
-}
-
 .badge-plugin {
   background: rgba(250, 204, 21, 0.16);
   color: #fde68a;

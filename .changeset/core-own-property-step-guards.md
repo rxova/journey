@@ -18,6 +18,5 @@ predicate behind the creation-time `persist` option, and `goToStepById`, which i
 route parameter. A tampered or drifted storage record could therefore restore onto a phantom step
 even though `readRestorableState` documents that definition drift is rejected.
 
-`registerNextStepInterceptor` now also throws for these ids, as its documentation always claimed.
 Steps legitimately named after a prototype key keep working — they are own properties, so they
 were never the problem.

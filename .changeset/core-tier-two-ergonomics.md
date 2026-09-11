@@ -10,7 +10,7 @@ subscribe to `navigationBlocked` separately just to log the attempted step. It n
 and `to`; `to` is `null` where no target was ever resolved, such as a graph event with no enabled
 candidate. Additive — existing checks on `ok`, `reason`, and `error` are unaffected.
 
-**`JourneyTypeBag`'s `meta` and `handlers` are inferred from optional properties.** The constraint
+**The type bag's `meta` and `handlers` are inferred from optional properties.** The constraint
 declared them optional but `MetaOf`/`HandlersOf` matched a _required_ property, so anyone who
 mirrored the constraint and wrote `meta?: MyMeta` silently got `Record<string, unknown>` instead of
 their own type — and the eventual error pointed nowhere near the bag declaration.

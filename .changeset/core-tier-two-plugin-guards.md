@@ -5,8 +5,8 @@
 Close the remaining plugin-boundary gaps, and make the companion types nameable.
 
 **A shared plugin instance now warns in development.** Mutable plugin state is scoped per `setup()`,
-but `options` is not — attaching one `createPersistencePlugin` or `createAutosavePlugin` instance to
-two machines meant both wrote the same storage key and silently overwrote each other. Each instance
+but `options` is not — attaching one `createPersistencePlugin` instance to two machines meant
+both wrote the same storage key and silently overwrote each other. Each instance
 now warns from its second `setup()`. State was already isolated; only the configuration was shared.
 
 **`clearPersisted()` and `clearAutosave()` contain storage failures.** Both called `removeItem`

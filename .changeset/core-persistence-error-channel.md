@@ -35,7 +35,7 @@ A `validate`/`migrate` callback for versioning persisted shapes is **not** inclu
 API addition that deserves a deliberate design pass rather than being folded into a hardening
 change.
 
-Size cost, minified+Brotli: `createPersistencePlugin` +154 B and `createAutosavePlugin` +58 B. The
+Size cost, minified+Brotli: `createPersistencePlugin` +154 B. The
 factories grew too — `createLinearJourney` +161 B, `createGraphJourney` +117 B — because both import
 `readRestorableState` statically, so the parser ships whether or not `persist` is used. Budgets were
 raised to match; that is the deliberate price of validating attacker-reachable input.

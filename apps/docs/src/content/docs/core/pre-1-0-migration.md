@@ -1,21 +1,184 @@
 ---
-title: "rc.2 → 1.0 migration"
+title: "Migration"
 ---
 
-`1.0.0` ships three coordinated majors — `@rxova/journey-core`, `@rxova/journey-react`, and
-`@rxova/journey-devtools-bridge` — that together replace the `1.0.0-rc.2` contracts. This is a
+This page carries two migrations, newest first. Read the one that starts where you are.
+
+:::caution[Which column is current]
+The **rc.2 → 1.0** sections below were written against the 1.0 contract, and the section above them
+has since changed parts of it. Where the two disagree, the subtraction pass is current. Each stale
+entry is marked inline.
+:::
+
+## The subtraction pass: 1.0-rc → next
+
+Three coordinated majors again. The 1.0 API worked, but it offered several ways to do each thing,
+and every one of them was a decision a caller had to make before writing a flow. This release keeps
+one spelling of each. Nothing here is a rename for its own sake — every removal is a duplicate of
+something that survives.
+
+### Core: graph transitions
+
+| 1.0-rc                                   | next                                            |
+| ---------------------------------------- | ----------------------------------------------- |
+| `transitions: { EVENT: [{ from, to }] }` | `steps: { from: { on: { EVENT: "to" } } }`      |
+| `createGraphJourneyBuilder<TypeBag>()`   | `withGraphTypes<Bag>()` — usually not needed    |
+| `JourneyTypeBag`                         | `Bag`                                           |
+| `stay()`, `allowRollback`                | Removed                                         |
+| result-carrying guards                   | Removed — guards are total functions of context |
+
+The central `transitions` map is gone: a step declares its own outgoing moves under `on`, keyed by
+event. A dangling `from` is impossible by construction, because the step key _is_ the origin.
+
+```ts
+// 1.0-rc
+const machine = createGraphJourney({
+  steps: { login: {}, verify: {}, done: {} },
+  initial: "login",
+  context,
+  transitions: {
+    submit: [{ from: "login", to: "verify" }],
+    check: [{ from: "verify", to: "done", when: ({ context }) => context.ok }]
+  }
+});
+
+// next
+const machine = createGraphJourney({
+  steps: {
+    login: { on: { submit: "verify" } },
+    verify: { on: { check: [{ to: "done", when: ({ context }) => context.ok }] } },
+    done: {}
+  },
+  initial: "login",
+  context
+});
+```
+
+Three forms for `on`, discriminated at the top level: a target id, an ordered candidate array
+(first enabled wins), or an object with `run`/`commit`/`candidates` for declared async.
+
+Result-carrying guards went for a correctness reason beyond subtraction. They made
+`outgoingTransitions[].guard` report `"failed"` and `availableEvents` omit events that would in fact
+route, because the snapshot has no work result to evaluate against — introspection disagreed with
+what a `send` would actually do.
+
+### Core: everything else
+
+| 1.0-rc                                                               | next                                              |
+| -------------------------------------------------------------------- | ------------------------------------------------- |
+| `subscriptions.subscribeSelector(sel, fn)`                           | `subscriptions.subscribe(fn)`                     |
+| `navigate.registerNextStepInterceptor(...)`                          | `navigate.goToNextStep(work)`                     |
+| `goToPreviousStep(work)`                                             | `goToPreviousStep(n?)` — work moves forward only  |
+| `autoStart` defaults to `false`                                      | defaults to **`true`**                            |
+| `snapshot.machine.isIdle` (and 4 siblings)                           | `snapshot.status === "idle"`                      |
+| `snapshot.machine.isLoading`                                         | `snapshot.transition.pending`                     |
+| `@rxova/journey-core/{analytics,persistence,replay,execution-paths}` | `@rxova/journey-core/plugins`                     |
+| `createAutosavePlugin({ debounceMs })`                               | `createPersistencePlugin({ debounceMs, saveOn })` |
+| `createDiagnosticsPlugin()` + `getDiagnostics()`                     | `analyzeStructure(definition)` from the root      |
+
+**`autoStart` is the one that changes behaviour silently.** Creating a journey now starts it, and
+the initial entry commits synchronously — so the first `stepEnter` has already fired by the time the
+factory returns. Existing `controls.start()` calls become harmless no-ops. If you subscribe after
+creating and expect to see the first `stepEnter`, pass `{ autoStart: false }` and start it yourself:
+
+```ts
+const machine = createLinearJourney(definition, { autoStart: false });
+machine.subscriptions.subscribeEvent("stepEnter", onEnter);
+machine.controls.start();
+```
+
+`snapshot.machine` keeps only `outcome`. Everything else it held restated another field: five
+booleans were `status === x`, and `isLoading` was a second computation of `transition.pending`.
+Prefer `transition` — it also carries `phase`, `from` and `to`, so it says _what_ is in flight.
+
+### React
+
+| 1.0-rc                         | next                                           |
+| ------------------------------ | ---------------------------------------------- |
+| `useSubscribeEvent(event, fn)` | `useEventEffect(event, fn)`                    |
+| `useContext()`                 | `useContextSelector(selector, equalityFn?)`    |
+| `useMachine()`                 | `bundle.machine`                               |
+| `useControls()`                | `bundle.controls`                              |
+| `useNavigation()`              | `bundle.navigate` / `bundle.send`              |
+| step `onEnter` / `onLeave`     | `useEffect` with a cleanup, in the step's view |
+
+The three removed hooks never subscribed to anything — each returned an object already reachable on
+the bundle, and the machine's command groups are frozen objects with stable references, so reading
+them can neither subscribe nor re-render.
+
+```tsx
+// 1.0-rc
+function Review() {
+  const controls = checkout.useControls();
+  const context = checkout.useContext();
+  checkout.useSubscribeEvent("stepEnter", onEnter);
+}
+
+// next
+function Review() {
+  const { controls } = checkout;
+  const email = checkout.useContextSelector((context) => context.email);
+  checkout.useEventEffect("stepEnter", onEnter);
+}
+```
+
+**Step lifecycle hooks moved into the view.** `<StepRenderer>` keys the active view by step id, so a
+step's component mounts when the step is entered and unmounts when it is left:
+
+```tsx
+React.useEffect(() => {
+  analytics.track("review_entered");
+  return () => analytics.track("review_left");
+}, []);
+```
+
+This is enforced, not merely documented: React's step types declare `onEnter?: never`, because a
+bare `Omit` would only reject inline literals and let a step authored in its own file keep them.
+Core still accepts both hooks for machines driven outside React.
+
+### Devtools bridge
+
+Protocol v7 → v8, tracking the narrowed `snapshot.machine`. The supported window shifts to 8 / 7 / 6:
+a v7 emitter stays supported and can still drive mutations, v6 becomes read-only, and v5 drops off.
+Update the app and the extension together.
+
+### Upgrade order
+
+1. Move graph `transitions` onto each step's `on`; delete the central map.
+2. Replace `createGraphJourneyBuilder` with `withGraphTypes<Bag>()`, or drop it — most definitions
+   infer.
+3. Swap `subscribeSelector` for `subscribe`, and `registerNextStepInterceptor` for
+   `goToNextStep(work)`.
+4. Repoint plugin imports at `@rxova/journey-core/plugins`; fold autosave into persistence's
+   `debounceMs`; replace the diagnostics plugin with `analyzeStructure(definition)`.
+5. Replace `snapshot.machine.is*` reads with `snapshot.status` / `snapshot.transition.pending`.
+6. In React: rename the two hooks, drop the three pass-throughs, and move step `onEnter`/`onLeave`
+   into the step components as effects.
+7. Audit `autoStart` last — it is the only change that alters behaviour without a type error.
+
+---
+
+## rc.2 → 1.0
+
+:::note
+This section describes the `1.0.0-rc` contract. Parts of it are superseded by the subtraction pass
+above; those entries are marked.
+:::
+
+`1.0.0-rc` shipped three coordinated majors — `@rxova/journey-core`, `@rxova/journey-react`, and
+`@rxova/journey-devtools-bridge` — that together replaced the `1.0.0-rc.2` contracts. This was a
 breaking API migration, not a compatibility alias: the rc-era runtime, its React runtime-object
-API, and bridge protocol v6 were removed. This page is the single guide for all three packages.
+API, and bridge protocol v6 were removed.
 
 ## Core: factories
 
-| rc.2                         | 1.0                                                                      |
-| ---------------------------- | ------------------------------------------------------------------------ |
-| `createJourneyMachine(...)`  | `createLinearJourney(...)` or `createGraphJourney(...)`                  |
-| `createLinearJourney(...)`   | `createLinearJourney(...)` (new definition/machine contract)             |
-| `createGraphJourney(...)`    | `createGraphJourney(...)` (new definition/machine contract)              |
-| `createHeadlessJourney(...)` | Removed — headless is a [usage pattern](./usage/headless), not a factory |
-| `createJourneyBuilder(...)`  | `createGraphJourneyBuilder<TypeBag>()`                                   |
+| rc.2                         | 1.0                                                                |
+| ---------------------------- | ------------------------------------------------------------------ |
+| `createJourneyMachine(...)`  | `createLinearJourney(...)` or `createGraphJourney(...)`            |
+| `createLinearJourney(...)`   | `createLinearJourney(...)` (new definition/machine contract)       |
+| `createGraphJourney(...)`    | `createGraphJourney(...)` (new definition/machine contract)        |
+| `createHeadlessJourney(...)` | Removed — headless is a usage pattern, not a factory               |
+| `createJourneyBuilder(...)`  | `createGraphJourneyBuilder<TypeBag>()` — **superseded**, see above |
 
 There are exactly two machine kinds. Any machine is "headless" until you attach a rendering tier;
 the old headless factory's caller-driven jumps map to linear `navigate.goToStepById` /
