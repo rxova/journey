@@ -46,8 +46,12 @@ describe("scanContent", () => {
     expect(matches).toEqual([{ line: 2, identifier: "createJourneyMachine" }]);
   });
 
-  it("does not flag the current createGraphJourneyBuilder name", () => {
-    expect(scanContent("call createGraphJourneyBuilder<Bag>()")).toEqual([]);
+  it("flags createGraphJourneyBuilder but not the shipping createGraphJourney", () => {
+    expect(scanContent("call createGraphJourneyBuilder<Bag>()")).toEqual([
+      { line: 1, identifier: "createGraphJourneyBuilder" }
+    ]);
+    expect(scanContent("call createGraphJourney(definition)")).toEqual([]);
+    expect(scanContent("call createGraphJourney.withTypes<Bag>()(definition)")).toEqual([]);
   });
 
   it("flags machine.subscribeStart but not the plugin's subscribeStart", () => {

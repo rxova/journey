@@ -1,4 +1,4 @@
-export { createLinearJourney } from "./linear/linear";
+export { createLinearJourney, withLinearTypes } from "./linear/linear";
 export type {
   CompletePayloadOf,
   JourneyTerminationPayloads,
@@ -13,7 +13,7 @@ export type {
 // normalizeGraphDefinition is deliberately not exported: its return type names
 // RuntimeStep/RuntimeTransition, which are internal and have no export path, so
 // publishing it would freeze those shapes into the 1.0 contract.
-export { createGraphJourney } from "./graph/graph";
+export { createGraphJourney, withGraphTypes } from "./graph/graph";
 export type {
   GraphHookArgs,
   GraphJourneyDefinition,
@@ -29,27 +29,17 @@ export type {
   TransitionGuard
 } from "./graph/graph.types";
 
-export { createGraphJourneyBuilder } from "./graph/builder";
-// The type bag exists so steps and hooks can live in separate files; that only
-// works if the types those signatures mention are nameable from outside.
+// The bag exists so steps can live in separate files, and so `withTypes` has
+// somewhere to pin what a definition cannot infer on its own.
 export type {
-  BagSendWorkArgs,
-  BagSnapshot,
-  GuardArgsOf,
+  Bag,
+  GraphDefinition,
+  GraphStep,
   HandlersOf,
-  JourneyBuilder,
-  JourneyEventWork,
-  JourneyStepBuilder,
-  JourneyStepConfig,
-  JourneyStepTransitions,
-  JourneyToBuilder,
-  JourneyTypeBag,
   MetaOf,
-  StayFactory,
-  ToFactory,
-  WorkFactory,
-  WorkGuardArgs
-} from "./graph/builder.types";
+  ResultOf,
+  ResultsOf
+} from "./graph/bag.types";
 
 export { JourneyError, isJourneyError } from "./core/errors";
 export type { JourneyErrorCode, JourneyErrorDetails } from "./core/errors";

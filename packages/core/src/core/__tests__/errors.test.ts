@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import {
   JourneyError,
   createGraphJourney,
-  createGraphJourneyBuilder,
   createLinearJourney,
   isJourneyError
 } from "@rxova/journey-core";
@@ -40,18 +39,6 @@ describe("creation-time failures carry a code", () => {
     expect(codeOf(() => createLinearJourney({ steps: ["a", "a"], context: {} }))).toBe(
       "duplicate-step-id"
     );
-  });
-
-  it("duplicate builder step id", () => {
-    const { createStep, build } = createGraphJourneyBuilder<{
-      context: Record<string, never>;
-      stepId: "a";
-      events: { type: "GO" };
-    }>();
-
-    expect(
-      codeOf(() => build({ initial: "a", context: {}, steps: [createStep("a"), createStep("a")] }))
-    ).toBe("duplicate-step-id");
   });
 
   it("unknown initial step", () => {

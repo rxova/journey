@@ -75,37 +75,38 @@ Creation options can replace definition handlers, which keeps one definition reu
 
 ## Transactional sends: event work
 
-An event can carry the async that decides its own outcome. With the
-[graph builder](../api/graph-builder), `work` pairs a `run`/`commit` with the candidates that route
-on what `commit` staged — so the call site stays a bare `send`, and the definition owns both the
-async and the routing:
+An event can carry the async that decides its own outcome. The object form pairs a `run`/`commit`
+with the candidates that route on what `commit` staged — so the call site stays a bare `send`, and
+the definition owns both the async and the routing:
 
 ```ts
-const cart = createStep("cart", {
+const cart = {
   on: {
-    CHECKOUT: ({ work }) =>
-      work({
-        run: ({ snapshot, handlers }) => handlers.api.charge(snapshot.context.items),
-        commit: ({ result, updateContext }) =>
-          updateContext((context) => ({
-            ...context,
-            error: result.charged ? null : "Charge failed."
-          })),
-        candidates: ({ to, stay }) => [
-          to("receipt").when(({ result }) => result.charged),
-          // stay(): a failed charge still routes (back here), so its outcome commits.
-          stay()
-        ]
-      })
+    CHECKOUT: {
+      run: ({ snapshot, handlers }) => handlers.api.charge(snapshot.context.items),
+      commit: ({ result, updateContext }) =>
+        updateContext((context) => ({
+          ...context,
+          error: result.charged ? null : "Charge failed."
+        })),
+      candidates: [
+        { to: "receipt", when: ({ context }) => context.error === null },
+        // Unguarded last: a failed charge still routes (back here), so its
+        // outcome commits instead of being rolled back.
+        { to: "cart" }
+      ]
+    }
   }
-});
+};
 ```
 
 Work is keyed by `(step, event)`: two steps can declare the same event with different work and
-different candidates. Candidates come in two forms: a plain array (guards see `context` and
-`handlers`), or — as above — a callback receiving a work-scoped `to` and `stay` whose guards
-additionally see the typed run `result`. Routing facts like `result.charged` therefore never need
-to be persisted in context; `commit` stages only business state.
+different candidates.
+
+Guards read `context` and `handlers` — never the run result directly. A routing fact goes through
+`commit` into the staged context, and the candidates decide from there. That keeps guards total
+functions of context, which is what lets snapshot introspection (`outgoingTransitions`,
+`availableEvents`) report the same answer a live send would.
 
 A work send is a transaction. The exact order:
 
@@ -113,8 +114,8 @@ A work send is a transaction. The exact order:
    `"working"` phase and no destination yet.
 2. `commit` receives `run`'s result. Its `updateContext` writes to a **staged** copy of the context,
    not the live one.
-3. The candidates are evaluated **against the staged context and the run result**, in declaration
-   order. The first enabled candidate wins.
+3. The candidates are evaluated **against the staged context**, in declaration order. The first
+   enabled candidate wins.
 4. If no candidate is enabled, the staged context is **discarded** and `send` returns
    `{ ok: false, reason: "no-enabled-transition" }`. Either the send routed and committed, or
    neither happened — a work send never half-lands.
@@ -194,6 +195,6 @@ not selected. The snapshot exposes evaluated state only, never the guard functio
 
 ## Where to next
 
-- [Graph builder](../api/graph-builder)
+- [Pinning types with a bag](../api/with-types)
 - [Transitions syntax](../api/transitions-syntax)
 - [Async behavior](../async)

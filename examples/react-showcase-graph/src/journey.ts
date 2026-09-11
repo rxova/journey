@@ -1,6 +1,6 @@
-import { createGraphJourney } from "@rxova/journey-react/graph";
+import { withGraphTypes } from "@rxova/journey-react/graph";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
-import { build } from "./builder";
+import type { GraphDefinition } from "@rxova/journey-core";
 import { mockApi } from "./api";
 import { loginStep } from "./steps/login.step";
 import { setup2faStep } from "./steps/setup2fa.step";
@@ -13,7 +13,9 @@ import { blockedStep } from "./steps/blocked.step";
 export { mockApi } from "./api";
 export type { StepId, LoginContext, EventMap, StepMeta } from "./types";
 
-const definition = build({
+import type { AuthBag } from "./types";
+
+const definition = {
   initial: "login",
   context: {
     username: "",
@@ -29,20 +31,20 @@ const definition = build({
   handlers: {
     verifyCode: mockApi.verifyCode
   },
-  steps: [
-    loginStep,
-    setup2faStep,
-    verifyCodeStep,
-    emailCodeStep,
-    authenticatorCodeStep,
-    loggedInStep,
-    blockedStep
-  ]
-});
+  steps: {
+    login: loginStep,
+    setup2fa: setup2faStep,
+    verifyCode: verifyCodeStep,
+    emailCode: emailCodeStep,
+    authenticatorCode: authenticatorCodeStep,
+    loggedIn: loggedInStep,
+    blocked: blockedStep
+  }
+} satisfies GraphDefinition<AuthBag>;
 
 const plugins = [createExecutionPathsPlugin()] as const;
 
-export const journey = createGraphJourney(definition, {
+export const journey = withGraphTypes<AuthBag>()(definition, {
   defaultTimeoutMs: 15000,
   plugins
 });

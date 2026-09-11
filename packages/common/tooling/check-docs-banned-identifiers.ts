@@ -24,10 +24,10 @@ type LogFn = (message: string) => void;
 type ExitFn = (code: number) => void;
 
 /**
- * Identifiers from the pre-1.0 (rc-era) API that must not appear in current
- * hand-written docs. Word boundaries keep current names safe: for example,
- * `createGraphJourneyBuilder` does not match `createJourneyBuilder`, and
- * `JourneyProvider` does not match inside a longer identifier.
+ * Identifiers from a removed API that must not appear in current hand-written
+ * docs. Word boundaries keep current names safe in both directions: banning
+ * `createGraphJourneyBuilder` does not flag the shipping `createGraphJourney`,
+ * and `JourneyProvider` does not match inside a longer identifier.
  */
 export const BANNED_IDENTIFIERS: readonly BannedIdentifier[] = [
   { name: "createJourneyMachine", pattern: /\bcreateJourneyMachine\b/ },
@@ -93,6 +93,11 @@ export const BANNED_IDENTIFIERS: readonly BannedIdentifier[] = [
   // `onTransition` and `JourneyStructure.transitions`, all of which are current
   // API and appear across 30+ pages.
   { name: "transitions: { (central map)", pattern: /\btransitions:\s*\{/ },
+  // Replaced by `createGraphJourney.withTypes<Bag>()` plus the `GraphStep<Bag>`
+  // and `GraphDefinition<Bag>` types — one function and two annotations rather
+  // than a factory returning three.
+  { name: "createGraphJourneyBuilder", pattern: /\bcreateGraphJourneyBuilder\b/ },
+  { name: "JourneyTypeBag", pattern: /\bJourneyTypeBag\b/ },
   // `useJourney` is deliberately NOT banned: the rc-era hook of that name was
   // removed, but the name was then reused for the current per-component
   // ownership hook. Banning it kept the shipping API out of the hand-written

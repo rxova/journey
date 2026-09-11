@@ -1,5 +1,6 @@
 import { createGraphJourney as coreCreateGraphJourney } from "@rxova/journey-core";
 import { createAutoStartHook, createJourneyBindings } from "./react.helpers";
+import type { Bag, GraphDefinition, HandlersOf, MetaOf } from "@rxova/journey-core";
 import type {
   AnyJourneyPlugin,
   GraphJourneyMachine,
@@ -103,3 +104,33 @@ export function createGraphJourney<
     send: machine.send
   };
 }
+
+/**
+ * Creates a graph journey bundle with its types pinned up front instead of
+ * inferred — the React twin of `createGraphJourney.withTypes` in Core.
+ *
+ * Needed whenever the definition is authored separately (steps in their own
+ * files, or a `satisfies GraphDefinition<Bag>` literal reused across call
+ * sites): the event union then sits at no inference site, so the factory
+ * cannot read it off the definition and must be told.
+ *
+ * ```ts
+ * export const journey = withGraphTypes<AuthBag>()(definition);
+ * ```
+ */
+export const withGraphTypes =
+  <TBag extends Bag>() =>
+  <const TPlugins extends readonly AnyJourneyPlugin[] = readonly []>(
+    definition: GraphDefinition<TBag> & { readonly name?: string },
+    options?: GraphJourneyOptions<HandlersOf<TBag>, TPlugins, TBag["stepId"]>
+  ): GraphJourneyBundle<TBag["context"], TBag["stepId"], TBag["events"], MetaOf<TBag>, TPlugins> =>
+    createGraphJourney(
+      definition as unknown as Parameters<typeof createGraphJourney>[0],
+      options as unknown as Parameters<typeof createGraphJourney>[1]
+    ) as unknown as GraphJourneyBundle<
+      TBag["context"],
+      TBag["stepId"],
+      TBag["events"],
+      MetaOf<TBag>,
+      TPlugins
+    >;

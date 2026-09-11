@@ -1,8 +1,7 @@
-import { createStep, to } from "../builder";
+import type { GraphStep } from "@rxova/journey-core";
+import type { AuthBag } from "../types";
 
-export const setup2faStep = createStep("setup2fa", {
-  metadata: { label: "Setup 2FA", icon: "📱" },
-  on: {
-    setup2fa: [to("verifyCode")]
-  }
-});
+export const setup2faStep: GraphStep<AuthBag> = {
+  metadata: { label: "Setup 2FA", icon: "\ud83d\udcf1" },
+  on: { setup2fa: "verifyCode" }
+};

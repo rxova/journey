@@ -14,6 +14,7 @@ import type {
   TerminatePayloadOf
 } from "./linear.types";
 import type { AnyJourneyPlugin, JourneyRuntimeOptions } from "../core/types";
+import type { Bag, MetaOf } from "../graph/bag.types";
 
 /**
  * Creates a linear journey runtime from a pure-data definition.
@@ -133,3 +134,42 @@ export function createLinearJourney<
     TerminatePayloadOf<TTerminationPayloads>
   >;
 }
+
+/**
+ * Returns a `createLinearJourney` with its types pinned up front instead of
+ * inferred.
+ *
+ * The linear tier infers almost everything from the definition already — step
+ * ids from the `steps` tuple, context from its value — so reach for this only
+ * to pin a `meta` shape, or to share one bag with steps authored in separate
+ * files.
+ *
+ * A standalone export rather than a property on the factory: attaching one
+ * would be a module-level side effect, and that defeats tree-shaking badly
+ * enough that importing only `createLinearJourney` pulled the whole graph tier
+ * into the bundle.
+ *
+ * ```ts
+ * const checkout = withLinearTypes<CheckoutBag>()({
+ *   steps: ["account", "shipping", "review"],
+ *   context: initialContext
+ * });
+ * ```
+ */
+export const withLinearTypes =
+  <TBag extends Bag>() =>
+  <const TPlugins extends readonly AnyJourneyPlugin[] = readonly []>(
+    definition: LinearJourneyDefinition<
+      TBag["stepId"],
+      TBag["context"],
+      JourneyTerminationPayloads,
+      MetaOf<TBag>
+    >,
+    options: JourneyRuntimeOptions<TPlugins, TBag["stepId"]> = {}
+  ): LinearJourneyMachine<TBag["context"], TBag["stepId"], MetaOf<TBag>, TPlugins> =>
+    createLinearJourney(definition, options) as unknown as LinearJourneyMachine<
+      TBag["context"],
+      TBag["stepId"],
+      MetaOf<TBag>,
+      TPlugins
+    >;

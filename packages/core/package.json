@@ -158,12 +158,6 @@
       "limit": "6.4 kB"
     },
     {
-      "name": "core/createGraphJourneyBuilder",
-      "path": "dist/index.js",
-      "import": "{ createGraphJourneyBuilder }",
-      "limit": "820 B"
-    },
-    {
       "name": "core/immerConnector",
       "path": "dist/connectors/immer/immer.js",
       "import": "{ immerConnector }",

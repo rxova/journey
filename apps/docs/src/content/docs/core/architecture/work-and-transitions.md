@@ -111,4 +111,4 @@ and emitted as an `error` event without rollback.
 
 - [Effects](../effects)
 - [Transitions syntax](../api/transitions-syntax)
-- [Graph builder](../api/graph-builder)
+- [Pinning types with a bag](../api/with-types)

@@ -7,12 +7,7 @@ sidebar:
 ## Main entry point
 
 ```ts
-import {
-  createLinearJourney,
-  createGraphJourney,
-  createGraphJourneyBuilder,
-  MAX_RAISED_EVENTS
-} from "@rxova/journey-core";
+import { createLinearJourney, createGraphJourney, MAX_RAISED_EVENTS } from "@rxova/journey-core";
 ```
 
 The package also exports the definition, machine, snapshot, hook, event, navigation, plugin, and
@@ -48,7 +43,7 @@ event carry whatever your navigation work or hooks threw, which Core cannot cons
 ```ts
 createLinearJourney(definition, options?);
 createGraphJourney(definition, options?);
-createGraphJourneyBuilder<TypeBag>();
+withGraphTypes<Bag>()(definition, options?);
 ```
 
 Graph options additionally allow `handlers` to replace handlers stored on the definition.
@@ -116,4 +111,4 @@ point is used.
 
 - [Machine API](./machine-api.md)
 - [Transitions syntax](./transitions-syntax.md)
-- [Graph builder](./graph-builder.md)
+- [Pinning types with a bag](./with-types.md)

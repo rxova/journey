@@ -36,3 +36,16 @@ export type StepMeta = { label: string; icon: string };
 export type AuthHandlers = {
   verifyCode: (code: string) => Promise<{ success: boolean }>;
 };
+
+/**
+ * One declaration point for this journey's types. Each step lives in its own
+ * file and annotates itself `GraphStep<AuthBag>`, so nothing has to thread
+ * generics through them.
+ */
+export type AuthBag = {
+  context: LoginContext;
+  stepId: StepId;
+  events: EventMap;
+  meta: StepMeta;
+  handlers: AuthHandlers;
+};

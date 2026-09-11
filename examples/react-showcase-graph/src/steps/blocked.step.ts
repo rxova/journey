@@ -1,7 +1,8 @@
-import { createStep } from "../builder";
+import type { GraphStep } from "@rxova/journey-core";
+import type { AuthBag } from "../types";
 
-export const blockedStep = createStep("blocked", {
-  metadata: { label: "Blocked", icon: "🚫" },
+export const blockedStep: GraphStep<AuthBag> = {
+  metadata: { label: "Blocked", icon: "\ud83d\udeab" },
   onEnter: ({ snapshot }) => {
     console.warn(
       "[journey] blocked: account locked after",
@@ -9,4 +10,4 @@ export const blockedStep = createStep("blocked", {
       "failed attempts"
     );
   }
-});
+};

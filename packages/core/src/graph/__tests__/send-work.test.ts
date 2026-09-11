@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createGraphJourney, createGraphJourneyBuilder } from "@rxova/journey-core";
+import { createGraphJourney, withGraphTypes } from "@rxova/journey-core";
 import { flush, wait } from "@rxova/journey-core/testing";
 
 type Ctx = { method: "email" | "sms" | null; attempts: number };
@@ -194,38 +194,37 @@ type LoginHandlers = { login: () => Promise<"email" | "sms"> };
 
 /** The definition-first form: the machine owns the async, `send` stays bare. */
 function buildDeclaredWorkJourney(handlers: LoginHandlers) {
-  const { createStep, to, build } = createGraphJourneyBuilder<{
+  const machine = withGraphTypes<{
     context: LoginCtx;
     stepId: "login" | "email" | "sms";
     events: LoginEvent;
     handlers: LoginHandlers;
-  }>();
-
-  const definition = build({
-    initial: "login",
-    context: { method: null },
-    handlers,
-    steps: [
-      createStep("login", {
-        on: {
-          SUBMIT: ({ to: into, work }) =>
-            work({
+    results: { SUBMIT: "email" | "sms" };
+  }>()(
+    {
+      initial: "login",
+      context: { method: null },
+      handlers,
+      steps: {
+        login: {
+          on: {
+            SUBMIT: {
               run: ({ handlers: h }) => h.login(),
               commit: ({ result, updateContext }) =>
                 updateContext((c) => ({ ...c, method: result })),
               candidates: [
-                into("email").when(({ context }) => context.method === "email"),
-                into("sms").when(({ context }) => context.method === "sms")
+                { to: "email", when: ({ context }) => context.method === "email" },
+                { to: "sms", when: ({ context }) => context.method === "sms" }
               ]
-            })
-        }
-      }),
-      createStep("email", { on: { RESET: [to("login")] } }),
-      createStep("sms", { on: { RESET: [to("login")] } })
-    ]
-  });
-
-  const machine = createGraphJourney(definition, { autoStart: true });
+            }
+          }
+        },
+        email: { on: { RESET: "login" } },
+        sms: { on: { RESET: "login" } }
+      }
+    },
+    { autoStart: true }
+  );
   return machine;
 }
 
@@ -272,83 +271,43 @@ describe("definition-declared send work", () => {
   });
 });
 
-type AttemptCtx = { attempts: number };
-
-/**
- * Work-scoped candidates: the guards read the run result directly, so the
- * routing fact never touches context — and `stay()` names the totality
- * fallback that keeps a failed attempt's staged context committed.
- */
-function buildResultRoutedJourney(handlers: LoginHandlers) {
-  const { createStep, to, build } = createGraphJourneyBuilder<{
-    context: AttemptCtx;
-    stepId: "login" | "email" | "sms";
-    events: LoginEvent;
-    handlers: LoginHandlers;
-  }>();
-
-  const definition = build({
-    initial: "login",
-    context: { attempts: 0 },
-    handlers,
-    steps: [
-      createStep("login", {
-        on: {
-          SUBMIT: ({ work }) =>
-            work({
-              run: ({ handlers: h }) => h.login(),
-              commit: ({ updateContext }) =>
-                updateContext((c) => ({ ...c, attempts: c.attempts + 1 })),
-              candidates: ({ to: into, stay }) => [
-                into("email").when(({ result }) => result === "email"),
-                into("sms").when(({ result }) => result === "sms"),
-                stay()
-              ]
-            })
+describe("an unguarded last candidate keeps the event total", () => {
+  it("commits the staged context instead of rolling it back", async () => {
+    // The inverse of "rolls back when nothing matches": once a candidate is
+    // guaranteed to match, the work's commit survives. This is what the deleted
+    // `stay()` helper spelled out — an unguarded candidate back at this step.
+    const machine = withGraphTypes<{
+      context: { attempts: number };
+      stepId: "login" | "email";
+      events: LoginEvent;
+      handlers: LoginHandlers;
+    }>()(
+      {
+        initial: "login",
+        context: { attempts: 0 },
+        handlers: { login: async () => "carrier-pigeon" as unknown as "email" },
+        steps: {
+          login: {
+            on: {
+              SUBMIT: {
+                run: ({ handlers: h }) => h.login(),
+                commit: ({ updateContext }) =>
+                  updateContext((c) => ({ ...c, attempts: c.attempts + 1 })),
+                candidates: [
+                  { to: "email", when: ({ context }) => context.attempts > 5 },
+                  { to: "login" }
+                ]
+              }
+            }
+          },
+          email: {}
         }
-      }),
-      createStep("email", { on: { RESET: [to("login")] } }),
-      createStep("sms", { on: { RESET: [to("login")] } })
-    ]
-  });
-
-  return createGraphJourney(definition, { autoStart: true });
-}
-
-describe("work-result routing and stay()", () => {
-  it("routes on the run result without persisting it in context", async () => {
-    const machine = buildResultRoutedJourney({ login: async () => "sms" });
+      },
+      { autoStart: true }
+    );
     await flush();
 
-    expect(await machine.send("SUBMIT")).toEqual({ ok: true, from: "login", to: "sms" });
-    // The routing fact stayed transient: context only holds business state.
-    expect(machine.getSnapshot().context).toEqual({ attempts: 1 });
-  });
-
-  it("stay() keeps the staged context committed when no routed candidate matches", async () => {
-    const machine = buildResultRoutedJourney({
-      login: async () => "carrier-pigeon" as unknown as "email"
-    });
-    await flush();
-
-    // Neither result guard passes, so the unguarded stay() wins: a
-    // self-transition that commits the staged attempt count instead of
-    // rolling it back with the send.
     expect(await machine.send("SUBMIT")).toEqual({ ok: true, from: "login", to: "login" });
     expect(machine.getSnapshot().context).toEqual({ attempts: 1 });
-  });
-
-  it("snapshot introspection evaluates result-reading guards with result undefined", async () => {
-    const machine = buildResultRoutedJourney({ login: async () => "email" });
-    await flush();
-
-    const outgoing = machine.getSnapshot().outgoingTransitions;
-    const [email, sms, self] = outgoing;
-    // Outside a send there is no result, so result-dependent guards report
-    // their resting-state answer; the unguarded stay() is what introspection
-    // would select.
-    expect(email).toMatchObject({ to: "email", guard: "failed", enabled: false });
-    expect(sms).toMatchObject({ to: "sms", guard: "failed", enabled: false });
-    expect(self).toMatchObject({ to: "login", guard: "none", enabled: true, selected: true });
   });
 });

@@ -1,4 +1,4 @@
-import { createGraphJourneyBuilder } from "@rxova/journey-core";
+import type { GraphDefinition, GraphStep } from "@rxova/journey-core";
 import { delay } from "./support";
 
 export type LoginStepId =
@@ -98,56 +98,63 @@ export const initialLoginContext = (): LoginContext => ({
   attempts: 0
 });
 
-const { createStep, to, build } = createGraphJourneyBuilder<{
+export type AuthBag = {
   context: LoginContext;
   stepId: LoginStepId;
   events: AuthEvent;
   meta: StepMeta;
   handlers: AuthHandlers;
-}>();
+  // `run` sits at a property position, which is not an inference site, so the
+  // result type of each work is pinned here rather than inferred.
+  results: {
+    submitLogin: Awaited<ReturnType<AuthHandlers["api"]["login"]>>;
+    verify: Awaited<ReturnType<AuthHandlers["api"]["verifyCode"]>>;
+  };
+};
 
 /**
  * The login work: the machine calls the API itself, stages what came back, and
  * only then do the guards pick a step. The call site is a bare
  * `send("submitLogin")` — it neither knows nor decides the 2FA method.
  *
- * The last candidate is `stay()` — an unguarded fallback back at `login`. That
- * keeps the event *total*: a failed login still routes somewhere, so its error
- * message commits instead of being rolled back with the unmatched send. (Leave
- * it out and the builder warns at build time.)
+ * The last candidate is unguarded — a fallback back at `login`. That keeps the
+ * event *total*: a failed login still routes somewhere, so its error message
+ * commits instead of being rolled back with the unmatched send.
  */
-const loginStep = createStep("login", {
-  metadata: { label: "Login", icon: "🔐" },
+const loginStep: GraphStep<AuthBag> = {
+  metadata: { label: "Login", icon: "\ud83d\udd10" },
   on: {
-    submitLogin: ({ to, work, stay }) =>
-      work({
-        run: ({ snapshot, handlers }) =>
-          handlers.api.login(snapshot.context.username, snapshot.context.password),
-        commit: ({ result, updateContext }) =>
-          updateContext((context) => ({
-            ...context,
-            twoFactorMethod: result.success ? result.method : null,
-            password: result.success ? "" : context.password,
-            error: result.success ? null : "Login failed"
-          })),
-        candidates: [
-          to("setup2fa").when(({ context, handlers }) =>
-            handlers.requiresMethod(context, "no_2fa")
-          ),
-          to("emailCode").when(({ context, handlers }) =>
-            handlers.requiresMethod(context, "email")
-          ),
-          to("authenticatorCode").when(({ context, handlers }) =>
-            handlers.requiresMethod(context, "authenticator")
-          ),
-          stay()
-        ]
-      })
+    submitLogin: {
+      run: ({ snapshot, handlers }) =>
+        handlers.api.login(snapshot.context.username, snapshot.context.password),
+      commit: ({ result, updateContext }) =>
+        updateContext((context) => ({
+          ...context,
+          twoFactorMethod: result.success ? result.method : null,
+          password: result.success ? "" : context.password,
+          error: result.success ? null : "Login failed"
+        })),
+      candidates: [
+        {
+          to: "setup2fa",
+          when: ({ context, handlers }) => handlers.requiresMethod(context, "no_2fa")
+        },
+        {
+          to: "emailCode",
+          when: ({ context, handlers }) => handlers.requiresMethod(context, "email")
+        },
+        {
+          to: "authenticatorCode",
+          when: ({ context, handlers }) => handlers.requiresMethod(context, "authenticator")
+        },
+        { to: "login" }
+      ]
+    }
   }
-});
+};
 
-const setup2faStep = createStep("setup2fa", {
-  metadata: { label: "Setup 2FA", icon: "📱" },
+const setup2faStep: GraphStep<AuthBag> = {
+  metadata: { label: "Setup 2FA", icon: "\ud83d\udcf1" },
   // Enrollment is a side effect of *arriving*, not of choosing a route, so it
   // belongs on the step rather than on an event's work. Note the asymmetry:
   // step hooks receive no `handlers`, so this closes over authApi directly
@@ -156,97 +163,91 @@ const setup2faStep = createStep("setup2fa", {
     const { qrCode } = await authApi.generateQrCode();
     updateContext((context) => ({ ...context, qrCode }));
   },
-  on: {
-    setup2fa: [to("verifyCode")]
-  }
-});
+  on: { setup2fa: "verifyCode" }
+};
 
 /**
  * Every verification step declares the same `verify` event with its own work
  * and its own candidates — which is what keying work by (step, event) buys.
  *
- * The candidates use the work-scoped callback form, so the success guard reads
- * the run `result` directly — the outcome routes without ever being persisted
- * in context. Candidate order is the policy: success wins, then the
- * exhausted-attempts guard, then `stay()` — the unguarded retry that makes the
- * event total, so a wrong code commits its attempt count instead of rolling
- * back.
+ * Candidates route on the context `commit` staged, never on the run result
+ * directly: guards stay total functions of context, so snapshot introspection
+ * (`outgoingTransitions`, `availableEvents`) reports the same answer the live
+ * send would. Order is the policy — success first, then exhausted attempts,
+ * then the unguarded retry that makes the event total, so a wrong code commits
+ * its attempt count instead of rolling back.
  */
 const verificationStep = (
-  id: "verifyCode" | "emailCode" | "authenticatorCode",
   metadata: StepMeta,
+  self: "verifyCode" | "emailCode" | "authenticatorCode",
   blockedError: string,
   retryError: string
-) =>
-  createStep(id, {
-    metadata,
-    on: {
-      verify: ({ work }) =>
-        work({
-          run: ({ snapshot, handlers }) =>
-            handlers.api.verifyCode(snapshot.context.verificationCode),
-          commit: ({ result, updateContext }) =>
-            updateContext((context) => ({
-              ...context,
-              attempts: result.success ? context.attempts : context.attempts + 1,
-              error: result.success ? null : retryError
-            })),
-          candidates: ({ to: into, stay }) => [
-            into("loggedIn").when(({ result }) => result.success),
-            into("blocked")
-              .when(({ context, handlers }) => handlers.hasExhaustedAttempts(context))
-              .onTransition(({ updateContext }) =>
-                updateContext((context) => ({ ...context, error: blockedError }))
-              ),
-            stay()
-          ]
-        })
+): GraphStep<AuthBag> => ({
+  metadata,
+  on: {
+    verify: {
+      run: ({ snapshot, handlers }) => handlers.api.verifyCode(snapshot.context.verificationCode),
+      commit: ({ result, updateContext }) =>
+        updateContext((context) => ({
+          ...context,
+          attempts: result.success ? context.attempts : context.attempts + 1,
+          error: result.success ? null : retryError
+        })),
+      candidates: [
+        // `commit` always writes `error`, so a null one means this verify
+        // succeeded — the staged fact the route is decided from.
+        { to: "loggedIn", when: ({ context }) => context.error === null },
+        {
+          to: "blocked",
+          when: ({ context, handlers }) => handlers.hasExhaustedAttempts(context),
+          onTransition: ({ updateContext }) =>
+            updateContext((context) => ({ ...context, error: blockedError }))
+        },
+        { to: self }
+      ]
     }
-  });
+  }
+});
 
 const verifyCodeStep = verificationStep(
+  { label: "Verify Code", icon: "\u2705" },
   "verifyCode",
-  { label: "Verify Code", icon: "✅" },
   "Too many failed attempts.",
   "Invalid code. Try 123456."
 );
 
 const emailCodeStep = verificationStep(
+  { label: "Email Code", icon: "\u2709\ufe0f" },
   "emailCode",
-  { label: "Email Code", icon: "✉️" },
   "Email verification failed too many times.",
   "Use 123456 from the email."
 );
 
 const authenticatorCodeStep = verificationStep(
+  { label: "Authenticator", icon: "\ud83d\udee1\ufe0f" },
   "authenticatorCode",
-  { label: "Authenticator", icon: "🛡️" },
   "Authenticator verification failed too many times.",
   "Use 123456 from the authenticator app."
 );
 
-const loggedInStep = createStep("loggedIn", {
-  metadata: { label: "Logged In", icon: "🎉" }
-});
+const loggedInStep: GraphStep<AuthBag> = { metadata: { label: "Logged In", icon: "\ud83c\udf89" } };
 
-const blockedStep = createStep("blocked", {
-  metadata: { label: "Blocked", icon: "⛔" }
-});
+const blockedStep: GraphStep<AuthBag> = { metadata: { label: "Blocked", icon: "\u26d4" } };
 
-export const graphDefinition = build({
+export const graphDefinition = {
   initial: "login",
   context: initialLoginContext(),
   // The definition ships a default policy and the real client; the demo
   // overrides both at createGraphJourney time to show the seam, which is
   // exactly how a test would swap in a fake api (see showcase-demo.ts).
   handlers: createAuthHandlers(2, authApi),
-  steps: [
-    loginStep,
-    setup2faStep,
-    verifyCodeStep,
-    emailCodeStep,
-    authenticatorCodeStep,
-    loggedInStep,
-    blockedStep
-  ]
-});
+  steps: {
+    login: loginStep,
+    setup2fa: setup2faStep,
+    verifyCode: verifyCodeStep,
+    emailCode: emailCodeStep,
+    authenticatorCode: authenticatorCodeStep,
+    loggedIn: loggedInStep,
+    blocked: blockedStep
+  }
+} satisfies GraphDefinition<AuthBag>;

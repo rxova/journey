@@ -1,4 +1,4 @@
-import { createGraphJourney, createGraphJourneyBuilder } from "@rxova/journey-core";
+import { withGraphTypes, type GraphDefinition } from "@rxova/journey-core";
 import "./styles/quickstart.css";
 
 // A graph journey in one screen: declare types, define steps, create the
@@ -9,11 +9,14 @@ type CheckoutStepId = "cart" | "receipt";
 type CheckoutContext = { items: number; error: string | null };
 type CheckoutEvent = { type: "checkout" };
 
-const { createStep, build } = createGraphJourneyBuilder<{
+// The bag pins what the definition cannot infer on its own — here the result
+// type of the `checkout` work, which sits at a property position.
+type CheckoutBag = {
   context: CheckoutContext;
   stepId: CheckoutStepId;
   events: CheckoutEvent;
-}>();
+  results: { checkout: { charged: boolean } };
+};
 
 // ── 2. Definition ────────────────────────────────────────────────────────────
 const chargeApi = async (items: number) => {
@@ -21,38 +24,40 @@ const chargeApi = async (items: number) => {
   return { charged: items > 0 };
 };
 
-const cartStep = createStep("cart", {
-  on: {
-    // `checkout` names an intent, not an outcome. The work calls the API,
-    // `commit` stages what came back, and the candidates route on the staged
-    // context plus the run `result` — first enabled wins. The unguarded
-    // `stay()` keeps the event total: a failed charge still routes (back
-    // here), so its error commits instead of being rolled back.
-    checkout: ({ work }) =>
-      work({
-        run: ({ snapshot }) => chargeApi(snapshot.context.items),
-        commit: ({ result, updateContext }) =>
-          updateContext((context) => ({
-            ...context,
-            error: result.charged ? null : "Your cart is empty."
-          })),
-        candidates: ({ to, stay }) => [to("receipt").when(({ result }) => result.charged), stay()]
-      })
-  }
-});
-
-// Terminal step: no outgoing transitions. Arriving here does NOT complete the
-// journey — completion is an explicit outcome, declared below via controls.
-const receiptStep = createStep("receipt", {});
-
-const definition = build({
+const definition = {
   initial: "cart",
   context: { items: 0, error: null },
-  steps: [cartStep, receiptStep]
-});
+  steps: {
+    cart: {
+      on: {
+        // `checkout` names an intent, not an outcome. The work calls the API,
+        // `commit` stages what came back, and the candidates route on that
+        // staged context — first enabled wins. The unguarded last candidate
+        // keeps the event total: a failed charge still routes (back here), so
+        // its error commits instead of being rolled back.
+        checkout: {
+          run: ({ snapshot }) => chargeApi(snapshot.context.items),
+          commit: ({ result, updateContext }) =>
+            updateContext((context) => ({
+              ...context,
+              error: result.charged ? null : "Your cart is empty."
+            })),
+          candidates: [
+            { to: "receipt", when: ({ context }) => context.error === null },
+            { to: "cart" }
+          ]
+        }
+      }
+    },
+    // Terminal step: no outgoing transitions. Arriving here does NOT complete
+    // the journey — completion is an explicit outcome, declared below via
+    // controls.
+    receipt: {}
+  }
+} satisfies GraphDefinition<CheckoutBag>;
 
 // ── 3. Machine ───────────────────────────────────────────────────────────────
-const machine = createGraphJourney(definition, { autoStart: true });
+const machine = withGraphTypes<CheckoutBag>()(definition, { autoStart: true });
 
 // ── 4. Render from the snapshot ──────────────────────────────────────────────
 const root = document.getElementById("root");

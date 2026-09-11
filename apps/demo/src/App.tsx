@@ -1,51 +1,55 @@
 import React from "react";
 import {
-  createGraphJourneyBuilder,
   createLinearJourney,
+  type GraphDefinition,
   type LinearJourneyDefinition
 } from "@rxova/journey-core";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
-import { createGraphJourney } from "@rxova/journey-react/graph";
+import { withGraphTypes } from "@rxova/journey-react/graph";
 import "./styles.css";
 
 type ReactStepId = "start" | "details" | "review" | "confirmExit";
 type ReactContext = { name: string; includeDetails: boolean; dirty: boolean };
 type ReactEvent = { type: "next" } | { type: "requestClose" };
 
-const { createStep, to, build } = createGraphJourneyBuilder<{
+type ReactBag = {
   context: ReactContext;
   stepId: ReactStepId;
   events: ReactEvent;
   meta: { label: string };
-}>();
+};
 
-const reactDefinition = build({
+// Annotated rather than inline: `satisfies` preserves literal types, which
+// would pin `dirty` to `false` and reject every later update.
+const initialReactContext: ReactContext = { name: "", includeDetails: true, dirty: false };
+
+const reactDefinition = {
   initial: "start",
-  context: { name: "", includeDetails: true, dirty: false },
-  steps: [
-    createStep("start", {
+  context: initialReactContext,
+  steps: {
+    start: {
       metadata: { label: "Start" },
       on: {
         next: [
-          to("details").when(({ context }) => context.includeDetails),
-          to("review").when(({ context }) => !context.includeDetails)
+          { to: "details", when: ({ context }) => context.includeDetails },
+          { to: "review", when: ({ context }) => !context.includeDetails }
         ],
-        requestClose: [to("confirmExit").when(({ context }) => context.dirty)]
+        requestClose: [{ to: "confirmExit", when: ({ context }) => context.dirty }]
       }
-    }),
-    createStep("details", {
+    },
+    details: {
       metadata: { label: "Details" },
-      on: { next: [to("review")], requestClose: [to("confirmExit")] }
-    }),
-    createStep("review", {
+      on: { next: "review", requestClose: "confirmExit" }
+    },
+    review: {
       metadata: { label: "Review" },
-      on: { requestClose: [to("confirmExit")] }
-    }),
-    createStep("confirmExit", { metadata: { label: "Confirm Exit" } })
-  ]
-});
+      on: { requestClose: "confirmExit" }
+    },
+    confirmExit: { metadata: { label: "Confirm Exit" } }
+  }
+} satisfies GraphDefinition<ReactBag>;
 
-const reactJourney = createGraphJourney(reactDefinition);
+const reactJourney = withGraphTypes<ReactBag>()(reactDefinition);
 
 const ReactBridge = () => {
   const machine = reactJourney.useMachine();

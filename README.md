@@ -142,44 +142,36 @@ cannot roll it back. They are a good fit for cleanup, analytics, and destination
 Use a graph when the product speaks in named events and more than one route can leave a step.
 
 ```ts
-import { createGraphJourney, createGraphJourneyBuilder } from "@rxova/journey-core";
+import { createGraphJourney } from "@rxova/journey-core";
 
 type Event =
   | { type: "continue" }
   | { type: "skip" }
   | { type: "cancel"; payload: { reason: string } };
 
-type StepId = "start" | "details" | "done";
-
-const { createStep, to, build } = createGraphJourneyBuilder<{
+const machine = withGraphTypes<{
   context: { ready: boolean };
-  stepId: StepId;
+  stepId: "start" | "details" | "done";
   events: Event;
   meta: { title: string };
-}>();
-
-const definition = build({
-  initial: "start",
-  context: { ready: false },
-  steps: [
-    createStep("start", {
-      metadata: { title: "Start" },
-      on: {
-        continue: [to("details").when(({ context }) => context.ready)],
-        skip: [to("done")]
-      }
-    }),
-    createStep("details", {
-      metadata: { title: "Details" },
-      on: { continue: [to("done")] }
-    }),
-    createStep("done", {
-      metadata: { title: "Done" }
-    })
-  ]
-});
-
-const machine = createGraphJourney(definition, { autoStart: true });
+}>()(
+  {
+    initial: "start",
+    context: { ready: false },
+    steps: {
+      start: {
+        metadata: { title: "Start" },
+        on: {
+          continue: [{ to: "details", when: ({ context }) => context.ready }],
+          skip: "done"
+        }
+      },
+      details: { metadata: { title: "Details" }, on: { continue: "done" } },
+      done: { metadata: { title: "Done" } }
+    }
+  },
+  { autoStart: true }
+);
 
 await machine.send("continue");
 await machine.send("cancel", { reason: "user" });

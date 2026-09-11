@@ -1,4 +1,4 @@
-import { createGraphJourneyBuilder, type LinearJourneyDefinition } from "@rxova/journey-core";
+import type { GraphDefinition, LinearJourneyDefinition } from "@rxova/journey-core";
 
 export type PluginDemoKind =
   | "analytics"
@@ -36,56 +36,37 @@ export const pluginDefinition = {
   ]
 } satisfies LinearJourneyDefinition<PluginStepId, PluginContext>;
 
-const { createStep, to, build } = createGraphJourneyBuilder<{
+type StructureBag = {
   context: Record<string, never>;
   stepId: StructureStepId;
   events: StructureEvent;
   meta: { label: string };
-}>();
+};
 
 // The structure is intentionally imperfect so the diagnostics plugin has
 // something to report: the second "next" candidates are shadowed by earlier
 // unconditional ones, "orphan" is unreachable, and review ⇄ address cycles.
-const start = createStep("start", {
-  metadata: { label: "Start" },
-  on: {
-    next: [to("address"), to("review")]
-  }
-});
-
-const address = createStep("address", {
-  metadata: { label: "Address" },
-  on: {
-    next: [to("review"), to("done")],
-    reject: [to("blocked")]
-  }
-});
-
-const review = createStep("review", {
-  metadata: { label: "Review" },
-  on: {
-    next: [to("done")],
-    reject: [to("address")]
-  }
-});
-
-const blocked = createStep("blocked", {
-  metadata: { label: "Blocked" }
-});
-
-const done = createStep("done", {
-  metadata: { label: "Done" }
-});
-
-const orphan = createStep("orphan", {
-  metadata: { label: "Orphan" }
-});
-
-export const structureDefinition = build({
+export const structureDefinition = {
   initial: "start",
   context: {},
-  steps: [start, address, review, blocked, done, orphan]
-});
+  steps: {
+    start: {
+      metadata: { label: "Start" },
+      on: { next: [{ to: "address" }, { to: "review" }] }
+    },
+    address: {
+      metadata: { label: "Address" },
+      on: { next: [{ to: "review" }, { to: "done" }], reject: "blocked" }
+    },
+    review: {
+      metadata: { label: "Review" },
+      on: { next: "done", reject: "address" }
+    },
+    blocked: { metadata: { label: "Blocked" } },
+    done: { metadata: { label: "Done" } },
+    orphan: { metadata: { label: "Orphan" } }
+  }
+} satisfies GraphDefinition<StructureBag>;
 
 export const pluginTitles: Record<PluginDemoKind, string> = {
   analytics: "Analytics Plugin",

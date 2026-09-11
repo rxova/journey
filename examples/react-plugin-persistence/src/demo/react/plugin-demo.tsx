@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { createGraphJourney, createGraphJourneyBuilder } from "@rxova/journey-core";
+import { createGraphJourney, type GraphDefinition } from "@rxova/journey-core";
 import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
 import { createAutosavePlugin } from "@rxova/journey-core/autosave";
 import { createDiagnosticsPlugin } from "@rxova/journey-core/diagnostics";
@@ -61,28 +61,22 @@ const useJourneyEvent = <
 type PluginEvent = { type: "next" };
 type AnalyticsEvent = { name: string; payload: unknown };
 
-const { createStep, to, build } = createGraphJourneyBuilder<{
+type PluginBag = {
   context: PluginContext;
   stepId: PluginStepId;
   events: PluginEvent;
   meta: { label: string };
-}>();
+};
 
-const demoDefinition = build({
+const demoDefinition = {
   initial: "profile",
   context: { name: "", email: "", notes: "" },
-  steps: [
-    createStep("profile", {
-      metadata: { label: "Profile" },
-      on: { next: [to("review")] }
-    }),
-    createStep("review", {
-      metadata: { label: "Review" },
-      on: { next: [to("done")] }
-    }),
-    createStep("done", { metadata: { label: "Done" } })
-  ]
-});
+  steps: {
+    profile: { metadata: { label: "Profile" }, on: { next: "review" } },
+    review: { metadata: { label: "Review" }, on: { next: "done" } },
+    done: { metadata: { label: "Done" } }
+  }
+} satisfies GraphDefinition<PluginBag>;
 
 const useLogStore = <T,>(store: ReturnType<typeof createLogStore<T>>) =>
   React.useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);

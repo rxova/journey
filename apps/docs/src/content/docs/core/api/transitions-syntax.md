@@ -86,4 +86,4 @@ entry is written under. Graph guards that throw are treated as disabled.
 
 - [Linear](../usage/linear)
 - [Graph](../usage/graph)
-- [Graph builder](./graph-builder)
+- [Pinning types with a bag](./with-types)

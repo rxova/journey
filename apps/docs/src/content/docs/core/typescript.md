@@ -76,17 +76,18 @@ Payload arguments are required only for union members that declare `payload`.
 For definitions split across files, declare all domain types once:
 
 ```ts
-const builder = createGraphJourneyBuilder<{
+type AppBag = {
   context: Context;
   stepId: StepId;
   events: Event;
   meta: StepMetadata;
   handlers: Handlers;
-}>();
+};
 ```
 
-The builder narrows callback-form transition payloads and validates source/target ids at compile
-time.
+Each step then annotates itself `GraphStep<AppBag>` in its own file, and the factory is pinned with
+`withGraphTypes<AppBag>()`. Target ids are validated at compile time and each event's
+hooks see that event's payload narrowed.
 
 ## Snapshot narrowing
 
@@ -128,6 +129,6 @@ Journey does not merge partial objects.
 
 ## Where to next
 
-- [Graph builder](./api/graph-builder)
+- [Pinning types with a bag](./api/with-types)
 - [Snapshot](./snapshot)
 - [Writing a plugin](./plugins/authoring)

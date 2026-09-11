@@ -1,12 +1,13 @@
-import { createStep, to } from "../builder";
+import type { GraphStep } from "@rxova/journey-core";
+import type { AuthBag } from "../types";
 
-export const verifyCodeStep = createStep("verifyCode", {
-  metadata: { label: "Verify Setup", icon: "✅" },
+export const verifyCodeStep: GraphStep<AuthBag> = {
+  metadata: { label: "Verify Setup", icon: "\u2705" },
   on: {
-    verifyCodeSuccess: [to("loggedIn")],
+    verifyCodeSuccess: "loggedIn",
     verifyCodeFailure: [
-      to("blocked").when(({ context }) => context.attempts >= 3),
-      to("verifyCode")
+      { to: "blocked", when: ({ context }) => context.attempts >= 3 },
+      { to: "verifyCode" }
     ]
   }
-});
+};

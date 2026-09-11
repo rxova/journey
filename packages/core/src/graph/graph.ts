@@ -16,6 +16,7 @@ import type {
   MutableRuntimeTransition
 } from "./graph.types";
 import type { AnySendWork } from "../core/runtime.types";
+import type { Bag, GraphDefinition, HandlersOf, MetaOf } from "./bag.types";
 import type {
   AnyJourneyPlugin,
   CompletePayloadOf,
@@ -233,3 +234,49 @@ export function createGraphJourney<
     TerminatePayloadOf<TTerminationPayloads>
   >;
 }
+
+/**
+ * Creates a graph journey factory with its types pinned up front instead of
+ * inferred.
+ *
+ * Reach for it when the definition cannot supply a type on its own —
+ * `handlers`, a `meta` shape, or a `run` result, none of which sit at an
+ * inference site — or when the same bag is shared by steps authored in
+ * separate files. The definition is then *checked* against the bag rather than
+ * read for types.
+ *
+ * ```ts
+ * const login = withGraphTypes<AuthBag>()({
+ *   initial: "login",
+ *   context: initialContext,
+ *   steps: { login: { on: { submit: "twofa" } }, twofa: {} }
+ * });
+ * ```
+ *
+ * Plain `createGraphJourney(definition)` stays the default: step ids infer from
+ * the `steps` keys and event names from the `on` keys.
+ */
+export const withGraphTypes =
+  <TBag extends Bag>() =>
+  <const TPlugins extends readonly AnyJourneyPlugin[] = readonly []>(
+    definition: GraphDefinition<TBag>,
+    options: GraphJourneyOptions<HandlersOf<TBag>, TPlugins, TBag["stepId"]> = {}
+  ): GraphJourneyMachine<
+    TBag["context"],
+    TBag["stepId"],
+    TBag["events"],
+    MetaOf<TBag>,
+    TPlugins,
+    HandlersOf<TBag>
+  > =>
+    createGraphJourney(
+      definition as unknown as Parameters<typeof createGraphJourney>[0],
+      options as unknown as Parameters<typeof createGraphJourney>[1]
+    ) as unknown as GraphJourneyMachine<
+      TBag["context"],
+      TBag["stepId"],
+      TBag["events"],
+      MetaOf<TBag>,
+      TPlugins,
+      HandlersOf<TBag>
+    >;

@@ -1,4 +1,4 @@
-import { createGraphJourney } from "@rxova/journey-core";
+import { withGraphTypes } from "@rxova/journey-core";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
 import type { JourneySnapshot, JourneySubscriptionEvent } from "@rxova/journey-core";
 import "../styles/demo.css";
@@ -9,6 +9,7 @@ import {
   type LoginContext,
   type LoginStepId
 } from "../fixtures/auth-fixtures";
+import type { AuthBag } from "../fixtures/auth-fixtures";
 import { formatJson } from "../fixtures/support";
 
 // Verbs are grouped by namespace on the machine:
@@ -72,7 +73,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
   // choice appears in the snapshot, which only carries serializable context.
   const handlers = createAuthHandlers(3, authApi);
 
-  const machine = createGraphJourney(graphDefinition, {
+  const machine = withGraphTypes<AuthBag>()(graphDefinition, {
     autoStart: true,
     handlers,
     plugins: [createExecutionPathsPlugin()] as const

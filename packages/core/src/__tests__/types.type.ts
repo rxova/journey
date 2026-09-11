@@ -4,11 +4,7 @@
  * Unused aliases and bare expressions are the assertion mechanism here.
  */
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-unused-expressions */
-import {
-  createGraphJourney,
-  createGraphJourneyBuilder,
-  createLinearJourney
-} from "@rxova/journey-core";
+import { createGraphJourney, createLinearJourney, withGraphTypes } from "@rxova/journey-core";
 import type {
   GraphSnapshot,
   JourneyPlugin,
@@ -113,33 +109,32 @@ export function linearOutcomeTypes() {
 type LoginEvents = { type: "submit"; payload: { code: string } } | { type: "reset" };
 
 export function graphTypes() {
-  const { createStep, to, build } = createGraphJourneyBuilder<{
+  const machine = withGraphTypes<{
     context: { attempts: number };
     stepId: "form" | "done";
     events: LoginEvents;
-  }>();
-
-  const machine = createGraphJourney(
-    build({
-      initial: "form",
-      context: { attempts: 0 },
-      steps: [
-        createStep("form", {
-          on: {
-            submit: ({ to: scoped }) => [
-              scoped("done").onTransition(({ event }) => {
-                // the callback form narrows the event to the scoped type
+  }>()({
+    initial: "form",
+    context: { attempts: 0 },
+    steps: {
+      form: {
+        on: {
+          submit: [
+            {
+              to: "done",
+              onTransition: ({ event }) => {
+                // the pinned bag narrows the event union on the hook args
                 type _payload = Expect<
                   Equal<NonNullable<typeof event>["payload"], { code: string }>
                 >;
-              })
-            ]
-          }
-        }),
-        createStep("done", {})
-      ]
-    })
-  );
+              }
+            }
+          ]
+        }
+      },
+      done: {}
+    }
+  });
 
   void machine.send("submit", { code: "1234" });
   void machine.send("reset");

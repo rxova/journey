@@ -38,13 +38,19 @@ export type GraphTransition<
   TStepId extends string = string,
   TEvents extends JourneyEventObject = JourneyEventObject,
   THandlers = unknown,
-  TMeta = Record<string, unknown>
+  TMeta = Record<string, unknown>,
+  // The event that triggered this edge, narrowed to the key the entry is
+  // declared under. `raise` keeps the full union — you may raise any declared
+  // event — so only `event` is overridden.
+  TTrigger extends JourneyEventObject = TEvents
 > = {
   readonly to: TStepId;
   readonly when?: TransitionGuard<TContext, THandlers>;
   /** Async effect, post-commit, cannot cancel; a throw is handled like an `onEnter` throw. */
   readonly onTransition?: (
-    args: GraphHookArgs<TContext, TStepId, TEvents, TMeta>
+    args: Omit<GraphHookArgs<TContext, TStepId, TEvents, TMeta>, "event"> & {
+      readonly event: TTrigger | null;
+    }
   ) => void | Promise<void>;
 };
 
@@ -66,10 +72,11 @@ export type GraphOnEntry<
   TEvents extends JourneyEventObject = JourneyEventObject,
   THandlers = unknown,
   TMeta = Record<string, unknown>,
-  TResult = unknown
+  TResult = unknown,
+  TTrigger extends JourneyEventObject = TEvents
 > =
   | TStepId
-  | readonly GraphTransition<TContext, TStepId, TEvents, THandlers, TMeta>[]
+  | readonly GraphTransition<TContext, TStepId, TEvents, THandlers, TMeta, TTrigger>[]
   | {
       readonly run: (
         args: SendWorkArgs<
@@ -108,7 +115,9 @@ export type GraphStepConfig<
       TStepId,
       TEvents,
       THandlers,
-      TMeta
+      TMeta,
+      unknown,
+      Extract<TEvents, { type: TType }>
     >;
   };
   readonly onEnter?: OnEnterHook<

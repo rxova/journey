@@ -69,19 +69,21 @@ and that closure is usually a hint the call wants to move into work.
 Guards must stay synchronous because they are used to derive available transitions. Caller-driven
 next/previous operations can attach asynchronous navigation work.
 
-The graph builder's type bag can declare handler types:
+The bag declares handler types, so guards and work see them typed:
 
 ```ts
-const { createStep, to, build } = createGraphJourneyBuilder<{
+type AppBag = {
   context: Context;
   stepId: StepId;
   events: Event;
   handlers: Handlers;
-}>();
+};
+
+const machine = withGraphTypes<AppBag>()(definition);
 ```
 
 ## Where to next
 
 - [Graph](./usage/graph)
-- [Graph builder](./api/graph-builder)
+- [Pinning types with a bag](./api/with-types)
 - [Transitions syntax](./api/transitions-syntax)

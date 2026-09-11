@@ -36,7 +36,10 @@ export default defineConfig({
     "/core/usage/headless": "/core/usage/",
     // The enhancer was six status predicates over an observation the machine
     // already publishes; the overview covers what replaced it.
-    "/core/plugins/subscription-enhancer-plugin": "/core/plugins/overview/"
+    "/core/plugins/subscription-enhancer-plugin": "/core/plugins/overview/",
+    // The builder became `withTypes` plus two exported types; the page that
+    // replaced it covers the same ground without the factory.
+    "/core/api/graph-builder": "/core/api/with-types/"
   },
 
   // Two pages (core/architecture, core/architecture/work-and-transitions) carry
@@ -172,7 +175,7 @@ export default defineConfig({
                   "core/api/overview",
                   "core/api/machine-api",
                   "core/api/transitions-syntax",
-                  "core/api/graph-builder",
+                  "core/api/with-types",
                   "core/typescript",
                   "core/coming-from-xstate",
                   "core/stability",

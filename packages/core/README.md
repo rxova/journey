@@ -210,7 +210,7 @@ Use `createGraphJourney` when named events, guards, or branches choose destinati
 add typed `send(type, payload?)`, available events and targets in the snapshot, and transition-level
 post-commit effects.
 
-For larger graphs, `createGraphJourneyBuilder` co-locates typed transitions with each step. See the
+For larger graphs, `withGraphTypes<Bag>()` pins the types once and `GraphStep<Bag>` lets each step live in its own file. See the
 [Graph guide](https://rxova.org/docs/core/usage/graph).
 
 ## Connectors
