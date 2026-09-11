@@ -2,231 +2,154 @@
 title: "Quickstart"
 ---
 
-import { Tabs, TabItem } from "@astrojs/starlight/components";
+This page builds a typed linear journey, starts it, observes it, and completes it.
 
 ## Install
-
-<Tabs groupId="package-managers" defaultValue="pnpm">
-  <TabItem label="pnpm">
 
 ```bash
 pnpm add @rxova/journey-core
 ```
 
-  </TabItem>
-  <TabItem label="yarn">
-
-```bash
-yarn add @rxova/journey-core
-```
-
-  </TabItem>
-  <TabItem label="npm">
-
-```bash
-npm install @rxova/journey-core
-```
-
-  </TabItem>
-  <TabItem label="bun">
-
-```bash
-bun add @rxova/journey-core
-```
-
-  </TabItem>
-</Tabs>
-
-`@rxova/journey-core` works in any standard ESM runtime and does not require a UI framework.
-
-## Define a Journey
-
-Journey supports three ways to define transitions: **linear**, **graph**, and **headless**. All three share the same runtime, snapshot shape, and navigation API. Pick the one that fits your flow.
-
-Reserved step ids: `*`, `global`, `COMPLETE`, and `TERMINATED`. They are used by the runtime and cannot be used as actual step names.
-
-### Linear
-
-Use the array shorthand when steps follow a fixed sequence. Each entry is a step id or an object with synchronous context updates and timeouts.
+## Define a flow
 
 ```ts
-import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
+import { createLinearJourney } from "@rxova/journey-core";
 
-type StepId = "account" | "details" | "payment" | "review";
-type Context = { email: string; completedSteps: number };
-type StepMeta = { label: string };
-
-const checkout: JourneyDefinition<Context, StepId, Record<never, never>, StepMeta> = {
-  initial: "account",
-  context: { email: "", completedSteps: 0 },
-  steps: {
-    account: { meta: { label: "Account" } },
-    details: { meta: { label: "Details" } },
-    payment: { meta: { label: "Payment" } },
-    review: { meta: { label: "Review" } }
-  },
-  transitions: [
-    "account",
-    {
-      step: "details",
-      timeoutMs: 5000,
-      updateContext: ({ context }) => ({
-        ...context,
-        completedSteps: context.completedSteps + 1
-      })
-    },
-    "payment",
-    "review"
-  ]
+type CheckoutStepId = "account" | "shipping" | "review";
+type CheckoutContext = { email: string; country: string };
+type CheckoutTerminationPayloads = {
+  complete: { orderId: string };
+  terminate: { reason: "cancelled" };
 };
 
-const machine = createJourneyMachine(checkout);
-machine.startJourney();
-```
-
-### Graph
-
-Use step-keyed transitions when your flow has branching, conditional routing, retries, or custom events.
-
-```ts
-import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
-
-type StepId = "login" | "admin" | "dashboard" | "blocked";
-type Context = { role: "admin" | "user" | null };
-
-const auth: JourneyDefinition<Context, StepId> = {
-  initial: "login",
-  context: { role: null },
-  steps: {
-    login: {},
-    admin: {},
-    dashboard: {},
-    blocked: {}
-  },
-  transitions: {
-    login: {
-      goToNextStep: [
-        { to: "admin", when: ({ context }) => context.role === "admin" },
-        { to: "dashboard", when: ({ context }) => context.role === "user" },
-        { to: "blocked" }
-      ]
-    },
-    admin: { completeJourney: true },
-    dashboard: { completeJourney: true },
-    blocked: { terminateJourney: true }
+const checkout = createLinearJourney<CheckoutStepId, CheckoutContext, CheckoutTerminationPayloads>({
+  steps: [
+    { id: "account", metadata: { title: "Account" } },
+    { id: "shipping", metadata: { title: "Shipping" } },
+    { id: "review", metadata: { title: "Review" } }
+  ] as const,
+  context: {
+    email: "",
+    country: ""
   }
-};
-
-const machine = createJourneyMachine(auth);
-machine.startJourney();
+});
 ```
 
-### Headless
-
-Omit `transitions` entirely and navigate with `goToStepById`. Useful for custom renderers, non-React environments, or flows where the driver decides the path at runtime.
+String steps are valid shorthand when a step has no metadata or hooks:
 
 ```ts
-import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
-
-type StepId = "intro" | "configure" | "confirm";
-
-const flow: JourneyDefinition<Record<string, never>, StepId> = {
-  initial: "intro",
-  context: {},
-  steps: { intro: {}, configure: {}, confirm: {} }
-};
-
-const machine = createJourneyMachine(flow);
-machine.startJourney();
-
-await machine.goToStepById("configure");
-await machine.goToStepById("confirm");
+const compact = createLinearJourney({
+  steps: ["account", "shipping", "review"] as const,
+  context: { email: "", country: "" }
+});
 ```
 
-In headless mode, `goToStepById(...)` is the forward-navigation primitive. `goToNextStep()` and custom events stay no-op until you define transitions.
+## Start and drive it
 
-## Drive It
-
-All three modes share the same runtime API, but not every command is meaningful in every mode:
+Machines start with `status: "idle"`. Starting is synchronous; an async initial `onEnter` may
+continue after `start()` returns.
 
 ```ts
-await machine.send({ type: "goToNextStep" });
-await machine.goToPreviousStep();
-await machine.goToLastVisitedStep();
-await machine.goToStepById("review");
+checkout.controls.start();
 
-await machine.send({ type: "completeJourney" });
-await machine.send({ type: "terminateJourney" });
+function waitUntilSettled(machine: typeof checkout): Promise<void> {
+  if (!machine.getSnapshot().transition.pending) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    const stop = machine.subscriptions.subscribeSelector(
+      (snapshot) => snapshot.transition.pending,
+      (pending) => {
+        if (!pending) {
+          stop();
+          resolve();
+        }
+      }
+    );
+  });
+}
+
+await waitUntilSettled(checkout);
+
+checkout.context.update((context) => ({
+  ...context,
+  email: "ada@example.com"
+}));
+
+const result = await checkout.navigate.goToNextStep();
+
+if (!result.ok) {
+  console.error(result.reason);
+}
 ```
 
-- Use `goToNextStep` in linear and graph flows.
-- Use `goToStepById` in headless flows.
-- `goToPreviousStep`, `goToLastVisitedStep`, `completeJourney`, and `terminateJourney` work in all modes.
-
-After `dispose()`, send-style APIs resolve with `transitioned: false` and `error: JourneyDisposedError`. Sync control APIs such as `startJourney()` and `updateContext()` stay no-op and emit a development warning.
-
-Convenience helpers are also available:
+Every navigation method resolves to a `NavigationResult`:
 
 ```ts
-await machine.goToNextStep();
-await machine.goToPreviousStep(2); // go back 2 steps
-await machine.completeJourney();
-await machine.terminateJourney();
+type NavigationResult<StepId extends string> =
+  | { ok: true; from: StepId | null; to: StepId }
+  | { ok: false; reason: NavigationFailureReason; error?: unknown };
 ```
 
-## Read the Snapshot
+Use `snapshot.machine.isLoading` as the default flag for disabling UI controls while navigation
+work or lifecycle effects settle.
+
+## Read the snapshot
 
 ```ts
-const snapshot = machine.getSnapshot();
+const snapshot = checkout.getSnapshot();
 
-console.log(snapshot.currentStepId);
-console.log(snapshot.history.timeline, snapshot.history.index);
-console.log(snapshot.context);
-console.log(snapshot.visited);
-console.log(snapshot.async.byStep[snapshot.currentStepId]);
-console.log(snapshot.status);
+snapshot.type; // "linear"
+snapshot.status; // "running"
+snapshot.currentStep?.id; // "shipping"
+snapshot.currentStep?.metadata.title; // "Shipping"
+snapshot.currentStep?.index; // 1
+snapshot.history.timeline; // ["account", "shipping"]
+snapshot.machine.isLoading; // false
+snapshot.steps.totalSteps; // 3
 ```
 
 ## Subscribe
 
-```ts
-const unsubscribeSnapshot = machine.subscribe(() => {
-  console.log("snapshot changed", machine.getSnapshot());
-});
+Subscriptions are grouped under `machine.subscriptions`.
 
-const unsubscribeCurrentStep = machine.subscribeSelector(
-  (snapshot) => snapshot.currentStepId,
-  (next, previous) => {
-    console.log("step changed", previous, "->", next);
-  }
+```ts
+const stopStepSubscription = checkout.subscriptions.subscribeSelector(
+  (snapshot) => snapshot.currentStep?.id,
+  (stepId) => renderStep(stepId)
 );
 
-const unsubscribeEvents = machine.subscribeEvent((event) => {
-  console.log("lifecycle event", event.type, event);
+const stopErrors = checkout.subscriptions.subscribeEvent("error", ({ error, phase }) => {
+  reportError(error, phase);
 });
 ```
 
-## Persistence
+Selectors run when their selected value changes. `subscribeEvent` listens to one named event and
+returns an unsubscribe function.
+
+## Complete and restart
 
 ```ts
-import { createPersistencePlugin } from "@rxova/journey-core/persistence";
+await checkout.navigate.goToNextStep();
+checkout.controls.complete({ orderId: "order-42" });
 
-const machine = createJourneyMachine(checkout, {
-  plugins: [
-    createPersistencePlugin({
-      key: "checkout-journey",
-      version: 2,
-      blockList: ["payment.cardNumber", "payment.cvv"]
-    })
-  ]
-});
+checkout.getSnapshot().machine.outcome;
+// { type: "completed", payload: { orderId: "order-42" } }
+
+checkout.controls.restart();
 ```
 
-Persisted shape includes `history.timeline`, `history.index`, `currentStepId`, `context`, `visited`, and `status`. Context can be filtered with `allowList` and `blockList` when some fields should never be stored.
+`restart()` is accepted only from `completed` or `terminated`. It restores the initial context,
+clears history and outcome, and enters the initial step again.
 
-## What to Read Next
+Reaching `review` did not complete the journey automatically. The last screen is a position;
+`controls.complete()` records the separate product outcome. The optional third factory generic
+above makes both terminal control payloads and `snapshot.machine.outcome` type-safe.
 
-- [Overview](./overview.md) for the product-level picture
-- [Usage](./usage.md) for a deeper look at linear, graph, and headless modes
-- [TypeScript](./typescript.md) for type modeling patterns
-- [Plugins](./plugins/overview.md) for persistence and execution-path extensions
+Call `checkout.dispose()` when the runtime is no longer needed.
+
+## Where to next
+
+- [Linear journeys](./usage/linear) covers every linear navigation rule.
+- [Graph journeys](./usage/graph) adds typed events, guards, and branching.
+- [Snapshot](./snapshot) documents the complete read model.
+- [Machine API](./api/machine-api) lists every method and result.

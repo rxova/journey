@@ -1,85 +1,81 @@
 import React from "react";
-import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
+import {
+  createGraphJourneyBuilder,
+  createLinearJourney,
+  type LinearJourneyDefinition
+} from "@rxova/journey-core";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
-import { createJourney, type JourneyViews } from "@rxova/journey-react";
+import { createGraphJourney } from "@rxova/journey-react/graph";
 import "./styles.css";
 
 type ReactStepId = "start" | "details" | "review" | "confirmExit";
-type ReactContext = {
-  name: string;
-  includeDetails: boolean;
-  dirty: boolean;
-};
+type ReactContext = { name: string; includeDetails: boolean; dirty: boolean };
+type ReactEvent = { type: "next" } | { type: "requestClose" };
 
-type ReactEventMap = { requestClose: unknown };
+const { createStep, to, build } = createGraphJourneyBuilder<{
+  context: ReactContext;
+  stepId: ReactStepId;
+  events: ReactEvent;
+  meta: { label: string };
+}>();
 
-const reactJourneyDefinition: JourneyDefinition<ReactContext, ReactStepId, ReactEventMap> = {
+const reactDefinition = build({
   initial: "start",
-  context: {
-    name: "",
-    includeDetails: true,
-    dirty: false
-  },
-  steps: {
-    start: { meta: { label: "Start" } },
-    details: { meta: { label: "Details" } },
-    review: { meta: { label: "Review" } },
-    confirmExit: { meta: { label: "Confirm Exit" } }
-  },
-  transitions: {
-    start: {
-      goToNextStep: [
-        {
-          to: "details",
-          when: ({ context }) => context.includeDetails
-        },
-        {
-          to: "review",
-          when: ({ context }) => !context.includeDetails
-        }
-      ]
-    },
-    details: {
-      goToNextStep: [{ to: "review" }]
-    },
-    review: {
-      completeJourney: [{}]
-    },
-    global: {
-      requestClose: [
-        {
-          to: "confirmExit",
-          when: ({ context }) => context.dirty
-        }
-      ],
-      terminateJourney: [{}]
-    }
-  }
-};
+  context: { name: "", includeDetails: true, dirty: false },
+  steps: [
+    createStep("start", {
+      metadata: { label: "Start" },
+      on: {
+        next: [
+          to("details").when(({ context }) => context.includeDetails),
+          to("review").when(({ context }) => !context.includeDetails)
+        ],
+        requestClose: [to("confirmExit").when(({ context }) => context.dirty)]
+      }
+    }),
+    createStep("details", {
+      metadata: { label: "Details" },
+      on: { next: [to("review")], requestClose: [to("confirmExit")] }
+    }),
+    createStep("review", {
+      metadata: { label: "Review" },
+      on: { requestClose: [to("confirmExit")] }
+    }),
+    createStep("confirmExit", { metadata: { label: "Confirm Exit" } })
+  ]
+});
 
-const reactJourney = createJourney(reactJourneyDefinition);
-
-const useReactJourneyApi = () => reactJourney.useJourneyApi();
-const useReactJourneySnapshot = () => reactJourney.useJourneySnapshot();
+const reactJourney = createGraphJourney(reactDefinition);
 
 const ReactBridge = () => {
-  React.useEffect(() => {
-    return attachJourneyDevtools(reactJourney.machine, {
-      machineId: "react-flow",
-      label: "React Flow",
-      appName: "Journey Demo",
-      enabled: true,
-      commandsEnabled: true
-    });
-  }, []);
-
+  const machine = reactJourney.useMachine();
+  React.useEffect(
+    () =>
+      attachJourneyDevtools(machine, {
+        machineId: "react-flow",
+        label: "React Flow",
+        appName: "Journey Demo",
+        enabled: true,
+        mutationsEnabled: true
+      }),
+    [machine]
+  );
   return null;
 };
 
-const ReactStart = () => {
-  const snapshot = useReactJourneySnapshot();
-  const api = useReactJourneyApi();
+const useCloseReactJourney = () => {
+  const snapshot = reactJourney.useSnapshot();
+  return () => {
+    if (snapshot.context.dirty) {
+      return reactJourney.send("requestClose");
+    }
+    return reactJourney.machine.controls.terminate();
+  };
+};
 
+const ReactStart = () => {
+  const snapshot = reactJourney.useSnapshot();
+  const close = useCloseReactJourney();
   return (
     <div className="step">
       <h3>Start</h3>
@@ -88,7 +84,7 @@ const ReactStart = () => {
         <input
           value={snapshot.context.name}
           onChange={(event) =>
-            api.updateContext((context) => ({
+            reactJourney.updateContext((context) => ({
               ...context,
               name: event.target.value,
               dirty: true
@@ -101,7 +97,7 @@ const ReactStart = () => {
         <input
           checked={snapshot.context.includeDetails}
           onChange={(event) =>
-            api.updateContext((context) => ({
+            reactJourney.updateContext((context) => ({
               ...context,
               includeDetails: event.target.checked,
               dirty: true
@@ -112,15 +108,8 @@ const ReactStart = () => {
         Visit details step
       </label>
       <div className="actions">
-        <button onClick={() => void api.goToNextStep()}>Next</button>
-        <button
-          className="secondary"
-          onClick={() =>
-            void (snapshot.context.dirty
-              ? api.send({ type: "requestClose" })
-              : api.terminateJourney())
-          }
-        >
+        <button onClick={() => void reactJourney.send("next")}>Next</button>
+        <button className="secondary" onClick={() => void close()}>
           Close
         </button>
       </div>
@@ -129,26 +118,26 @@ const ReactStart = () => {
 };
 
 const ReactDetails = () => {
-  const api = useReactJourneyApi();
-
   return (
     <div className="step">
       <h3>Details</h3>
       <p>Example intermediate step to verify transitions and timeline behavior.</p>
       <div className="actions">
-        <button className="secondary" onClick={() => void api.goToPreviousStep()}>
+        <button
+          className="secondary"
+          onClick={() => void reactJourney.machine.navigate.goToPreviousStep()}
+        >
           Go to previous step
         </button>
-        <button onClick={() => void api.goToNextStep()}>Next</button>
+        <button onClick={() => void reactJourney.send("next")}>Next</button>
       </div>
     </div>
   );
 };
 
 const ReactReview = () => {
-  const snapshot = useReactJourneySnapshot();
-  const api = useReactJourneyApi();
-
+  const snapshot = reactJourney.useSnapshot();
+  const close = useCloseReactJourney();
   return (
     <div className="step">
       <h3>Review</h3>
@@ -156,69 +145,63 @@ const ReactReview = () => {
         Ready to submit for <strong>{snapshot.context.name || "Anonymous"}</strong>?
       </p>
       <div className="actions">
-        <button className="secondary" onClick={() => void api.goToPreviousStep()}>
-          Go to previous step
-        </button>
         <button
           className="secondary"
-          onClick={() =>
-            void (snapshot.context.dirty
-              ? api.send({ type: "requestClose" })
-              : api.terminateJourney())
-          }
+          onClick={() => void reactJourney.machine.navigate.goToPreviousStep()}
         >
+          Go to previous step
+        </button>
+        <button className="secondary" onClick={() => void close()}>
           Close
         </button>
-        <button onClick={() => void api.completeJourney()}>Submit</button>
+        <button onClick={() => reactJourney.machine.controls.complete()}>Submit</button>
       </div>
     </div>
   );
 };
 
 const ReactConfirmExit = () => {
-  const api = useReactJourneyApi();
-
   return (
     <div className="step">
       <h3>Confirm Exit</h3>
       <p>You have unsaved changes. Confirm close?</p>
       <div className="actions">
-        <button className="secondary" onClick={() => void api.goToPreviousStep()}>
+        <button
+          className="secondary"
+          onClick={() => void reactJourney.machine.navigate.goToPreviousStep()}
+        >
           Keep editing
         </button>
-        <button onClick={() => void api.terminateJourney()}>Confirm close</button>
+        <button onClick={() => reactJourney.machine.controls.terminate()}>Confirm close</button>
       </div>
     </div>
   );
 };
 
-const reactViews: JourneyViews<ReactStepId> = {
-  start: ReactStart,
-  details: ReactDetails,
-  review: ReactReview,
-  confirmExit: ReactConfirmExit
+const reactViews: Record<ReactStepId, React.ReactNode> = {
+  start: <ReactStart />,
+  details: <ReactDetails />,
+  review: <ReactReview />,
+  confirmExit: <ReactConfirmExit />
 };
 
 const ReactMachinePanel = () => {
-  const snapshot = useReactJourneySnapshot();
-  const api = useReactJourneyApi();
-  const StepRenderer = reactJourney.StepRenderer;
-
+  const snapshot = reactJourney.useSnapshot();
   return (
     <section className="card">
       <div className="card-head">
-        <h2>React Machine</h2>
+        <h2>React graph machine</h2>
         <span className={`status status-${snapshot.status}`}>{snapshot.status}</span>
       </div>
-      <p className="hint">
-        Powered by <code>@rxova/journey-react</code> and bridged as <code>react-flow</code>.
-      </p>
-      <StepRenderer fallback={<p>Missing step component.</p>} />
+      <reactJourney.StepRenderer fallback={<p>Missing step component.</p>} />
       <div className="actions card-actions">
-        <button className="secondary" onClick={() => api.resetJourney()}>
-          Reset
+        <button className="secondary" onClick={() => reactJourney.machine.controls.restart()}>
+          Restart
         </button>
-        <button className="secondary" onClick={() => void api.goToLastVisitedStep()}>
+        <button
+          className="secondary"
+          onClick={() => void reactJourney.machine.navigate.goToLastVisitedStep()}
+        >
           Go to last visited step
         </button>
       </div>
@@ -228,109 +211,72 @@ const ReactMachinePanel = () => {
 };
 
 type CoreStepId = "one" | "two" | "three";
-type CoreEvent = "goToNextStep" | "completeJourney" | "terminateJourney";
-type CoreContext = {
-  owner: string;
-  dirty: boolean;
+type CoreContext = { owner: string; dirty: boolean };
+
+const coreDefinition: LinearJourneyDefinition<CoreStepId, CoreContext> = {
+  context: { owner: "Core Tester", dirty: false },
+  steps: [
+    { id: "one", metadata: { label: "One" } },
+    { id: "two", metadata: { label: "Two" } },
+    { id: "three", metadata: { label: "Three" } }
+  ]
 };
 
-const coreJourney: JourneyDefinition<CoreContext, CoreStepId> = {
-  initial: "one",
-  context: {
-    owner: "Core Tester",
-    dirty: false
-  },
-  steps: {
-    one: { meta: { label: "One" } },
-    two: { meta: { label: "Two" } },
-    three: { meta: { label: "Three" } }
-  },
-  transitions: {
-    one: {
-      goToNextStep: [{ to: "two" }]
-    },
-    two: {
-      goToNextStep: [{ to: "three" }]
-    },
-    three: {
-      completeJourney: [{}]
-    },
-    global: {
-      terminateJourney: [{}]
-    }
-  }
-};
-
-const coreMachine = createJourneyMachine(coreJourney);
-
+const coreMachine = createLinearJourney(coreDefinition);
+const subscribeToCoreSnapshot = (onStoreChange: () => void) =>
+  coreMachine.subscriptions.subscribeSelector(
+    (snapshot) => snapshot,
+    () => onStoreChange()
+  );
 const useCoreSnapshot = () =>
   React.useSyncExternalStore(
-    coreMachine.subscribe,
+    subscribeToCoreSnapshot,
     coreMachine.getSnapshot,
     coreMachine.getSnapshot
   );
 
-const useCoreStatus = () =>
-  React.useSyncExternalStore(
-    coreMachine.subscribe,
-    () => coreMachine.getSnapshot().status,
-    () => coreMachine.getSnapshot().status
-  );
-
 const CoreMachinePanel = () => {
   const snapshot = useCoreSnapshot();
-
-  const send = React.useCallback((type: CoreEvent) => {
-    void coreMachine.send({ type });
-  }, []);
-
-  const randomizeOwner = React.useCallback(() => {
+  const randomizeOwner = () => {
     const suffix = Math.floor(Math.random() * 900 + 100);
-    coreMachine.updateContext((context) => ({
+    coreMachine.context.update((context) => ({
       ...context,
       owner: `Core Tester ${suffix}`,
       dirty: true
     }));
-  }, []);
-
+  };
   return (
     <section className="card">
       <div className="card-head">
-        <h2>Core Machine</h2>
+        <h2>Core linear machine</h2>
         <span className={`status status-${snapshot.status}`}>{snapshot.status}</span>
       </div>
-      <p className="hint">
-        Powered by <code>@rxova/journey-core</code> and bridged as <code>core-flow</code>.
-      </p>
       <div className="core-view">
         <p>
-          Current step: <strong>{snapshot.currentStepId}</strong>
+          Current step: <strong>{snapshot.currentStep?.id ?? "none"}</strong>
         </p>
         <p>
           Owner: <strong>{snapshot.context.owner}</strong>
         </p>
       </div>
       <div className="actions">
-        <button onClick={() => send("goToNextStep")}>Next</button>
-        <button className="secondary" onClick={() => void coreMachine.goToPreviousStep()}>
-          Go to previous step
+        <button onClick={() => void coreMachine.navigate.goToNextStep()}>Next</button>
+        <button className="secondary" onClick={() => void coreMachine.navigate.goToPreviousStep()}>
+          Previous
         </button>
-        <button className="secondary" onClick={() => send("completeJourney")}>
-          Submit
+        <button className="secondary" onClick={() => coreMachine.controls.complete()}>
+          Complete
         </button>
-        <button className="secondary" onClick={() => send("terminateJourney")}>
-          Close
+        <button className="secondary" onClick={() => coreMachine.controls.terminate()}>
+          Terminate
         </button>
       </div>
       <div className="actions card-actions">
         <button className="secondary" onClick={randomizeOwner}>
           Update context
         </button>
-        <button className="secondary" onClick={() => coreMachine.resetJourney()}>
-          Reset
-        </button>
-        <button className="secondary" onClick={() => void coreMachine.goToLastVisitedStep()}>
-          Go to last visited step
+        <button className="secondary" onClick={() => coreMachine.controls.restart()}>
+          Restart
         </button>
       </div>
       <pre className="snapshot">{JSON.stringify(snapshot, null, 2)}</pre>
@@ -339,37 +285,20 @@ const CoreMachinePanel = () => {
 };
 
 export const App = () => {
-  const JourneyProvider = reactJourney.JourneyProvider;
-  const coreStatus = useCoreStatus();
-
+  React.useEffect(
+    () =>
+      attachJourneyDevtools(coreMachine, {
+        machineId: "core-flow",
+        label: "Core Flow",
+        appName: "Journey Demo",
+        enabled: true,
+        mutationsEnabled: true
+      }),
+    []
+  );
   React.useEffect(() => {
-    return attachJourneyDevtools(coreMachine, {
-      machineId: "core-flow",
-      label: "Core Flow",
-      appName: "Journey Demo",
-      enabled: true,
-      commandsEnabled: true
-    });
+    coreMachine.controls.start();
   }, []);
-
-  React.useEffect(() => {
-    if (coreStatus !== "idled") {
-      return;
-    }
-
-    let canceled = false;
-    queueMicrotask(() => {
-      if (canceled || coreMachine.getSnapshot().status !== "idled") {
-        return;
-      }
-
-      coreMachine.startJourney();
-    });
-
-    return () => {
-      canceled = true;
-    };
-  }, [coreStatus]);
 
   return (
     <main className="layout">
@@ -383,16 +312,14 @@ export const App = () => {
           Expected machine ids: <code>react-flow</code> and <code>core-flow</code>.
         </p>
       </header>
-
-      <JourneyProvider views={reactViews}>
+      <reactJourney.Provider views={reactViews}>
         <ReactBridge />
         <ReactMachinePanel />
-      </JourneyProvider>
-
+      </reactJourney.Provider>
       <CoreMachinePanel />
-
       <footer className="hint footer-note">
-        React status values: <code>running</code>, <code>complete</code>, <code>terminated</code>
+        Status values include <code>idle</code>, <code>running</code>, <code>completed</code>, and{" "}
+        <code>terminated</code>.
       </footer>
     </main>
   );

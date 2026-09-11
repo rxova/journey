@@ -1,39 +1,66 @@
 ---
-title: "Runtime Queue And Observation Hub"
-sidebar:
-  label: "Runtime Queue"
+title: "Runtime"
 ---
 
-Source file: `packages/core/src/journey-machine/runtime.ts`
+`JourneyRuntime` (`src/core/runtime.ts`) is the single class that owns changing state. No
+controller-per-concern layer sits between this state and the operation changing it: a lifecycle
+control, context update, navigation, or graph send updates runtime state and publishes a new
+snapshot at its defined boundaries.
 
-This file is the mutable heart of the machine.
+## Runtime state
 
-It owns the current snapshot, the subscription sets, the lifecycle event stream, and the serialized execution
-queue used by sends and navigation helpers.
+The runtime owns:
 
-## How It Works
+- lifecycle `status` and the recorded terminal `outcome`;
+- the `timeline` array, its pointer `currentIndex` (`-1` while idle), and per-step visit counts;
+- the current `context` value;
+- current-entry async state and the pending-transition record (`working`, `leaving`, `entering`);
+- the raised-event FIFO queue;
+- a generation counter and a one-shot restore seed;
+- plugin APIs, snapshot derivers, and dispose callbacks.
 
-1. `snapshot` is kept in closure state. `getSnapshot()` reads it, and `setSnapshot(...)` writes it while optionally
-   notifying listeners and forwarding the change to plugin hooks.
-2. `queue(...)` is the concurrency boundary. Every caller gets chained onto `actionQueue`, so each operation runs to
-   a stable result before the next one mutates the machine.
-3. The queue captures a `runVersion`. If `cancelInFlight()` increments the lifecycle version, older async work can
-   still finish locally, but its writes are ignored because `isRunActive(runVersion)` returns `false`.
-4. `subscribe(...)` stores raw snapshot listeners. `subscribeSelector(...)` layers on top of that by caching the
-   selected value and skipping listener calls when the equality function says nothing changed.
-5. `subscribeEvent(...)` manages lifecycle listeners and immediately sends the startup event to new subscribers so
-   observers have a consistent starting point.
-6. Listener failures stay isolated. If `onListenerError` is omitted, the runtime reports them through a
-   development-only `console.error(...)` fallback instead of swallowing them completely silently.
-7. `dispose()` marks the runtime as closed, cancels queued work, clears every listener set, and forwards disposal to
-   any external cleanup hook.
+## The generation counter
 
-This file deliberately does not know how transitions are chosen. It only guarantees safe ordering, observable state,
-and consistent cancellation.
+Terminate, restart, and dispose increment a generation counter. Every async continuation — awaited
+navigation work, hook chains, raised-event draining — captures the generation it started under and
+bails out when the counter has moved on, so stale continuations cannot settle a newer run.
 
-## Recommended Reading
+## Initial entry and restore
 
-- Read [Send Pipeline](./send.md) for the code that runs inside this queue.
-- Read [Async State](./async-state.md) for the run-version-aware writes used by async guards.
-- Read [Lifecycle](../lifecycle.md) and [Snapshot](../snapshot.md) for the public semantics exposed by
-  this runtime.
+`start()` moves `idle` to `running` and enters the initial step: no `onLeave` runs, `from` is
+`null`, and `stepEnter` reports `direction: "jump"`.
+
+When the machine was created with the `persist` option and a resumable record existed in storage,
+the factory hands the runtime a one-shot restore seed. The first `start()` then seeds context,
+timeline, and pointer from the record and re-enters the persisted current step instead of the
+first/initial one. Visit counts are reconstructed from the restored timeline, so the re-entered
+step reports `isFirstTimeVisit: false`. The seed is consumed on first use: `restart()` always
+begins a fresh run at the first/initial step (or `startAt`). An explicit `startAt` option wins over
+a persisted record. See [Persistence](../persistence#restore-behavior) for the record validity rules.
+
+## Lifecycle and context changes
+
+Controls update status directly and publish a snapshot plus `statusChange`. Context updates replace
+context synchronously and publish a snapshot plus `contextChange`.
+
+Pause, complete, and normal navigation reject while a hook chain is pending. Terminate deliberately
+wins: it invalidates pending work and clears raised events. Restart is available only after complete
+or terminate and rebuilds the initial run state.
+
+## Raised events
+
+Hook `raise(event)` appends to a graph-only FIFO. The runtime starts draining only after the current
+transition settles. One cascade is capped at `MAX_RAISED_EVENTS` (25); exceeding it drops the queue
+and emits an `error` event with phase `raise`.
+
+## Timeouts
+
+`defaultTimeoutMs` wraps navigation `run` and each hook promise. A work timeout blocks movement and
+returns `reason: "error"`; a post-commit hook timeout surfaces as the destination step's async
+error.
+
+## Where to next
+
+- [Store](./store)
+- [Work and transitions](./work-and-transitions)
+- [Timeline & history](../history)

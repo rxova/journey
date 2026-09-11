@@ -1,274 +1,320 @@
 import React from "react";
-
-import type { JourneyDevtoolsCommand } from "@rxova/journey-devtools-bridge";
+import type {
+  JourneyDevtoolsMachineFeatureDescriptor,
+  JourneyDevtoolsMachineOperationDescriptor,
+  JourneyDevtoolsOperationInvoke,
+  JourneyDevtoolsSerializableSnapshot
+} from "@rxova/journey-devtools-bridge";
+import panelStyles from "./panelPrimitives.module.css";
+import styles from "./commands/commandControls.module.css";
 import {
-  type CommandBuildResult,
-  buildClearStepErrorCommand,
-  buildCustomSendCommand,
-  buildExecutionPathsCommand,
-  buildGoToCommand,
-  buildGoToPreviousStepCommand
-} from "../command-utils";
+  buildInputValue,
+  groupFeatureSections,
+  hasInvalidFieldValues,
+  hasMissingRequiredFields,
+  isEventsSection,
+  isLifecycleOperationDisabled,
+  isMachineCommandsSection,
+  isNavigationSection
+} from "./commands/commands";
+import { OperationForm } from "./commands/OperationForm";
+import { OperationSectionCard } from "./commands/OperationSectionCard";
 
-type CommandField =
-  | "customType"
-  | "customPayload"
-  | "goToStep"
-  | "stepErrorId"
-  | "previousSteps"
-  | "executionMaxDepth"
-  | "executionMaxPaths";
-
-type CommandFormState = {
-  customType: string;
-  customPayload: string;
-  goToStep: string;
-  stepErrorId: string;
-  previousSteps: string;
-  executionMaxDepth: string;
-  executionMaxPaths: string;
-  formError: string | null;
+const getOperationFieldOptions = (
+  operationId: string,
+  currentStepId: string,
+  mode: "linear" | "graph" | "headless" | undefined,
+  stepIds: readonly string[],
+  eventTypes: readonly string[],
+  eventTypesBySource: Record<string, readonly string[]> | undefined,
+  goToStepTargetsBySource: Record<string, readonly string[]> | undefined
+): Partial<Record<string, readonly string[]>> | undefined => {
+  switch (operationId) {
+    case "core.goToStepById":
+      if (mode === "headless") {
+        return stepIds.length > 0 ? { stepId: stepIds } : undefined;
+      }
+      return {
+        stepId: [
+          ...(goToStepTargetsBySource?.[currentStepId] ?? []),
+          ...(goToStepTargetsBySource?.["*"] ?? [])
+        ].filter((stepId, index, allStepIds) => allStepIds.indexOf(stepId) === index)
+      };
+    case "core.forceStepTransition":
+      return {
+        stepId: stepIds.filter((stepId) => stepId !== currentStepId)
+      };
+    case "core.clearStepError":
+      return stepIds.length > 0 ? { stepId: stepIds } : undefined;
+    case "core.sendEvent":
+      if (mode === "headless") {
+        return eventTypes.length > 0 ? { type: eventTypes } : undefined;
+      }
+      return {
+        type: [
+          ...(eventTypesBySource?.[currentStepId] ?? []),
+          ...(eventTypesBySource?.["*"] ?? [])
+        ].filter((eventType, index, allEventTypes) => allEventTypes.indexOf(eventType) === index)
+      };
+    default:
+      return undefined;
+  }
 };
 
-type CommandFormAction =
-  | {
-      type: "set-field";
-      field: CommandField;
-      value: string;
-    }
-  | {
-      type: "set-error";
-      error: string | null;
-    };
-
-const INITIAL_FORM_STATE: CommandFormState = {
-  customType: "",
-  customPayload: "",
-  goToStep: "",
-  stepErrorId: "",
-  previousSteps: "",
-  executionMaxDepth: "",
-  executionMaxPaths: "",
-  formError: null
+const getSelectOnlyFields = (operationId: string): readonly string[] | undefined => {
+  switch (operationId) {
+    case "core.goToStepById":
+    case "core.forceStepTransition":
+      return ["stepId"];
+    default:
+      return undefined;
+  }
 };
 
-const PRIMARY_COMMANDS = [
-  "startJourney",
-  "goToNextStep",
-  "terminateJourney",
-  "completeJourney",
-  "resetJourney",
-  "goToLastVisitedStep"
-] as const;
-
-const commandFormReducer = (
-  state: CommandFormState,
-  action: CommandFormAction
-): CommandFormState => {
-  if (action.type === "set-field") {
+const getOperationClasses = (operationId: string) => {
+  if (
+    operationId === "core.goToStepById" ||
+    operationId === "core.forceStepTransition" ||
+    operationId === "core.goToPreviousStep"
+  ) {
     return {
-      ...state,
-      [action.field]: action.value
+      form: styles.navigationInlineForm,
+      button: styles.navigationInlineButton
     };
   }
+  if (operationId === "core.sendEvent") {
+    return { form: styles.eventSendForm, button: styles.eventSendButton };
+  }
+  if (operationId === "core.clearStepError") {
+    return { form: styles.eventClearForm, button: styles.eventClearButton };
+  }
+  return { form: undefined, button: undefined };
+};
 
-  return {
-    ...state,
-    formError: action.error
-  };
+const getOperationDisabled = (
+  operation: JourneyDevtoolsMachineOperationDescriptor,
+  sectionId: string,
+  disabled: boolean,
+  mutationsEnabled: boolean,
+  snapshotStatus: JourneyDevtoolsSerializableSnapshot["status"]
+) =>
+  disabled ||
+  (operation.mutates && !mutationsEnabled) ||
+  (isMachineCommandsSection(sectionId) &&
+    isLifecycleOperationDisabled(operation.id, snapshotStatus));
+
+const getSubmitDisabled = (
+  operation: JourneyDevtoolsMachineOperationDescriptor,
+  sectionId: string,
+  disabled: boolean,
+  mutationsEnabled: boolean,
+  snapshotStatus: JourneyDevtoolsSerializableSnapshot["status"],
+  fieldValues: Record<string, string>
+) =>
+  getOperationDisabled(operation, sectionId, disabled, mutationsEnabled, snapshotStatus) ||
+  hasMissingRequiredFields(operation, fieldValues) ||
+  hasInvalidFieldValues(operation, fieldValues);
+
+const renderSectionOperations = (
+  sectionId: string,
+  operations: readonly JourneyDevtoolsMachineOperationDescriptor[],
+  renderOperation: (operation: JourneyDevtoolsMachineOperationDescriptor) => React.ReactNode
+) => {
+  if (isNavigationSection(sectionId)) {
+    const operationsById = new Map(operations.map((operation) => [operation.id, operation]));
+
+    return (
+      <div className={styles.navigationGrid}>
+        {[
+          "core.goToStepById",
+          "core.forceStepTransition",
+          "core.goToPreviousStep",
+          "core.goToNextStep",
+          "core.goToLastVisitedStep"
+        ].flatMap((operationId) => {
+          const operation = operationsById.get(operationId);
+          return operation ? [renderOperation(operation)] : [];
+        })}
+      </div>
+    );
+  }
+
+  if (isEventsSection(sectionId)) {
+    const operationsById = new Map(operations.map((operation) => [operation.id, operation]));
+    const sendEvent = operationsById.get("core.sendEvent");
+    const clearStepError = operationsById.get("core.clearStepError");
+
+    return (
+      <div className={styles.eventsGrid}>
+        {sendEvent ? renderOperation(sendEvent) : null}
+        {clearStepError ? renderOperation(clearStepError) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={
+        isMachineCommandsSection(sectionId) ? styles.machineCommandsGrid : styles.layoutGrid
+      }
+    >
+      {operations.map(renderOperation)}
+    </div>
+  );
 };
 
 export const CommandControls = ({
-  availableCommands,
-  onCommand,
+  features,
+  snapshotStatus,
+  currentStepId,
+  onInvoke,
   disabled,
-  disabledReason
+  disabledReason,
+  mutationsEnabled,
+  mode,
+  stepIds = [],
+  eventTypes = [],
+  eventTypesBySource,
+  goToStepTargetsBySource
 }: {
-  availableCommands: readonly JourneyDevtoolsCommand["type"][];
-  onCommand: (command: JourneyDevtoolsCommand) => void;
+  features: readonly JourneyDevtoolsMachineFeatureDescriptor[];
+  snapshotStatus: JourneyDevtoolsSerializableSnapshot["status"];
+  currentStepId: string;
+  onInvoke: (invocation: JourneyDevtoolsOperationInvoke) => void;
   disabled: boolean;
   disabledReason?: string | null;
+  mutationsEnabled: boolean;
+  mode: "linear" | "graph" | "headless" | undefined;
+  stepIds: readonly string[] | undefined;
+  eventTypes: readonly string[] | undefined;
+  eventTypesBySource: Record<string, readonly string[]> | undefined;
+  goToStepTargetsBySource: Record<string, readonly string[]> | undefined;
 }) => {
-  const [formState, dispatch] = React.useReducer(commandFormReducer, INITIAL_FORM_STATE);
-  const availableCommandSet = new Set(availableCommands);
-  const visiblePrimaryCommands = PRIMARY_COMMANDS.filter((type) => availableCommandSet.has(type));
+  const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({});
+  const [fieldValues, setFieldValues] = React.useState<Record<string, string>>({});
+  const [formError, setFormError] = React.useState<{ sectionId: string; message: string } | null>(
+    null
+  );
 
-  const updateField = React.useCallback((field: CommandField, value: string) => {
-    dispatch({
-      type: "set-field",
-      field,
-      value
-    });
+  const setFieldValue = React.useCallback((key: string, value: string) => {
+    setFieldValues((current) => ({ ...current, [key]: value }));
+    setFormError((current) => (current ? null : current));
   }, []);
 
-  const runCommand = React.useCallback(
-    (commandBuilder: CommandBuildResult) => {
-      if (!commandBuilder.ok) {
-        dispatch({ type: "set-error", error: commandBuilder.error });
-        return;
+  const submit = React.useCallback(
+    (operation: JourneyDevtoolsMachineOperationDescriptor, sectionId: string) => {
+      const input: Record<string, unknown> = {};
+
+      for (const field of operation.fields) {
+        const stateKey = `${operation.id}:${field.key}`;
+        const raw =
+          field.type === "boolean"
+            ? (fieldValues[stateKey] ?? "false")
+            : (fieldValues[stateKey] ?? "");
+
+        /* v8 ignore start -- OperationForm disables submit before invalid field states reach these guards. */
+        if (field.required && raw.trim().length === 0 && field.type !== "boolean") {
+          setFormError({ sectionId, message: `${field.label} is required.` });
+          return;
+        }
+
+        const parsed = buildInputValue(raw, field.type);
+        if (!parsed.ok) {
+          setFormError({ sectionId, message: parsed.error });
+          return;
+        }
+        /* v8 ignore stop */
+
+        if (parsed.value !== undefined) {
+          input[field.key] = parsed.value;
+        }
       }
 
-      dispatch({ type: "set-error", error: null });
-      onCommand(commandBuilder.command);
+      setFormError((current) => (current?.sectionId === sectionId ? null : current));
+      onInvoke(
+        Object.keys(input).length === 0
+          ? { operationId: operation.id }
+          : { operationId: operation.id, input }
+      );
     },
-    [onCommand]
+    [fieldValues, onInvoke]
   );
 
   return (
-    <section className="panel-card">
-      <h2>Commands</h2>
+    <div className={styles.stack}>
+      <section className={panelStyles.card}>
+        <h2 className={panelStyles.title}>Operations</h2>
+        <p className={`${panelStyles.muted} ${styles.summaryText}`}>
+          Status: {snapshotStatus} · Mutations {mutationsEnabled ? "enabled" : "disabled"}
+        </p>
+      </section>
 
-      {visiblePrimaryCommands.length > 0 ? (
-        <div className="button-grid">
-          {visiblePrimaryCommands.map((type) => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => onCommand({ type })}
-              disabled={disabled}
-            >
-              {type}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="command-form-grid">
-        {availableCommandSet.has("goToStepById") ? (
-          <label>
-            goToStepById step
-            <div className="form-row">
-              <input
-                value={formState.goToStep}
-                onChange={(event) => updateField("goToStep", event.target.value)}
-                placeholder="review"
-                disabled={disabled}
-              />
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => runCommand(buildGoToCommand(formState.goToStep))}
-              >
-                Send goToStepById
-              </button>
-            </div>
-          </label>
-        ) : null}
-
-        {availableCommandSet.has("goToPreviousStep") ? (
-          <label>
-            goToPreviousStep steps (optional)
-            <div className="form-row">
-              <input
-                value={formState.previousSteps}
-                onChange={(event) => updateField("previousSteps", event.target.value)}
-                placeholder="1"
-                disabled={disabled}
-              />
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => runCommand(buildGoToPreviousStepCommand(formState.previousSteps))}
-              >
-                Send previous
-              </button>
-            </div>
-          </label>
-        ) : null}
-
-        {availableCommandSet.has("send") ? (
-          <>
-            <label>
-              Custom event type
-              <input
-                value={formState.customType}
-                onChange={(event) => updateField("customType", event.target.value)}
-                placeholder="retry"
-                disabled={disabled}
-              />
-            </label>
-            <label>
-              Custom payload JSON
-              <textarea
-                value={formState.customPayload}
-                onChange={(event) => updateField("customPayload", event.target.value)}
-                placeholder='{"attempt": 2}'
-                disabled={disabled}
-              />
-            </label>
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() =>
-                runCommand(buildCustomSendCommand(formState.customType, formState.customPayload))
+      {features.flatMap((feature) =>
+        groupFeatureSections(feature).map((section) => {
+          const isOpen = openSections[section.id] ?? true;
+          return (
+            <OperationSectionCard
+              key={section.id}
+              section={section}
+              isOpen={isOpen}
+              onToggle={() =>
+                setOpenSections((current) => ({
+                  ...current,
+                  [section.id]: !(current[section.id] ?? true)
+                }))
               }
             >
-              Send custom event
-            </button>
-          </>
-        ) : null}
+              {renderSectionOperations(section.id, section.operations, (operation) => {
+                const operationClasses = getOperationClasses(operation.id);
+                return (
+                  <OperationForm
+                    key={operation.id}
+                    operation={operation}
+                    sectionId={section.id}
+                    className={operationClasses.form}
+                    buttonClassName={operationClasses.button}
+                    fieldsDisabled={getOperationDisabled(
+                      operation,
+                      section.id,
+                      disabled,
+                      mutationsEnabled,
+                      snapshotStatus
+                    )}
+                    submitDisabled={getSubmitDisabled(
+                      operation,
+                      section.id,
+                      disabled,
+                      mutationsEnabled,
+                      snapshotStatus,
+                      fieldValues
+                    )}
+                    fieldValues={fieldValues}
+                    fieldOptions={getOperationFieldOptions(
+                      operation.id,
+                      currentStepId,
+                      mode,
+                      stepIds,
+                      eventTypes,
+                      eventTypesBySource,
+                      goToStepTargetsBySource
+                    )}
+                    selectOnlyFields={getSelectOnlyFields(operation.id)}
+                    onFieldChange={setFieldValue}
+                    onSubmit={submit}
+                  />
+                );
+              })}
+              {formError?.sectionId === section.id ? (
+                <p className={styles.formError}>{formError.message}</p>
+              ) : null}
+            </OperationSectionCard>
+          );
+        })
+      )}
 
-        {availableCommandSet.has("clearStepError") ? (
-          <label>
-            clearStepError stepId (optional)
-            <div className="form-row">
-              <input
-                value={formState.stepErrorId}
-                onChange={(event) => updateField("stepErrorId", event.target.value)}
-                placeholder="details"
-                disabled={disabled}
-              />
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => runCommand(buildClearStepErrorCommand(formState.stepErrorId))}
-              >
-                Clear error
-              </button>
-            </div>
-          </label>
-        ) : null}
-
-        {availableCommandSet.has("getExecutionPaths") ? (
-          <label>
-            getExecutionPaths (optional limits)
-            <div className="form-row">
-              <input
-                value={formState.executionMaxDepth}
-                onChange={(event) => updateField("executionMaxDepth", event.target.value)}
-                placeholder="maxDepth"
-                disabled={disabled}
-              />
-              <input
-                value={formState.executionMaxPaths}
-                onChange={(event) => updateField("executionMaxPaths", event.target.value)}
-                placeholder="maxPaths"
-                disabled={disabled}
-              />
-            </div>
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() =>
-                runCommand(
-                  buildExecutionPathsCommand(
-                    formState.executionMaxDepth,
-                    formState.executionMaxPaths
-                  )
-                )
-              }
-            >
-              Query execution paths
-            </button>
-          </label>
-        ) : null}
-      </div>
-
-      {availableCommands.length === 0 ? (
-        <p className="muted">No remote actions are exposed for this machine.</p>
+      {disabled && disabledReason ? (
+        <p className={`${panelStyles.muted} ${styles.disabledReason}`}>{disabledReason}</p>
       ) : null}
-      {formState.formError ? <p className="form-error">{formState.formError}</p> : null}
-      {disabled && disabledReason ? <p className="muted">{disabledReason}</p> : null}
-    </section>
+    </div>
   );
 };

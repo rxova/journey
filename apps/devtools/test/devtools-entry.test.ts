@@ -26,5 +26,7 @@ describe("devtools entrypoint", () => {
       "src/panel.html",
       expect.any(Function)
     );
+    const callback = createPanel.mock.calls[0]?.[3] as (() => void) | undefined;
+    expect(() => callback?.()).not.toThrow();
   });
 });

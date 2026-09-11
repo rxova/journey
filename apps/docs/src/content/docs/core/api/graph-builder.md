@@ -1,223 +1,121 @@
 ---
-title: "Graph Builder"
+title: "Graph builder"
 ---
 
-# Graph Builder
-
-`createJourneyBuilder` is an alternative way to write graph-mode definitions. Instead of one central transition object, each step declares its own transitions and can be co-located with its component. The builder compiles to the same `JourneyDefinition` that `createJourneyMachine` and `createJourney` already accept — no new runtime concepts.
-
-Use it when:
-
-- the central transition object is hard to navigate or review in PRs
-- the team is not familiar with state machine syntax and finds the per-step style easier to read
-- you want to co-locate routing logic with the component that renders each step
+`createGraphJourneyBuilder` gives a graph one shared type bag and lets each step declare its outgoing
+transitions beside its hooks and metadata. `build()` returns the same definition shape accepted by
+`createGraphJourney`.
 
 ## Setup
 
-Call `createJourneyBuilder` once, typed with the same generics as your definition. It returns three functions: `createStep`, `to`, and `build`.
-
 ```ts
-import { createJourneyBuilder } from "@rxova/journey-core";
+import { createGraphJourney, createGraphJourneyBuilder } from "@rxova/journey-core";
 
-type Context = { role: "user" | "admin"; name: string };
-type StepId = "login" | "dashboard" | "admin" | "blocked";
-type EventMap = { submit: { username: string }; back: unknown };
-type StepMeta = { label: string };
+type Context = { role: "member" | "admin" };
+type StepId = "login" | "dashboard" | "admin";
+type Event = { type: "SUBMIT"; payload: { username: string } } | { type: "LOG_OUT" };
+type Meta = { title: string };
+type Handlers = { isAdmin(role: Context["role"]): boolean };
 
-const { createStep, to, build } = createJourneyBuilder<Context, StepId, EventMap, StepMeta>();
+const { createStep, to, build } = createGraphJourneyBuilder<{
+  context: Context;
+  stepId: StepId;
+  events: Event;
+  meta: Meta;
+  handlers: Handlers;
+}>();
 ```
 
-The builder is fully generic: `to` only accepts valid `StepId` values, event keys in `on` are constrained to `EventMap` plus the built-in events, and guard and `updateContext` callbacks are typed against `Context`.
+`meta` and `handlers` are optional type-bag fields. Without them, metadata defaults to
+`Record<string, unknown>` and handlers to an empty record.
 
-## Defining Steps
-
-`createStep` creates a single step definition. Pass the step id and an optional config object with `meta` and `on`.
+## Define steps
 
 ```ts
-// step with no transitions (terminal step)
-export const blockedStep = createStep("blocked", {
-  meta: { label: "Blocked" }
-});
-
-// step with transitions
-export const loginStep = createStep("login", {
-  meta: { label: "Login" },
+const login = createStep("login", {
+  metadata: { title: "Sign in" },
   on: {
-    submit: [to("admin").when(({ context }) => context.role === "admin"), to("dashboard")],
-    back: [to("blocked")]
-  }
-});
-```
-
-Step files can live anywhere and are just values — import them wherever you assemble the definition.
-
-## `to()` — Fluent Transitions
-
-`to(stepId)` creates a transition target and returns a builder with four chainable methods:
-
-| Method               | Description                                                                                   |
-| -------------------- | --------------------------------------------------------------------------------------------- |
-| `.when(guard)`       | Guard function. Receives `{ context, from, timeline, index, event }`. Return `true` to allow. |
-| `.updateContext(fn)` | Sync context updater. Return the next context object for the committed transition.            |
-| `.label(string)`     | Human-readable identifier included in observability and debugging events.                     |
-| `.timeoutMs(number)` | Per-transition timeout. Throws `JourneyTimeoutError` if exceeded.                             |
-
-Each method is immutable — it returns a new builder without modifying the original.
-Each modifier is also single-use at the type level: calling `.when()`, `.updateContext()`,
-`.onEnter()`, `.onLeave()`, `.label()`, or `.timeoutMs()` twice on the same transition is a
-TypeScript error. If you bypass the type system, runtime behavior stays last-call-wins.
-
-```ts
-to("dashboard")
-  .label("login-to-dashboard")
-  .when(({ context }) => context.name !== "")
-  .updateContext(({ context }) => {
-    return { ...context, profileRequested: true };
-  })
-  .timeoutMs(5000);
-```
-
-## Assembling the Definition
-
-`build` collects step builders into a `JourneyDefinition`. Pass it like any other definition to `createJourneyMachine` or `createJourney`.
-
-```ts
-import { createJourney } from "@rxova/journey-react";
-import { build } from "./builder";
-import { loginStep } from "./steps/login.step";
-import { dashboardStep } from "./steps/dashboard.step";
-import { adminStep } from "./steps/admin.step";
-import { blockedStep } from "./steps/blocked.step";
-
-const definition = build({
-  initial: "login",
-  context: { role: "user", name: "" },
-  steps: [loginStep, dashboardStep, adminStep, blockedStep],
-  global: {
-    completeJourney: true,
-    terminateJourney: true
-  }
-});
-
-export const journey = createJourney(definition);
-```
-
-`build` accepts the same `global` shorthand as the inline graph object: `true`, `[]`, or an array of `to()` builders.
-
-## Full Example
-
-```ts
-// builder.ts — typed singleton, no local deps
-import { createJourneyBuilder } from "@rxova/journey-core";
-import type { Context, StepId, EventMap, StepMeta } from "./types";
-
-export const { createStep, to, build } = createJourneyBuilder<
-  Context,
-  StepId,
-  EventMap,
-  StepMeta
->();
-```
-
-```ts
-// steps/login.step.ts — co-located with Login.tsx
-import { createStep, to } from "../builder";
-import { mockApi } from "../api";
-
-export const loginStep = createStep("login", {
-  meta: { label: "Login", icon: "🔑" },
-  on: {
-    submit: [
-      to("admin").when(({ context }) => context.role === "admin"),
-      to("dashboard")
-        .when(({ context }) => context.name !== "")
-        .updateContext(({ context }) => ({
-          ...context,
-          profileRequested: true
-        }))
+    SUBMIT: ({ to }) => [
+      to("admin").when(({ context, handlers }) => handlers.isAdmin(context.role)),
+      to("dashboard").onTransition(({ event, updateContext }) => {
+        console.log(event?.payload.username);
+        updateContext((context) => context);
+      })
     ]
   }
 });
-```
 
-```ts
-// journey.ts — one-screen assembly
-import { createJourney } from "@rxova/journey-react";
-import { build } from "./builder";
-import { loginStep } from "./steps/login.step";
-import { dashboardStep } from "./steps/dashboard.step";
-import { adminStep } from "./steps/admin.step";
-
-const definition = build({
-  initial: "login",
-  context: { role: "user", name: "" },
-  steps: [loginStep, dashboardStep, adminStep]
+const dashboard = createStep("dashboard", {
+  metadata: { title: "Dashboard" },
+  on: { LOG_OUT: [to("login")] }
 });
 
-export const journey = createJourney(definition);
+const admin = createStep("admin", {
+  metadata: { title: "Admin" },
+  on: { LOG_OUT: [to("login")] }
+});
 ```
 
-## Typed Event Payloads
+The callback form gives `to` the current event type, so `onTransition` sees its narrowed payload.
+The array form is shorter when payload narrowing is unnecessary.
 
-By default, `event` in guards and `updateContext` callbacks is typed as the broad union of all events in `EventMap`. This is fine for guards that only use `context`.
+## Declare event work
 
-When you need `event.payload` narrowed to the specific event type, use the **factory form** for the `on` entry. Pass a function that receives an event-typed `to`:
+The callback form also receives `work`, which lets the event carry its own async: `run` executes,
+`commit` stages context from the result, and the candidates route on the staged context.
 
 ```ts
-type EventMap = {
-  submit: { username: string; password: string };
-  back: unknown;
-};
-
-createStep("login", {
+const login = createStep("login", {
   on: {
-    // Factory form: `to` is typed for "submit" — event.payload is
-    // { username: string; password: string } | undefined
-    submit: ({ to }) => [
-      to("admin").when(({ context, event }) => {
-        // event.payload is fully typed here
-        return context.role === "admin" && event.payload?.username !== "";
-      }),
-      to("dashboard")
-    ],
-
-    // Simple form: still works, event is the broad union
-    back: [to("blocked")]
+    SUBMIT: ({ work }) =>
+      work({
+        run: ({ snapshot, handlers }) => handlers.authenticate(snapshot.context.username),
+        commit: ({ result, updateContext }) =>
+          updateContext((context) => ({ ...context, error: result.ok ? null : "Login failed" })),
+        candidates: ({ to, stay }) => [to("dashboard").when(({ result }) => result.ok), stay()]
+      })
   }
 });
 ```
 
-The factory receives its own scoped `to` typed for that event. Call it exactly like the outer `to`. Both forms can be mixed freely across different events on the same step.
+`candidates` takes a plain array (guards see `context`/`handlers`) or a callback receiving a
+work-scoped `to` and `stay` whose guards also see the typed run `result`. `stay()` — also available
+in the event callback itself — is an unguarded candidate back at the declaring step: the named
+totality fallback. A work declaration whose candidates are all guarded triggers a build-time
+warning, silenced by `allowRollback: true`.
 
-## File Organization
+The transactional semantics — staging, rollback when no candidate is enabled, and the totality
+rule — are covered in [Graph § Transactional sends](../usage/graph#transactional-sends-event-work).
 
-A typical layout for larger flows:
+## Build and run
 
+```ts
+const definition = build({
+  initial: "login",
+  context: { role: "member" },
+  handlers: { isAdmin: (role) => role === "admin" },
+  steps: [login, dashboard, admin]
+});
+
+const machine = createGraphJourney(definition);
+machine.controls.start();
+await waitUntilSettled(machine);
+await machine.send("SUBMIT", { username: "ada" });
 ```
-src/
-  types.ts               ← StepId, Context, EventMap, StepMeta
-  api.ts                 ← shared API calls (no local deps)
-  builder.ts             ← createJourneyBuilder instance
-  steps/
-    Login.tsx            ← component
-    login.step.ts        ← step builder (imports builder + api)
-    Dashboard.tsx
-    dashboard.step.ts
-    ...
-  journey.ts             ← build() + createJourney()
-```
 
-`builder.ts` imports only from `types.ts` and `@rxova/journey-core`. Step files import from `builder.ts` and `api.ts`. `journey.ts` imports from all step files. Components import from `journey.ts`. No circular dependencies.
+`build` rejects duplicate step ids. Graph factory validation checks the initial id and every
+transition reference.
 
-## Builder vs. Inline Graph Object
+## File organization
 
-|                             | Inline graph object          | Builder                         |
-| --------------------------- | ---------------------------- | ------------------------------- |
-| Transitions location        | One central object           | Per-step files                  |
-| PR review                   | Entire flow in one diff      | Only changed steps              |
-| Co-location with UI         | No                           | Yes                             |
-| Boilerplate                 | Minimal                      | Slight upfront setup            |
-| Custom event payload typing | Full (per-edge `event.type`) | Full via factory form           |
-| Output                      | `JourneyDefinition`          | `JourneyDefinition` (identical) |
+Create the builder once and export `createStep` and `to`. Individual step modules can import those
+helpers without repeating generics. Assemble the step list and call `build` in one definition
+module.
 
-Both produce the same internal representation and are fully interchangeable. The inline object is often the right choice for small flows or when all transitions are authored by one person. The builder pays off when the flow grows, when multiple people own different steps, or when transitions feel disconnected from the components they drive.
+The builder is only an authoring layer. It does not add runtime behavior or bundle a second engine.
+
+## Where to next
+
+- [Graph](../usage/graph)
+- [TypeScript](../typescript)
+- [Transitions syntax](./transitions-syntax)

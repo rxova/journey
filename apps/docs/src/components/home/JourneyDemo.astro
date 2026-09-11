@@ -95,30 +95,28 @@ const { steps } = Astro.props;
 </div>
 
 <script>
-  import { createJourneyMachine } from "@rxova/journey-core";
+  import { createGraphJourney } from "@rxova/journey-core";
 
   type Context = { plan: "free" | "pro" };
   type StepId = "plan" | "account" | "payment" | "review";
+  type Events = { type: "next" };
 
   const root = document.querySelector<HTMLElement>("[data-demo]");
 
   if (root) {
-    const machine = createJourneyMachine<Context, StepId>({
+    const machine = createGraphJourney<Context, StepId, Events>({
       initial: "plan",
       context: { plan: "free" },
       steps: { plan: {}, account: {}, payment: {}, review: {} },
       transitions: {
-        plan: { goToNextStep: [{ to: "account" }] },
         // The whole point of the demo: one guard, evaluated in order, so `pro`
         // takes the payment detour and `free` never sees it.
-        account: {
-          goToNextStep: [
-            { to: "payment", when: ({ context }) => context.plan === "pro" },
-            { to: "review" }
-          ]
-        },
-        payment: { goToNextStep: [{ to: "review" }] },
-        review: { completeJourney: true }
+        next: [
+          { from: "plan", to: "account" },
+          { from: "account", to: "payment", when: ({ context }) => context.plan === "pro" },
+          { from: "account", to: "review" },
+          { from: "payment", to: "review" }
+        ]
       }
     });
 
@@ -130,7 +128,8 @@ const { steps } = Astro.props;
 
     const render = () => {
       const snapshot = machine.getSnapshot();
-      const { currentStepId, status, context, history } = snapshot;
+      const { currentStep, status, context, history } = snapshot;
+      const currentStepId = currentStep?.id ?? "";
 
       if (currentOut) currentOut.textContent = currentStepId;
       if (statusOut) statusOut.textContent = status;
@@ -138,7 +137,7 @@ const { steps } = Astro.props;
 
       // A step is "done" only if it is actually on the realized timeline —
       // `visited` would also light up the payment step someone backed out of.
-      const seen = new Set<string>(history.timeline.slice(0, history.index));
+      const seen = new Set<string>(history.timeline.slice(0, history.currentIndex));
       for (const node of root.querySelectorAll<HTMLElement>("[data-step]")) {
         const id = node.dataset.step ?? "";
         node.dataset.state =
@@ -153,8 +152,8 @@ const { steps } = Astro.props;
             chip.textContent = id;
             // Marks where the pointer sits, which is what makes stepping back
             // legible: the entries ahead of it stay on the timeline.
-            if (index === history.index) chip.dataset.at = "true";
-            else if (index > history.index) chip.dataset.ahead = "true";
+            if (index === history.currentIndex) chip.dataset.at = "true";
+            else if (index > history.currentIndex) chip.dataset.ahead = "true";
             return chip;
           })
         );
@@ -164,7 +163,7 @@ const { steps } = Astro.props;
         button.setAttribute("aria-pressed", String(button.dataset.planSet === context.plan));
       }
 
-      const atStart = history.index === 0;
+      const atStart = history.currentIndex <= 0;
       const finished = status === "completed" || status === "terminated";
       const setDisabled = (action: string, disabled: boolean) => {
         const button = el<HTMLButtonElement>(`[data-action="${action}"]`);
@@ -172,7 +171,7 @@ const { steps } = Astro.props;
       };
       setDisabled("back", atStart);
       setDisabled("next", finished);
-      setDisabled("latest", history.index >= history.timeline.length - 1);
+      setDisabled("latest", history.currentIndex >= history.timeline.length - 1);
     };
 
     root.addEventListener("click", (event) => {
@@ -181,28 +180,37 @@ const { steps } = Astro.props;
 
       const plan = button.dataset.planSet as Context["plan"] | undefined;
       if (plan) {
-        void machine.updateContext((context) => ({ ...context, plan }));
+        machine.context.update((context) => ({ ...context, plan }));
         return;
       }
 
       switch (button.dataset.action) {
         case "next":
-          void machine.goToNextStep();
+          // `review` is the last step: there is no outgoing `next`, so the
+          // journey completes explicitly instead of transitioning.
+          if (machine.getSnapshot().currentStep?.id === "review") machine.controls.complete();
+          else void machine.send("next");
           break;
         case "back":
-          void machine.goToPreviousStep();
+          void machine.navigate.goToPreviousStep();
           break;
         case "latest":
-          void machine.goToLastVisitedStep();
+          void machine.navigate.goToLastVisitedStep();
           break;
         case "reset":
-          void machine.resetJourney().then(() => machine.startJourney());
+          machine.controls.restart();
           break;
       }
     });
 
-    machine.subscribe(render);
-    void machine.startJourney().then(render);
+    // Identity selector with a never-equal comparator: re-render on every commit.
+    machine.subscriptions.subscribeSelector(
+      (snapshot) => snapshot,
+      render,
+      () => false
+    );
+    machine.controls.start();
+    render();
   }
 </script>
 

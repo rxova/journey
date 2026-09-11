@@ -1,93 +1,54 @@
 ---
-title: "Analytics Plugin"
+title: "Analytics"
 ---
 
-# Analytics Plugin
+The analytics plugin converts runtime observations into a stable event envelope and sends them to
+your analytics sink.
 
-The analytics plugin turns Journey observation events into normalized analytics envelopes.
-
-It does not change transition behavior. It listens to the runtime lifecycle and forwards a stable event shape to your analytics client.
-
-## Install And Use
+## Install and use
 
 ```ts
-import { createJourneyMachine } from "@rxova/journey-core";
 import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
 
-const machine = createJourneyMachine(journey, {
+const machine = createGraphJourney(definition, {
   plugins: [
     createAnalyticsPlugin({
-      machineId: "checkout",
-      includeStepMeta: true,
-      track: (event) => analytics.track(event.name, event.payload)
+      track: (event) => analytics.track(event.name, event.payload),
+      onError: (error, event) => report(error, event)
     })
   ]
 });
 ```
 
-## What You Get
+Lifecycle names include `journey.transition`, `journey.navigationBlocked`, `journey.error`, and
+`journey.<status>`.
 
-The plugin augments the machine with:
+## Event envelope
 
 ```ts
-type JourneyAnalyticsMachineExtension = {
-  trackAnalyticsEvent: (
-    name: string,
-    payload?: Record<string, unknown>
-  ) => JourneyAnalyticsTrackedEvent;
+type AnalyticsTrackedEvent = {
+  name: string;
+  timestamp: number;
+  stepId: string | null;
+  payload: Readonly<Record<string, unknown>>;
 };
 ```
 
-That lets you send custom analytics markers alongside the built-in lifecycle events.
+Sink exceptions are captured and never rethrown into the journey pipeline.
 
-## Built-In Event Names
+## API
 
-The plugin emits normalized events for:
+```ts
+const api = machine.plugins.analytics;
 
-- `journey_started`
-- `step_viewed`
-- `step_exited`
-- `transition_started`
-- `transition_succeeded`
-- `transition_failed`
-- `journey_completed`
-- `journey_terminated`
-- `navigation_previous`
-- `navigation_last_visited`
+api.trackAnalyticsEvent("coupon_applied", { code: "SAVE20" });
+api.getRecentEvents(); // last 100 successes and failures
+api.clearRecentEvents();
+```
 
-Every event includes:
+`now` may be supplied as an injectable clock for tests.
 
-- `name`
-- `timestamp`
-- `payload`
-- optional `machineId`
+## Where to next
 
-Depending on the event, payload fields may include:
-
-- raw `context`
-- `stepId`
-- `from`
-- `to`
-- `eventType`
-- `transitionId`
-- `dwellMs`
-- `durationMs`
-- `stepMeta`, `fromStepMeta`, `toStepMeta`
-
-## Options
-
-- `track(event)`: analytics sink
-- `machineId`: optional identifier included in every tracked event
-- `includeStepMeta`: include step metadata in emitted payloads
-- `onError(error, event)`: handles tracker failures without breaking the machine
-
-`payload.context` always contains the raw machine context from the current snapshot.
-
-## Safety Behavior
-
-If `track(...)` throws, the machine continues running.
-
-- when `onError` is provided, the plugin forwards the failure there
-- otherwise Journey reports a development warning
-
-Analytics failures never block transitions, navigation, or snapshot commits.
+- [Plugins](./overview)
+- [Writing a plugin](./authoring)

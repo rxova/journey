@@ -79,6 +79,14 @@ enough to invite `--no-verify` stops being a gate.
 
 - `pnpm run size`
 - Ensure a changeset exists for user-facing changes. If your PR is docs/CI-only/tooling that doesn't affect the packages, add the `skip-changeset` label.
+- **If you changed behavior, change the prose in the same PR.** A `minor` or `major` changeset that
+  touches `packages/*/src` should almost always come with a diff under `apps/docs/docs/**` or a
+  package `README.md`. Check three things no linter can:
+  1. **Earlier changesets in `.changeset/` still true?** They all land in one changelog entry, so a
+     later change that supersedes an earlier one must edit that earlier file, not just add its own.
+  2. **Does any doc still teach the old behavior?** Grep for the option or API you changed.
+  3. **Did you replace a pattern?** If the new API exists to fix a flaw in an old one, the docs
+     recommending the old one must change, or the fix ships invisible.
 
 ## How To Add A Feature
 
@@ -120,7 +128,8 @@ Releases are automated with Changesets and GitHub Actions.
 
 ## Browser Compatibility
 
-Rxova Journey targets modern evergreen browsers and React 18+.
+Rxova Journey targets modern evergreen browsers and React 18.2+ (the first release with
+`useSyncExternalStore`'s final semantics). CI runs the suite against both 18.2 and the latest 19.
 If you need legacy browser support (for example, older Safari or IE11),
 you must provide your own transpilation and polyfills in your app build.
 

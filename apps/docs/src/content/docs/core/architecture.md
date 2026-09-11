@@ -1,50 +1,82 @@
 ---
-title: "Machine Architecture"
-sidebar:
-  label: "Overview"
+title: "How it works"
 ---
 
-`packages/core/src/journey-machine` is the runtime assembly layer for Journey.
+V1 has one runtime for linear and graph journeys. Factories normalize their definition shape into a
+small shared configuration, `JourneyRuntime` owns changing state, `JourneyStore` distributes
+snapshots and named events, and a stable machine surface delegates to the runtime.
 
-This section is organized file-by-file. Each page maps to one source file in that folder and explains what that
-file owns, how it works, and which other docs to read next.
+```mermaid
+flowchart LR
+  L[createLinearJourney] --> N[normalized runtime config]
+  G[createGraphJourney] --> N
+  N --> R[JourneyRuntime]
+  R --> S[JourneyStore]
+  R --> P[PluginHost]
+  M[stable machine surface] --> R
+  S --> C[selectors and named events]
+```
 
-## File Map
+Everything that changes is rebuilt into an immutable linear or graph snapshot. The machine object
+itself never changes after creation.
 
-- [`index.ts`](./architecture/create-journey-machine.md): validates the definition, builds the initial
-  snapshot factory, creates every controller, and exposes the public machine API.
-- [`resolve-journey-definition.ts`](./architecture/journey-definition-resolver.md): normalizes authored
-  transition shapes into the single ordered list the runtime executes.
-- [`plugin-controller.ts`](./architecture/plugin-controller.md): runs plugin setup, snapshot hydration,
-  snapshot-change hooks, machine augmentation, and disposal.
-- [`runtime.ts`](./architecture/runtime.md): owns the live snapshot, event listeners, selector listeners,
-  and the serialized async queue.
-- [`async-state.ts`](./architecture/async-state.md): updates `snapshot.async` and keeps the global
-  `isLoading` flag in sync.
-- [`navigation.ts`](./architecture/navigation.md): commits step changes, terminal states, and history-pointer
-  navigation.
-- [`send.ts`](./architecture/send.md): resolves an incoming event into a transition, runs guards and context updates,
-  and delegates the final commit to navigation.
-- [`controls.ts`](./architecture/controls.md): handles out-of-band mutations such as reset, context updates,
-  error clearing, and disposal.
-- [`helpers.ts`](./architecture/helpers.md): provides the shared pure utilities for validation, snapshot
-  building, transition selection, and timeout handling.
+## Resolving definitions
 
-## How The Folder Works Together
+`createLinearJourney` validates a non-empty, duplicate-free step tuple, normalizes string shorthand,
+and uses the first id as `initial`.
 
-1. `createJourneyMachine` validates raw input and resolves the journey into a uniform runtime shape.
-2. Plugins get one setup pass and one chance to hydrate the initial snapshot before runtime work begins.
-3. The runtime becomes the single owner of mutable state, subscriptions, lifecycle events, and queued execution.
-4. `send.ts` handles transition selection and async work, while `navigation.ts` performs the actual snapshot commit.
-5. `controls.ts` covers the imperative operations that are intentionally outside transition matching.
-6. `helpers.ts` keeps the reusable logic pure so the controllers can stay narrow.
+`createGraphJourney` validates a non-empty step record, the initial id, and every transition source
+and target. It flattens the event-keyed transition map in declaration order. That order determines
+which enabled candidate wins.
 
-That split is the core architectural choice: separate transition selection from snapshot commits, and separate both
-from rendering concerns.
+Both factories pass the runtime:
 
-## Recommended Reading
+- kind, step ids, and normalized step configs;
+- initial id and context;
+- flattened graph transitions, or an empty list for linear;
+- handlers, options, and plugins;
+- a restore seed when the `persist` option finds a resumable record (see
+  [Runtime](./architecture/runtime)).
 
-- Start with [Core Overview](./overview.md) if you want the product model first.
-- Read [Core API Overview](./api/overview.md) if you want the public surface before internals.
-- Read [Snapshot](./snapshot.md), [Lifecycle](./lifecycle.md), [Async](./async.md), and
-  [History](./history.md) when you want the runtime guarantees described from the user-facing side.
+The graph builder is an authoring transform. Its `build()` result enters the same graph normalizer.
+
+## The pieces
+
+| Page                                                        | Covers                                                                    |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------- |
+| [Runtime](./architecture/runtime)                           | `JourneyRuntime`: status, timeline, context, generation, raised events.   |
+| [Store](./architecture/store)                               | `JourneyStore`: snapshot holder, subscription hub, listener isolation.    |
+| [Machine surface](./architecture/machine-surface)           | `buildMachineSurface`: the grouped public object.                         |
+| [Plugin host](./architecture/plugin-host)                   | Observe-only taps, namespaced APIs, snapshot extension stability.         |
+| [Work and transitions](./architecture/work-and-transitions) | Sync guards, transactional work, result routing, and the commit pipeline. |
+
+## Snapshot derivation
+
+Every publish rebuilds shared fields, then adds kind-specific fields:
+
+- linear derives order index, first/last flags, step order, and totals;
+- graph re-evaluates guards to derive unique available events and targets plus terminal state;
+- plugin snapshot derivers run last and receive their previous extension for memoization.
+
+The completed object and its nested runtime-owned records/arrays are frozen.
+
+## Source map
+
+| File                   | Responsibility                                                         |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `src/linear/linear.ts` | Linear definition normalization and factory.                           |
+| `src/graph/graph.ts`   | Graph normalization, factory, and `send` surface.                      |
+| `src/graph/builder.ts` | Colocated graph authoring transform.                                   |
+| `src/core/runtime.ts`  | Lifecycle, navigation, hooks, history, events, plugins, and snapshots. |
+| `src/core/machine.ts`  | Stable grouped public machine object.                                  |
+| `src/core/store.ts`    | Snapshot holder, selectors, and named event delivery.                  |
+| `src/core/types.ts`    | Shared public contracts.                                               |
+
+Files and classes under `packages/core/src` are implementation details. Import only from package
+export paths; see the [stability contract](./stability).
+
+## Where to next
+
+- [Machine API](./api/machine-api)
+- [Snapshot](./snapshot)
+- [Writing a plugin](./plugins/authoring)

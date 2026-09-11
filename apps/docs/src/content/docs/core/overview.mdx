@@ -2,72 +2,68 @@
 title: "Overview"
 ---
 
-import DocAccordion from "../../../components/DocAccordion.astro";
-import DocAccordionItem from "../../../components/DocAccordionItem.astro";
+Journey is a small, framework-independent runtime for multi-step flows. A journey owns the current
+step, context, history, lifecycle status, and async transition state. Your UI reads one immutable
+snapshot and drives the machine through a stable set of methods.
 
-Journey is a flow runtime for products that need more than “next” and “previous”.
+## Why a runtime at all
 
-It works well when your UI still looks like a wizard, but the behavior underneath is already a graph: branches, skips, retries, async checks, recovery paths, explicit close behavior, and stable history. The goal is not to force one shape. The goal is to let you model the flow you actually have while keeping the API simple.
+Component-local step state works until branching, async gates, backtracking, lifecycle outcomes, and
+observation must agree. Journey keeps those rules in one runtime so every consumer reads the same
+committed state and realized path.
 
-## Motivation
+## Two journey shapes, one runtime
 
-The usual stepper model starts with a list and a pointer. That is fine for small flows.
+| Shape  | Factory               | Use it when                                       |
+| ------ | --------------------- | ------------------------------------------------- |
+| Linear | `createLinearJourney` | Steps normally follow a declared order.           |
+| Graph  | `createGraphJourney`  | Events, guards, or branches decide the next step. |
 
-The problem appears when decisions move inside components. One step skips another. A validation call decides where the user goes next. A “close” action opens a confirmation branch. A pointer can still tell you where the user is, but it cannot explain why they got there or which path was taken.
+Both factories use the same snapshot/event runtime. The difference is in definition syntax,
+navigation rules, and the fields added to their discriminated snapshots.
 
-Journey keeps that logic in one place by making transitions explicit and event-driven. That gives teams freedom to model both wizard and graph behavior, simplicity in the runtime shape, and versatility when flows grow beyond a fixed sequence.
+```ts
+import { createLinearJourney } from "@rxova/journey-core";
 
-## Practical Advantages
+const checkout = createLinearJourney({
+  steps: ["account", "shipping", "review"] as const,
+  context: { email: "" }
+});
 
-- **Graph-Based**: model real branching, retries, skips, and recovery paths without hiding them in UI code.
-- **Transition-First**: put movement rules where they belong instead of scattering them across click handlers.
-- **Snapshot-Persisted**: keep the runtime truth in one snapshot with history, context, status, and async state.
-- **Pluggable**: add runtime capabilities such as persistence or structural path analysis without bloating the base machine.
-- **Observable**: subscribe to state or lifecycle events depending on whether you care about “what is true now” or “what just happened”.
-- **Async-Safe**: make async guards part of the model, with explicit phases and timeout support.
+checkout.controls.start();
+console.log(checkout.getSnapshot().currentStep?.id); // "account"
+```
 
-## Under The Hood
+## The machine surface
 
-Journey processes events through an internal queue. That matters because it gives the runtime a stable order of operations: one event starts, its matching transition is resolved, async work settles, the next snapshot commits, and only then does the next event continue. You do not get overlapping flow mutations fighting each other.
+The machine object is stable. Changing state lives in `getSnapshot()`.
 
-The runtime is snapshot-first. A journey definition describes the static model, but the snapshot describes the live state. That split is deliberate. Definitions stay small and readable, while the snapshot becomes the single place to inspect current step, realized history, context, visited state, status, and async phase.
+| Group           | Purpose                                                      |
+| --------------- | ------------------------------------------------------------ |
+| `controls`      | Start, pause, resume, complete, terminate, or restart a run. |
+| `navigate`      | Move by id or through the realized timeline.                 |
+| `subscriptions` | Observe selected snapshot values or named lifecycle events.  |
+| `context`       | Apply an immutable context update.                           |
+| `plugins`       | Access APIs contributed by registered plugins.               |
+| `send`          | Dispatch a typed event on graph journeys only.               |
 
-Transitions are the center of the system. Guards decide whether a move is allowed. `updateContext` derives the next context synchronously once a transition is selected. Ordered matching keeps behavior deterministic, which is one of the reasons the runtime stays easy to test and easier to explain during refactors.
+## Design principles
 
-The event stream is just as important as the snapshot. Snapshot subscriptions are useful when you want to render. Lifecycle events are useful when you want to debug, log, or analyze behavior. That event-driven architecture keeps UI concerns and runtime telemetry separate without losing visibility into either.
+- **Snapshots are the read model.** Context, status, history, async state, metadata, and derived
+  fields are read together.
+- **Definitions are data.** Linear and graph definitions can be created, tested, and reused before
+  a runtime exists.
+- **Navigation is explicit.** Reaching a final step does not complete the journey; call
+  `machine.controls.complete()` when the product flow is done.
+- **Linear has an escape hatch.** Occasional `goToStepById` jumps are allowed and ungated. When
+  named jumps or branching become normal behavior, convert the definition to graph mode.
+- **Work and effects have clear timing.** Next/previous work can stop before commit. `onLeave`,
+  `onTransition`, and `onEnter` are awaited after commit.
+- **Plugins observe.** They receive a read-only host and add namespaced machine and snapshot data.
 
-## Overview Guide
+## Where to next
 
-<DocAccordion>
-  <DocAccordionItem
-    title="Architecture"
-    summary="A file-by-file walkthrough of how the machine is assembled, queued, and committed."
-    defaultOpen
-  >
-    Journey is built around a small runtime model: steps, transitions, snapshot, and event
-    processing. Read [Machine Architecture](./architecture.md) when you want the technical picture,
-    including a file-level breakdown of `packages/core/src/journey-machine`, without dropping
-    straight into the API reference.
-  </DocAccordionItem>
-  <DocAccordionItem
-    title="Recipes"
-    summary="Short, practical patterns for the things product teams run into first."
-  >
-    Use [Recipes](./recipes.md) when you need a proven pattern such as explicit back overrides,
-    context updates, close-confirmation flows, timeout-aware transitions, or branch-heavy transition
-    builders.
-  </DocAccordionItem>
-  <DocAccordionItem
-    title="Examples"
-    summary="Longer scenarios that show how Journey feels in real flows."
-  >
-    Use [Examples](./examples.md) when you want to compare list-shaped wizards, graph flows,
-    observable runtimes, or plugin-assisted setups instead of reading features one by one.
-  </DocAccordionItem>
-</DocAccordion>
-
-## Where To Go Next
-
-- Read [About](./about.md) for the product model and design intent.
-- Read [Quickstart](./getting-started.md) if you want a typed example immediately.
-- Read [Usage](./usage.md) if you are choosing between wizard, graph, and headless runtime usage.
+- [Quickstart](./getting-started) builds a complete linear journey.
+- [Core concepts](./concepts) explains snapshots, events, hooks, and history.
+- [Choosing a mode](./usage/) compares linear and graph journeys.
+- [How it works](./architecture) follows an event through the shared runtime.

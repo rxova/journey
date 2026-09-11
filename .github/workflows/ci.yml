@@ -95,7 +95,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
-        run: node --import tsx ./scripts/check-changeset.ts
+        run: node --import tsx ./packages/common/tooling/check-changeset.ts
 
   checks:
     needs: [commitlint]
@@ -137,7 +137,7 @@ jobs:
       - uses: ./.github/actions/setup-pnpm
       - uses: ./.github/actions/turbo-cache
       - run: pnpm install --frozen-lockfile
-      # Both are in the local pre-push gate too (scripts/verify.ts). Running
+      # Both are in the local pre-push gate too (packages/common/tooling/verify.ts). Running
       # them here as well is what keeps a stale local checkout from being the
       # only thing between a newly-disclosed advisory and a release.
       #
@@ -199,12 +199,36 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Test with coverage thresholds
         run: pnpm run test
+      # Root `test` enforces the global thresholds; this enforces the per-file
+      # ones each package declares in its own vitest config.
+      - name: Enforce per-file package coverage
+        run: pnpm run packages:coverage
       - name: Add coverage summary
         if: always() && matrix.node-version == 24
-        run: node --import tsx ./scripts/coverage-summary.ts
+        run: node --import tsx ./packages/common/tooling/coverage-summary.ts
       - name: Upload coverage report
         if: always() && matrix.node-version == 24
         uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: coverage
+
+  # The peer range allows React 18.2, but the lockfile only ever installs 19, so
+  # without this the minimum supported version is an untested claim. It is a
+  # separate job rather than a matrix dimension because it has to rewrite the
+  # React version, which --frozen-lockfile forbids.
+  react-minimum-version:
+    needs: [commitlint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-pnpm
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - name: Install the minimum supported React
+        run: pnpm run react:min:install
+      - name: Typecheck against React 18 types
+        run: pnpm --filter @rxova/journey-react typecheck
+      - name: Run the React suite against React 18.2
+        run: pnpm --workspace-root vitest run packages/react --coverage.enabled=false

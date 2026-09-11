@@ -48,16 +48,15 @@ export const chromeStore =
   <QuickStart command="npm i @rxova/journey-core">
 
 ```ts
-import { createJourneyMachine } from "@rxova/journey-core";
+import { createLinearJourney } from "@rxova/journey-core";
 
-const machine = createJourneyMachine({
+const machine = createLinearJourney({
   context: { name: "" },
-  steps: { account: {}, review: {} },
-  transitions: ["account", "review"]
+  steps: ["account", "review"]
 });
 
-machine.startJourney();
-await machine.send({ type: "goToNextStep" });
+machine.controls.start();
+await machine.navigate.goToNextStep();
 ```
 
   </QuickStart>
@@ -228,20 +227,22 @@ await machine.goToStepById("step3");
 >
 
 ```tsx
-import { createJourney, type JourneyViews } from "@rxova/journey-react";
+import { createLinearJourney } from "@rxova/journey-react";
 
-const signup = createJourney(definition);
-
-const views: JourneyViews<StepId> = { start: Start, review: Review };
+const signup = createLinearJourney({
+  name: "signup",
+  context: { email: "" },
+  steps: ["start", "review"]
+});
 
 const App = () => (
-  <signup.JourneyProvider views={views}>
+  <signup.Provider views={{ start: <Start />, review: <Review /> }}>
     <signup.StepRenderer />
-  </signup.JourneyProvider>
+  </signup.Provider>
 );
 ```
 
-Need one runtime per request, route boundary or owned component boundary? Use <a href={`${base}react/overview/`}><code>createJourneyFactory</code></a> instead of creating the machine at module scope.
+Need one runtime per request, route boundary or owned component boundary? Use <a href={`${base}react/overview/`}><code>useJourney</code></a> instead of creating the machine at module scope.
 
 </Section>
 

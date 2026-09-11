@@ -8,22 +8,26 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run",
+    "test": "pnpm --workspace-root vitest run apps/devtools/test",
+    "coverage": "JOURNEY_COVERAGE_INCLUDE=apps/devtools/src/**/*.ts,apps/devtools/src/**/*.tsx JOURNEY_COVERAGE_DIR=coverage/devtools pnpm --workspace-root vitest run apps/devtools/test --coverage --coverage.reporter=text-summary",
     "test:browser": "node -e \"console.log('Browser integration tests are temporarily disabled.')\""
   },
   "dependencies": {
     "@rxova/journey-devtools-bridge": "workspace:^",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "@tanstack/react-virtual": "^3.14.3",
+    "lucide-react": "^1.21.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
-    "@crxjs/vite-plugin": "^2.3.0",
-    "@playwright/test": "^1.58.2",
+    "@crxjs/vite-plugin": "^2.7.0",
+    "@playwright/test": "^1.61.0",
+    "@rxova/journey-common": "workspace:*",
     "@types/chrome": "^0.1.37",
-    "@types/react": "^19.2.14",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.4",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "vite": "^7.3.2"
   },
   "engines": {

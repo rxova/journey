@@ -92,6 +92,9 @@ describe("panel main entrypoint", () => {
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(chromeMock.devtools.panels.setThemeChangeHandler).toHaveBeenCalledTimes(1);
     expect(mediaQuery.addEventListener).toHaveBeenCalledWith("change", expect.any(Function));
+
+    (mediaQuery.addEventListener as unknown as ReturnType<typeof vi.fn>).mock.calls[0]?.[1]();
+    expect(document.documentElement.dataset.theme).toBe("light");
   });
 
   it("updates the applied theme when DevTools theme changes", () => {

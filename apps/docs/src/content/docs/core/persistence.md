@@ -1,147 +1,117 @@
 ---
-title: "Persistence Plugin"
+title: "Persistence"
 ---
 
-Persistence is an opt-in plugin for machines that should survive reloads, tab closes, or multi-session work.
+The persistence plugin writes a serializable state slice whenever transitions settle, context
+changes, or status changes.
 
-It hydrates the starting snapshot from storage and persists later snapshot changes without pulling persistence code into the base runtime.
-
-## Install And Use
+## Install and use
 
 ```ts
-import { createJourneyMachine } from "@rxova/journey-core";
 import { createPersistencePlugin } from "@rxova/journey-core/persistence";
 
-const machine = createJourneyMachine(journey, {
+const machine = createLinearJourney(definition, {
   plugins: [
     createPersistencePlugin({
-      key: "journey.checkout",
-      version: 2,
-      blockList: ["auth.password"]
+      storage: localStorage,
+      key: "checkout",
+      clearOnTerminate: true
     })
   ]
 });
 ```
 
-Hydrated machines still start as `idled`. If persisted data said the flow was previously `running`, Journey restores the snapshot shape and current step but waits for an explicit `startJourney()` before accepting transition/navigation commands.
+`storage` must implement `getItem`, `setItem`, and `removeItem`. `setItem` may return a promise.
 
-## What It Persists
+## The `persist` creation option
 
-The persistence plugin stores the runtime snapshot shape that matters for recovery:
+For the common case, every factory accepts `persist` as sugar over the plugin:
 
 ```ts
-type JourneyPersistedSnapshot<TContext, TStepId extends string> = {
-  currentStepId: TStepId;
-  history: {
-    timeline: readonly TStepId[];
-    index: number;
-  };
-  context: TContext;
-  status: "idled" | "running" | "completed" | "terminated";
-  visited: Record<TStepId, boolean>;
+const machine = createLinearJourney(definition, {
+  persist: { key: "checkout" }
+});
+```
+
+`persist` expands into the persistence plugin, prepended to `plugins`. `storage` is optional here
+and defaults to `globalThis.localStorage`; creation throws when neither a `storage` value nor
+`localStorage` is available. Combining `persist` with an explicitly registered persistence plugin
+fails at creation as a duplicate plugin name. Use the explicit plugin form when you need
+`clearOnTerminate` or an injected clock.
+
+Unlike the explicit plugin, `persist` also [restores](#restore-behavior): a valid record found at creation
+seeds the machine so the first `start()` resumes where the record left off.
+
+## Persisted shape
+
+```ts
+type JourneyPersistedState = {
+  status: JourneyStatus;
+  context: unknown;
+  timeline: readonly string[];
+  currentIndex: number;
+  savedAt: number;
 };
 ```
 
-That is enough to restore where the user is, how they got there, and the data the flow depends on.
+The plugin serializes this value with `JSON.stringify`. Keep persisted context serializable.
 
-If you configure `allowList` or `blockList`, the plugin stores a filtered `context` instead of the entire one.
+## API and snapshot
+
+```ts
+const api = machine.plugins.persistence;
+
+api.inspectPersistedState(); // last value written by this machine
+api.readPersisted(); // re-read and parse storage
+api.clearPersisted();
+
+machine.getSnapshot().plugins.persistence;
+// { lastSavedAt: number | null }
+```
+
+Malformed or structurally invalid storage values return `null`.
+
+## Restore behavior
+
+The creation-time `persist` option restores. At creation, the factory reads the stored record; when
+it is restorable, the record seeds context, timeline, and pointer, and the first `start()` re-enters
+the persisted current step instead of the first/initial one:
+
+```ts
+const machine = createLinearJourney(definition, {
+  persist: { key: "checkout" }
+});
+
+machine.controls.start();
+// resumes at the persisted step when a valid record existed
+```
+
+A record is restorable when its status is `running` or `paused`, its `currentIndex` points inside
+its timeline, and every timeline step is declared by the current definition. Anything else —
+terminal-status records, definition drift, malformed or foreign payloads, a throwing storage read —
+is ignored and the journey starts fresh. Restore is best-effort by design and never throws.
+
+Details of a restored start:
+
+- the initial entry runs as a normal `stepEnter` with `from: null` and `direction: "jump"`;
+- visit counts are reconstructed from the restored timeline, so the re-entered step reports
+  `isFirstTimeVisit: false`;
+- an explicit `startAt` option wins over the persisted record;
+- `restart()` always begins a fresh run — the seed applies only to the first `start()`.
+
+Registering `createPersistencePlugin` explicitly in `plugins` stays save-only: plugins are
+observe-only and cannot seed the runtime. Use the `persist` option when you want restore.
 
 ## Options
 
-- `key`: unique storage key
-- `storage`: custom storage adapter
-- `version`: persisted schema version
-- `migrate(value, persistedVersion)`: migrate older payloads
-- `clearOnReset`: remove storage entry on reset instead of writing the initial snapshot
-- `allowList`: persist only matching dot-separated context paths
-- `blockList`: remove matching dot-separated context paths before storage
-- `serialize` / `deserialize`: custom codecs
-- `onError(error)`: persistence error handler
+| Option             | Meaning                                               |
+| ------------------ | ----------------------------------------------------- |
+| `storage`          | Required localStorage-compatible adapter.             |
+| `key`              | Required storage key.                                 |
+| `clearOnTerminate` | Remove the entry on termination; defaults to `false`. |
+| `now`              | Injectable clock, mainly for tests.                   |
 
-Path filters are rooted at `context` and use exact dot notation for object keys:
+## Where to next
 
-- `auth.password`
-- `profile.contact.email`
-- `preferences`
-
-Rules:
-
-- Parent paths include the full subtree below them.
-- `blockList` wins when a path appears in both lists.
-- Arrays are filterable only through their parent key such as `cart.items`, not with per-index paths.
-- Invalid path entries are reported through `onError(error)` and disable persistence for that machine instance.
-
-## Context Filtering Example
-
-```ts
-const machine = createJourneyMachine(journey, {
-  plugins: [
-    createPersistencePlugin({
-      key: "journey.checkout",
-      allowList: ["profile", "auth", "preferences.theme", "cart.items"],
-      blockList: ["auth.password"]
-    })
-  ]
-});
-```
-
-In that example:
-
-- `profile` is persisted as a full subtree.
-- `auth` is persisted, except for `auth.password`.
-- `preferences` keeps only `theme`.
-- `cart.items` keeps the full array value.
-- `auth.password` is never stored, even if `auth` is otherwise allowed.
-
-## Migration Example
-
-```ts
-const machine = createJourneyMachine(journey, {
-  plugins: [
-    createPersistencePlugin({
-      key: "journey.checkout",
-      version: 2,
-      migrate: (value, persistedVersion) => {
-        if (persistedVersion === 1) {
-          return {
-            ...value,
-            context: {
-              ...value.context,
-              couponCode: value.context.couponCode ?? null
-            }
-          };
-        }
-
-        return value;
-      }
-    })
-  ]
-});
-```
-
-If `migrate(...)` returns data that cannot be coerced into a valid snapshot, Journey reports the problem through `onError(error)` or, when `onError` is omitted, a development warning. Hydration then falls back to the initial snapshot.
-
-## Runtime Behavior
-
-The plugin does three things:
-
-1. Builds a persistence controller during machine setup.
-2. Hydrates the initial snapshot before normal runtime work begins.
-3. Persists later snapshot changes, except for async-only state transitions.
-
-That last part is important. Async progress markers are runtime details, not recovery state. What matters for hydration is the last stable snapshot.
-
-## Safety Behavior
-
-If persisted data is missing, malformed, or no longer valid for the current journey shape, hydration falls back to a safe initial snapshot.
-
-That keeps broken storage from producing broken flows.
-
-When context filtering is enabled, hydration merges the stored filtered context onto the journey's initial context. Fields you intentionally omitted from storage, such as `auth.password`, fall back to their initial values after reload.
-
-## Reset Behavior
-
-- `clearOnReset: true` removes the persisted entry when the machine resets.
-- `clearOnReset: false` writes the fresh initial `idled` snapshot back to storage.
-
-Choose based on whether reset in your product means “start clean” or “restart but keep resume-later support”.
+- [Autosave](./autosave)
+- [Plugins](./plugins/overview)

@@ -2,66 +2,92 @@
 title: "Async UI"
 ---
 
-React does not invent async behavior; it renders async state produced by Journey core.
+Journey separates work that must succeed **before** movement from effects that settle **after**
+movement. React renders both from the Core snapshot; it does not need a parallel local loading state.
 
-Source of truth for async semantics: [Core Async Behavior](../core/async.md).
+Guards are synchronous. A graph guard answers only whether a candidate is enabled for the current
+context and handlers. Network validation, file writes, and submissions belong in navigation work.
 
-## Read Async State in React
-
-```tsx
-const snapshot = bindings.useJourneySnapshot();
-
-const stepId = snapshot.currentStepId;
-const stepAsync = snapshot.async.byStep[stepId];
-const isBusy = snapshot.async.isLoading;
-```
-
-## Typical UI Mappings
-
-`phase` comes from:
+## Pre-commit navigation work
 
 ```tsx
-const phase = snapshot.async.byStep[snapshot.currentStepId].phase;
+function ContinueButton() {
+  const snapshot = checkout.useSnapshot();
+  const navigate = checkout.useNavigation();
+
+  const continueJourney = async () => {
+    const result = await navigate.goToNextStep({
+      run: ({ snapshot }) => orders.save(snapshot.context),
+      commit: ({ result: order, updateContext }) => {
+        updateContext((context) => ({
+          ...context,
+          orderId: order.id
+        }));
+      }
+    });
+
+    if (!result.ok && result.reason === "error") {
+      report(result.error);
+    }
+  };
+
+  return (
+    <button disabled={snapshot.machine.isLoading} onClick={() => void continueJourney()}>
+      {snapshot.machine.isLoading ? "Saving…" : "Continue"}
+    </button>
+  );
+}
 ```
 
-- `phase === "evaluating-when"`: disable controls or show validating state.
-- `phase === "error"`: show recoverable error UI.
-- `phase === "idle"`: render normal interactive step UI.
+While `run` is pending, the source step remains current and
+`snapshot.transition.phase === "working"`. If it fails, position and context stay unchanged. A
+successful synchronous `commit` publishes context and position together.
 
-## Common Component Pattern
+A step component can register the same work instead of passing it at the call site: the linear
+bundle's `useStepHandler(stepId, work)` gates plain `goToNextStep()` for that step while the
+component is mounted. A throw or rejection cancels the move and lands in
+`currentStep.async.error`; timeline moves and `goToStepById` bypass the gate.
+
+## Post-commit hooks
+
+Core step `onLeave` and `onEnter` hooks run after movement commits. During them, the destination
+is already current and `transition.phase` is `"leaving"` or `"entering"`. A hook error is
+observable but does not roll navigation back.
+
+Use hooks for analytics, cleanup, or loading destination data. Use navigation work whenever failure
+must prevent movement.
+
+## Which loading field to read
+
+- `snapshot.machine.isLoading` is the normal whole-flow flag.
+- `snapshot.transition` shows pending state, phase, source, and destination.
+- `snapshot.currentStep?.async` records loading, success, error, and the error value for the
+  current entry.
+- Bundle `useStep()` — linear and graph alike — returns the whole current step, including its
+  `async` state, or `null` while the machine is idle; `useStep()?.async` is the focused per-step
+  read.
 
 ```tsx
-const StepView = () => {
-  const snapshot = bindings.useJourneySnapshot();
-  const api = bindings.useJourneyApi();
+function ReviewError() {
+  const step = checkout.useStep();
+  const machine = checkout.useMachine();
 
-  const stepId = snapshot.currentStepId;
-  const state = snapshot.async.byStep[stepId];
+  if (step?.id !== "review" || !step.async.isError) return null;
 
-  if (state.phase === "evaluating-when") {
-    return <Spinner />;
-  }
-
-  if (state.phase === "error") {
-    return <ErrorPanel onRetry={() => api.clearStepError(stepId)} />;
-  }
-
-  return <MainStepContent />;
-};
+  return (
+    <aside>
+      <ErrorMessage error={step.async.error} />
+      <button onClick={() => machine.async.clearError()}>Dismiss</button>
+    </aside>
+  );
+}
 ```
 
-## Clearing Errors
+## Concurrency and results
 
-```tsx
-const api = bindings.useJourneyApi();
+Only one navigation settles at a time. A concurrent attempt resolves with
+`{ ok: false, reason: "transitioning" }`. Expected navigation failures resolve rather than reject,
+so `void navigate.goToNextStep()` is safe in a click handler.
 
-api.clearStepError(); // current step
-api.clearStepError("payment"); // specific step
-```
-
-## Important Boundary
-
-React bindings expose `snapshot.async`.
-Core defines when and why phase transitions happen.
-
-If you need exact timing and rules for `when`, `updateContext`, and async errors, read [Core Async Behavior](../core/async.md).
+Termination, restart, and disposal invalidate stale async continuations. A late hook completion
+cannot resurrect a terminated or disposed machine.

@@ -2,142 +2,128 @@
 title: "Snapshot"
 ---
 
-The snapshot is the single read model for a live journey machine.
+`machine.getSnapshot()` returns the complete immutable read model for one point in time.
 
-If you only inspect one value to understand what is true right now, inspect the snapshot.
-
-## Mental Model
-
-```text
-snapshot
-├─ currentStepId        -> where the machine is now
-├─ history              -> realized path + current pointer
-├─ context              -> shared runtime data
-├─ visited              -> whether each step was ever entered
-├─ status               -> idled / running / completed / terminated
-└─ async                -> loading phases and last async error by step
-```
-
-## Snapshot Shape
-
-```ts
-type JourneySnapshot<TContext, TStepId extends string> = {
-  currentStepId: TStepId;
-  history: {
-    timeline: readonly TStepId[];
-    index: number;
-  };
-  context: TContext;
-  visited: Record<TStepId, boolean>;
-  status: "idled" | "running" | "completed" | "terminated";
-  async: JourneyAsyncState<TStepId>;
-};
-```
-
-## Field Guide
-
-| Field              | Answers                                                            | Related docs                 |
-| ------------------ | ------------------------------------------------------------------ | ---------------------------- |
-| `currentStepId`    | Which step is active right now?                                    | [History](./history.md)      |
-| `history.timeline` | Which realized path did the user actually take?                    | [History](./history.md)      |
-| `history.index`    | Which timeline entry is considered "now"?                          | [History](./history.md)      |
-| `context`          | What shared data do guards, transition updates, and UI read from?  | [Async Behavior](./async.md) |
-| `visited`          | Which steps have ever been entered at least once?                  | [History](./history.md)      |
-| `status`           | Is the machine idled, active, complete, or terminated?             | [Lifecycle](./lifecycle.md)  |
-| `async`            | Is async work in flight, and which step owns the last async error? | [Async Behavior](./async.md) |
-
-Treat the snapshot as a read model. Rendering, debugging, persistence, and selector subscriptions should all be able
-to explain themselves from this one object.
-
-The value returned from `getSnapshot()` is immutable runtime output. Read it, derive from it, and discard it. Do not
-try to mutate it in place.
-
-## Example Snapshot
+## Shared shape
 
 ```ts
 const snapshot = machine.getSnapshot();
 
-const exampleSnapshot = {
-  currentStepId: "payment",
-  history: {
-    timeline: ["start", "details", "payment"],
-    index: 2
-  },
-  context: {
-    isVip: false
-  },
-  visited: {
-    start: true,
-    details: true,
-    payment: true,
-    review: false
-  },
-  status: "running",
-  async: {
-    isLoading: false,
-    byStep: {
-      start: { phase: "idle", eventType: null, transitionId: null, error: null },
-      details: { phase: "idle", eventType: null, transitionId: null, error: null },
-      payment: { phase: "idle", eventType: null, transitionId: null, error: null },
-      review: { phase: "idle", eventType: null, transitionId: null, error: null }
-    }
-  }
+snapshot.type; // "linear" | "graph"
+snapshot.status; // "idle" | "running" | "paused" | "completed" | "terminated"
+snapshot.context;
+snapshot.currentStep;
+snapshot.transition;
+snapshot.history;
+snapshot.machine;
+snapshot.plugins;
+```
+
+### Current step
+
+`currentStep` is `null` before initial entry. Otherwise it contains:
+
+| Field              | Meaning                                                   |
+| ------------------ | --------------------------------------------------------- |
+| `id`               | Current step id.                                          |
+| `metadata`         | Static definition metadata.                               |
+| `isFirstTimeVisit` | `true` only on the first entry of this step in the run.   |
+| `async`            | Loading, success, and error state for current entry work. |
+
+Linear current steps add `index`, `isFirstStep`, and `isLastStep`. Graph current steps add
+`isTerminal`.
+
+### Transition
+
+```ts
+snapshot.transition = {
+  pending: false,
+  phase: null, // "working" | "leaving" | "entering" | null
+  from: null,
+  to: null
 };
 ```
 
-## Invariants You Can Trust
-
-These stay true while a machine exists:
-
-- `history.timeline.length >= 1`
-- `0 <= history.index < history.timeline.length`
-- `currentStepId === history.timeline[history.index]`
-
-Those invariants are what make history navigation, snapshot selectors, and persistence safer to reason about.
-
-## How Snapshot Writes Happen
-
-Different runtime actions update the snapshot for different reasons:
-
-| Reason       | Typical source                                                                                   | See implementation                                                                          |
-| ------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| `transition` | step-to-step sends, terminal sends, headless `goToStepById`, declared `goToStepById` transitions | [Send Pipeline](./architecture/send.md), [Navigation Commits](./architecture/navigation.md) |
-| `navigation` | `goToPreviousStep(...)`, `goToLastVisitedStep()`                                                 | [Navigation Commits](./architecture/navigation.md)                                          |
-| `async`      | guard loading, idle, or error updates                                                            | [Async State](./architecture/async-state.md)                                                |
-| `context`    | `updateContext(...)`                                                                             | [Controls](./architecture/controls.md)                                                      |
-| `start`      | `startJourney()`                                                                                 | [Controls](./architecture/controls.md)                                                      |
-| `reset`      | `resetJourney()`                                                                                 | [Controls](./architecture/controls.md)                                                      |
-
-This is mainly visible to plugins and advanced instrumentation, but it is also a useful debugging frame: not every
-snapshot write means "a transition happened".
-
-## Practical Notes
-
-- `history.timeline` is realized history, not authored step order.
-- A fresh machine snapshot is `idled` until `startJourney()` is called.
-- Pointer moves such as `goToPreviousStep(...)` and `goToLastVisitedStep()` do not rewrite `visited`.
-- `context` and `async` are immutable read branches in the returned snapshot. Change runtime state through
-  `updateContext(...)`, transition updates, or reset/start APIs instead of mutating the
-  snapshot object.
-- `async.isLoading` is machine-wide, while `async.byStep[stepId]` gives you the step-level detail for UI.
-- Step definition metadata lives outside the snapshot. Read it through `machine.getStepMeta(stepId)` when needed.
-
-## Useful Reads
+### History
 
 ```ts
-const snapshot = machine.getSnapshot();
-
-const currentStep = snapshot.currentStepId;
-const currentAsync = snapshot.async.byStep[currentStep];
-const atHistoryTail = snapshot.history.index === snapshot.history.timeline.length - 1;
-const canRenderNormally = snapshot.status === "running" && currentAsync.phase === "idle";
+snapshot.history = {
+  timeline: ["account", "review"],
+  currentIndex: 1,
+  visited: { account: true, review: true },
+  canGoBack: true,
+  canGoForward: false
+};
 ```
 
-## Recommended Reading
+`visited` has an entry for every declared step.
 
-- Read [Runtime Reference Overview](./runtime-reference.md) for the section map.
-- Read [Lifecycle](./lifecycle.md) for the events that explain how this snapshot changed.
-- Read [Async Behavior](./async.md) for the `async` branch of the snapshot.
-- Read [Timeline Navigation](./history.md) for `history`, `visited`, and pointer behavior.
-- Read [Runtime Queue](./architecture/runtime.md) and [Navigation Commits](./architecture/navigation.md)
-  if you want the implementation side.
+### Machine state
+
+`snapshot.machine` provides `isLoading`, `isIdle`, `isRunning`, `isPaused`, `isCompleted`,
+`isTerminated`, and `outcome`. `isLoading` mirrors `snapshot.transition.pending`.
+
+Use `snapshot.machine.isLoading` for ordinary UI concerns such as disabling navigation controls.
+Read `snapshot.transition` when the UI needs phase/source/destination detail, and
+`snapshot.currentStep.async` when it needs the current entry's settled success or error.
+
+```ts
+snapshot.machine.outcome = null; // or { type: "completed" | "terminated", payload }
+```
+
+Completion and termination set `snapshot.machine.outcome`; only `restart()` clears it back to `null`.
+
+## Linear snapshot
+
+```ts
+if (snapshot.type === "linear") {
+  snapshot.steps.stepOrder;
+  snapshot.steps.totalSteps;
+  snapshot.steps.visitedStepCount;
+  snapshot.currentStep?.isLastStep;
+}
+```
+
+## Graph snapshot
+
+```ts
+if (snapshot.type === "graph") {
+  snapshot.declaredEvents;
+  snapshot.availableEvents;
+  snapshot.availableSteps;
+  snapshot.outgoingTransitions;
+  snapshot.steps.totalSteps;
+  snapshot.steps.visitedStepCount;
+  snapshot.currentStep?.isTerminal;
+}
+```
+
+`declaredEvents` includes every event declared from the current step. `availableEvents` and
+`availableSteps` include only candidates whose guard currently passes. `outgoingTransitions`
+explains both projections with each candidate's target, priority, guard result, enabled state, and
+whether first-enabled event dispatch would select it. A terminal step has no declared outgoing
+transitions, regardless of guard results.
+
+Introspection shows the resting-state answer. A
+[work send's](./usage/graph#transactional-sends-event-work) candidate guard that reads the run
+`result` is evaluated here with `result: undefined` — outside a send there is no result yet. During
+the send itself the same guard sees the live result, so a result-dependent candidate can report
+`guard: "failed"` in the snapshot and still win the route once the work has run.
+
+## Update rules
+
+Do not mutate a snapshot or its context. Use `machine.context.update()` and read the next snapshot.
+Subscribe to slices when a consumer only needs one value:
+
+```ts
+machine.subscriptions.subscribeSelector(
+  (next) => next.currentStep?.async,
+  (asyncState) => renderAsyncState(asyncState)
+);
+```
+
+## Where to next
+
+- [Machine API](./api/machine-api)
+- [Timeline and history](./history)
+- [Async behavior](./async)

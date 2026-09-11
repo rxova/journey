@@ -2,221 +2,159 @@
 title: "Recipes"
 ---
 
-Recipes are the shortest path to “how do I do this in a real flow?”
-
-## Use Previous-Step Navigation By Default
+## Validate before moving forward
 
 ```ts
-await machine.goToPreviousStep();
-```
-
-Use the built-in previous-step helper when product behavior really means "move the history pointer backward".
-
-## Override `back` When Product Rules Need It
-
-```ts
-const journey = {
-  transitions: {
-    review: {
-      back: [{ to: "confirmExit", id: "review-confirm-exit" }]
-    }
-  }
-};
-```
-
-Use this when “back” is not really “go to previous history item”, but a deliberate branch in the flow.
-
-## Skip A Step Without Hiding The Rule In The UI
-
-```ts
-const journey = {
-  transitions: {
-    details: {
-      goToNextStep: [
-        {
-          id: "details-skip-payment",
-          to: "review",
-          when: ({ context }) => context.isVip
-        }
-      ]
-    }
-  }
-};
-```
-
-This keeps the skip rule with the transition instead of burying it inside button logic.
-
-## Update Context As Part Of A Transition
-
-```ts
-const journey = {
-  transitions: {
-    payment: {
-      applyCoupon: [
-        {
-          id: "payment-review",
-          to: "review",
-          updateContext: ({ context, event }) => ({
-            ...context,
-            couponCode: event.payload?.code ?? null
-          })
-        }
-      ]
-    }
-  }
-};
-```
-
-Use transition `updateContext` when the context change belongs to the transition itself.
-
-## Add A Timeout To Async Work
-
-```ts
-const journey = {
-  transitions: {
-    verify: {
-      goToNextStep: [
-        {
-          id: "verify-approved",
-          to: "approved",
-          timeoutMs: 3_000,
-          when: async ({ context }) => (context.score ?? 0) >= 80
-        }
-      ]
-    }
-  }
-};
-```
-
-Timeouts are useful when a stalled async guard should fail cleanly instead of leaving the caller waiting forever.
-
-## Jump Back More Than One Step
-
-```ts
-await machine.goToPreviousStep(3);
-```
-
-This moves the history pointer backward without rewriting visited state.
-
-## Return To The Current Tail
-
-```ts
-await machine.goToLastVisitedStep();
-```
-
-Use this when the user inspected an earlier point in history and should return to the most recently realized step.
-
-## Read Step Metadata
-
-```ts
-const meta = machine.getStepMeta("details");
-console.log(meta?.title);
-```
-
-This is useful for reading UI-facing per-step definition data without mixing it into mutable runtime context.
-
-## Observe Lifecycle Events
-
-```ts
-const unsubscribe = machine.subscribeEvent((event) => {
-  if (event.type === "transition.error") {
-    console.error(event.transitionId, event.error);
+const result = await machine.navigate.goToNextStep({
+  run: async ({ snapshot }) => {
+    const errors = await validate(snapshot.context);
+    if (errors.length > 0) throw new ValidationError(errors);
+    return { validatedAt: Date.now() };
+  },
+  commit: ({ result, updateContext }) => {
+    updateContext((context) => ({ ...context, validatedAt: result.validatedAt }));
   }
 });
 ```
 
-Use lifecycle events when you care about how the flow changed, not just what the current snapshot is.
+If validation fails, the machine remains on the current step and staged context is not published.
 
-## Handle Async Transition Errors
-
-When a guard or `updateContext` fails, Journey moves the source step into `error` phase and resolves `send()` with `transitioned: false`.
-
-### Retry by re-sending the same event
-
-Re-sending the event is all that is needed to retry. Journey clears the error phase and restarts the transition pipeline from the beginning.
+## Ordered graph branches
 
 ```ts
-const result = await machine.goToNextStep();
-
-if (!result.transitioned && result.error) {
-  // surface result.error to the UI — let the user retry
-  // calling goToNextStep() again will start a fresh attempt
-}
-```
-
-### Dismiss without retrying
-
-Use `clearStepError()` when the user wants to cancel the failed operation and return the step to its normal interactive state without triggering a new transition.
-
-```ts
-// Resets the current step's async phase from "error" back to "idle"
-machine.clearStepError();
-
-// Or target a specific step
-machine.clearStepError("payment");
-```
-
-### Read the error in UI
-
-`snapshot.async.byStep[stepId].error` holds the thrown value from the failed guard or `updateContext`. Use it to show a contextual message.
-
-```ts
-const asyncState = snapshot.async.byStep[snapshot.currentStepId];
-
-if (asyncState.phase === "error") {
-  return (
-    <ErrorPanel
-      message={asyncState.error instanceof Error ? asyncState.error.message : "Something went wrong"}
-      onRetry={() => machine.goToNextStep()}
-      onDismiss={() => machine.clearStepError()}
-    />
-  );
-}
-```
-
-### Branch on error via a fallback transition
-
-If certain failures should navigate the user to a different step rather than retrying, use an additional transition with a `when` guard that inspects context set before the failure:
-
-```ts
-// On error: update context with failure info, then send a recovery event
-const result = await machine.goToNextStep();
-if (!result.transitioned && result.error) {
-  machine.updateContext((ctx) => ({ ...ctx, submitError: result.error }));
-  await machine.send({ type: "handleError" });
-}
-
-// In the journey definition:
 transitions: {
-  payment: {
-    handleError: [
-      { to: "errorFallback", when: ({ context }) => context.submitError != null },
-      { to: "review" }
-    ];
-  }
+  CONTINUE: [
+    { from: "details", to: "vipReview", when: ({ context }) => context.isVip },
+    { from: "details", to: "company", when: ({ context }) => context.isBusiness },
+    { from: "details", to: "review" }
+  ];
 }
 ```
 
-## Build Ordered Branches
+Put the fallback last. First enabled candidate wins.
+
+## Use typed event payloads
 
 ```ts
-const journey = {
-  transitions: {
-    details: {
-      goToNextStep: [
-        {
-          id: "details-extra",
-          to: "extra",
-          when: ({ context }) => context.includeExtra
-        },
-        {
-          id: "details-review",
-          to: "review"
-        }
-      ]
-    }
+type Event = { type: "APPLY_COUPON"; payload: { code: string } };
+
+APPLY_COUPON: {
+  from: "payment",
+  to: "review",
+  onTransition: ({ event, updateContext }) => {
+    updateContext((context) => ({
+      ...context,
+      coupon: event?.payload.code ?? null
+    }));
   }
-};
+}
+
+await machine.send("APPLY_COUPON", { code: "SAVE20" });
 ```
 
-Use ordered event arrays when a branch wants to read like a decision tree but the runtime still needs a simple first-match-wins model.
+## Retry failed navigation work
+
+```ts
+const result = await machine.navigate.goToNextStep(work);
+
+if (!result.ok && result.reason === "error") {
+  showValidation(result.error);
+  // Retry with the same work after the user fixes the input.
+}
+```
+
+Failures are represented by the result, `navigationBlocked`, and `error` events. They also live on
+`snapshot.currentStep.async`; call `machine.async.clearError()` to clear the snapshot error.
+
+## Route post-commit work
+
+```ts
+const verify = createStep("verify", {
+  onEnter: async ({ snapshot, updateContext, raise }) => {
+    try {
+      const receipt = await charge(snapshot.context.paymentToken);
+      updateContext((context) => ({ ...context, receipt }));
+      raise({ type: "SUCCEEDED" });
+    } catch (error) {
+      updateContext((context) => ({ ...context, paymentError: error }));
+      raise({ type: "FAILED" });
+    }
+  },
+  on: {
+    SUCCEEDED: [to("done")],
+    FAILED: [to("payment")]
+  }
+});
+```
+
+## Resume a saved position
+
+For the common case, let the `persist` creation option restore: a valid saved record seeds context,
+timeline, and position at creation, and the first `start()` resumes at the persisted step.
+
+```ts
+const machine = createLinearJourney(definition, { persist: { key: "checkout" } });
+
+machine.controls.start(); // resumes where the record left off
+```
+
+See [Persistence](./persistence#restore-behavior) for the record validity rules — invalid or drifted records
+are ignored and the journey starts fresh.
+
+When your restore policy is application-owned instead (approval gates, partial restores, a custom
+storage shape), read the stored state yourself, restore approved context before creation, start the
+machine, then navigate:
+
+```ts
+machine.controls.start();
+await waitUntilSettled(machine);
+await machine.navigate.goToStepById(resumeStepId);
+```
+
+For graph journeys, that id must be the target of an enabled transition from the current step.
+`waitUntilSettled` is defined in the [Quickstart](./getting-started).
+
+When the earlier steps do not need to be re-entered, pass the `startAt` runtime option instead:
+
+```ts
+const machine = createLinearJourney(definition, { startAt: resumeStepId });
+```
+
+The journey then starts directly at that step — earlier steps are neither entered nor visited and
+the timeline begins as `[startAt]`. An unknown id throws at creation.
+
+## Observe one UI slice
+
+```ts
+const stop = machine.subscriptions.subscribeSelector(
+  (snapshot) => ({
+    step: snapshot.currentStep?.id,
+    loading: snapshot.machine.isLoading
+  }),
+  render,
+  (a, b) => a.step === b.step && a.loading === b.loading
+);
+```
+
+## Observe blocked navigation
+
+```ts
+const stop = machine.subscriptions.subscribeEvent(
+  "navigationBlocked",
+  ({ reason, from, to, error }) => log({ reason, from, to, error })
+);
+```
+
+## Read current-step metadata
+
+```ts
+const title = machine.getSnapshot().currentStep?.metadata.title;
+```
+
+Metadata for non-current steps remains in your reusable definition.
+
+## Where to next
+
+- [Async behavior](./async)
+- [Machine API](./api/machine-api)
+- [Plugins](./plugins/overview)

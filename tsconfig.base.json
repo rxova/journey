@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
-    "ignoreDeprecations": "5.0",
     "target": "ES2020",
+    // Emit stays ES2020; `lib` only says which runtime APIs may be *typed*.
+    // Journey targets evergreen browsers and Node >= 20.11, all of which have
+    // had `Object.hasOwn` and `Error`'s `cause` since 2021 — without this,
+    // every use needed a workaround. Matches tsconfig.test.json.
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "strict": true,
@@ -15,20 +19,34 @@
     "noUncheckedIndexedAccess": true,
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
-    "esModuleInterop": false,
+    "esModuleInterop": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
     "paths": {
-      "@rxova/journey-core": ["packages/core/src/index.ts"],
-      "@rxova/journey-core/analytics": ["packages/core/src/plugins/analytics/index.ts"],
-      "@rxova/journey-core/autosave": ["packages/core/src/plugins/autosave/index.ts"],
-      "@rxova/journey-core/diagnostics": ["packages/core/src/plugins/diagnostics/index.ts"],
-      "@rxova/journey-core/execution-paths": ["packages/core/src/plugins/execution-paths/index.ts"],
-      "@rxova/journey-core/persistence": ["packages/core/src/plugins/persistence/index.ts"],
-      "@rxova/journey-core/replay": ["packages/core/src/plugins/replay/index.ts"],
-      "@rxova/journey-react": ["packages/react/src/index.ts"],
-      "@rxova/journey-devtools-bridge": ["packages/devtools-bridge/src/index.ts"]
+      "@rxova/journey-core": ["./packages/core/src/index.ts"],
+      "@rxova/journey-core/connectors/immer": ["./packages/core/src/connectors/immer/immer.ts"],
+      "@rxova/journey-core/testing": ["./packages/core/src/__tests__/helpers.ts"],
+      "@rxova/journey-core/analytics": ["./packages/core/src/plugins/analytics/analytics.ts"],
+      "@rxova/journey-core/autosave": ["./packages/core/src/plugins/autosave/autosave.ts"],
+      "@rxova/journey-core/diagnostics": ["./packages/core/src/plugins/diagnostics/diagnostics.ts"],
+      "@rxova/journey-core/persistence": ["./packages/core/src/plugins/persistence/persistence.ts"],
+      "@rxova/journey-core/replay": ["./packages/core/src/plugins/replay/replay.ts"],
+      "@rxova/journey-core/subscription-enhancer": [
+        "./packages/core/src/plugins/subscription-enhancer/subscription-enhancer.ts"
+      ],
+      "@rxova/journey-core/execution-paths": [
+        "./packages/core/src/plugins/execution-paths/execution-paths.ts"
+      ],
+      "@rxova/journey-core/convert": ["./packages/core/src/convert/convert.ts"],
+      "@rxova/journey-react": ["./packages/react/src/index.ts"],
+      "@rxova/journey-react/testing": ["./packages/react/src/__tests__/helpers.tsx"],
+      "@rxova/journey-react/graph": ["./packages/react/src/graph.tsx"],
+      "@rxova/journey-devtools-bridge": ["./packages/devtools-bridge/src/index.ts"],
+      "@rxova/journey-devtools-bridge/testing": [
+        "./packages/devtools-bridge/src/__tests__/helpers.ts"
+      ],
+      "@rxova/journey-common": ["./packages/common/src/index.ts"],
+      "@rxova/journey-common/*": ["./packages/common/src/*.ts"]
     }
   }
 }

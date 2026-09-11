@@ -2,258 +2,365 @@
 title: "Provider and Hooks API"
 ---
 
-React bindings are the UI-facing wrapper for the core machine.
+This page focuses on React ownership and subscription behavior. Runtime navigation, lifecycle, and
+snapshot semantics come directly from Core; see [Core API](../core/api/overview.md) and
+[Lifecycle](../core/lifecycle.md).
 
-Use this page for React integration details.
-Use Core docs for runtime semantics: [Core API](../core/api/overview.md) and [Core Lifecycle](../core/lifecycle.md).
+## `createLinearJourney()`
 
-The value returned from `createJourney(...)` is a `JourneyRuntime`.
-
-## Ownership Model
-
-One `createJourney(...)` call creates one machine instance immediately.
-
-- `JourneyProvider` does not create a machine. It only supplies `views`, lifecycle callbacks, and provider-owned startup for the already-created runtime.
-- Rendering the same runtime in multiple places shares one journey state.
-- Independent journeys require separate `createJourney(...)` calls.
-- `createJourneyFactory(...)` returns a typed helper for producing fresh runtimes from the same definition/options pair.
-
-This is the tradeoff that keeps the React API fully typed without repeating generics at each hook callsite.
-
-## `JourneyProvider` And `StepRenderer`
+`createLinearJourney(definition, options?)` captures Core's linear definition shape —
+`{ context, steps }`, plus an optional `name` used for the Provider's React DevTools displayName —
+and creates **one standalone machine** right in the factory, at module scope. It returns a bundle
+around that machine: `machine`, `Provider`, `StepRenderer`, the reactive hooks `useSnapshot`,
+`useSelector`, `useStep`, `useContext`, and `useSubscribeEvent`, the stable accessors
+`useMachine`, `useControls`, and `useNavigation`, the forward gate `useStepHandler`, and the
+verbatim delegates `navigate` and `updateContext` — each pre-bound to the definition's context and
+step-id types. A bare string in `steps` is shorthand for `{ id }`; a config object also carries
+Core's per-step config: `metadata` plus `onEnter`/`onLeave` hooks.
 
 ```tsx
-const checkout = createJourney(definition);
+import { createLinearJourney } from "@rxova/journey-react";
 
-<checkout.JourneyProvider views={views}>
-  <checkout.StepRenderer />
-</checkout.JourneyProvider>;
-```
-
-- `JourneyProvider` supplies `views` and lifecycle callbacks.
-- `JourneyProvider` auto-starts an `idled` machine during the client commit phase, before child passive effects run.
-- `JourneyProvider` does not dispose the machine by default.
-- Provider-owned startup failures go to `onError(error, { phase: "start" })` when that callback is provided.
-- Set `disposeOnUnmount` when the provider fully owns a component-scoped runtime and should clean it up on unmount.
-- `StepRenderer` renders the component matching `snapshot.currentStepId`.
-- `StepRenderer` must be used inside `JourneyProvider`.
-
-## Hooks And Responsibilities
-
-- `checkout.useJourneySnapshot()`
-  Read-only runtime state for rendering.
-
-- `checkout.useJourneyComputed()`
-  Read-only derived state for step progress and lifecycle flags.
-
-- `checkout.useJourneySelector(selector, equalityFn?)`
-  Read only the selected part of snapshot state.
-
-- `checkout.useJourneyEvent(listener)`
-  Subscribe to typed lifecycle and telemetry events.
-
-- `checkout.useJourneyApi()`
-  Safe action surface for UI controls.
-
-- `checkout.useStepApi(stepId)`
-  Same action surface as `useJourneyApi()`, but with `send(...)` narrowed to custom events handled by that step or `global`.
-
-Hooks do not need a provider because they are closed over the created machine. Without a provider, startup is manual through `checkout.useJourneyApi().startJourney()` or `checkout.machine.startJourney()`.
-Server rendering still reads the initial `idled` snapshot. Provider-owned startup happens after hydration on the client.
-Use `@rxova/journey-react` for server-safe imports and `@rxova/journey-react/client` when a Next.js App Router client boundary should be explicit.
-
-If a component owns the runtime, memoize it and opt into provider-owned disposal:
-
-```tsx
-const makeCheckoutJourney = createJourneyFactory(definition);
-
-const CheckoutCard = () => {
-  const checkout = React.useMemo(() => makeCheckoutJourney(), []);
-
-  return (
-    <checkout.JourneyProvider views={views} disposeOnUnmount>
-      <checkout.StepRenderer />
-    </checkout.JourneyProvider>
-  );
+type CheckoutContext = {
+  shipping: ShippingDetails | null;
+  shippingId: string | null;
 };
+
+const initialContext: CheckoutContext = { shipping: null, shippingId: null };
+
+const checkout = createLinearJourney({
+  name: "checkout",
+  context: initialContext,
+  steps: ["account", { id: "shipping", metadata: { title: "Shipping" } }, "review"]
+});
 ```
 
-For request-scoped or route-scoped SSR usage, put the runtime inside the owned client boundary instead of exporting a module singleton:
+`TContext` is inferred from `definition.context` — annotate the value, as above, rather than
+casting — and the step-id union is inferred from the `steps` tuple; call sites never pass
+generics. See [TypeScript Types](./typescript.md) for the inference story.
+
+Declared `metadata` surfaces at `snapshot.currentStep.metadata` while the step is current; there is
+no separate per-step metadata lookup. Definition `onEnter`/`onLeave` hooks run in Core, outside
+React — they cannot close over component state or props. Component-scoped async work belongs in
+[`useStepHandler()`](#usestephandler).
+
+The second argument is Core's runtime options, verbatim and frozen per bundle: `startAt`,
+`persist`, `plugins`, `defaultTimeoutMs`, `onListenerError`, and `autoStart` — which is three-way
+in this tier: omitted (the default) starts the machine when the bundle's first Provider or hook
+mounts, `true` starts it eagerly inside the factory, and `false` waits for
+`checkout.machine.controls.start()`. See [Bundle options](./overview.md#bundle-options). The `startAt` option starts the
+journey directly at that step: earlier steps are never entered or visited, their
+`onEnter`/`onLeave` hooks never fire, the timeline begins as `[startAt]`, and
+`controls.restart()` returns to it. An unknown `startAt` id throws at creation.
+
+The machine outlives any component: every hook closes over it and works with or without the
+Provider, non-React code drives it via `checkout.machine`, `checkout.navigate`, and
+`checkout.updateContext(...)`, and unmounting disposes nothing. The consequences are worth stating
+plainly: all Providers and hooks share the one machine; journey state survives unmounts and
+remounts, so reset explicitly — `controls.restart()` from a terminal status, `terminate()` first
+when mid-flight; and under SSR a module-scope machine is shared across requests. For per-mount
+or per-request isolation, own the bundle with `useJourney()`
+(see [Own a bundle inside a component](./patterns.md#own-a-bundle-inside-a-component)), or own a
+Core machine yourself and read it with `React.useSyncExternalStore`
+(see [Caller-owned machines](#caller-owned-machines)).
+
+## `<Provider>`, `views`, and `<StepRenderer>`
+
+The Provider takes exactly two props — `views` and `children` — and exists to hand the views to
+`<StepRenderer>`, the one piece that must render inside it. `views` maps each declared step id to
+what that step renders; `StepRenderer` renders the active step's view wherever you place it, so
+headers and footers are ordinary siblings. Step config lives in the definition, never in `views` —
+a view supplies markup, nothing else.
 
 ```tsx
-"use client";
+<checkout.Provider
+  views={{
+    account: <Account />,
+    shipping: <Shipping />,
+    review: <Review />
+  }}
+>
+  <Progress />
+  <checkout.StepRenderer fallback={<p>Starting…</p>} />
+  <Controls />
+</checkout.Provider>
+```
 
-export function CheckoutFlow({ customerId }: { customerId: string }) {
-  const checkout = React.useMemo(
-    () =>
-      createJourney({
-        ...definition,
-        context: {
-          ...definition.context,
-          customerId
-        }
-      }),
-    [customerId]
-  );
+`views` is typed as `JourneyViews<TStepId>` — `{ [K in TStepId]: ReactNode }` — so coverage
+is checked entirely at compile time: a missing key and an undeclared key are both TS errors, and
+there is no runtime assertion. A `null` view value is legal and renders nothing. `StepRenderer`
+shows its optional `fallback` whenever no view can render: while the machine is idle
+(`autoStart: false` before `start()`, when `currentStep` is `null`) or, in plain JS, when the
+active id has no key. Values are elements, not component types, so props and wrappers stay inline.
+The active view is keyed by its step id: every entry into a step mounts the view fresh, so local
+component state does not survive leaving the step.
+
+There are no other Provider props. Starting position and runtime configuration are factory
+options, step config lives in the definition, and events are observed with `useSubscribeEvent` in
+a component — or with `machine.subscriptions` at module scope, no React involved:
+
+```ts
+checkout.machine.subscriptions.subscribeEvent("statusChange", ({ current }) => {
+  if (current === "completed") analytics.track("checkout completed");
+});
+```
+
+## Reactive hooks: `useSnapshot()`, `useSelector()`, `useStep()`, `useContext()`, and `useSubscribeEvent()`
+
+The reactive hooks subscribe to the bundle's machine directly — none of them needs a Provider
+above it:
+
+```tsx
+function Controls() {
+  const snapshot = checkout.useSnapshot();
+  const navigate = checkout.useNavigation();
+
+  const currentStep = snapshot.currentStep;
+  if (currentStep === null) return null; // idle: autoStart: false, not started yet
 
   return (
-    <checkout.JourneyProvider views={views} disposeOnUnmount>
-      <checkout.StepRenderer />
-    </checkout.JourneyProvider>
+    <nav>
+      <p>
+        {currentStep.id} ({currentStep.index + 1} / {snapshot.steps.totalSteps})
+      </p>
+      <button disabled={currentStep.isFirstStep} onClick={() => void navigate.goToPreviousStep()}>
+        Back
+      </button>
+      <button disabled={snapshot.machine.isLoading} onClick={() => void navigate.goToNextStep()}>
+        Continue
+      </button>
+    </nav>
   );
 }
 ```
 
-If you want two isolated journeys on one screen, create two runtimes:
+Every read is a snapshot field: `snapshot.currentStep.id/.index/.isFirstStep/.isLastStep/`
+`.isFirstTimeVisit/.metadata/.async`, `snapshot.steps.totalSteps/.stepOrder`,
+`snapshot.history.visited`, `snapshot.status`, `snapshot.machine.isLoading/.isPaused`, and
+`snapshot.context`. `snapshot.currentStep` is `null` while the machine is idle — exactly as in
+the graph tier. See [Snapshot](../core/snapshot.md) for the complete contract.
 
 ```tsx
-const CheckoutCard = () => {
-  const checkout = React.useMemo(() => createJourney(definition), []);
+const isLoading = checkout.useSelector((snapshot) => snapshot.machine.isLoading);
+const step = checkout.useStep();
+const context = checkout.useContext();
 
-  return (
-    <checkout.JourneyProvider views={views}>
-      <checkout.StepRenderer />
-    </checkout.JourneyProvider>
-  );
-};
-
-export const DualCheckout = () => (
-  <>
-    <CheckoutCard />
-    <CheckoutCard />
-  </>
+checkout.useSubscribeEvent("stepEnter", ({ from, to, direction }) =>
+  analytics.track("step", { from, to, direction })
 );
 ```
 
-:::caution[Module singletons and conditional rendering]
+Prefer `useSelector` when a component needs only one changing value; the optional equality
+function controls when React re-renders, and selectors should be pure and not mutate snapshot
+data. `useStep()` returns the whole `currentStep` — id, metadata, async state — or `null` while
+idle. `useContext()` returns the live context value.
 
-Module-level singletons are safe to show and hide with `JourneyProvider` because the provider does not dispose by default.
+`useSubscribeEvent` requires an exact Core subscription name and receives its exact payload; the
+listener reference can change without forcing a new subscription, and the subscription lasts for
+the component's lifetime. `stepEnter` carries `{ snapshot, from, to, direction }`, where
+`direction` is `"forward" | "backward" | "jump"` by intent: only `goToNextStep` and
+`goToPreviousStep` report `"forward"`/`"backward"`; the initial entry, `goToStepById`,
+`goToStepByIndex`, and `goToLastVisitedStep` report `"jump"`. `stepLeave` carries
+`{ snapshot, from, to }`, `statusChange` carries `{ snapshot, previous, current }`, and `error`
+carries `{ snapshot, error, phase, stepId }`.
+
+## Stable accessors and outside-React commands
 
 ```tsx
-// ✅ Safe: hiding the provider does not dispose the shared runtime
-const journey = createJourney(definition);
+const machine = checkout.useMachine();
+const controls = checkout.useControls();
+const navigate = checkout.useNavigation();
 
-function App() {
-  const [show, setShow] = React.useState(true);
-  return show ? <journey.JourneyProvider views={views}>...</journey.JourneyProvider> : null;
+controls.pause();
+controls.resume();
+await navigate.goToPreviousStep();
+await checkout.navigate.goToNextStep();
+checkout.updateContext((context) => ({ ...context, dirty: true }));
+```
+
+The accessors return the machine and its stable grouped methods without subscribing — they never
+cause a re-render. Every command is a machine group: `machine.navigate.*` (including linear
+`goToStepByIndex`), `machine.controls.*`, `machine.context.update(updater)`, and
+`machine.async.clearError()`; navigation methods return Core `NavigationResult` values. `navigate`
+and `updateContext` are also plain properties on the bundle — `machine.navigate` and
+`machine.context.update`, verbatim — callable from React or anywhere else. Integrations attach to
+the machine directly:
+
+```tsx
+React.useEffect(() => attachJourneyDevtools(checkout.machine, { mutationsEnabled: false }), []);
+```
+
+See [Machine API](../core/api/machine-api.md) for the complete contracts.
+
+## `useStepHandler()`
+
+A step component can register transactional work that must succeed before forward navigation. The
+step id is explicit — the first argument, typed to the declared union:
+
+```tsx
+function ShippingStep() {
+  checkout.useStepHandler("shipping", {
+    run: ({ snapshot }) => shippingApi.save(snapshot.context.shipping),
+    commit: ({ result, updateContext }) => {
+      updateContext((context) => ({
+        ...context,
+        shippingId: result.id
+      }));
+    }
+  });
+
+  return <ShippingForm />;
 }
 ```
 
-If the runtime is component-owned, opt into provider disposal so each mount gets a fresh machine:
+The hook is a thin shell over Core's
+`machine.navigate.registerNextStepInterceptor(stepId, work)`: the registration lasts while the
+calling component is mounted (it unregisters on unmount), and
+`machine.navigate.goToNextStep()` runs the work when no explicit work is passed. `run` happens
+before movement; `commit` publishes its updates atomically with movement. A failed run leaves the
+source step and context in place, and the error lands in `snapshot.currentStep.async.error` until
+`machine.async.clearError()`; `snapshot.machine.isLoading` is `true` while the work is pending.
+The gate is forward-only: timeline moves and `goToStepById` bypass it, and it never fires on the
+final step (`goToNextStep` on the last step never auto-completes).
 
-```tsx
-// ✅ Each mount creates a fresh machine and disposes it on unmount
-function App() {
-  const [show, setShow] = React.useState(true);
-  const journey = React.useMemo(() => createJourney(definition), []);
-  return show ? (
-    <journey.JourneyProvider views={views} disposeOnUnmount>
-      ...
-    </journey.JourneyProvider>
-  ) : null;
-}
-```
+## Growing into the graph tier
 
-:::
-
-## `useJourneyComputed()`
-
-Use `useJourneyComputed()` when the UI needs derived progress flags without duplicating machine logic in components.
-
-```tsx
-const computed = checkout.useJourneyComputed();
-
-if (computed.mode === "linear") {
-  return (
-    <p>
-      Step {computed.activeStepIndex + 1} of {computed.stepCount}
-    </p>
-  );
-}
-
-return <p>Current step: {computed.activeStepId}</p>;
-```
-
-This hook is read-only. Keep commands in `useJourneyApi()`.
-
-## `useJourneyApi()` Surface
-
-Common methods:
-
-- `startJourney()`
-- `goToNextStep`
-- `goToPreviousStep(steps?)`
-- `goToLastVisitedStep()`
-- `completeJourney`
-- `terminateJourney`
-- `send`
-- `updateContext`
-- `getStepMeta`
-- `clearStepError`
-- `resetJourney`
-
-Imperative jump:
+The captured definition is Core's own `LinearJourneyDefinition` shape, so the same object converts
+directly when an ordered flow grows into named graph events:
 
 ```ts
-await api.goToStepById("review");
-await api.send({ type: "goToStepById", stepId: "review", payload: { source: "link" } });
+import { linearToGraphDefinition } from "@rxova/journey-core/convert";
+
+const definition = {
+  context: initialContext,
+  steps: ["account", "shipping", "review"]
+} as const;
+
+const checkout = createLinearJourney(definition);
+const graphDefinition = linearToGraphDefinition(definition);
 ```
 
-Guard and `updateContext` failures resolve through `result.error` instead of rejecting.
+## Graph bundle
 
-`updateContext` follows core timing semantics. It updates the visible snapshot immediately, but it does not re-run an async transition already in `evaluating-when`. If the change must affect the current transition, apply it before `send(...)` or await the transition first. See [Core Async Behavior](../core/async.md).
-
-## `useStepApi(stepId)`
-
-Use `useStepApi(stepId)` inside step components when you want TypeScript to narrow `send(...)` to events that the current step can actually handle:
+`createGraphJourney(definition, options?)` returns the linear bundle's twin with graph verbs —
+the same standalone machine created by the factory at module scope, `send` where linear has
+`navigate` gating. Every hook closes over the machine and works with or without the Provider, and
+non-React code drives it through `checkout.machine`, `checkout.send(...)`, and
+`checkout.updateContext(...)` — verbatim delegates. `autoStart` behaves identically here: omitted
+starts the machine on the first mount, `true` starts it in the factory, `false` waits for
+`checkout.machine.controls.start()`.
 
 ```tsx
-const EmailCode = () => {
-  const api = checkout.useStepApi("emailCode");
+const checkout = createGraphJourney(checkoutDefinition);
 
-  return <button onClick={() => void api.send({ type: "verifyCode" })}>Verify</button>;
-};
+<checkout.Provider
+  views={{
+    cart: <Cart />,
+    shipping: <Shipping />,
+    review: <Review />,
+    done: <Done />
+  }}
+>
+  <ProgressHeader />
+  <checkout.StepRenderer fallback={<MissingStep />} />
+  <Toolbar />
+</checkout.Provider>;
 ```
 
-The narrowed event set includes custom events declared on that step plus custom events declared in `global`. Built-in methods such as `goToNextStep()`, `goToPreviousStep()`, `startJourney()`, and `resetJourney()` stay available.
+The Provider exists only to hand `views` to `<StepRenderer>`, which is the one piece that must
+render inside it. `views` is `JourneyViews<TStepId>` — `{ [K in TStepId]: ReactNode }`, the
+same contract as the linear tier: exhaustively type-checked, element values so props and wrappers
+stay inline. `StepRenderer` renders the active step's view wherever you place it (headers and
+footers are ordinary siblings), keys it by step id so each entry mounts the view fresh, and shows
+its optional `fallback` while the machine is idle.
 
-## Provider Errors
+The standalone-machine consequences match the linear tier: all Providers and hooks share the one
+machine; journey state survives unmounts and remounts, so reset explicitly —
+`controls.restart()` from a terminal status, `terminate()` first when mid-flight; and under SSR
+the module-scope machine is shared across requests. For per-mount or per-request isolation, own a
+Core machine yourself and read it with `React.useSyncExternalStore` (see
+[Caller-owned machines](#caller-owned-machines)).
 
-`JourneyProvider` accepts:
-
-- `onError(error, { phase: "start" })`
-
-Use `useJourneyEvent(...)` or the underlying machine subscriptions for lifecycle observation.
-
-## Direct Machine Access
-
-Use the returned `machine` when you need low-level subscriptions or external integrations:
+### Graph `useSnapshot()` and `useSelector()`
 
 ```tsx
-const checkout = createJourney(definition);
-
-checkout.machine.subscribe(() => {
-  console.log(checkout.machine.getSnapshot());
-});
-
-checkout.machine.subscribeReset((event) => {
-  console.log("reset", event.stepId);
-});
-
-checkout.machine.startJourney();
+const snapshot = checkout.useSnapshot();
+const stepId = checkout.useSelector((value) => value.currentStep?.id);
 ```
 
-`dispose()` is also returned as a convenience alias for `machine.dispose()`. `JourneyProvider` only disposes automatically when `disposeOnUnmount` is enabled, so shared or module-level runtimes can survive provider unmounts safely.
+Use the snapshot when several related values must be rendered together. Use a selector for leaf
+components that should not re-render on unrelated context or plugin changes. Neither needs a
+Provider above it — they subscribe to the bundle's machine directly.
 
-## Important Boundary
+### Graph `useStep()`, `useContext()`, and `useSubscribeEvent()`
 
-Even when called from React hooks, transition ordering, async phase handling, observability events, history behavior, and persistence are all defined by Core.
+```tsx
+const step = checkout.useStep();
+const context = checkout.useContext();
 
-Reference pages:
+checkout.useSubscribeEvent("navigationBlocked", ({ reason, error }) => {
+  report(reason, error);
+});
+```
 
-- [Core Snapshot](../core/snapshot.md)
-- [Core Lifecycle](../core/lifecycle.md)
-- [Core Async Behavior](../core/async.md)
-- [Core Timeline Navigation](../core/history.md)
-- [Core Persistence](../core/persistence.md)
-- [Stability Contract](../core/stability.md)
+`useStep()` returns the whole `currentStep` — id, metadata, async state — or `null` while the
+machine is idle. `useContext()` returns the live context value. `useSubscribeEvent` requires an
+exact Core subscription name and receives its exact payload; the listener reference can change
+without forcing a new subscription, and the subscription lasts for the component's lifetime.
+
+### Graph stable accessors and outside-React commands
+
+```tsx
+const machine = checkout.useMachine();
+const controls = checkout.useControls();
+const navigate = checkout.useNavigation();
+
+controls.pause();
+controls.resume();
+await navigate.goToPreviousStep();
+await navigate.goToLastVisitedStep();
+await checkout.send("continue");
+checkout.updateContext((context) => ({ ...context, dirty: true }));
+```
+
+The accessors return the machine and its stable grouped methods without subscribing — they never
+cause a re-render. `send` is narrowed to the event union inferred from the definition, and both
+`send` and `updateContext` are plain functions on the bundle, callable from React or anywhere
+else. Integrations attach to `checkout.machine` directly — no Provider or ref involved.
+
+## Caller-owned machines
+
+Per-mount or per-request isolation, tests, and integrations that must own the machine's lifecycle
+use a Core machine directly. There is no separate React hook package for this — React's own
+`useSyncExternalStore` is the whole bridge:
+
+```tsx
+import React from "react";
+import { createLinearJourney } from "@rxova/journey-core";
+
+export const machine = createLinearJourney({ context: initialContext, steps }, { autoStart: true });
+
+// The machine is a module-scope singleton, so this adapter is a stable plain
+// function — useSyncExternalStore never resubscribes on it.
+const subscribe = (onStoreChange: () => void) =>
+  machine.subscriptions.subscribeSelector((snapshot) => snapshot, onStoreChange);
+
+export const useJourneySnapshot = () =>
+  React.useSyncExternalStore(subscribe, machine.getSnapshot, machine.getSnapshot);
+```
+
+`machine.getSnapshot` is a stable bound function, so it serves as both the client and server
+getter unchanged. Observe events in an effect — `subscribeEvent` returns its unsubscribe:
+
+```tsx
+React.useEffect(
+  () => machine.subscriptions.subscribeEvent("stepEnter", ({ from, to }) => console.log(from, to)),
+  []
+);
+```
+
+You own start and disposal: create the machine where its lifetime belongs (module, request, mount,
+or test), and call `machine.dispose()` when that owner goes away. For typing wrappers around a
+caller-owned machine, `@rxova/journey-react` exports the structural helpers `AnyJourneyMachine`,
+`SnapshotOf`, `ContextOf`, `StepIdOf`, and `EventPayloadOf`. The `react-showcase-headless`
+example is the canonical version of this pattern.

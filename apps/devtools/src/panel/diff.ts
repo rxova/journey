@@ -1,3 +1,5 @@
+import { isPlainObject } from "@rxova/journey-common/predicates";
+
 export type JourneyPanelStructuredDiff = {
   added: Record<string, unknown>;
   removed: Record<string, unknown>;
@@ -11,12 +13,6 @@ export const EMPTY_STRUCTURED_DIFF: JourneyPanelStructuredDiff = {
 };
 
 const ROOT_PATH = "root";
-
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" &&
-  value !== null &&
-  !Array.isArray(value) &&
-  (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
 
 const hasOwn = (value: Record<string, unknown>, key: string): boolean =>
   Object.prototype.hasOwnProperty.call(value, key);

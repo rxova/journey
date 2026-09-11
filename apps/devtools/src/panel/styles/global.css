@@ -1,0 +1,154 @@
+:root {
+  color-scheme: light;
+  --fallback-accent: #1a73e8;
+  --fallback-accent-soft: rgba(26, 115, 232, 0.14);
+  --fallback-accent-ring: rgba(26, 115, 232, 0.24);
+  --fallback-warn: #c5221f;
+  --fallback-kind-init: #5b8def;
+  --fallback-kind-snapshot: #1a73e8;
+  --fallback-kind-command: #0b57d0;
+  --fallback-kind-event: #0f9d58;
+  --fallback-kind-query: #8e24aa;
+  --fallback-ink: #202124;
+  --fallback-muted: #5f6368;
+  --fallback-border: rgba(60, 64, 67, 0.18);
+  --fallback-bg-top: #f3f5f7;
+  --fallback-bg-bottom: #edf1f4;
+  --fallback-card: #ffffff;
+  --fallback-surface: #f7f9fb;
+  --fallback-surface-2: #f2f5f8;
+  --fallback-error-surface: rgba(197, 34, 31, 0.08);
+  --ink: var(--sys-color-on-surface, var(--fallback-ink));
+  --muted: var(--sys-color-on-surface-subtle, var(--fallback-muted));
+  --border: var(--sys-color-divider, var(--fallback-border));
+  --accent: var(--sys-color-primary, var(--fallback-accent));
+  --accent-soft: var(--sys-color-tonal-container, var(--fallback-accent-soft));
+  --accent-ink: var(--sys-color-on-tonal-container, var(--ink));
+  --accent-ring: var(--sys-color-state-focus-ring, var(--fallback-accent-ring));
+  --warn: var(--sys-color-error, var(--fallback-warn));
+  --kind-init: var(--sys-color-primary-bright, var(--fallback-kind-init));
+  --kind-snapshot: var(--sys-color-blue-bright, var(--fallback-kind-snapshot));
+  --kind-command: var(--sys-color-green-bright, var(--fallback-kind-command));
+  --kind-event: var(--sys-color-green-bright, var(--fallback-kind-event));
+  --kind-query: var(--sys-color-purple-bright, var(--fallback-kind-query));
+  --bg-top: var(--sys-color-base-container-elevated, var(--fallback-bg-top));
+  --bg-bottom: var(--sys-color-cdt-base-container, var(--fallback-bg-bottom));
+  --card: var(--sys-color-surface1, var(--fallback-card));
+  --surface: var(--sys-color-cdt-base-container, var(--fallback-surface));
+  --surface-2: var(--sys-color-surface2, var(--fallback-surface-2));
+  --error-surface: var(--sys-color-surface-error, var(--fallback-error-surface));
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --fallback-accent: #8ab4f8;
+    --fallback-accent-soft: rgba(138, 180, 248, 0.16);
+    --fallback-accent-ring: rgba(138, 180, 248, 0.3);
+    --fallback-warn: #f28b82;
+    --fallback-kind-init: #a1c2fa;
+    --fallback-kind-snapshot: #8ab4f8;
+    --fallback-kind-command: #6ea8ff;
+    --fallback-kind-event: #7bdcb5;
+    --fallback-kind-query: #d7a7ff;
+    --fallback-ink: #e8eaed;
+    --fallback-muted: #9aa0a6;
+    --fallback-border: rgba(232, 234, 237, 0.16);
+    --fallback-bg-top: #202124;
+    --fallback-bg-bottom: #202124;
+    --fallback-card: #2a2b2e;
+    --fallback-surface: #252629;
+    --fallback-surface-2: #303134;
+    --fallback-error-surface: rgba(242, 139, 130, 0.14);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --fallback-accent: #8ab4f8;
+  --fallback-accent-soft: rgba(138, 180, 248, 0.16);
+  --fallback-accent-ring: rgba(138, 180, 248, 0.3);
+  --fallback-warn: #f28b82;
+  --fallback-kind-init: #a1c2fa;
+  --fallback-kind-snapshot: #8ab4f8;
+  --fallback-kind-command: #6ea8ff;
+  --fallback-kind-event: #7bdcb5;
+  --fallback-kind-query: #d7a7ff;
+  --fallback-ink: #e8eaed;
+  --fallback-muted: #9aa0a6;
+  --fallback-border: rgba(232, 234, 237, 0.16);
+  --fallback-bg-top: #202124;
+  --fallback-bg-bottom: #202124;
+  --fallback-card: #2a2b2e;
+  --fallback-surface: #252629;
+  --fallback-surface-2: #303134;
+  --fallback-error-surface: rgba(242, 139, 130, 0.14);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+  background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+  color: var(--ink);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+input,
+select,
+textarea {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+button {
+  min-width: 0;
+  padding: 7px 10px;
+  background: var(--surface-2);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+button:hover:enabled {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 2px;
+}
