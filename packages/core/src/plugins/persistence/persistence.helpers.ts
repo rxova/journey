@@ -1,6 +1,19 @@
 import { JourneyError } from "../../core/errors";
-import type { JourneyPersistedState, JourneyStorage } from "./persistence.types";
+import type { JourneyPersistedState, JourneyStorage, PersistenceReason } from "./persistence.types";
 import type { JourneyPersistOption, JourneySnapshot } from "../../core/types";
+
+/** Every observation kind a save can be scheduled on. */
+export const DEFAULT_SAVE_REASONS: readonly PersistenceReason[] = [
+  "context",
+  "transition",
+  "status"
+];
+
+/** Omitted means "write immediately"; anything else is clamped to a whole >= 0. */
+export function normalizeDebounceMs(value: number | undefined): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+  return Math.max(0, Math.trunc(value));
+}
 
 export function buildPersistedState(snapshot: JourneySnapshot, now: number): JourneyPersistedState {
   return {

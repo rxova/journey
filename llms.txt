@@ -6,8 +6,8 @@
 > graph with ordered transition matching and async guards, or fully headless.
 > The runtime keeps one canonical snapshot — current step, realized history,
 > context, visited state, status, async phase — so a flow can step back through
-> its timeline and time-travel forward again. Persistence, autosave, analytics
-> and replay are plugins, not baseline cost. Zero-dependency framework-agnostic
+> its timeline and time-travel forward again. Persistence, analytics and replay
+> are plugins, not baseline cost. Zero-dependency framework-agnostic
 > core (7.58 kB brotli), thin typed React bindings, and a Chrome DevTools
 > debugger. MIT.
 

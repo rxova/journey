@@ -40,7 +40,6 @@ derived, observable values suitable for selectors and UI rendering.
 | Plugin                                      | Purpose                                                       |
 | ------------------------------------------- | ------------------------------------------------------------- |
 | [Persistence](../persistence)               | Write status, context, and timeline on every observed change. |
-| [Autosave](../autosave)                     | Debounce the same persisted-state write.                      |
 | [Analytics](./analytics-plugin)             | Normalize lifecycle observations and custom analytics events. |
 | [Replay](./replay-plugin)                   | Record a bounded, exportable runtime session.                 |
 | [Diagnostics](./diagnostics-plugin)         | Analyze the static journey structure.                         |

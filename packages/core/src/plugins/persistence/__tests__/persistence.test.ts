@@ -59,7 +59,11 @@ describe("persistence plugin", () => {
       savedAt: 99
     });
     expect(machine.plugins.persistence.inspectPersistedState()).toEqual(persisted);
-    expect(machine.getSnapshot().plugins.persistence).toEqual({ lastSavedAt: 99, error: null });
+    expect(machine.getSnapshot().plugins.persistence).toEqual({
+      status: "saved",
+      lastSavedAt: 99,
+      error: null
+    });
   });
 
   it("clearPersisted removes the entry", async () => {

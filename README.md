@@ -13,7 +13,7 @@ Journey supports:
 - **Graph journeys** whose named events, synchronous guards, and ordered candidates choose routes.
 - **React bindings** — twin linear and graph bundle factories, per-component ownership, and a
   documented pattern for reading a Core machine you own yourself.
-- **Plugins** for analytics, autosave, diagnostics, execution paths, persistence, replay, and richer
+- **Plugins** for analytics, diagnostics, execution paths, persistence, replay, and richer
   subscriptions.
 - A [Chrome DevTools extension](https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm)
   backed by a versioned bridge.
@@ -346,7 +346,7 @@ function Wizard() {
 The factory runs once per component instance and the machine is disposed on a real unmount. Do
 not reach for a `useState` lazy initializer here: React double-invokes those under StrictMode,
 building two fully-configured machines — two plugin setups, two persistence reads and writes, two
-armed autosave timers — and abandoning one undisposed.
+armed persistence debounce timers — and abandoning one undisposed.
 
 ## React: bring your own machine
 

@@ -97,7 +97,6 @@ Registered plugins appear under `machine.plugins`.
 | -------------------------------------- | ---------------------------------------------------- |
 | `@rxova/journey-core/connectors/immer` | `immerConnector` and `ImmerContextRecipe`            |
 | `@rxova/journey-core/persistence`      | `createPersistencePlugin` and helpers/types          |
-| `@rxova/journey-core/autosave`         | `createAutosavePlugin` and helpers/types             |
 | `@rxova/journey-core/analytics`        | `createAnalyticsPlugin` and helpers/types            |
 | `@rxova/journey-core/replay`           | `createReplayPlugin` and helpers/types               |
 | `@rxova/journey-core/diagnostics`      | `createDiagnosticsPlugin` and analysis helpers/types |

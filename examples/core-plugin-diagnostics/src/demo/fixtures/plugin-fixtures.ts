@@ -2,7 +2,6 @@ import type { GraphDefinition, LinearJourneyDefinition } from "@rxova/journey-co
 
 export type PluginDemoKind =
   | "analytics"
-  | "autosave"
   | "diagnostics"
   | "execution-paths"
   | "persistence"
@@ -70,7 +69,6 @@ export const structureDefinition = {
 
 export const pluginTitles: Record<PluginDemoKind, string> = {
   analytics: "Analytics Plugin",
-  autosave: "Autosave Plugin",
   diagnostics: "Diagnostics Plugin",
   "execution-paths": "Execution Paths Plugin",
   persistence: "Persistence Plugin",

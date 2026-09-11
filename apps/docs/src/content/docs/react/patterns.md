@@ -48,11 +48,11 @@ What it is doing for you, and why hand-rolling this is harder than it looks:
 
 - **`useState(() => create...)` is not equivalent.** React double-invokes lazy initializers under
   StrictMode, so that pattern builds _two_ fully-configured machines per mount — two plugin
-  `setup()` passes, two persistence reads and writes, two armed autosave timers — and abandons one
+  `setup()` passes, two persistence reads and writes, two armed debounce timers — and abandons one
   without disposing it. `useJourney` initializes into a ref instead, so the factory runs once.
 - **`useRef(createLinearJourney(...))` is worse**: its argument is evaluated on every render,
   creating machines that are thrown away immediately.
-- **Disposal is not something to leave to GC.** A machine with `persist`, `autosave`, or any
+- **Disposal is not something to leave to GC.** A machine with `persist` or any
   plugin holding external resources keeps timers and subscriptions alive after its component is
   gone. Naive teardown is also wrong: StrictMode runs mount → unmount → mount in development, so
   `useEffect(() => () => signup.machine.dispose(), [])` kills the machine the second mount reuses.

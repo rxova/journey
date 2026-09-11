@@ -159,7 +159,7 @@ Pass `{ autoStart: true }` to start eagerly inside the factory (server-rendered 
 a bundle driven entirely from non-React code), or `{ autoStart: false }` to start it yourself.
 
 **A module-scope bundle is never disposed.** Its machine, its subscriptions, and any plugin
-resources — autosave timers, persistence writers — live for the lifetime of the process. That is
+resources — persistence writers and their debounce timers — live for the lifetime of the process. That is
 the intended trade-off for a journey that outlives every component; it also means one bundle at
 module scope is shared by every request in a server process, so state a request writes is visible
 to the next one. Own a bundle per component or per request when that matters.

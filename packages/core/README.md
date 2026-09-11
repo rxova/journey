@@ -253,8 +253,8 @@ const machine = createLinearJourney(definition, {
 });
 ```
 
-Persistence, autosave, analytics, diagnostics, replay, execution paths, and subscription enhancer
-plugins each have dedicated export paths and documentation.
+Persistence, analytics, diagnostics, replay, and execution paths each have dedicated export paths
+and documentation.
 
 ## Documentation
 

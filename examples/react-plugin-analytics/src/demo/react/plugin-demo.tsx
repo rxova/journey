@@ -2,7 +2,6 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { createGraphJourney, type GraphDefinition } from "@rxova/journey-core";
 import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
-import { createAutosavePlugin } from "@rxova/journey-core/autosave";
 import { createDiagnosticsPlugin } from "@rxova/journey-core/diagnostics";
 import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
 import { createPersistencePlugin } from "@rxova/journey-core/persistence";
@@ -89,11 +88,6 @@ const makeApp = (kind: PluginDemoKind) => {
       createAnalyticsPlugin({
         track: (event) => analyticsStore.push({ name: event.name, payload: event.payload })
       }),
-      createAutosavePlugin({
-        storage: window.localStorage,
-        key: storageKey,
-        debounceMs: 250
-      }),
       createDiagnosticsPlugin(),
       createExecutionPathsPlugin(),
       createPersistencePlugin({
@@ -156,17 +150,17 @@ const makeApp = (kind: PluginDemoKind) => {
               Track marker
             </button>
           )}
-          {kind === "autosave" && (
+          {kind === "persistence" && (
             <>
               <button
                 className="secondary"
-                onClick={() => void machine.plugins.autosave.flushAutosave()}
+                onClick={() => void machine.plugins.persistence.flushPersisted()}
               >
                 Flush
               </button>
               <button
                 className="secondary"
-                onClick={() => machine.plugins.autosave.clearAutosave()}
+                onClick={() => machine.plugins.persistence.clearPersisted()}
               >
                 Clear draft
               </button>
@@ -198,15 +192,6 @@ const makeApp = (kind: PluginDemoKind) => {
                 <pre className="json">{formatJson(entry.payload)}</pre>
               </div>
             ))}
-          </div>
-        );
-      case "autosave":
-        return (
-          <div className="stack">
-            <pre className="json">{formatJson(machine.plugins.autosave.getAutosaveState())}</pre>
-            <pre className="json">
-              {createStoragePreview(storageKey) || "No draft persisted yet."}
-            </pre>
           </div>
         );
       case "persistence":
@@ -271,7 +256,7 @@ const makeApp = (kind: PluginDemoKind) => {
     const eventLogs = useLogStore(analyticsStore);
 
     useJourneyEvent(machine, "stepEnter", (event) => {
-      if (kind !== "analytics" && kind !== "autosave") {
+      if (kind !== "analytics") {
         analyticsStore.push({ name: "stepEnter", payload: event });
       }
     });

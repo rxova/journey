@@ -73,14 +73,6 @@
       "import": "./dist/plugins/analytics/analytics.js",
       "require": "./dist/plugins/analytics/analytics.cjs"
     },
-    "./autosave": {
-      "types": {
-        "import": "./dist/plugins/autosave/autosave.d.ts",
-        "require": "./dist/plugins/autosave/autosave.d.cts"
-      },
-      "import": "./dist/plugins/autosave/autosave.js",
-      "require": "./dist/plugins/autosave/autosave.cjs"
-    },
     "./diagnostics": {
       "types": {
         "import": "./dist/plugins/diagnostics/diagnostics.d.ts",
@@ -176,12 +168,6 @@
       "limit": "500 B"
     },
     {
-      "name": "core/createAutosavePlugin",
-      "path": "dist/plugins/autosave/autosave.js",
-      "import": "{ createAutosavePlugin }",
-      "limit": "1.05 kB"
-    },
-    {
       "name": "core/createDiagnosticsPlugin",
       "path": "dist/plugins/diagnostics/diagnostics.js",
       "import": "{ createDiagnosticsPlugin }",
@@ -191,7 +177,7 @@
       "name": "core/createPersistencePlugin",
       "path": "dist/plugins/persistence/persistence.js",
       "import": "{ createPersistencePlugin }",
-      "limit": "950 B"
+      "limit": "1.15 kB"
     },
     {
       "name": "core/createReplayPlugin",

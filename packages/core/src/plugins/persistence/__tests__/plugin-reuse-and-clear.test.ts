@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createLinearJourney } from "@rxova/journey-core";
 import { createPersistencePlugin } from "@rxova/journey-core/persistence";
-import { createAutosavePlugin } from "@rxova/journey-core/autosave";
 import { flush } from "@rxova/journey-core/testing";
 import type { JourneyStorage } from "@rxova/journey-core/persistence";
 
@@ -55,17 +54,6 @@ describe("a plugin instance shared across machines", () => {
     expect(String(warn.mock.calls[0]?.[0])).toContain(KEY);
   });
 
-  it("warns for autosave from the second machine on", () => {
-    enableDevWarnings();
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const plugin = createAutosavePlugin({ key: KEY, storage: memoryStorage() });
-
-    createLinearJourney({ steps: ["a"], context: {} }, { plugins: [plugin] as const });
-    createLinearJourney({ steps: ["a"], context: {} }, { plugins: [plugin] as const });
-
-    expect(warn).toHaveBeenCalledTimes(1);
-  });
-
   it("does not warn when each machine gets its own instance", () => {
     enableDevWarnings();
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -105,21 +93,24 @@ describe("clear APIs contain storage failures", () => {
     expect(reported).toContain(boom);
   });
 
-  it("clearAutosave records the failure instead of throwing at the caller", async () => {
+  it("a debounced clearPersisted records the failure instead of throwing at the caller", async () => {
     const boom = new Error("remove blocked");
     const machine = createLinearJourney(
       { steps: ["a"], context: {} },
       {
         plugins: [
-          createAutosavePlugin({ key: KEY, storage: storageWhoseRemoveThrows(boom) })
+          createPersistencePlugin({
+            key: KEY,
+            storage: storageWhoseRemoveThrows(boom),
+            debounceMs: 10
+          })
         ] as const
       }
     );
-    machine.controls.start();
     await flush();
 
-    expect(() => machine.plugins.autosave.clearAutosave()).not.toThrow();
-    const state = machine.plugins.autosave.getAutosaveState();
+    expect(() => machine.plugins.persistence.clearPersisted()).not.toThrow();
+    const state = machine.plugins.persistence.getPersistenceState();
     expect(state.status).toBe("error");
     expect(state.error).toBe(boom);
   });

@@ -1,6 +1,5 @@
 import { createGraphJourney, createLinearJourney } from "@rxova/journey-core";
 import { createAnalyticsPlugin, type AnalyticsApi } from "@rxova/journey-core/analytics";
-import { createAutosavePlugin, type AutosaveApi } from "@rxova/journey-core/autosave";
 import { createDiagnosticsPlugin, type DiagnosticsApi } from "@rxova/journey-core/diagnostics";
 import {
   createExecutionPathsPlugin,
@@ -70,20 +69,15 @@ export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => 
             })
           ] as const
         });
-      case "autosave":
+      case "persistence":
         return createLinearJourney(pluginDefinition, {
           plugins: [
-            createAutosavePlugin({
+            // debounceMs is what the separate autosave plugin used to be.
+            createPersistencePlugin({
               storage: window.localStorage,
               key: storageKey,
               debounceMs: 250
             })
-          ] as const
-        });
-      case "persistence":
-        return createLinearJourney(pluginDefinition, {
-          plugins: [
-            createPersistencePlugin({ storage: window.localStorage, key: storageKey })
           ] as const
         });
       case "replay":
@@ -97,7 +91,6 @@ export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => 
 
   const pluginApi = machine.plugins as Partial<{
     analytics: AnalyticsApi;
-    autosave: AutosaveApi;
     diagnostics: DiagnosticsApi;
     "execution-paths": ExecutionPathsApi;
     persistence: PersistenceApi;
@@ -140,16 +133,9 @@ export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => 
         .join("");
     }
 
-    if (kind === "autosave") {
-      const autosave = pluginApi.autosave as AutosaveApi;
-      return `<pre class="json">${formatJson(autosave.getAutosaveState())}</pre><pre class="json">${
-        createStoragePreview(storageKey) || "No draft persisted yet."
-      }</pre>`;
-    }
-
     if (kind === "persistence") {
       const persistence = pluginApi.persistence as PersistenceApi;
-      return `<pre class="json">${formatJson(persistence.inspectPersistedState())}</pre><pre class="json">${
+      return `<pre class="json">${formatJson(persistence.getPersistenceState())}</pre><pre class="json">${formatJson(persistence.inspectPersistedState())}</pre><pre class="json">${
         createStoragePreview(storageKey) || "No persisted snapshot yet."
       }</pre>`;
     }
@@ -231,7 +217,7 @@ export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => 
                     : ""
                 }
                 ${
-                  kind === "autosave"
+                  kind === "persistence"
                     ? `<button class="secondary" data-action="flush">Flush</button><button class="secondary" data-action="clear-draft">Clear Draft</button>`
                     : ""
                 }
@@ -293,10 +279,10 @@ export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => 
         });
       }
       if (action === "flush") {
-        await pluginApi.autosave?.flushAutosave();
+        await pluginApi.persistence?.flushPersisted();
       }
       if (action === "clear-draft") {
-        pluginApi.autosave?.clearAutosave();
+        pluginApi.persistence?.clearPersisted();
       }
       if (action === "clear-replay") {
         pluginApi.replay?.clearReplaySession();

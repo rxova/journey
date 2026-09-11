@@ -25,7 +25,7 @@ pnpm --filter examples-react-showcase-graph dev
 The six `react-plugin-*` examples create fully typed Core machines and consume them with the
 caller-owned `useSyncExternalStore` pattern, typed via the structural helpers from
 `@rxova/journey-react`. They demonstrate exact event payloads and namespaced `machine.plugins`
-APIs for analytics, autosave, diagnostics, execution paths, persistence, and replay.
+APIs for analytics, diagnostics, execution paths, persistence, and replay.
 
 For example:
 
@@ -47,7 +47,7 @@ const useJourneySnapshot = <TMachine extends AnyJourneyMachine>(
 };
 
 machine.plugins.replay.getReplaySession();
-machine.plugins.autosave.flushAutosave();
+machine.plugins.persistence.flushPersisted();
 ```
 
 ## Minimal graph controls

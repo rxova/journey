@@ -39,7 +39,10 @@ export default defineConfig({
     "/core/plugins/subscription-enhancer-plugin": "/core/plugins/overview/",
     // The builder became `withTypes` plus two exported types; the page that
     // replaced it covers the same ground without the factory.
-    "/core/api/graph-builder": "/core/api/with-types/"
+    "/core/api/graph-builder": "/core/api/with-types/",
+    // Autosave was the persistence plugin with a timer. It is `debounceMs` now,
+    // documented on the page it always shared its serializer with.
+    "/core/autosave": "/core/persistence/"
   },
 
   // Two pages (core/architecture, core/architecture/work-and-transitions) carry
@@ -161,7 +164,6 @@ export default defineConfig({
                   "core/plugins/overview",
                   "core/plugins/authoring",
                   "core/persistence",
-                  "core/autosave",
                   "core/plugins/analytics-plugin",
                   "core/plugins/replay-plugin",
                   "core/plugins/diagnostics-plugin",

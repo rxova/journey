@@ -207,7 +207,7 @@ Plugin APIs and snapshot extensions are namespaced by plugin name:
 
 ```ts
 machine.plugins.analytics.trackAnalyticsEvent("checkout_opened");
-machine.getSnapshot().plugins.autosave;
+machine.getSnapshot().plugins.persistence;
 ```
 
 ## `dispose()`

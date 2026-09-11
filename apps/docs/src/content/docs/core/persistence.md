@@ -3,7 +3,8 @@ title: "Persistence"
 ---
 
 The persistence plugin writes a serializable state slice whenever transitions settle, context
-changes, or status changes.
+changes, or status changes. `saveOn` narrows which of those write, and `debounceMs` collapses a
+burst of them into a single write.
 
 ## Install and use
 
@@ -22,6 +23,30 @@ const machine = createLinearJourney(definition, {
 ```
 
 `storage` must implement `getItem`, `setItem`, and `removeItem`. `setItem` may return a promise.
+
+### Debounced writes
+
+```ts
+createPersistencePlugin({
+  storage: localStorage,
+  key: "checkout-draft",
+  debounceMs: 300,
+  saveOn: ["context", "transition"]
+});
+```
+
+Omit `debounceMs` (or pass `0`) and each observation writes immediately. Pass a window and the
+plugin waits that long after the last observation, so typing into a field produces one write rather
+than one per keystroke. `flushPersisted()` cancels the wait and writes now.
+
+This used to be a second plugin called autosave. It was this plugin with a timer — the same
+serializer, the same adapter contract, the same key — so it is a parameter now.
+
+An immediate write that throws propagates, exactly as it always did, and the runtime's listener
+isolation reports it. A debounced write happens on a timer with no caller left to throw to, so its
+failures land in `getPersistenceState().error` and are reported through `onListenerError`.
+
+Disposing the machine cancels a pending debounce. It does not flush automatically.
 
 ## The `persist` creation option
 
@@ -63,13 +88,20 @@ const api = machine.plugins.persistence;
 
 api.inspectPersistedState(); // last value written by this machine
 api.readPersisted(); // re-read and parse storage
-api.clearPersisted();
+api.clearPersisted(); // cancel any pending write and remove the entry
+await api.flushPersisted(); // cancel the debounce and write now
 
 machine.getSnapshot().plugins.persistence;
-// { lastSavedAt: number | null }
+// {
+//   status: "idle" | "pending" | "saving" | "saved" | "error",
+//   lastSavedAt: number | null,
+//   error: unknown | null
+// }
 ```
 
-Malformed or structurally invalid storage values return `null`.
+Malformed or structurally invalid storage values return `null`. `status` only passes through
+`"pending"` when `debounceMs` is set — an immediate write has no window in which to be pending. Use
+the namespaced snapshot value in selectors when the UI displays save status.
 
 ## Restore behavior
 
@@ -102,14 +134,15 @@ observe-only and cannot seed the runtime. Use the `persist` option when you want
 
 ## Options
 
-| Option             | Meaning                                               |
-| ------------------ | ----------------------------------------------------- |
-| `storage`          | Required localStorage-compatible adapter.             |
-| `key`              | Required storage key.                                 |
-| `clearOnTerminate` | Remove the entry on termination; defaults to `false`. |
-| `now`              | Injectable clock, mainly for tests.                   |
+| Option             | Meaning                                                           |
+| ------------------ | ----------------------------------------------------------------- |
+| `storage`          | Required localStorage-compatible adapter.                         |
+| `key`              | Required storage key.                                             |
+| `debounceMs`       | Wait this long before writing; omitted or `0` writes immediately. |
+| `saveOn`           | Any of `context`, `transition`, `status`; defaults to all three.  |
+| `clearOnTerminate` | Remove the entry on termination; defaults to `false`.             |
+| `now`              | Injectable clock, mainly for tests.                               |
 
 ## Where to next
 
-- [Autosave](./autosave)
 - [Plugins](./plugins/overview)
