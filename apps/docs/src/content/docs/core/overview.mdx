@@ -30,7 +30,6 @@ const checkout = createLinearJourney({
   context: { email: "" }
 });
 
-checkout.controls.start();
 console.log(checkout.getSnapshot().currentStep?.id); // "account"
 ```
 

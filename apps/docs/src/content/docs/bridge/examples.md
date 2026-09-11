@@ -6,7 +6,6 @@ title: "Examples"
 
 ```ts
 const machine = createGraphJourney(definition, {
-  autoStart: true,
   plugins: [createExecutionPathsPlugin()] as const
 });
 

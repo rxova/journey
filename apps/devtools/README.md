@@ -23,9 +23,7 @@ does not rewind or mutate the runtime machine.
 import { createLinearJourney } from "@rxova/journey-core";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 
-const machine = createLinearJourney(definition, {
-  autoStart: true
-});
+const machine = createLinearJourney(definition);
 
 const detach = attachJourneyDevtools(machine, {
   machineId: "checkout",

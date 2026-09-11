@@ -74,7 +74,6 @@ export const mountCoreShowcase = (root: HTMLElement) => {
   const handlers = createAuthHandlers(3, authApi);
 
   const machine = withGraphTypes<AuthBag>()(graphDefinition, {
-    autoStart: true,
     handlers,
     plugins: [createExecutionPathsPlugin()] as const
   });

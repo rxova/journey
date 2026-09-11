@@ -91,7 +91,8 @@ export function createGraphJourney<
   type Snapshot = GraphSnapshot<TContext, TStepId, TMeta, TEvents>;
 
   const { name, ...coreDefinition } = definition;
-  // Three-way autoStart — see the note in create-linear-journey.tsx.
+  // Three-way autoStart, and `=== true` is load-bearing against Core's `true`
+  // default — see the note in create-linear-journey.tsx.
   const machine: Machine = coreCreateGraphJourney(coreDefinition, {
     ...options,
     autoStart: options?.autoStart === true

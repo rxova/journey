@@ -55,7 +55,6 @@ const machine = createLinearJourney({
   steps: ["account", "review"]
 });
 
-machine.controls.start();
 await machine.navigate.goToNextStep();
 ```
 

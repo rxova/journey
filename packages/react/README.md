@@ -195,7 +195,7 @@ To drop a tier lower and own a Core machine yourself — no package entry needed
 import React from "react";
 import { createLinearJourney } from "@rxova/journey-core";
 
-const machine = createLinearJourney({ context: initialContext, steps }, { autoStart: true });
+const machine = createLinearJourney({ context: initialContext, steps });
 
 const subscribe = (onStoreChange: () => void) => machine.subscriptions.subscribe(onStoreChange);
 

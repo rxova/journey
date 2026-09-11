@@ -85,7 +85,6 @@ const makeApp = (kind: PluginDemoKind) => {
   const analyticsStore = createLogStore<AnalyticsEvent>();
   const storageKey = pluginStorageKey("react", kind);
   const machine = createGraphJourney(demoDefinition, {
-    autoStart: true,
     plugins: [
       createAnalyticsPlugin({
         track: (event) => analyticsStore.push({ name: event.name, payload: event.payload })

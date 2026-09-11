@@ -542,8 +542,23 @@ export type JourneyRuntimeOptions<
   TStepId extends string = string
 > = {
   /**
-   * Defaults to `false`: subscribe-before-start is the natural order, so the
-   * first `stepEnter` never fires before subscribers can attach.
+   * Defaults to `true`: creating a journey starts it, so the common case needs
+   * no second call.
+   *
+   * The trade this makes, stated plainly because it cannot be worked around:
+   * starting happens inside the constructor and the initial entry commits
+   * synchronously, so the first `stepEnter` has already fired by the time the
+   * factory returns. A subscriber attached afterwards cannot see it.
+   *
+   * Pass `false` when that first event matters — it is the subscribe-then-start
+   * order, and saying so out loud is better than a default that silently
+   * assumes it:
+   *
+   * ```ts
+   * const machine = createLinearJourney(definition, { autoStart: false });
+   * machine.subscriptions.subscribeEvent("stepEnter", onEnter);
+   * machine.controls.start();
+   * ```
    */
   autoStart?: boolean;
   /**

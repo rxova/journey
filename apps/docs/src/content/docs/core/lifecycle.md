@@ -62,10 +62,14 @@ when event identity or ordering matters.
 
 ## Initial entry
 
-`controls.start()` first changes status to `running`, then begins initial entry. Initial entry emits
-`stepEnter` with `from: null` and `direction: "jump"`; it does not emit `stepLeave`. The method
-returns before asynchronous entry work settles, so consumers should observe
-`snapshot.transition.pending` before navigating.
+Starting first changes status to `running`, then begins initial entry. Initial entry emits
+`stepEnter` with `from: null` and `direction: "jump"`; it does not emit `stepLeave`. It returns
+before asynchronous entry work settles, so consumers should observe `snapshot.transition.pending`
+before navigating.
+
+`autoStart` defaults to `true`, so all of that happens inside the factory and the initial
+`stepEnter` has already fired by the time it returns. To observe it, create the machine with
+`{ autoStart: false }`, subscribe, then call `controls.start()`.
 
 The `startAt` runtime option changes which step initial entry targets: the journey starts directly
 at that step, earlier steps are neither entered nor visited, the timeline begins as `[startAt]`,

@@ -32,7 +32,9 @@ describe("stepEnter direction", () => {
 
   it("the initial entry is a jump with from: null", async () => {
     const entries: Entry[] = [];
-    const machine = createLinearJourney({ steps: ["a", "b"], context: {} });
+    // autoStart: false — the initial stepEnter is the assertion, and auto-start
+    // fires it before a listener can attach.
+    const machine = createLinearJourney({ steps: ["a", "b"], context: {} }, { autoStart: false });
     machine.subscriptions.subscribeEvent("stepEnter", ({ from, to, direction }) => {
       entries.push({ from, to, direction });
     });

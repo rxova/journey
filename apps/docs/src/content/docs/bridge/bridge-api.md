@@ -40,8 +40,9 @@ allowed unless the option is false.
 
 ## Lifecycle behavior
 
-Attachment does not start or alter the machine. A newly created machine remains idle until
-`controls.start()` or an `autoStart` factory option takes effect.
+Attachment does not start or alter the machine — a machine starts when it is created, so by the
+time you attach, it is normally already running. One built with `{ autoStart: false }` stays idle
+until `controls.start()`.
 
 On attachment, the bridge posts one register envelope containing metadata, generic feature
 descriptors, and the current snapshot. It then subscribes to snapshot changes and all named Core

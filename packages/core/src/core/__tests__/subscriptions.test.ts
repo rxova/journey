@@ -58,7 +58,9 @@ describe("subscriptions", () => {
   });
 
   it("statusChange delivers previous and current status", async () => {
-    const machine = createLinearJourney({ steps: ["a"], context: {} });
+    // autoStart: false — the idle→running change is the first thing asserted,
+    // and auto-start emits it inside the constructor.
+    const machine = createLinearJourney({ steps: ["a"], context: {} }, { autoStart: false });
     const changes: string[] = [];
     machine.subscriptions.subscribeEvent("statusChange", ({ previous, current }) =>
       changes.push(`${previous}→${current}`)

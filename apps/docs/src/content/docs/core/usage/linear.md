@@ -42,7 +42,6 @@ visited. Duplicate ids and empty step arrays are rejected at creation time.
 ## Navigation
 
 ```ts
-machine.controls.start();
 await waitUntilSettled(machine);
 
 await machine.navigate.goToNextStep();
@@ -52,9 +51,12 @@ await machine.navigate.goToStepByIndex(2);
 await machine.navigate.goToLastVisitedStep();
 ```
 
-`controls.start()` commits the initial step synchronously but returns before async initial entry work
-settles. `waitUntilSettled` is the small selector-based helper from the [Quickstart](../getting-started);
-UI integrations can instead disable navigation while `snapshot.transition.pending` is true.
+Creating the machine already started it — `autoStart` defaults to `true`. The initial step is
+committed synchronously, so `snapshot.currentStep` is readable immediately, but asynchronous entry
+work is still in flight. `waitUntilSettled` is the small selector-based helper from the
+[Quickstart](../getting-started); UI integrations can instead disable navigation while
+`snapshot.transition.pending` is true. Pass `{ autoStart: false }` to hold the machine idle and call
+`controls.start()` yourself — the only way to observe the journey's first `stepEnter`.
 
 - `goToNextStep()` follows the timeline forward when the pointer is behind its tip. At the tip, it
   falls back to the next step in declared order.

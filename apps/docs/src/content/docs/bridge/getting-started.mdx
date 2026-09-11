@@ -25,9 +25,7 @@ bundled into the app.
 import { createLinearJourney } from "@rxova/journey-core";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 
-const machine = createLinearJourney(definition, {
-  autoStart: true
-});
+const machine = createLinearJourney(definition);
 
 const detach = attachJourneyDevtools(machine, {
   machineId: "checkout",
@@ -44,8 +42,9 @@ also creates one standalone machine, exposed as `bundle.machine` — attach that
 in [React-owned machines](#react-owned-machines).
 
 Attachment is observational with respect to lifecycle: it does not start, pause, resume, navigate,
-complete, or terminate the machine. Use `autoStart: true` or call
-`machine.controls.start()` when your application is ready.
+complete, or terminate the machine — it does not need to, since a machine starts when it is
+created. If yours was built with `{ autoStart: false }`, call `machine.controls.start()` when your
+application is ready.
 
 ## Choose the mutation policy
 

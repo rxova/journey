@@ -3,8 +3,18 @@ import { createLinearJourney } from "@rxova/journey-core";
 import { flush, startedLinear, wait } from "@rxova/journey-core/testing";
 
 describe("lifecycle meta-state-machine", () => {
-  it("starts idle with no current step (autoStart defaults to false)", () => {
+  it("autoStart defaults to true: creating a journey starts it", () => {
     const machine = createLinearJourney({ steps: ["a", "b"], context: {} });
+    const snapshot = machine.getSnapshot();
+    expect(snapshot.status).toBe("running");
+    expect(snapshot.currentStep?.id).toBe("a");
+    // The initial entry commits synchronously inside the constructor, so the
+    // position is readable the moment the factory returns.
+    expect(snapshot.history.currentIndex).toBe(0);
+  });
+
+  it("autoStart: false stays idle with no current step", () => {
+    const machine = createLinearJourney({ steps: ["a", "b"], context: {} }, { autoStart: false });
     const snapshot = machine.getSnapshot();
     expect(snapshot.status).toBe("idle");
     expect(snapshot.currentStep).toBeNull();
@@ -12,8 +22,12 @@ describe("lifecycle meta-state-machine", () => {
     expect(snapshot.machine.isIdle).toBe(true);
   });
 
+  // The reason `autoStart: false` exists: auto-start commits the initial entry
+  // inside the constructor, so a subscriber attached after the factory returns
+  // has already missed the first stepEnter. Opting out is the only way to hold
+  // the machine idle long enough to attach one.
   it("start() enters the first step and fires stepEnter for pre-attached subscribers", async () => {
-    const machine = createLinearJourney({ steps: ["a", "b"], context: {} });
+    const machine = createLinearJourney({ steps: ["a", "b"], context: {} }, { autoStart: false });
     const entered: (string | null)[][] = [];
     machine.subscriptions.subscribeEvent("stepEnter", ({ from, to }) => entered.push([from, to]));
 
@@ -27,7 +41,7 @@ describe("lifecycle meta-state-machine", () => {
     expect(machine.controls.start()).toBe(false);
   });
 
-  it("autoStart: true starts inside create", () => {
+  it("autoStart: true is the default, spelled out", () => {
     const machine = createLinearJourney({ steps: ["a", "b"], context: {} }, { autoStart: true });
     expect(machine.getSnapshot().status).toBe("running");
     expect(machine.getSnapshot().currentStep?.id).toBe("a");
@@ -103,7 +117,7 @@ describe("lifecycle meta-state-machine", () => {
   });
 
   it("restart is rejected while running or idle", async () => {
-    const idle = createLinearJourney({ steps: ["a"], context: {} });
+    const idle = createLinearJourney({ steps: ["a"], context: {} }, { autoStart: false });
     expect(idle.controls.restart()).toBe(false);
     const machine = await startedLinear();
     expect(machine.controls.restart()).toBe(false);

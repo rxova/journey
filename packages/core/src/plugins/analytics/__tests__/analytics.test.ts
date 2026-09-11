@@ -68,9 +68,11 @@ describe("analytics plugin", () => {
 
   it("tracks custom events and keeps a recent-events buffer", async () => {
     const track = vi.fn();
+    // autoStart: false keeps the buffer empty until the custom event lands —
+    // starting would track a `journey.running` lifecycle event first.
     const machine = createLinearJourney(
       { steps: ["a"], context: {} },
-      { plugins: [createAnalyticsPlugin({ track })] as const }
+      { plugins: [createAnalyticsPlugin({ track })] as const, autoStart: false }
     );
     const api = machine.plugins.analytics;
 

@@ -73,6 +73,17 @@ const createWorkingMachine = () =>
     }
   });
 
+/**
+ * `start` is one of the generated ops, so starting has to belong to the
+ * sequence under test rather than to machine construction. With the default
+ * `autoStart: true` the two machines are built back to back and then driven one
+ * after the other, so the second one's initial entry has settled by the time
+ * its ops run while the first one's had not — lifecycle verbs are rejected
+ * during a pending transition, and the two snapshots diverge on timing rather
+ * than on the command sequence. Opting out removes the race from the harness.
+ */
+const FUZZ_OPTIONS = { autoStart: false } as const;
+
 type Op =
   | { kind: "start" }
   | { kind: "pause" }
@@ -207,8 +218,11 @@ describe("determinism fuzz", () => {
   it("the same linear command sequence always produces the same snapshot", async () => {
     await fc.assert(
       fc.asyncProperty(sequenceArbitrary, async (ops) => {
-        const first = createLinearJourney(linearDefinition) as unknown as FuzzMachine;
-        const second = createLinearJourney(linearDefinition) as unknown as FuzzMachine;
+        const first = createLinearJourney(linearDefinition, FUZZ_OPTIONS) as unknown as FuzzMachine;
+        const second = createLinearJourney(
+          linearDefinition,
+          FUZZ_OPTIONS
+        ) as unknown as FuzzMachine;
         for (const op of ops) {
           await apply(first, op);
           assertInvariants(first.getSnapshot());
@@ -225,8 +239,8 @@ describe("determinism fuzz", () => {
   it("the same graph command sequence always produces the same snapshot", async () => {
     await fc.assert(
       fc.asyncProperty(sequenceArbitrary, async (ops) => {
-        const first = createGraphJourney(graphDefinition) as unknown as FuzzMachine;
-        const second = createGraphJourney(graphDefinition) as unknown as FuzzMachine;
+        const first = createGraphJourney(graphDefinition, FUZZ_OPTIONS) as unknown as FuzzMachine;
+        const second = createGraphJourney(graphDefinition, FUZZ_OPTIONS) as unknown as FuzzMachine;
         for (const op of ops) {
           await apply(first, op);
           assertInvariants(first.getSnapshot());

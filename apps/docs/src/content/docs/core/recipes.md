@@ -99,23 +99,21 @@ const verify = createStep("verify", {
 ## Resume a saved position
 
 For the common case, let the `persist` creation option restore: a valid saved record seeds context,
-timeline, and position at creation, and the first `start()` resumes at the persisted step.
+timeline, and position at creation, and the machine resumes at the persisted step as it starts.
 
 ```ts
+// creation restores and starts — resumes where the record left off
 const machine = createLinearJourney(definition, { persist: { key: "checkout" } });
-
-machine.controls.start(); // resumes where the record left off
 ```
 
 See [Persistence](./persistence#restore-behavior) for the record validity rules — invalid or drifted records
 are ignored and the journey starts fresh.
 
 When your restore policy is application-owned instead (approval gates, partial restores, a custom
-storage shape), read the stored state yourself, restore approved context before creation, start the
-machine, then navigate:
+storage shape), read the stored state yourself, restore approved context before creation, then
+navigate:
 
 ```ts
-machine.controls.start();
 await waitUntilSettled(machine);
 await machine.navigate.goToStepById(resumeStepId);
 ```

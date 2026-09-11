@@ -31,7 +31,6 @@ const machine = createGraphJourney<{ valid: boolean }, "form" | "review" | "done
 `send` takes an event type and, when the declared event has one, its payload as a second argument.
 
 ```ts
-machine.controls.start();
 await waitUntilSettled(machine);
 
 await machine.send("SUBMIT", { email: "ada@example.com" });

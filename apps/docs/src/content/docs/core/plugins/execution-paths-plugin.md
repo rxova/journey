@@ -12,7 +12,6 @@ const machine = createLinearJourney(definition, {
   plugins: [createExecutionPathsPlugin()]
 });
 
-machine.controls.start();
 await waitUntilSettled(machine);
 await machine.navigate.goToNextStep();
 

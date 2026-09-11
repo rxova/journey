@@ -199,7 +199,7 @@ export function createGraphJourney<
     transitions,
     ...(Object.keys(eventWork).length > 0 ? { eventWork } : {}),
     handlers: options.handlers ?? definition.handlers,
-    autoStart: options.autoStart ?? false,
+    autoStart: options.autoStart ?? true,
     defaultTimeoutMs: options.defaultTimeoutMs,
     ...(options.onListenerError !== undefined ? { onListenerError: options.onListenerError } : {}),
     plugins: [

@@ -347,7 +347,7 @@ use a Core machine directly. There is no separate React hook package for this â€
 import React from "react";
 import { createLinearJourney } from "@rxova/journey-core";
 
-export const machine = createLinearJourney({ context: initialContext, steps }, { autoStart: true });
+export const machine = createLinearJourney({ context: initialContext, steps });
 
 // The machine is a module-scope singleton, so this adapter is a stable plain
 // function â€” useSyncExternalStore never resubscribes on it.

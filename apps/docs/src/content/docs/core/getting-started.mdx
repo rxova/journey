@@ -44,14 +44,17 @@ const compact = createLinearJourney({
 });
 ```
 
-## Start and drive it
+## Drive it
 
-Machines start with `status: "idle"`. Starting is synchronous; an async initial `onEnter` may
-continue after `start()` returns.
+Creating a machine starts it — `autoStart` defaults to `true`. The initial step is committed
+synchronously, so `getSnapshot().currentStep` is readable right away, but an async initial `onEnter`
+may still be in flight.
+
+Pass `{ autoStart: false }` when you need the machine to stay idle: that is the only way to attach a
+subscriber before the journey's first `stepEnter`, since starting emits it before the factory
+returns. Then call `checkout.controls.start()` when you are ready.
 
 ```ts
-checkout.controls.start();
-
 function waitUntilSettled(machine: typeof checkout): Promise<void> {
   if (!machine.getSnapshot().transition.pending) return Promise.resolve();
 

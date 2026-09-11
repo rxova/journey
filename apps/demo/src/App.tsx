@@ -297,9 +297,8 @@ export const App = () => {
       }),
     []
   );
-  React.useEffect(() => {
-    coreMachine.controls.start();
-  }, []);
+  // No start effect: creating the machine above started it (autoStart defaults
+  // to true). The bridge attaches afterwards and reports the running machine.
 
   return (
     <main className="layout">

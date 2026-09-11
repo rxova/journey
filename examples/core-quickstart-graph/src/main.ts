@@ -57,7 +57,7 @@ const definition = {
 } satisfies GraphDefinition<CheckoutBag>;
 
 // ── 3. Machine ───────────────────────────────────────────────────────────────
-const machine = withGraphTypes<CheckoutBag>()(definition, { autoStart: true });
+const machine = withGraphTypes<CheckoutBag>()(definition);
 
 // ── 4. Render from the snapshot ──────────────────────────────────────────────
 const root = document.getElementById("root");

@@ -16,7 +16,8 @@ const machine = createLinearJourney({
 
 The machine's methods remain stable for its lifetime. Runtime values are read from snapshots.
 
-Factories also accept runtime options: `autoStart`, `startAt` (start directly at a given step;
+Factories also accept runtime options: `autoStart` (defaults to `true`; pass `false` to hold the
+machine idle and start it yourself), `startAt` (start directly at a given step;
 overrides graph `initial`), `persist` (persistence-plugin sugar that also restores a saved
 position), `defaultTimeoutMs`, `onListenerError` (routes isolated subscriber failures), and
 `plugins`.

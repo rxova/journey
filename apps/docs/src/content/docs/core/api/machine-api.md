@@ -41,6 +41,10 @@ if (!machine.controls.start()) {
 until `snapshot.transition.pending` becomes false before issuing the first navigation. The
 [Quickstart](../getting-started) includes a selector-based `waitUntilSettled` helper.
 
+Because `autoStart` defaults to `true`, a machine is normally already running by the time you hold
+it and `start()` returns `false`. It is worth calling only on one created with
+`{ autoStart: false }`.
+
 Completion is always explicit. Navigation never auto-completes.
 
 The optional third `createLinearJourney<StepId, Context, TerminationPayloads>` generic groups

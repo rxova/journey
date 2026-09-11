@@ -109,7 +109,7 @@ export function createLinearJourney<
       : {}),
     transitions: [],
     handlers: undefined,
-    autoStart: options.autoStart ?? false,
+    autoStart: options.autoStart ?? true,
     defaultTimeoutMs: options.defaultTimeoutMs,
     ...(options.onListenerError !== undefined ? { onListenerError: options.onListenerError } : {}),
     plugins: [

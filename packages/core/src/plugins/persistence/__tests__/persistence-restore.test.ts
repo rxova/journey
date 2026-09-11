@@ -36,7 +36,13 @@ describe("persist option restore", () => {
   it("resumes a linear journey from the persisted record", async () => {
     const storage = await persistedLinearSession();
 
-    const revived = createLinearJourney(linearDefinition, { persist: { key: KEY, storage } });
+    // autoStart: false — this asserts the pre-start restored state and the
+    // stepEnter that resuming emits, both of which auto-start would consume
+    // inside the constructor.
+    const revived = createLinearJourney(linearDefinition, {
+      persist: { key: KEY, storage },
+      autoStart: false
+    });
     expect(revived.getSnapshot().status).toBe("idle");
     expect(revived.getSnapshot().context).toEqual({ n: 1 });
 

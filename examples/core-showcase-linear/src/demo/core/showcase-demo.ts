@@ -97,8 +97,7 @@ const describeContextChange = (previous: LoginContext, current: LoginContext): s
 //   async.*     – transition-level loading/error state (e.g. clearError)
 export const mountCoreShowcase = (root: HTMLElement) => {
   const machine = createLinearJourney<LoginStepId, LoginContext, LoginTerminationPayloads>(
-    linearDefinition,
-    { autoStart: true }
+    linearDefinition
   );
 
   const eventLog: LogEntry[] = [];

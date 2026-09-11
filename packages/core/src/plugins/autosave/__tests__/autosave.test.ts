@@ -20,7 +20,12 @@ describe("autosave plugin", () => {
     const storage = memoryStorage();
     const machine = createLinearJourney(
       { steps: ["a", "b"], context: {} },
-      { plugins: [createAutosavePlugin({ storage, key: "auto", debounceMs: 10 })] as const }
+      {
+        plugins: [createAutosavePlugin({ storage, key: "auto", debounceMs: 10 })] as const,
+        // autoStart: false — this asserts the untouched autosave state first,
+        // and entering the initial step already schedules a save.
+        autoStart: false
+      }
     );
     const api = machine.plugins.autosave;
     expect(api.getAutosaveState()).toEqual({ status: "idle", lastSavedAt: null, error: null });

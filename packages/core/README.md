@@ -46,8 +46,6 @@ const checkout = createLinearJourney<CheckoutStepId, CheckoutContext, CheckoutTe
   }
 });
 
-checkout.controls.start();
-
 checkout.context.update((context) => ({
   ...context,
   email: "ada@example.com"

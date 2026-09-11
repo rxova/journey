@@ -81,9 +81,7 @@ the persisted current step instead of the first/initial one:
 const machine = createLinearJourney(definition, {
   persist: { key: "checkout" }
 });
-
-machine.controls.start();
-// resumes at the persisted step when a valid record existed
+// creation starts the machine, resuming at the persisted step when a valid record existed
 ```
 
 A record is restorable when its status is `running` or `paused`, its `currentIndex` points inside

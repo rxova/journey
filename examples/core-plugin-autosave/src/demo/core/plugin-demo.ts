@@ -56,17 +56,14 @@ export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => 
     switch (kind) {
       case "diagnostics":
         return createGraphJourney(structureDefinition, {
-          autoStart: true,
           plugins: [createDiagnosticsPlugin()] as const
         });
       case "execution-paths":
         return createGraphJourney(structureDefinition, {
-          autoStart: true,
           plugins: [createExecutionPathsPlugin()] as const
         });
       case "analytics":
         return createLinearJourney(pluginDefinition, {
-          autoStart: true,
           plugins: [
             createAnalyticsPlugin({
               track: (event) => eventStore.push({ name: event.name, payload: event.payload })
@@ -75,7 +72,6 @@ export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => 
         });
       case "autosave":
         return createLinearJourney(pluginDefinition, {
-          autoStart: true,
           plugins: [
             createAutosavePlugin({
               storage: window.localStorage,
@@ -86,14 +82,12 @@ export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => 
         });
       case "persistence":
         return createLinearJourney(pluginDefinition, {
-          autoStart: true,
           plugins: [
             createPersistencePlugin({ storage: window.localStorage, key: storageKey })
           ] as const
         });
       case "replay":
         return createLinearJourney(pluginDefinition, {
-          autoStart: true,
           plugins: [createReplayPlugin({ maxEntries: 60 })] as const
         });
     }

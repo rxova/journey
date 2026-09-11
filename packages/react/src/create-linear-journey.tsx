@@ -109,6 +109,14 @@ export const createLinearJourney = <
   // machine from a layout effect on first mount, so subscribers attach before
   // the initial stepEnter; `true` keeps the eager in-factory start for callers
   // who need SSR to emit step content; `false` defers to controls.start().
+  //
+  // `options?.autoStart === true` is load-bearing and must stay a strict
+  // comparison, not a spread. Core now defaults autoStart to `true`, so
+  // forwarding `options` unchanged would start every bundle inside the factory:
+  // SSR would render step content where the client renders `fallback`,
+  // hydration would mismatch, and the journey's first stepEnter would fire
+  // before any component could subscribe. This line is what turns Core's
+  // default off so the mount effect below can own starting instead.
   const machine = coreCreateLinearJourney(coreDefinition, {
     ...options,
     autoStart: options?.autoStart === true

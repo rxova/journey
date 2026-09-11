@@ -154,24 +154,21 @@ const machine = withGraphTypes<{
   stepId: "start" | "details" | "done";
   events: Event;
   meta: { title: string };
-}>()(
-  {
-    initial: "start",
-    context: { ready: false },
-    steps: {
-      start: {
-        metadata: { title: "Start" },
-        on: {
-          continue: [{ to: "details", when: ({ context }) => context.ready }],
-          skip: "done"
-        }
-      },
-      details: { metadata: { title: "Details" }, on: { continue: "done" } },
-      done: { metadata: { title: "Done" } }
-    }
-  },
-  { autoStart: true }
-);
+}>()({
+  initial: "start",
+  context: { ready: false },
+  steps: {
+    start: {
+      metadata: { title: "Start" },
+      on: {
+        continue: [{ to: "details", when: ({ context }) => context.ready }],
+        skip: "done"
+      }
+    },
+    details: { metadata: { title: "Details" }, on: { continue: "done" } },
+    done: { metadata: { title: "Done" } }
+  }
+});
 
 await machine.send("continue");
 await machine.send("cancel", { reason: "user" });
@@ -360,7 +357,7 @@ There is no headless package entry. When an application already owns a Core mach
 import React from "react";
 import { createLinearJourney } from "@rxova/journey-core";
 
-const machine = createLinearJourney({ context: initialContext, steps }, { autoStart: true });
+const machine = createLinearJourney({ context: initialContext, steps });
 
 const subscribe = (onStoreChange: () => void) => machine.subscriptions.subscribe(onStoreChange);
 
