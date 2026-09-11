@@ -260,8 +260,9 @@ Narrow `snapshot.type` before reading linear order fields (`currentStep.index`, 
 
 ## Core: step `effect`/`after` → transactional work
 
-The rc.2 transition `effect` object, per-transition `updateContext`, labels, ids, per-transition
-timeouts, and delayed `after` transitions are gone.
+The rc.2 transition `effect` object, per-transition `updateContext`, transition ids, and delayed
+`after` transitions are gone. Labels and per-transition timeouts are not: both are still declared
+on the candidate, now as plain `label` and `timeoutMs` fields.
 
 - Async pre-commit validation belongs in **work**: `run` is awaited first, `commit` stages context
   synchronously, and for graph work-sends the candidates are routed on the staged context and the

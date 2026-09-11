@@ -30,6 +30,9 @@ fall back — metadata to `Record<string, unknown>`, handlers to an empty record
 so `commit`'s `result` is `unknown` unless the bag pins it. One result type per event name, not per
 (step, event) pair.
 
+If restating the result type is the part you object to, [`defineWork`](#definework--inferring-the-run-result)
+reads it off `run` instead.
+
 ## `withGraphTypes` — pinning at the call
 
 ```ts
@@ -59,6 +62,54 @@ linear twin, and `@rxova/journey-react/graph` exports its own `withGraphTypes` r
 These are standalone functions rather than a `.withTypes` property on the factory. Attaching one
 would be a module-level side effect, and that defeats tree-shaking badly enough that importing only
 `createLinearJourney` pulled the entire graph tier into the bundle.
+
+## `defineWork` — inferring the run result
+
+The bag's `results` exists because a declared `run` sits at a property position, and TypeScript does
+not infer through one. A generic function call _is_ an inference site, so passing the same config
+through one reads the result type off `run` and nothing needs restating:
+
+```ts
+import { defineWork, withGraphTypes } from "@rxova/journey-core";
+
+const login = withGraphTypes<AuthBag>()({
+  initial: "login",
+  context: initialContext,
+  steps: {
+    login: { on: { submit: "twofa" } },
+    twofa: {
+      on: {
+        verify: defineWork<AuthBag, "verify">()({
+          run: ({ handlers }) => handlers.verify(), // the result type comes from here
+          commit: ({ result, updateContext }) =>
+            updateContext((context) => ({ ...context, ok: result.ok })),
+          candidates: [
+            { to: "done", label: "verified", when: ({ context }) => context.ok },
+            { to: "twofa", label: "retry" }
+          ]
+        })
+      }
+    },
+    done: {}
+  }
+});
+```
+
+Two things follow from the call being generic, neither of which the property form can offer:
+`commit` gets a typed `result`, and `run`'s `event` is narrowed to the key the entry is declared
+under.
+
+Guards are unaffected and stay total functions of context: the result reaches them only through the
+context `commit` stages. Routing a guard directly on the run result is deliberately not available —
+the same guards run during snapshot derivation, where no send is in flight, so `availableEvents`
+would disagree with what a send actually does.
+
+The call is curried because TypeScript infers all of a call's type arguments or none: naming the bag
+and the event inline would opt the result type out of inference too. The empty second call is the
+price of pinning the first two and inferring the third.
+
+`defineWork` pairs with a bag, so reach for it through `withGraphTypes<TBag>()` — a definition that
+infers `stepId`, `events` and `handlers` on its own will not line up with the bag's.
 
 ## `GraphStep` — steps in their own files
 

@@ -208,8 +208,15 @@ Use `createGraphJourney` when named events, guards, or branches choose destinati
 add typed `send(type, payload?)`, available events and targets in the snapshot, and transition-level
 post-commit effects.
 
-For larger graphs, `withGraphTypes<Bag>()` pins the types once and `GraphStep<Bag>` lets each step live in its own file. See the
-[Graph guide](https://rxova.org/docs/core/usage/graph).
+Candidates take an optional `label`, which names the edge in timeout and error messages, in the
+`transition` argument every step hook receives, and in the structure view plugins read — several
+candidates on one event differ only by guard, so `event` and `to` do not tell them apart. They also
+take an optional `timeoutMs`, as does a declared work entry, overriding `defaultTimeoutMs` for that
+one edge so a single slow third-party call does not set the budget for the whole graph.
+
+For larger graphs, `withGraphTypes<Bag>()` pins the types once and `GraphStep<Bag>` lets each step live in its own file, and
+`defineWork<Bag, "EVENT">()` reads a work entry's result type off its `run` instead of restating it
+in the bag. See the [Graph guide](https://rxova.org/docs/core/usage/graph).
 
 ## Connectors
 

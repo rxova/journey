@@ -34,6 +34,10 @@ export type AnySendWork = {
       readonly updateContext: (updater: ContextUpdater<unknown>) => void;
     }
   ) => unknown;
+  /** Per-entry budget for `run`; falls back to `defaultTimeoutMs` when unset. */
+  readonly timeoutMs?: number;
+  /** Name used for this work in timeout and error messages. */
+  readonly label?: string;
 };
 
 export type RuntimeStep = {
@@ -46,6 +50,16 @@ export type RuntimeTransition = {
   readonly event: string;
   readonly from: string;
   readonly to: string;
+  /**
+   * Position among the candidates `from` declares for `event`. Identifies an
+   * unlabelled edge in errors, where `event` and `to` may be shared by several
+   * candidates that differ only by guard.
+   */
+  readonly index: number;
+  /** The edge's declared name, used in place of the positional description. */
+  readonly label?: string;
+  /** Per-edge budget for `onTransition`; falls back to `defaultTimeoutMs`. */
+  readonly timeoutMs?: number;
   /**
    * `result` is the run result while routing a work send, and undefined
    * everywhere else (plain sends, snapshot introspection).

@@ -21,7 +21,11 @@ export type JourneyErrorCode =
   /** Persistence was requested but no usable storage could be resolved. */
   | "storage-unavailable"
   /** Navigation work's `commit` returned a promise; it must be synchronous. */
-  | "async-commit";
+  | "async-commit"
+  /** A transition or work entry declared `label` as something other than a non-empty string. */
+  | "invalid-label"
+  /** A transition or work entry declared `timeoutMs` as something other than a positive finite number. */
+  | "invalid-timeout";
 
 export type JourneyErrorDetails = {
   /** The offending step id, where one caused the failure. */

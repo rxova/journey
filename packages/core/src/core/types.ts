@@ -222,6 +222,22 @@ export type JourneySnapshot<
 export type ContextUpdater<TContext> = (previous: TContext) => TContext;
 
 /**
+ * Which edge a hook is running for.
+ *
+ * `event` and `to` alone do not identify it: several candidates on one event
+ * can share a target and differ only by guard. `label` is the edge's declared
+ * name; `index` is its position among the candidates the origin step declares
+ * for that event, so an anonymous edge is still identifiable.
+ */
+export type TransitionInfo = {
+  readonly event: string;
+  readonly from: string;
+  readonly to: string;
+  readonly label: string | null;
+  readonly index: number;
+};
+
+/**
  * Arguments passed to step hooks.
  *
  * `event` is the graph event that caused the transition; `null` for timeline
@@ -239,6 +255,12 @@ export type StepHookArgs<
   readonly from: TStepId | null;
   readonly to: TStepId;
   readonly event: TEvents | null;
+  /**
+   * The edge that caused this move, or `null` for timeline moves, linear
+   * navigation, and the initial entry. Present on every step hook, not just
+   * `onTransition`, so `onEnter` can tell which candidate routed into it.
+   */
+  readonly transition: TransitionInfo | null;
   readonly updateContext: (updater: ContextUpdater<TContext>) => void;
   /**
    * Queues an event for processing after the current transition fully settles
@@ -410,6 +432,11 @@ export type NavigationWork<TContext, TStepId extends string, TSnap, TResult = vo
       readonly updateContext: (updater: ContextUpdater<TContext>) => void;
     }
   ) => void;
+  /**
+   * Budget for this `run`, overriding `defaultTimeoutMs`. Left unset, the
+   * global default applies; set it when this one call is slower than the rest.
+   */
+  readonly timeoutMs?: number;
 };
 
 export type JourneyNavigation<TContext, TStepId extends string, TSnap> = {
@@ -453,6 +480,10 @@ export type JourneyStructure = {
     readonly from: string;
     readonly to: string;
     readonly guarded: boolean;
+    /** The edge's declared name, or `null` when it was left anonymous. */
+    readonly label: string | null;
+    /** Position among the candidates this step declares for this event. */
+    readonly index: number;
   }[];
 };
 

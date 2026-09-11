@@ -46,6 +46,19 @@ export type GraphTransition<
 > = {
   readonly to: TStepId;
   readonly when?: TransitionGuard<TContext, THandlers>;
+  /**
+   * Names this edge. Several candidates on one event differ only by guard, so
+   * the name is what tells them apart in timeout messages, step-hook
+   * `transition` args, and the plugin structure view — a priority index says
+   * where the edge sits, not what it is.
+   */
+  readonly label?: string;
+  /**
+   * Budget for this edge's `onTransition`, overriding `defaultTimeoutMs`. One
+   * edge waiting on a slow third party is not a reason to widen the budget for
+   * every other edge in the graph.
+   */
+  readonly timeoutMs?: number;
   /** Async effect, post-commit, cannot cancel; a throw is handled like an `onEnter` throw. */
   readonly onTransition?: (
     args: Omit<GraphHookArgs<TContext, TStepId, TEvents, TMeta>, "event"> & {
@@ -86,7 +99,14 @@ export type GraphOnEntry<
           THandlers
         >
       ) => TResult | Promise<TResult>;
-      readonly commit?: (
+      /**
+       * Declared as a method rather than a function-typed property on purpose.
+       * Method parameters are checked bivariantly, which is what lets a
+       * `commit` whose `result` is a concrete type sit in this slot when the
+       * slot's own `TResult` is the `unknown` fallback — the escape hatch the
+       * `work()` helper relies on to hand back an inferred config.
+       */
+      commit?(
         args: SendWorkArgs<
           TStepId,
           TEvents,
@@ -96,8 +116,23 @@ export type GraphOnEntry<
           readonly result: TResult;
           readonly updateContext: (updater: ContextUpdater<TContext>) => void;
         }
-      ) => void;
-      readonly candidates: readonly GraphTransition<TContext, TStepId, TEvents, THandlers, TMeta>[];
+      ): void;
+      /** Names this work in timeout and error messages. */
+      readonly label?: string;
+      /**
+       * Budget for `run`, overriding `defaultTimeoutMs`. This is the edge that
+       * usually needs its own: `run` is where a definition's third-party call
+       * lives.
+       */
+      readonly timeoutMs?: number;
+      readonly candidates: readonly GraphTransition<
+        TContext,
+        TStepId,
+        TEvents,
+        THandlers,
+        TMeta,
+        TTrigger
+      >[];
     };
 
 export type GraphStepConfig<
@@ -288,6 +323,8 @@ export type LooseOnEntry =
   | {
       readonly run: AnySendWork["run"];
       readonly commit?: AnySendWork["commit"];
+      readonly label?: string;
+      readonly timeoutMs?: number;
       readonly candidates: readonly LooseTransition[];
     };
 
@@ -296,6 +333,8 @@ export type LooseTransition = {
   readonly to: string;
   readonly when?: NonNullable<RuntimeTransition["when"]>;
   readonly onTransition?: NonNullable<RuntimeTransition["onTransition"]>;
+  readonly label?: string;
+  readonly timeoutMs?: number;
 };
 
 /** Internal, generics-erased view of a definition used by normalization. */
@@ -316,13 +355,18 @@ export type MutableRuntimeStep = {
 
 export type MutableSendWork = {
   run: AnySendWork["run"];
-  commit?: AnySendWork["commit"];
+  commit?: NonNullable<AnySendWork["commit"]>;
+  label?: string;
+  timeoutMs?: number;
 };
 
 export type MutableRuntimeTransition = {
   event: string;
   from: string;
   to: string;
+  index: number;
+  label?: string;
+  timeoutMs?: number;
   when?: NonNullable<RuntimeTransition["when"]>;
   onTransition?: NonNullable<RuntimeTransition["onTransition"]>;
 };

@@ -1,4 +1,5 @@
-import type { StepAsyncState } from "./types";
+import type { RuntimeTransition } from "./runtime.types";
+import type { StepAsyncState, TransitionInfo } from "./types";
 
 /** Hard cap on events processed from one raise cascade before it is dropped. */
 export const MAX_RAISED_EVENTS = 25;
@@ -11,6 +12,34 @@ export const MAX_RAISED_EVENTS = 25;
  */
 export const eventWorkKey = (from: string, event: string): string =>
   `${from.length}:${from}${event}`;
+
+/**
+ * How one edge is named in errors and timeout messages.
+ *
+ * A declared label wins outright — that is the point of declaring one. Without
+ * it the fallback still has to distinguish candidates that share an event and
+ * a target and differ only by guard, so it carries the declaration index:
+ * `submit[1] (login -> twofa)`.
+ */
+export const describeTransition = (transition: RuntimeTransition): string =>
+  transition.label ??
+  `${transition.event}[${transition.index}] (${transition.from} -> ${transition.to})`;
+
+/**
+ * The public, generics-free view of an edge handed to step hooks. Built once
+ * per navigation and shared by the three hooks it runs — and left unfrozen,
+ * like the hook args it rides on, since it does not outlive them.
+ */
+export const transitionInfo = (transition: RuntimeTransition | null): TransitionInfo | null =>
+  transition === null
+    ? null
+    : {
+        event: transition.event,
+        from: transition.from,
+        to: transition.to,
+        label: transition.label ?? null,
+        index: transition.index
+      };
 
 export const SUCCESS_ASYNC: StepAsyncState = Object.freeze({
   isLoading: false,

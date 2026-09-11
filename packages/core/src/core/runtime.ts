@@ -1,12 +1,14 @@
 import { isDevelopmentEnvironment } from "@rxova/journey-common/dev";
 import { JourneyError } from "./errors";
 import {
+  describeTransition,
   eventWorkKey,
   hasOwn,
   LOADING_ASYNC,
   MAX_RAISED_EVENTS,
   shallowEqual,
-  SUCCESS_ASYNC
+  SUCCESS_ASYNC,
+  transitionInfo
 } from "./helpers";
 import { JourneyStore } from "./store";
 import type {
@@ -33,7 +35,8 @@ import type {
   NavigationResult,
   PluginHost,
   StepAsyncState,
-  StepEnterDirection
+  StepEnterDirection,
+  TransitionInfo
 } from "./types";
 
 /**
@@ -358,7 +361,8 @@ export class JourneyRuntime {
       };
       result = await this.withTimeout(
         Promise.resolve(work.run(args)),
-        `send work(${type} from ${from})`
+        `send work(${work.label ?? `${type} from ${from}`})`,
+        work.timeoutMs
       );
       if (!this.isCurrent(generation)) return this.staleResult();
       const commitResult = (work.commit as ((value: unknown) => unknown) | undefined)?.({
@@ -427,7 +431,9 @@ export class JourneyRuntime {
               event: transition.event,
               from: transition.from,
               to: transition.to,
-              guarded: transition.when !== undefined
+              guarded: transition.when !== undefined,
+              label: transition.label ?? null,
+              index: transition.index
             })
           )
         )
@@ -560,12 +566,18 @@ export class JourneyRuntime {
     return Promise.resolve({ ...failure, from: this.currentStepId(), to: target });
   }
 
-  private hookArgs(from: string | null, to: string, event: JourneyEventObject | null): AnyHookArgs {
+  private hookArgs(
+    from: string | null,
+    to: string,
+    event: JourneyEventObject | null,
+    transition: TransitionInfo | null
+  ): AnyHookArgs {
     return {
       snapshot: this.store.getSnapshot(),
       from,
       to,
       event,
+      transition,
       updateContext: (updater) => this.updateContext(updater),
       raise: (raised) => {
         if (this.config.kind !== "graph" || this.disposed) return;
@@ -577,19 +589,26 @@ export class JourneyRuntime {
   private async invokeEffect(
     effect: AnyOnEffect | undefined,
     args: AnyHookArgs,
-    label: string
+    label: string,
+    timeoutMs?: number
   ): Promise<{ error: unknown } | null> {
     if (!effect) return null;
     try {
-      await this.withTimeout(Promise.resolve(effect(args)), label);
+      await this.withTimeout(Promise.resolve(effect(args)), label, timeoutMs);
       return null;
     } catch (error) {
       return { error };
     }
   }
 
-  private withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
-    const ms = this.config.defaultTimeoutMs;
+  /**
+   * `overrideMs` is the declaring edge's own budget. It wins over
+   * `defaultTimeoutMs` so that one slow third-party call does not force every
+   * other edge onto the slow one's budget; `undefined` falls back to the
+   * global, and a global of `undefined` means no bound at all.
+   */
+  private withTimeout<T>(promise: Promise<T>, label: string, overrideMs?: number): Promise<T> {
+    const ms = overrideMs ?? this.config.defaultTimeoutMs;
     if (ms === undefined) return promise;
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(
@@ -664,7 +683,8 @@ export class JourneyRuntime {
         };
         const result = await this.withTimeout(
           Promise.resolve(work.run(args)),
-          `${direction} navigation work(${from} -> ${to})`
+          `${direction} navigation work(${from} -> ${to})`,
+          work.timeoutMs
         );
         if (!this.isCurrent(generation)) return this.staleResult();
         const commitResult = (work.commit as ((value: unknown) => unknown) | undefined)?.({
@@ -772,12 +792,13 @@ export class JourneyRuntime {
   ): Promise<void> {
     const fromStep = from === null ? undefined : this.config.steps[from];
     const toStep = this.config.steps[to];
+    const edge = transitionInfo(transition);
     const failures: { error: unknown; phase: "leave" | "enter" | "transition"; stepId: string }[] =
       [];
 
     const leaveFailure = await this.invokeEffect(
       fromStep?.onLeave,
-      this.hookArgs(from, to, event),
+      this.hookArgs(from, to, event, edge),
       `onLeave(${from ?? ""})`
     );
     if (!this.isCurrent(generation)) return;
@@ -790,8 +811,9 @@ export class JourneyRuntime {
 
     const transitionFailure = await this.invokeEffect(
       transition?.onTransition,
-      this.hookArgs(from, to, event),
-      `onTransition(${event?.type ?? ""})`
+      this.hookArgs(from, to, event, edge),
+      `onTransition(${transition ? describeTransition(transition) : (event?.type ?? "")})`,
+      transition?.timeoutMs
     );
     if (!this.isCurrent(generation)) return;
     if (transitionFailure) {
@@ -800,7 +822,7 @@ export class JourneyRuntime {
 
     const enterFailure = await this.invokeEffect(
       toStep?.onEnter,
-      this.hookArgs(from, to, event),
+      this.hookArgs(from, to, event, edge),
       `onEnter(${to})`
     );
     if (!this.isCurrent(generation)) return;

@@ -13,7 +13,8 @@ import type {
   LooseOnEntry,
   LooseTransition,
   MutableRuntimeStep,
-  MutableRuntimeTransition
+  MutableRuntimeTransition,
+  MutableSendWork
 } from "./graph.types";
 import type { AnySendWork } from "../core/runtime.types";
 import type { Bag, GraphDefinition, HandlersOf, MetaOf } from "./bag.types";
@@ -24,6 +25,34 @@ import type {
   JourneyTerminationPayloads,
   TerminatePayloadOf
 } from "../core/types";
+
+/**
+ * Both validators run at build time rather than at the first send. A label only
+ * ever shows up in an error message and a timeout only ever fires under load,
+ * so a malformed one would otherwise stay invisible until the moment it was
+ * needed to explain something else.
+ */
+const assertLabel = (label: unknown, where: string, meta: { event: string; stepId: string }) => {
+  if (typeof label !== "string" || label.length === 0) {
+    throw new JourneyError(
+      "invalid-label",
+      `${where} must declare "label" as a non-empty string`,
+      meta
+    );
+  }
+  return label;
+};
+
+const assertTimeout = (ms: unknown, where: string, meta: { event: string; stepId: string }) => {
+  if (typeof ms !== "number" || !Number.isFinite(ms) || ms <= 0) {
+    throw new JourneyError(
+      "invalid-timeout",
+      `${where} must declare "timeoutMs" as a finite number greater than 0`,
+      meta
+    );
+  }
+  return ms;
+};
 
 /**
  * Flattens each step's colocated `on` into the runtime's flat transition list,
@@ -71,7 +100,12 @@ export function normalizeGraphDefinition(definition: LooseGraphDefinition): {
   const transitions: RuntimeTransition[] = [];
   const eventWork: Record<string, AnySendWork> = {};
 
-  const pushCandidate = (event: string, from: string, candidate: LooseTransition): void => {
+  const pushCandidate = (
+    event: string,
+    from: string,
+    candidate: LooseTransition,
+    index: number
+  ): void => {
     if (!stepIds.includes(candidate.to)) {
       throw new JourneyError(
         "dangling-transition",
@@ -79,9 +113,19 @@ export function normalizeGraphDefinition(definition: LooseGraphDefinition): {
         { event, stepId: candidate.to }
       );
     }
-    const runtimeTransition: MutableRuntimeTransition = { event, from, to: candidate.to };
+    const where = `transition "${event}"[${index}] on step "${from}"`;
+    const runtimeTransition: MutableRuntimeTransition = { event, from, to: candidate.to, index };
     if (candidate.when) runtimeTransition.when = candidate.when;
     if (candidate.onTransition) runtimeTransition.onTransition = candidate.onTransition;
+    if (candidate.label !== undefined) {
+      runtimeTransition.label = assertLabel(candidate.label, where, { event, stepId: from });
+    }
+    if (candidate.timeoutMs !== undefined) {
+      runtimeTransition.timeoutMs = assertTimeout(candidate.timeoutMs, where, {
+        event,
+        stepId: from
+      });
+    }
     transitions.push(runtimeTransition);
   };
 
@@ -91,19 +135,27 @@ export function normalizeGraphDefinition(definition: LooseGraphDefinition): {
     for (const [event, entry] of Object.entries(on)) {
       if (entry === undefined) continue;
       if (typeof entry === "string") {
-        pushCandidate(event, from, { to: entry });
+        pushCandidate(event, from, { to: entry }, 0);
         continue;
       }
       if (Array.isArray(entry)) {
-        for (const candidate of entry) pushCandidate(event, from, candidate);
+        entry.forEach((candidate, index) => pushCandidate(event, from, candidate, index));
         continue;
       }
       const declared = entry as Exclude<LooseOnEntry, string | readonly LooseTransition[]>;
-      eventWork[eventWorkKey(from, event)] = {
-        run: declared.run,
-        ...(declared.commit ? { commit: declared.commit } : {})
-      };
-      for (const candidate of declared.candidates) pushCandidate(event, from, candidate);
+      const where = `work on "${event}" on step "${from}"`;
+      const work: MutableSendWork = { run: declared.run };
+      if (declared.commit) work.commit = declared.commit;
+      if (declared.label !== undefined) {
+        work.label = assertLabel(declared.label, where, { event, stepId: from });
+      }
+      if (declared.timeoutMs !== undefined) {
+        work.timeoutMs = assertTimeout(declared.timeoutMs, where, { event, stepId: from });
+      }
+      eventWork[eventWorkKey(from, event)] = work;
+      declared.candidates.forEach((candidate, index) =>
+        pushCandidate(event, from, candidate, index)
+      );
     }
   }
 

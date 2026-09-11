@@ -133,7 +133,9 @@ export function analyzeStructure(definition: {
       event: transition.event,
       from: transition.from,
       to: transition.to,
-      guarded: transition.when !== undefined
+      guarded: transition.when !== undefined,
+      label: transition.label ?? null,
+      index: transition.index
     }))
   };
   return analyzeJourneyStructure(structure);

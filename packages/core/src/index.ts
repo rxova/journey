@@ -29,6 +29,11 @@ export type {
   TransitionGuard
 } from "./graph/graph.types";
 
+// Puts a declared `run` back at an inference site, so `commit` and the
+// candidates' guards read their result type off it instead of the bag.
+export { defineWork } from "./graph/work";
+export type { WorkConfig } from "./graph/work";
+
 // The bag exists so steps can live in separate files, and so `withTypes` has
 // somewhere to pin what a definition cannot infer on its own.
 export type {
@@ -87,6 +92,7 @@ export type {
   PluginHost,
   StepAsyncState,
   StepHookArgs,
+  TransitionInfo,
   TransitionState,
   Unsubscribe
 } from "./core/types";
