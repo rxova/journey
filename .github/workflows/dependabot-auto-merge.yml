@@ -1,0 +1,33 @@
+name: Dependabot auto-merge
+
+# Turns on auto-merge for Dependabot PRs, so they merge once the required
+# `all checks` status passes. A PR with any major-version bump stays open for review.
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable auto-merge unless it contains a major bump
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          msg=$(gh api "repos/$REPO/commits/$HEAD_SHA" --jq .commit.message)
+          if ! grep -q 'update-type: version-update:semver-' <<<"$msg"; then
+            echo "No Dependabot update metadata; leaving it for review."
+            exit 0
+          fi
+          if grep -q 'update-type: version-update:semver-major' <<<"$msg"; then
+            echo "Contains a major bump; leaving it for review."
+            exit 0
+          fi
+          gh pr review "$PR_URL" --approve --body "Dependabot patch/minor update; merges once CI passes."
+          gh pr merge "$PR_URL" --auto --rebase
