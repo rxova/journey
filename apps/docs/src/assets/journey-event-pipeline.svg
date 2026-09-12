@@ -1,0 +1,84 @@
+<svg width="520" height="660" viewBox="0 0 520 660" xmlns="http://www.w3.org/2000/svg"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5"
+            markerWidth="5" markerHeight="5" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#94A3B8"/>
+    </marker>
+  </defs>
+
+  <!-- Card -->
+  <rect width="520" height="660" rx="12" fill="white" stroke="#E2E8F0" stroke-width="1.5"/>
+
+  <!-- Title -->
+  <text x="260" y="36" text-anchor="middle" font-size="14" font-weight="700" fill="#0F172A" letter-spacing="-0.2">Event Processing Pipeline</text>
+  <line x1="40" y1="50" x2="480" y2="50" stroke="#F1F5F9" stroke-width="1.5"/>
+
+  <!-- Step 1: Caller -->
+  <rect x="110" y="62" width="300" height="48" rx="7" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+  <text x="260" y="82" text-anchor="middle" font-size="12.5" font-weight="600" fill="#334155">Caller</text>
+  <text x="260" y="98" text-anchor="middle" font-size="11" fill="#64748B">machine.send(event)</text>
+
+  <!-- Arrow 1→2 -->
+  <line x1="260" y1="110" x2="260" y2="130" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Step 2: Queue -->
+  <rect x="110" y="130" width="300" height="56" rx="7" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1.5"/>
+  <text x="260" y="152" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1D4ED8">Queue</text>
+  <text x="260" y="170" text-anchor="middle" font-size="11" fill="#3B82F6">Serialized — waits for any in-flight event to settle</text>
+
+  <!-- Arrow 2→3 -->
+  <line x1="260" y1="186" x2="260" y2="206" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Step 3: Match Transitions -->
+  <rect x="110" y="206" width="300" height="56" rx="7" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+  <text x="260" y="228" text-anchor="middle" font-size="12.5" font-weight="600" fill="#334155">Match Transitions</text>
+  <text x="260" y="246" text-anchor="middle" font-size="11" fill="#64748B">Ordered list — first passing guard wins</text>
+
+  <!-- Arrow 3→4 -->
+  <line x1="260" y1="262" x2="260" y2="282" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Step 4: Guards -->
+  <rect x="110" y="282" width="300" height="56" rx="7" fill="#FFFBEB" stroke="#FCD34D" stroke-width="1.5"/>
+  <text x="260" y="304" text-anchor="middle" font-size="12.5" font-weight="600" fill="#92400E">Guards</text>
+  <text x="260" y="322" text-anchor="middle" font-size="11" fill="#B45309">Async-capable — pass or block the transition</text>
+
+  <!-- Arrow 4→5 -->
+  <line x1="260" y1="338" x2="260" y2="358" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Step 5: updateContext -->
+  <rect x="110" y="358" width="300" height="56" rx="7" fill="#F0FDF4" stroke="#86EFAC" stroke-width="1.5"/>
+  <text x="260" y="380" text-anchor="middle" font-size="12.5" font-weight="600" fill="#065F46">updateContext</text>
+  <text x="260" y="398" text-anchor="middle" font-size="11" fill="#047857">Sync — derives next context on matched transition</text>
+
+  <!-- Arrow 5→6 -->
+  <line x1="260" y1="414" x2="260" y2="434" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Step 6: Navigation.commit -->
+  <rect x="110" y="434" width="300" height="56" rx="7" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+  <text x="260" y="456" text-anchor="middle" font-size="12.5" font-weight="600" fill="#334155">Navigation.commit()</text>
+  <text x="260" y="474" text-anchor="middle" font-size="11" fill="#64748B">Writes next step and context to the runtime</text>
+
+  <!-- Arrow 6→7 -->
+  <line x1="260" y1="490" x2="260" y2="510" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Step 7: Snapshot -->
+  <rect x="110" y="510" width="300" height="62" rx="7" fill="#F5F3FF" stroke="#C4B5FD" stroke-width="1.5"/>
+  <text x="260" y="532" text-anchor="middle" font-size="12.5" font-weight="600" fill="#4C1D95">Snapshot Updated</text>
+  <text x="260" y="550" text-anchor="middle" font-size="11" fill="#5B21B6">currentStepId · history · context</text>
+  <text x="260" y="565" text-anchor="middle" font-size="11" fill="#5B21B6">visited · status · async phases</text>
+
+  <!-- Arrow 7→8 -->
+  <line x1="260" y1="572" x2="260" y2="592" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Step 8: Result + Subscribers -->
+  <rect x="110" y="592" width="300" height="52" rx="7" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+  <text x="260" y="613" text-anchor="middle" font-size="12.5" font-weight="600" fill="#334155">Result + Subscribers</text>
+  <text x="260" y="631" text-anchor="middle" font-size="11" fill="#64748B">{ transitioned, snapshot } · subscribers notified</text>
+
+  <!-- Feedback loop: back to Queue -->
+  <path d="M 110 618 L 66 618 L 66 158 L 110 158"
+        stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="5,3" fill="none" marker-end="url(#arr)"/>
+  <text x="42" y="388" text-anchor="middle" font-size="10" fill="#94A3B8"
+        transform="rotate(-90, 42, 388)">next queued event</text>
+</svg>

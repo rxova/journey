@@ -1,178 +1,137 @@
 ---
-title: "Transition Syntax"
+title: "Transitions syntax"
 ---
 
-Journey supports two current ways to define transitions:
+Linear order and graph events are separate definition forms.
 
-- linear step arrays for simple sequential flows
-- event-keyed graph objects for branching or cross-cutting flow logic
-
-Both resolve to the same runtime model. Transition matching stays deterministic: first valid transition wins.
-
-Reserved step ids: `*`, `global`, `COMPLETE`, and `TERMINATED`. They are part of the runtime contract and cannot be reused as actual step names.
-
-## Option A: Linear Shorthand
-
-Use a linear array when the flow is just a fixed `goToNextStep` sequence.
+## Linear steps
 
 ```ts
-const journey = {
-  initial: "start",
-  context: {},
-  steps: {
-    start: {},
-    details: {},
-    review: {}
-  },
-  transitions: ["start", "details", "review"]
-};
-```
-
-This is shorthand for:
-
-- `start --goToNextStep--> details`
-- `details --goToNextStep--> review`
-
-You can also annotate the next step without switching to graph syntax:
-
-```ts
-const journey = {
-  initial: "start",
-  context: { draftId: null },
-  steps: {
-    start: {},
-    details: {},
-    review: {}
-  },
-  transitions: [
-    "start",
+const definition = {
+  context: { valid: false },
+  steps: [
+    "intro",
     {
-      step: "details",
-      id: "start-next",
-      timeoutMs: 5_000,
-      updateContext: ({ context }) => ({
-        ...context,
-        completedSteps: context.completedSteps + 1
-      })
+      id: "form",
+      metadata: { title: "Form" },
+      onLeave: ({ snapshot }) => analytics.track("form_left", snapshot.context)
     },
-    "review"
-  ]
+    {
+      id: "done",
+      onEnter: ({ snapshot }) => report(snapshot.context)
+    }
+  ] as const
 };
 ```
 
-In linear mode:
+The array order controls initial selection, next-step fallback, and linear snapshot indices. A bare
+string is shorthand for `{ id, metadata: {} }`.
 
-- strings are shorthand for the next step id
-- object entries use `step`, not `to`
-- object entries support `label`, `updateContext`, `onEnter`, `onLeave`, and `timeoutMs`
-- `when` is not supported
+## Graph transitions
 
-It is best when the flow really is linear and you do not need branching, custom events, guards, or explicit terminal transitions.
-
-## Option B: Transition Graph Object
-
-Use the graph object when you need branching, custom events, async logic, or wildcard behavior.
+A graph step declares its own outgoing transitions under `on`, keyed by event. There is no `from`:
+the step that declares an entry _is_ the source.
 
 ```ts
-const journey = {
-  initial: "start",
-  context: { canContinue: false },
+const definition = {
+  initial: "form" as const,
+  context: { valid: false },
   steps: {
-    start: {},
-    details: {},
-    review: {}
-  },
-  transitions: {
-    start: {
-      goToNextStep: [{ id: "start-next", to: "details" }]
-    },
-    details: {
-      goToNextStep: [
-        {
-          id: "details-next-guarded",
-          to: "review",
-          when: ({ context }) => context.canContinue
-        },
-        {
-          id: "details-save",
-          to: "review",
-          updateContext: ({ context }) => ({
-            ...context,
-            draftSaved: true
-          })
-        }
-      ]
+    form: {
+      on: {
+        SUBMIT: [{ to: "review", when: ({ context }) => context.valid }, { to: "form" }]
+      }
     },
     review: {
-      completeJourney: true
+      on: {
+        APPROVE: [{ to: "done", onTransition: ({ raise }) => raise({ type: "AUDIT" }) }]
+      }
     },
-    global: {
-      terminateJourney: [{ label: "cancel-anywhere" }]
-    }
+    done: {}
   }
 };
 ```
 
-## How The Graph Object Works
+### The three forms
 
-- Top-level keys are source step ids.
-- Event names under each step map to ordered arrays of candidate edges.
-- Each edge is an object containing `to` plus optional `label`, `when`, `updateContext`, `onEnter`, `onLeave`, and `timeoutMs`.
-- `global` is the reserved wildcard bucket for fallback cross-cutting transitions.
-- `COMPLETE` and `TERMINATED` are reserved terminal outcomes, not regular step ids.
+One event maps to one of three things, told apart at the top level — nothing has to look inside a
+candidate to know which it is:
 
-Order matters inside each event array. Journey evaluates the candidates in order and picks the first valid match.
+| Form                                   | Meaning                                               |
+| -------------------------------------- | ----------------------------------------------------- |
+| `SUBMIT: "review"`                     | One unguarded candidate. The shorthand.               |
+| `SUBMIT: [{ to, … }, …]`               | Ordered candidates; the first enabled one wins.       |
+| `SUBMIT: { run, commit?, candidates }` | Async the machine owns, routed by the staged context. |
 
-## Option C: Graph Builder
+A guarded lone candidate is written `[{ to, when }]`. The extra brackets are deliberate: a guarded
+lone candidate means the event can fail, and the array form is where that reads honestly.
 
-`createJourneyBuilder` is an alternative to the inline graph object. Instead of one central transition object, each step declares its own transitions and can be co-located with its component. The builder compiles to the same `JourneyDefinition` — no new runtime concepts.
+| Candidate field | Purpose                                                                  |
+| --------------- | ------------------------------------------------------------------------ |
+| `to`            | Required destination step. Self-transitions are allowed.                 |
+| `when`          | Optional synchronous guard receiving `{ context, handlers }`.            |
+| `onTransition`  | Optional post-commit effect receiving hook arguments.                    |
+| `label`         | Optional name for this edge, used wherever the edge has to be named.     |
+| `timeoutMs`     | Optional budget for this edge's `onTransition`, over the global default. |
+
+Declaration order is priority order, per step and then per event. The same event may be declared
+from several steps; candidates are matched against the current step before order is consulted, so
+those declarations never interfere.
+
+### Naming an edge
+
+Several candidates on one event differ only by guard, so `event` and `to` do not identify which one
+fired. `label` does:
 
 ```ts
-// builder.ts — typed singleton, no local deps
-const { createStep, to, build } = createJourneyBuilder<Context, StepId, EventMap>();
+on: {
+  PAY: [
+    { to: "review", label: "needs-review", when: ({ context }) => context.tier === "free" },
+    { to: "review", label: "flagged", when: ({ context }) => context.flagged },
+    { to: "done", label: "straight-through" }
+  ];
+}
+```
 
-// steps/login.step.ts — co-located with Login.tsx
-export const loginStep = createStep("login", {
-  on: {
-    submit: [to("admin").when(({ context }) => context.role === "admin"), to("dashboard")]
+The name then shows up in three places: timeout and error messages (`onTransition(needs-review)
+timed out after 5000ms`), the `transition` argument every step hook receives, and the structure view
+plugins and [`analyzeStructure`](./analyze-structure) read.
+
+Labels are optional. An unlabelled edge is described by its declaration index instead —
+`PAY[1] (checkout -> review)` — and reports `label: null` with its `index`.
+
+### Bounding one edge's async
+
+`defaultTimeoutMs` on the factory is the fallback, not the only dial. An edge that calls something
+slow declares its own budget, and the rest of the graph keeps the tighter default:
+
+```ts
+const machine = createGraphJourney(definition, { defaultTimeoutMs: 2_000 });
+
+// ...in the definition:
+on: {
+  SUBMIT: {
+    run: ({ handlers }) => handlers.creditCheck(),  // third party, occasionally slow
+    label: "credit-check",
+    timeoutMs: 30_000,
+    candidates: [{ to: "approved" }, { to: "declined" }]
   }
-});
-
-// journey.ts — one-screen assembly
-const definition = build({
-  initial: "login",
-  context: { role: "user" },
-  steps: [loginStep, adminStep, dashboardStep]
-});
+}
 ```
 
-Use the **factory form** when you need `event.payload` narrowed to the specific event type:
+`timeoutMs` on a work entry bounds its `run`; on a candidate it bounds that candidate's
+`onTransition`. Caller-supplied navigation work takes it too:
+`goToNextStep({ run, timeoutMs: 30_000 })`. It must be a finite number greater than zero, checked
+when the definition is built rather than when the timer first matters.
 
-```ts
-submit: ({ to }) => [to("admin").when(({ context, event }) => event.payload?.username !== "")];
-```
+## Validation
 
-See the [Graph Builder API reference](./graph-builder.md) for the full API including `.label()`, `.timeoutMs()`, `.updateContext()`, typed event payloads, and file organization patterns.
+Factories reject empty definitions, duplicate linear ids, unknown graph initial steps, and
+transitions pointing at undeclared steps. A source step cannot be undeclared — it is the key the
+entry is written under. Graph guards that throw are treated as disabled.
 
-## Which Style Should You Use?
+## Where to next
 
-- Choose the linear array when the doc or feature is teaching a simple fixed sequence.
-- Choose the graph object when the flow has branching, skips, retries, custom events, guards, lifecycle callbacks, or global behavior.
-- Choose the graph builder when the flow is large, multiple people own different steps, or you want transitions co-located with the components that drive them.
-- Move from linear to graph as soon as the next step itself becomes conditional.
-
-Most real product flows start with the linear shorthand and then move to the graph object (or builder) as soon as the sequence stops being fixed.
-
-## Transition Fields
-
-Core fields you can use in transition records and graph edges:
-
-- `to`: target step or terminal outcome
-- `when`: optional guard (sync or async)
-- `updateContext`: optional synchronous context updater
-- `onEnter`: optional observational callback after commit on the target side
-- `onLeave`: optional observational callback after commit on the source side
-- `timeoutMs`: optional finite millisecond limit for async `when`
-- `label`: optional human-readable identifier included in observability/debugging events
-
-For runtime semantics of guards and context updates, see [Async Behavior](../async.md).
+- [Linear](../usage/linear)
+- [Graph](../usage/graph)
+- [Pinning types with a bag](./with-types)

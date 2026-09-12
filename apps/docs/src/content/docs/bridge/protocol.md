@@ -2,77 +2,134 @@
 title: "Protocol"
 ---
 
-## Commands
+The bridge and Chrome extension communicate through versioned `window.postMessage` envelopes. Most
+applications never construct an envelope directly, but the format matters when diagnosing
+compatibility, reviewing security, or building a custom consumer.
+
+## Versions
+
+The current protocol is **v7**.
+
+| Version | Status                   | Notes                                                                         |
+| ------- | ------------------------ | ----------------------------------------------------------------------------- |
+| v7      | Current                  | Carries the redesigned immutable Core snapshot and required mutation metadata |
+| v6      | Prior, invoke-compatible | Uses the same invoke shape, so a v6 panel can drive a v7 bridge               |
+| v5      | Legacy, read-only        | Tolerated for registration during rolling upgrades; cannot invoke             |
+
+Compatibility is deliberately asymmetric. Register envelopes from all three known versions can be
+recognized, while only v6 and v7 invoke envelopes are accepted.
+
+## Base envelope
+
+Every normal protocol message contains:
 
 ```ts
-type JourneyDevtoolsCommand =
-  | { type: "startJourney" }
-  | { type: "goToNextStep" }
-  | { type: "terminateJourney" }
-  | { type: "completeJourney" }
-  | { type: "goToStepById"; stepId: string }
-  | { type: "goToPreviousStep"; steps?: number }
-  | { type: "goToLastVisitedStep" }
-  | { type: "send"; event: { type: string; payload?: unknown } }
-  | { type: "resetJourney" }
-  | { type: "clearStepError"; stepId?: string }
-  | { type: "getExecutionPaths"; options?: { maxDepth?: number; maxPaths?: number } };
+type EnvelopeBase = {
+  channel: "__RXOVA_JOURNEY_DEVTOOLS__";
+  version: 5 | 6 | 7;
+  source: "rxova-journey-bridge" | "rxova-journey-extension";
+  kind: string;
+  machineId: string;
+  timestamp: number;
+};
 ```
 
-## Register Metadata
+The channel and source fields keep unrelated page messages out of the protocol parser. The machine
+ID routes extension requests when several journeys are attached in one tab.
 
-Protocol version is `4`.
+## Bridge-to-extension messages
 
-Register envelopes now include capability metadata:
+The bridge emits:
 
-- `meta.capabilities.commands`
-- `meta.capabilities.observe`
-- `meta.capabilities.executionPaths`
-- `meta.capabilities.persistence` (optional bridge-supplied metadata)
+- `register`: metadata, feature descriptors, mutation policy, and the current snapshot;
+- `unregister`: the machine detached;
+- `snapshot`: the next immutable snapshot;
+- `observation`: a named Core subscription payload without a duplicate snapshot;
+- `operationResult`: a successful generic operation result;
+- `operationError`: validation, policy, rate-limit, or runtime failure.
 
-## Compatibility Contract
+A registration describes operations generically:
 
-Protocol version is the compatibility boundary.
+```ts
+{
+  id: "core.goToPreviousStep",
+  label: "Previous",
+  description: "...",
+  mutates: true,
+  output: "snapshot",
+  fields: [
+    { key: "steps", label: "Steps", type: "integer" }
+  ]
+}
+```
 
-- Incompatible command, envelope, or payload shape changes require a protocol version bump.
-- Panel and bridge consumers should upgrade together across protocol-version changes.
-- Additive metadata and additive fields are preferred over mutating existing shapes in place.
-- The bridge is tooling-facing. The runtime contract still lives in Core and React.
+Consumers should render from descriptors instead of maintaining a hard-coded command list. Plugin
+and future operation groups can then participate without changing the envelope format.
 
-## Bridge Envelopes
+## Extension-to-bridge invokes
 
-Bridge-origin envelopes now include:
+An invoke carries a request ID and operation identity:
 
-- `register`
-- `snapshot`
-- `observation`
-- `commandResult`
-- `executionPathsResult`
-- `commandError`
-- `unregister`
+```ts
+{
+  kind: "invoke",
+  requestId: "request-42",
+  invocation: {
+    operationId: "core.goToPreviousStep",
+    input: { steps: 2 }
+  }
+}
+```
 
-## Snapshot Payload
+The bridge resolves the descriptor, validates fields, checks `mutationsEnabled`, applies the rate
+limit, runs the operation, and responds with the same request ID. Unknown operation IDs and
+malformed inputs produce `operationError` rather than reaching the machine.
 
-Snapshots sent by bridge include:
+## Registration metadata
 
-- `currentStepId`
-- `history.timeline`
-- `history.index`
-- `context`
-- `visited`
-- `status`
-- `async`
+A v7 register includes:
 
-## Observation Payload
+- `machineId`, `label`, and `appName`;
+- required `mutationsEnabled`;
+- machine `mode` and declared step IDs when known;
+- optional full graph `eventTypes`;
+- optional authored per-step feature hints;
+- feature groups and generic operation descriptors.
 
-`observation` envelopes mirror core `JourneyObservationEvent` field names, with nested payloads/errors cloned to transport-safe JSON values.
+The register also embeds a snapshot, which lets a newly opened panel render immediately without
+waiting for the next machine change.
 
-## Execution Path Query Result
+## Snapshot envelope
 
-`executionPathsResult` envelopes return:
+Protocol v7 transports the current Core snapshot. Shared fields are:
 
-- `result.paths`
-- `result.truncated`
-- `result.cyclesDetected`
+```ts
+{
+  type: ("linear" | "graph", status, context, transition, history, machine, plugins, currentStep);
+}
+```
 
-See the shared [Stability Contract](../core/stability.md) for the broader support guarantees.
+`currentStep` is `null` while idle and otherwise includes `id`, `metadata`,
+`isFirstTimeVisit`, and per-entry `async` state. `history` contains `timeline`,
+`currentIndex`, `visited`, `canGoBack`, and `canGoForward`. `machine` contains lifecycle
+booleans, the broad loading flag, and terminal outcome.
+
+Linear snapshots add declared-order `steps` data and current-step index flags. Graph snapshots add
+`declaredEvents`, `availableEvents`, `availableSteps`, and candidate-level
+`outgoingTransitions`.
+
+## Observations and replay discovery
+
+Observation events are `stepEnter`, `stepLeave`, `statusChange`, `contextChange`,
+`navigationBlocked`, and `error`. Their snapshot field is omitted on the wire because snapshots
+stream independently.
+
+When the panel opens after a machine was already attached, the extension sends a replay-discovery
+request. Each live bridge responds by re-emitting its register envelope and current snapshot.
+
+## Validation and safety limits
+
+Parsers validate the channel, known version/source, envelope-specific fields, operation descriptors,
+payload depth, and serialized size. The bridge also verifies the page origin and rate-limits
+operations. These are robustness boundaries, not a secret channel: other scripts executing in the
+same page can observe page-level `postMessage` traffic.

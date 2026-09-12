@@ -1,43 +1,54 @@
 ---
-title: "Devtools Examples"
-sidebar:
-  label: "Examples"
+title: "Examples"
 ---
 
-## Attach Bridge to Core Machine
+## Core machine
 
 ```ts
-import { createJourneyMachine } from "@rxova/journey-core";
-import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
-
-const journeyMachine = createJourneyMachine(journey);
-const detach = attachJourneyDevtools(journeyMachine, {
-  machineId: "checkout",
-  label: "Checkout Journey",
-  enabled: true
+const machine = createGraphJourney(definition, {
+  plugins: [createExecutionPathsPlugin()] as const
 });
-journeyMachine.startJourney();
+
+const detach = attachJourneyDevtools(machine, {
+  machineId: "checkout",
+  label: "Checkout graph",
+  eventTypes: ["continue", "cancel"],
+  mutationsEnabled: true
+});
 ```
 
-## Attach Bridge to React Flow
-
-When using bindings, attach once to the shared machine (outside or before React mount).
-
-## Command Examples
+## Inspect-only production session
 
 ```ts
-{ type: "startJourney" }
-{ type: "goToNextStep" }
-{ type: "goToStepById", stepId: "review" }
-{ type: "goToPreviousStep", steps: 2 }
-{ type: "goToLastVisitedStep" }
-{ type: "send", event: { type: "custom", payload: { source: "panel" } } }
-{ type: "resetJourney" }
-{ type: "clearStepError", stepId: "review" }
+attachJourneyDevtools(machine, {
+  enabled: true,
+  mutationsEnabled: false
+});
 ```
 
-## Snapshot Fields Used by Panel
+Enabling the bridge does not make it inspect-only. Supply `mutationsEnabled: false` whenever the
+panel must be unable to navigate, change context, or invoke another mutating operation.
 
-- `currentStepId`, `history.timeline`, `history.index`
-- `visited`, `context`
-- `status`, `async`
+## React graph Provider
+
+```tsx
+function Checkout() {
+  React.useEffect(
+    () =>
+      attachJourneyDevtools(checkout.machine, {
+        label: "Checkout",
+        mutationsEnabled: false
+      }),
+    []
+  );
+
+  return (
+    <checkout.Provider views={views}>
+      <checkout.StepRenderer />
+    </checkout.Provider>
+  );
+}
+```
+
+The bundle's machine is standalone, so devtools attach to `checkout.machine` directly — in an
+effect as above, or at module scope right after the factory call. React never disposes it.

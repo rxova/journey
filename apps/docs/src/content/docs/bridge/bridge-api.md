@@ -2,176 +2,103 @@
 title: "Bridge API"
 ---
 
-`attachJourneyDevtools(machine, options?)` connects a Journey machine to the devtools channel.
-
-Use it when you want live snapshot streaming, core observation-event streaming, and optional remote command/query control from the Journey Devtools panel.
-
-## Basic Usage
+`attachJourneyDevtools(machine, options?)` connects a current Core linear or graph machine to the
+Journey Chrome DevTools channel. It registers the machine, streams immutable snapshots and named
+observations, exposes generic operation descriptors, and returns a detach function.
 
 ```ts
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 
 const detach = attachJourneyDevtools(machine, {
-  machineId: "checkout-main",
-  label: "Checkout Flow",
+  machineId: "checkout",
+  label: "Checkout",
   appName: "Storefront",
-  pluginMetadata: {
-    persistence: {
-      key: "checkout-journey",
-      clearOnReset: true
-    }
-  }
+  eventTypes: ["continue", "cancel"],
+  mutationsEnabled: false
 });
-
-// later
-// detach();
 ```
-
-The bridge is observational by default. It does not call `machine.startJourney()` for you, so fresh machines remain `idled` until your app starts them.
 
 ## Options
 
-### `machineId?: string`
+| Option                   | Default                      | Purpose                                               |
+| ------------------------ | ---------------------------- | ----------------------------------------------------- |
+| `machineId`              | generated                    | Stable identity in the panel                          |
+| `label`                  | `"Journey Machine"`          | Human-readable machine label                          |
+| `appName`                | `document.title`             | Application label                                     |
+| `enabled`                | true only outside production | Enables the page transport                            |
+| `mutationsEnabled`       | true whenever enabled        | Permits operations marked mutating                    |
+| `eventTypes`             | omitted                      | Full declared graph event list for stable panel forms |
+| `rateLimit.maxPerWindow` | 100                          | Maximum invokes in one window                         |
+| `rateLimit.windowMs`     | 10,000                       | Rate-limit window duration                            |
 
-Unique id for this machine instance.
+Environment detection uses the repository's non-production resolver. When detection is unavailable,
+it fails conservatively. Set `enabled` explicitly when build tooling cannot expose the environment
+reliably.
 
-- If omitted, bridge generates one automatically.
-- Use explicit ids when multiple machines exist in the same page/app.
+`mutationsEnabled` is a separate decision from `enabled`. If a bridge is enabled, mutations are
+allowed unless the option is false.
 
-### `label?: string`
+## Lifecycle behavior
 
-Human-readable machine label shown in devtools.
+Attachment does not start or alter the machine — a machine starts when it is created, so by the
+time you attach, it is normally already running. One built with `{ autoStart: false }` stays idle
+until `controls.start()`.
 
-- Default: `"Journey Machine"`
+On attachment, the bridge posts one register envelope containing metadata, generic feature
+descriptors, and the current snapshot. It then subscribes to snapshot changes and all named Core
+observation events.
 
-### `appName?: string`
+The returned function:
 
-App name shown in the devtools registration metadata.
+1. unsubscribes from the machine;
+2. removes the page message listener;
+3. posts an unregister envelope;
+4. becomes a safe no-op if called again.
 
-- Default: `document.title` when available, otherwise `null`.
+Outside the browser, or when disabled, attachment immediately returns a no-op detach function.
 
-### `enabled?: boolean`
+## Operations
 
-Turns bridge transport on/off.
+The bridge builds operations from the attachable machine surface. Core operations cover valid
+lifecycle controls, navigation, context updates, graph events where available, and async error
+clearing. Plugins can contribute namespaced operations through their advertised features.
 
-- Default behavior: enabled when `import.meta.env.DEV` is true, disabled when `import.meta.env.PROD` is true, otherwise falls back to `NODE_ENV !== "production"`
-- Production default: disabled
-- Non-browser environments: no-op
+Each operation has a stable ID, user-facing label, optional description, typed field descriptors, a
+mutation flag, and an output kind. The panel builds its forms from these descriptors.
 
-### `commandsEnabled?: boolean`
+Incoming invokes are rejected when:
 
-Controls whether the panel can send mutating commands back to the machine.
+- the operation ID is unknown;
+- the input does not satisfy the descriptor;
+- the operation mutates and `mutationsEnabled` is false;
+- the request exceeds the configured rate limit;
+- the protocol version is not invoke-compatible.
 
-- Default behavior: enabled when `import.meta.env.DEV` is true, disabled when `import.meta.env.PROD` is true, otherwise falls back to `NODE_ENV !== "production"`
-- Production default: disabled
-- Useful when you want read-only inspection in production-like environments.
+Machine failures are serialized into operation results or operation errors; they are not thrown
+through the message listener.
 
-### `pluginMetadata?: { persistence?: { key?: string; clearOnReset?: boolean } }`
+## Snapshot serialization
 
-Optional metadata surfaced in the devtools registration payload for plugin-backed machine features that are not structurally discoverable from the machine object.
+The bridge clones the Core snapshot for transport. Protocol v7 preserves the discriminated linear or
+graph shape, including current-step async state, history pointer, machine outcome, plugin snapshot
+extensions, and graph routing introspection.
 
-- Current use: persistence plugin metadata
-- Displayed in the panel capability summary
-- Does not change machine behavior; this is devtools-facing metadata only
+Snapshot/context values must be serializable enough for structured transport. Functions, DOM nodes,
+and class instances do not belong in journey context.
 
-## Local vs Production Behavior
+## Security guidance
 
-Default behavior is safety-first:
+The transport is same-page `window.postMessage`. Origin, payload, envelope, and rate checks improve
+robustness, but another script executing in the page can observe or attempt to emit page-level
+messages.
 
-- Local/development: bridge and commands are enabled by default when `import.meta.env` or `process.env.NODE_ENV` exposes a non-production runtime.
-- Production: bridge is disabled by default.
-- Production with bridge enabled: commands are still disabled by default.
-- No env signal available: bridge and commands remain disabled unless explicitly enabled.
+For sensitive applications:
 
-Enable explicitly in production only when intended:
+- keep the bridge disabled in production unless there is a deliberate debugging need;
+- when enabled, prefer `mutationsEnabled: false`;
+- avoid credentials, tokens, and personal secrets in context or metadata;
+- keep operation rate limits enabled;
+- call detach during teardown;
+- review third-party scripts that execute in the inspected page.
 
-```ts
-attachJourneyDevtools(machine, {
-  enabled: true,
-  commandsEnabled: true
-});
-```
-
-## Command Support
-
-The bridge can execute these commands from the panel:
-
-### Navigation
-
-- `goToNextStep`
-- `goToStepById`
-- `goToPreviousStep`
-- `goToLastVisitedStep`
-
-### Lifecycle / Control
-
-- `completeJourney`
-- `terminateJourney` (mapped internally to core `terminateJourney`)
-- `startJourney`
-- `resetJourney`
-
-### State Updates
-
-- `clearStepError`
-
-### Read-only Queries
-
-- `getExecutionPaths`
-
-### Custom Event Dispatch
-
-- `send` (for custom machine events)
-
-This command model allows both high-level controls and lower-level event testing.
-
-When `commandsEnabled` is `false`, mutating commands are blocked, but read-only `getExecutionPaths` remains available when the machine exposes `getExecutionPaths()`.
-
-## Snapshot Payload
-
-Bridge serializes and sends a transport-safe snapshot payload with:
-
-- navigation: `currentStepId`, `history.timeline`, `history.index`
-- runtime data: `context`, `visited`
-- lifecycle/async: `status`, `async`
-
-Example payload:
-
-```ts
-{
-  currentStepId: "payment",
-  history: {
-    timeline: ["start", "details", "payment"],
-    index: 2
-  },
-  context: { isVip: false },
-  visited: {
-    start: true,
-    details: true,
-    payment: true,
-    review: false
-  },
-  status: "running",
-  async: {
-    isLoading: false,
-    byStep: {
-      payment: {
-        phase: "idle",
-        eventType: null,
-        transitionId: null,
-        error: null
-      }
-    }
-  }
-}
-```
-
-For exact command and envelope types, see [Protocol](./protocol.md).
-
-## Additional Streams
-
-In protocol v4 the bridge also emits:
-
-- `observation` envelopes mirroring core `JourneyObservationEvent`
-- `executionPathsResult` envelopes for read-only execution-path queries
-
-The Journey Devtools panel uses these to render event rows in the timeline and inspect structural execution paths without mutating the machine.
+See [Protocol](./protocol) for the exact envelope model.

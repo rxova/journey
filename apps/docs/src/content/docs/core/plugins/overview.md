@@ -2,106 +2,60 @@
 title: "Plugins"
 ---
 
-# Plugins
+Plugins observe a journey and add namespaced APIs or snapshot data. They do not intercept
+navigation, replace snapshots, or merge methods into the base machine.
 
-Plugins let Journey stay small by default and expandable when your runtime needs more.
-
-The base machine is responsible for transitions, navigation, snapshot updates, async behavior, and lifecycle events. Plugins extend that runtime without forcing every machine to carry every optional feature.
-
-## Why Plugins Exist
-
-Some capabilities are important, but not universal.
-
-Persistence is a good example. Many teams need resume-later behavior. Many do not. Structural execution-path analysis is similar: it is valuable for tooling, testing, and product review, but it should not make the base runtime heavier for everybody else.
-
-Plugins keep those capabilities opt-in.
-
-Compatibility expectations for plugins are documented in the shared [Stability Contract](../stability.md).
-
-## The Plugin Model
-
-A plugin hooks into machine setup and runtime lifecycle.
-
-In practice, a plugin can:
-
-- inspect the resolved journey definition during setup
-- hydrate or adjust the starting snapshot
-- react to snapshot changes over time
-- augment the machine with extra methods
-
-That is enough to support both “react to runtime changes” plugins and “extend the machine API” plugins.
-
-## Typical Shape
+## Add plugins
 
 ```ts
-import { createJourneyMachine } from "@rxova/journey-core";
-import { createAnalyticsPlugin } from "@rxova/journey-core/analytics";
-import { createAutosavePlugin } from "@rxova/journey-core/autosave";
-import { createDiagnosticsPlugin } from "@rxova/journey-core/diagnostics";
-import { createPersistencePlugin } from "@rxova/journey-core/persistence";
-import { createReplayPlugin } from "@rxova/journey-core/replay";
-import { createExecutionPathsPlugin } from "@rxova/journey-core/execution-paths";
+import { createLinearJourney } from "@rxova/journey-core";
+import { createReplayPlugin } from "@rxova/journey-core/plugins";
+import { createAnalyticsPlugin } from "@rxova/journey-core/plugins";
 
-const machine = createJourneyMachine(journey, {
-  plugins: [
-    createPersistencePlugin({
-      key: "checkout-journey",
-      version: 2
-    }),
-    createAutosavePlugin({
-      key: "checkout-draft"
-    }),
-    createAnalyticsPlugin({
-      track: (event) => analytics.track(event.name, event.payload)
-    }),
-    createReplayPlugin(),
-    createDiagnosticsPlugin(),
-    createExecutionPathsPlugin()
-  ]
+const machine = createLinearJourney(definition, {
+  plugins: [createReplayPlugin(), createAnalyticsPlugin({ track })]
 });
+
+machine.plugins.replay.getReplaySession();
+machine.plugins.analytics.getRecentEvents();
 ```
 
-## Included Plugin Families
+Plugin names must be unique within a machine. Keep a plugin array as a readonly tuple when you need
+precise TypeScript inference.
 
-### Persistence Plugin
+## Machine and snapshot extensions
 
-Use the persistence plugin when the machine should hydrate from storage and keep its snapshot durable across sessions.
+A plugin can contribute either or both:
 
-Read [Persistence Plugin](../persistence.md).
+```ts
+machine.plugins[name];
+machine.getSnapshot().plugins[name];
+```
 
-### Autosave Plugin
+Machine extensions are commands and reads implemented by the plugin. Snapshot extensions are
+derived, observable values suitable for selectors and UI rendering.
 
-Use the autosave plugin when you want debounced draft saving, hydration, and a save-status API for UI state.
+## Built-in plugins
 
-Read [Autosave Plugin](../autosave.md).
+| Plugin                                      | Purpose                                                       |
+| ------------------------------------------- | ------------------------------------------------------------- |
+| [Persistence](../persistence)               | Write status, context, and timeline on every observed change. |
+| [Analytics](./analytics-plugin)             | Normalize lifecycle observations and custom analytics events. |
+| [Replay](./replay-plugin)                   | Record a bounded, exportable runtime session.                 |
+| [Execution paths](./execution-paths-plugin) | Track realized paths for current and finished runs.           |
 
-### Analytics Plugin
+Each plugin is published through a separate package entry point so unused integrations do not add
+to a factory's bundle.
 
-Use the analytics plugin when you want normalized lifecycle events sent to your analytics client without polluting transition logic.
+## Plugin guarantees
 
-Read [Analytics Plugin](./analytics-plugin.md).
+- `setup` runs once per machine.
+- Per-machine state should be created inside `setup`, even when one plugin object is reused.
+- Host observation callbacks are isolated from the core pipeline.
+- `onDispose` callbacks run during machine teardown and cannot break other teardown work.
+- Snapshot derivation receives the previous extension so plugins can preserve references.
 
-### Replay Plugin
+## Where to next
 
-Use the replay plugin when you want an in-memory capture of snapshots and lifecycle events for debugging, export, or bug reports.
-
-Read [Replay Plugin](./replay-plugin.md).
-
-### Diagnostics Plugin
-
-Use the diagnostics plugin when you want structural checks such as unreachable steps, dead ends, shadowed transitions, or cycles exposed through the machine API.
-
-Read [Diagnostics Plugin](./diagnostics-plugin.md).
-
-### Execution Paths Plugin
-
-Use the execution-paths plugin when you want structural path analysis from the declared journey definition without executing the flow.
-
-Read [Execution Paths Plugin](./execution-paths-plugin.md).
-
-## Guidance
-
-- Reach for a plugin when the capability is optional, cross-cutting, or tooling-oriented.
-- Keep core transition logic in the journey definition, not in plugins.
-- Treat plugins as runtime extensions, not as a replacement for clear transition modeling.
-- Depend on documented plugin hooks and published entrypoints, not internal machine controller structure.
+- [Writing a plugin](./authoring)
+- [How it works](../architecture#plugins)

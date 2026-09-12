@@ -34,10 +34,17 @@ export function rehypeRelativeDocLinks({ contentDir, base }) {
       const [path, hash] = href.split("#");
       if (!/\.mdx?$/.test(path)) return;
 
+      // Lowercased because that is what the content layer does when it derives
+      // a slug from a file name. Every hand-written page is already lowercase,
+      // so this was invisible until the generated TypeDoc trees arrived with
+      // CamelCase file names: `../type-aliases/CurrentStepBase.md` produced a
+      // link to /CurrentStepBase/ while the page was served at
+      // /currentstepbase/.
       const slug = relative(contentDir, resolve(dirname(from), path))
         .replace(/\.mdx?$/, "")
         .split(sep)
-        .join("/");
+        .join("/")
+        .toLowerCase();
 
       node.properties.href = `${prefix}/${slug}/${hash ? `#${hash}` : ""}`;
     });

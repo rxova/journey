@@ -2,219 +2,133 @@
 title: "TypeScript"
 ---
 
-Journey is TypeScript-first by design.
+Journey infers linear step ids from tuples and supports explicit graph event unions for exact send
+payloads.
 
-The current public model is centered on four generic inputs:
-
-- context
-- step ids
-- an event map
-- optional step metadata
-
-## The Core Generic Shape
-
-The main type most teams start from is `JourneyDefinition`:
+## Linear inference
 
 ```ts
-type JourneyDefinition<
-  TContext,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
-  TStepMeta = unknown
->
-```
-
-That generic shape gives you four important places to customize the machine model:
-
-- `TContext`: shared runtime data
-- `TStepId`: valid step ids
-- `TEventMap`: custom events keyed by name, with payload types as values
-- `TStepMeta`: per-step definition metadata shape
-
-## A Fully Typed Definition
-
-```ts
-import { createJourneyMachine, type JourneyDefinition } from "@rxova/journey-core";
-
-type StepId = "contact" | "details" | "review";
-type Context = {
-  email: string;
-  dirty: boolean;
-};
-type EventMap = {
-  requestClose: { source: "button" | "shortcut" };
-};
-type StepMeta = {
-  title: string;
-};
-
-const journey: JourneyDefinition<Context, StepId, EventMap, StepMeta> = {
-  initial: "contact",
-  context: {
-    email: "",
-    dirty: false
-  },
-  steps: {
-    contact: { meta: { title: "Contact" } },
-    details: { meta: { title: "Details" } },
-    review: { meta: { title: "Review" } }
-  },
-  transitions: {
-    contact: {
-      goToNextStep: [{ to: "details" }]
-    },
-    details: {
-      goToNextStep: [{ to: "review" }]
-    },
-    review: {
-      completeJourney: true
-    },
-    global: {
-      requestClose: [
-        {
-          to: "review",
-          when: ({ event }) => event.payload?.source === "shortcut"
-        }
-      ]
-    }
-  }
-};
-
-const machine = createJourneyMachine(journey);
-machine.startJourney();
-```
-
-## Important Types To Know
-
-### `JourneyDefinition`
-
-This is the authoring type for the machine definition itself. It enforces that step ids used in `initial`, `steps`, and transitions all agree.
-
-### `JourneySendEvent`
-
-This is the event union accepted by `machine.send(...)`. It combines the built-in navigation events with the custom events derived from your event map.
-
-### `JourneySnapshot`
-
-This is the runtime state shape returned by `machine.getSnapshot()`. When you annotate selectors, helpers, or external adapters, this is usually the type you want.
-
-### `JourneySendResult`
-
-This is the resolved result from `send(...)` and convenience helpers. It is useful when your calling code needs to know whether a transition happened, which transition id matched, or whether an error occurred.
-
-### `JourneyObservationEvent`
-
-This is the lifecycle event union emitted by the machine. If you want a specific lifecycle member, prefer the named event types such as `JourneyStartObservationEvent`, `JourneyCompleteObservationEvent`, or `JourneyTerminateObservationEvent`.
-
-## Custom Events And Payloads
-
-The event map is the canonical way to model custom events.
-
-```ts
-type EventMap = {
-  saveDraft: { autosave: boolean };
-  requestClose: { source: "button" | "shortcut" };
-};
-
-const journey: JourneyDefinition<Context, StepId, EventMap> = {
-  initial: "contact",
-  context: { email: "", dirty: false },
-  steps: {
-    contact: {},
-    details: {}
-  },
-  transitions: {
-    contact: {
-      saveDraft: [{ to: "contact" }],
-      goToNextStep: [{ to: "details" }]
-    }
-  }
-};
-
-await machine.send({ type: "saveDraft", payload: { autosave: true } });
-// await machine.send({ type: "saveDraft", payload: { autosave: "yes" } }); // type error
-```
-
-Legacy aliases like `JourneyCustomEvent`, `JourneyEventType`, and `JourneyEventPayloadMap` still exist for compatibility, but new code should prefer an event map directly.
-
-## Typing Snapshots And Selectors
-
-Most teams do not need to annotate `machine` directly because inference is usually enough. Where explicit types help is at the edges: selectors, utilities, and external adapters.
-
-```ts
-import type { JourneySnapshot } from "@rxova/journey-core";
-
-type CheckoutSnapshot = JourneySnapshot<Context, StepId>;
-
-const selectCurrentStep = (snapshot: CheckoutSnapshot) => snapshot.currentStepId;
-```
-
-## Typing Send Results
-
-If a caller needs to react differently based on success or failure, annotate the result instead of re-deriving it.
-
-```ts
-import type { JourneySendResult } from "@rxova/journey-core";
-
-const result: JourneySendResult<Context, StepId> = await machine.send({
-  type: "requestClose",
-  payload: { source: "button" }
+const machine = createLinearJourney({
+  steps: [
+    { id: "account", metadata: { title: "Account" } },
+    { id: "review", metadata: { title: "Review" } }
+  ] as const,
+  context: { email: "" }
 });
 
-if (!result.transitioned) {
-  console.error(result.error);
+await machine.navigate.goToStepById("review");
+// await machine.navigate.goToStepById("missing"); // TypeScript error
+```
+
+Keep the step array literal or use `as const` so ids do not widen to `string`.
+
+### The one refactor that silently disables all of it
+
+Hoisting the step array is the common tidy-up, and it is where inference dies:
+
+```ts
+const stepList = ["account", "review"]; // widened to string[]
+
+const machine = createLinearJourney({ steps: stepList, context: { email: "" } });
+// StepId is now `string` — and everything downstream quietly follows:
+await machine.navigate.goToStepById("tpyo"); // compiles
+createLinearJourney({ steps: stepList, context }, { startAt: "nonsense" }); // compiles
+```
+
+There is no diagnostic, because `string` is a legal step-id type — the definition is simply less
+specific than it looks. Every id guarantee is lost at once: `goToStepById`, `startAt`, the `views`
+record in the React tier, and exhaustive `switch` over `currentStep.id`.
+
+Fix it by keeping the array inline, or by pinning it where it is declared:
+
+```ts
+const stepList = ["account", "review"] as const;
+```
+
+`as const` at the declaration is enough; you do not need it at the call site as well. The same
+applies to a graph definition's `steps` record — keep it inline or `as const`, or `TStepId` collapses
+the same way.
+
+## Typed graph events
+
+```ts
+type Context = { code: string };
+type StepId = "form" | "done";
+type Event = { type: "SUBMIT"; payload: { code: string } } | { type: "RESET" };
+
+const machine = createGraphJourney<Context, StepId, Event>({
+  initial: "form",
+  context: { code: "" },
+  steps: {
+    form: { on: { SUBMIT: "done" } },
+    done: { on: { RESET: "form" } }
+  }
+});
+
+await machine.send("SUBMIT", { code: "1234" });
+await machine.send("RESET");
+```
+
+Payload arguments are required only for union members that declare `payload`.
+
+## Type bag builder
+
+For definitions split across files, declare all domain types once:
+
+```ts
+type AppBag = {
+  context: Context;
+  stepId: StepId;
+  events: Event;
+  meta: StepMetadata;
+  handlers: Handlers;
+};
+```
+
+Each step then annotates itself `GraphStep<AppBag>` in its own file, and the factory is pinned with
+`withGraphTypes<AppBag>()`. Target ids are validated at compile time and each event's
+hooks see that event's payload narrowed.
+
+## Snapshot narrowing
+
+```ts
+type Snapshot = ReturnType<typeof machine.getSnapshot>;
+
+function progress(snapshot: JourneySnapshot) {
+  if (snapshot.type === "linear") {
+    return snapshot.currentStep?.index ?? 0;
+  }
+  return snapshot.availableSteps.length;
 }
 ```
 
-## Context Immutability
+Prefer concrete machine snapshot types in application selectors; use exported generic snapshot
+types for reusable helpers.
 
-Journey cannot enforce `Readonly` on `TContext` internally — doing so would require transition updaters to return `Readonly<TContext>`, which creates friction with object spread and breaks the common pattern of returning the next context object.
+## Plugin tuples
 
-If you want **compile-time mutation protection**, type your context as `Readonly<T>` yourself:
-
-```ts
-type Context = Readonly<{
-  email: string;
-  step: number;
-}>;
-```
-
-Everything that touches context — guards and transition `updateContext` callbacks — will then reject direct mutations:
+Plugin API inference depends on preserving the plugin tuple:
 
 ```ts
-updateContext: ({ context }) => {
-  context.email = "x"; // type error: cannot assign to 'email' because it is read-only
-  return { ...context, email: "x" }; // ok
-};
+const plugins = [createReplayPlugin(), createAnalyticsPlugin({ track })] as const;
+const machine = createLinearJourney(definition, { plugins });
+
+machine.plugins.replay.getReplaySession();
+machine.plugins.analytics.getRecentEvents();
 ```
 
-`Readonly<T>` is shallow — nested objects are still mutable at their own level. For deep protection, use a recursive utility like `DeepReadonly<T>` from a utility library, or flatten nested state into a single level.
+## Context updates
 
-## When To Let Inference Win
+`ContextUpdater<T>` receives and returns the complete context type:
 
-Be explicit for:
+```ts
+machine.context.update((previous) => ({ ...previous, code: "5678" }));
+```
 
-- shared step id unions
-- shared event maps
-- reusable snapshot or result helpers
+Journey does not merge partial objects.
 
-Let inference win for:
+## Where to next
 
-- most `machine` variables
-- most inline selectors
-- transition callback argument types
-
-That balance usually gives the best readability without turning every line into generic noise.
-
-## Recommended Team Pattern
-
-1. Define `StepId`, `Context`, and `EventMap` next to the journey.
-2. Use `transitions: ["a", "b", "c"]` for simple sequences.
-3. Switch to the event-keyed transition graph when the flow starts branching.
-4. Put renderer-specific per-step configuration inside `meta`.
-
-## Related Docs
-
-- [Quickstart](./getting-started.md)
-- [Usage](./usage.md)
-- [Transition Syntax](./api/transitions-syntax.md)
+- [Pinning types with a bag](./api/with-types)
+- [Snapshot](./snapshot)
+- [Writing a plugin](./plugins/authoring)
