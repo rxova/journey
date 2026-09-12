@@ -1,0 +1,46 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+.card {
+  min-width: 20rem;
+  padding: 1.5rem 2rem;
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  border-radius: 0.75rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.card h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.card p {
+  margin: 0;
+}
+
+.error {
+  color: #c0392b;
+}
+
+button {
+  padding: 0.5rem 1rem;
+  font: inherit;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
