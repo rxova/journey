@@ -46,6 +46,11 @@ export type {
   ResultsOf
 } from "./graph/bag.types";
 
+// A plain function, not a plugin: checking a definition needs no runtime, so
+// this runs in a test or a build step before any machine exists.
+export { analyzeStructure } from "./diagnostics/diagnostics.helpers";
+export type { DiagnosticsIssue, DiagnosticsResult } from "./diagnostics/diagnostics.types";
+
 export { JourneyError, isJourneyError } from "./core/errors";
 export type { JourneyErrorCode, JourneyErrorDetails } from "./core/errors";
 
