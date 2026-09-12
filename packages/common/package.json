@@ -1,12 +1,24 @@
 {
   "name": "@rxova/journey-common",
   "version": "0.0.0",
-  "description": "Internal repo tooling for @rxova/journey. Not published.",
+  "description": "Internal shared utilities and repo tooling for @rxova/journey. Not published.",
   "private": true,
   "license": "MIT",
   "author": "Jonatan Kruszewski",
   "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./predicates": "./src/predicates.ts",
+    "./serialization": "./src/serialization.ts",
+    "./dev": "./src/dev.ts",
+    "./origin": "./src/origin.ts"
+  },
+  "sideEffects": false,
   "scripts": {
+    "build": "pnpm run clean && tsc -p tsconfig.build.json",
+    "clean": "node -e \"import('node:fs').then(({rmSync}) => { rmSync('dist', {recursive:true, force:true}); rmSync('tsconfig.build.tsbuildinfo', {force:true}); })\"",
     "test": "pnpm --workspace-root vitest run packages/common --coverage.enabled=false",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   }

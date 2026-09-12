@@ -53,11 +53,34 @@ export default defineConfig({
         replacement: fileURLToPath(
           new URL("./packages/devtools-bridge/src/index.ts", import.meta.url)
         )
+      },
+      {
+        find: "@rxova/journey-common/predicates",
+        replacement: fileURLToPath(new URL("./packages/common/src/predicates.ts", import.meta.url))
+      },
+      {
+        find: "@rxova/journey-common/serialization",
+        replacement: fileURLToPath(
+          new URL("./packages/common/src/serialization.ts", import.meta.url)
+        )
+      },
+      {
+        find: "@rxova/journey-common/dev",
+        replacement: fileURLToPath(new URL("./packages/common/src/dev.ts", import.meta.url))
+      },
+      {
+        find: "@rxova/journey-common/origin",
+        replacement: fileURLToPath(new URL("./packages/common/src/origin.ts", import.meta.url))
+      },
+      {
+        find: "@rxova/journey-common",
+        replacement: fileURLToPath(new URL("./packages/common/src/index.ts", import.meta.url))
       }
     ]
   },
   test: {
     include: [
+      "packages/**/src/**/__tests__/**/*.test.{ts,tsx}",
       "packages/**/test/**/*.test.ts",
       "packages/**/test/**/*.test.tsx",
       "apps/**/test/**/*.test.ts",
@@ -83,7 +106,7 @@ export default defineConfig({
         "apps/devtools/src/**/*.ts",
         "apps/devtools/src/**/*.tsx"
       ],
-      exclude: ["packages/**/types.ts"]
+      exclude: ["packages/**/types.ts", "**/__tests__/**"]
     }
   }
 });
