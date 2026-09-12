@@ -64,6 +64,14 @@
       },
       "import": "./dist/plugins/index.js",
       "require": "./dist/plugins/index.cjs"
+    },
+    "./connectors/immer": {
+      "types": {
+        "import": "./dist/connectors/immer/immer.d.ts",
+        "require": "./dist/connectors/immer/immer.d.cts"
+      },
+      "import": "./dist/connectors/immer/immer.js",
+      "require": "./dist/connectors/immer/immer.cjs"
     }
   },
   "files": [
@@ -85,7 +93,16 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@rxova/journey-common": "workspace:*",
+    "immer": "^11.1.15",
     "publint": "^0.3.24"
+  },
+  "peerDependencies": {
+    "immer": "^11.1.15"
+  },
+  "peerDependenciesMeta": {
+    "immer": {
+      "optional": true
+    }
   },
   "size-limit": [
     {
@@ -99,6 +116,12 @@
       "path": "dist/index.js",
       "import": "{ createGraphJourney }",
       "limit": "6.5 kB"
+    },
+    {
+      "name": "core/immerConnector",
+      "path": "dist/connectors/immer/immer.js",
+      "import": "{ immerConnector }",
+      "limit": "100 B"
     },
     {
       "name": "core/createExecutionPathsPlugin",

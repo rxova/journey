@@ -24,6 +24,7 @@
     "resolveJsonModule": true,
     "paths": {
       "@rxova/journey-core": ["./packages/core/src/index.ts"],
+      "@rxova/journey-core/connectors/immer": ["./packages/core/src/connectors/immer/immer.ts"],
       "@rxova/journey-core/testing": ["./packages/core/src/__tests__/helpers.ts"],
       "@rxova/journey-core/plugins": ["./packages/core/src/plugins/index.ts"],
       "@rxova/journey-react": ["./packages/react/src/index.ts"],
