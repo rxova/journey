@@ -25,7 +25,7 @@
     "changeset:version": "node --import tsx ./scripts/changeset-version.ts && pnpm run docs:release-notes:sync",
     "docs:release-notes:sync": "node --import tsx ./scripts/sync-doc-release-notes.ts",
     "docs:release-notes:check": "node --import tsx ./scripts/sync-doc-release-notes.ts --check",
-    "docs:api:check": "pnpm exec tsc ./scripts/check-public-api-tsdoc.ts --outDir ./node_modules/.tmp-tsdoc-check --module NodeNext --moduleResolution NodeNext --target ES2020 --skipLibCheck && node ./node_modules/.tmp-tsdoc-check/check-public-api-tsdoc.js",
+    "docs:api:check": "pnpm exec tsc ./scripts/check-public-api-tsdoc.ts --ignoreConfig --types node --outDir ./node_modules/.tmp-tsdoc-check --module NodeNext --moduleResolution NodeNext --target ES2020 --skipLibCheck && node ./node_modules/.tmp-tsdoc-check/check-public-api-tsdoc.js",
     "typecheck": "turbo run typecheck typecheck:tests",
     "typecheck:tests": "tsc --noEmit -p tsconfig.test.json",
     "docs": "turbo run dev --filter=@rxova/journey-docs",
