@@ -1,156 +1,241 @@
 # @rxova/journey-react
 
-Typed React bindings for multi-step UI flows.
+React bindings for `@rxova/journey-core`.
 
-<p>
-  <a href="https://www.npmjs.com/package/@rxova/journey-react">
-    <img src="https://img.shields.io/npm/v/@rxova/journey-react?color=0f8f6a" alt="npm" />
-  </a>
-  <img src="https://img.shields.io/badge/1.33%20kB-brotli-0f8f6a" alt="size" />
-  <img src="https://img.shields.io/badge/React%2018+-black" alt="React 18+" />
-  <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
-</p>
-
-`@rxova/journey-react` is approaching a `1.0.0-rc` contract freeze. The key runtime rule is unchanged:
-one `createJourney(...)` call creates one machine instance immediately, and the returned hooks/components stay bound to that instance.
+The package offers two bundle tiers without changing Core semantics—a linear factory and a graph
+factory, deliberate twins around one standalone machine each—plus a bring-your-own-machine
+pattern for machines the caller owns.
 
 ## Install
 
 ```bash
-npm i @rxova/journey-react @rxova/journey-core
+npm install @rxova/journey-react @rxova/journey-core react
 ```
 
-Use the root entry for server-safe imports. When a Next.js App Router client boundary should be explicit,
-import from `@rxova/journey-react/client`.
+**React 18.2 and later**, including React 19. The package uses `useSyncExternalStore` to
+subscribe to immutable Core snapshots, and CI runs the test suite against both the minimum
+supported version and the latest.
 
-## Quickstart
+One development-only difference: React 18's StrictMode re-mounts hooks on its second render pass,
+so `useJourney()`'s factory runs twice there and once on React 19. Only the committed bundle is
+ever started, so the discarded one holds no timers, subscriptions, or journey state — but keep
+the factory free of side effects beyond building the bundle.
+
+## Linear journeys
 
 ```tsx
-import { createJourney, type JourneyViews } from "@rxova/journey-react";
-import type { JourneyDefinition } from "@rxova/journey-core";
+import { createLinearJourney } from "@rxova/journey-react";
 
-type StepId = "start" | "review";
-type Context = { name: string };
-
-const definition: JourneyDefinition<Context, StepId> = {
-  initial: "start",
-  context: { name: "" },
-  steps: { start: {}, review: {} },
-  transitions: {
-    start: { goToNextStep: [{ to: "review" }] },
-    review: { completeJourney: true }
-  }
+type Context = {
+  email: string;
 };
 
-const signup = createJourney(definition);
+const initialContext: Context = { email: "" };
 
-const Start = () => {
-  const api = signup.useJourneyApi();
-  const snap = signup.useJourneySnapshot();
-  return (
-    <div>
-      <p>Hello, {snap.context.name || "stranger"}</p>
-      <button onClick={() => void api.goToNextStep()}>Next</button>
-    </div>
-  );
-};
-
-const Review = () => {
-  const api = signup.useJourneyApi();
-  return <button onClick={() => void api.completeJourney()}>Submit</button>;
-};
-
-const views: JourneyViews<StepId> = { start: Start, review: Review };
-
-export const App = () => (
-  <signup.JourneyProvider views={views}>
-    <signup.StepRenderer />
-  </signup.JourneyProvider>
-);
-```
-
-## Hooks
-
-`createJourney()` returns a runtime with bound hooks:
-
-- **`useJourneySnapshot()`** — full snapshot: `currentStepId`, `context`, `history`, `status`, `async`
-- **`useJourneyApi()`** — runtime commands: `startJourney`, `goToNextStep`, `goToPreviousStep`, `completeJourney`, `send`, etc.
-- **`useStepApi(stepId)`** — step-scoped command surface with `send(...)` narrowed to custom events handled by that step or `global`
-- **`useJourneyComputed()`** — derived state: `mode`, `activeStepId`, `isLoading`, `isFirstStep`, `isLastStep`
-- **`useJourneySelector(selector, eq?)`** — subscribe to a slice of the snapshot
-- **`useJourneyEvent(listener)`** — stream lifecycle events for analytics
-
-## Navigation
-
-```ts
-const api = signup.useJourneyApi();
-
-await api.startJourney();
-await api.goToNextStep();
-await api.goToPreviousStep();
-await api.goToLastVisitedStep();
-await api.completeJourney();
-await api.terminateJourney();
-await api.goToStepById("review");
-
-api.updateContext((ctx) => ({ ...ctx, name: "Ada" }));
-api.resetJourney();
-```
-
-Transition failures resolve through `result.error` instead of rejecting, so `void api.goToNextStep()` is safe from unhandled promise rejections.
-
-For step components, `useStepApi(stepId)` returns the same commands but narrows `send(...)` to custom events handled by that step or by `global` transitions:
-
-```tsx
-const api = signup.useStepApi("start");
-void api.send({ type: "submit" });
-```
-
-## Custom Step Renderer
-
-`StepRenderer` is a convenience — it just looks up the current step's view from the `views` record and renders it. You can build your own if you need transitions, animations, or a different rendering strategy:
-
-```tsx
-const MyStepRenderer = () => {
-  const { currentStepId } = signup.useJourneySnapshot();
-  const View = views[currentStepId];
-  if (!View) return <p>Unknown step</p>;
-  return <View />;
-};
-```
-
-## Plugins
-
-```tsx
-import { createPersistencePlugin } from "@rxova/journey-core/persistence";
-
-const signup = createJourney(definition, {
-  plugins: [createPersistencePlugin({ key: "signup", version: 1 })],
-  defaultTimeoutMs: 30_000
+const signup = createLinearJourney({
+  name: "signup",
+  context: initialContext,
+  steps: ["email", "password", "review"]
 });
+
+function Controls() {
+  const canGoBack = signup.useSelector((snapshot) => snapshot.history.canGoBack);
+  const isLoading = signup.useSelector((snapshot) => snapshot.transition.pending);
+
+  return (
+    <nav>
+      <button disabled={!canGoBack} onClick={() => void signup.navigate.goToPreviousStep()}>
+        Back
+      </button>
+      <button disabled={isLoading} onClick={() => void signup.navigate.goToNextStep()}>
+        Continue
+      </button>
+    </nav>
+  );
+}
+
+export function Signup() {
+  return (
+    <signup.Provider views={{ email: <Email />, password: <Password />, review: <Review /> }}>
+      <signup.StepRenderer />
+      <Controls />
+    </signup.Provider>
+  );
+}
 ```
 
-## Runtime Ownership
+The factory creates **one standalone machine** at module scope; it starts when the first Provider
+or hook mounts (see [Starting and stopping](#starting-and-stopping); runtime options such as
+`startAt`, `persist`, and `plugins` go in the factory's second argument).
+`TContext` is inferred from `definition.context`—annotate the value, do not cast—and
+the step-ID union from the `steps` tuple; the `views` record is exhaustively type-checked against
+that union. Every hook closes over the machine and works with or without the Provider; non-React
+code drives it via `signup.machine`, `signup.navigate`, and `signup.updateContext`. The Provider
+carries only `views` and `children`, and `StepRenderer` (optional `fallback`) is the one piece
+that must render inside it—siblings like `Controls` are ordinary components.
 
-Each `createJourney()` call creates one machine instance. The returned hooks are permanently bound to it.
+Hooks: reactive `useSnapshot`, `useSelector`, `useStep` (the current step or `null` while idle),
+`useContextSelector`, `useEventEffect`; and `useStepHandler` below. The machine and its command
+groups are plain properties — `machine`, `controls`, `navigate`, `updateContext` — not hooks:
+they are frozen objects with stable references, so reading one can neither subscribe nor
+re-render.
 
-- Rendering multiple providers from the same runtime shares one journey state
-- `JourneyProvider` auto-starts an `idled` runtime, but does not dispose it by default
-- Provider-free flows can start manually through `useJourneyApi().startJourney()` or `machine.startJourney()`
-- Provider-owned startup failures are reported through `onError(error, { phase: "start" })`
-- Set `disposeOnUnmount` when a provider fully owns a component-scoped runtime
-- Independent instances require separate `createJourney()` calls
-- `createJourneyFactory()` returns a typed helper for producing fresh runtimes from the same definition/options pair and is the preferred path when request-scoped or boundary-scoped isolation matters
-- `dispose()` tears down subscriptions when the runtime is no longer needed
+Step configs here carry `metadata` only. Core's `onEnter`/`onLeave` are rejected in this tier —
+`StepRenderer` keys the active view by step id, so a step's own component mounts on enter and
+unmounts on leave, and a `useEffect` with a cleanup says both while still reaching component
+state.
 
-## Documentation
+### Transactional step work
 
-- [Pre-1.0 Migration](https://rxova.org/docs/core/pre-1-0-migration)
-- [Stability Contract](https://rxova.org/docs/core/stability)
-- [React Quickstart](https://rxova.org/docs/react/quickstart)
-- [Provider and Hooks](https://rxova.org/docs/react/provider-and-hooks)
-- [Patterns](https://rxova.org/docs/react/patterns)
-- [Core Docs](https://rxova.org/docs/core/getting-started)
+```tsx
+function Review() {
+  signup.useStepHandler("review", {
+    run: ({ snapshot }) => api.submit(snapshot.context),
+    commit: ({ result, updateContext }) => {
+      updateContext((context) => ({ ...context, receiptId: result.id }));
+    }
+  });
+
+  return <ReviewForm />;
+}
+```
+
+`useStepHandler(stepId, handler)` registers work for that step while the component is mounted.
+The work runs before forward movement; failure keeps the source step current and lands in
+`currentStep.async.error`, while a successful commit publishes its context updates atomically with
+movement.
+
+## Graph journeys
+
+```tsx
+import { createGraphJourney } from "@rxova/journey-react/graph";
+
+const checkout = createGraphJourney(definition, {
+  plugins: [createReplayPlugin()] as const
+});
+
+function Continue() {
+  const canContinue = checkout.useSelector((snapshot) =>
+    snapshot.availableEvents.includes("continue")
+  );
+
+  return (
+    <button disabled={!canContinue} onClick={() => void checkout.send("continue")}>
+      Continue
+    </button>
+  );
+}
+
+<checkout.Provider views={{ cart: <Cart />, shipping: <Shipping />, done: <Done /> }}>
+  <checkout.StepRenderer fallback={<p>Missing view</p>} />
+  <Continue />
+</checkout.Provider>;
+```
+
+The graph bundle has the same shape as the linear one—standalone machine, `views` Provider,
+`StepRenderer`, reactive `useSnapshot` / `useSelector` / `useStep` / `useContextSelector` /
+`useEventEffect`, plain `machine` / `controls`—with `send` and `updateContext` as the verbatim
+delegates. No hook needs the Provider. Plugin APIs remain namespaced on
+`checkout.machine.plugins`.
+
+In both tiers, all Providers and hooks share the bundle's one machine: state survives remounts,
+reset is explicit (`machine.controls.restart()` from a terminal status, `terminate()` first when
+mid-flight), and in SSR a module-scope machine is shared across requests.
+
+The machine works everywhere: every method is pre-bound, so Redux middleware, reducers' thunks,
+WebSocket handlers, and tests can call `bundle.send`, `bundle.navigate`, `bundle.updateContext`,
+or `machine.subscriptions` directly — no React in sight. A bundle driven only from non-React code
+needs `{ autoStart: true }`, since nothing ever mounts to start it.
+
+## Starting and stopping
+
+By default the machine starts when the first Provider or hook mounts, not when the factory runs.
+That ordering is what makes the journey's first `stepEnter` observable through
+`useEventEffect`, and it keeps SSR deterministic — layout effects do not run on the server, so
+both sides render `fallback` and hydration matches. `controls.start()` is idempotent, so mounting
+many components still starts the journey exactly once.
+
+Pass `{ autoStart: true }` to start eagerly inside the factory (server-rendered step content, or
+a bundle driven entirely from non-React code), or `{ autoStart: false }` to start it yourself.
+
+**A module-scope bundle is never disposed.** Its machine, its subscriptions, and any plugin
+resources — persistence writers and their debounce timers — live for the lifetime of the process. That is
+the intended trade-off for a journey that outlives every component; it also means one bundle at
+module scope is shared by every request in a server process, so state a request writes is visible
+to the next one. Own a bundle per component or per request when that matters.
+
+## Owning a bundle per component
+
+`useJourney()` creates a bundle for one component instance and disposes it on unmount:
+
+```tsx
+import { createLinearJourney, useJourney } from "@rxova/journey-react";
+
+function Wizard() {
+  const signup = useJourney(() =>
+    createLinearJourney({ context: initialContext, steps: ["email", "review", "done"] })
+  );
+  const step = signup.useStep();
+  return <signup.Provider views={views}>{/* … */}</signup.Provider>;
+}
+```
+
+The factory runs once per component instance. Do not reach for a `useState` lazy initializer
+here: React double-invokes those under StrictMode, which builds two fully-configured machines —
+two plugin setups, two persistence reads and writes — and abandons one without disposing it.
+`useJourney` initializes into a ref and defers disposal by a macrotask, so StrictMode's simulated
+unmount cancels it and a real unmount does not.
+
+## Bring your own machine
+
+To drop a tier lower and own a Core machine yourself — no package entry needed, React's
+`useSyncExternalStore` is the whole bridge:
+
+```tsx
+import React from "react";
+import { createLinearJourney } from "@rxova/journey-core";
+
+const machine = createLinearJourney({ context: initialContext, steps });
+
+const subscribe = (onStoreChange: () => void) => machine.subscriptions.subscribe(onStoreChange);
+
+function Inspector() {
+  const snapshot = React.useSyncExternalStore(subscribe, machine.getSnapshot, machine.getSnapshot);
+
+  React.useEffect(
+    () =>
+      machine.subscriptions.subscribeEvent("navigationBlocked", ({ reason, error }) => {
+        report(reason, error);
+      }),
+    []
+  );
+
+  return <output>{snapshot.currentStep?.id}</output>;
+}
+```
+
+The caller retains start/dispose ownership. `@rxova/journey-react` exports structural types for
+generic adapters: `AnyJourneyMachine`, `SnapshotOf`, `ContextOf`, `StepIdOf`, and
+`EventPayloadOf`.
+
+## Async UI
+
+Read `snapshot.transition.pending` for the broad loading state, the rest of `snapshot.transition`
+for phase/source/destination, and `snapshot.currentStep?.async` for the current entry result. Guards
+are synchronous; work that must complete before movement belongs in Core navigation work.
+
+## DevTools
+
+The bundle's machine is standalone—attach devtools to it directly in an effect:
+
+```tsx
+React.useEffect(() => attachJourneyDevtools(checkout.machine, { enabled: true }), []);
+```
+
+Return the bridge detach function, and use `mutationsEnabled: false` for inspect-only sessions.
+
+See the [React documentation](https://rxova.org/docs/react/overview) for complete guides and API
+reference.
 
 ## License
 

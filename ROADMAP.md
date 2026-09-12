@@ -15,6 +15,7 @@ The current emphasis is clear: finish hardening the core contract ahead of the `
 - [x] Testing utilities and harnesses
 - [x] Compatibility coverage across supported framework and runtime targets
 - [x] Release process improvements (versioning, changelog, prerelease flow)
+- [x] Handler overrides at machine creation: `create*Journey(def, { handlers })` replaces the definition's handlers, a typed equivalent to test-time dependency injection (XState's `.provide()`)
 
 ## Near Term
 
@@ -25,6 +26,8 @@ The current emphasis is clear: finish hardening the core contract ahead of the `
 
 ## Post V1
 
+- [ ] History growth bounds: an opt-in `maxHistory` creation option that trims the oldest timeline
+      entries (the 1.0 timeline is unbounded by design; `restart()` is the reset lever)
 - [ ] First-class routing support for React apps
   - Focus areas: React Router, TanStack Router, and Next.js router integration patterns
 - [ ] Additional framework packages
