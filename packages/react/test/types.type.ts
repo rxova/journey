@@ -209,10 +209,10 @@ expectTypeOf<BuilderApi>().toMatchTypeOf<
   >
 >();
 expectTypeOf<BuilderSendArg>().toEqualTypeOf<
-  | { type: "verifyCodeSuccess"; payload?: { code: string } | undefined }
-  | { type: "verifyCodeFailure"; payload?: { code: string } | undefined }
+  | { type: "verifyCodeSuccess"; payload?: { code: string } }
+  | { type: "verifyCodeFailure"; payload?: { code: string } }
   | { type: "switchAuthMethod"; payload?: unknown }
-  | { type: "resendCode"; payload?: { channel: "email" } | undefined }
+  | { type: "resendCode"; payload?: { channel: "email" } }
 >();
 
 const invalidBuilderSendArg: BuilderSendArg = {
