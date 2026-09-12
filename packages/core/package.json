@@ -101,6 +101,18 @@
       "limit": "6.5 kB"
     },
     {
+      "name": "core/createExecutionPathsPlugin",
+      "path": "dist/plugins/index.js",
+      "import": "{ createExecutionPathsPlugin }",
+      "limit": "300 B"
+    },
+    {
+      "name": "core/createAnalyticsPlugin",
+      "path": "dist/plugins/index.js",
+      "import": "{ createAnalyticsPlugin }",
+      "limit": "500 B"
+    },
+    {
       "name": "core/analyzeStructure",
       "path": "dist/index.js",
       "import": "{ analyzeStructure }",
@@ -111,6 +123,12 @@
       "path": "dist/plugins/index.js",
       "import": "{ createPersistencePlugin }",
       "limit": "1.15 kB"
+    },
+    {
+      "name": "core/createReplayPlugin",
+      "path": "dist/plugins/index.js",
+      "import": "{ createReplayPlugin }",
+      "limit": "850 B"
     }
   ]
 }
