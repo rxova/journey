@@ -64,7 +64,7 @@ export default defineConfig({
       "apps/**/test/**/*.test.tsx",
       // The repo's own tooling. These sit next to the scripts they cover rather
       // than in a test/ directory, because the scripts are not a package.
-      "scripts/**/*.test.ts"
+      "packages/common/tooling/**/*.test.ts"
     ],
     globals: true,
     environment: "jsdom",

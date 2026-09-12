@@ -1,0 +1,13 @@
+{
+  "name": "@rxova/journey-common",
+  "version": "0.0.0",
+  "description": "Internal repo tooling for @rxova/journey. Not published.",
+  "private": true,
+  "license": "MIT",
+  "author": "Jonatan Kruszewski",
+  "type": "module",
+  "scripts": {
+    "test": "pnpm --workspace-root vitest run packages/common --coverage.enabled=false",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

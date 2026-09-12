@@ -90,7 +90,7 @@
         // The repo tooling is covered by this suite too, so a change to a
         // script or its test has to invalidate it — otherwise editing verify.ts
         // would replay a pass recorded against the previous version.
-        "scripts/**"
+        "packages/common/tooling/**"
       ],
       "outputLogs": "new-only"
     },
@@ -105,7 +105,7 @@
         "packages/*/src/**",
         "packages/*/test/**",
         "apps/*/test/**",
-        "scripts/**"
+        "packages/common/tooling/**"
       ],
       "outputLogs": "new-only"
     },
@@ -125,7 +125,7 @@
     // change its verdict.
     "//#docs:api:check": {
       "outputs": [],
-      "inputs": ["scripts/check-public-api-tsdoc.ts", "packages/*/src/**"],
+      "inputs": ["packages/common/tooling/check-public-api-tsdoc.ts", "packages/*/src/**"],
       "outputLogs": "new-only"
     },
     // A pure function of the four changelogs and the four pages generated from
@@ -133,7 +133,7 @@
     "//#docs:release-notes:check": {
       "outputs": [],
       "inputs": [
-        "scripts/sync-doc-release-notes.ts",
+        "packages/common/tooling/sync-doc-release-notes.ts",
         "packages/*/CHANGELOG.md",
         "apps/devtools/CHANGELOG.md",
         "apps/docs/src/content/docs/*/releases.md"

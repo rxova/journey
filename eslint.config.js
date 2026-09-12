@@ -30,7 +30,7 @@ export default [
   js.configs.recommended,
   {
     files: [
-      "scripts/**/*.{ts,js}",
+      "packages/common/tooling/**/*.{ts,js}",
       "packages/*/scripts/**/*.ts",
       "apps/*/scripts/**/*.js",
       "apps/*/src/plugins/**/*.js",
