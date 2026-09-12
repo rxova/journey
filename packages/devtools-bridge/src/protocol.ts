@@ -1,196 +1,67 @@
+import { isRecord } from "@rxova/journey-common/predicates";
 import type {
-  JourneyExecutionPathOptions,
-  JourneyExecutionPathsResult,
-  JourneyJsonObject,
-  JourneyObservationEvent,
-  JourneySnapshot,
-  JourneyStepAsyncState
-} from "@rxova/journey-core";
+  JourneyDevtoolsBridgeEnvelope,
+  JourneyDevtoolsEnvelope,
+  JourneyDevtoolsEnvelopeBase,
+  JourneyDevtoolsExtensionEnvelope,
+  JourneyDevtoolsFieldSpec,
+  JourneyDevtoolsMachineFeatureDescriptor,
+  JourneyDevtoolsMachineMeta,
+  JourneyDevtoolsMachineOperationDescriptor,
+  JourneyDevtoolsOperationInvoke,
+  JourneyDevtoolsOperationResultKind,
+  JourneyDevtoolsOperationResultPayload,
+  JourneyDevtoolsProtocolVersion,
+  JourneyDevtoolsSource,
+  JourneyDevtoolsStepFeatureDescriptor
+} from "./protocol.types";
 
-export const JOURNEY_DEVTOOLS_PROTOCOL_VERSION = 4 as const;
-export const JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION = 3 as const;
+/**
+ * Current devtools protocol version emitted by the bridge. v8 narrows
+ * `snapshot.machine` to `{ outcome }`: the six derived booleans it used to
+ * carry (`isLoading`, plus one per status) were each another spelling of
+ * `status` or of `transition.pending`, and no panel read them.
+ */
+export const JOURNEY_DEVTOOLS_PROTOCOL_VERSION = 8 as const;
+/**
+ * Prior protocol version still accepted on the wire; its `invoke` envelope
+ * shape is identical, so a v7 extension can drive a v8 bridge.
+ */
+export const JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION = 7 as const;
+/** Oldest protocol version still tolerated for register envelopes. */
+export const JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION = 6 as const;
+/** `window.postMessage` channel discriminator for all devtools traffic. */
 export const JOURNEY_DEVTOOLS_CHANNEL = "__RXOVA_JOURNEY_DEVTOOLS__" as const;
+/** Message kind the extension sends to ask the bridge to re-emit register + snapshot. */
+export const JOURNEY_DEVTOOLS_REPLAY_REQUEST = "__RXOVA_JOURNEY_DEVTOOLS_REPLAY_REQUEST__" as const;
 
+/** `source` marker on envelopes the bridge sends to the extension. */
 export const JOURNEY_DEVTOOLS_BRIDGE_SOURCE = "rxova-journey-bridge" as const;
+/** `source` marker on envelopes the extension sends to the bridge. */
 export const JOURNEY_DEVTOOLS_EXTENSION_SOURCE = "rxova-journey-extension" as const;
 
-export type JourneyDevtoolsProtocolVersion =
-  typeof JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION | typeof JOURNEY_DEVTOOLS_PROTOCOL_VERSION;
-
-export type JourneyDevtoolsSource =
-  typeof JOURNEY_DEVTOOLS_BRIDGE_SOURCE | typeof JOURNEY_DEVTOOLS_EXTENSION_SOURCE;
-
-export type JourneyDevtoolsStepAsyncState = JourneyStepAsyncState;
-
-export type JourneyDevtoolsSerializableSnapshot = JourneySnapshot<JourneyJsonObject, string>;
-export type JourneyDevtoolsSerializableObservationEvent = JourneyObservationEvent<
-  string,
-  Record<never, never>
->;
-export type JourneyDevtoolsSerializableExecutionPathsResult = JourneyExecutionPathsResult<
-  string,
-  string
->;
-
-export type JourneyDevtoolsMachineCapabilities = {
-  commands: JourneyDevtoolsCommand["type"][];
-  observe: boolean;
-  executionPaths: boolean;
-  persistence?: {
-    key: string | null;
-    clearOnReset: boolean | null;
-  };
-};
-
-export type JourneyDevtoolsMachineMeta = {
-  machineId: string;
-  label: string;
-  appName: string | null;
-  commandsEnabled?: boolean;
-  capabilities?: JourneyDevtoolsMachineCapabilities;
-};
-
-export type JourneyDevtoolsSerializedError = {
-  name: string | null;
-  message: string;
-  stack: string | null;
-  cause: unknown;
-};
-
-export type JourneyDevtoolsCommand =
-  | { type: "startJourney" }
-  | { type: "goToNextStep" }
-  | { type: "terminateJourney" }
-  | { type: "completeJourney" }
-  | { type: "goToStepById"; stepId: string }
-  | { type: "goToPreviousStep"; steps?: number }
-  | { type: "goToLastVisitedStep" }
-  | { type: "send"; event: { type: string; payload?: unknown } }
-  | { type: "resetJourney" }
-  | { type: "clearStepError"; stepId?: string }
-  | { type: "getExecutionPaths"; options?: JourneyExecutionPathOptions };
-
-export type JourneyDevtoolsEnvelopeBase = {
-  channel: typeof JOURNEY_DEVTOOLS_CHANNEL;
-  version: JourneyDevtoolsProtocolVersion;
-  source: JourneyDevtoolsSource;
-  kind: string;
-  machineId: string;
-  timestamp: number;
-};
-
-export type JourneyDevtoolsBridgeRegisterEnvelope = JourneyDevtoolsEnvelopeBase & {
-  source: typeof JOURNEY_DEVTOOLS_BRIDGE_SOURCE;
-  kind: "register";
-  meta: JourneyDevtoolsMachineMeta;
-  snapshot: JourneyDevtoolsSerializableSnapshot;
-};
-
-export type JourneyDevtoolsBridgeUnregisterEnvelope = JourneyDevtoolsEnvelopeBase & {
-  source: typeof JOURNEY_DEVTOOLS_BRIDGE_SOURCE;
-  kind: "unregister";
-};
-
-export type JourneyDevtoolsBridgeSnapshotEnvelope = JourneyDevtoolsEnvelopeBase & {
-  source: typeof JOURNEY_DEVTOOLS_BRIDGE_SOURCE;
-  kind: "snapshot";
-  snapshot: JourneyDevtoolsSerializableSnapshot;
-};
-
-export type JourneyDevtoolsBridgeObservationEnvelope = JourneyDevtoolsEnvelopeBase & {
-  source: typeof JOURNEY_DEVTOOLS_BRIDGE_SOURCE;
-  kind: "observation";
-  event: JourneyDevtoolsSerializableObservationEvent;
-};
-
-export type JourneyDevtoolsBridgeCommandResultEnvelope = JourneyDevtoolsEnvelopeBase & {
-  source: typeof JOURNEY_DEVTOOLS_BRIDGE_SOURCE;
-  kind: "commandResult";
-  requestId: string;
-  snapshot: JourneyDevtoolsSerializableSnapshot;
-  transitioned?: boolean;
-  transitionId?: string;
-  error?: JourneyDevtoolsSerializedError;
-};
-
-export type JourneyDevtoolsBridgeExecutionPathsResultEnvelope = JourneyDevtoolsEnvelopeBase & {
-  source: typeof JOURNEY_DEVTOOLS_BRIDGE_SOURCE;
-  kind: "executionPathsResult";
-  requestId: string;
-  result: JourneyDevtoolsSerializableExecutionPathsResult;
-};
-
-export type JourneyDevtoolsBridgeCommandErrorEnvelope = JourneyDevtoolsEnvelopeBase & {
-  source: typeof JOURNEY_DEVTOOLS_BRIDGE_SOURCE;
-  kind: "commandError";
-  requestId: string;
-  error: JourneyDevtoolsSerializedError;
-};
-
-export type JourneyDevtoolsExtensionCommandEnvelope = JourneyDevtoolsEnvelopeBase & {
-  source: typeof JOURNEY_DEVTOOLS_EXTENSION_SOURCE;
-  kind: "command";
-  requestId: string;
-  command: JourneyDevtoolsCommand;
-};
-
-export type JourneyDevtoolsBridgeEnvelope =
-  | JourneyDevtoolsBridgeRegisterEnvelope
-  | JourneyDevtoolsBridgeUnregisterEnvelope
-  | JourneyDevtoolsBridgeSnapshotEnvelope
-  | JourneyDevtoolsBridgeObservationEnvelope
-  | JourneyDevtoolsBridgeCommandResultEnvelope
-  | JourneyDevtoolsBridgeExecutionPathsResultEnvelope
-  | JourneyDevtoolsBridgeCommandErrorEnvelope;
-
-export type JourneyDevtoolsExtensionEnvelope = JourneyDevtoolsExtensionCommandEnvelope;
-
-export type JourneyDevtoolsEnvelope =
-  JourneyDevtoolsBridgeEnvelope | JourneyDevtoolsExtensionEnvelope;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
+/**
+ * Whether the bridge can process an `invoke` from a given protocol version.
+ * Accepts the current and prior versions (their invoke shapes are identical);
+ * the legacy version is tolerated for register envelopes but cannot invoke.
+ */
+export const isCompatibleInvokeProtocolVersion = (
+  value: unknown
+): value is
+  typeof JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION | typeof JOURNEY_DEVTOOLS_PROTOCOL_VERSION =>
+  value === JOURNEY_DEVTOOLS_PROTOCOL_VERSION || value === JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION;
 
 const isKnownSource = (value: unknown): value is JourneyDevtoolsSource =>
   value === JOURNEY_DEVTOOLS_BRIDGE_SOURCE || value === JOURNEY_DEVTOOLS_EXTENSION_SOURCE;
 
 const isSupportedProtocolVersion = (value: unknown): value is JourneyDevtoolsProtocolVersion =>
-  value === JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION || value === JOURNEY_DEVTOOLS_PROTOCOL_VERSION;
+  value === JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION ||
+  value === JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION ||
+  value === JOURNEY_DEVTOOLS_PROTOCOL_VERSION;
 
-const JOURNEY_COMMAND_TYPES = [
-  "startJourney",
-  "goToNextStep",
-  "terminateJourney",
-  "completeJourney",
-  "goToStepById",
-  "goToPreviousStep",
-  "goToLastVisitedStep",
-  "send",
-  "resetJourney",
-  "clearStepError",
-  "getExecutionPaths"
-] as const;
-
-const isKnownCommandType = (value: unknown): value is JourneyDevtoolsCommand["type"] =>
-  typeof value === "string" && (JOURNEY_COMMAND_TYPES as readonly string[]).includes(value);
-
-/**
- * Maximum depth for nested object validation.
- * Prevents stack overflow and excessive processing from deeply nested malicious payloads.
- */
 const MAX_PAYLOAD_DEPTH = 10;
+const MAX_PAYLOAD_SIZE = 500_000;
 
-/**
- * Maximum size (in JSON string length) for serialized payloads.
- * Prevents memory exhaustion from extremely large payloads.
- */
-const MAX_PAYLOAD_SIZE = 500_000; // 500KB
-
-/**
- * Validates that a value is safe for transport.
- * Checks size via a single serialization pass, then validates
- * depth, types, and prototype safety via a structure walk.
- */
 const isSafePayload = (value: unknown): boolean => {
   try {
     const serialized = JSON.stringify(value);
@@ -208,27 +79,21 @@ const isStructureSafe = (value: unknown, depth: number): boolean => {
   if (depth > MAX_PAYLOAD_DEPTH) {
     return false;
   }
-
   if (value === null || value === undefined) {
     return true;
   }
-
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
     return true;
   }
-
   if (typeof value !== "object") {
     return false;
   }
-
   if (Array.isArray(value)) {
     return value.every((item) => isStructureSafe(item, depth + 1));
   }
-
   if (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) {
     return false;
   }
-
   return Object.values(value).every((prop) => isStructureSafe(prop, depth + 1));
 };
 
@@ -247,64 +112,74 @@ const hasBaseEnvelopeShape = (value: unknown): value is JourneyDevtoolsEnvelopeB
   );
 };
 
-const isPositiveInteger = (value: unknown, max = 10000): value is number =>
-  typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= max;
+const isNullableString = (value: unknown): value is string | null =>
+  value === null || typeof value === "string";
 
-const isExecutionPathOptionsShape = (value: unknown): value is JourneyExecutionPathOptions => {
+const isStringArray = (value: unknown): value is readonly string[] =>
+  Array.isArray(value) && value.every((entry) => typeof entry === "string");
+
+const isStepFeatureDescriptor = (value: unknown): value is JourneyDevtoolsStepFeatureDescriptor =>
+  isRecord(value) &&
+  typeof value.hasOnEnter === "boolean" &&
+  typeof value.hasOnLeave === "boolean" &&
+  typeof value.hasMetadata === "boolean";
+
+const isFieldType = (value: unknown): value is JourneyDevtoolsFieldSpec["type"] =>
+  value === "text" || value === "integer" || value === "boolean" || value === "json";
+
+const isFieldDescriptor = (value: unknown): value is JourneyDevtoolsFieldSpec => {
   if (!isRecord(value)) {
     return false;
   }
 
   return (
-    Object.keys(value).length <= 2 &&
-    (value.maxDepth === undefined || isPositiveInteger(value.maxDepth)) &&
-    (value.maxPaths === undefined || isPositiveInteger(value.maxPaths))
+    typeof value.key === "string" &&
+    value.key.length > 0 &&
+    typeof value.label === "string" &&
+    value.label.length > 0 &&
+    isFieldType(value.type) &&
+    (value.required === undefined || typeof value.required === "boolean") &&
+    (value.description === undefined || typeof value.description === "string") &&
+    (value.placeholder === undefined || typeof value.placeholder === "string") &&
+    (value.min === undefined || typeof value.min === "number") &&
+    (value.max === undefined || typeof value.max === "number")
   );
 };
 
-const isSendEvent = (value: unknown): value is { type: string; payload?: unknown } => {
-  if (!isRecord(value)) {
-    return false;
-  }
+const isResultKind = (value: unknown): value is JourneyDevtoolsOperationResultKind =>
+  value === "snapshot" || value === "data" || value === "text" || value === "void";
 
-  if (typeof value.type !== "string" || value.type.length === 0 || value.type.length > 100) {
-    return false;
-  }
-
-  if ("payload" in value && value.payload !== undefined) {
-    return isSafePayload(value.payload);
-  }
-
-  return true;
-};
-
-const isMachineCapabilities = (value: unknown): value is JourneyDevtoolsMachineCapabilities => {
-  if (
-    !isRecord(value) ||
-    typeof value.observe !== "boolean" ||
-    typeof value.executionPaths !== "boolean"
-  ) {
-    return false;
-  }
-
-  if (
-    !Array.isArray(value.commands) ||
-    !value.commands.every((command) => isKnownCommandType(command))
-  ) {
-    return false;
-  }
-
-  if (value.persistence === undefined) {
-    return true;
-  }
-
-  if (!isRecord(value.persistence)) {
+const isOperationDescriptor = (
+  value: unknown
+): value is JourneyDevtoolsMachineOperationDescriptor => {
+  if (!isRecord(value) || !Array.isArray(value.fields)) {
     return false;
   }
 
   return (
-    (value.persistence.key === null || typeof value.persistence.key === "string") &&
-    (value.persistence.clearOnReset === null || typeof value.persistence.clearOnReset === "boolean")
+    typeof value.id === "string" &&
+    value.id.length > 0 &&
+    typeof value.label === "string" &&
+    value.label.length > 0 &&
+    isNullableString(value.description) &&
+    typeof value.mutates === "boolean" &&
+    isResultKind(value.output) &&
+    value.fields.every((field) => isFieldDescriptor(field))
+  );
+};
+
+const isFeatureDescriptor = (value: unknown): value is JourneyDevtoolsMachineFeatureDescriptor => {
+  if (!isRecord(value) || !Array.isArray(value.operations)) {
+    return false;
+  }
+
+  return (
+    typeof value.id === "string" &&
+    value.id.length > 0 &&
+    typeof value.label === "string" &&
+    value.label.length > 0 &&
+    isNullableString(value.description) &&
+    value.operations.every((operation) => isOperationDescriptor(operation))
   );
 };
 
@@ -312,7 +187,7 @@ const isMachineMeta = (
   value: unknown,
   version: JourneyDevtoolsProtocolVersion
 ): value is JourneyDevtoolsMachineMeta => {
-  if (!isRecord(value)) {
+  if (!isRecord(value) || !Array.isArray(value.features)) {
     return false;
   }
 
@@ -320,110 +195,61 @@ const isMachineMeta = (
     typeof value.machineId === "string" &&
     typeof value.label === "string" &&
     (value.appName === null || typeof value.appName === "string") &&
-    (value.commandsEnabled === undefined || typeof value.commandsEnabled === "boolean") &&
-    (version === JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION
-      ? value.capabilities === undefined || isMachineCapabilities(value.capabilities)
-      : isMachineCapabilities(value.capabilities))
+    (version === JOURNEY_DEVTOOLS_PROTOCOL_VERSION
+      ? typeof value.mutationsEnabled === "boolean"
+      : value.mutationsEnabled === undefined || typeof value.mutationsEnabled === "boolean") &&
+    // The "headless" arm is gone as of v8, as its own TODO asked. `mode` is
+    // `snapshot.type` and has only ever been "linear" | "graph" since the mode
+    // was removed from JourneyDevtoolsMachineMeta; only an emitter built
+    // against a type definition older than that could still send it.
+    (value.mode === undefined || value.mode === "linear" || value.mode === "graph") &&
+    (value.stepIds === undefined || isStringArray(value.stepIds)) &&
+    (value.eventTypes === undefined || isStringArray(value.eventTypes)) &&
+    (value.steps === undefined ||
+      (isRecord(value.steps) &&
+        Object.values(value.steps).every((step) => isStepFeatureDescriptor(step)))) &&
+    value.features.every((feature) => isFeatureDescriptor(feature))
   );
 };
 
-const isSerializableObservationEvent = (
-  value: unknown
-): value is JourneyDevtoolsSerializableObservationEvent => {
+const isOperationInvoke = (value: unknown): value is JourneyDevtoolsOperationInvoke => {
   if (!isRecord(value)) {
     return false;
   }
 
   return (
-    typeof value.type === "string" &&
-    value.type.length > 0 &&
-    value.type.length <= 100 &&
-    typeof value.timestamp === "number" &&
-    isSafePayload(value)
+    typeof value.operationId === "string" &&
+    value.operationId.length > 0 &&
+    value.operationId.length <= 200 &&
+    (value.input === undefined || isSafePayload(value.input))
   );
 };
 
-const isExecutionPathResult = (
-  value: unknown
-): value is JourneyDevtoolsSerializableExecutionPathsResult => {
-  if (!isRecord(value) || !Array.isArray(value.paths)) {
+const isResultPayload = (value: unknown): value is JourneyDevtoolsOperationResultPayload => {
+  if (!isRecord(value) || typeof value.kind !== "string") {
     return false;
   }
 
-  const isPathTerminated = (terminated: unknown): terminated is string =>
-    terminated === "final" ||
-    terminated === "depth" ||
-    terminated === "cycle" ||
-    terminated === "limit";
-
-  return (
-    value.paths.every(
-      (path) =>
-        isRecord(path) &&
-        Array.isArray(path.steps) &&
-        path.steps.every((step) => typeof step === "string") &&
-        Array.isArray(path.events) &&
-        path.events.every((event) => typeof event === "string") &&
-        isPathTerminated(path.terminated)
-    ) &&
-    typeof value.truncated === "boolean" &&
-    typeof value.cyclesDetected === "boolean"
-  );
-};
-
-/**
- * Validates whether an unknown value is a supported devtools command payload.
- */
-export const isJourneyDevtoolsCommand = (value: unknown): value is JourneyDevtoolsCommand => {
-  if (!isRecord(value) || typeof value.type !== "string") {
-    return false;
-  }
-
-  if (value.type.length === 0 || value.type.length > 50) {
-    return false;
-  }
-
-  switch (value.type) {
-    case "startJourney":
-    case "goToNextStep":
-    case "terminateJourney":
-    case "completeJourney":
-    case "resetJourney":
-    case "goToLastVisitedStep":
+  switch (value.kind) {
+    case "snapshot":
+      return (
+        isRecord(value.snapshot) &&
+        isSafePayload(value.snapshot) &&
+        (value.transitioned === undefined || typeof value.transitioned === "boolean") &&
+        (value.error === undefined || isRecord(value.error))
+      );
+    case "data":
+      return isSafePayload(value.data);
+    case "text":
+      return typeof value.text === "string";
+    case "void":
       return Object.keys(value).length === 1;
-    case "goToStepById":
-      return (
-        typeof value.stepId === "string" &&
-        value.stepId.length > 0 &&
-        value.stepId.length <= 100 &&
-        Object.keys(value).length === 2
-      );
-    case "goToPreviousStep":
-      return (
-        (value.steps === undefined || isPositiveInteger(value.steps)) &&
-        Object.keys(value).length <= 2
-      );
-    case "send":
-      return isSendEvent(value.event) && Object.keys(value).length === 2;
-    case "clearStepError":
-      return (
-        (value.stepId === undefined ||
-          (typeof value.stepId === "string" && value.stepId.length <= 100)) &&
-        Object.keys(value).length <= 2
-      );
-    case "getExecutionPaths":
-      return (
-        (value.options === undefined || isExecutionPathOptionsShape(value.options)) &&
-        Object.keys(value).length <= 2
-      );
     default:
       return false;
   }
 };
 
-/**
- * Validates whether an unknown value is a bridge-origin envelope.
- */
+/** Returns true when a payload matches the bridge-to-extension devtools envelope shape. */
 export const isJourneyDevtoolsBridgeEnvelope = (
   value: unknown
 ): value is JourneyDevtoolsBridgeEnvelope => {
@@ -445,28 +271,17 @@ export const isJourneyDevtoolsBridgeEnvelope = (
     case "snapshot":
       return isRecord(envelope.snapshot) && isSafePayload(envelope.snapshot);
     case "observation":
-      return isSerializableObservationEvent(envelope.event);
-    case "commandResult":
+      return isRecord(envelope.event) && isSafePayload(envelope.event);
+    case "operationResult":
       return (
         typeof envelope.requestId === "string" &&
-        envelope.requestId.length > 0 &&
-        envelope.requestId.length <= 100 &&
-        isRecord(envelope.snapshot) &&
-        isSafePayload(envelope.snapshot) &&
-        (!("error" in envelope) || isRecord(envelope.error))
+        typeof envelope.operationId === "string" &&
+        isResultPayload(envelope.result)
       );
-    case "executionPathsResult":
+    case "operationError":
       return (
         typeof envelope.requestId === "string" &&
-        envelope.requestId.length > 0 &&
-        envelope.requestId.length <= 100 &&
-        isExecutionPathResult(envelope.result)
-      );
-    case "commandError":
-      return (
-        typeof envelope.requestId === "string" &&
-        envelope.requestId.length > 0 &&
-        envelope.requestId.length <= 100 &&
+        typeof envelope.operationId === "string" &&
         isRecord(envelope.error)
       );
     default:
@@ -474,31 +289,21 @@ export const isJourneyDevtoolsBridgeEnvelope = (
   }
 };
 
-/**
- * Validates whether an unknown value is an extension-origin command envelope.
- */
+/** Returns true when a payload matches the extension-to-bridge devtools envelope shape. */
 export const isJourneyDevtoolsExtensionEnvelope = (
   value: unknown
 ): value is JourneyDevtoolsExtensionEnvelope => {
   if (!hasBaseEnvelopeShape(value) || value.source !== JOURNEY_DEVTOOLS_EXTENSION_SOURCE) {
     return false;
   }
-
-  if (value.kind !== "command") {
+  if (value.kind !== "invoke") {
     return false;
   }
 
   const envelope = value as Record<string, unknown>;
-  return (
-    typeof envelope.requestId === "string" &&
-    envelope.requestId.length > 0 &&
-    envelope.requestId.length <= 100 &&
-    isJourneyDevtoolsCommand(envelope.command)
-  );
+  return typeof envelope.requestId === "string" && isOperationInvoke(envelope.invocation);
 };
 
-/**
- * Validates whether an unknown value matches either supported devtools envelope shape.
- */
+/** Returns true when a payload matches any supported journey devtools protocol envelope. */
 export const isJourneyDevtoolsEnvelope = (value: unknown): value is JourneyDevtoolsEnvelope =>
   isJourneyDevtoolsBridgeEnvelope(value) || isJourneyDevtoolsExtensionEnvelope(value);

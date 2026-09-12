@@ -1,0 +1,350 @@
+import { describe, expect, it, vi } from "vitest";
+import { withGraphTypes, type GraphStep } from "@rxova/journey-core";
+import { flush, wait } from "@rxova/journey-core/testing";
+
+type Ctx = { method: "email" | "sms" | null; attempts: number };
+type SubmitResult = { method: "email" | "sms" | null } | undefined;
+
+type SubmitBag = {
+  context: Ctx;
+  stepId: "login" | "email" | "sms" | "blocked";
+  events: { type: "SUBMIT" } | { type: "GIVE_UP" };
+  results: { SUBMIT: SubmitResult };
+};
+
+/** The declared-work arm of an `on` entry — the object form, not the shorthands. */
+type SubmitWork = Extract<NonNullable<GraphStep<SubmitBag>["on"]>["SUBMIT"], { run: unknown }>;
+
+const candidates = [
+  { to: "email", when: ({ context }) => context.method === "email" },
+  { to: "sms", when: ({ context }) => context.method === "sms" }
+] satisfies NonNullable<GraphStep<SubmitBag>["on"]>["SUBMIT"];
+
+/**
+ * Routing depends entirely on `method`, which starts null — so no candidate is
+ * enabled until some work has supplied it. That is what declared work exists
+ * for: the async produces the fact the guards route on.
+ *
+ * The work is a parameter because each test needs its own run/commit, but it is
+ * always declared on the step: that is the only channel a graph has now that
+ * `send` no longer takes work.
+ */
+async function startedGraph(context: Partial<Ctx> = {}, submitWork?: SubmitWork) {
+  const machine = withGraphTypes<SubmitBag>()({
+    steps: {
+      login: {
+        on: {
+          SUBMIT: submitWork ? { ...submitWork, candidates } : candidates,
+          GIVE_UP: "blocked"
+        }
+      },
+      email: {},
+      sms: {},
+      blocked: {}
+    },
+    initial: "login",
+    context: { method: null, attempts: 0, ...context }
+  });
+  machine.controls.start();
+  await flush();
+  return machine;
+}
+
+describe("declared work on an event", () => {
+  it("stages context before routing, so guards decide on what the work staged", async () => {
+    const machine = await startedGraph(
+      {},
+      {
+        run: async () => {
+          await wait(1);
+          return { method: "sms" as const };
+        },
+        commit: ({ result, updateContext }) =>
+          updateContext((c) => ({ ...c, method: result?.method ?? null })),
+        candidates
+      }
+    );
+
+    // SUBMIT is declared from login but has no enabled candidate up front:
+    // method is still null, so both its guards fail.
+    expect(machine.getSnapshot().declaredEvents).toContain("SUBMIT");
+    expect(machine.getSnapshot().availableEvents).not.toContain("SUBMIT");
+
+    const result = await machine.send("SUBMIT");
+
+    expect(result).toEqual({ ok: true, from: "login", to: "sms" });
+    expect(machine.getSnapshot().currentStep?.id).toBe("sms");
+    expect(machine.getSnapshot().context).toMatchObject({ method: "sms" });
+  });
+
+  it("holds position with an unresolved target during the working phase", async () => {
+    const machine = await startedGraph(
+      {},
+      {
+        run: async () => {
+          await wait(5);
+          return { method: "email" as const };
+        },
+        commit: ({ result, updateContext }) =>
+          updateContext((c) => ({ ...c, method: result?.method ?? null })),
+        candidates
+      }
+    );
+
+    const pending = machine.send("SUBMIT");
+
+    await flush();
+    const working = machine.getSnapshot();
+    expect(working.transition.phase).toBe("working");
+    expect(working.transition.from).toBe("login");
+    // The target is genuinely unknown until the guards run.
+    expect(working.transition.to).toBeNull();
+    expect(working.transition.pending).toBe(true);
+    expect(working.currentStep?.id).toBe("login");
+
+    await pending;
+    expect(machine.getSnapshot().currentStep?.id).toBe("email");
+  });
+
+  it("rolls back the staged context when no candidate is enabled", async () => {
+    const machine = await startedGraph(
+      {},
+      {
+        run: async () => ({ method: null }),
+        // Real work, real data — but it routes nowhere.
+        commit: ({ updateContext }) => updateContext((c) => ({ ...c, attempts: 7 })),
+        candidates
+      }
+    );
+
+    const result = await machine.send("SUBMIT");
+
+    expect(result).toMatchObject({ ok: false, reason: "no-enabled-transition" });
+    expect(machine.getSnapshot().currentStep?.id).toBe("login");
+    // Rolled back: either the send routed and committed, or neither happened.
+    expect(machine.getSnapshot().context).toMatchObject({ method: null, attempts: 0 });
+    expect(machine.getSnapshot().transition.pending).toBe(false);
+    expect(machine.getSnapshot().transition.pending).toBe(false);
+  });
+
+  it("emits navigationBlocked on the rolled-back no-match", async () => {
+    const machine = await startedGraph({}, { run: () => undefined, candidates });
+    const blocked = vi.fn();
+    machine.subscriptions.subscribeEvent("navigationBlocked", blocked);
+
+    await machine.send("SUBMIT");
+
+    expect(blocked).toHaveBeenCalledTimes(1);
+    expect(blocked.mock.calls[0]?.[0]).toMatchObject({
+      reason: "no-enabled-transition",
+      from: "login"
+    });
+  });
+
+  it("a throwing run commits nothing and reports the error", async () => {
+    const failure = new Error("network down");
+    const machine = await startedGraph(
+      {},
+      {
+        run: async () => {
+          throw failure;
+        },
+        commit: ({ updateContext }) => updateContext((c) => ({ ...c, attempts: 99 })),
+        candidates
+      }
+    );
+    const onError = vi.fn();
+    machine.subscriptions.subscribeEvent("error", onError);
+
+    const result = await machine.send("SUBMIT");
+
+    expect(result).toMatchObject({ ok: false, reason: "error", error: failure });
+    expect(machine.getSnapshot().currentStep?.id).toBe("login");
+    expect(machine.getSnapshot().context).toMatchObject({ attempts: 0 });
+    expect(onError.mock.calls[0]?.[0]).toMatchObject({ phase: "work", stepId: "login" });
+  });
+
+  it("rejects a concurrent send while work is in flight", async () => {
+    const machine = await startedGraph(
+      {},
+      {
+        run: async () => {
+          await wait(5);
+          return { method: "email" as const };
+        },
+        commit: ({ result, updateContext }) =>
+          updateContext((c) => ({ ...c, method: result?.method ?? null })),
+        candidates
+      }
+    );
+
+    const first = machine.send("SUBMIT");
+    await flush();
+
+    // Distinct from no-enabled-transition: the machine is busy, not unrouted.
+    expect(await machine.send("GIVE_UP")).toMatchObject({ ok: false, reason: "transitioning" });
+
+    await first;
+    expect(machine.getSnapshot().currentStep?.id).toBe("email");
+  });
+
+  it("bails out when the machine is terminated mid-work", async () => {
+    const machine = await startedGraph(
+      {},
+      {
+        run: async () => {
+          await wait(5);
+          return { method: "email" as const };
+        },
+        commit: ({ result, updateContext }) =>
+          updateContext((c) => ({ ...c, method: result?.method ?? null })),
+        candidates
+      }
+    );
+
+    const pending = machine.send("SUBMIT");
+    await flush();
+
+    machine.controls.terminate();
+    expect(await pending).toMatchObject({ ok: false, reason: "not-running" });
+    expect(machine.getSnapshot().currentStep?.id).toBe("login");
+    expect(machine.getSnapshot().context).toMatchObject({ method: null });
+  });
+
+  it("an event with no declared work routes straight off its candidates", async () => {
+    const machine = await startedGraph({ method: "email" });
+    expect(await machine.send("SUBMIT")).toEqual({ ok: true, from: "login", to: "email" });
+  });
+
+  it("a commit returning a promise is rejected as an error", async () => {
+    const machine = await startedGraph(
+      {},
+      { run: () => undefined, commit: (() => Promise.resolve()) as never, candidates }
+    );
+    expect(await machine.send("SUBMIT")).toMatchObject({ ok: false, reason: "error" });
+  });
+});
+
+type LoginCtx = { method: "email" | "sms" | null };
+type LoginEvent = { type: "SUBMIT" } | { type: "RESET" };
+type LoginHandlers = { login: () => Promise<"email" | "sms"> };
+
+/** The definition-first form: the machine owns the async, `send` stays bare. */
+function buildDeclaredWorkJourney(handlers: LoginHandlers) {
+  const machine = withGraphTypes<{
+    context: LoginCtx;
+    stepId: "login" | "email" | "sms";
+    events: LoginEvent;
+    handlers: LoginHandlers;
+    results: { SUBMIT: "email" | "sms" };
+  }>()(
+    {
+      initial: "login",
+      context: { method: null },
+      handlers,
+      steps: {
+        login: {
+          on: {
+            SUBMIT: {
+              run: ({ handlers: h }) => h.login(),
+              commit: ({ result, updateContext }) =>
+                updateContext((c) => ({ ...c, method: result })),
+              candidates: [
+                { to: "email", when: ({ context }) => context.method === "email" },
+                { to: "sms", when: ({ context }) => context.method === "sms" }
+              ]
+            }
+          }
+        },
+        email: { on: { RESET: "login" } },
+        sms: { on: { RESET: "login" } }
+      }
+    },
+    { autoStart: true }
+  );
+  return machine;
+}
+
+describe("definition-declared send work", () => {
+  it("runs the declared work and routes on what it staged, from a bare send", async () => {
+    const machine = buildDeclaredWorkJourney({ login: async () => "sms" });
+    await flush();
+
+    expect(await machine.send("SUBMIT")).toEqual({ ok: true, from: "login", to: "sms" });
+    expect(machine.getSnapshot().context).toEqual({ method: "sms" });
+  });
+
+  it("reaches injected dependencies through handlers", async () => {
+    // Same definition, different injected client — the seam tests are meant to use.
+    const machine = buildDeclaredWorkJourney({ login: async () => "email" });
+    await flush();
+
+    expect(await machine.send("SUBMIT")).toEqual({ ok: true, from: "login", to: "email" });
+    expect(machine.getSnapshot().context).toEqual({ method: "email" });
+  });
+
+  it("does not apply the declared work to an event sent from another step", async () => {
+    const login = vi.fn(async () => "sms" as const);
+    const machine = buildDeclaredWorkJourney({ login });
+    await flush();
+    await machine.send("SUBMIT");
+    expect(login).toHaveBeenCalledTimes(1);
+
+    // RESET from "sms" has no declared work: it must not pick up login's.
+    expect(await machine.send("RESET")).toEqual({ ok: true, from: "sms", to: "login" });
+    expect(login).toHaveBeenCalledTimes(1);
+  });
+
+  it("rolls back when the staged context matches no candidate", async () => {
+    const machine = buildDeclaredWorkJourney({ login: async () => null as never });
+    await flush();
+
+    expect(await machine.send("SUBMIT")).toMatchObject({
+      ok: false,
+      reason: "no-enabled-transition"
+    });
+    expect(machine.getSnapshot().currentStep?.id).toBe("login");
+    expect(machine.getSnapshot().context).toEqual({ method: null });
+  });
+});
+
+describe("an unguarded last candidate keeps the event total", () => {
+  it("commits the staged context instead of rolling it back", async () => {
+    // The inverse of "rolls back when nothing matches": once a candidate is
+    // guaranteed to match, the work's commit survives. This is what the deleted
+    // `stay()` helper spelled out — an unguarded candidate back at this step.
+    const machine = withGraphTypes<{
+      context: { attempts: number };
+      stepId: "login" | "email";
+      events: LoginEvent;
+      handlers: LoginHandlers;
+    }>()(
+      {
+        initial: "login",
+        context: { attempts: 0 },
+        handlers: { login: async () => "carrier-pigeon" as unknown as "email" },
+        steps: {
+          login: {
+            on: {
+              SUBMIT: {
+                run: ({ handlers: h }) => h.login(),
+                commit: ({ updateContext }) =>
+                  updateContext((c) => ({ ...c, attempts: c.attempts + 1 })),
+                candidates: [
+                  { to: "email", when: ({ context }) => context.attempts > 5 },
+                  { to: "login" }
+                ]
+              }
+            }
+          },
+          email: {}
+        }
+      },
+      { autoStart: true }
+    );
+    await flush();
+
+    expect(await machine.send("SUBMIT")).toEqual({ ok: true, from: "login", to: "login" });
+    expect(machine.getSnapshot().context).toEqual({ attempts: 1 });
+  });
+});

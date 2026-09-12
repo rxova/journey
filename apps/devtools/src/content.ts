@@ -1,4 +1,8 @@
-import { isJourneyDevtoolsBridgeEnvelope } from "@rxova/journey-devtools-bridge";
+import { isExpectedWindowOrigin, resolveWindowTargetOrigin } from "@rxova/journey-common/origin";
+import {
+  JOURNEY_DEVTOOLS_REPLAY_REQUEST,
+  isJourneyDevtoolsBridgeEnvelope
+} from "@rxova/journey-devtools-bridge";
 import {
   isBackgroundToContentMessage,
   type BackgroundToContentMessage,
@@ -14,32 +18,24 @@ type CachedJourneyMachine = {
   snapshot: Extract<ContentToBackgroundMessage["envelope"], { kind: "snapshot" }> | null;
 };
 
-const resolveWindowTargetOrigin = (): string =>
-  window.location.origin === "null" ? "*" : window.location.origin;
-
-const isExpectedWindowOrigin = (origin: string): boolean => {
-  if (origin.length === 0) {
-    return false;
-  }
-
-  const expected = window.location.origin;
-  if (expected === "null") {
-    return origin === "null";
-  }
-
-  return origin === expected;
-};
-
 const WINDOW_TARGET_ORIGIN = resolveWindowTargetOrigin();
 const maybeWindow = window as WindowWithBridgeFlag;
 const journeyMachineCache = new Map<string, CachedJourneyMachine>();
 
+const requestBridgeReplayFromPage = () => {
+  window.postMessage(
+    {
+      type: JOURNEY_DEVTOOLS_REPLAY_REQUEST
+    },
+    WINDOW_TARGET_ORIGIN
+  );
+};
+
 const cacheEnvelope = (envelope: ContentToBackgroundMessage["envelope"]) => {
   if (
-    envelope.kind === "commandResult" ||
-    envelope.kind === "commandError" ||
-    envelope.kind === "observation" ||
-    envelope.kind === "executionPathsResult"
+    envelope.kind === "operationResult" ||
+    envelope.kind === "operationError" ||
+    envelope.kind === "observation"
   ) {
     return;
   }
@@ -113,10 +109,13 @@ if (!maybeWindow[CONTENT_BRIDGE_FLAG]) {
 
     const typedMessage: BackgroundToContentMessage = message;
     if (typedMessage.type === "bridge-replay-request") {
+      requestBridgeReplayFromPage();
       replayCacheToBackground();
       return;
     }
 
     window.postMessage(typedMessage.envelope, WINDOW_TARGET_ORIGIN);
   });
+
+  requestBridgeReplayFromPage();
 }

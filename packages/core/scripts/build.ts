@@ -9,15 +9,7 @@ const common = {
   minify: true,
   sourcemap: true,
   legalComments: "none",
-  entryPoints: [
-    "src/index.ts",
-    "src/plugins/analytics/index.ts",
-    "src/plugins/autosave/index.ts",
-    "src/plugins/diagnostics/index.ts",
-    "src/plugins/persistence/index.ts",
-    "src/plugins/replay/index.ts",
-    "src/plugins/execution-paths/index.ts"
-  ],
+  entryPoints: ["src/index.ts", "src/plugins/index.ts"],
   outdir: "dist",
   outbase: "src",
   platform: "neutral",

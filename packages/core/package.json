@@ -41,6 +41,9 @@
   },
   "license": "MIT",
   "author": "Jonatan Kruszewski",
+  "engines": {
+    "node": ">=20.11.0"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -54,53 +57,13 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
-    "./analytics": {
+    "./plugins": {
       "types": {
-        "import": "./dist/plugins/analytics/index.d.ts",
-        "require": "./dist/plugins/analytics/index.d.cts"
+        "import": "./dist/plugins/index.d.ts",
+        "require": "./dist/plugins/index.d.cts"
       },
-      "import": "./dist/plugins/analytics/index.js",
-      "require": "./dist/plugins/analytics/index.cjs"
-    },
-    "./autosave": {
-      "types": {
-        "import": "./dist/plugins/autosave/index.d.ts",
-        "require": "./dist/plugins/autosave/index.d.cts"
-      },
-      "import": "./dist/plugins/autosave/index.js",
-      "require": "./dist/plugins/autosave/index.cjs"
-    },
-    "./diagnostics": {
-      "types": {
-        "import": "./dist/plugins/diagnostics/index.d.ts",
-        "require": "./dist/plugins/diagnostics/index.d.cts"
-      },
-      "import": "./dist/plugins/diagnostics/index.js",
-      "require": "./dist/plugins/diagnostics/index.cjs"
-    },
-    "./persistence": {
-      "types": {
-        "import": "./dist/plugins/persistence/index.d.ts",
-        "require": "./dist/plugins/persistence/index.d.cts"
-      },
-      "import": "./dist/plugins/persistence/index.js",
-      "require": "./dist/plugins/persistence/index.cjs"
-    },
-    "./replay": {
-      "types": {
-        "import": "./dist/plugins/replay/index.d.ts",
-        "require": "./dist/plugins/replay/index.d.cts"
-      },
-      "import": "./dist/plugins/replay/index.js",
-      "require": "./dist/plugins/replay/index.cjs"
-    },
-    "./execution-paths": {
-      "types": {
-        "import": "./dist/plugins/execution-paths/index.d.ts",
-        "require": "./dist/plugins/execution-paths/index.d.cts"
-      },
-      "import": "./dist/plugins/execution-paths/index.js",
-      "require": "./dist/plugins/execution-paths/index.cjs"
+      "import": "./dist/plugins/index.js",
+      "require": "./dist/plugins/index.cjs"
     }
   },
   "files": [
@@ -112,64 +75,36 @@
   "scripts": {
     "build": "pnpm run clean && node --import tsx ./scripts/build.ts && tsc -p tsconfig.build.json && node --import tsx ../common/tooling/copy-types.ts dist",
     "clean": "node --import tsx ../common/tooling/clean-paths.ts dist tsconfig.build.tsbuildinfo",
-    "coverage": "pnpm --workspace-root vitest run --coverage --coverage.include=packages/core/src/** --coverage.reporter=text-summary",
+    "coverage": "JOURNEY_COVERAGE_INCLUDE=packages/core/src/** JOURNEY_COVERAGE_DIR=coverage/core pnpm --workspace-root vitest run packages/core/src --coverage --coverage.reporter=text-summary",
+    "test": "pnpm --workspace-root vitest run packages/core/src --coverage.enabled=false",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "check:exports": "publint --strict",
-    "attw": "attw --pack .",
+    "attw": "attw --pack . --profile node16",
     "size": "size-limit"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@rxova/journey-common": "workspace:*",
+    "publint": "^0.3.24"
   },
   "size-limit": [
     {
-      "name": "core/createJourneyMachine",
+      "name": "core/createLinearJourney",
       "path": "dist/index.js",
-      "import": "{ createJourneyMachine }",
-      "limit": "7.9 kB"
+      "import": "{ createLinearJourney }",
+      "limit": "6.2 kB"
     },
     {
-      "name": "core/createJourneyBuilder",
+      "name": "core/createGraphJourney",
       "path": "dist/index.js",
-      "import": "{ createJourneyBuilder }",
-      "limit": "1 kB"
+      "import": "{ createGraphJourney }",
+      "limit": "6.5 kB"
     },
     {
       "name": "core/createPersistencePlugin",
-      "path": "dist/plugins/persistence/index.js",
+      "path": "dist/plugins/index.js",
       "import": "{ createPersistencePlugin }",
-      "limit": "3 kB"
-    },
-    {
-      "name": "core/createAnalyticsPlugin",
-      "path": "dist/plugins/analytics/index.js",
-      "import": "{ createAnalyticsPlugin }",
-      "limit": "2 kB"
-    },
-    {
-      "name": "core/createAutosavePlugin",
-      "path": "dist/plugins/autosave/index.js",
-      "import": "{ createAutosavePlugin }",
-      "limit": "3.5 kB"
-    },
-    {
-      "name": "core/createDiagnosticsPlugin",
-      "path": "dist/plugins/diagnostics/index.js",
-      "import": "{ createDiagnosticsPlugin }",
-      "limit": "2.6 kB"
-    },
-    {
-      "name": "core/createExecutionPathsPlugin",
-      "path": "dist/plugins/execution-paths/index.js",
-      "import": "{ createExecutionPathsPlugin }",
-      "limit": "2 kB"
-    },
-    {
-      "name": "core/createReplayPlugin",
-      "path": "dist/plugins/replay/index.js",
-      "import": "{ createReplayPlugin }",
-      "limit": "2 kB"
+      "limit": "1.15 kB"
     }
-  ],
-  "devDependencies": {
-    "@arethetypeswrong/cli": "^0.18.5",
-    "publint": "^0.3.24"
-  }
+  ]
 }

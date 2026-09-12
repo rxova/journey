@@ -1,7 +1,15 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "types": ["vitest/globals", "node"]
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"]
   },
-  "include": ["packages/*/test", "packages/common/tooling"]
+  "include": [
+    "test",
+    "packages/*/test",
+    "packages/common/tooling",
+    "apps/devtools/test",
+    "apps/devtools/src/vite-env.d.ts"
+  ],
+  "exclude": ["packages/devtools-bridge/test"]
 }

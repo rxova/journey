@@ -1,32 +1,50 @@
-export { attachJourneyDevtools, type JourneyDevtoolsBridgeOptions } from "./bridge";
+export { attachJourneyDevtools } from "./bridge";
+export {
+  buildOperationRunners,
+  createJourneyMachineId,
+  OperationRateLimiter,
+  serializeSnapshot
+} from "./bridge.helpers";
+export type {
+  JourneyDevtoolsAttachableMachine,
+  JourneyDevtoolsBridgeOptions,
+  OperationRunner
+} from "./bridge.types";
 
 export {
   JOURNEY_DEVTOOLS_CHANNEL,
   JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
+  JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION,
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+  JOURNEY_DEVTOOLS_REPLAY_REQUEST,
   JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
   JOURNEY_DEVTOOLS_EXTENSION_SOURCE,
-  isJourneyDevtoolsCommand,
+  isCompatibleInvokeProtocolVersion,
   isJourneyDevtoolsEnvelope,
   isJourneyDevtoolsBridgeEnvelope,
-  isJourneyDevtoolsExtensionEnvelope,
-  type JourneyDevtoolsBridgeCommandErrorEnvelope,
-  type JourneyDevtoolsBridgeCommandResultEnvelope,
-  type JourneyDevtoolsBridgeExecutionPathsResultEnvelope,
-  type JourneyDevtoolsBridgeEnvelope,
-  type JourneyDevtoolsBridgeObservationEnvelope,
-  type JourneyDevtoolsBridgeRegisterEnvelope,
-  type JourneyDevtoolsBridgeSnapshotEnvelope,
-  type JourneyDevtoolsBridgeUnregisterEnvelope,
-  type JourneyDevtoolsCommand,
-  type JourneyDevtoolsEnvelope,
-  type JourneyDevtoolsExtensionEnvelope,
-  type JourneyDevtoolsExtensionCommandEnvelope,
-  type JourneyDevtoolsMachineCapabilities,
-  type JourneyDevtoolsMachineMeta,
-  type JourneyDevtoolsProtocolVersion,
-  type JourneyDevtoolsSerializableExecutionPathsResult,
-  type JourneyDevtoolsSerializableObservationEvent,
-  type JourneyDevtoolsSerializableSnapshot,
-  type JourneyDevtoolsSerializedError
+  isJourneyDevtoolsExtensionEnvelope
 } from "./protocol";
+
+export type {
+  JourneyDevtoolsBridgeEnvelope,
+  JourneyDevtoolsBridgeOperationErrorEnvelope,
+  JourneyDevtoolsBridgeOperationResultEnvelope,
+  JourneyDevtoolsBridgeObservationEnvelope,
+  JourneyDevtoolsBridgeRegisterEnvelope,
+  JourneyDevtoolsBridgeSnapshotEnvelope,
+  JourneyDevtoolsBridgeUnregisterEnvelope,
+  JourneyDevtoolsEnvelope,
+  JourneyDevtoolsExtensionEnvelope,
+  JourneyDevtoolsExtensionInvokeEnvelope,
+  JourneyDevtoolsFieldSpec,
+  JourneyDevtoolsMachineFeatureDescriptor,
+  JourneyDevtoolsMachineMeta,
+  JourneyDevtoolsMachineOperationDescriptor,
+  JourneyDevtoolsOperationInvoke,
+  JourneyDevtoolsOperationResultKind,
+  JourneyDevtoolsOperationResultPayload,
+  JourneyDevtoolsProtocolVersion,
+  JourneyDevtoolsSerializableSnapshot,
+  JourneyDevtoolsSerializedError,
+  JourneyDevtoolsStepFeatureDescriptor
+} from "./protocol.types";

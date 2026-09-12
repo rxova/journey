@@ -1,771 +1,225 @@
-import type {
-  JourneyExecutionPathOptions,
-  JourneyExecutionPathsResult,
-  JourneyJsonObject,
-  JourneyMachine,
-  JourneyObservationEvent,
-  JourneySendResult,
-  JourneySnapshot
-} from "@rxova/journey-core";
+import { resolveNonProductionEnvironment, warnInDevelopment } from "@rxova/journey-common/dev";
+import { isExpectedWindowOrigin, resolveWindowTargetOrigin } from "@rxova/journey-common/origin";
+import { isRecord } from "@rxova/journey-common/predicates";
+import { cloneForTransport, serializeError } from "@rxova/journey-common/serialization";
+import {
+  buildOperationRunners,
+  createJourneyMachineId,
+  OperationRateLimiter,
+  serializeSnapshot
+} from "./bridge.helpers";
 import {
   JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
   JOURNEY_DEVTOOLS_CHANNEL,
-  JOURNEY_DEVTOOLS_EXTENSION_SOURCE,
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
-  isJourneyDevtoolsEnvelope,
-  type JourneyDevtoolsBridgeCommandErrorEnvelope,
-  type JourneyDevtoolsBridgeCommandResultEnvelope,
-  type JourneyDevtoolsBridgeEnvelope,
-  type JourneyDevtoolsBridgeExecutionPathsResultEnvelope,
-  type JourneyDevtoolsBridgeObservationEnvelope,
-  type JourneyDevtoolsBridgeRegisterEnvelope,
-  type JourneyDevtoolsBridgeSnapshotEnvelope,
-  type JourneyDevtoolsBridgeUnregisterEnvelope,
-  type JourneyDevtoolsCommand,
-  type JourneyDevtoolsExtensionCommandEnvelope,
-  type JourneyDevtoolsMachineMeta,
-  type JourneyDevtoolsSerializableExecutionPathsResult,
-  type JourneyDevtoolsSerializableObservationEvent,
-  type JourneyDevtoolsSerializableSnapshot,
-  type JourneyDevtoolsSerializedError
+  JOURNEY_DEVTOOLS_REPLAY_REQUEST,
+  isCompatibleInvokeProtocolVersion,
+  isJourneyDevtoolsExtensionEnvelope
 } from "./protocol";
+import type {
+  JourneyDevtoolsAttachableMachine,
+  JourneyDevtoolsBridgeOptions,
+  LooseMachine,
+  OperationRunner
+} from "./bridge.types";
+import type {
+  JourneyDevtoolsBridgeEnvelope,
+  JourneyDevtoolsMachineMeta,
+  JourneyDevtoolsOperationResultPayload
+} from "./protocol.types";
+import type { JourneySnapshot, JourneySubscriptionEvent } from "@rxova/journey-core";
 
-declare const process: { env?: { NODE_ENV?: string } } | undefined;
+const OBSERVED_EVENTS: readonly JourneySubscriptionEvent[] = [
+  "stepEnter",
+  "stepLeave",
+  "statusChange",
+  "contextChange",
+  "navigationBlocked",
+  "error"
+];
 
-type JourneyDevtoolsPersistencePluginMetadata = {
-  key?: string;
-  clearOnReset?: boolean;
-};
-
-export type JourneyDevtoolsBridgeOptions = {
-  machineId?: string;
-  label?: string;
-  enabled?: boolean;
-  appName?: string;
-  commandsEnabled?: boolean;
-  pluginMetadata?: {
-    persistence?: JourneyDevtoolsPersistencePluginMetadata;
-  };
-};
-
-type SnapshotCommandOutcome<TContext extends JourneyJsonObject, TStepId extends string> = {
-  kind: "snapshot";
-  snapshot: JourneySnapshot<TContext, TStepId>;
-  transitioned?: boolean;
-  transitionId?: string;
-  error?: JourneyDevtoolsSerializedError;
-};
-
-type ExecutionPathsCommandOutcome<TStepId extends string, TEventType extends string> = {
-  kind: "executionPaths";
-  result: JourneyExecutionPathsResult<TStepId, TEventType>;
-};
-
-type CommandOutcome<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventType extends string
-> = SnapshotCommandOutcome<TContext, TStepId> | ExecutionPathsCommandOutcome<TStepId, TEventType>;
-
-type SnapshotScheduleKind = "raf" | "timeout";
-
-type JourneyImportMetaEnv = {
-  DEV?: unknown;
-  PROD?: unknown;
-};
-
-type ExecutionPathsJourneyMachine<
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  TStepMeta,
-  THandlers extends Record<string, unknown>
-> = JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers> & {
-  getExecutionPaths: (
-    options?: JourneyExecutionPathOptions
-  ) => JourneyExecutionPathsResult<TStepId, string>;
-};
-
-const DEFAULT_MACHINE_LABEL = "Journey Machine";
-const MUTATING_COMMAND_TYPES = [
-  "startJourney",
-  "goToNextStep",
-  "terminateJourney",
-  "completeJourney",
-  "goToStepById",
-  "goToPreviousStep",
-  "goToLastVisitedStep",
-  "send",
-  "resetJourney",
-  "clearStepError"
-] as const satisfies readonly Exclude<JourneyDevtoolsCommand["type"], "getExecutionPaths">[];
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
-
-const isJourneyAsyncPhase = (
-  value: unknown
-): value is JourneyDevtoolsSerializableSnapshot["async"]["byStep"][string]["phase"] =>
-  value === "idle" || value === "evaluating-when" || value === "error";
-
-const resolveImportMetaEnvironment = (
-  bundlerEnv: JourneyImportMetaEnv | null | undefined
-): boolean | null => {
-  if (!isRecord(bundlerEnv)) {
-    return null;
-  }
-
-  if (bundlerEnv.PROD === true) {
-    return false;
-  }
-
-  if (bundlerEnv.DEV === true) {
-    return true;
-  }
-
-  return null;
-};
-
-const resolveNodeEnvironment = (nodeEnv: string | undefined): boolean | null => {
-  if (typeof nodeEnv !== "string") {
-    return null;
-  }
-
-  return nodeEnv !== "production";
-};
-
-export const resolveNonProductionEnvironment = (
-  options: {
-    bundlerEnv?: JourneyImportMetaEnv | null | undefined;
-    nodeEnv?: string | undefined;
-  } = {}
-): boolean => {
-  const resolvedBundlerEnv =
-    "bundlerEnv" in options
-      ? options.bundlerEnv
-      : (import.meta as ImportMeta & { env?: JourneyImportMetaEnv }).env;
-  const resolvedNodeEnv =
-    "nodeEnv" in options
-      ? options.nodeEnv
-      : typeof process !== "undefined"
-        ? process.env?.NODE_ENV
-        : undefined;
-
-  return (
-    resolveImportMetaEnvironment(resolvedBundlerEnv) ??
-    resolveNodeEnvironment(resolvedNodeEnv) ??
-    false
-  );
-};
-
-const resolveWindowTargetOrigin = (): string => {
-  if (typeof window === "undefined") {
-    return "*";
-  }
-
-  return window.location.origin === "null" ? "*" : window.location.origin;
-};
-
-const isExpectedWindowOrigin = (origin: string): boolean => {
-  if (origin.length === 0) {
-    return false;
-  }
-
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  const expected = window.location.origin;
-  if (expected === "null") {
-    return origin === "null";
-  }
-
-  return origin === expected;
-};
-
-const createJourneyMachineId = (): string =>
-  `journey-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-
-class CommandRateLimiter {
-  private commandTimestamps: number[] = [];
-  private readonly maxCommandsPerWindow: number;
-  private readonly windowMs: number;
-
-  constructor(maxCommandsPerWindow = 100, windowMs = 10000) {
-    this.maxCommandsPerWindow = maxCommandsPerWindow;
-    this.windowMs = windowMs;
-  }
-
-  isAllowed(): boolean {
-    const now = Date.now();
-    const windowStart = now - this.windowMs;
-
-    this.commandTimestamps = this.commandTimestamps.filter((timestamp) => timestamp > windowStart);
-
-    if (this.commandTimestamps.length >= this.maxCommandsPerWindow) {
-      return false;
-    }
-
-    this.commandTimestamps.push(now);
-    return true;
-  }
-
-  reset(): void {
-    this.commandTimestamps = [];
-  }
-}
-
-const cloneForTransport = (value: unknown): unknown => {
-  const transportValue =
-    typeof structuredClone === "function"
-      ? (() => {
-          try {
-            return structuredClone(value);
-          } catch {
-            return value;
-          }
-        })()
-      : value;
-  const seen = new WeakSet<object>();
-
-  try {
-    const serialized = JSON.stringify(transportValue, (_key, currentValue) => {
-      if (typeof currentValue === "bigint") {
-        return currentValue.toString();
-      }
-      if (typeof currentValue === "function") {
-        return `[Function ${currentValue.name || "anonymous"}]`;
-      }
-      if (typeof currentValue === "symbol") {
-        return currentValue.toString();
-      }
-      if (typeof currentValue === "object" && currentValue !== null) {
-        if (seen.has(currentValue)) {
-          return "[Circular]";
-        }
-        seen.add(currentValue);
-      }
-      return currentValue;
-    });
-
-    if (serialized === undefined) {
-      return undefined;
-    }
-
-    return JSON.parse(serialized) as unknown;
-  } catch {
-    return String(value);
-  }
-};
-
-const serializeError = (error: unknown): JourneyDevtoolsSerializedError => {
-  if (error instanceof Error) {
-    const cause =
-      "cause" in error && (error as { cause?: unknown }).cause !== undefined
-        ? (error as { cause?: unknown }).cause
-        : null;
-    return {
-      name: error.name,
-      message: error.message,
-      stack: typeof error.stack === "string" ? error.stack : null,
-      cause: cloneForTransport(cause)
-    };
-  }
-
-  return {
-    name: null,
-    message: typeof error === "string" ? error : "Unknown error",
-    stack: null,
-    cause: cloneForTransport(error)
-  };
-};
-
-const serializeSnapshot = <TContext extends JourneyJsonObject, TStepId extends string>(
-  snapshot: JourneySnapshot<TContext, TStepId>
-): JourneyDevtoolsSerializableSnapshot => {
-  const byStep: Record<string, JourneyDevtoolsSerializableSnapshot["async"]["byStep"][string]> = {};
-
-  for (const [stepId, stepState] of Object.entries(
-    snapshot.async.byStep as Record<string, unknown>
-  )) {
-    if (!isRecord(stepState)) {
-      continue;
-    }
-
-    byStep[stepId] = {
-      phase: isJourneyAsyncPhase(stepState.phase) ? stepState.phase : "idle",
-      eventType: typeof stepState.eventType === "string" ? stepState.eventType : null,
-      transitionId: typeof stepState.transitionId === "string" ? stepState.transitionId : null,
-      error: stepState.error === null ? null : cloneForTransport(stepState.error)
-    };
-  }
-
-  return {
-    currentStepId: String(snapshot.currentStepId),
-    context: cloneForTransport(snapshot.context) as JourneyJsonObject,
-    history: {
-      timeline: snapshot.history.timeline.map((stepId) => String(stepId)),
-      index: snapshot.history.index
-    },
-    visited: Object.fromEntries(
-      Object.entries(snapshot.visited as Record<string, boolean>).map(([stepId, isVisited]) => [
-        String(stepId),
-        isVisited === true
-      ])
-    ),
-    status: snapshot.status,
-    async: {
-      isLoading: snapshot.async.isLoading,
-      byStep
-    }
-  };
-};
-
-const serializeObservationEvent = <
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>
->(
-  event: JourneyObservationEvent<TStepId, TEventMap>
-): JourneyDevtoolsSerializableObservationEvent => {
-  if (event.type === "transition.error") {
-    return cloneForTransport({
-      ...event,
-      error: serializeError(event.error)
-    }) as JourneyDevtoolsSerializableObservationEvent;
-  }
-  return cloneForTransport(event) as JourneyDevtoolsSerializableObservationEvent;
-};
-
-const serializeExecutionPathsResult = <TStepId extends string, TEventType extends string>(
-  result: JourneyExecutionPathsResult<TStepId, TEventType>
-): JourneyDevtoolsSerializableExecutionPathsResult =>
-  cloneForTransport(result) as JourneyDevtoolsSerializableExecutionPathsResult;
-
-const isKnownStepId = <TContext extends JourneyJsonObject, TStepId extends string>(
-  snapshot: JourneySnapshot<TContext, TStepId>,
-  stepId: string
-): stepId is TStepId => stepId in (snapshot.async.byStep as Record<string, unknown>);
-
-const assertKnownStepId = <TContext extends JourneyJsonObject, TStepId extends string>(
-  machine: { getSnapshot: () => JourneySnapshot<TContext, TStepId> },
-  stepId: string,
-  commandType: JourneyDevtoolsCommand["type"]
-): TStepId => {
-  if (!isKnownStepId(machine.getSnapshot(), stepId)) {
-    throw new Error(`Unknown stepId "${stepId}" for "${commandType}" command.`);
-  }
-  return stepId;
-};
-
-const toSnapshotCommandOutcome = <TContext extends JourneyJsonObject, TStepId extends string>(
-  result: JourneySendResult<TContext, TStepId>
-): SnapshotCommandOutcome<TContext, TStepId> => ({
-  kind: "snapshot",
-  snapshot: result.snapshot,
-  transitioned: result.transitioned,
-  ...(result.transitionId ? { transitionId: result.transitionId } : {}),
-  ...("error" in result ? { error: serializeError(result.error) } : {})
-});
-
-const hasExecutionPathsSupport = <
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  TStepMeta,
-  THandlers extends Record<string, unknown>
->(
-  machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>
-): machine is ExecutionPathsJourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers> =>
-  typeof (machine as Record<string, unknown>).getExecutionPaths === "function";
-
-const isReadOnlyCommand = (command: JourneyDevtoolsCommand): boolean =>
-  command.type === "getExecutionPaths";
-
-const createCapabilities = <
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown>,
-  TStepMeta,
-  THandlers extends Record<string, unknown>
->(
-  machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
-  options: JourneyDevtoolsBridgeOptions,
-  commandsEnabled: boolean
-) => {
-  const executionPaths = hasExecutionPathsSupport(machine);
-  const commands: JourneyDevtoolsCommand["type"][] = [];
-
-  if (commandsEnabled) {
-    commands.push(...MUTATING_COMMAND_TYPES);
-  }
-
-  if (executionPaths) {
-    commands.push("getExecutionPaths");
-  }
-
-  return {
-    commands,
-    observe: true as const,
-    executionPaths,
-    ...(options.pluginMetadata?.persistence
-      ? {
-          persistence: {
-            key: options.pluginMetadata.persistence.key?.trim() || null,
-            clearOnReset:
-              typeof options.pluginMetadata.persistence.clearOnReset === "boolean"
-                ? options.pluginMetadata.persistence.clearOnReset
-                : null
-          }
-        }
-      : {})
-  };
-};
-
-const runCommand = async <
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TStepMeta,
-  THandlers extends Record<string, unknown>
->(
-  machine: JourneyMachine<TContext, TStepId, Record<never, never>, TStepMeta, THandlers>,
-  command: JourneyDevtoolsCommand
-): Promise<CommandOutcome<TContext, TStepId, string>> => {
-  switch (command.type) {
-    case "startJourney":
-      return {
-        kind: "snapshot",
-        snapshot: await machine.startJourney()
-      };
-    case "goToNextStep":
-    case "completeJourney": {
-      const result = await machine.send({ type: command.type });
-      return toSnapshotCommandOutcome(result);
-    }
-    case "terminateJourney": {
-      const result = await machine.send({ type: "terminateJourney" });
-      return toSnapshotCommandOutcome(result);
-    }
-    case "goToStepById": {
-      const stepId = assertKnownStepId(machine, command.stepId, command.type);
-      const result = await machine.send({
-        type: "goToStepById",
-        stepId
-      });
-      return toSnapshotCommandOutcome(result);
-    }
-    case "goToPreviousStep": {
-      const result = await machine.goToPreviousStep(command.steps);
-      return toSnapshotCommandOutcome(result);
-    }
-    case "goToLastVisitedStep": {
-      const result = await machine.goToLastVisitedStep();
-      return toSnapshotCommandOutcome(result);
-    }
-    case "send": {
-      const sendEvent =
-        command.event.payload === undefined
-          ? { type: command.event.type }
-          : { type: command.event.type, payload: command.event.payload };
-      const result: JourneySendResult<TContext, TStepId> = await machine.send(
-        sendEvent as Parameters<typeof machine.send>[0]
-      );
-      return toSnapshotCommandOutcome(result);
-    }
-    case "resetJourney":
-      return {
-        kind: "snapshot",
-        snapshot: await machine.resetJourney()
-      };
-    case "clearStepError": {
-      const stepId =
-        command.stepId === undefined
-          ? undefined
-          : assertKnownStepId(machine, command.stepId, command.type);
-      return {
-        kind: "snapshot",
-        snapshot: await machine.clearStepError(stepId)
-      };
-    }
-    case "getExecutionPaths": {
-      if (!hasExecutionPathsSupport(machine)) {
-        throw new Error('Machine does not support "getExecutionPaths".');
-      }
-
-      return {
-        kind: "executionPaths",
-        result: machine.getExecutionPaths(command.options)
-      };
-    }
-  }
-};
+const isReplayRequestMessage = (value: unknown): value is { type: string } =>
+  isRecord(value) && value.type === JOURNEY_DEVTOOLS_REPLAY_REQUEST;
 
 /**
- * Attaches a journey machine to the browser devtools transport and returns
- * a detach function that unsubscribes listeners and unregisters the machine.
+ * Attaches a journey machine to the devtools extension over
+ * `window.postMessage`: registers the machine, streams snapshots and
+ * observations, and answers operation invokes (gated by `mutationsEnabled`).
+ * Returns a detach function; both attach and detach are safe no-ops outside
+ * the browser or when the bridge is disabled.
  */
-export const attachJourneyDevtools = <
-  TContext extends JourneyJsonObject,
-  TStepId extends string,
-  TEventMap extends Record<string, unknown> = Record<never, never>,
-  TStepMeta = unknown,
-  THandlers extends Record<string, unknown> = Record<never, never>
->(
-  machine: JourneyMachine<TContext, TStepId, TEventMap, TStepMeta, THandlers>,
+export function attachJourneyDevtools(
+  machine: JourneyDevtoolsAttachableMachine,
   options: JourneyDevtoolsBridgeOptions = {}
-): (() => void) => {
-  const enabled = options.enabled ?? resolveNonProductionEnvironment();
+): () => void {
+  const enabled = options.enabled ?? resolveNonProductionEnvironment({});
   if (!enabled || typeof window === "undefined") {
-    return () => {};
+    return () => undefined;
   }
 
-  const commandsEnabled = options.commandsEnabled ?? resolveNonProductionEnvironment();
-  const machineId = options.machineId?.trim() || createJourneyMachineId();
+  const target = machine as unknown as LooseMachine;
+  const machineId = options.machineId ?? createJourneyMachineId();
+  const mutationsEnabled = options.mutationsEnabled ?? true;
+  const rateLimiter = new OperationRateLimiter(
+    options.rateLimit?.maxPerWindow,
+    options.rateLimit?.windowMs
+  );
+  const runners = new Map<string, OperationRunner>(
+    buildOperationRunners(machine).map((runner) => [runner.descriptor.id, runner])
+  );
   const targetOrigin = resolveWindowTargetOrigin();
-  const capabilities = createCapabilities(machine, options, commandsEnabled);
+  let detached = false;
 
-  const meta: JourneyDevtoolsMachineMeta = {
-    machineId,
-    label: options.label?.trim() || DEFAULT_MACHINE_LABEL,
-    appName:
-      options.appName?.trim() || (typeof document !== "undefined" ? document.title : "") || null,
-    commandsEnabled,
-    capabilities
+  const post = (envelope: JourneyDevtoolsBridgeEnvelope): void => {
+    window.postMessage(envelope, targetOrigin);
   };
 
-  const createBaseEnvelope = <TKind extends JourneyDevtoolsBridgeEnvelope["kind"]>(
-    kind: TKind
-  ) => ({
+  const base = () => ({
     channel: JOURNEY_DEVTOOLS_CHANNEL,
     version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
     source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
-    kind,
     machineId,
     timestamp: Date.now()
   });
 
-  const post = (envelope: JourneyDevtoolsBridgeEnvelope) => {
-    try {
-      window.postMessage(envelope, targetOrigin);
-    } catch {
-      // Swallow transport failures so bridge lifecycle and commands remain non-throwing.
-    }
-  };
-
-  const postSnapshot = (snapshot: JourneySnapshot<TContext, TStepId>) => {
-    const envelope: JourneyDevtoolsBridgeSnapshotEnvelope = {
-      ...createBaseEnvelope("snapshot"),
-      snapshot: serializeSnapshot(snapshot)
+  const buildMeta = (): JourneyDevtoolsMachineMeta => {
+    const snapshot = target.getSnapshot() as JourneySnapshot;
+    return {
+      machineId,
+      label: options.label ?? "Journey Machine",
+      appName: options.appName ?? (typeof document === "undefined" ? null : document.title || null),
+      mutationsEnabled,
+      mode: snapshot.type,
+      stepIds: Object.keys(snapshot.history.visited),
+      ...(options.eventTypes ? { eventTypes: options.eventTypes } : {}),
+      features: groupFeatures([...runners.values()])
     };
-    post(envelope);
   };
 
-  const postObservation = (event: JourneyObservationEvent<TStepId, TEventMap>) => {
-    const envelope: JourneyDevtoolsBridgeObservationEnvelope = {
-      ...createBaseEnvelope("observation"),
-      event: serializeObservationEvent(event)
-    };
-    post(envelope);
+  const postRegister = (): void => {
+    post({
+      ...base(),
+      kind: "register",
+      meta: buildMeta(),
+      snapshot: serializeSnapshot(target.getSnapshot())
+    });
   };
 
-  const postExecutionPathsResult = (
-    requestId: string,
-    result: JourneyExecutionPathsResult<TStepId, string>
-  ) => {
-    const envelope: JourneyDevtoolsBridgeExecutionPathsResultEnvelope = {
-      ...createBaseEnvelope("executionPathsResult"),
+  const postOperationError = (requestId: string, operationId: string, error: unknown): void => {
+    post({
+      ...base(),
+      kind: "operationError",
       requestId,
-      result: serializeExecutionPathsResult(result)
-    };
-    post(envelope);
+      operationId,
+      error: serializeError(error)
+    });
   };
 
-  let isDetached = false;
-  const rateLimiter = new CommandRateLimiter();
-  let pendingSnapshot: JourneySnapshot<TContext, TStepId> | null = null;
-  let scheduledSnapshotHandle: number | ReturnType<typeof globalThis.setTimeout> | null = null;
-  let scheduledSnapshotKind: SnapshotScheduleKind | null = null;
-
-  const clearScheduledSnapshotState = () => {
-    pendingSnapshot = null;
-    scheduledSnapshotHandle = null;
-    scheduledSnapshotKind = null;
-  };
-
-  const flushScheduledSnapshot = () => {
-    const snapshot = pendingSnapshot;
-    clearScheduledSnapshotState();
-
-    if (!snapshot || isDetached) {
+  const runInvoke = async (
+    requestId: string,
+    operationId: string,
+    input?: Record<string, unknown>
+  ) => {
+    const runner = runners.get(operationId);
+    if (!runner) {
+      postOperationError(requestId, operationId, new Error(`unknown operation "${operationId}"`));
       return;
     }
-
-    postSnapshot(snapshot);
-  };
-
-  const scheduleSnapshotPost = (snapshot: JourneySnapshot<TContext, TStepId>) => {
-    pendingSnapshot = snapshot;
-    if (scheduledSnapshotHandle !== null) {
+    if (runner.descriptor.mutates && !mutationsEnabled) {
+      postOperationError(
+        requestId,
+        operationId,
+        new Error("mutations are disabled for this machine")
+      );
       return;
     }
-
-    if (typeof window.requestAnimationFrame === "function") {
-      scheduledSnapshotKind = "raf";
-      scheduledSnapshotHandle = window.requestAnimationFrame(() => {
-        flushScheduledSnapshot();
-      });
-      return;
-    }
-
-    scheduledSnapshotKind = "timeout";
-    scheduledSnapshotHandle = globalThis.setTimeout(() => {
-      flushScheduledSnapshot();
-    }, 0);
-  };
-
-  const cancelScheduledSnapshot = () => {
-    if (scheduledSnapshotHandle === null) {
-      clearScheduledSnapshotState();
-      return;
-    }
-
-    if (scheduledSnapshotKind === "raf" && typeof window.cancelAnimationFrame === "function") {
-      window.cancelAnimationFrame(scheduledSnapshotHandle as number);
-    } else {
-      globalThis.clearTimeout(scheduledSnapshotHandle);
-    }
-
-    clearScheduledSnapshotState();
-  };
-
-  const onMessage = (event: MessageEvent<unknown>) => {
-    if (
-      event.source !== window ||
-      !isExpectedWindowOrigin(event.origin) ||
-      isDetached ||
-      !isJourneyDevtoolsEnvelope(event.data)
-    ) {
-      return;
-    }
-
-    if (event.data.source !== JOURNEY_DEVTOOLS_EXTENSION_SOURCE || event.data.kind !== "command") {
-      return;
-    }
-
-    const commandEnvelope: JourneyDevtoolsExtensionCommandEnvelope = event.data;
-    if (commandEnvelope.machineId !== machineId) {
-      return;
-    }
-
     if (!rateLimiter.isAllowed()) {
-      const errorEnvelope: JourneyDevtoolsBridgeCommandErrorEnvelope = {
-        ...createBaseEnvelope("commandError"),
-        requestId: commandEnvelope.requestId,
-        error: serializeError(
-          "Command rate limit exceeded. Too many commands in a short time window."
-        )
-      };
-      post(errorEnvelope);
+      postOperationError(requestId, operationId, new Error("operation rate limit exceeded"));
       return;
     }
-
-    if (!commandsEnabled && !isReadOnlyCommand(commandEnvelope.command)) {
-      const errorEnvelope: JourneyDevtoolsBridgeCommandErrorEnvelope = {
-        ...createBaseEnvelope("commandError"),
-        requestId: commandEnvelope.requestId,
-        error: serializeError("Bridge commands are disabled by configuration.")
-      };
-      post(errorEnvelope);
+    let result: JourneyDevtoolsOperationResultPayload;
+    try {
+      result = await runner.run(input);
+    } catch (error) {
+      postOperationError(requestId, operationId, error);
       return;
     }
-
-    const run = async () => {
-      try {
-        const outcome = await runCommand(
-          machine as unknown as JourneyMachine<
-            TContext,
-            TStepId,
-            Record<never, never>,
-            TStepMeta,
-            THandlers
-          >,
-          commandEnvelope.command
-        );
-
-        if (isDetached) {
-          return;
-        }
-
-        if (outcome.kind === "executionPaths") {
-          postExecutionPathsResult(commandEnvelope.requestId, outcome.result);
-          return;
-        }
-
-        const resultEnvelope: JourneyDevtoolsBridgeCommandResultEnvelope = {
-          ...createBaseEnvelope("commandResult"),
-          requestId: commandEnvelope.requestId,
-          snapshot: serializeSnapshot(outcome.snapshot),
-          ...(outcome.transitioned !== undefined ? { transitioned: outcome.transitioned } : {}),
-          ...(outcome.transitionId ? { transitionId: outcome.transitionId } : {}),
-          ...("error" in outcome ? { error: outcome.error } : {})
-        };
-        post(resultEnvelope);
-      } catch (error) {
-        if (isDetached) {
-          return;
-        }
-
-        const errorEnvelope: JourneyDevtoolsBridgeCommandErrorEnvelope = {
-          ...createBaseEnvelope("commandError"),
-          requestId: commandEnvelope.requestId,
-          error: serializeError(error)
-        };
-        post(errorEnvelope);
-      }
-    };
-
-    void run();
+    post({ ...base(), kind: "operationResult", requestId, operationId, result });
   };
+
+  const onMessage = (event: MessageEvent): void => {
+    if (detached || !isExpectedWindowOrigin(event.origin)) {
+      return;
+    }
+    if (isReplayRequestMessage(event.data)) {
+      postRegister();
+      return;
+    }
+    if (!isJourneyDevtoolsExtensionEnvelope(event.data)) {
+      return;
+    }
+    const envelope = event.data;
+    if (envelope.machineId !== machineId) {
+      return;
+    }
+    if (!isCompatibleInvokeProtocolVersion(envelope.version)) {
+      warnInDevelopment(
+        `journey devtools: ignoring invoke from incompatible protocol version ${envelope.version}`
+      );
+      return;
+    }
+    void runInvoke(envelope.requestId, envelope.invocation.operationId, envelope.invocation.input);
+  };
+
+  const unsubscribes: (() => void)[] = [
+    target.subscriptions.subscribe(() => {
+      post({ ...base(), kind: "snapshot", snapshot: serializeSnapshot(target.getSnapshot()) });
+    }),
+    ...OBSERVED_EVENTS.map((type) =>
+      target.subscriptions.subscribeEvent(type, (payload) => {
+        // observation envelopes stay lean: the snapshot streams separately
+        const event: Record<string, unknown> = { type, ...payload };
+        delete event.snapshot;
+        post({
+          ...base(),
+          kind: "observation",
+          event: cloneForTransport(event) as Record<string, unknown>
+        });
+      })
+    )
+  ];
 
   window.addEventListener("message", onMessage);
-
-  const unsubscribeSnapshot = machine.subscribe(() => {
-    if (isDetached) {
-      return;
-    }
-
-    scheduleSnapshotPost(machine.getSnapshot());
-  });
-
-  const registerEnvelope: JourneyDevtoolsBridgeRegisterEnvelope = {
-    ...createBaseEnvelope("register"),
-    meta,
-    snapshot: serializeSnapshot(machine.getSnapshot())
-  };
-  post(registerEnvelope);
-
-  const unsubscribeObservation = machine.subscribeEvent((event) => {
-    if (isDetached) {
-      return;
-    }
-
-    postObservation(event);
-  });
+  postRegister();
 
   return () => {
-    if (isDetached) {
+    if (detached) {
       return;
     }
-
-    isDetached = true;
-    rateLimiter.reset();
-    unsubscribeObservation();
-    unsubscribeSnapshot();
+    detached = true;
+    for (const unsubscribe of unsubscribes.splice(0)) {
+      unsubscribe();
+    }
     window.removeEventListener("message", onMessage);
-    cancelScheduledSnapshot();
-
-    const unregisterEnvelope: JourneyDevtoolsBridgeUnregisterEnvelope = {
-      ...createBaseEnvelope("unregister")
-    };
-    post(unregisterEnvelope);
+    post({ ...base(), kind: "unregister" });
   };
-};
+}
+
+/** Groups flat operation runners into wire feature descriptors by id prefix. */
+function groupFeatures(
+  runners: readonly OperationRunner[]
+): JourneyDevtoolsMachineMeta["features"] {
+  const groups = new Map<string, OperationRunner[]>();
+  for (const runner of runners) {
+    const featureId = runner.descriptor.id.split(".")[0] as string;
+    const bucket = groups.get(featureId) ?? [];
+    bucket.push(runner);
+    groups.set(featureId, bucket);
+  }
+  return [...groups.entries()].map(([id, bucket]) => ({
+    id,
+    label: id,
+    description: null,
+    operations: bucket.map((runner) => runner.descriptor)
+  }));
+}

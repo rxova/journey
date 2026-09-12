@@ -1,0 +1,521 @@
+import { describe, expect, it, vi } from "vitest";
+import { createGraphJourney } from "@rxova/journey-core";
+// Internal cap: asserted here, deliberately not part of the public surface.
+import { MAX_RAISED_EVENTS } from "@rxova/journey-core/testing";
+import { flush, wait } from "@rxova/journey-core/testing";
+
+type Ctx = { valid: boolean; confirmed: boolean; retries: number };
+
+async function startedGraph(context: Partial<Ctx> = {}) {
+  const machine = createGraphJourney({
+    steps: {
+      form: { on: { SUBMIT: [{ to: "review", when: ({ context: c }) => (c as Ctx).valid }] } },
+      review: {
+        on: {
+          EDIT: "form",
+          CONFIRM: [{ to: "done", when: ({ context: c }) => (c as Ctx).confirmed }, { to: "form" }]
+        }
+      },
+      done: {}
+    },
+    initial: "form",
+    context: { valid: true, confirmed: false, retries: 0, ...context }
+  });
+  machine.controls.start();
+  await flush();
+  return machine;
+}
+
+describe("createGraphJourney — event-driven transitions", () => {
+  it("send executes the matching enabled transition", async () => {
+    const machine = await startedGraph();
+    expect(await machine.send("SUBMIT")).toEqual({ ok: true, from: "form", to: "review" });
+    expect(machine.getSnapshot().currentStep?.id).toBe("review");
+  });
+
+  it("send with no enabled transition fails with no-enabled-transition", async () => {
+    const machine = await startedGraph({ valid: false });
+    expect(await machine.send("SUBMIT")).toMatchObject({
+      ok: false,
+      reason: "no-enabled-transition"
+    });
+    expect(await machine.send("UNKNOWN")).toMatchObject({
+      ok: false,
+      reason: "no-enabled-transition"
+    });
+    expect(await machine.send("EDIT")).toMatchObject({
+      ok: false,
+      reason: "no-enabled-transition"
+    });
+  });
+
+  it("treats a throwing transition guard as disabled", async () => {
+    const machine = createGraphJourney({
+      steps: {
+        a: {
+          on: {
+            GO: [
+              {
+                to: "b",
+                when: () => {
+                  throw new Error("guard exploded");
+                }
+              }
+            ]
+          }
+        },
+        b: {}
+      },
+      initial: "a",
+      context: {}
+    });
+    machine.controls.start();
+    await flush();
+
+    expect(machine.getSnapshot().outgoingTransitions[0]).toMatchObject({
+      guard: "failed",
+      enabled: false
+    });
+    expect(await machine.send("GO")).toMatchObject({ ok: false, reason: "no-enabled-transition" });
+  });
+
+  it("multiple candidates per event: first enabled in declaration order wins", async () => {
+    const fallback = await startedGraph();
+    await fallback.send("SUBMIT");
+    expect(await fallback.send("CONFIRM")).toEqual({ ok: true, from: "review", to: "form" });
+
+    const confirmed = await startedGraph({ confirmed: true });
+    await confirmed.send("SUBMIT");
+    expect(await confirmed.send("CONFIRM")).toEqual({ ok: true, from: "review", to: "done" });
+  });
+
+  it("the same event declared from two steps stays scoped to its own step", async () => {
+    // Colocating transitions changed the flattened order from per-event to
+    // per-step. That is only observable if one event is declared from more than
+    // one step — and it must not be, because candidates are filtered by `from`
+    // before order is consulted. Declaring the later step first would surface a
+    // regression here as a transition to the wrong target.
+    const machine = createGraphJourney({
+      steps: {
+        second: { on: { GO: "fromSecond" } },
+        first: { on: { GO: "fromFirst" } },
+        fromFirst: { on: { GO: "second" } },
+        fromSecond: {}
+      },
+      initial: "first",
+      context: {}
+    });
+    machine.controls.start();
+    await flush();
+
+    expect(await machine.send("GO")).toEqual({ ok: true, from: "first", to: "fromFirst" });
+    expect(await machine.send("GO")).toEqual({ ok: true, from: "fromFirst", to: "second" });
+    expect(await machine.send("GO")).toEqual({ ok: true, from: "second", to: "fromSecond" });
+  });
+
+  it("commits before the awaited onLeave → onTransition → onEnter effects", async () => {
+    const log: string[] = [];
+    const machine = createGraphJourney({
+      steps: {
+        a: {
+          onLeave: () => void log.push("onLeave:a"),
+          on: { GO: [{ to: "b", onTransition: async () => void log.push("onTransition") }] }
+        },
+        b: { onEnter: () => void log.push("onEnter:b") }
+      },
+      initial: "a",
+      context: {}
+    });
+    machine.controls.start();
+    await flush();
+    machine.subscriptions.subscribeEvent("stepLeave", ({ from }) => log.push(`stepLeave:${from}`));
+    machine.subscriptions.subscribeEvent("stepEnter", ({ to }) => log.push(`stepEnter:${to}`));
+
+    await machine.send("GO");
+    expect(log).toEqual(["stepLeave:a", "stepEnter:b", "onLeave:a", "onTransition", "onEnter:b"]);
+  });
+
+  it("delivers the event (type + payload) to onTransition and onEnter", async () => {
+    const seen: unknown[] = [];
+    const machine = createGraphJourney({
+      steps: {
+        a: {
+          on: {
+            GO: [{ to: "b", onTransition: ({ event }) => void seen.push(["transition", event]) }]
+          }
+        },
+        b: { onEnter: ({ event }) => void seen.push(["enter", event]) }
+      },
+      initial: "a",
+      context: {}
+    });
+    machine.controls.start();
+    await flush();
+
+    await machine.send("GO", { code: 42 });
+    expect(seen).toEqual([
+      ["transition", { type: "GO", payload: { code: 42 } }],
+      ["enter", { type: "GO", payload: { code: 42 } }]
+    ]);
+  });
+
+  it("onTransition throwing is reported without skipping onEnter", async () => {
+    const boom = new Error("effect failed");
+    const enter = vi.fn();
+    const machine = createGraphJourney({
+      steps: {
+        a: {
+          on: {
+            GO: [
+              {
+                to: "b",
+                onTransition: () => {
+                  throw boom;
+                }
+              }
+            ]
+          }
+        },
+        b: { onEnter: enter }
+      },
+      initial: "a",
+      context: {}
+    });
+    machine.controls.start();
+    await flush();
+    const errors: unknown[] = [];
+    machine.subscriptions.subscribeEvent("error", (payload) => errors.push(payload));
+
+    expect(await machine.send("GO")).toEqual({ ok: true, from: "a", to: "b" });
+    expect(machine.getSnapshot().currentStep?.async.isError).toBe(true);
+    expect(errors).toMatchObject([{ error: boom, phase: "transition", stepId: "b" }]);
+    expect(enter).toHaveBeenCalledTimes(1);
+  });
+
+  it("goToStepById is transition-gated sugar", async () => {
+    const machine = await startedGraph();
+    expect(await machine.navigate.goToStepById("done")).toMatchObject({
+      ok: false,
+      reason: "invalid-target"
+    });
+    expect(await machine.navigate.goToStepById("review")).toEqual({
+      ok: true,
+      from: "form",
+      to: "review"
+    });
+  });
+
+  it("goToStepById runs the resolved transition's callbacks", async () => {
+    const effect = vi.fn();
+    const machine = createGraphJourney({
+      steps: { a: { on: { GO: [{ to: "b", onTransition: effect }] } }, b: {} },
+      initial: "a",
+      context: {}
+    });
+    machine.controls.start();
+    await flush();
+
+    await machine.navigate.goToStepById("b");
+    expect(effect).toHaveBeenCalledTimes(1);
+  });
+
+  it("timeline moves bypass transition gating but step effects still run", async () => {
+    const leaveB = vi.fn();
+    const machine = createGraphJourney({
+      steps: { a: { on: { GO: "b" } }, b: { onLeave: leaveB } }, // no way back via transitions
+      initial: "a",
+      context: {}
+    });
+    machine.controls.start();
+    await flush();
+    await machine.send("GO");
+
+    expect(await machine.navigate.goToPreviousStep()).toEqual({ ok: true, from: "b", to: "a" });
+    expect(leaveB).toHaveBeenCalledTimes(1);
+    expect(await machine.navigate.goToNextStep()).toEqual({ ok: true, from: "a", to: "b" });
+    // at the tip, graph has no declared-order fallback
+    expect(await machine.navigate.goToNextStep()).toMatchObject({
+      ok: false,
+      reason: "out-of-bounds"
+    });
+  });
+
+  it("describes declared, guarded, enabled, and selected outgoing transitions", async () => {
+    const machine = await startedGraph({ valid: false });
+    let snapshot = machine.getSnapshot();
+    expect(snapshot.type).toBe("graph");
+    expect(snapshot.declaredEvents).toEqual(["SUBMIT"]);
+    expect(snapshot.availableEvents).toEqual([]);
+    expect(snapshot.availableSteps).toEqual([]);
+    expect(snapshot.outgoingTransitions).toEqual([
+      {
+        event: "SUBMIT",
+        to: "review",
+        priority: 0,
+        guard: "failed",
+        enabled: false,
+        selected: false
+      }
+    ]);
+    expect(snapshot.currentStep?.isTerminal).toBe(false);
+
+    machine.context.update((c) => ({ ...(c as Ctx), valid: true }));
+    snapshot = machine.getSnapshot();
+    expect(snapshot.availableEvents).toEqual(["SUBMIT"]);
+    expect(snapshot.availableSteps).toEqual(["review"]);
+    expect(snapshot.outgoingTransitions[0]).toEqual({
+      event: "SUBMIT",
+      to: "review",
+      priority: 0,
+      guard: "passed",
+      enabled: true,
+      selected: true
+    });
+
+    await machine.send("SUBMIT");
+    snapshot = machine.getSnapshot();
+    expect(snapshot.declaredEvents).toEqual(["EDIT", "CONFIRM"]);
+    expect(snapshot.availableEvents).toEqual(["EDIT", "CONFIRM"]);
+    expect(snapshot.availableSteps).toEqual(["form"]);
+    expect(snapshot.outgoingTransitions).toEqual([
+      {
+        event: "EDIT",
+        to: "form",
+        priority: 0,
+        guard: "none",
+        enabled: true,
+        selected: true
+      },
+      {
+        event: "CONFIRM",
+        to: "done",
+        priority: 0,
+        guard: "failed",
+        enabled: false,
+        selected: false
+      },
+      {
+        event: "CONFIRM",
+        to: "form",
+        priority: 1,
+        guard: "none",
+        enabled: true,
+        selected: true
+      }
+    ]);
+
+    machine.context.update((c) => ({ ...(c as Ctx), confirmed: true }));
+    snapshot = machine.getSnapshot();
+    expect(snapshot.availableSteps).toEqual(["form", "done"]);
+    expect(snapshot.outgoingTransitions.slice(1)).toEqual([
+      {
+        event: "CONFIRM",
+        to: "done",
+        priority: 0,
+        guard: "passed",
+        enabled: true,
+        selected: true
+      },
+      {
+        event: "CONFIRM",
+        to: "form",
+        priority: 1,
+        guard: "none",
+        enabled: true,
+        selected: false
+      }
+    ]);
+
+    await machine.send("CONFIRM");
+    snapshot = machine.getSnapshot();
+    expect(snapshot.currentStep?.isTerminal).toBe(true);
+    expect(snapshot.declaredEvents).toEqual([]);
+    expect(snapshot.outgoingTransitions).toEqual([]);
+  });
+
+  it("graph snapshots have no linear-only fields", async () => {
+    const machine = await startedGraph();
+    const snapshot = machine.getSnapshot();
+    expect("stepOrder" in snapshot.steps).toBe(false);
+    expect("index" in (snapshot.currentStep ?? {})).toBe(false);
+    expect("isFirstStep" in (snapshot.currentStep ?? {})).toBe(false);
+    expect(snapshot.steps.totalSteps).toBe(3);
+  });
+
+  it("supports self-transitions via send (retry loops)", async () => {
+    const machine = createGraphJourney({
+      steps: {
+        verify: {
+          on: {
+            RETRY: [
+              {
+                to: "verify",
+                onTransition: ({ updateContext }) =>
+                  void updateContext((c) => ({ retries: (c as { retries: number }).retries + 1 }))
+              }
+            ]
+          }
+        }
+      },
+      initial: "verify",
+      context: { retries: 0 }
+    });
+    machine.controls.start();
+    await flush();
+
+    expect(await machine.send("RETRY")).toEqual({ ok: true, from: "verify", to: "verify" });
+    expect(machine.getSnapshot().context).toEqual({ retries: 1 });
+    expect(machine.getSnapshot().history.timeline).toEqual(["verify", "verify"]);
+    expect(machine.getSnapshot().currentStep?.isFirstTimeVisit).toBe(false);
+  });
+
+  it("handlers are injected into guards and can be overridden per runtime", async () => {
+    const definition = {
+      steps: {
+        a: {
+          on: {
+            GO: [
+              {
+                to: "b",
+                when: ({ handlers }: { context: unknown; handlers: unknown }) =>
+                  (handlers as { allowed(): boolean }).allowed()
+              }
+            ]
+          }
+        },
+        b: {}
+      },
+      initial: "a",
+      context: {},
+      handlers: { allowed: () => false }
+    } as const;
+
+    const app = createGraphJourney(definition);
+    app.controls.start();
+    await flush();
+    expect(await app.send("GO")).toMatchObject({ ok: false, reason: "no-enabled-transition" });
+
+    const test = createGraphJourney(definition, { handlers: { allowed: () => true } });
+    test.controls.start();
+    await flush();
+    expect(await test.send("GO")).toEqual({ ok: true, from: "a", to: "b" });
+  });
+
+  it("raise queues events for after settle; direct send inside hooks is rejected", async () => {
+    const directResults: unknown[] = [];
+    const machine = createGraphJourney({
+      steps: {
+        a: { on: { GO: "b" } },
+        b: {
+          onEnter: async ({ raise }) => {
+            directResults.push(await machineRef.send("FINISH"));
+            raise({ type: "FINISH" });
+          },
+          on: { FINISH: "c" }
+        },
+        c: {}
+      },
+      initial: "a",
+      context: {}
+    });
+    const machineRef = machine;
+    machine.controls.start();
+    await flush();
+
+    expect(await machine.send("GO")).toEqual({ ok: true, from: "a", to: "b" });
+    await flush();
+    expect(directResults).toMatchObject([{ ok: false, reason: "transitioning" }]);
+    expect(machine.getSnapshot().currentStep?.id).toBe("c");
+  });
+
+  it("caps runaway raise cascades and surfaces a raise-phase error", async () => {
+    let raiseCount = 0;
+    const machine = createGraphJourney({
+      steps: {
+        loop: {
+          onEnter: ({ raise }) => {
+            raiseCount += 1;
+            raise({ type: "AGAIN" });
+          },
+          on: { AGAIN: "loop" }
+        }
+      },
+      initial: "loop",
+      context: {}
+    });
+    const errors: unknown[] = [];
+    machine.subscriptions.subscribeEvent("error", (payload) => errors.push(payload));
+    machine.controls.start();
+
+    await vi.waitFor(() => {
+      expect(errors.length).toBeGreaterThan(0);
+    });
+    expect(errors[0]).toMatchObject({ phase: "raise" });
+    expect(String((errors[0] as { error: Error }).error.message)).toContain("cascade");
+    expect(raiseCount).toBeLessThanOrEqual(MAX_RAISED_EVENTS + 2);
+    await flush();
+    expect(machine.getSnapshot().transition.pending).toBe(false);
+  });
+
+  it("validates the definition at creation", () => {
+    expect(() => createGraphJourney({ steps: {}, initial: "a" as never, context: {} })).toThrow(
+      /at least one step/
+    );
+    expect(() =>
+      createGraphJourney({
+        steps: { a: {} },
+        initial: "b" as never,
+        context: {}
+      })
+    ).toThrow(/initial step "b"/);
+    expect(() =>
+      createGraphJourney({
+        steps: { a: { on: { GO: "ghost" as never } } },
+        initial: "a",
+        context: {}
+      })
+    ).toThrow(/unknown step "ghost"/);
+  });
+
+  it("rejects navigation while a lifecycle effect chain is pending", async () => {
+    const machine = createGraphJourney({
+      steps: { a: { onLeave: () => wait(30), on: { GO: "b" } }, b: {} },
+      initial: "a",
+      context: {}
+    });
+    machine.controls.start();
+    await flush();
+
+    const first = machine.send("GO");
+    expect(await machine.send("GO")).toMatchObject({ ok: false, reason: "transitioning" });
+    expect(await first).toEqual({ ok: true, from: "a", to: "b" });
+  });
+});
+
+describe("createGraphJourney — startAt", () => {
+  it("overrides the definition's initial step at start", async () => {
+    const machine = createGraphJourney(
+      {
+        steps: { form: {}, review: { on: { EDIT: "form" } }, done: {} },
+        initial: "form",
+        context: {}
+      },
+      { startAt: "review" }
+    );
+    machine.controls.start();
+    await flush();
+
+    expect(machine.getSnapshot().currentStep?.id).toBe("review");
+    expect(machine.getSnapshot().history.timeline).toEqual(["review"]);
+    expect(await machine.send("EDIT")).toEqual({ ok: true, from: "review", to: "form" });
+  });
+
+  it("throws at creation for an unknown startAt id", () => {
+    expect(() =>
+      createGraphJourney(
+        { steps: { a: {} }, initial: "a", context: {} },
+        { startAt: "nope" as never }
+      )
+    ).toThrow(/startAt references unknown step "nope"/);
+  });
+});
