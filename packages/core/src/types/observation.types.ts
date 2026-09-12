@@ -1,10 +1,7 @@
 import type { JourneySendEvent, JourneyTerminal } from "./journey.types";
 
 export type JourneyLifecycleErrorPhase =
-  | "step.onLeave"
-  | "transition.onLeave"
-  | "step.onEnter"
-  | "transition.onEnter";
+  "step.onLeave" | "transition.onLeave" | "step.onEnter" | "transition.onEnter";
 
 export type JourneyStartObservationEvent<TStepId extends string> = {
   type: "journey.start";

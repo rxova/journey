@@ -45,9 +45,13 @@ type Action =
 
 const actionArb: fc.Arbitrary<Action> = fc.oneof(
   fc
-    .constantFrom<
-      Exclude<JourneyFullEventType<EventMap>, "goToStepById">
-    >("goToNextStep", "requestClose", "terminateJourney", "completeJourney", "back")
+    .constantFrom<Exclude<JourneyFullEventType<EventMap>, "goToStepById">>(
+      "goToNextStep",
+      "requestClose",
+      "terminateJourney",
+      "completeJourney",
+      "back"
+    )
     .map((event) => ({ type: "send", event }) as const),
   fc
     .constantFrom<StepId>("start", "details", "review", "confirmExit")

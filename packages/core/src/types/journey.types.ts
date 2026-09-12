@@ -18,28 +18,21 @@ export type JourneyBuiltInFrom = "*";
 
 /** Default transition event names supported by machine convenience APIs. */
 export type JourneyDefaultEventType =
-  | "goToNextStep"
-  | "goToPreviousStep"
-  | "terminateJourney"
-  | "completeJourney"
-  | "goToStepById";
+  "goToNextStep" | "goToPreviousStep" | "terminateJourney" | "completeJourney" | "goToStepById";
 
 /** JSON primitive values accepted inside runtime context. */
 export type JourneyJsonPrimitive = string | number | boolean | null;
 
 /** JSON-compatible value accepted inside runtime context. */
 export type JourneyJsonValue =
-  | JourneyJsonPrimitive
-  | { [key: string]: JourneyJsonValue }
-  | JourneyJsonValue[];
+  JourneyJsonPrimitive | { [key: string]: JourneyJsonValue } | JourneyJsonValue[];
 
 /** JSON-compatible object accepted as the machine context root. */
 export type JourneyJsonObject = { [key: string]: JourneyJsonValue };
 
 /** Derives the full event type union from a user-supplied event map. */
 export type JourneyFullEventType<TEventMap extends Record<string, unknown>> =
-  | (keyof TEventMap & string)
-  | JourneyDefaultEventType;
+  (keyof TEventMap & string) | JourneyDefaultEventType;
 
 type JourneyBuiltInSendEventType = Exclude<JourneyDefaultEventType, "goToStepById">;
 type JourneyCustomSendEventType<TEventMap extends Record<string, unknown>> = Exclude<
@@ -203,9 +196,7 @@ export type JourneyHeadlessComputed<TStepId extends string> = JourneyComputedBas
 
 /** Mode-aware computed state returned by `JourneyMachine.getComputed()`. */
 export type JourneyComputed<TStepId extends string> =
-  | JourneyLinearComputed<TStepId>
-  | JourneyGraphComputed<TStepId>
-  | JourneyHeadlessComputed<TStepId>;
+  JourneyLinearComputed<TStepId> | JourneyGraphComputed<TStepId> | JourneyHeadlessComputed<TStepId>;
 
 /** Selector function that derives a value from a machine snapshot. */
 export type JourneySelector<
@@ -264,8 +255,7 @@ export type JourneyResolvedDefinition<
   };
 
 export type JourneyExecutionPathEventType<TEventType extends string> =
-  | TEventType
-  | JourneyDefaultEventType;
+  TEventType | JourneyDefaultEventType;
 
 /** Structural execution path returned by `getExecutionPaths()`. */
 export type JourneyExecutionPath<TStepId extends string, TEventType extends string> = {

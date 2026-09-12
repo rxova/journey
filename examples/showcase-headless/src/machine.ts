@@ -2,13 +2,7 @@ import { createJourney } from "@rxova/journey-react";
 import type { JourneyDefinition } from "@rxova/journey-core";
 
 export type StepId =
-  | "login"
-  | "setup2fa"
-  | "verifyCode"
-  | "emailCode"
-  | "authenticatorCode"
-  | "loggedIn"
-  | "blocked";
+  "login" | "setup2fa" | "verifyCode" | "emailCode" | "authenticatorCode" | "loggedIn" | "blocked";
 
 export type LoginContext = {
   username: string;

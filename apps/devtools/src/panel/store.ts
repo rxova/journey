@@ -25,12 +25,7 @@ type JourneyMachineUpdatersByEnvelopeKind = {
 };
 
 export type JourneyPanelTimelineKind =
-  | "init"
-  | "snapshot"
-  | "command"
-  | "query"
-  | "event"
-  | "error";
+  "init" | "snapshot" | "command" | "query" | "event" | "error";
 
 export type JourneyPanelPendingCommand = {
   requestId: string;
