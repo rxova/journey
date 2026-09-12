@@ -24,6 +24,12 @@ export default defineConfig({
   resolve: {
     alias: [
       {
+        find: "@rxova/journey-core/connectors/immer",
+        replacement: fileURLToPath(
+          new URL("./packages/core/src/connectors/immer/immer.ts", import.meta.url)
+        )
+      },
+      {
         find: "@rxova/journey-core/plugins",
         replacement: fileURLToPath(new URL("./packages/core/src/plugins/index.ts", import.meta.url))
       },
@@ -76,6 +82,10 @@ export default defineConfig({
         replacement: fileURLToPath(
           new URL("./packages/common/src/serialization.ts", import.meta.url)
         )
+      },
+      {
+        find: "@rxova/journey-common/bindings",
+        replacement: fileURLToPath(new URL("./packages/common/src/bindings.ts", import.meta.url))
       },
       {
         find: "@rxova/journey-common/dev",
