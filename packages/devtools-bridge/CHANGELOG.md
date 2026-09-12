@@ -1,5 +1,12 @@
 # @rxova/journey-devtools-bridge
 
+## 1.0.0-rc.4
+
+### Patch Changes
+
+- [#139](https://github.com/rxova/journey/pull/139) [`51c20e6`](https://github.com/rxova/journey/commit/51c20e632119698195d3be2b3b7f82bdfb951902) - Drop the DevTools feature-comparison table from `SECURITY.md` and state the bridge's
+  transport and isolation behaviour directly. Documentation only.
+
 ## 1.0.0-rc.3
 
 ### Patch Changes
