@@ -9,8 +9,17 @@
     "outDir": "dist",
     "rootDir": "src",
     "tsBuildInfoFile": "tsconfig.build.tsbuildinfo",
-    "noEmit": false
+    "noEmit": false,
+    "paths": {
+      "@rxova/journey-common": ["../common/dist/index.d.ts"],
+      "@rxova/journey-common/*": ["../common/dist/*.d.ts"]
+    }
   },
+  "references": [
+    {
+      "path": "../common/tsconfig.build.json"
+    }
+  ],
   "include": ["src"],
-  "exclude": ["dist", "**/*.d.ts", "**/*.d.ts.map", "node_modules"]
+  "exclude": ["dist", "**/__tests__/**", "**/*.d.ts", "**/*.d.ts.map", "node_modules"]
 }

@@ -1,5 +1,6 @@
 import { rmSync } from "node:fs";
 import { build } from "esbuild";
+import type { BuildOptions } from "esbuild";
 
 rmSync("dist", { recursive: true, force: true });
 
@@ -11,12 +12,19 @@ const common = {
   legalComments: "none",
   platform: "neutral",
   format: "esm",
-  external: ["react", "react/jsx-runtime", "react/jsx-dev-runtime", "@rxova/journey-core"]
-};
+  external: [
+    "react",
+    "react/jsx-runtime",
+    "react/jsx-dev-runtime",
+    "@rxova/journey-core",
+    "@rxova/journey-core/plugins"
+  ]
+} satisfies BuildOptions;
 
 for (const [entryPoint, outfile] of [
   ["src/index.ts", "dist/index.js"],
-  ["src/client.ts", "dist/client.js"]
+  ["src/client.ts", "dist/client.js"],
+  ["src/graph.tsx", "dist/graph.js"]
 ] as const) {
   await build({
     ...common,

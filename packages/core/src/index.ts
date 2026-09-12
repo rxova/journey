@@ -1,70 +1,96 @@
-export { createJourneyMachine } from "./journey-machine";
-export { createJourneyBuilder } from "./journey-builder";
-export { JourneyDisposedError } from "./journey-machine/helpers";
+export { createLinearJourney, withLinearTypes } from "./linear/linear";
 export type {
-  JourneyBuilder,
-  JourneyBuilderCustomEventKey,
-  JourneyBuilderDefinition,
-  JourneyBuilderDefinitionMetadata,
-  JourneyBuilderGuard,
-  JourneyBuilderOnEntry,
-  JourneyBuilderTerminalCandidate,
-  JourneyBuilderTerminalEntry,
-  JourneyStepBuilder,
-  JourneyToBuilder
-} from "./journey-builder";
-export {
-  type JourneyAnalyticsEventName,
-  type JourneyAnalyticsEventPayload,
-  type JourneyAnalyticsPluginOptions,
-  type JourneyAnalyticsTrackedEvent,
-  type JourneyAutosavePluginOptions,
-  type JourneyAutosaveState,
-  type JourneyAutosaveStatus,
-  type JourneyComputed,
-  type JourneyCompleteObservationEvent,
-  type JourneyDiagnosticsIssue,
-  type JourneyDiagnosticsIssueCode,
-  type JourneyDiagnosticsIssueSeverity,
-  type JourneyDiagnosticsOptions,
-  type JourneyDiagnosticsResult,
-  type JourneyDiagnosticsSummary,
-  type JourneyDefaultEventType,
-  type JourneyDefinition,
-  type JourneyEqualityFn,
-  type JourneyExecutionPathOptions,
-  type JourneyExecutionPathsResult,
-  type JourneyFullEventType,
-  type JourneyJsonObject,
-  type JourneyJsonValue,
-  type JourneyLinearStep,
-  type JourneyLifecycleErrorContext,
-  type JourneyLifecycleErrorObservationEvent,
-  type JourneyLifecycleErrorPhase,
-  type JourneyLifecycleArgs,
-  type JourneyMachine,
-  type JourneyMachineOptions,
-  type JourneyMachinePlugin,
-  type JourneyMachineWithPlugins,
-  type JourneyObservationEvent,
-  type JourneyPayloadFor,
-  type JourneyResolvedTransition,
-  type JourneyResetObservationEvent,
-  type JourneyReplayEntry,
-  type JourneyReplayEventEntry,
-  type JourneyReplayExportOptions,
-  type JourneyReplayPluginOptions,
-  type JourneyReplaySession,
-  type JourneyReplaySnapshotEntry,
-  type JourneySelector,
-  type JourneySendEvent,
-  type JourneySendResult,
-  type JourneySnapshot,
-  type JourneyStartObservationEvent,
-  type JourneyStepAsyncState,
-  type JourneyStepDefinition,
-  type JourneyStepLifecycleCallback,
-  type JourneyTerminateObservationEvent,
-  type JourneyTransitionArgsForEvent,
-  type JourneyTransitionUpdateContextArgsForEvent
-} from "./types";
+  CompletePayloadOf,
+  JourneyTerminationPayloads,
+  LinearJourneyDefinition,
+  LinearJourneyMachine,
+  LinearStepConfig,
+  LinearStepIdOf,
+  LinearStepInput,
+  TerminatePayloadOf
+} from "./linear/linear.types";
+
+// normalizeGraphDefinition is deliberately not exported: its return type names
+// RuntimeStep/RuntimeTransition, which are internal and have no export path, so
+// publishing it would freeze those shapes into the 1.0 contract.
+export { createGraphJourney, withGraphTypes } from "./graph/graph";
+export type {
+  GraphHookArgs,
+  GraphJourneyDefinition,
+  GraphJourneyMachine,
+  GraphJourneyOptions,
+  GraphOnEntry,
+  GraphStepConfig,
+  GraphTransition,
+  SendArgs,
+  SendVerb,
+  SendWork,
+  SendWorkArgs,
+  TransitionGuard
+} from "./graph/graph.types";
+
+// Puts a declared `run` back at an inference site, so `commit` and the
+// candidates' guards read their result type off it instead of the bag.
+export { defineWork } from "./graph/work";
+export type { WorkConfig } from "./graph/work";
+
+// The bag exists so steps can live in separate files, and so `withTypes` has
+// somewhere to pin what a definition cannot infer on its own.
+export type {
+  Bag,
+  GraphDefinition,
+  GraphStep,
+  HandlersOf,
+  MetaOf,
+  ResultOf,
+  ResultsOf
+} from "./graph/bag.types";
+
+export { JourneyError, isJourneyError } from "./core/errors";
+export type { JourneyErrorCode, JourneyErrorDetails } from "./core/errors";
+
+export type {
+  AnyJourneyPlugin,
+  ContextUpdater,
+  CurrentStepBase,
+  GraphGuardState,
+  GraphSnapshot,
+  GraphTransitionSnapshot,
+  JourneyControls,
+  JourneyEventObject,
+  JourneyEventPayload,
+  JourneyEventPayloads,
+  JourneyHistoryState,
+  JourneyMachineBase,
+  JourneyNavigation,
+  JourneyOutcome,
+  JourneyPersistOption,
+  JourneyPlugin,
+  JourneyRuntimeOptions,
+  JourneySnapshot,
+  JourneySnapshotBase,
+  JourneyStatus,
+  JourneyStructure,
+  JourneySubscriptionEvent,
+  JourneySubscriptions,
+  LinearSnapshot,
+  MachineState,
+  NavigationFailureReason,
+  NavigationDirection,
+  NavigationResult,
+  StepEnterDirection,
+  NavigationWork,
+  NavigationWorkArgs,
+  OnEnterHook,
+  OnLeaveHook,
+  PluginApis,
+  PluginHost,
+  StepAsyncState,
+  StepHookArgs,
+  TransitionInfo,
+  TransitionState,
+  Unsubscribe
+} from "./core/types";
+
+// Named by the exported JourneyPersistOption, so it has to be reachable here too.
+export type { JourneyStorage } from "./plugins/persistence/persistence.types";

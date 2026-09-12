@@ -1,0 +1,215 @@
+/**
+ * Type-level assertions for the public API. This file is never executed —
+ * it is verified by `pnpm typecheck` (it matches no vitest include pattern).
+ * Unused aliases and bare expressions are the assertion mechanism here.
+ */
+/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-unused-expressions */
+import { createGraphJourney, createLinearJourney, withGraphTypes } from "@rxova/journey-core";
+import type {
+  GraphSnapshot,
+  JourneyPlugin,
+  LinearSnapshot,
+  NavigationResult
+} from "@rxova/journey-core";
+
+type Equal<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+type Expect<T extends true> = T;
+
+// ── linear: literal step ids, order-only snapshot, no send ─────────────────
+
+export function linearTypes() {
+  const machine = createLinearJourney({
+    steps: ["intro", { id: "details" }, "done"],
+    context: { n: 0 }
+  });
+
+  type StepId = Parameters<typeof machine.navigate.goToStepById>[0];
+  type _stepIds = Expect<Equal<StepId, "intro" | "details" | "done">>;
+
+  const snapshot = machine.getSnapshot();
+  type _kind = Expect<Equal<typeof snapshot.type, "linear">>;
+  type _order = Expect<
+    Equal<typeof snapshot.steps.stepOrder, readonly ("intro" | "details" | "done")[]>
+  >;
+  type _context = Expect<Equal<typeof snapshot.context, { n: number }>>;
+
+  void machine.navigate.goToNextStep({
+    run: ({ snapshot: current, from, to, direction }) => {
+      type _workContext = Expect<Equal<typeof current.context, { n: number }>>;
+      type _workFrom = Expect<Equal<typeof from, "intro" | "details" | "done">>;
+      type _workTo = Expect<Equal<typeof to, "intro" | "details" | "done">>;
+      type _direction = Expect<Equal<typeof direction, "forward" | "backward">>;
+      return { amount: current.context.n };
+    },
+    commit: ({ result, updateContext }) => {
+      type _result = Expect<Equal<typeof result, { amount: number }>>;
+      updateContext((context) => ({ n: context.n + result.amount }));
+    }
+  });
+  void machine.navigate.goToPreviousStep();
+  void machine.navigate.goToPreviousStep(2);
+  // @ts-expect-error backward navigation takes a step count, never work
+  void machine.navigate.goToPreviousStep({ run: () => Promise.resolve() });
+
+  // linear machines have no events — send's absence is the discriminant
+  // @ts-expect-error linear machines expose no send verb
+  machine.send;
+
+  // currentStep is null while idle — direct access must not typecheck
+  // @ts-expect-error currentStep may be null
+  snapshot.currentStep.id;
+
+  return machine;
+}
+
+export function linearOutcomeTypes() {
+  const machine = createLinearJourney<
+    "form" | "result",
+    { draftId: string | null },
+    {
+      complete: { receiptId: string };
+      terminate: { reason: "blocked" | "cancelled" };
+    }
+  >({
+    steps: ["form", "result"],
+    context: { draftId: null }
+  });
+
+  createLinearJourney<"form" | "result", { draftId: string | null }>({
+    // @ts-expect-error explicit step ids reject undeclared steps
+    steps: ["form", "other"],
+    context: { draftId: null }
+  });
+
+  createLinearJourney<"form" | "result", { draftId: string | null }>({
+    steps: ["form", "result"],
+    // @ts-expect-error explicit context rejects the wrong shape
+    context: { draftId: 42 }
+  });
+
+  machine.controls.complete({ receiptId: "receipt-1" });
+  machine.controls.terminate({ reason: "blocked" });
+  // @ts-expect-error completion payloads use the declared shape
+  machine.controls.complete({ reason: "blocked" });
+  // @ts-expect-error termination reasons use the declared union
+  machine.controls.terminate({ reason: "expired" });
+
+  const outcome = machine.getSnapshot().machine.outcome;
+  if (outcome?.type === "completed") {
+    type _complete = Expect<Equal<typeof outcome.payload, { receiptId: string } | undefined>>;
+  }
+  if (outcome?.type === "terminated") {
+    type _terminate = Expect<
+      Equal<typeof outcome.payload, { reason: "blocked" | "cancelled" } | undefined>
+    >;
+  }
+}
+
+// ── graph: declared events type send exactly; no order fields ──────────────
+
+type LoginEvents = { type: "submit"; payload: { code: string } } | { type: "reset" };
+
+export function graphTypes() {
+  const machine = withGraphTypes<{
+    context: { attempts: number };
+    stepId: "form" | "done";
+    events: LoginEvents;
+  }>()({
+    initial: "form",
+    context: { attempts: 0 },
+    steps: {
+      form: {
+        on: {
+          submit: [
+            {
+              to: "done",
+              onTransition: ({ event }) => {
+                // the pinned bag narrows the event union on the hook args
+                type _payload = Expect<
+                  Equal<NonNullable<typeof event>["payload"], { code: string }>
+                >;
+              }
+            }
+          ]
+        }
+      },
+      done: {}
+    }
+  });
+
+  void machine.send("submit", { code: "1234" });
+  void machine.send("reset");
+  // @ts-expect-error unknown event type
+  void machine.send("nope");
+  // @ts-expect-error submit requires its payload
+  void machine.send("submit");
+  // @ts-expect-error reset declares no payload
+  void machine.send("reset", { code: "1234" });
+
+  const snapshot = machine.getSnapshot();
+  type _kind = Expect<Equal<typeof snapshot.type, "graph">>;
+  type _events = Expect<Equal<typeof snapshot.availableEvents, readonly ("submit" | "reset")[]>>;
+  type _declaredEvents = Expect<
+    Equal<typeof snapshot.declaredEvents, readonly ("submit" | "reset")[]>
+  >;
+  type _transitionEvent = Expect<
+    Equal<(typeof snapshot.outgoingTransitions)[number]["event"], "submit" | "reset">
+  >;
+  type _transitionTarget = Expect<
+    Equal<(typeof snapshot.outgoingTransitions)[number]["to"], "form" | "done">
+  >;
+  type _guardState = Expect<
+    Equal<(typeof snapshot.outgoingTransitions)[number]["guard"], "none" | "passed" | "failed">
+  >;
+
+  // linear-only fields don't exist on graph snapshots (absent, not undefined)
+  // @ts-expect-error graph snapshots have no stepOrder
+  snapshot.steps.stepOrder;
+  // @ts-expect-error graph snapshots have no declared-order index
+  snapshot.currentStep?.index;
+
+  return machine;
+}
+
+// ── snapshot union discriminates on `type`; results discriminate on `ok` ───
+
+export function discriminants(
+  snapshot:
+    | LinearSnapshot<{ n: number }, "a" | "b", unknown>
+    | GraphSnapshot<{ n: number }, "a" | "b", unknown>,
+  result: NavigationResult<"a" | "b">
+) {
+  if (snapshot.type === "linear") {
+    type _linear = Expect<Equal<typeof snapshot.steps.stepOrder, readonly ("a" | "b")[]>>;
+  } else {
+    type _graph = Expect<Equal<typeof snapshot.availableSteps, readonly ("a" | "b")[]>>;
+  }
+
+  if (result.ok) {
+    type _to = Expect<Equal<typeof result.to, "a" | "b">>;
+    // @ts-expect-error successful results carry no reason
+    result.reason;
+  } else {
+    type _reason = Expect<Equal<typeof result.ok, false>>;
+  }
+}
+
+// ── plugin tuples type machine.plugins by name ──────────────────────────────
+
+export function pluginTypes() {
+  const counter: JourneyPlugin<"counter", { count(): number }, { count: number }> = {
+    name: "counter",
+    setup: () => ({ api: { count: () => 0 } })
+  };
+  const machine = createLinearJourney(
+    { steps: ["a"], context: {} },
+    { plugins: [counter] as const }
+  );
+
+  type _api = Expect<Equal<typeof machine.plugins.counter, { count(): number }>>;
+  // @ts-expect-error unregistered plugin names don't exist on the machine
+  machine.plugins.other;
+
+  return machine;
+}

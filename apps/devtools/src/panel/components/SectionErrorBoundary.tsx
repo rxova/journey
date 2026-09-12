@@ -1,4 +1,5 @@
 import React from "react";
+import panelStyles from "./panelPrimitives.module.css";
 
 interface SectionErrorBoundaryProps {
   section: string;
@@ -22,10 +23,15 @@ export class SectionErrorBoundary extends React.Component<
   render(): React.ReactNode {
     if (this.state.error) {
       return (
-        <section className="panel-card section-error">
-          <h2>{this.props.section} — Error</h2>
-          <pre className="error-details">{this.state.error.message}</pre>
-          <button className="retry-button" onClick={() => this.setState({ error: null })}>
+        <section className={`${panelStyles.card} ${panelStyles.errorCard}`}>
+          <h2 className={`${panelStyles.title} ${panelStyles.errorTitle}`}>
+            {this.props.section} Error
+          </h2>
+          <pre className={panelStyles.errorDetails}>{this.state.error.message}</pre>
+          <button
+            className={panelStyles.retryButton}
+            onClick={() => this.setState({ error: null })}
+          >
             Retry
           </button>
         </section>

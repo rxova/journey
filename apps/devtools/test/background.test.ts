@@ -3,18 +3,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
   JOURNEY_DEVTOOLS_CHANNEL,
-  JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
-  type JourneyDevtoolsBridgeEnvelope,
-  type JourneyDevtoolsMachineCapabilities,
-  type JourneyDevtoolsSerializableSnapshot
+  JOURNEY_DEVTOOLS_PROTOCOL_VERSION
 } from "@rxova/journey-devtools-bridge";
-import {
-  JOURNEY_DEVTOOLS_PANEL_PORT,
-  createCommandEnvelope,
-  type ContentToBackgroundMessage,
-  type PanelCommandMessage,
-  type PanelInitMessage
-} from "../src/shared";
+import { JOURNEY_DEVTOOLS_PANEL_PORT, type ContentToBackgroundMessage } from "../src/shared";
 
 type Listener<TArgs extends unknown[]> = (...args: TArgs) => void;
 
@@ -25,17 +16,14 @@ type ListenerSet<TArgs extends unknown[]> = {
 };
 
 const createListenerSet = <TArgs extends unknown[]>(): ListenerSet<TArgs> => {
-  const listeners: Array<Listener<TArgs>> = [];
+  const listeners = new Set<Listener<TArgs>>();
 
   return {
     addListener: (listener) => {
-      listeners.push(listener);
+      listeners.add(listener);
     },
     removeListener: (listener) => {
-      const index = listeners.indexOf(listener);
-      if (index >= 0) {
-        listeners.splice(index, 1);
-      }
+      listeners.delete(listener);
     },
     emit: (...args) => {
       for (const listener of listeners) {
@@ -82,12 +70,8 @@ const createPortHarness = (
   return {
     port,
     postedMessages,
-    emitMessage: (message) => {
-      onMessage.emit(message);
-    },
-    emitDisconnect: () => {
-      onDisconnect.emit();
-    }
+    emitMessage: (message) => onMessage.emit(message),
+    emitDisconnect: () => onDisconnect.emit()
   };
 };
 
@@ -101,7 +85,7 @@ type ChromeHarness = {
   emitTabUpdated: (
     tabId: number,
     changeInfo: chrome.tabs.OnUpdatedInfo,
-    tab: chrome.tabs.Tab
+    tab?: chrome.tabs.Tab
   ) => void;
   setSendMessageImpl: (impl: SendMessageImpl) => void;
   setRuntimeLastError: (error: Error | undefined) => void;
@@ -117,9 +101,7 @@ const createChromeHarness = (options?: {
   const onRuntimeMessage = createListenerSet<[unknown, chrome.runtime.MessageSender]>();
   const onTabRemoved = createListenerSet<[number, chrome.tabs.OnRemovedInfo]>();
   const onTabUpdated = createListenerSet<[number, chrome.tabs.OnUpdatedInfo, chrome.tabs.Tab]>();
-  const runtimeState: { lastError: Error | undefined } = {
-    lastError: undefined
-  };
+  const runtimeState: { lastError: Error | undefined } = { lastError: undefined };
 
   let sendMessageImpl: SendMessageImpl = (_tabId, _message, callback) => {
     runtimeState.lastError = undefined;
@@ -131,6 +113,7 @@ const createChromeHarness = (options?: {
   });
   const executeScript = vi.fn(
     (_injection: unknown, callback?: (injectionResults?: unknown[]) => void) => {
+      runtimeState.lastError = undefined;
       callback?.([]);
     }
   );
@@ -174,18 +157,11 @@ const createChromeHarness = (options?: {
 
   return {
     chromeMock,
-    emitConnect: (port) => {
-      onConnect.emit(port);
-    },
-    emitRuntimeMessage: (message, sender) => {
-      onRuntimeMessage.emit(message, sender);
-    },
-    emitTabRemoved: (tabId) => {
-      onTabRemoved.emit(tabId, { isWindowClosing: false, windowId: 1 });
-    },
-    emitTabUpdated: (tabId, changeInfo, tab) => {
-      onTabUpdated.emit(tabId, changeInfo, tab);
-    },
+    emitConnect: (port) => onConnect.emit(port),
+    emitRuntimeMessage: (message, sender) => onRuntimeMessage.emit(message, sender),
+    emitTabRemoved: (tabId) => onTabRemoved.emit(tabId, { isWindowClosing: false, windowId: 1 }),
+    emitTabUpdated: (tabId, changeInfo, tab = { id: tabId } as chrome.tabs.Tab) =>
+      onTabUpdated.emit(tabId, changeInfo, tab),
     setSendMessageImpl: (impl) => {
       sendMessageImpl = impl;
     },
@@ -197,120 +173,78 @@ const createChromeHarness = (options?: {
   };
 };
 
-const baseSnapshot = (current: string): JourneyDevtoolsSerializableSnapshot => ({
-  currentStepId: current,
-  history: {
-    timeline: current === "start" ? ["start"] : ["start", current],
-    index: current === "start" ? 0 : 1
-  },
-  context: { count: current.length },
-  visited: current === "start" ? { start: true } : { start: true, [current]: true },
-  status: "running",
-  async: {
-    isLoading: false,
-    byStep: {
-      start: {
-        phase: "idle",
-        eventType: null,
-        transitionId: null,
-        error: null
-      }
-    }
-  }
-});
-
-const capabilityCommands: JourneyDevtoolsMachineCapabilities["commands"] = [
-  "goToNextStep",
-  "terminateJourney",
-  "completeJourney",
-  "goToStepById",
-  "goToPreviousStep",
-  "goToLastVisitedStep",
-  "send",
-  "resetJourney",
-  "clearStepError",
-  "getExecutionPaths"
-];
-
-const buildCapabilities = (commandsEnabled = true): JourneyDevtoolsMachineCapabilities => ({
-  commands: commandsEnabled ? [...capabilityCommands] : [],
-  observe: true as const,
-  executionPaths: commandsEnabled
-});
-
-let timestamp = 2000;
-const nextTimestamp = (): number => {
-  timestamp += 1;
-  return timestamp;
-};
-
-const registerEnvelope = (machineId: string): JourneyDevtoolsBridgeEnvelope => ({
-  channel: JOURNEY_DEVTOOLS_CHANNEL,
-  version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
-  source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
-  kind: "register",
-  machineId,
-  timestamp: nextTimestamp(),
-  meta: {
+const createRegisterEnvelope = (machineId: string) =>
+  ({
+    channel: JOURNEY_DEVTOOLS_CHANNEL,
+    version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+    source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
+    kind: "register",
     machineId,
-    label: "Checkout",
-    appName: "Storefront",
-    capabilities: buildCapabilities()
-  },
-  snapshot: baseSnapshot("start")
-});
+    timestamp: Date.now(),
+    meta: {
+      machineId,
+      label: "Checkout",
+      appName: "Storefront",
+      mutationsEnabled: true,
+      mode: "graph",
+      features: [
+        {
+          id: "core",
+          label: "Core",
+          description: null,
+          operations: [
+            {
+              id: "core.goToNextStep",
+              label: "goToNextStep",
+              description: null,
+              mutates: true,
+              output: "snapshot",
+              fields: []
+            }
+          ]
+        }
+      ]
+    },
+    snapshot: {
+      currentStepId: "start",
+      history: { timeline: ["start"], index: 0 },
+      context: { count: 0 },
+      visited: { start: true },
+      status: "running",
+      async: { isLoading: false, byStep: {} }
+    }
+  }) as const;
 
-const snapshotEnvelope = (machineId: string, current: string): JourneyDevtoolsBridgeEnvelope => ({
-  channel: JOURNEY_DEVTOOLS_CHANNEL,
-  version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
-  source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
-  kind: "snapshot",
-  machineId,
-  timestamp: nextTimestamp(),
-  snapshot: baseSnapshot(current)
-});
+const createSnapshotEnvelope = (machineId: string, currentStepId: string) =>
+  ({
+    channel: JOURNEY_DEVTOOLS_CHANNEL,
+    version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+    source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
+    kind: "snapshot",
+    machineId,
+    timestamp: Date.now(),
+    snapshot: {
+      currentStepId,
+      history: { timeline: ["start", currentStepId], index: 1 },
+      context: { count: 1 },
+      visited: { start: true, [currentStepId]: true },
+      status: "running",
+      async: { isLoading: false, byStep: {} }
+    }
+  }) as const;
 
-const commandResultEnvelope = (
-  machineId: string,
-  requestId: string
-): JourneyDevtoolsBridgeEnvelope => ({
-  channel: JOURNEY_DEVTOOLS_CHANNEL,
-  version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
-  source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
-  kind: "commandResult",
-  machineId,
-  timestamp: nextTimestamp(),
-  requestId,
-  snapshot: baseSnapshot("review"),
-  transitioned: true,
-  transitionId: "goToNextStep"
-});
-
-const unregisterEnvelope = (machineId: string): JourneyDevtoolsBridgeEnvelope => ({
-  channel: JOURNEY_DEVTOOLS_CHANNEL,
-  version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
-  source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
-  kind: "unregister",
-  machineId,
-  timestamp: nextTimestamp()
-});
-
-const asContentMessage = (envelope: JourneyDevtoolsBridgeEnvelope): ContentToBackgroundMessage => ({
+const asContentMessage = (envelope: unknown): ContentToBackgroundMessage => ({
   type: "bridge-envelope",
-  envelope
+  envelope: envelope as ContentToBackgroundMessage["envelope"]
 });
 
 const senderForTab = (tabId: number): chrome.runtime.MessageSender =>
-  ({
-    tab: {
-      id: tabId
-    }
-  }) as chrome.runtime.MessageSender;
+  ({ tab: { id: tabId } }) as chrome.runtime.MessageSender;
 
 const loadBackground = async (options?: {
   contentScriptFile?: string | null;
   includeScripting?: boolean;
-}): Promise<ChromeHarness> => {
+}) => {
   const harness = createChromeHarness(options);
   vi.stubGlobal("chrome", harness.chromeMock);
   await import("../src/background");
@@ -319,34 +253,32 @@ const loadBackground = async (options?: {
 
 afterEach(() => {
   vi.resetModules();
-  vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
-describe("background message routing", () => {
-  it("ignores non-panel ports", async () => {
+describe("background transport", () => {
+  it("ignores non-panel ports and malformed panel messages", async () => {
     const harness = await loadBackground();
-    const port = createPortHarness("other-port");
+    const otherPort = createPortHarness("other-port");
+    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
 
-    harness.emitConnect(port.port);
-    const init: PanelInitMessage = {
-      type: "panel-init",
-      tabId: 11
-    };
-    port.emitMessage(init);
+    harness.emitConnect(otherPort.port);
+    otherPort.emitMessage({ type: "panel-init", tabId: 99 });
+    otherPort.emitMessage({ type: "bad-message" });
+    harness.emitConnect(panelPort.port);
+    panelPort.emitMessage({ type: "bad-message" });
 
-    expect(port.postedMessages).toHaveLength(0);
+    expect(otherPort.postedMessages).toHaveLength(0);
+    expect(panelPort.postedMessages).toHaveLength(0);
   });
 
-  it("sends disconnected status on panel init without cache", async () => {
+  it("registers panel ports and injects the content bridge when no cache exists", async () => {
     const harness = await loadBackground();
     const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
 
     harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 15
-    } satisfies PanelInitMessage);
+    panelPort.emitMessage({ type: "panel-init", tabId: 15 });
 
     expect(panelPort.postedMessages).toContainEqual({
       type: "panel-connected",
@@ -370,17 +302,14 @@ describe("background message routing", () => {
     );
   });
 
-  it("broadcasts warning when manifest is missing content-script entry", async () => {
-    const harness = await loadBackground({ contentScriptFile: null });
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+  it("broadcasts injection warnings when entry is missing or scripting is unavailable", async () => {
+    const missingEntry = await loadBackground({ contentScriptFile: null });
+    const missingPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
 
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 12
-    } satisfies PanelInitMessage);
+    missingEntry.emitConnect(missingPort.port);
+    missingPort.emitMessage({ type: "panel-init", tabId: 12 });
 
-    expect(panelPort.postedMessages).toContainEqual({
+    expect(missingPort.postedMessages).toContainEqual({
       type: "panel-warning",
       warning: {
         code: "injection-missing-entry",
@@ -389,20 +318,16 @@ describe("background message routing", () => {
         tabId: 12
       }
     });
-    expect(harness.executeScript).not.toHaveBeenCalled();
-  });
 
-  it("broadcasts warning when scripting API is unavailable", async () => {
-    const harness = await loadBackground({ includeScripting: false });
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+    vi.resetModules();
 
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 13
-    } satisfies PanelInitMessage);
+    const unavailable = await loadBackground({ includeScripting: false });
+    const unavailablePort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
 
-    expect(panelPort.postedMessages).toContainEqual({
+    unavailable.emitConnect(unavailablePort.port);
+    unavailablePort.emitMessage({ type: "panel-init", tabId: 13 });
+
+    expect(unavailablePort.postedMessages).toContainEqual({
       type: "panel-warning",
       warning: {
         code: "injection-unavailable",
@@ -411,23 +336,22 @@ describe("background message routing", () => {
         tabId: 13
       }
     });
-    expect(harness.sendMessage).not.toHaveBeenCalledWith(
-      13,
-      { type: "bridge-replay-request" },
-      expect.any(Function)
-    );
   });
 
-  it("broadcasts a warning when content-script injection fails", async () => {
+  it("broadcasts recoverable injection failures from executeScript runtime errors", async () => {
     const harness = await loadBackground();
-    harness.setRuntimeLastError(new Error("Cannot access contents of the page"));
     const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
 
     harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 16
-    } satisfies PanelInitMessage);
+    if (harness.executeScript) {
+      harness.executeScript.mockImplementationOnce((_injection, callback) => {
+        harness.setRuntimeLastError(new Error("Cannot access contents of the page"));
+        callback?.([]);
+        harness.setRuntimeLastError(undefined);
+      });
+    }
+
+    panelPort.emitMessage({ type: "panel-init", tabId: 18 });
 
     expect(panelPort.postedMessages).toContainEqual({
       type: "panel-warning",
@@ -435,268 +359,198 @@ describe("background message routing", () => {
         code: "injection-failed",
         message: "Content script injection failed: Cannot access contents of the page",
         recoverable: true,
-        tabId: 16
+        tabId: 18
       }
     });
-    harness.setRuntimeLastError(undefined);
   });
 
-  it("requests cached bridge replay from the content script on panel init", async () => {
-    const harness = await loadBackground();
-    harness.setSendMessageImpl((tabId, message, callback) => {
-      harness.setRuntimeLastError(undefined);
-
-      if (
-        typeof message === "object" &&
-        message !== null &&
-        (message as { type?: string }).type === "bridge-replay-request"
-      ) {
-        harness.emitRuntimeMessage(
-          asContentMessage(registerEnvelope("m-replay")),
-          senderForTab(tabId)
-        );
-      }
-
-      callback?.();
+  it("normalizes non-Error injection failure shapes", async () => {
+    const stringError = await loadBackground();
+    const stringPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+    stringError.emitConnect(stringPort.port);
+    if (stringError.executeScript) {
+      stringError.executeScript.mockImplementationOnce((_injection, callback) => {
+        stringError.setRuntimeLastError("plain failure" as never);
+        callback?.([]);
+        stringError.setRuntimeLastError(undefined);
+      });
+    }
+    stringPort.emitMessage({ type: "panel-init", tabId: 19 });
+    expect(stringPort.postedMessages).toContainEqual({
+      type: "panel-warning",
+      warning: expect.objectContaining({
+        message: "Content script injection failed: plain failure",
+        tabId: 19
+      })
     });
+
+    vi.resetModules();
+
+    const objectError = await loadBackground();
+    const objectPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+    objectError.emitConnect(objectPort.port);
+    if (objectError.executeScript) {
+      objectError.executeScript.mockImplementationOnce((_injection, callback) => {
+        objectError.setRuntimeLastError({ message: "object failure" } as never);
+        callback?.([]);
+        objectError.setRuntimeLastError(undefined);
+      });
+    }
+    objectPort.emitMessage({ type: "panel-init", tabId: 20 });
+    expect(objectPort.postedMessages).toContainEqual({
+      type: "panel-warning",
+      warning: expect.objectContaining({
+        message: "Content script injection failed: object failure",
+        tabId: 20
+      })
+    });
+
+    vi.resetModules();
+
+    const unknownError = await loadBackground();
+    const unknownPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+    unknownError.emitConnect(unknownPort.port);
+    if (unknownError.executeScript) {
+      unknownError.executeScript.mockImplementationOnce((_injection, callback) => {
+        unknownError.setRuntimeLastError({ message: 42 } as never);
+        callback?.([]);
+        unknownError.setRuntimeLastError(undefined);
+      });
+    }
+    unknownPort.emitMessage({ type: "panel-init", tabId: 23 });
+    expect(unknownPort.postedMessages).toContainEqual({
+      type: "panel-warning",
+      warning: expect.objectContaining({
+        code: "injection-failed",
+        message: "Content script injection failed: Unknown transport error",
+        tabId: 23
+      })
+    });
+  });
+
+  it("replays cached register and snapshot envelopes to late panel connections", async () => {
+    const harness = await loadBackground();
+    harness.emitRuntimeMessage(asContentMessage(createRegisterEnvelope("m1")), senderForTab(21));
+    harness.emitRuntimeMessage(
+      asContentMessage(createSnapshotEnvelope("m1", "review")),
+      senderForTab(21)
+    );
 
     const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
     harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 19
-    } satisfies PanelInitMessage);
+    panelPort.emitMessage({ type: "panel-init", tabId: 21 });
 
     expect(panelPort.postedMessages).toContainEqual({
       type: "panel-connected",
       connected: true
     });
+    expect(panelPort.postedMessages).toContainEqual({
+      type: "panel-warning",
+      warning: null
+    });
+    expect(panelPort.postedMessages).toContainEqual({
+      type: "panel-bridge-envelope",
+      envelope: expect.objectContaining({ kind: "register", machineId: "m1" })
+    });
+    expect(panelPort.postedMessages).toContainEqual({
+      type: "panel-bridge-envelope",
+      envelope: expect.objectContaining({ kind: "snapshot", machineId: "m1" })
+    });
+    expect(harness.executeScript).not.toHaveBeenCalled();
+  });
+
+  it("replays snapshot-only cache entries", async () => {
+    const harness = await loadBackground();
+    harness.emitRuntimeMessage(
+      asContentMessage(createSnapshotEnvelope("m1", "review")),
+      senderForTab(25)
+    );
+
+    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+    harness.emitConnect(panelPort.port);
+    panelPort.emitMessage({ type: "panel-init", tabId: 25 });
+
+    expect(panelPort.postedMessages).toContainEqual({
+      type: "panel-connected",
+      connected: true
+    });
+    expect(panelPort.postedMessages).toContainEqual({
+      type: "panel-bridge-envelope",
+      envelope: expect.objectContaining({ kind: "snapshot", machineId: "m1" })
+    });
+  });
+
+  it("replays the last warning to late panel connections", async () => {
+    const harness = await loadBackground({ contentScriptFile: null });
+    const firstPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+    harness.emitConnect(firstPort.port);
+    firstPort.emitMessage({ type: "panel-init", tabId: 24 });
+
+    const secondPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+    harness.emitConnect(secondPort.port);
+    secondPort.emitMessage({ type: "panel-init", tabId: 24 });
+
+    expect(secondPort.postedMessages).toContainEqual({
+      type: "panel-warning",
+      warning: {
+        code: "injection-missing-entry",
+        message: "Content bridge entry is missing from extension manifest.",
+        recoverable: false,
+        tabId: 24
+      }
+    });
+  });
+
+  it("forwards invoke envelopes to tabs and reports transport failures back to the panel", async () => {
+    const harness = await loadBackground();
+    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+    harness.emitConnect(panelPort.port);
+    panelPort.emitMessage({ type: "panel-init", tabId: 22 });
+    panelPort.postedMessages.length = 0;
+
+    harness.setSendMessageImpl((_tabId, _message, callback) => {
+      harness.setRuntimeLastError(new Error("Receiving end does not exist."));
+      callback?.();
+      harness.setRuntimeLastError(undefined);
+    });
+
+    panelPort.emitMessage({
+      type: "panel-command",
+      tabId: 22,
+      envelope: {
+        channel: JOURNEY_DEVTOOLS_CHANNEL,
+        version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+        source: "rxova-journey-extension",
+        kind: "invoke",
+        machineId: "m1",
+        requestId: "req-1",
+        invocation: { operationId: "core.goToNextStep" },
+        timestamp: Date.now()
+      }
+    });
+
+    expect(harness.sendMessage).toHaveBeenCalledWith(
+      22,
+      {
+        type: "extension-envelope",
+        envelope: expect.objectContaining({
+          kind: "invoke",
+          requestId: "req-1"
+        })
+      },
+      expect.any(Function)
+    );
     expect(panelPort.postedMessages).toContainEqual({
       type: "panel-bridge-envelope",
       envelope: expect.objectContaining({
-        kind: "register",
-        machineId: "m-replay"
+        kind: "operationError",
+        operationId: "transport",
+        requestId: "req-1",
+        machineId: "m1"
       })
     });
-  });
 
-  it("broadcasts bridge envelopes to connected panel ports", async () => {
-    const harness = await loadBackground();
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 33
-    } satisfies PanelInitMessage);
-
-    const register = registerEnvelope("m-1");
-    harness.emitRuntimeMessage(asContentMessage(register), senderForTab(33));
-
-    expect(panelPort.postedMessages).toContainEqual({
-      type: "panel-connected",
-      connected: true
-    });
-    expect(panelPort.postedMessages).toContainEqual({
-      type: "panel-bridge-envelope",
-      envelope: register
-    });
-
-    const snapshot = snapshotEnvelope("m-1", "review");
-    harness.emitRuntimeMessage(asContentMessage(snapshot), senderForTab(33));
-
-    expect(panelPort.postedMessages).toContainEqual({
-      type: "panel-bridge-envelope",
-      envelope: snapshot
-    });
-  });
-
-  it("replays cached register and snapshot messages for new panel sessions", async () => {
-    const harness = await loadBackground();
-
-    const cachedRegister = registerEnvelope("m-2");
-    const cachedSnapshot = snapshotEnvelope("m-2", "details");
-    harness.emitRuntimeMessage(asContentMessage(cachedRegister), senderForTab(44));
-    harness.emitRuntimeMessage(asContentMessage(cachedSnapshot), senderForTab(44));
-
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 44
-    } satisfies PanelInitMessage);
-
-    expect(panelPort.postedMessages).toContainEqual({
-      type: "panel-connected",
-      connected: true
-    });
-    expect(panelPort.postedMessages).toContainEqual({
-      type: "panel-bridge-envelope",
-      envelope: cachedRegister
-    });
-    expect(panelPort.postedMessages).toContainEqual({
-      type: "panel-bridge-envelope",
-      envelope: cachedSnapshot
-    });
-  });
-
-  it("does not request a second replay when reconnecting to a tab with cached state", async () => {
-    const harness = await loadBackground();
-    harness.setSendMessageImpl((tabId, message, callback) => {
-      harness.setRuntimeLastError(undefined);
-
-      if (
-        typeof message === "object" &&
-        message !== null &&
-        (message as { type?: string }).type === "bridge-replay-request"
-      ) {
-        harness.emitRuntimeMessage(
-          asContentMessage(registerEnvelope("m-reconnect")),
-          senderForTab(tabId)
-        );
-        harness.emitRuntimeMessage(
-          asContentMessage(snapshotEnvelope("m-reconnect", "review")),
-          senderForTab(tabId)
-        );
-      }
-
-      callback?.();
-    });
-
-    const cachedRegister = registerEnvelope("m-reconnect");
-    const cachedSnapshot = snapshotEnvelope("m-reconnect", "details");
-    harness.emitRuntimeMessage(asContentMessage(cachedRegister), senderForTab(46));
-    harness.emitRuntimeMessage(asContentMessage(cachedSnapshot), senderForTab(46));
-
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 46
-    } satisfies PanelInitMessage);
-
-    const replayedBridgeMessages = panelPort.postedMessages.filter((message) => {
-      if (typeof message !== "object" || message === null) {
-        return false;
-      }
-      return (message as { type?: string }).type === "panel-bridge-envelope";
-    });
-
-    expect(replayedBridgeMessages).toEqual([
-      {
-        type: "panel-bridge-envelope",
-        envelope: cachedRegister
-      },
-      {
-        type: "panel-bridge-envelope",
-        envelope: cachedSnapshot
-      }
-    ]);
-    expect(harness.executeScript).not.toHaveBeenCalled();
-    expect(harness.sendMessage).not.toHaveBeenCalledWith(
-      46,
-      { type: "bridge-replay-request" },
-      expect.any(Function)
-    );
-  });
-
-  it("replays snapshot-only cache entries for new panel sessions", async () => {
-    const harness = await loadBackground();
-
-    const cachedSnapshot = snapshotEnvelope("m-snapshot-only", "details");
-    harness.emitRuntimeMessage(asContentMessage(cachedSnapshot), senderForTab(45));
-
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 45
-    } satisfies PanelInitMessage);
-
-    expect(
-      panelPort.postedMessages.filter((message) => {
-        if (typeof message !== "object" || message === null) {
-          return false;
-        }
-        return (message as { type?: string }).type === "panel-bridge-envelope";
-      })
-    ).toEqual([
-      {
-        type: "panel-bridge-envelope",
-        envelope: cachedSnapshot
-      }
-    ]);
-  });
-
-  it("routes panel commands to content script via tabs.sendMessage", async () => {
-    const harness = await loadBackground();
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 50
-    } satisfies PanelInitMessage);
-    harness.sendMessage.mockClear();
-
-    const envelope = createCommandEnvelope("m-3", "req-1", { type: "goToNextStep" });
-    panelPort.emitMessage({
-      type: "panel-command",
-      tabId: 50,
-      envelope
-    } satisfies PanelCommandMessage);
-
-    expect(harness.sendMessage).toHaveBeenCalledTimes(1);
-    expect(harness.sendMessage).toHaveBeenCalledWith(
-      50,
-      {
-        type: "extension-envelope",
-        envelope
-      },
-      expect.any(Function)
-    );
-  });
-
-  it("broadcasts commandError envelopes when tab messaging fails", async () => {
-    const harness = await loadBackground();
-    harness.setSendMessageImpl((_tabId, _message, callback) => {
-      harness.setRuntimeLastError(new Error("No receiver"));
-      callback?.();
-      harness.setRuntimeLastError(undefined);
-    });
-
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 51
-    } satisfies PanelInitMessage);
-    harness.sendMessage.mockClear();
-
-    const envelope = createCommandEnvelope("m-4", "req-error", { type: "goToNextStep" });
-    panelPort.emitMessage({
-      type: "panel-command",
-      tabId: 51,
-      envelope
-    } satisfies PanelCommandMessage);
-
-    const errorMessage = panelPort.postedMessages.find((message) => {
-      if (typeof message !== "object" || message === null) {
-        return false;
-      }
-      const typed = message as { type?: string; envelope?: { kind?: string; requestId?: string } };
-      return (
-        typed.type === "panel-bridge-envelope" &&
-        typed.envelope?.kind === "commandError" &&
-        typed.envelope?.requestId === "req-error"
-      );
-    });
-
-    expect(errorMessage).toBeDefined();
-  });
-
-  it("does not emit commandError for fire-and-forget callback closure message", async () => {
-    const harness = await loadBackground();
+    panelPort.postedMessages.length = 0;
     harness.setSendMessageImpl((_tabId, _message, callback) => {
       harness.setRuntimeLastError(
         new Error("The message port closed before a response was received.")
@@ -704,574 +558,251 @@ describe("background message routing", () => {
       callback?.();
       harness.setRuntimeLastError(undefined);
     });
-
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 52
-    } satisfies PanelInitMessage);
-    harness.sendMessage.mockClear();
-
-    const envelope = createCommandEnvelope("m-5", "req-benign", { type: "goToNextStep" });
     panelPort.emitMessage({
       type: "panel-command",
-      tabId: 52,
-      envelope
-    } satisfies PanelCommandMessage);
-
-    const commandError = panelPort.postedMessages.find((message) => {
-      if (typeof message !== "object" || message === null) {
-        return false;
+      tabId: 22,
+      envelope: {
+        channel: JOURNEY_DEVTOOLS_CHANNEL,
+        version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+        source: "rxova-journey-extension",
+        kind: "invoke",
+        machineId: "m1",
+        requestId: "req-2",
+        invocation: { operationId: "core.goToNextStep" },
+        timestamp: Date.now()
       }
-      const typed = message as { type?: string; envelope?: { kind?: string; requestId?: string } };
-      return (
-        typed.type === "panel-bridge-envelope" &&
-        typed.envelope?.kind === "commandError" &&
-        typed.envelope?.requestId === "req-benign"
-      );
     });
+    expect(panelPort.postedMessages).toHaveLength(0);
 
-    expect(commandError).toBeUndefined();
-  });
-
-  it("treats string callback errors as ignorable when they match the known closure message", async () => {
-    const harness = await loadBackground();
     harness.setSendMessageImpl((_tabId, _message, callback) => {
-      harness.setRuntimeLastError(
-        "The message port closed before a response was received." as unknown as Error
-      );
+      harness.setRuntimeLastError({ message: 42 } as never);
       callback?.();
       harness.setRuntimeLastError(undefined);
     });
-
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 53
-    } satisfies PanelInitMessage);
-    harness.sendMessage.mockClear();
-
-    const envelope = createCommandEnvelope("m-5", "req-benign-string", { type: "goToNextStep" });
     panelPort.emitMessage({
       type: "panel-command",
-      tabId: 53,
-      envelope
-    } satisfies PanelCommandMessage);
-
-    expect(
-      panelPort.postedMessages.some((message) => {
-        if (typeof message !== "object" || message === null) {
-          return false;
-        }
-        const typed = message as {
-          type?: string;
-          envelope?: { requestId?: string; kind?: string };
-        };
-        return (
-          typed.type === "panel-bridge-envelope" &&
-          typed.envelope?.kind === "commandError" &&
-          typed.envelope?.requestId === "req-benign-string"
-        );
-      })
-    ).toBe(false);
-  });
-
-  it("serializes object-shaped tab messaging errors", async () => {
-    const harness = await loadBackground();
-    harness.setSendMessageImpl((_tabId, _message, callback) => {
-      harness.setRuntimeLastError({
-        message: "No receiver",
-        name: "RuntimeError"
-      } as unknown as Error);
-      callback?.();
-      harness.setRuntimeLastError(undefined);
-    });
-
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 54
-    } satisfies PanelInitMessage);
-    harness.sendMessage.mockClear();
-
-    const envelope = createCommandEnvelope("m-6", "req-object-error", { type: "goToNextStep" });
-    panelPort.emitMessage({
-      type: "panel-command",
-      tabId: 54,
-      envelope
-    } satisfies PanelCommandMessage);
-
-    expect(panelPort.postedMessages).toContainEqual({
-      type: "panel-bridge-envelope",
-      envelope: expect.objectContaining({
-        kind: "commandError",
-        requestId: "req-object-error",
-        error: expect.objectContaining({
-          name: "RuntimeError",
-          message: "No receiver"
-        })
-      })
-    });
-  });
-
-  it("falls back to unknown transport errors when callback errors have no string message", async () => {
-    const harness = await loadBackground();
-    harness.setSendMessageImpl((_tabId, _message, callback) => {
-      harness.setRuntimeLastError({ message: 42 } as unknown as Error);
-      callback?.();
-      harness.setRuntimeLastError(undefined);
-    });
-
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 55
-    } satisfies PanelInitMessage);
-    harness.sendMessage.mockClear();
-
-    const envelope = createCommandEnvelope("m-7", "req-unknown-error", { type: "goToNextStep" });
-    panelPort.emitMessage({
-      type: "panel-command",
-      tabId: 55,
-      envelope
-    } satisfies PanelCommandMessage);
-
-    expect(panelPort.postedMessages).toContainEqual({
-      type: "panel-bridge-envelope",
-      envelope: expect.objectContaining({
-        kind: "commandError",
-        requestId: "req-unknown-error",
-        error: expect.objectContaining({
-          message: "Unknown transport error"
-        })
-      })
-    });
-  });
-
-  it("falls back to unknown transport errors when callback errors have no message property", async () => {
-    const harness = await loadBackground();
-    harness.setSendMessageImpl((_tabId, _message, callback) => {
-      harness.setRuntimeLastError({ code: "E_MISSING_MESSAGE" } as unknown as Error);
-      callback?.();
-      harness.setRuntimeLastError(undefined);
-    });
-
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 56
-    } satisfies PanelInitMessage);
-    harness.sendMessage.mockClear();
-
-    const envelope = createCommandEnvelope("m-8", "req-missing-message", { type: "goToNextStep" });
-    panelPort.emitMessage({
-      type: "panel-command",
-      tabId: 56,
-      envelope
-    } satisfies PanelCommandMessage);
-
-    expect(panelPort.postedMessages).toContainEqual({
-      type: "panel-bridge-envelope",
-      envelope: expect.objectContaining({
-        kind: "commandError",
-        requestId: "req-missing-message",
-        error: expect.objectContaining({
-          message: "Unknown transport error"
-        })
-      })
-    });
-  });
-
-  it("stops broadcasting to disconnected ports", async () => {
-    const harness = await loadBackground();
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 61
-    } satisfies PanelInitMessage);
-
-    panelPort.emitDisconnect();
-    const before = panelPort.postedMessages.length;
-
-    harness.emitRuntimeMessage(asContentMessage(registerEnvelope("m-5")), senderForTab(61));
-    expect(panelPort.postedMessages).toHaveLength(before);
-  });
-
-  it("handles disconnect cleanup when the tab port set is already missing", async () => {
-    const harness = await loadBackground();
-    const tabId = 63;
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId
-    } satisfies PanelInitMessage);
-
-    const originalGet = Map.prototype.get;
-    const getSpy = vi.spyOn(Map.prototype, "get").mockImplementation(function (
-      this: Map<unknown, unknown>,
-      key: unknown
-    ) {
-      if (key === tabId) {
-        return undefined;
+      tabId: 22,
+      envelope: {
+        channel: JOURNEY_DEVTOOLS_CHANNEL,
+        version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+        source: "rxova-journey-extension",
+        kind: "invoke",
+        machineId: "m1",
+        requestId: "req-3",
+        invocation: { operationId: "core.goToNextStep" },
+        timestamp: Date.now()
       }
-      return originalGet.call(this, key);
     });
-
-    expect(() => panelPort.emitDisconnect()).not.toThrow();
-    getSpy.mockRestore();
-  });
-
-  it("drops stale ports that throw during broadcast without affecting active ports", async () => {
-    const harness = await loadBackground();
-    const tabId = 62;
-    const flakyPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-    const healthyPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-
-    harness.emitConnect(flakyPort.port);
-    flakyPort.emitMessage({
-      type: "panel-init",
-      tabId
-    } satisfies PanelInitMessage);
-
-    harness.emitConnect(healthyPort.port);
-    healthyPort.emitMessage({
-      type: "panel-init",
-      tabId
-    } satisfies PanelInitMessage);
-
-    flakyPort.port.postMessage = () => {
-      throw new Error("Port disconnected");
-    };
-
-    expect(() =>
-      harness.emitRuntimeMessage(asContentMessage(registerEnvelope("m-safe")), senderForTab(tabId))
-    ).not.toThrow();
-    expect(healthyPort.postedMessages).toContainEqual({
-      type: "panel-bridge-envelope",
-      envelope: expect.objectContaining({
-        kind: "register",
-        machineId: "m-safe"
-      })
-    });
-
-    harness.emitRuntimeMessage(
-      asContentMessage(snapshotEnvelope("m-safe", "review")),
-      senderForTab(tabId)
-    );
-    expect(healthyPort.postedMessages).toContainEqual({
-      type: "panel-bridge-envelope",
-      envelope: expect.objectContaining({
-        kind: "snapshot",
-        machineId: "m-safe"
-      })
-    });
-  });
-
-  it("broadcasts to all panel ports attached to the same tab", async () => {
-    const harness = await loadBackground();
-    const firstPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-    const secondPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-
-    harness.emitConnect(firstPort.port);
-    firstPort.emitMessage({
-      type: "panel-init",
-      tabId: 71
-    } satisfies PanelInitMessage);
-
-    harness.emitConnect(secondPort.port);
-    secondPort.emitMessage({
-      type: "panel-init",
-      tabId: 71
-    } satisfies PanelInitMessage);
-
-    const register = registerEnvelope("m-6");
-    harness.emitRuntimeMessage(asContentMessage(register), senderForTab(71));
-
-    expect(firstPort.postedMessages).toContainEqual({
-      type: "panel-bridge-envelope",
-      envelope: register
-    });
-    expect(secondPort.postedMessages).toContainEqual({
-      type: "panel-bridge-envelope",
-      envelope: register
-    });
-  });
-
-  it("ignores runtime messages with missing tab sender", async () => {
-    const harness = await loadBackground();
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 81
-    } satisfies PanelInitMessage);
-
-    const before = panelPort.postedMessages.length;
-    harness.emitRuntimeMessage(
-      asContentMessage(registerEnvelope("m-7")),
-      {} as chrome.runtime.MessageSender
-    );
-
-    expect(panelPort.postedMessages).toHaveLength(before);
-  });
-
-  it("does not cache commandResult envelopes for replay", async () => {
-    const harness = await loadBackground();
-
-    harness.emitRuntimeMessage(
-      asContentMessage(commandResultEnvelope("m-8", "req-9")),
-      senderForTab(91)
-    );
-
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 91
-    } satisfies PanelInitMessage);
-
-    const replayedBridgeMessages = panelPort.postedMessages.filter((message) => {
-      if (typeof message !== "object" || message === null) {
-        return false;
-      }
-      const typed = message as { type?: string };
-      return typed.type === "panel-bridge-envelope";
-    });
-
     expect(panelPort.postedMessages).toContainEqual({
-      type: "panel-connected",
-      connected: false
+      type: "panel-bridge-envelope",
+      envelope: expect.objectContaining({
+        kind: "operationError",
+        requestId: "req-3"
+      })
     });
-    expect(replayedBridgeMessages).toHaveLength(0);
+
+    panelPort.postedMessages.length = 0;
+    harness.setSendMessageImpl((_tabId, _message, callback) => {
+      harness.setRuntimeLastError("plain send failure" as never);
+      callback?.();
+      harness.setRuntimeLastError(undefined);
+    });
+    panelPort.emitMessage({
+      type: "panel-command",
+      tabId: 22,
+      envelope: {
+        channel: JOURNEY_DEVTOOLS_CHANNEL,
+        version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+        source: "rxova-journey-extension",
+        kind: "invoke",
+        machineId: "m1",
+        requestId: "req-4",
+        invocation: { operationId: "core.goToNextStep" },
+        timestamp: Date.now()
+      }
+    });
+    expect(panelPort.postedMessages).toContainEqual({
+      type: "panel-bridge-envelope",
+      envelope: expect.objectContaining({
+        kind: "operationError",
+        requestId: "req-4"
+      })
+    });
+
+    panelPort.postedMessages.length = 0;
+    harness.setSendMessageImpl((_tabId, _message, callback) => {
+      harness.setRuntimeLastError(null as never);
+      callback?.();
+      harness.setRuntimeLastError(undefined);
+    });
+    panelPort.emitMessage({
+      type: "panel-command",
+      tabId: 22,
+      envelope: {
+        channel: JOURNEY_DEVTOOLS_CHANNEL,
+        version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+        source: "rxova-journey-extension",
+        kind: "invoke",
+        machineId: "m1",
+        requestId: "req-5",
+        invocation: { operationId: "core.goToNextStep" },
+        timestamp: Date.now()
+      }
+    });
+    expect(panelPort.postedMessages).toHaveLength(0);
   });
 
-  it("broadcasts disconnected state after unregistering the last machine", async () => {
+  it("broadcasts incoming bridge envelopes and clears cache on reload and removal", async () => {
     const harness = await loadBackground();
     const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-
     harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 92
-    } satisfies PanelInitMessage);
+    panelPort.emitMessage({ type: "panel-init", tabId: 30 });
+    panelPort.postedMessages.length = 0;
 
-    harness.emitRuntimeMessage(asContentMessage(registerEnvelope("m-connected")), senderForTab(92));
-    harness.emitRuntimeMessage(
-      asContentMessage(unregisterEnvelope("m-connected")),
-      senderForTab(92)
-    );
-
+    harness.emitRuntimeMessage(asContentMessage(createRegisterEnvelope("m1")), senderForTab(30));
     expect(panelPort.postedMessages).toContainEqual({
       type: "panel-connected",
       connected: true
     });
     expect(panelPort.postedMessages).toContainEqual({
-      type: "panel-connected",
-      connected: false
-    });
-  });
-
-  it("clears machine cache when tab reload starts", async () => {
-    const harness = await loadBackground();
-    const tabId = 95;
-
-    harness.emitRuntimeMessage(asContentMessage(registerEnvelope("m-reload")), senderForTab(tabId));
-    harness.emitTabUpdated(tabId, { status: "loading" }, { id: tabId } as chrome.tabs.Tab);
-
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId
-    } satisfies PanelInitMessage);
-
-    const replayedBridgeMessages = panelPort.postedMessages.filter((message) => {
-      if (typeof message !== "object" || message === null) {
-        return false;
-      }
-      return (message as { type?: string }).type === "panel-bridge-envelope";
+      type: "panel-bridge-envelope",
+      envelope: expect.objectContaining({ kind: "register", machineId: "m1" })
     });
 
+    harness.emitTabUpdated(30, { status: "loading" });
     expect(panelPort.postedMessages).toContainEqual({
       type: "panel-connected",
       connected: false
     });
-    expect(replayedBridgeMessages).toHaveLength(0);
-  });
 
-  it("re-injects content script on tab complete when panel is attached", async () => {
-    const harness = await loadBackground();
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-    const tabId = 97;
-    const executeScript = harness.executeScript;
-    if (!executeScript) {
-      throw new Error("executeScript mock unavailable");
-    }
-
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId
-    } satisfies PanelInitMessage);
-    executeScript.mockClear();
-
-    harness.emitTabUpdated(tabId, { status: "complete" }, { id: tabId } as chrome.tabs.Tab);
-
-    expect(executeScript).toHaveBeenCalledWith(
+    panelPort.postedMessages.length = 0;
+    harness.emitTabUpdated(30, { status: "complete" });
+    expect(harness.executeScript).toHaveBeenCalledWith(
       {
-        target: { tabId },
+        target: { tabId: 30 },
         files: ["src/content.ts"]
       },
       expect.any(Function)
     );
-  });
 
-  it("ignores tab complete updates when no panel is attached for that tab", async () => {
-    const harness = await loadBackground();
-    const tabId = 108;
-    const executeScript = harness.executeScript;
-    if (!executeScript) {
-      throw new Error("executeScript mock unavailable");
-    }
-    executeScript.mockClear();
-
-    harness.emitTabUpdated(tabId, { status: "complete" }, { id: tabId } as chrome.tabs.Tab);
-
-    expect(executeScript).not.toHaveBeenCalled();
-  });
-
-  it("handles tab removal when the tab has no panel ports and other tabs remain mapped", async () => {
-    const harness = await loadBackground();
-    const otherPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-
-    harness.emitConnect(otherPort.port);
-    otherPort.emitMessage({
-      type: "panel-init",
-      tabId: 109
-    } satisfies PanelInitMessage);
-
-    expect(() => harness.emitTabRemoved(110)).not.toThrow();
-
-    harness.emitRuntimeMessage(asContentMessage(registerEnvelope("m-other")), senderForTab(109));
-    expect(otherPort.postedMessages).toContainEqual({
-      type: "panel-bridge-envelope",
-      envelope: expect.objectContaining({
-        kind: "register",
-        machineId: "m-other"
-      })
-    });
-  });
-
-  it("clears tab cache and ports when tab is removed", async () => {
-    const harness = await loadBackground();
-    const tabId = 96;
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId
-    } satisfies PanelInitMessage);
+    harness.emitTabRemoved(30);
+    panelPort.postedMessages.length = 0;
     harness.emitRuntimeMessage(
-      asContentMessage(registerEnvelope("m-removed")),
-      senderForTab(tabId)
+      asContentMessage(createSnapshotEnvelope("m1", "done")),
+      senderForTab(30)
+    );
+    expect(panelPort.postedMessages).toHaveLength(0);
+  });
+
+  it("does not cache operation outcomes and evicts machines on unregister", async () => {
+    const harness = await loadBackground();
+    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+    harness.emitConnect(panelPort.port);
+    panelPort.emitMessage({ type: "panel-init", tabId: 35 });
+    panelPort.postedMessages.length = 0;
+
+    harness.emitRuntimeMessage(asContentMessage(createRegisterEnvelope("m1")), senderForTab(35));
+    harness.emitRuntimeMessage(
+      asContentMessage({
+        channel: JOURNEY_DEVTOOLS_CHANNEL,
+        version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+        source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
+        kind: "operationResult",
+        machineId: "m1",
+        requestId: "req-1",
+        operationId: "core.goToNextStep",
+        result: {
+          kind: "snapshot",
+          snapshot: createRegisterEnvelope("m1").snapshot,
+          transitioned: true
+        },
+        timestamp: Date.now()
+      }),
+      senderForTab(35)
+    );
+    harness.emitRuntimeMessage(
+      asContentMessage({
+        channel: JOURNEY_DEVTOOLS_CHANNEL,
+        version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+        source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
+        kind: "unregister",
+        machineId: "m1",
+        timestamp: Date.now()
+      }),
+      senderForTab(35)
     );
 
-    harness.emitTabRemoved(tabId);
-    const before = panelPort.postedMessages.length;
-    harness.emitRuntimeMessage(
-      asContentMessage(snapshotEnvelope("m-removed", "review")),
-      senderForTab(tabId)
-    );
+    const latePanel = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+    harness.emitConnect(latePanel.port);
+    latePanel.emitMessage({ type: "panel-init", tabId: 35 });
 
-    expect(panelPort.postedMessages).toHaveLength(before);
-  });
-
-  it("runs fallback mapped-port cleanup pass on tab removal", async () => {
-    const harness = await loadBackground();
-    const tabId = 198;
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId
-    } satisfies PanelInitMessage);
-
-    const originalEntries = Map.prototype.entries;
-    const fakePort = {} as chrome.runtime.Port;
-    const entriesSpy = vi.spyOn(Map.prototype, "entries").mockImplementation(function (
-      this: Map<unknown, unknown>
-    ) {
-      if (this.size === 0) {
-        return new Map<unknown, unknown>([[fakePort, tabId]]).entries();
-      }
-      return originalEntries.call(this);
-    });
-
-    expect(() => harness.emitTabRemoved(tabId)).not.toThrow();
-    entriesSpy.mockRestore();
-  });
-
-  it("evicts machine cache entries on unregister envelopes", async () => {
-    const harness = await loadBackground();
-    const machineId = "m-unregister";
-
-    harness.emitRuntimeMessage(asContentMessage(registerEnvelope(machineId)), senderForTab(92));
-    harness.emitRuntimeMessage(asContentMessage(unregisterEnvelope(machineId)), senderForTab(92));
-
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-    harness.emitConnect(panelPort.port);
-    panelPort.emitMessage({
-      type: "panel-init",
-      tabId: 92
-    } satisfies PanelInitMessage);
-
-    expect(panelPort.postedMessages).toContainEqual({
+    expect(latePanel.postedMessages).toContainEqual({
       type: "panel-connected",
       connected: false
     });
-    expect(
-      panelPort.postedMessages.some((message) => {
-        if (typeof message !== "object" || message === null) {
-          return false;
-        }
-        return (message as { type?: string }).type === "panel-bridge-envelope";
-      })
-    ).toBe(false);
   });
 
-  it("ignores malformed panel and runtime payloads", async () => {
+  it("drops stale panel ports when postMessage throws", async () => {
+    const harness = await loadBackground();
+    const stalePort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+    const healthyPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+
+    harness.emitConnect(stalePort.port);
+    stalePort.emitMessage({ type: "panel-init", tabId: 40 });
+    harness.emitConnect(healthyPort.port);
+    healthyPort.emitMessage({ type: "panel-init", tabId: 40 });
+    healthyPort.postedMessages.length = 0;
+    (stalePort.port as unknown as { postMessage: (message: unknown) => void }).postMessage = () => {
+      throw new Error("Port disconnected");
+    };
+
+    harness.emitRuntimeMessage(asContentMessage(createRegisterEnvelope("m1")), senderForTab(40));
+    expect(healthyPort.postedMessages).toContainEqual({
+      type: "panel-bridge-envelope",
+      envelope: expect.objectContaining({ kind: "register", machineId: "m1" })
+    });
+
+    healthyPort.postedMessages.length = 0;
+    stalePort.emitDisconnect();
+    harness.emitRuntimeMessage(
+      asContentMessage(createSnapshotEnvelope("m1", "review")),
+      senderForTab(40)
+    );
+    expect(healthyPort.postedMessages).toContainEqual({
+      type: "panel-bridge-envelope",
+      envelope: expect.objectContaining({ kind: "snapshot", machineId: "m1" })
+    });
+  });
+
+  it("cleans up the final panel port on disconnect", async () => {
+    const harness = await loadBackground();
+    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
+
+    harness.emitConnect(panelPort.port);
+    panelPort.emitMessage({ type: "panel-init", tabId: 45 });
+    panelPort.postedMessages.length = 0;
+    panelPort.emitDisconnect();
+
+    harness.emitRuntimeMessage(asContentMessage(createRegisterEnvelope("m1")), senderForTab(45));
+    expect(panelPort.postedMessages).toHaveLength(0);
+  });
+
+  it("ignores malformed content messages and senderless bridge envelopes", async () => {
     const harness = await loadBackground();
     const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
     harness.emitConnect(panelPort.port);
+    panelPort.emitMessage({ type: "panel-init", tabId: 50 });
+    panelPort.postedMessages.length = 0;
 
-    panelPort.emitMessage({ type: "panel-init", tabId: 93 } satisfies PanelInitMessage);
-    harness.sendMessage.mockClear();
-    const before = panelPort.postedMessages.length;
+    harness.emitRuntimeMessage({ type: "invalid" }, senderForTab(50));
+    harness.emitRuntimeMessage(asContentMessage(createRegisterEnvelope("m1")), {});
 
-    panelPort.emitMessage({ type: "panel-command", tabId: 93, envelope: { invalid: true } });
-    harness.emitRuntimeMessage({ type: "unknown" }, senderForTab(93));
-
-    expect(panelPort.postedMessages).toHaveLength(before);
-    expect(harness.sendMessage).not.toHaveBeenCalled();
+    expect(panelPort.postedMessages).toHaveLength(0);
   });
 
-  it("handles disconnect for ports that never initialized", async () => {
+  it("ignores tab update complete events when no panel ports are attached", async () => {
     const harness = await loadBackground();
-    const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
-    harness.emitConnect(panelPort.port);
-
-    expect(() => panelPort.emitDisconnect()).not.toThrow();
+    harness.emitTabUpdated(88, { status: "complete" });
+    expect(harness.executeScript).not.toHaveBeenCalled();
   });
 });

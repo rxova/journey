@@ -1,5 +1,6 @@
 import React from "react";
 import type { PanelWarning } from "../../shared";
+import panelStyles from "./panelPrimitives.module.css";
 
 type ConnectionStatusProps = {
   connected: boolean;
@@ -25,14 +26,16 @@ const getWarningGuidance = (warning: PanelWarning): string | null => {
 };
 
 export const ConnectionStatus = ({ connected, warning }: ConnectionStatusProps) => (
-  <section className="panel-card status-card">
-    <h2>Connection</h2>
-    <p className={connected ? "status-ok" : "status-off"}>
+  <section className={panelStyles.card}>
+    <h2 className={panelStyles.title}>Connection</h2>
+    <p className={connected ? panelStyles.statusOk : panelStyles.statusOff}>
       {connected ? "Connected to inspected tab" : "Waiting for bridge messages"}
     </p>
-    {warning ? <p className="status-warning">{warning.message}</p> : null}
+    {warning ? <p className={panelStyles.statusWarning}>{warning.message}</p> : null}
     {warning && getWarningGuidance(warning) ? (
-      <p className="muted status-guidance">{getWarningGuidance(warning)}</p>
+      <p className={`${panelStyles.muted} ${panelStyles.statusGuidance}`}>
+        {getWarningGuidance(warning)}
+      </p>
     ) : null}
   </section>
 );
