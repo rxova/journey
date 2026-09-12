@@ -1,180 +1,117 @@
 ---
-title: "Authoring Plugins"
+title: "Writing a plugin"
 ---
 
-# Authoring Plugins
+A plugin has a unique name and one `setup(host)` method. Setup returns a namespaced API, a snapshot
+deriver, or both.
 
-This guide covers everything needed to write a custom Journey plugin — type constraints, available hooks, the augment pattern, and disposal behavior.
-
-## Minimal Plugin Shape
-
-A plugin is a plain object with a `name` and a `setup` function.
+## Minimal plugin
 
 ```ts
-import type { JourneyMachinePlugin } from "@rxova/journey-core";
+import type { JourneyPlugin } from "@rxova/journey-core";
 
-const myPlugin = {
-  name: "my-plugin",
-  setup: (context) => {
-    // return hooks
-    return {};
-  }
-} satisfies JourneyMachinePlugin;
+type CounterApi = { count(): number };
+type CounterSnapshot = { transitions: number };
+
+export function createCounterPlugin(): JourneyPlugin<"counter", CounterApi, CounterSnapshot> {
+  return {
+    name: "counter",
+    setup(host) {
+      let transitions = 0;
+
+      host.onTransition(() => {
+        transitions += 1;
+      });
+
+      return {
+        api: {
+          count: () => transitions
+        },
+        deriveSnapshot: (_snapshot, previous) =>
+          previous?.transitions === transitions ? previous : { transitions }
+      };
+    }
+  };
+}
 ```
 
-`setup` is called once per machine at construction time, before `machine.startJourney()`. It receives a setup context and returns a hooks object. All hooks are optional.
+State belongs inside `setup`. Reusing one plugin object across machines must not share counters,
+buffers, timers, or subscriptions.
 
-## The Type Cast Pattern
+## Plugin host
 
-`setup` is generic over `TContext`, `TStepId`, `TEventMap`, and `TStepMeta`, but TypeScript cannot infer those generics from a plugin factory that has its own narrower types. The idiomatic solution is to assert the setup function's type:
+### Reads
 
 ```ts
-import type { JourneyMachinePlugin } from "@rxova/journey-core";
-
-const createMyPlugin = <TContext extends { userId: string }>() => {
-  const setup = (({ resolvedJourney, buildInitialSnapshot }) => {
-    // resolvedJourney, buildInitialSnapshot, etc. are available here
-    return {
-      onSnapshotChange: ({ snapshot }) => {
-        // snapshot is typed loosely here — cast to your known shape if needed
-      }
-    };
-  }) as JourneyMachinePlugin["setup"]; // ← the necessary cast
-
-  return { name: "my-plugin", setup } satisfies JourneyMachinePlugin;
-};
+host.getSnapshot();
+host.structure;
 ```
 
-The cast is safe: the hooks you return are structurally compatible with the expected types. The alternative — making the plugin itself generic — creates a worse consumer API and requires the caller to manually pass type parameters.
+`structure` is a frozen view with `kind`, `stepIds`, `initial`, and flattened transitions. Each
+transition exposes `event`, `from`, `to`, and whether it is guarded.
 
-## Setup Context
-
-`setup` receives a `JourneyMachinePluginSetupContext` with everything available at construction time:
-
-| Field                               | Type                        | Description                                                      |
-| ----------------------------------- | --------------------------- | ---------------------------------------------------------------- |
-| `journey`                           | `JourneyDefinition`         | The original definition as passed by the caller                  |
-| `resolvedJourney`                   | `JourneyResolvedDefinition` | Normalized definition with all transitions flattened to an array |
-| `options.requireExplicitCompletion` | `boolean`                   | Whether the machine requires an explicit `completeJourney` call  |
-| `options.defaultTimeoutMs`          | `number \| undefined`       | Machine-level async timeout                                      |
-| `buildInitialSnapshot`              | `() => JourneySnapshot`     | Returns a fresh initial snapshot (useful for reset hydration)    |
-
-## Available Hooks
-
-### `hydrateSnapshot`
-
-Called once at construction time to give the plugin a chance to override the starting snapshot. Plugins are applied in order; each receives the output of the previous.
+### Observation taps
 
 ```ts
-hydrateSnapshot: (snapshot) => {
-  const persisted = localStorage.getItem("my-key");
-  if (!persisted) return snapshot;
-
-  const saved = JSON.parse(persisted);
-  return { ...snapshot, ...saved };
-};
+host.onTransition(listener);
+host.onNavigationBlocked(listener);
+host.onStatusChange(listener);
+host.onContextChange(listener);
+host.onError(listener);
 ```
 
-Use this for persistence, server-side hydration, or any startup override.
+Each returns an unsubscribe function. `onTransition` runs after post-commit hooks settle; the named
+event taps follow the same payloads as machine subscriptions. Per-step entry and exit are read from
+`onTransition`'s `from`/`to`, or subscribed on the machine itself with `stepEnter` / `stepLeave`.
 
-### `onSnapshotChange`
-
-Called synchronously every time the machine snapshot changes. Receives the previous snapshot, the new snapshot, and the reason for the change.
+### Disposal
 
 ```ts
-onSnapshotChange: ({ previousSnapshot, snapshot, reason }) => {
-  if (reason === "async") return; // skip async-phase-only updates
-
-  analytics.track("journey_step_changed", {
-    from: previousSnapshot.currentStepId,
-    to: snapshot.currentStepId
-  });
-};
+host.onDispose(() => clearTimeout(timer));
 ```
 
-**This hook must be synchronous.** Do not return a Promise or use `async`. If you do, Journey will log a warning and the await will be silently dropped — the machine does not wait for async plugin hooks.
+Register cleanup for resources owned by the plugin. Disposal callbacks are run once and isolated
+from one another.
 
-Available `reason` values: `"async"`, `"context"`, `"navigation"`, `"reset"`, `"start"`, `"transition"`.
+## API contribution
 
-### `augmentMachine`
-
-Called once after machine construction to add methods to the machine object. Return an object whose keys will be merged onto the machine. Attempting to override an existing machine property throws an error.
+The returned `api` appears only under the plugin name:
 
 ```ts
-augmentMachine: ({ machine, journey, resolvedJourney }) => ({
-  inspect: () => ({
-    stepCount: Object.keys(resolvedJourney.steps).length,
-    currentStep: machine.getSnapshot().currentStepId
-  })
-});
+machine.plugins.counter.count();
 ```
 
-The returned extension is merged with the base machine. TypeScript infers the extension type from `augmentMachine`'s return type when the plugin is passed through `createJourneyMachine`'s `plugins` option.
+Do not expose mutable plugin internals. Return snapshots, copies, or readonly data from read APIs.
 
-### `dispose`
+## Snapshot contribution
 
-Called when the machine is disposed — either by `machine.dispose()` or, in React, when the `JourneyProvider` unmounts.
+`deriveSnapshot(snapshot, previousExtension)` runs during snapshot construction. Keep it pure and
+return the previous object when its visible value has not changed:
 
 ```ts
-dispose: () => {
-  subscription.unsubscribe();
-  localStorage.removeItem("draft-key");
-};
+deriveSnapshot: (_snapshot, previous) =>
+  previous?.transitions === transitions ? previous : { transitions };
 ```
 
-Journey calls `dispose` on every plugin even if an earlier one throws. The first error is re-thrown after all plugins have had a chance to clean up.
+The value appears at `snapshot.plugins.counter` and can be observed with `subscribe`.
 
-## Disposal Ordering
+Snapshot derivation may run more than once around one lifecycle operation because the runtime
+refreshes plugin-derived state after observation taps.
 
-Plugins are initialized in array order and disposed in the same order. The first error from any plugin's `dispose` is re-thrown after the full disposal pass completes.
+## Boundaries
 
-```ts
-createJourneyMachine(journey, {
-  plugins: [pluginA, pluginB, pluginC]
-  // dispose order: pluginA → pluginB → pluginC
-  // if pluginA.dispose() throws, pluginB and pluginC still run,
-  // then the error from pluginA is re-thrown
-});
-```
+The V1 host is deliberately observe-only. A plugin cannot:
 
-## Setup Errors
+- cancel or rewrite navigation;
+- mutate the core snapshot;
+- dispatch graph events through the host;
+- add unnamespaced methods to the machine.
 
-If `setup` throws, Journey wraps the error with the plugin name for easier debugging:
+Put domain transition behavior in the definition. Use plugins for recording, persistence, analysis,
+and integrations driven by observations.
 
-```
-Journey plugin "my-plugin" setup failed: <original message>
-```
+## Where to next
 
-## Full Example
-
-```ts
-import type { JourneyMachinePlugin } from "@rxova/journey-core";
-
-export const createAnalyticsPlugin = (tracker: { track: (name: string, data: object) => void }) => {
-  const setup = (({ resolvedJourney }) => {
-    const stepCount = Object.keys(resolvedJourney.steps).length;
-
-    return {
-      onSnapshotChange: ({ snapshot, reason }) => {
-        if (reason !== "transition") return;
-
-        tracker.track("step_changed", {
-          step: snapshot.currentStepId,
-          stepCount
-        });
-      },
-      dispose: () => {
-        tracker.track("journey_disposed", {});
-      }
-    };
-  }) as JourneyMachinePlugin["setup"];
-
-  return { name: "analytics", setup } satisfies JourneyMachinePlugin;
-};
-```
-
-```ts
-const machine = createJourneyMachine(journey, {
-  plugins: [createAnalyticsPlugin(myTracker)]
-});
-```
+- [Plugins overview](./overview)
+- [Lifecycle and events](../lifecycle)
+- [Architecture](../architecture#plugins)

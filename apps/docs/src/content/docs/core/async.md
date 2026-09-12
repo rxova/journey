@@ -1,130 +1,88 @@
 ---
-title: "Async Behavior"
+title: "Async behavior"
 ---
 
-Journey treats async work as a first-class part of transition selection, but state writes stay synchronous and queued.
+Async work can run before a next/previous move and in post-commit lifecycle effects. The snapshot
+keeps both paths in the machine's transition state.
 
-## Mental Model
+For ordinary UI loading state, use `snapshot.transition.pending`. It stays `true` across both
+pre-commit work and post-commit effects. Use `transition.phase` and `currentStep.async` only when
+the UI needs more detailed progress or error information.
 
-```text
-transition.start
-  -> when?         -> evaluating-when
-  -> updateContext -> snapshot commit -> idle
-  -> failure       -> transition.error -> error
-```
+## Working phase
 
-The active step keeps async state in `snapshot.async.byStep[stepId]`, while `snapshot.async.isLoading`
-answers the machine-wide question "is any async transition work currently in flight?".
-
-## Guard vs Update
-
-| Part            | Purpose                                | Runs when                        | Can change context? |
-| --------------- | -------------------------------------- | -------------------------------- | ------------------- |
-| `when`          | decide whether a transition is allowed | before commit                    | no                  |
-| `updateContext` | derive the next context                | only for the selected transition | yes, synchronously  |
-
-`when` may be sync or async. `updateContext` is sync only.
-
-## Async Guards (`when`)
-
-Use `when` to decide whether a transition is allowed right now.
+Pass work when an operation must succeed before the step changes:
 
 ```ts
-{
-  from: "payment",
-  event: "goToNextStep",
-  to: "review",
-  when: async ({ context, handlers, signal }) => {
-    return await handlers.validateCard(context.cardToken, { signal });
+const result = await machine.navigate.goToNextStep({
+  run: async ({ snapshot }) => authenticate(snapshot.context.credentials),
+  commit: ({ result, updateContext }) => {
+    updateContext((context) => ({ ...context, user: result.user, password: "" }));
   }
-}
+});
 ```
 
-Think of guards as permission checks.
+While `run` is pending, the source remains current and `transition.phase` is `"working"`. Throwing,
+rejecting, timing out, or throwing from `commit` returns `reason: "error"`; neither position nor
+staged context changes. `commit` must be synchronous.
 
-## Sync Transition Updates (`updateContext`)
+`goToPreviousStep(work)` and `goToPreviousStep(n, work)` use the same contract.
 
-Use transition `updateContext` to derive the next context from the current `context` and triggering `event`.
+## Lifecycle-effect phases
+
+The destination is already current while `onLeave`, `onTransition`, and `onEnter` run:
 
 ```ts
-{
-  from: "details",
-  event: "draftSaved",
-  to: "review",
-  updateContext: ({ context, event }) => ({
-    ...context,
-    draftId: event.payload?.draftId ?? null
-  })
-}
+snapshot.transition.phase; // "leaving" or "entering"
+snapshot.currentStep?.async.isLoading; // true while effects settle
 ```
 
-If you need async work to produce data for the next state, do it before `send(...)` and put the resolved data in the event payload.
-
-## Lifecycle Callbacks
-
-Definition-level `handlers`, `onEnter`, and `onLeave` may still perform async work, but they are observational helpers around the transition pipeline. They do not define a separate transition phase in `snapshot.async`, and failures there are treated as lifecycle diagnostics rather than `transition.error`.
-
-## Observable Async Phases
-
-Per-step async phases are:
-
-- `idle`
-- `evaluating-when`
-- `error`
-
-Typical UI mappings:
-
-- `phase === "evaluating-when"`: disable controls or show validation state
-- `phase === "error"`: show recoverable error UI
-- `phase === "idle"`: render normal interactive state
-
-## Transition Arguments
-
-Every `when` receives a single args object:
+After settling, current-step async state is either successful or contains the post-commit failure:
 
 ```ts
-when: async ({ snapshot, context, from, timeline, index, event, signal, handlers }) => {
-  return true;
+snapshot.currentStep?.async = {
+  isLoading: false,
+  isSuccess: false,
+  isError: true,
+  error
 };
 ```
 
-Transition `updateContext` receives the same transition state without `signal` or `handlers` because it must stay synchronous:
+Each effect is attempted even when an earlier effect fails. Failures emit the named `error` event
+and leave the committed destination in place.
+
+## Concurrent calls
+
+Only one navigation hook chain runs at a time. Another navigation or graph send resolves with:
 
 ```ts
-updateContext: ({ snapshot, context, from, timeline, index, event }) => {
-  return context;
-};
+{ ok: false, reason: "transitioning" }
 ```
 
-## Timeouts
+Context updates are synchronous and can occur while hooks are pending. Hooks receive the snapshot
+captured when their argument object is created; call the provided updater to apply against the
+runtime's current context.
 
-Add `timeoutMs` to a transition to cap async `when` work.
+## Timeouts and invalidation
 
 ```ts
-{
-  id: "payment-review",
-  from: "payment",
-  event: "goToNextStep",
-  to: "review",
-  timeoutMs: 5_000,
-  when: async ({ context, handlers, signal }) => {
-    return await handlers.validateCard(context.cardToken, { signal });
-  }
-}
+const machine = createLinearJourney(definition, {
+  defaultTimeoutMs: 5_000
+});
 ```
 
-If async work does not settle before the timeout, Journey resolves the send result with `transitioned: false`, emits `transition.error`, and moves the source step into async `error`.
+The timeout applies to navigation `run` and each async hook invocation. Terminating, restarting, or disposing increments
+the runtime generation so stale continuations cannot settle machine state. Journey does not supply
+an `AbortSignal`; cancel underlying I/O in your own integration when needed.
 
-## `updateContext()` During In-Flight Async Work
+## Raised events
 
-All writes share one queue.
+Graph hooks should use `raise(event)` to enqueue follow-up work. The queue runs only after the
+current transition settles, preventing re-entrant navigation. A cascade beyond
+`MAX_RAISED_EVENTS` is dropped and emitted as an `error` with phase `"raise"`.
 
-- A running async `when` keeps the args it started with.
-- An external `updateContext()` call waits in the same queue instead of racing a second write lane.
-- If a context change must affect the current transition decision, apply it before `send(...)` or include it in the event payload.
+## Where to next
 
-Practical rule:
-
-- async work decides
-- events carry resolved data
-- transition `updateContext` commits the next context synchronously
+- [Effects](./effects)
+- [Snapshot](./snapshot)
+- [How it works](./architecture)

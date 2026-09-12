@@ -1,87 +1,46 @@
 ---
-title: "Replay Plugin"
+title: "Replay"
 ---
 
-# Replay Plugin
-
-The replay plugin records machine activity into an in-memory session you can inspect or export.
-
-It is useful for debugging, QA capture, support tickets, and test tooling where you want to preserve the order of runtime snapshots and lifecycle events without changing machine behavior.
-
-## Install And Use
+Replay records a bounded session of status, transition, context, blocked-navigation, and error
+observations.
 
 ```ts
-import { createJourneyMachine } from "@rxova/journey-core";
-import { createReplayPlugin } from "@rxova/journey-core/replay";
+import { createReplayPlugin } from "@rxova/journey-core/plugins";
 
-const machine = createJourneyMachine(journey, {
-  plugins: [
-    createReplayPlugin({
-      maxEntries: 250
-    })
-  ]
+const machine = createLinearJourney(definition, {
+  plugins: [createReplayPlugin({ maxEntries: 500, captureSnapshots: true })]
 });
-
-await machine.startJourney();
-
-const session = machine.getReplaySession();
-const exported = machine.exportReplaySession({ pretty: true });
 ```
 
-## What You Get
-
-The plugin augments the machine with:
+## API
 
 ```ts
-type JourneyReplayMachineExtension = {
-  getReplaySession: () => JourneyReplaySession;
-  clearReplaySession: () => void;
-  exportReplaySession: (options?: JourneyReplayExportOptions) => string;
-};
+const replay = machine.plugins.replay;
+
+replay.getReplaySession();
+replay.exportReplaySession({ pretty: true });
+replay.clearReplaySession();
 ```
 
-`getReplaySession()` returns:
+The session contains `startedAt` and a bounded `entries` array. Each entry has `at`, `kind`, `data`,
+and, when enabled, a serialized snapshot.
 
-```ts
-type JourneyReplaySession = {
-  version: 1;
-  initialSnapshot: JourneySnapshot | null;
-  entries: JourneyReplayEntry[];
-  truncated: boolean;
-};
-```
-
-Entries are ordered and come in two forms:
-
-- `snapshot`: a committed snapshot plus the snapshot-change `reason`
-- `event`: an observation event emitted by the machine
+`clearReplaySession()` resets both the entries and session start time. The snapshot extension
+exposes `{ entryCount }`.
 
 ## Options
 
-- `maxEntries`: replay buffer size, default `500`
-- `captureEvents`: include observation events, default `true`
-- `captureSnapshots`: include snapshot entries, default `true`
+| Option             | Meaning                                                       |
+| ------------------ | ------------------------------------------------------------- |
+| `maxEntries`       | Ring-buffer capacity; default `500`, minimum `1`.             |
+| `captureSnapshots` | Attach a serializable snapshot to each entry; default `true`. |
+| `now`              | Injectable clock.                                             |
 
-When the buffer fills, the oldest entries are dropped and `truncated` becomes `true`.
+Serialization converts unsupported values to safe representations; use the exported
+`toSerializable` and `serializeReplaySession` helpers when building related tooling.
 
-## Runtime Behavior
+## Where to next
 
-- `hydrateSnapshot(...)` captures the starting snapshot as `initialSnapshot`
-- later snapshot commits are recorded when `captureSnapshots` is enabled
-- lifecycle events are recorded through `subscribeEvent(...)` when `captureEvents` is enabled
-- `clearReplaySession()` resets the buffer and uses the current machine snapshot as the new replay baseline
-
-## Export Behavior
-
-`exportReplaySession()` returns JSON safe for logs or attachment workflows.
-
-The serializer normalizes values that are awkward or invalid in JSON:
-
-- `bigint` becomes a string
-- `undefined` becomes `null`
-- functions and symbols become placeholder strings
-- `Date` becomes ISO text
-- `Error` becomes a plain object with `name`, `message`, and optional `stack`
-- circular references are replaced with `[circular]`
-
-Use `pretty: true` when you want readable output for local debugging.
+- [Plugins](./overview)
+- [Lifecycle and events](../lifecycle)

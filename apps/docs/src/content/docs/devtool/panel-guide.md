@@ -2,27 +2,42 @@
 title: "Panel Guide"
 ---
 
-## Timeline Inspector
+## Machine selector
 
-The panel uses an inspector layout:
+The panel lists every machine registered by the inspected page. Metadata shows mode, lifecycle
+status, mutation policy, and advertised feature groups.
 
-- Left side: timeline rows (`@@INIT`, `SNAPSHOT/<step>`, `COMMAND/<type>`, `ERROR/<type|requestId>`).
-- Right side: tabs for `Action`, `State`, and `Diff`.
-- Selection is local/read-only and does not mutate inspected runtime state.
+## Snapshot
 
-## Timeline Controls
+The snapshot view displays the current protocol envelope. Linear and graph snapshots are
+discriminated by `type`; graph routing fields and linear declared-order fields appear only on their
+matching snapshot.
 
-- **Follow latest**: keeps selection pinned to newest row.
-- **Display limit**: limits rows rendered in the panel.
-- **Prune to limit**: truncates retained rows for the active machine.
+## Timeline
 
-## Command Controls
+Rows record registration, snapshots, observations, operation results, and errors. Selecting a row
+shows:
 
-Built-ins:
+- **Action**: the envelope or invocation that produced the row.
+- **State**: the serialized snapshot associated with that point.
+- **Diff**: a structured comparison with the preceding retained state.
 
-- `startJourney`, `goToNextStep`, `terminateJourney`, `completeJourney`, `resetJourney`
-- `goToStepById`
-- `goToPreviousStep`
-- `goToLastVisitedStep`
-- custom `send`
-- `clearStepError`
+**Follow latest** pins selection to new rows. Display limits control rendering; pruning removes older
+retained rows for the active machine. Selection and pruning are panel-local and do not mutate the
+runtime machine.
+
+## Operations
+
+The panel groups forms from generic feature and operation descriptors sent by the bridge. Each
+descriptor provides a stable operation ID, label, fields, result kind, and whether it mutates.
+Lifecycle, navigation, context, graph-event, async, and plugin operations therefore appear only when
+the attached machine advertises them.
+
+When `mutationsEnabled` is false, mutating forms are disabled while read-only operations remain
+available. Lifecycle forms are also disabled when their source status is invalid.
+
+## Compatibility
+
+Protocol v7 is current. v6 invoke envelopes remain compatible because their shape is identical. v5
+is tolerated for registration but cannot invoke operations. The panel displays compatibility state
+when a machine cannot use the full current surface.

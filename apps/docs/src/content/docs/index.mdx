@@ -48,16 +48,14 @@ export const chromeStore =
   <QuickStart command="npm i @rxova/journey-core">
 
 ```ts
-import { createJourneyMachine } from "@rxova/journey-core";
+import { createLinearJourney } from "@rxova/journey-core";
 
-const machine = createJourneyMachine({
+const machine = createLinearJourney({
   context: { name: "" },
-  steps: { account: {}, review: {} },
-  transitions: ["account", "review"]
+  steps: ["account", "review"]
 });
 
-machine.startJourney();
-await machine.send({ type: "goToNextStep" });
+await machine.navigate.goToNextStep();
 ```
 
   </QuickStart>
@@ -96,42 +94,29 @@ await machine.send({ type: "goToNextStep" });
         slot: "graph",
         summary:
           "Branching, retries and conditional routing. Keyed by step, then by event, matched in order."
-      },
-      {
-        name: "Headless",
-        slot: "headless",
-        summary:
-          "No transitions at all. You own navigation entirely and drive it with goToStepById."
       }
     ]}
   >
     <Fragment slot="linear">
 
 ```ts
-transitions: ["account", "details", "payment", "review"];
+steps: ["account", "details", "payment", "review"];
 ```
 
     </Fragment>
     <Fragment slot="graph">
 
 ```ts
-transitions: {
+steps: {
   login: {
-    goToNextStep: [
-      { to: "admin", when: ({ context }) => context.role === "admin" },
-      { to: "dashboard" }
-    ]
-  },
-  admin: { completeJourney: true }
+    on: {
+      submit: [
+        { to: "admin", when: ({ context }) => context.role === "admin" },
+        { to: "dashboard" }
+      ];
+    }
+  }
 }
-```
-
-    </Fragment>
-    <Fragment slot="headless">
-
-```ts
-// Omit `transitions` entirely.
-await machine.goToStepById("step3");
 ```
 
     </Fragment>
@@ -164,7 +149,7 @@ await machine.goToStepById("step3");
       {
         icon: "plugins",
         title: "Plugins, not baggage",
-        body: "Persistence, autosave, analytics, replay, diagnostics and execution paths extend the machine without adding to the base cost."
+        body: "Persistence, analytics, replay and execution paths extend the machine without adding to the base cost."
       },
       {
         icon: "zero",
@@ -228,20 +213,22 @@ await machine.goToStepById("step3");
 >
 
 ```tsx
-import { createJourney, type JourneyViews } from "@rxova/journey-react";
+import { createLinearJourney } from "@rxova/journey-react";
 
-const signup = createJourney(definition);
-
-const views: JourneyViews<StepId> = { start: Start, review: Review };
+const signup = createLinearJourney({
+  name: "signup",
+  context: { email: "" },
+  steps: ["start", "review"]
+});
 
 const App = () => (
-  <signup.JourneyProvider views={views}>
+  <signup.Provider views={{ start: <Start />, review: <Review /> }}>
     <signup.StepRenderer />
-  </signup.JourneyProvider>
+  </signup.Provider>
 );
 ```
 
-Need one runtime per request, route boundary or owned component boundary? Use <a href={`${base}react/overview/`}><code>createJourneyFactory</code></a> instead of creating the machine at module scope.
+Need one runtime per request, route boundary or owned component boundary? Use <a href={`${base}react/overview/`}><code>useJourney</code></a> instead of creating the machine at module scope.
 
 </Section>
 
