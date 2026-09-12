@@ -1,6 +1,20 @@
 #!/usr/bin/env sh
 set -e
 
+# A push that only deletes remote branches or tags ships no code, so there is
+# nothing to verify — and GUI clients (Fork, Tower, …) run this hook on every
+# delete. Git feeds one "<local ref> <local sha> <remote ref> <remote sha>" line
+# per ref on stdin; a deletion is the one whose local sha is all zeros.
+only_deletes=true
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  case "$local_sha" in
+    *[!0]*) only_deletes=false ;;
+  esac
+done
+if [ "$only_deletes" = true ]; then
+  exit 0
+fi
+
 # One ordered gate, the same list CI runs, so a green push means a green
 # pipeline. `verify` is defined once in scripts/verify.ts; Turbo caches
 # unchanged tasks, so a re-push after a docs-only edit replays in seconds.
