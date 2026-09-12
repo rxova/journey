@@ -27,7 +27,7 @@ const publishedPackageDirs = ["packages/core/", "packages/react/", "packages/dev
  * they happened to carry one of the listed extensions.
  */
 const allowedPattern =
-  /^((apps|examples|\.github|\.changeset|\.husky|scripts)\/.*|.*\.(md|txt|yml|yaml|json))$/;
+  /^((apps|examples|\.github|\.changeset|\.husky|packages\/common\/tooling)\/.*|.*\.(md|txt|yml|yaml|json))$/;
 
 const getEnv = (name: string, required = true): string | undefined => {
   const value = process.env[name];

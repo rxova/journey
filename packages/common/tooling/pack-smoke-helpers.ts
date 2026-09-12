@@ -1,6 +1,6 @@
-function isRecord(value: unknown): value is Record<string, unknown> {
+const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === "object" && value !== null;
-}
+};
 
 export const assertIncludes = (
   files: readonly string[],

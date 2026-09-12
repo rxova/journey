@@ -18,10 +18,10 @@ import {
   syncReleaseNotes,
   toRepoPath,
   writeIfChanged
-} from "../../../scripts/sync-doc-release-notes";
+} from "../sync-doc-release-notes";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const scriptPath = resolve(__dirname, "../../../scripts/sync-doc-release-notes.ts");
+const scriptPath = resolve(__dirname, "../sync-doc-release-notes.ts");
 
 const oneSource = [
   {
@@ -32,12 +32,12 @@ const oneSource = [
   }
 ];
 
-async function makeWorkspace(changelogBody = "# Core\n\n## 1.0.0-rc.1\n\n- Added thing\n") {
+const makeWorkspace = async (changelogBody = "# Core\n\n## 1.0.0-rc.1\n\n- Added thing\n") => {
   const root = await mkdtemp(join(tmpdir(), "sync-doc-release-notes-"));
   await mkdir(join(root, "changelogs"), { recursive: true });
   await writeFile(join(root, "changelogs/core.md"), changelogBody, "utf8");
   return root;
-}
+};
 
 describe("sync-doc-release-notes script", () => {
   it("normalizes changelog with heading and leading blank lines", () => {

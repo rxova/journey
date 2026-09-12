@@ -13,11 +13,11 @@ type PackageJson = {
   version: string;
 };
 
-function readJson(filePath: string): PackageJson {
+const readJson = (filePath: string): PackageJson => {
   return JSON.parse(readFileSync(filePath, "utf8")) as PackageJson;
-}
+};
 
-function parseMajor(version: string): number {
+const parseMajor = (version: string): number => {
   const match = /^(\d+)\./.exec(version);
   if (!match) {
     throw new Error(`Invalid semver version: ${version}`);
@@ -27,9 +27,9 @@ function parseMajor(version: string): number {
     throw new Error(`Invalid semver version: ${version}`);
   }
   return Number.parseInt(majorText, 10);
-}
+};
 
-function main(): void {
+const main = (): void => {
   const repoRoot = process.cwd();
   const entries = PACKAGES.map((relativePath) => {
     const packageJsonPath = path.join(repoRoot, relativePath);
@@ -52,6 +52,6 @@ function main(): void {
 
   const major = entries[0]?.major ?? 0;
   console.log(`Major version policy OK: core/react/bridge are on major ${major}.`);
-}
+};
 
 main();

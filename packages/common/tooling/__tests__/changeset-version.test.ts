@@ -12,13 +12,18 @@ import {
   runChangesetVersion,
   syncLockfile,
   syncRootVersion
-} from "../../../scripts/changeset-version";
+} from "../changeset-version";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const scriptPath = resolve(__dirname, "../../../scripts/changeset-version.ts");
-const tsxLoaderPath = resolve(__dirname, "../../../node_modules/tsx/dist/loader.mjs");
+const scriptPath = resolve(__dirname, "../changeset-version.ts");
+const tsxLoaderPath = resolve(__dirname, "../../../../node_modules/tsx/dist/loader.mjs");
 
-async function writePackageJson(root: string, relativeDir: string, name: string, version: string) {
+const writePackageJson = async (
+  root: string,
+  relativeDir: string,
+  name: string,
+  version: string
+) => {
   const packageDir = join(root, relativeDir);
   await mkdir(packageDir, { recursive: true });
   await writeFile(
@@ -26,12 +31,12 @@ async function writePackageJson(root: string, relativeDir: string, name: string,
     `${JSON.stringify({ name, version }, null, 2)}\n`,
     "utf8"
   );
-}
+};
 
-async function makeRepo(
+const makeRepo = async (
   rootVersion: string,
   versions: { core: string; react: string; bridge: string }
-) {
+) => {
   const tempRoot = await mkdtemp(join(tmpdir(), "changeset-version-"));
   await writeFile(
     join(tempRoot, "package.json"),
@@ -47,7 +52,7 @@ async function makeRepo(
     versions.bridge
   );
   return tempRoot;
-}
+};
 
 describe("changeset-version script", () => {
   it("parses semver with and without prerelease", () => {
