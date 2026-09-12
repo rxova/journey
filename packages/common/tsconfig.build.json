@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": false,
+    "emitDeclarationOnly": true,
+    "declarationDir": "dist",
+    "outDir": "dist",
+    "rootDir": "src",
+    "tsBuildInfoFile": "tsconfig.build.tsbuildinfo",
+    "noEmit": false
+  },
+  "include": ["src"],
+  "exclude": [
+    "dist",
+    "**/__tests__/**",
+    "**/*.d.ts",
+    "**/*.d.ts.map",
+    "node_modules",
+    "tooling",
+    "test",
+    "**/*.test.ts"
+  ]
+}
