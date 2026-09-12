@@ -23,12 +23,7 @@ import type {
 
 /** Reasons why a machine snapshot changed. */
 export type JourneyMachineSnapshotReason =
-  | "async"
-  | "context"
-  | "navigation"
-  | "reset"
-  | "start"
-  | "transition";
+  "async" | "context" | "navigation" | "reset" | "start" | "transition";
 
 export type JourneyLifecycleErrorContext<TStepId extends string> = {
   phase: JourneyLifecycleErrorPhase;

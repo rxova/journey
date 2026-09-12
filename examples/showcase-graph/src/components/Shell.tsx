@@ -72,8 +72,7 @@ const StepMetaDisplay = () => {
   const snapshot = journey.useJourneySnapshot();
   const api = journey.useJourneyApi();
   const meta = api.getStepMeta(snapshot.currentStepId) as
-    | { label: string; icon: string }
-    | undefined;
+    { label: string; icon: string } | undefined;
 
   if (!meta) return null;
 

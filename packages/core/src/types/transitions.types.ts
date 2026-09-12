@@ -324,8 +324,7 @@ export type JourneyStepTransitions<
   THandlers extends Record<string, unknown> = Record<never, never>
 > = Partial<{
   [TSelectedEvent in JourneyFullEventType<TEventMap>]: TSelectedEvent extends
-    | "completeJourney"
-    | "terminateJourney"
+    "completeJourney" | "terminateJourney"
     ? JourneyTerminalTransitionShorthand<
         TContext,
         TStepId,

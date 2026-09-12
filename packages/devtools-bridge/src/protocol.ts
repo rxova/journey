@@ -15,12 +15,10 @@ export const JOURNEY_DEVTOOLS_BRIDGE_SOURCE = "rxova-journey-bridge" as const;
 export const JOURNEY_DEVTOOLS_EXTENSION_SOURCE = "rxova-journey-extension" as const;
 
 export type JourneyDevtoolsProtocolVersion =
-  | typeof JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION
-  | typeof JOURNEY_DEVTOOLS_PROTOCOL_VERSION;
+  typeof JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION | typeof JOURNEY_DEVTOOLS_PROTOCOL_VERSION;
 
 export type JourneyDevtoolsSource =
-  | typeof JOURNEY_DEVTOOLS_BRIDGE_SOURCE
-  | typeof JOURNEY_DEVTOOLS_EXTENSION_SOURCE;
+  typeof JOURNEY_DEVTOOLS_BRIDGE_SOURCE | typeof JOURNEY_DEVTOOLS_EXTENSION_SOURCE;
 
 export type JourneyDevtoolsStepAsyncState = JourneyStepAsyncState;
 
@@ -148,8 +146,7 @@ export type JourneyDevtoolsBridgeEnvelope =
 export type JourneyDevtoolsExtensionEnvelope = JourneyDevtoolsExtensionCommandEnvelope;
 
 export type JourneyDevtoolsEnvelope =
-  | JourneyDevtoolsBridgeEnvelope
-  | JourneyDevtoolsExtensionEnvelope;
+  JourneyDevtoolsBridgeEnvelope | JourneyDevtoolsExtensionEnvelope;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;

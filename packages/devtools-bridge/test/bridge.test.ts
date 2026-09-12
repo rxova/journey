@@ -106,8 +106,7 @@ describe("attachJourneyDevtools", () => {
     );
 
     const observation = collector.messages.find((message) => message.kind === "observation") as
-      | JourneyDevtoolsBridgeEnvelope
-      | undefined;
+      JourneyDevtoolsBridgeEnvelope | undefined;
     const result = collector.messages.find(
       (message) => message.kind === "executionPathsResult" && message.requestId === "req-paths"
     );
