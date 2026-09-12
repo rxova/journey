@@ -3,7 +3,7 @@
   "compilerOptions": {
     "noEmit": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "types": ["chrome"]
+    "types": ["chrome", "vite/client"]
   },
   "include": ["src", "test", "manifest.config.ts", "vite.config.ts"]
 }
