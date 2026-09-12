@@ -79,6 +79,6 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@rxova/journey-core": "workspace:^",
-    "publint": "^0.3.18"
+    "publint": "^0.3.24"
   }
 }
