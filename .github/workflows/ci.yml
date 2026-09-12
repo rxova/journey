@@ -208,3 +208,23 @@ jobs:
         with:
           name: coverage-report
           path: coverage
+
+  # The one check the org ruleset requires on main. A ruleset names checks one
+  # by one, so this job stands in for the whole graph: it waits for every other
+  # job and fails if any of them failed or was cancelled. A new job added above
+  # has to be added to `needs` here too, or nothing requires it.
+  #
+  # Skipped counts as passing: `changeset` never runs on push, and the release
+  # PR skips most of the suite on purpose. `if: always()` is what makes it run
+  # after an upstream failure — without it the gate itself would be skipped,
+  # and a skipped required check satisfies the ruleset.
+  all-checks:
+    name: all checks
+    if: always()
+    needs: [commitlint, changeset, checks, supply-chain, pack-smoke, test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
+      - run: echo "Every job passed or was skipped."
