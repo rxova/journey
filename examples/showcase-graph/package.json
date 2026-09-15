@@ -15,14 +15,14 @@
   "dependencies": {
     "@rxova/journey-core": "workspace:1.0.0-rc.3",
     "@rxova/journey-react": "workspace:1.0.0-rc.3",
-    "next": "16.3.4",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "next": "16.3.5",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   },
   "devDependencies": {
-    "@types/node": "^26.5.0",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.7",
+    "@types/node": "^26.5.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "typescript": "^6.0.3"
   }
 }

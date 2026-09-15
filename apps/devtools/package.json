@@ -13,18 +13,18 @@
   },
   "dependencies": {
     "@rxova/journey-devtools-bridge": "workspace:^",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.7.1",
     "@playwright/test": "^1.63.0",
     "@types/chrome": "^0.2.9",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.7",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
     "typescript": "^6.0.3",
-    "vite": "^8.2.2"
+    "vite": "^8.3.0"
   },
   "engines": {
     "node": ">=20.11.0"
