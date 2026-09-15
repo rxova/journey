@@ -30,6 +30,7 @@
       "@rxova/journey-react": ["./packages/react/src/index.ts"],
       "@rxova/journey-react/testing": ["./packages/react/src/__tests__/helpers.tsx"],
       "@rxova/journey-react/graph": ["./packages/react/src/graph.tsx"],
+      "@rxova/journey-react/client": ["./packages/react/src/client.ts"],
       "@rxova/journey-devtools-bridge": ["./packages/devtools-bridge/src/index.ts"],
       "@rxova/journey-devtools-bridge/testing": [
         "./packages/devtools-bridge/src/__tests__/helpers.ts"
