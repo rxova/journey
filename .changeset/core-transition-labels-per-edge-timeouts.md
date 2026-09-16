@@ -62,10 +62,18 @@ the new `invalid-label` and `invalid-timeout` error codes.
 A declared `run` sits at a property position, which is not an inference site, so `commit`'s `result`
 was `unknown` unless the bag's `results` pinned it. A generic function call is an inference site:
 
+<!--
+  `commit:` must not start a line in a changeset summary: @changesets/changelog-github
+  reads such a line as a commit-override, then builds a GraphQL alias from the value
+  after it and fails the whole release. The leading comment keeps it off column zero
+  and prettier-ignore stops the formatter reflowing it back. Enforced by
+  packages/common/tooling/check-changeset-overrides.ts.
+-->
+<!-- prettier-ignore -->
 ```ts
 verify: defineWork<AuthBag, "verify">()({
   run: ({ handlers }) => handlers.verify(), // the result type comes from here
-  commit: ({ result, updateContext }) =>
+  /* result is typed by `run` above */ commit: ({ result, updateContext }) =>
     updateContext((context) => ({ ...context, ok: result.ok })),
   candidates: [
     { to: "done", label: "verified", when: ({ context }) => context.ok },
