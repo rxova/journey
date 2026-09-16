@@ -70,7 +70,11 @@ export const warnInDevelopment = (message: string, detail?: unknown): void => {
     return;
   }
 
-  console.warn(message, detail);
+  // `message` goes through a constant `%s` rather than standing as the format
+  // string itself: callers build it by interpolation, so a `%` in an
+  // interpolated value would otherwise be read as a directive and consume
+  // `detail`.
+  console.warn("%s", message, detail);
 };
 
 /**

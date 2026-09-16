@@ -76,7 +76,7 @@ describe("warnInDevelopment", () => {
     (globalThis as DiagnosticGlobal).__DEV__ = true;
     const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
     warnInDevelopment("heads up", { extra: true });
-    expect(spy).toHaveBeenCalledWith("heads up", { extra: true });
+    expect(spy).toHaveBeenCalledWith("%s", "heads up", { extra: true });
   });
 
   it("does not call console.warn in production", () => {
