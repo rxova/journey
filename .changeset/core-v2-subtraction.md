@@ -13,6 +13,14 @@ The central `transitions` map is gone. A step declares its own outgoing moves un
 event, in one of three forms — a target id, an ordered candidate array, or an object carrying
 declared async work:
 
+<!--
+  `commit:` must not start a line in a changeset summary: @changesets/changelog-github
+  reads such a line as a commit-override, then builds a GraphQL alias from the value
+  after it and fails the whole release. The leading comment keeps it off column zero
+  and prettier-ignore stops the formatter reflowing it back. Enforced by
+  packages/common/tooling/check-changeset-overrides.ts.
+-->
+<!-- prettier-ignore -->
 ```ts
 steps: {
   login: { on: { submit: "verify" } },
@@ -20,7 +28,7 @@ steps: {
     on: {
       check: {
         run: ({ handlers }) => handlers.verify(),
-        commit: ({ result, updateContext }) => updateContext((c) => ({ ...c, ok: result.ok })),
+        /* stages the result */ commit: ({ result, updateContext }) => updateContext((c) => ({ ...c, ok: result.ok })),
         candidates: [{ to: "done", when: ({ context }) => context.ok }, { to: "verify" }]
       }
     }
