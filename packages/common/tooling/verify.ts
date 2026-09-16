@@ -61,6 +61,11 @@ export const steps: readonly VerifyStep[] = [
   // render as plain code blocks for the same reason — see the note in
   // apps/docs/astro.config.js.
   { name: "Docs banned identifiers", script: "docs:banned:check" },
+  // Cheap, and the only gate that catches it: a changeset summary whose prose
+  // starts a line with `commit:` renders fine everywhere until the release job
+  // asks GitHub about a commit named `({`. Runs before the expensive stages so
+  // the failure lands in a second rather than after the tarballs are built.
+  { name: "Changeset changelog overrides", script: "changeset:overrides:check" },
   {
     name: "Docs, API surface and release notes",
     turbo: ["docs:api:check", "docs:release-notes:check"]

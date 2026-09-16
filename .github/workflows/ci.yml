@@ -111,6 +111,8 @@ jobs:
         run: pnpm run format:check
       - name: Check major version bumps
         run: pnpm run version:major:check
+      - name: Check changeset changelog overrides
+        run: pnpm run changeset:overrides:check
       - name: Docs API surface and release notes
         run: pnpm exec turbo run docs:api:check docs:release-notes:check
       # Turbo knows dependents typecheck and measure against the libraries'
