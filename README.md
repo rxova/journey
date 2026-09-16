@@ -411,10 +411,10 @@ Full guides and generated API reference are available at [rxova.org](https://rxo
 ```bash
 pnpm install
 pnpm lint
-pnpm packages:typecheck
+pnpm typecheck
 pnpm test
-pnpm examples:verify
-pnpm docs:check
+pnpm docs:build
+pnpm verify
 ```
 
 ## License
