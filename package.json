@@ -22,6 +22,7 @@
     "clean": "turbo run clean && node --import tsx ./packages/common/tooling/clean-paths.ts coverage",
     "changeset:pkg": "node --import tsx ./packages/common/tooling/create-package-changeset.ts",
     "version:major:check": "node --import tsx ./packages/common/tooling/check-package-major-versions.ts",
+    "changeset:overrides:check": "node --import tsx ./packages/common/tooling/check-changeset-overrides.ts",
     "changeset:version": "node --import tsx ./packages/common/tooling/changeset-version.ts && pnpm run docs:release-notes:sync",
     "docs:release-notes:sync": "node --import tsx ./packages/common/tooling/sync-doc-release-notes.ts",
     "docs:release-notes:check": "node --import tsx ./packages/common/tooling/sync-doc-release-notes.ts --check",
