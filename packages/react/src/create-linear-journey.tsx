@@ -187,10 +187,21 @@ export const createLinearJourney = <
         stack.push(entry);
         stepHandlers.set(stepId, stack);
         return () => {
+          // Both guards below are unreachable from the public API: the key is
+          // deleted only once the stack empties, and emptying it means splicing
+          // out this very entry, so no cleanup can find its key missing or its
+          // own entry gone. They stay as defence against a future caller that
+          // breaks that invariant.
           const live = stepHandlers.get(stepId);
+          /* v8 ignore start -- the key is deleted only as the last entry is spliced out, so a live cleanup always finds its stack. */
           if (!live) return;
+          /* v8 ignore stop */
           const index = live.lastIndexOf(entry);
-          if (index >= 0) live.splice(index, 1);
+          /* v8 ignore start -- each cleanup removes its own entry exactly once, so the lookup cannot miss. */
+          if (index >= 0) {
+            /* v8 ignore stop */
+            live.splice(index, 1);
+          }
           if (!live.length) stepHandlers.delete(stepId);
         };
       }, [stepId]);
