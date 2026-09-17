@@ -1,5 +1,623 @@
 # @rxova/journey-core
 
+## 1.0.0-rc.4
+
+### Major Changes
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - Release the final V1 Core API on a new, smaller shared runtime. This is a full replacement of the
+  `1.0.0-rc.2` machine contract, not a compatible extension of it.
+
+  ## Machine creation
+  - Replace the all-purpose `createJourneyMachine` factory with explicit `createLinearJourney` and
+    `createGraphJourney` factories. Linear journeys use declared step order; graph journeys use
+    declared event transitions.
+  - Replace `createJourneyBuilder` with `withGraphTypes<Bag>()`. Its single `Bag` type names
+    `context`, `stepId`, `events`, and optional `meta`, `handlers` and `results`, instead of relying
+    on positional generic parameters. Most definitions infer without it.
+  - Context is no longer restricted to a JSON object at the type level. Runtime consumers are still
+    responsible for serializability where persistence or DevTools transport requires it.
+  - Add an explicit `engines.node >=20.11.0` package requirement.
+
+  ## Machine contract
+  - Move commands into stable, purpose-specific namespaces:
+    `machine.controls.{start,pause,resume,complete,terminate,restart}`,
+    `machine.navigate.{goToStepById,goToPreviousStep,goToNextStep,goToLastVisitedStep}`,
+    `machine.context.update`, `machine.async.clearError`, and
+    `machine.subscriptions.{subscribe,subscribeEvent}`.
+  - Lifecycle controls now return a boolean indicating whether the state change applied. Navigation
+    methods and graph `send` return `Promise<NavigationResult>` with explicit failure reasons instead
+    of relying on thrown errors or implicit no-ops.
+  - Rename lifecycle status `idled` to `idle`, add first-class `paused` state, make completion
+    explicit, and store optional completion/termination payloads in `snapshot.machine.outcome`.
+  - Allow `createLinearJourney<StepId, Context, TerminationPayloads>` to enforce declared step ids,
+    context, completion payloads, termination payloads, and the discriminated terminal outcome in
+    snapshots without runtime type-carrier properties.
+  - Default `autoStart` to `false`. `start()` is accepted only from `idle`; `restart()` is accepted
+    only after completion or termination and restores the initial context and timeline. Termination
+    wins over an in-flight transition.
+  - Expose declared graph events and serializable outgoing transition descriptors in snapshots,
+    including candidate priority, evaluated guard state, enabled state, and first-enabled selection.
+  - Remove the `requireExplicitCompletion` and `onLifecycleError` options. Completion is always
+    explicit; work failures use navigation results and hook failures use typed error events.
+    Subscriber failures are isolated from the machine and route through the optional
+    `onListenerError` creation option (defaulting to `console.error`; a throwing reporter falls back
+    to that default).
+  - Make `dispose()` irreversible but safe: listeners are dropped and subsequent machine operations
+    become no-ops or rejected results instead of throwing a dedicated disposed error.
+  - Replace broad, unfiltered event subscriptions and lifecycle-specific methods with typed
+    `subscribeEvent(eventName, listener)` alongside a plain per-commit `subscribe(listener)`.
+
+  ## Snapshots, navigation, and hooks
+  - Replace the old computed/meta getters with immutable snapshots discriminated by
+    `type: "linear" | "graph"`. Shared snapshot state now includes lifecycle flags, context,
+    transition state, browser-like history, outcome, plugin extensions, and current-step async state.
+  - Linear snapshots expose declared order, position, first/last flags, and visit counts. Graph
+    snapshots expose enabled `availableEvents`, enabled `availableSteps`, and terminal-step state.
+  - Use a browser-like timeline: moving backward or forward preserves existing entries, while a new
+    navigation from the middle truncates the abandoned forward branch. Multi-step timeline jumps run
+    leave/enter hooks once for the actual source and destination.
+  - Add transactional work to `goToNextStep` and `goToPreviousStep`. Its asynchronous `run` must
+    succeed before movement; its synchronous `commit` stages context updates that publish atomically
+    with the destination. Failure keeps both source and context unchanged and returns `reason: error`.
+  - Make `onLeave`, graph `onTransition`, and `onEnter` awaited post-commit effects. They run in that
+    order, cannot roll navigation back, do not skip later effects after failure, and report failures
+    through snapshot async state plus the typed `error` subscription event.
+  - Give hook arguments the current snapshot, source, destination, causing graph event, immediate
+    `updateContext`, and FIFO `raise`. Raised graph events run only after the current transition
+    settles and are capped by the exported `MAX_RAISED_EVENTS` guard. Hook context updates remain
+    immediate side effects after commit.
+  - Keep linear `goToStepById` as an ungated direct-jump escape hatch. Occasional exceptional jumps
+    can stay linear; named jumps, guards, and routine branches belong in graph definitions.
+  - Known limitation: the history timeline is unbounded in 1.0. Long-lived journeys accumulate one
+    entry per navigation; `restart()` is the reset lever, and a `maxHistory` bound is planned
+    post-1.0 as a compatible addition.
+
+  ## Graph events
+  - Define custom events as a discriminated union of `{ type; payload? }` values. Call graph
+    `send(type, payload?)`; payload presence and type are inferred from the selected union member.
+  - Declare ordered transition candidates per event. Synchronous `when({ context, handlers })`
+    guards select the first enabled candidate. Guards deliberately receive no event payload because
+    they are also used to derive enabled events; asynchronous `onTransition` runs after commit and
+    receives the causing event.
+  - Allow the definition's handler object to be replaced at machine creation through
+    `createGraphJourney(definition, { handlers })`, so one definition can use production or test
+    dependencies. This is a complete override, not a shallow merge.
+  - Return `no-enabled-transition` when an event has no matching enabled candidate. Self-transitions
+    remain valid graph transitions and perform a real leave/re-entry.
+
+  ## Plugins
+  - Replace intercepting controller plugins with observe-only `JourneyPlugin` instances. Each plugin
+    receives a read-only `PluginHost` in `setup()` and may expose a namespaced API at
+    `machine.plugins[name]` plus derived state at `snapshot.plugins[name]`.
+  - Scope mutable built-in plugin state to each `setup()` call, so reusing a plugin instance across
+    multiple machines no longer shares replay buffers, timers, analytics events, or subscriptions.
+  - Rewrite persistence around `{ storage, key, clearOnTerminate?, now? }`. It stores status, context,
+    timeline, pointer, and save time and exposes `inspectPersistedState`, `readPersisted`, and
+    `clearPersisted`. The creation-time `persist` option additionally restores: a valid non-terminal
+    record found at creation seeds context, timeline, and position, so the first `start()` resumes at
+    the persisted step (explicit `startAt` wins; records that no longer match the definition are
+    ignored; `restart()` always begins fresh). Wiring `createPersistencePlugin` explicitly stays
+    save-only — plugins observe and cannot seed the runtime.
+  - Rewrite autosave as a debounced observer with required storage, configurable
+    `context | transition | status` triggers, explicit idle/pending/saving/saved/error state, and
+    `flushAutosave`, `clearAutosave`, and `readPersisted` APIs.
+  - Rewrite analytics around a safe `track` sink, optional `onError`, custom
+    `trackAnalyticsEvent`, and a bounded 100-entry success/failure history.
+  - Rewrite diagnostics as cached structural analysis exposed by `getDiagnostics`, reporting
+    unreachable steps, shadowed transitions, cycles, and missing terminal paths. Graph checks are
+    explicitly skipped for linear journeys.
+  - Change execution paths from static graph enumeration to observed run history via
+    `getCurrentPath` and `getCompletedPaths`.
+  - Rewrite replay as a bounded timestamped log of status, transition, context, blocked navigation,
+    and error entries, with optional per-entry snapshots and JSON export.
+  - Add `@rxova/journey-core/subscription-enhancer` for filtered start, restart, complete, terminate,
+    pause, and resume subscriptions without expanding the base machine surface.
+  - Export focused helper functions and associated types from the plugin subpaths for parsing,
+    serialization, normalization, and diagnostics analysis.
+
+  ## Connectors
+  - Add the optional `@rxova/journey-core/connectors/immer` entry point. Its `immerConnector` adapts
+    mutating or replacement Immer producers into ordinary Core context updaters without adding Immer
+    to the main Core entry or installation.
+
+  The controller-per-concern engine and duplicated linear/graph derivation code were replaced by one
+  snapshot/event runtime. Current minified+Brotli measurements against the `rc.2` baseline are:
+
+  Every export shrank against the `rc.2` baseline, several by more than 60%. Per-export budgets are
+  enforced on every build by the `size-limit` entries in `packages/core/package.json`, which are the
+  current numbers; the figures originally quoted here were `rc.2`-era measurements for a set of
+  exports this release no longer ships.
+
+  Core documentation and runnable examples were rewritten around this final contract and its migration
+  path.
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - Close four gaps in the V1 type surface. Each would have needed a major release to correct once
+  `1.0.0` froze the exported types.
+
+  - **`createGraphJourney` now carries `THandlers` in its return type.** The declared return omitted
+    the generic, so the annotation won over the widening cast and `args.handlers` inside send work
+    resolved to `unknown` — even though that channel is the only way injected clients reach the
+    work. Handlers supplied on the definition, or overridden at creation, are now typed at the call
+    site.
+  - **Graph journeys can type their completion and termination payloads.** `GraphSnapshot` already
+    had the slots; nothing filled them, so `controls.complete(anything)` compiled and
+    `snapshot.machine.outcome` was `JourneyOutcome<unknown, unknown>`. Name the payloads through the
+    definition's `$payloads` phantom carrier, alongside the existing `$events`:
+
+    ```ts
+    createGraphJourney({
+      steps: { review: {}, done: {} },
+      initial: "review",
+      context: {},
+      transitions: { CONFIRM: { from: "review", to: "done" } },
+      $payloads: {} as { complete: Receipt; terminate: "cancelled" }
+    });
+    ```
+
+    `JourneyTerminationPayloads`, `CompletePayloadOf`, and `TerminatePayloadOf` moved from the linear
+    types to the shared core types, since both tiers name them now. They are re-exported from their
+    previous location, so existing imports keep working.
+
+  - **`normalizeGraphDefinition` is no longer exported.** Its return type named `RuntimeStep` and
+    `RuntimeTransition`, which are internal and have no export path, so publishing it would have
+    frozen those shapes into the semver contract. It remains available internally to the factories
+    and the diagnostics plugin. Relatedly, `GraphJourneyDefinition.eventWork` is now typed
+    `Readonly<Record<string, unknown>>` and marked `@internal`: its keys are a private encoding of
+    the (origin step, event) pair. Pass it back to a factory; never construct or read it.
+
+  - **`machine.plugins` rejects undeclared names on linear journeys.** `createLinearJourney`
+    defaulted `TPlugins` to `readonly AnyJourneyPlugin[]`, which collapsed `PluginApis` to an index
+    signature accepting any key — so `machine.plugins.anyTypoAtAll` compiled clean whenever plugins
+    were omitted or the leading generics were supplied explicitly. It now defaults to `readonly []`,
+    matching `createGraphJourney`.
+
+    One consequence worth knowing: the creation-time `persist` option registers the persistence
+    plugin at runtime but is not reflected in `TPlugins`, so `machine.plugins.persistence` is not
+    statically reachable through that option. Pass `createPersistencePlugin` explicitly when you need
+    the API typed.
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - Subtract the ways to do one thing. The v1 contract answered "which step am I on" with five
+  structural forms for a transition, four places to put pre-move async, ten entry points and seven
+  plugins. None of that was wrong; all of it was a decision the caller had to make before writing a
+  flow. This release removes the duplicates and keeps one spelling of each.
+
+  ## Graph transitions live on the step
+
+  The central `transitions` map is gone. A step declares its own outgoing moves under `on`, keyed by
+  event, in one of three forms — a target id, an ordered candidate array, or an object carrying
+  declared async work:
+
+  <!--
+    `commit:` must not start a line in a changeset summary: @changesets/changelog-github
+    reads such a line as a commit-override, then builds a GraphQL alias from the value
+    after it and fails the whole release. The leading comment keeps it off column zero
+    and prettier-ignore stops the formatter reflowing it back. Enforced by
+    packages/common/tooling/check-changeset-overrides.ts.
+  -->
+  <!-- prettier-ignore -->
+  ```ts
+  steps: {
+    login: { on: { submit: "verify" } },
+    verify: {
+      on: {
+        check: {
+          run: ({ handlers }) => handlers.verify(),
+          /* stages the result */ commit: ({ result, updateContext }) => updateContext((c) => ({ ...c, ok: result.ok })),
+          candidates: [{ to: "done", when: ({ context }) => context.ok }, { to: "verify" }]
+        }
+      }
+    },
+    done: {}
+  }
+  ```
+
+  A dangling `from` is now impossible by construction — the step key _is_ the origin. `stay()`,
+  `allowRollback`, the nested work-authoring callbacks, and result-carrying guards are removed.
+  Result-carrying guards went for a correctness reason beyond subtraction: they made
+  `outgoingTransitions[].guard` and `availableEvents` report on a result the snapshot did not have,
+  so introspection disagreed with what a send would actually do. Guards are now total functions of
+  context, which is what their documentation always claimed.
+
+  ## Types are pinned with a bag, not built with a builder
+
+  `createGraphJourneyBuilder` and its `build()` are replaced by `withGraphTypes<Bag>()` and
+  `withLinearTypes<Bag>()`, plus the exported `GraphStep<Bag>`, `GraphDefinition<Bag>` and `Bag`
+  types for steps authored in their own files. Most definitions need none of it: step ids come from
+  the `steps` keys and event names from the `on` keys, inferred.
+
+  These are standalone functions rather than a `.withTypes` property on each factory. Attaching one
+  is a module-level side effect, and it defeated tree-shaking badly enough that importing only
+  `createLinearJourney` pulled the entire graph tier into the bundle.
+
+  ## One channel for pre-move async
+
+  `registerNextStepInterceptor` is removed; `goToNextStep(work?)` is the only way into core's
+  transactional pre-move async. `goToPreviousStep(n?)` no longer sniffs its argument for work.
+
+  ## Creating a journey starts it
+
+  `autoStart` now defaults to `true`. The trade is worth stating plainly: starting happens inside the
+  constructor and the initial entry commits synchronously, so the first `stepEnter` has already fired
+  by the time the factory returns. Pass `{ autoStart: false }` when a subscriber has to see it — it
+  is the subscribe-then-start order, and saying so out loud beats a default that silently assumed it.
+
+  ## A plain `subscribe`, and a smaller snapshot
+
+  `subscriptions.subscribeSelector` is replaced by `subscriptions.subscribe(listener)`, a plain
+  per-commit callback. Every non-React caller passed an identity selector; React runs its own
+  selector layer over `useSyncExternalStore` and never needed core's.
+
+  `snapshot.machine` keeps only `outcome`. The six fields removed from it each restated something the
+  snapshot already said: five were `status === x`, and `isLoading` was a second computation of
+  `transition.pending`. Read `snapshot.status` and `snapshot.transition` instead — the latter also
+  carries `phase`, `from` and `to`, so it says _what_ is in flight rather than only that something is.
+
+  ## Three entry points, four plugins
+
+  `.`, `./plugins` and `./connectors/immer`. Every bundled plugin factory now comes from `./plugins`;
+  tree-shaking is unchanged, since each is still its own module behind a named export.
+
+  - **Autosave folded into persistence** as `debounceMs` and `saveOn`. It was the same plugin with a
+    timer — same serializer, same adapter contract, same key — so it is a parameter, not a plugin.
+    `flushPersisted()` cancels the wait and writes now.
+  - **Diagnostics became `analyzeStructure(definition)`** on the root entry. Checking a definition
+    never needed a runtime; as a plugin it made you create a machine to ask a question about the
+    definition you already had.
+  - **The subscription-enhancer and `./convert` entry points are removed**, along with the headless
+    usage pattern and `PluginHost.onStepEnter` / `onStepLeave`.
+
+### Minor Changes
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - Add `JourneyError`, so failures can be handled by code rather than by message text.
+
+  Every error Core throws itself was a bare `Error` with a prose message and no structure — the
+  offending step id existed only inside the interpolated string. Telling "duplicate plugin name" apart
+  from "unknown step in transition" meant matching on that text, which quietly made every message a
+  compatibility promise. Doing this before `1.0` is what avoids inheriting that promise.
+
+  ```ts
+  import { createLinearJourney, isJourneyError } from "@rxova/journey-core";
+
+  try {
+    createLinearJourney(definition, { startAt: idFromRoute });
+  } catch (error) {
+    if (isJourneyError(error) && error.code === "unknown-step") {
+      redirectToFirstStep(error.stepId);
+    }
+  }
+  ```
+
+  `JourneyError` extends `Error`, is named `"JourneyError"`, and keeps the existing `journey:` message
+  prefix, so anything currently matching on that text still works. It adds:
+
+  - **`code`** — a closed union: `empty-definition`, `duplicate-step-id`, `unknown-step`,
+    `unknown-initial-step`, `dangling-transition`, `duplicate-plugin-name`, `storage-unavailable`,
+    `async-commit`. Covered by semver; adding a member is a minor change.
+  - **`stepId`, `event`, `pluginName`** — the offender, where one applies.
+  - **`isJourneyError(value)`** — a narrowing helper, so consumers need not import the class.
+
+  Every throw site is converted: both factories, the builder, the converter, persistence storage
+  resolution, and the runtime's unknown-step, duplicate-plugin, and async-commit guards.
+
+  `NavigationResult.error` and the `error` subscription event deliberately stay `unknown`. They carry
+  whatever the caller's own navigation work or hooks threw, which Core cannot constrain — wrapping it
+  would hide the original. Error **messages** remain outside the stability contract: match on `code`.
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - Core owns all linear-tier semantics (RFC 0001 §3.12): new creation options `startAt` (start directly at a step — earlier steps are neither entered nor visited; unknown ids throw) and `persist` (`{ key, storage? }`, expanding to the persistence plugin with a guarded `localStorage` default); the `stepEnter` event payload now carries an intent-based `direction` (`"forward" | "backward" | "jump"`); linear machines gain `machine.navigate.goToStepByIndex(index)`.
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - Persistence reports write failures, and its parser is now total.
+
+  **The "saved" indicator no longer lies.** `lastWritten` was assigned _before_ the write was
+  attempted, so a `QuotaExceededError` — or any failing adapter — left `inspectPersistedState()`
+  returning a record that never reached storage while `lastSavedAt` advanced. A UI bound to that
+  showed "Saved" as data was silently dropped. State now moves only on a confirmed write, and the
+  plugin exposes `getPersistenceState(): { lastSavedAt, error }`, mirroring `AutosaveState`. The
+  snapshot slice at `snapshot.plugins.persistence` gains the same `error` field.
+
+  **Plugins can report their own asynchronous failures.** `PluginHost` gains `reportError(error)`,
+  which routes to the machine's `onListenerError`. A tap that throws synchronously was already
+  isolated and reported, but work outliving the tap — an awaited storage write, a debounced flush —
+  had to choose between an unhandled rejection and a `console.error` that ignored the configured
+  reporter. Persistence now uses it, so async write failures reach the same place as every other
+  subscriber failure. Adding a host tap is a compatible change under the plugin contract.
+
+  **`parsePersistedState` validates everything it claims to.** It checked that `status` was _a_
+  string, not that it was a real lifecycle status, and that `timeline` was _an_ array, not that it
+  held strings — while typing the result as `JourneyPersistedState` and handing it to callers through
+  the public `readPersisted()`. It now checks the status against the known set, requires string
+  timeline entries, requires an integer `currentIndex` and a finite `savedAt`, and returns a rebuilt
+  record rather than the parsed object.
+
+  **Restored contexts are scrubbed of prototype-poisoning keys.** `JSON.parse` creates `__proto__` as
+  an ordinary own property, so a parsed payload is safe in isolation — but stops being safe the moment
+  application code spreads or `Object.assign`s it, which copies the own key as a _prototype
+  assignment_. Storage is attacker-reachable, so `__proto__`, `constructor`, and `prototype` are now
+  dropped from restored context values at every depth.
+
+  A `validate`/`migrate` callback for versioning persisted shapes is **not** included: it is a public
+  API addition that deserves a deliberate design pass rather than being folded into a hardening
+  change.
+
+  Size cost, minified+Brotli: `createPersistencePlugin` +154 B. The
+  factories grew too — `createLinearJourney` +161 B, `createGraphJourney` +117 B — because both import
+  `readRestorableState` statically, so the parser ships whether or not `persist` is used. Budgets were
+  raised to match; that is the deliberate price of validating attacker-reachable input.
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - Harden the three plugin boundaries the runtime did not isolate.
+
+  **A throwing `setup()` no longer strands the plugins registered before it.** Plugin setup ran
+  unguarded, so a failure part-way through the tuple left earlier plugins already subscribed and
+  holding `onDispose` callbacks — while the machine was never returned, making `dispose()` unreachable
+  and their timers and subscriptions permanent. Construction still fails, but teardown now runs first.
+  The same applies when a duplicate plugin name is rejected.
+
+  **A throwing `deriveSnapshot` no longer bricks the machine.** Derivers run on every publish and in
+  the constructor, and were the only plugin entry point with no isolation — one bad third-party plugin
+  took down every transition. Failures now route through `onListenerError` like any other plugin tap,
+  and the plugin's previous snapshot slice is carried forward so consumers reading
+  `snapshot.plugins[name]` do not see it blink to `undefined`. Other plugins' slices are unaffected.
+
+  **`createExecutionPathsPlugin` is bounded.** `completedPaths` was the one plugin buffer with no cap:
+  a machine that completes and restarts on a loop retained one frozen array per run for the lifetime
+  of the process. It now takes `maxPaths` (default 50, newest kept) and exposes `clearCompletedPaths()`.
+  `getCurrentPath()` is still unbounded within a single run, matching the history timeline's documented
+  1.0 behaviour.
+
+  **Blocked `localStorage` access reports as a journey error.** Reading `globalThis.localStorage` can
+  throw rather than return `undefined` — a third-party iframe with storage blocked, or Safari's
+  Lockdown Mode — which surfaced as a raw `SecurityError` out of `createLinearJourney` and read as a
+  library crash. It is now a `journey:` error naming the fix, carrying the original as `cause`.
+  Persistence still fails loudly rather than silently disabling itself, since a silent downgrade loses
+  data with no signal.
+
+  The two isolation guards sit on the core path, so both factories grew slightly: `createLinearJourney`
+  by 23 B and `createGraphJourney` by 38 B minified+Brotli. Their size budgets moved to 5.7 kB and
+  5.9 kB.
+
+- [#152](https://github.com/rxova/journey/pull/152) [`3893a1b`](https://github.com/rxova/journey/commit/3893a1b491083c276c97eaeb0f1fffae12f2961c) - `toSerializable` is now linear in the number of distinct objects, and stack-safe.
+
+  The previous walk removed each node from its `seen` set on the way back up. That is correct for
+  cycles, but it meant a shared subtree was re-traversed once per path reaching it — so a context with
+  diamond-shaped sharing, which is routine for normalized or relational data, cost 2^N. The replay
+  plugin serializes the entire snapshot on every transition, status change, context change, blocked
+  navigation, and error, with `captureSnapshots` defaulting to `true`, so this ran on the hot path and
+  could freeze the event loop.
+
+  Measured on a diamond-shared structure, before → after:
+
+  | Depth | Before      | After   |
+  | ----- | ----------- | ------- |
+  | 14    | 21 ms       | 0.22 ms |
+  | 18    | 241 ms      | 0.06 ms |
+  | 20    | 932 ms      | 0.05 ms |
+  | 26    | not in 120s | 0.06 ms |
+  | 40    | infeasible  | 0.09 ms |
+
+  Two correctness fixes came with it:
+
+  - **Arrays are cycle-tracked.** They were matched before the object branch and never entered `seen`,
+    so a self-referencing array recursed until the stack gave out. It now yields `"[circular]"` like
+    any other cycle.
+  - **Depth is capped**, at 100 by default and configurable per call. A long parent/child chain used to
+    overflow the stack, and the resulting `RangeError` was swallowed by listener isolation — the replay
+    entry vanished with no signal. Nesting past the cap now serializes as `"[max-depth]"`.
+
+  `toSerializable`'s second parameter changes from an internal `WeakSet` accumulator to an options
+  object (`{ maxDepth? }`). Callers passing only a value — every documented use — are unaffected.
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - Type-surface and ergonomics fixes that are cheapest while the contract is still open.
+
+  **A rejected navigation now says which target it rejected.** `NavigationResult`'s failure arm
+  carried only `{ ok, reason, error? }`, so a caller awaiting `send()` or `goToStepById()` had to
+  subscribe to `navigationBlocked` separately just to log the attempted step. It now includes `from`
+  and `to`; `to` is `null` where no target was ever resolved, such as a graph event with no enabled
+  candidate. Additive — existing checks on `ok`, `reason`, and `error` are unaffected.
+
+  **The type bag's `meta` and `handlers` are inferred from optional properties.** The constraint
+  declared them optional but `MetaOf`/`HandlersOf` matched a _required_ property, so anyone who
+  mirrored the constraint and wrote `meta?: MyMeta` silently got `Record<string, unknown>` instead of
+  their own type — and the eventual error pointed nowhere near the bag declaration.
+
+  **`linearToGraphDefinition` keeps step-id and event typing, and rejects duplicates.** It hard-coded
+  `TStepId` to `string`, so a converted definition lost `goToStepById` typing entirely. It is now
+  generic over the step ids and returns a typed `LinearGraphEvent<TStepId>` union
+  (`NEXT` | `PREVIOUS` | `GO_TO_<ID>`). It also had no duplicate-id guard, unlike
+  `createLinearJourney` — so a round trip turned a definition that would have thrown into a silently
+  different, cyclic graph (`["a","b","a"]` became `a <-> b`). It now throws `duplicate-step-id`.
+
+  **The compilation `lib` moves to ES2022** (emit target stays ES2020). Journey targets evergreen
+  browsers and Node >= 20.11, all of which have had `Object.hasOwn` and `Error`'s `cause` since 2021 —
+  without this, each use needed a workaround. `JourneyError` now takes an optional `cause` through the
+  standard constructor, so a blocked-storage failure keeps the underlying `SecurityError` attached
+  non-enumerably rather than as an ordinary property.
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - Close the remaining plugin-boundary gaps, and make the companion types nameable.
+
+  **A shared plugin instance now warns in development.** Mutable plugin state is scoped per `setup()`,
+  but `options` is not — attaching one `createPersistencePlugin` instance to two machines meant
+  both wrote the same storage key and silently overwrote each other. Each instance
+  now warns from its second `setup()`. State was already isolated; only the configuration was shared.
+
+  **`clearPersisted()` and `clearAutosave()` contain storage failures.** Both called `removeItem`
+  unwrapped, so a throwing adapter propagated to the caller — inconsistent with their sibling writes,
+  which are all contained and recorded. They now record the failure in the plugin's error state.
+
+  **A throwing analytics `onError` no longer escapes `trackSafely`.** It sat outside the guard, so "the
+  sink failed" and "your error handler failed" were indistinguishable at the isolation boundary.
+
+  **Companion types are exported.** The type bag exists so steps and hooks can live in separate files,
+  which only works if the types their signatures mention are nameable. Added to the root entry:
+  `BagSendWorkArgs`, `BagSnapshot`, `GuardArgsOf`, `HandlersOf`, `JourneyEventWork`, `MetaOf`,
+  `StayFactory`, `ToFactory`, `WorkFactory`, `WorkGuardArgs`, `SendArgs`, `SendVerb`, `SendWork`,
+  `SendWorkArgs`, `CompletePayloadOf`, `TerminatePayloadOf`, `JourneySnapshotBase`, and
+  `JourneyStorage` (named by the already-exported `JourneyPersistOption`).
+
+  **`JourneyStepConfig` replaces reaching through `JourneyStepBuilder["_config"]`.** That member was
+  required for the advertised multi-file authoring pattern, so an underscore-prefixed internal had
+  become part of everyday use. It is now named, and `_config` is marked `@internal`.
+
+  **The step-id inference trap is documented.** Hoisting `steps` out of the call — the common tidy-up —
+  widens the array to `string[]` and silently collapses `TStepId` to `string`, losing `goToStepById`
+  typing, `startAt` validation, and the React tier's `views` exhaustiveness all at once, with no
+  diagnostic. The TypeScript guide now covers it and the fix.
+
+  Not included: strict structural validation in the graph factory. The diagnostics plugin already
+  reports unreachable steps, shadowed transitions, cycles, and missing terminal paths, and duplicating
+  that analysis on the creation path would add bytes to every consumer for something an opt-in plugin
+  does more thoroughly.
+
+  Size: the dev warnings pull `@rxova/journey-common/dev` into the persistence and autosave entries
+  (+111 B and +129 B); those are opt-in subpaths, so only their users pay.
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - Name an edge with `label`, bound one edge's async with `timeoutMs`, and infer a work entry's result
+  with `defineWork`.
+
+  Three gaps, all of them things a graph could express before the type bag replaced the builder.
+
+  ### `label` on a candidate
+
+  Several candidates on one event differ only by guard, so `event` and `to` do not say which one
+  fired. A priority index says where an edge sits, not what it is.
+
+  ```ts
+  on: {
+    PAY: [
+      { to: "review", label: "needs-review", when: ({ context }) => context.tier === "free" },
+      { to: "review", label: "flagged", when: ({ context }) => context.flagged },
+      { to: "done", label: "straight-through" }
+    ];
+  }
+  ```
+
+  The name then appears in timeout and error messages (`onTransition(needs-review) timed out after
+5000ms`), in the new `transition` argument every step hook receives, and in the structure view
+  plugins and `analyzeStructure` read. Labels stay optional: an unlabelled edge is described by its
+  declaration index instead — `PAY[1] (checkout -> review)` — and reports `label: null` alongside its
+  `index`.
+
+  `StepHookArgs` gains `transition: TransitionInfo | null`, carrying `{ event, from, to, label, index }`
+  on hooks that ran for an edge and `null` for the initial entry, timeline moves, and linear
+  navigation. `JourneyStructure.transitions` gains `label` and `index`.
+
+  ### `timeoutMs` on a candidate, a work entry, and navigation work
+
+  `defaultTimeoutMs` was the only dial, so one edge calling a slow third party forced every other edge
+  onto the slow one's budget. Each edge can now declare its own, falling back to the global when it
+  does not:
+
+  ```ts
+  const machine = createGraphJourney(definition, { defaultTimeoutMs: 2_000 });
+
+  // ...in the definition:
+  on: {
+    SUBMIT: {
+      run: ({ handlers }) => handlers.creditCheck(),
+      label: "credit-check",
+      timeoutMs: 30_000,
+      candidates: [{ to: "approved" }, { to: "declined" }]
+    }
+  }
+  ```
+
+  On a work entry it bounds `run`; on a candidate it bounds that candidate's `onTransition`;
+  `NavigationWork` takes it too, so `goToNextStep({ run, timeoutMs })` works the same way. Both new
+  fields are validated when the definition is built rather than when the timer first matters, under
+  the new `invalid-label` and `invalid-timeout` error codes.
+
+  ### `defineWork` — the run result without restating it
+
+  A declared `run` sits at a property position, which is not an inference site, so `commit`'s `result`
+  was `unknown` unless the bag's `results` pinned it. A generic function call is an inference site:
+
+  <!--
+    `commit:` must not start a line in a changeset summary: @changesets/changelog-github
+    reads such a line as a commit-override, then builds a GraphQL alias from the value
+    after it and fails the whole release. The leading comment keeps it off column zero
+    and prettier-ignore stops the formatter reflowing it back. Enforced by
+    packages/common/tooling/check-changeset-overrides.ts.
+  -->
+  <!-- prettier-ignore -->
+  ```ts
+  verify: defineWork<AuthBag, "verify">()({
+    run: ({ handlers }) => handlers.verify(), // the result type comes from here
+    /* result is typed by `run` above */ commit: ({ result, updateContext }) =>
+      updateContext((context) => ({ ...context, ok: result.ok })),
+    candidates: [
+      { to: "done", label: "verified", when: ({ context }) => context.ok },
+      { to: "twofa", label: "retry" }
+    ]
+  });
+  ```
+
+  `commit` gets a typed `result`, and `run`'s `event` is narrowed to the key the entry is declared
+  under. The call is curried because TypeScript infers all of a call's type arguments or none: pinning
+  the bag and event inline would opt the result type out of inference, which is the problem being
+  solved.
+
+  Guards are untouched and stay total functions of context — the run result reaches them only through
+  what `commit` stages. Result-carrying guards were removed in the v2 subtraction for a correctness
+  reason that still holds: the same guards run during snapshot derivation, where no send is in flight,
+  so `availableEvents` would disagree with what a send actually does.
+
+  `results` on the bag still works and is unchanged; `defineWork` is the alternative for anyone who
+  would rather not keep a second declaration in sync.
+
+### Patch Changes
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - The persistence plugin no longer leaks an unhandled rejection when an async storage adapter fails.
+  `JourneyStorage.setItem` is declared as `void | Promise<void>` so adapters can be asynchronous, but
+  the plugin discarded the returned promise with `void` — a rejecting adapter therefore produced an
+  unhandled rejection, which terminates the process under Node's default
+  `--unhandled-rejections=throw`.
+
+  The write is now contained and routed to the listener-error reporter, matching how a synchronous
+  `setItem` throw was already isolated. Autosave was never affected: it awaits inside a `try/catch`
+  and surfaces failures through its own state.
+
+  Reporting is still coarse — persistence has no error channel of its own, so a failed write is
+  observable only through the reporter, and `lastSavedAt` continues to advance. A dedicated
+  persistence error state is planned separately.
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - The snapshot's `context` is now shallow-frozen in development, matching every other snapshot
+  slice. Mutating a context in place changes nothing the machine can observe — no publish, no
+  subscriber notification, no re-render — so the bug was silent; it now throws where it happens.
+
+  Shallow on purpose: deep-freezing would cost a full walk per update and break Maps, Dates, and
+  class instances that legitimately live in a context. Production behaviour is unchanged.
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - Step-id validation now tests own properties instead of using `in`, which walks the prototype
+  chain. `"toString"`, `"constructor"`, `"__proto__"`, `"hasOwnProperty"`, `"valueOf"`,
+  `"isPrototypeOf"`, `"propertyIsEnumerable"`, and `"toLocaleString"` passed every guard that
+  compared an id against the steps record, producing a machine parked on a step that does not exist.
+
+  The visible failure was a phantom position: `goToStepById("hasOwnProperty")` returned
+  `{ ok: true }` with `currentStep.index === -1`, so every order-derived snapshot field
+  (`index`, `isFirstStep`, `isLastStep`) lied, and `goToNextStep()` from there resolved
+  `indexOf(...) === -1` to index `0` — a "Next" button that silently rewound the journey to step
+  one. The phantom entry also stayed in the timeline permanently.
+
+  Two of the nine affected guards sit on input the application does not author: the persisted-record
+  predicate behind the creation-time `persist` option, and `goToStepById`, which is routinely fed a
+  route parameter. A tampered or drifted storage record could therefore restore onto a phantom step
+  even though `readRestorableState` documents that definition drift is rejected.
+
+  Steps legitimately named after a prototype key keep working — they are own properties, so they
+  were never the problem.
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - Fix type resolution for consumers on `moduleResolution: "node16"` / `"nodenext"`. The published
+  `.d.ts` and `.d.cts` files carried extensionless relative imports (`./helpers`, `../core/types`),
+  which those resolvers cannot follow — every entrypoint reported an internal resolution error.
+  Bundler and CJS consumers were unaffected, which is why it went unnoticed.
+
+  The published declarations now carry explicit `.js` extensions, added at build time by
+  `copy-types.ts` rather than written by hand, so source keeps its extensionless imports. The
+  rewrite resolves each specifier against the emitted declarations and throws if one does not
+  resolve, so a future directory import or dynamic `import()` type cannot silently reintroduce the
+  bug.
+
+  The `attw` script that would have caught this was declared but never installed or run in CI;
+  `@arethetypeswrong/cli` is now a real dependency and `packaging:check` runs it.
+
 ## 1.0.0-rc.3
 
 ### Patch Changes
