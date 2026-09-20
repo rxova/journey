@@ -1,0 +1,89 @@
+name: Dependabot dedupe
+
+# Dependabot never runs `pnpm dedupe`, so its pull requests routinely fail the
+# `audit · dedupe` job and sit there with auto-merge armed and nothing to merge.
+# Two separate causes, both fixed by the same push:
+#
+#   - a bump that moves one package leaves the rest of the lockfile on the old
+#     transitive versions;
+#   - `pnpm dedupe --check` re-resolves against the live registry, so a pull
+#     request goes red purely because an upstream patch was published after
+#     Dependabot generated the lockfile. Grouping does not help with this one.
+#
+# This runs the dedupe and pushes the result, so CI re-runs green and the
+# existing auto-merge workflow can finish the job.
+#
+# It lives in its own workflow rather than inside `dependabot-auto-merge.yml`
+# because the two need different credentials — see the checkout below.
+
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  # Never two dedupe pushes racing on one branch.
+  group: dependabot-dedupe-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  dedupe:
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # `DEPENDABOT_AUTOFIX_TOKEN` is load-bearing and cannot be swapped for the
+      # default GITHUB_TOKEN. A push made with GITHUB_TOKEN deliberately does not
+      # trigger workflow runs, so the dedupe commit would land, CI would never
+      # run against the new head, the required `all checks` status would be
+      # missing there, and auto-merge would wait forever — leaving the pull
+      # request more stuck than the red one it replaced.
+      #
+      # It must be a **Dependabot** secret (Settings → Secrets → Dependabot), not
+      # an Actions secret: workflows triggered by Dependabot events are only
+      # given the former. A fine-grained PAT or GitHub App token with
+      # `contents: write` on this repository is enough.
+      #
+      # Absent the secret the job says so and stops, rather than pushing a commit
+      # that nothing will ever check.
+      - name: Check for the autofix token
+        id: token
+        env:
+          AUTOFIX_TOKEN: ${{ secrets.DEPENDABOT_AUTOFIX_TOKEN }}
+        run: |
+          if [ -z "$AUTOFIX_TOKEN" ]; then
+            echo "::warning::DEPENDABOT_AUTOFIX_TOKEN is not set; skipping the dedupe. Add it as a Dependabot secret to enable it."
+            echo 'present=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'present=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.token.outputs.present == 'true'
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.DEPENDABOT_AUTOFIX_TOKEN }}
+
+      - uses: ./.github/actions/setup-pnpm
+        if: steps.token.outputs.present == 'true'
+
+      - run: pnpm install --frozen-lockfile
+        if: steps.token.outputs.present == 'true'
+
+      # `dedupe` rewrites the lockfile in place; the diff is what decides whether
+      # there is anything to push. No diff is the normal, quiet outcome.
+      - name: Dedupe and push if the lockfile moved
+        if: steps.token.outputs.present == 'true'
+        run: |
+          pnpm dedupe
+          if git diff --quiet -- pnpm-lock.yaml; then
+            echo "Lockfile already deduped; nothing to push."
+            exit 0
+          fi
+          git config user.name 'dependabot[bot]'
+          git config user.email '49699333+dependabot[bot]@users.noreply.github.com'
+          git add pnpm-lock.yaml
+          git commit -m 'chore(deps): dedupe the lockfile'
+          git push
+          echo "Pushed a dedupe commit; CI will re-run against it."
