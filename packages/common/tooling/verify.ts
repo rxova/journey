@@ -47,6 +47,16 @@ export const steps: readonly VerifyStep[] = [
   // run directly, which turns the slowest of the cheap steps into a replay
   // whenever the dependency graph is untouched.
   { name: "Check dependency dedupe", turbo: ["//#dedupe:check"] },
+  // Next to the dedupe, and for the same reason: both are questions about the
+  // dependency graph rather than about the code. One version of each dependency
+  // across the workspace — two packages on two minors of the same library
+  // typecheck fine and then disagree at runtime, which is the kind of bug that
+  // costs an afternoon and which nothing else here would notice.
+  { name: "Check dependency versions across the workspace", script: "sherif:check" },
+  // Unused files, exports and dependencies. The `export` keyword is the point:
+  // an export nothing imports still has to be kept working and still reads as
+  // part of the contract, and this is the only check in the gate that sees one.
+  { name: "Check for unused files, exports and dependencies", script: "knip:check" },
   { name: "Check formatting", script: "format:check" },
   { name: "Lint", script: "lint" },
   { name: "Check major version bumps", script: "version:major:check" },

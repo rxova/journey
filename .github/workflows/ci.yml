@@ -139,9 +139,10 @@ jobs:
       - uses: ./.github/actions/setup-pnpm
       - uses: ./.github/actions/turbo-cache
       - run: pnpm install --frozen-lockfile
-      # Both are in the local pre-push gate too (packages/common/tooling/verify.ts). Running
-      # them here as well is what keeps a stale local checkout from being the
-      # only thing between a newly-disclosed advisory and a release.
+      # Every check here is in the local pre-push gate too
+      # (packages/common/tooling/verify.ts). Running them here as well is what
+      # keeps a stale local checkout from being the only thing between a
+      # newly-disclosed advisory and a release.
       #
       # `audit:check` is deliberately not a Turbo task: its verdict depends on
       # the upstream advisory database, which changes without any file here
@@ -155,6 +156,18 @@ jobs:
       - name: Audit dependencies
         timeout-minutes: 5
         run: pnpm run audit:check
+      # One version of each dependency across the workspace. Two packages on two
+      # minors of the same library typecheck fine and then disagree at runtime,
+      # which is the kind of bug that costs an afternoon.
+      - name: Check dependency versions across the workspace
+        run: pnpm run sherif:check
+      # Unused files, exports and dependencies. Cheap to run, and the only check
+      # here that notices an export nothing imports.
+      - name: Check for unused files, exports and dependencies
+        run: pnpm run knip:check
+      # Last, and it has to stay last: `pnpm dedupe --check` removes the modules
+      # directory when CI is set, so any step after it runs without node_modules
+      # and fails looking for its own binary.
       - name: Check dependency dedupe
         run: pnpm run dedupe:check
 
