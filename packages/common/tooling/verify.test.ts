@@ -86,6 +86,15 @@ describe("verify gate", () => {
     expect(steps[0]?.script).toBe("audit:check");
   });
 
+  // Both answer questions about the dependency graph rather than about the
+  // code, so nothing else in the gate — or in any test suite — would notice if
+  // one silently fell out of the list.
+  it("checks the workspace dependency graph", () => {
+    const scripts = steps.map((step) => step.script);
+    expect(scripts).toContain("sherif:check");
+    expect(scripts).toContain("knip:check");
+  });
+
   it("keeps e2e out of the gate", () => {
     const ids = steps.flatMap((step) => step.turbo ?? [step.script ?? ""]);
     expect(ids.some((id) => id.includes("e2e"))).toBe(false);
