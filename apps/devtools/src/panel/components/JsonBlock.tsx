@@ -8,7 +8,7 @@ const replacer = (_key: string, value: unknown): unknown => {
   return value;
 };
 
-export const JsonBlock = ({ value }: { value: unknown }) => {
+const JsonBlock = ({ value }: { value: unknown }) => {
   const rendered = React.useMemo(() => JSON.stringify(value, replacer, 2), [value]);
   return <pre className={styles.block}>{rendered}</pre>;
 };

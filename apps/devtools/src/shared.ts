@@ -43,8 +43,7 @@ export type PanelCommandMessage = {
 
 export type PanelToBackgroundMessage = PanelInitMessage | PanelCommandMessage;
 
-export type PanelWarningCode =
-  "injection-missing-entry" | "injection-unavailable" | "injection-failed";
+type PanelWarningCode = "injection-missing-entry" | "injection-unavailable" | "injection-failed";
 
 export type PanelWarning = {
   code: PanelWarningCode;

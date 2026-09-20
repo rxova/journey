@@ -285,7 +285,7 @@ const CoreMachinePanel = () => {
   );
 };
 
-export const App = () => {
+const App = () => {
   React.useEffect(
     () =>
       attachJourneyDevtools(coreMachine, {
