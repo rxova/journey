@@ -21,7 +21,6 @@
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.7.1",
-    "@playwright/test": "^1.63.0",
     "@rxova/journey-common": "workspace:*",
     "@types/chrome": "^0.2.9",
     "@types/react": "^19.3.0",

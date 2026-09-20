@@ -48,7 +48,7 @@
     "@rxova/journey-devtools-bridge": "workspace:^",
     "@rxova/journey-react": "workspace:^",
     "lucide-static": "^1.45.0",
-    "typescript": "~6.0.3"
+    "typescript": "^6.0.3"
   },
   "engines": {
     "node": ">=20.11.0"
