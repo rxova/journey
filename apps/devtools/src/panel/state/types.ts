@@ -14,7 +14,7 @@ export type NonUnregisterBridgeEnvelope = Exclude<
   { kind: "unregister" }
 >;
 
-export type JourneyPanelTimelineKind = "init" | "snapshot" | "operation" | "event" | "error";
+type JourneyPanelTimelineKind = "init" | "snapshot" | "operation" | "event" | "error";
 
 export type JourneyPanelPendingCommand = {
   requestId: string;

@@ -12,14 +12,14 @@ const getDevtoolsPanels = (): DevtoolsPanelsWithThemeHandler | undefined =>
     ? undefined
     : (chrome.devtools?.panels as DevtoolsPanelsWithThemeHandler | undefined);
 
-export const applyTheme = (theme: ThemeName) => {
+const applyTheme = (theme: ThemeName) => {
   document.documentElement.dataset.theme = theme;
 };
 
-export const guessSystemTheme = (mediaQuery?: MediaQueryList): ThemeName =>
+const guessSystemTheme = (mediaQuery?: MediaQueryList): ThemeName =>
   mediaQuery?.matches ? "dark" : "light";
 
-export const normalizeTheme = (value: unknown): ThemeName | undefined => {
+const normalizeTheme = (value: unknown): ThemeName | undefined => {
   if (value === "dark") {
     return "dark";
   }

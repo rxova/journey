@@ -21,7 +21,7 @@ import { ConnectionStatus } from "../src/panel/components/ConnectionStatus";
 import { CommandControls } from "../src/panel/components/CommandControls";
 import { EmptyMachineState } from "../src/panel/components/EmptyMachineState";
 import { JourneyMachineSelector } from "../src/panel/components/JourneyMachineSelector";
-import { JsonBlock } from "../src/panel/components/JsonBlock";
+import JsonBlock from "../src/panel/components/JsonBlock";
 import { OperationField } from "../src/panel/components/commands/OperationField";
 import { OperationSectionCard } from "../src/panel/components/commands/OperationSectionCard";
 import { PanelHeader } from "../src/panel/components/PanelHeader";
