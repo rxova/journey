@@ -10,7 +10,7 @@ export function normalizeMaxEntries(value: number | undefined): number {
  * stack: a long parent/child chain used to overflow it, and the resulting
  * RangeError was swallowed by listener isolation, silently dropping the entry.
  */
-export const DEFAULT_MAX_DEPTH = 100;
+const DEFAULT_MAX_DEPTH = 100;
 
 const CIRCULAR = "[circular]";
 const TRUNCATED = "[max-depth]";

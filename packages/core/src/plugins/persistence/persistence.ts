@@ -21,14 +21,6 @@ export {
   normalizeDebounceMs,
   parsePersistedState
 } from "./persistence.helpers";
-export type {
-  JourneyPersistedState,
-  JourneyStorage,
-  PersistenceApi,
-  PersistencePluginOptions,
-  PersistenceReason,
-  PersistenceState
-} from "./persistence.types";
 
 const IDLE_STATE: PersistenceState = { status: "idle", lastSavedAt: null, error: null };
 

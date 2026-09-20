@@ -1,4 +1,4 @@
-import type { GraphOnEntry, GraphStepConfig, GraphJourneyDefinition } from "./graph.types";
+import type { GraphOnEntry, GraphStepConfig } from "./graph.types";
 import type { JourneyEventObject } from "../core/types";
 
 /**
@@ -115,12 +115,3 @@ export type GraphDefinition<TBag extends Bag> = {
   readonly handlers?: HandlersOf<TBag>;
   readonly steps: Readonly<Record<TBag["stepId"], GraphStep<TBag>>>;
 };
-
-/** The definition shape `withTypes` accepts, and what `GraphDefinition` widens to. */
-export type BagGraphDefinition<TBag extends Bag> = GraphJourneyDefinition<
-  TBag["context"],
-  TBag["stepId"],
-  TBag["events"],
-  HandlersOf<TBag>,
-  MetaOf<TBag>
->;

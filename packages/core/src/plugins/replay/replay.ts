@@ -3,14 +3,6 @@ import type { ReplayApi, ReplayEntry, ReplayEntryKind, ReplayPluginOptions } fro
 import type { JourneyPlugin } from "../../core/types";
 
 export { normalizeMaxEntries, serializeReplaySession, toSerializable } from "./replay.helpers";
-export type {
-  ReplayApi,
-  ReplayEntry,
-  ReplayEntryKind,
-  ReplayExportOptions,
-  ReplayPluginOptions,
-  ReplaySession
-} from "./replay.types";
 
 /** Records snapshot and lifecycle activity into an exportable replay session. */
 export function createReplayPlugin(
