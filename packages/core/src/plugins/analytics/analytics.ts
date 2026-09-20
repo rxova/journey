@@ -9,13 +9,6 @@ import type {
 } from "./analytics.types";
 import type { JourneyPlugin } from "../../core/types";
 
-export type {
-  AnalyticsApi,
-  AnalyticsPluginOptions,
-  AnalyticsRecentEvent,
-  AnalyticsTrackedEvent
-} from "./analytics.types";
-
 /**
  * Converts journey observations (transitions, lifecycle, blocked navigations,
  * errors) into analytics envelopes delivered to the configured sink.
