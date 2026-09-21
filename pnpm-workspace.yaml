@@ -110,6 +110,15 @@ overrides:
   # `audit:check` gates on high and these are high.
   "browserslist@<=4.28.6": ">=4.28.7 <5.0.0"
 
+  # GHSA-9rgm-9g3h-6x36: devalue <5.9.1 can be driven into a denial of service
+  # by malformed input to `parse`/`unflatten`; 5.9.2 is the first patched
+  # release. Reached only through Astro, which declares `^5.8.1` -- still
+  # true of the latest astro -- so no bump here reaches it. Moderate, so
+  # `audit:check` does not gate on it, but it is an open Dependabot alert.
+  # Closed below 6 so it stays on the line Astro declares. Drop this once Astro
+  # depends on >=5.9.2 itself.
+  "devalue@<5.9.2": ">=5.9.2 <6.0.0"
+
 # No auditConfig.ignoreGhsas. The one entry that lived here, GHSA-mh99-v99m-4gvg
 # (brace-expansion DoS), was reachable only through
 # apps/docs > @docusaurus/core > serve-handler > minimatch@3 > brace-expansion@1.x,
