@@ -1,0 +1,78 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+
+  // Renovate replaces Dependabot here, and with it the Dependabot config and
+  // the auto-merge workflow that armed its pull requests.
+  //
+  // The reason is `postUpdateOptions` below. Dependabot patches the lockfile
+  // with its own logic and never runs the package manager, so `dedupe:check`
+  // rejected nearly every pull request it opened. Renovate runs pnpm itself.
+
+  extends: [
+    "config:recommended",
+
+    // One pull request for everything that is not a major, which is what the
+    // Dependabot `groups` blocks were doing.
+    "group:allNonMajor",
+    "schedule:weekly",
+
+    // Hold a freshly published version back for a few days. A compromised
+    // release is usually caught within hours, and nothing here is urgent
+    // enough to be the one that finds out first.
+    "security:minimumReleaseAgeNpm",
+
+    // `chore(deps): …`, so the pull request title — the squash subject — is a
+    // valid commit subject for commitlint.
+    ":semanticCommits",
+    ":semanticCommitTypeAll(chore)",
+
+    // A major waits on the Dependency Dashboard until it is ticked, rather
+    // than opening a pull request nobody asked for. Replaces the major-bump
+    // guard that lived in the auto-merge workflow.
+    ":approveMajorUpdates",
+
+    // Peer ranges are a published contract, not a dependency to keep current.
+    ":disablePeerDependencies",
+
+    // Refreshes the whole lockfile monthly. This is the half Dependabot had no
+    // answer for: `pnpm dedupe --check` re-resolves against the live registry,
+    // so a lockfile goes stale on its own as upstream publishes patches, with
+    // no change here at all.
+    ":maintainLockFilesMonthly"
+  ],
+
+  // `skip-changeset` is what the changeset gate reads. A bump changes what the
+  // repository builds with, never what it publishes, so there is no changelog
+  // entry to write. Both labels already exist in the repository.
+  labels: ["dependencies", "skip-changeset"],
+
+  // Move the declared range rather than only the lockfile, so `package.json`
+  // says what is actually installed.
+  rangeStrategy: "bump",
+
+  // The whole reason for the migration: run `pnpm dedupe` after updating, so
+  // what lands already satisfies the `audit · dedupe` job.
+  postUpdateOptions: ["pnpmDedupe"],
+
+  packageRules: [
+    {
+      // Patch and minor merge themselves once CI is green. `platformAutomerge`
+      // hands that to GitHub's own auto-merge, so it waits for the required
+      // `all checks` status exactly as the old workflow did — but without a
+      // workflow, and without the token dance a bot-authored push needs.
+      matchUpdateTypes: ["minor", "patch"],
+      automerge: true,
+      platformAutomerge: true
+    },
+    {
+      // TypeScript 7 is held, not skipped: typescript-eslint declares its peer
+      // as `>=4.8.4 <6.1.0` and errors on sight of TS 7, which is the whole
+      // `lint` job. Written as a ceiling rather than an ignore so 6.x patches
+      // and minors still come through.
+      //
+      // Lift it by deleting this rule once typescript-eslint accepts TS 7.
+      matchPackageNames: ["typescript"],
+      allowedVersions: "<7"
+    }
+  ]
+}
