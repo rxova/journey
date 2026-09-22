@@ -92,6 +92,42 @@ on: {
 A call that finishes, or fails on its own, keeps a signal that never aborts. Hooks do not receive
 one.
 
+## Retrying work
+
+`retry(run, options)` wraps a work `run` so a failure tries it again. It is a plain function around
+`run`, not a runtime feature, so it works on graph send work, `always` work and linear navigation
+work alike, and a machine that never retries pays nothing for it:
+
+```ts
+import { retry } from "@rxova/journey-core";
+
+SUBMIT: {
+  run: retry(({ handlers, signal }) => handlers.api.submit({ signal }), {
+    attempts: 3, // tries in all, the first included
+    delayMs: (attempt) => 200 * 2 ** attempt, // or a number; defaults to 0
+    when: (error) => !(error instanceof ValidationError), // defaults to every failure
+    timeoutMs: 2_000 // one try's budget
+  }),
+  candidates: [{ to: "done" }]
+}
+```
+
+- Each try gets a `signal` of its own and its 1-based `attempt`. A try's signal aborts when its
+  `timeoutMs` runs out, which counts as a failure, and when the work's own signal aborts.
+- The work's own signal also cuts the wait between tries short: terminating, restarting or
+  disposing the machine stops the loop, and no further try starts.
+- The work's `timeoutMs` (or `defaultTimeoutMs`) still bounds all the tries together.
+- The snapshot stays in the `"working"` phase across tries. Only the last failure is reported,
+  rethrown as it was.
+- `commit` is not retried: it runs once, on the result of the try that succeeded.
+- `attempts` that is not a positive integer, or a `timeoutMs` that is not a positive finite number,
+  throws a `JourneyError` coded `invalid-retry` when the wrapper is built.
+
+`retry` takes its argument types from the work it is declared on. In a graph definition that means
+pinning the types with [`withGraphTypes`](../api/with-types): then `handlers`, `signal` and
+`attempt` are typed inside the wrapped `run`. `defineWork` cannot read the result's type back
+through the wrapper, so give `commit` a typed `result` through the bag's `results`.
+
 ## Raised events
 
 Graph hooks should use `raise(event)` to enqueue follow-up work. The queue runs only after the

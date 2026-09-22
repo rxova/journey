@@ -218,7 +218,9 @@ candidates on one event differ only by guard, so `event` and `to` do not tell th
 take an optional `timeoutMs`, as does a declared work entry, overriding `defaultTimeoutMs` for that
 one edge so a single slow third-party call does not set the budget for the whole graph. Work
 receives a `signal` that aborts on its timeout and on terminate, restart, or dispose; pass it to
-`fetch` or your client so abandoned calls stop.
+`fetch` or your client so abandoned calls stop. Wrap a flaky `run` in `retry(run, { attempts,
+delayMs?, when?, timeoutMs? })` to try it again; each try gets its own signal, and `commit` runs
+once.
 
 A step's `always` declares the move it makes on its own once entered — candidates, or work and
 candidates, like an `on` entry with no event. The call that entered the step resolves once the chain

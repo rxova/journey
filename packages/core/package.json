@@ -152,6 +152,12 @@
       "path": "dist/plugins/index.js",
       "import": "{ createReplayPlugin }",
       "limit": "850 B"
+    },
+    {
+      "name": "core/retry",
+      "path": "dist/index.js",
+      "import": "{ retry }",
+      "limit": "700 B"
     }
   ]
 }

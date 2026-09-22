@@ -29,7 +29,9 @@ export type JourneyErrorCode =
   /** A step's `on` declared `$always`, the event name core reserves for `always`. */
   | "reserved-event"
   /** The machine was disposed before it settled; `settled()` rejects with this. */
-  | "disposed";
+  | "disposed"
+  /** `retry` was given `attempts` that is not a positive integer, or an invalid `timeoutMs`. */
+  | "invalid-retry";
 
 export type JourneyErrorDetails = {
   /** The offending step id, where one caused the failure. */

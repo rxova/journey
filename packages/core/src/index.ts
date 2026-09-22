@@ -53,6 +53,11 @@ export type {
 export { analyzeStructure } from "./diagnostics/diagnostics.helpers";
 export type { DiagnosticsIssue, DiagnosticsResult } from "./diagnostics/diagnostics.types";
 
+// Wraps a `run` rather than living in the runtime, so a machine that never
+// retries pays nothing for it.
+export { retry } from "./core/retry";
+export type { RetryOptions } from "./core/retry";
+
 export { JourneyError, isJourneyError } from "./core/errors";
 export type { JourneyErrorCode, JourneyErrorDetails } from "./core/errors";
 

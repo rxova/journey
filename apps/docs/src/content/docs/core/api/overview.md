@@ -12,12 +12,14 @@ import {
   createGraphJourney,
   withLinearTypes,
   withGraphTypes,
-  analyzeStructure
+  analyzeStructure,
+  retry
 } from "@rxova/journey-core";
 ```
 
 The package also exports the definition, machine, snapshot, hook, event, navigation and plugin
-types used by those functions, plus the `Bag` types that pin them up front.
+types used by those functions, plus the `Bag` types that pin them up front. `retry` wraps a work
+`run` so a failure tries it again; see [Retrying work](../async#retrying-work).
 
 ## Errors
 
@@ -38,7 +40,7 @@ try {
 
 `code` is the stable contract and a closed union: `empty-definition`, `duplicate-step-id`,
 `unknown-step`, `unknown-initial-step`, `dangling-transition`, `duplicate-plugin-name`,
-`storage-unavailable`, `async-commit`, `invalid-label`, `invalid-timeout`, `reserved-event`, `disposed`. Messages are for humans and may be reworded in any release —
+`storage-unavailable`, `async-commit`, `invalid-label`, `invalid-timeout`, `reserved-event`, `disposed`, `invalid-retry`. Messages are for humans and may be reworded in any release —
 never match on them.
 
 Failures that are not Core's own stay untyped. `NavigationResult.error` and the `error` subscription

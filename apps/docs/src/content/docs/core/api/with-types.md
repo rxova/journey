@@ -125,6 +125,10 @@ check: {
 }
 ```
 
+A `run` wrapped in [`retry`](../async#retrying-work) is the exception: the result's type does not
+survive the wrapper, so `defineWork` sees `unknown`. Declare that event's result in the bag's
+`results` instead.
+
 ## `GraphStep` — steps in their own files
 
 ```ts

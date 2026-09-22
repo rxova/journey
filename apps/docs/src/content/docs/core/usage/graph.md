@@ -132,6 +132,7 @@ Two follow-ups worth knowing:
   visit count increments.
 - `onTransition` runs after the destination commits (see the next section) — by then the staged
   context **is** the context.
+- A flaky `run` can be wrapped in [`retry`](../async#retrying-work); `commit` still runs once.
 
 ## Steps that advance themselves: `always`
 
