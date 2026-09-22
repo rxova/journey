@@ -15,6 +15,7 @@ machine
   context.update()
   async.clearError()
   plugins.*           one namespaced entry per plugin
+  settled()
   dispose()
   send()              graph only
 ```
@@ -35,6 +36,7 @@ re-subscribing. Everything that changes is read from the immutable snapshot.
   the [store](./store).
 - **`context.update`** — synchronous context replacement.
 - **`async.clearError`** — clears the current step's work or hook error.
+- **`settled`** — a promise of the run's outcome; rejects if the machine is disposed first.
 - **`plugins`** — the namespaced API record contributed by plugin `setup()` calls.
 
 ## Where to next

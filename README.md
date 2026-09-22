@@ -233,6 +233,7 @@ The command surface is intentionally grouped:
 - `navigate.goToNextStep/goToPreviousStep/goToStepById/goToLastVisitedStep` changes position.
 - `context.update` replaces context with the updater result.
 - `async.clearError` clears the current entry error.
+- `settled()` resolves with the outcome once the run completes or terminates.
 - Graph machines add typed `send(type, payload?)`.
 
 Every navigation method resolves to `{ ok: true, from, to }` or

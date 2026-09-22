@@ -173,6 +173,10 @@ checkout.getSnapshot().machine.outcome;
 Use `controls.terminate(payload?)` for an unsuccessful or cancelled terminal outcome. Navigation is
 rejected after either terminal state until `controls.restart()` begins a fresh run.
 
+`await machine.settled()` resolves with that outcome, at once if the run already has one, and
+rejects if the machine is disposed first. Pass `onError: "terminate"` to make any reported failure
+end the run, with `{ error, phase, stepId }` as the terminated outcome's payload.
+
 ## Snapshot and subscriptions
 
 All changing state lives in one immutable snapshot:

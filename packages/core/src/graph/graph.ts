@@ -263,6 +263,7 @@ export function createGraphJourney<
     defaultTimeoutMs: options.defaultTimeoutMs,
     ...(options.maxAutoSteps !== undefined ? { maxAutoSteps: options.maxAutoSteps } : {}),
     ...(options.onListenerError !== undefined ? { onListenerError: options.onListenerError } : {}),
+    ...(options.onError !== undefined ? { onError: options.onError } : {}),
     plugins: [
       ...(options.persist ? [persistOptionToPlugin(options.persist)] : []),
       ...(options.plugins ?? [])

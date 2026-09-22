@@ -38,7 +38,7 @@ try {
 
 `code` is the stable contract and a closed union: `empty-definition`, `duplicate-step-id`,
 `unknown-step`, `unknown-initial-step`, `dangling-transition`, `duplicate-plugin-name`,
-`storage-unavailable`, `async-commit`, `invalid-label`, `invalid-timeout`, `reserved-event`. Messages are for humans and may be reworded in any release —
+`storage-unavailable`, `async-commit`, `invalid-label`, `invalid-timeout`, `reserved-event`, `disposed`. Messages are for humans and may be reworded in any release —
 never match on them.
 
 Failures that are not Core's own stay untyped. `NavigationResult.error` and the `error` subscription
@@ -66,6 +66,7 @@ Both factories accept the same `JourneyRuntimeOptions`:
 | `persist`          | `{ key, storage? }` sugar that registers the persistence plugin **and restores**: a valid non-terminal record found at creation seeds context, timeline, and position, so the first `start()` resumes at the persisted step. See [Persistence](../persistence.md#restore-behavior). |
 | `defaultTimeoutMs` | Applies to navigation/send work and every async hook. Work timeouts block movement; post-commit hook timeouts surface as step errors.                                                                                                                                               |
 | `onListenerError`  | Called when a subscriber (selector or event listener) throws. Listener failures are always isolated — this option only routes the report. Defaults to `console.error`; a throwing reporter falls back to that default.                                                              |
+| `onError`          | What a reported failure does to the run. `"stay"` (the default) leaves the machine where the failure left it. `"terminate"` ends the run once the `error` event has fired, with `{ error, phase, stepId }` as the outcome's payload.                                                |
 | `plugins`          | Observe-only plugin instances; see [Plugins](../plugins/overview.md).                                                                                                                                                                                                               |
 
 ## Machine surface
@@ -87,6 +88,7 @@ await machine.navigate.goToLastVisitedStep();
 machine.context.update(updater);
 machine.subscriptions.subscribe(listener);
 machine.subscriptions.subscribeEvent(eventName, listener);
+await machine.settled();
 machine.dispose();
 ```
 

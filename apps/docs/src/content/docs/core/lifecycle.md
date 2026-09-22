@@ -18,6 +18,11 @@ Lifecycle methods are synchronous and return `true` only when the requested stat
 `terminate()` invalidates pending hook continuations. `restart()` also resets context, history,
 visits, and outcome before entering the initial step.
 
+`await machine.settled()` resolves with the outcome once the run completes or terminates, and
+rejects if the machine is disposed first. With the `onError: "terminate"` creation option, every
+failure reported through the `error` event also terminates the run, with `{ error, phase, stepId }`
+as the payload.
+
 ## Named subscription events
 
 ```ts
@@ -26,14 +31,14 @@ const stop = machine.subscriptions.subscribeEvent("stepEnter", ({ from, to, dire
 });
 ```
 
-| Event               | Emitted when                                                          |
-| ------------------- | --------------------------------------------------------------------- |
-| `stepEnter`         | A destination commits, including initial entry.                       |
-| `stepLeave`         | A non-initial destination commits.                                    |
-| `statusChange`      | A lifecycle status changes.                                           |
-| `contextChange`     | `context.update` or a hook updater replaces context.                  |
-| `navigationBlocked` | Navigation is rejected for any reason except `disposed`.              |
-| `error`             | Navigation work, a lifecycle effect, or a raised-event cascade fails. |
+| Event               | Emitted when                                                                 |
+| ------------------- | ---------------------------------------------------------------------------- |
+| `stepEnter`         | A destination commits, including initial entry.                              |
+| `stepLeave`         | A non-initial destination commits.                                           |
+| `statusChange`      | A lifecycle status changes.                                                  |
+| `contextChange`     | `context.update` or a hook updater replaces context.                         |
+| `navigationBlocked` | Navigation is rejected for any reason except `disposed`.                     |
+| `error`             | Work, a lifecycle effect, a raised-event cascade or an `always` chain fails. |
 
 The `stepEnter` payload carries `direction: "forward" | "backward" | "jump"`
 (`StepEnterDirection`), reported by intent rather than index math: only `goToNextStep` and

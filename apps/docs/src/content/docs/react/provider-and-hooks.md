@@ -65,7 +65,7 @@ view — a header that logs every move, say. Core keeps `onEnter`/`onLeave` for 
 outside React; passing either here is a type error.
 
 The second argument is Core's runtime options, verbatim and frozen per bundle: `startAt`,
-`persist`, `plugins`, `defaultTimeoutMs`, `onListenerError`, and `autoStart` — which is three-way
+`persist`, `plugins`, `defaultTimeoutMs`, `onListenerError`, `onError`, and `autoStart` — which is three-way
 in this tier: omitted (the default) starts the machine when the bundle's first Provider or hook
 mounts, `true` starts it eagerly inside the factory, and `false` waits for
 `checkout.machine.controls.start()`. See [Bundle options](./overview.md#bundle-options). The `startAt` option starts the

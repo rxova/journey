@@ -142,6 +142,27 @@ replay integrations require serializable values.
 Clears the current step's navigation-work or lifecycle-effect error. It is a no-op when no error is
 present.
 
+### `settled()`
+
+Resolves with the run's `outcome` once the machine completes or terminates, and at once when it
+already has. It is the way to wait for a machine that drives itself — `always` steps, a server-side
+flow, a test — without polling snapshots:
+
+```ts
+const machine = createGraphJourney(definition, { onError: "terminate" });
+const outcome = await machine.settled();
+if (outcome.type === "terminated") report(outcome.payload);
+```
+
+Every call made before an outcome waits for that outcome; a call made after `restart()` waits for
+the new run's. If the machine is disposed before it settles, the promise rejects with a
+`JourneyError` coded `disposed`. An outcome reached before disposal still resolves.
+
+With the default `onError: "stay"`, a failure leaves the machine running, so `settled()` keeps
+waiting until something completes or terminates it. `onError: "terminate"` turns every reported
+failure — work, a hook, a raised-event cascade, an `always` chain past `maxAutoSteps` — into a
+`terminated` outcome whose payload is `{ error, phase, stepId }`, fired after the `error` event.
+
 ## Subscriptions
 
 ### `subscriptions.subscribe(listener)`

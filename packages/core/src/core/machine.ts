@@ -25,6 +25,7 @@ export function buildMachineSurface(
       terminate: (payload?: unknown) => runtime.terminate(payload),
       restart: () => runtime.restart()
     },
+    settled: () => runtime.settled(),
     dispose: () => runtime.dispose(),
     navigate: {
       goToStepById: (id: string) => runtime.goToStepById(id),

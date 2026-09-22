@@ -112,6 +112,7 @@ export function createLinearJourney<
     autoStart: options.autoStart ?? true,
     defaultTimeoutMs: options.defaultTimeoutMs,
     ...(options.onListenerError !== undefined ? { onListenerError: options.onListenerError } : {}),
+    ...(options.onError !== undefined ? { onError: options.onError } : {}),
     plugins: [
       ...(options.persist ? [persistOptionToPlugin(options.persist)] : []),
       ...(options.plugins ?? [])

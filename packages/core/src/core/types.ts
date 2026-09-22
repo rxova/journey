@@ -345,13 +345,21 @@ export type JourneyEventPayloads<
     readonly to: TStepId | null;
     readonly error?: unknown;
   };
-  error: {
-    readonly snapshot: TSnap;
-    readonly error: unknown;
-    /** Which pipeline stage threw. */
-    readonly phase: "work" | "leave" | "enter" | "transition" | "raise" | "always";
-    readonly stepId: TStepId | null;
-  };
+  error: { readonly snapshot: TSnap } & JourneyFailure<TStepId>;
+};
+
+/** Which pipeline stage a reported failure came from. */
+export type JourneyErrorPhase = "work" | "leave" | "enter" | "transition" | "raise" | "always";
+
+/**
+ * A failure the runtime reported: the `error` event's details, and the
+ * `terminated` outcome's payload when `onError` is `"terminate"`.
+ */
+export type JourneyFailure<TStepId extends string = string> = {
+  readonly error: unknown;
+  /** Which pipeline stage threw. */
+  readonly phase: JourneyErrorPhase;
+  readonly stepId: TStepId | null;
 };
 
 export type Unsubscribe = () => void;
@@ -467,6 +475,12 @@ export type JourneyMachineBase<
   subscriptions: JourneySubscriptions<TContext, TStepId, TSnap>;
   context: { update(updater: ContextUpdater<TContext>): void };
   async: { clearError(): void };
+  /**
+   * Resolves with the outcome once the machine completes or terminates — at
+   * once when it already has. Rejects with a `JourneyError` coded `disposed`
+   * when the machine is disposed first.
+   */
+  settled(): Promise<JourneyOutcome<TCompletePayload, TTerminatePayload>>;
   /** Irreversible teardown: drops listeners; all methods become safe no-ops. */
   dispose(): void;
 };
@@ -619,5 +633,12 @@ export type JourneyRuntimeOptions<
    * to a `console.error`; a throwing reporter falls back to that default.
    */
   onListenerError?: (error: unknown) => void;
+  /**
+   * What a reported failure does to the run. `"stay"`, the default, leaves the
+   * machine where the failure left it. `"terminate"` ends the run: after the
+   * `error` event, the machine terminates with the {@link JourneyFailure} as
+   * the outcome's payload, so `settled()` resolves with it.
+   */
+  onError?: "stay" | "terminate";
   plugins?: TPlugins;
 };

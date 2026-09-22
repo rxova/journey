@@ -30,6 +30,7 @@ import type {
   ContextUpdater,
   CurrentStepBase,
   JourneyEventObject,
+  JourneyFailure,
   GraphTransitionSnapshot,
   JourneyOutcome,
   JourneySnapshot,
@@ -40,6 +41,10 @@ import type {
   StepEnterDirection,
   TransitionInfo
 } from "./types";
+
+/** Why `settled()` rejects: a disposed machine can no longer reach an outcome. */
+const disposedBeforeSettling = (): JourneyError =>
+  new JourneyError("disposed", "journey: disposed before it settled");
 
 /**
  * Dev-only shallow freeze of the context.
@@ -98,6 +103,8 @@ export class JourneyRuntime {
   private currentIndex = -1;
   private context: unknown;
   private outcome: JourneyOutcome | null = null;
+  /** `settled()` callers still waiting: resolved on an outcome, rejected on dispose. */
+  private settleWaiters: [(outcome: JourneyOutcome) => void, (error: unknown) => void][] = [];
   private visitCounts = new Map<string, number>();
   private entryAsync: StepAsyncState = SUCCESS_ASYNC;
   private pending: {
@@ -205,12 +212,23 @@ export class JourneyRuntime {
     return true;
   }
 
+  settled(): Promise<JourneyOutcome> {
+    return new Promise((resolve, reject) => {
+      if (this.outcome) resolve(this.outcome);
+      else if (this.disposed) reject(disposedBeforeSettling());
+      else this.settleWaiters.push([resolve, reject]);
+    });
+  }
+
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
     this.nextGeneration();
     this.pending = null;
     this.raiseQueue = [];
+    this.settleWaiters.splice(0).forEach(([, reject]) => {
+      reject(disposedBeforeSettling());
+    });
     for (const callback of this.disposeCallbacks.splice(0)) {
       try {
         callback();
@@ -398,7 +416,9 @@ export class JourneyRuntime {
       });
       const snapshot = this.publish();
       this.store.emit("error", { snapshot, error, phase: "work", stepId: from });
-      return this.blocked({ ok: false, reason: "error", error }, null);
+      const result = this.blocked({ ok: false, reason: "error", error }, null);
+      this.stopOnError({ error, phase: "work", stepId: from });
+      return result;
     } finally {
       this.inFlight.delete(controller);
     }
@@ -548,6 +568,12 @@ export class JourneyRuntime {
     this.status = next;
     const snapshot = this.publish();
     this.store.emit("statusChange", { snapshot, previous, current: next });
+    const { outcome } = this;
+    if (outcome) {
+      this.settleWaiters.splice(0).forEach(([resolve]) => {
+        resolve(outcome);
+      });
+    }
     // Plugin taps may have updated state the snapshot derives from.
     this.refreshPluginSnapshot();
   }
@@ -734,7 +760,9 @@ export class JourneyRuntime {
         });
         const snapshot = this.publish();
         this.store.emit("error", { snapshot, error, phase: "work", stepId: from });
-        return this.blocked({ ok: false, reason: "error", error }, to);
+        const result = this.blocked({ ok: false, reason: "error", error }, to);
+        this.stopOnError({ error, phase: "work", stepId: from });
+        return result;
       } finally {
         this.inFlight.delete(controller);
       }
@@ -881,6 +909,7 @@ export class JourneyRuntime {
       }
     }
     this.refreshPluginSnapshot();
+    if (failures[0]) this.stopOnError(failures[0]);
     // Awaited, so the call that entered this step resolves once the chain of
     // `always` moves rests. A move settles again through here and drains the
     // raise queue itself; only a step that stays drains it now.
@@ -901,8 +930,7 @@ export class JourneyRuntime {
     }
     const max = this.config.maxAutoSteps ?? MAX_AUTO_STEPS;
     if (++this.autoSteps > max) {
-      this.store.emit("error", {
-        snapshot: this.store.getSnapshot(),
+      this.fail({
         error: new Error(`journey: always chain exceeded ${max} moves; stopped at "${from}"`),
         phase: "always",
         stepId: from
@@ -916,6 +944,21 @@ export class JourneyRuntime {
         ? this.runNavigation(transition.to, { kind: "append" }, null, transition)
         : this.blocked({ ok: false, reason: "no-enabled-transition" }, null))
     ).ok;
+  }
+
+  /** Reports a failure raised outside any one step's pipeline, then applies `onError`. */
+  private fail(failure: JourneyFailure): void {
+    this.store.emit("error", { snapshot: this.store.getSnapshot(), ...failure });
+    this.stopOnError(failure);
+  }
+
+  /**
+   * Under `onError: "terminate"`, ends the run on a failure already reported;
+   * the failure becomes the outcome's payload. Called after the failure's own
+   * events, so subscribers see the error before the status change.
+   */
+  private stopOnError(failure: JourneyFailure): void {
+    if (this.config.onError === "terminate") this.terminate(failure);
   }
 
   /**
@@ -935,8 +978,7 @@ export class JourneyRuntime {
         processed += 1;
         if (processed > MAX_RAISED_EVENTS) {
           this.raiseQueue = [];
-          this.store.emit("error", {
-            snapshot: this.store.getSnapshot(),
+          this.fail({
             error: new Error(
               `journey: raised-event cascade exceeded ${MAX_RAISED_EVENTS} events; queue dropped`
             ),

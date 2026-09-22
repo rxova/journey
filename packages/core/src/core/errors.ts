@@ -27,7 +27,9 @@ export type JourneyErrorCode =
   /** A transition or work entry declared `timeoutMs` as something other than a positive finite number. */
   | "invalid-timeout"
   /** A step's `on` declared `$always`, the event name core reserves for `always`. */
-  | "reserved-event";
+  | "reserved-event"
+  /** The machine was disposed before it settled; `settled()` rejects with this. */
+  | "disposed";
 
 export type JourneyErrorDetails = {
   /** The offending step id, where one caused the failure. */

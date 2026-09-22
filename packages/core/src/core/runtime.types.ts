@@ -92,6 +92,8 @@ export type RuntimeConfig = {
   readonly defaultTimeoutMs: number | undefined;
   /** Graph only: cap on consecutive `always` moves; defaults to 100. */
   readonly maxAutoSteps?: number;
+  /** `"terminate"` ends the run on any reported failure; defaults to staying. */
+  readonly onError?: "stay" | "terminate";
   /** Routes isolated subscriber failures; defaults to the console reporter. */
   readonly onListenerError?: (error: unknown) => void;
   /**

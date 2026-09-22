@@ -123,7 +123,7 @@ from the snapshot (`snapshot.currentStep`, `snapshot.steps`, `snapshot.history`,
 ### Bundle options
 
 The factory's second argument passes Core's creation options through verbatim, frozen per bundle:
-`persist`, `plugins`, `autoStart`, `startAt`, `defaultTimeoutMs`, and `onListenerError`.
+`persist`, `plugins`, `autoStart`, `startAt`, `defaultTimeoutMs`, `onListenerError`, and `onError`.
 
 `autoStart` is three-way in this tier:
 
