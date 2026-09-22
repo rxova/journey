@@ -42,13 +42,13 @@ The graph builder is an authoring transform. Its `build()` result enters the sam
 
 ## The pieces
 
-| Page                                                        | Covers                                                                    |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------- |
-| [Runtime](./architecture/runtime)                           | `JourneyRuntime`: status, timeline, context, generation, raised events.   |
-| [Store](./architecture/store)                               | `JourneyStore`: snapshot holder, subscription hub, listener isolation.    |
-| [Machine surface](./architecture/machine-surface)           | `buildMachineSurface`: the grouped public object.                         |
-| [Plugin host](./architecture/plugin-host)                   | Observe-only taps, namespaced APIs, snapshot extension stability.         |
-| [Work and transitions](./architecture/work-and-transitions) | Sync guards, transactional work, result routing, and the commit pipeline. |
+| Page                                                        | Covers                                                                            |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| [Runtime](./architecture/runtime)                           | `JourneyRuntime`: status, timeline, context, generation, raised events.           |
+| [Store](./architecture/store)                               | `JourneyStore`: snapshot holder, subscription hub, listener isolation.            |
+| [Machine surface](./architecture/machine-surface)           | `buildMachineSurface`: the grouped public object.                                 |
+| [Plugin host](./architecture/plugin-host)                   | Observe-only taps, namespaced APIs, snapshot extension stability.                 |
+| [Work and transitions](./architecture/work-and-transitions) | Sync guards, transactional work, staged-context routing, and the commit pipeline. |
 
 ## Snapshot derivation
 

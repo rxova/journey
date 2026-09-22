@@ -27,31 +27,29 @@ No match returns `no-enabled-transition`.
 
 ## Transactional work
 
-Next/previous navigation and builder-declared work-sends carry the same transaction shape: an
+Next/previous navigation and work declared on a step's event carry the same transaction shape: an
 asynchronous `run` executes first, an optional synchronous `commit` stages a context update, and
 the move is decided afterwards — all-or-nothing.
 
-For a work-send, candidate guards are evaluated **against the staged context**, and in the
-candidates-callback form they additionally receive the typed **result of `run`**:
+For a work send, candidate guards are evaluated **against the staged context**. They never see the
+result of `run`: a routing fact goes through `commit`, so a guard is the same function of context
+during a send as during snapshot derivation.
 
 ```ts
-b.createStep("review", {
+review: {
   on: {
-    submit: ({ work }) =>
-      work({
-        run: async ({ context, handlers }) => handlers.verify(context),
-        candidates: ({ to, stay }) => [
-          to("done").when(({ result }) => result.ok),
-          stay() // totality fallback
-        ]
-      })
+    SUBMIT: {
+      run: ({ snapshot, handlers }) => handlers.verify(snapshot.context),
+      commit: ({ result, updateContext }) =>
+        updateContext((context) => ({ ...context, verified: result.ok })),
+      candidates: [
+        { to: "done", when: ({ context }) => context.verified },
+        { to: "review" } // unguarded fallback, so a failed check still commits
+      ]
+    }
   }
-});
+}
 ```
-
-Control-flow intermediates never need to be laundered through persistent context: read them from
-`result`. Resting-state introspection (`outgoingTransitions`) evaluates result-reading guards with
-`result: undefined`.
 
 If `run` throws, rejects, or times out — or no candidate is enabled — nothing commits: the machine
 stays on the source step and staged context updates are discarded. The caller receives a failed

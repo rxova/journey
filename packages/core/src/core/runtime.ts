@@ -392,9 +392,9 @@ export class JourneyRuntime {
 
     if (!this.isCurrent(generation)) return this.staleResult();
 
-    // Route against the staged context, not the committed one; the guards also
-    // see the run result directly, so transient outcomes need not be persisted.
-    const transition = this.resolveTransition(type, stagedContext, result);
+    // Route against the staged context, not the committed one. Guards never see
+    // the run result: only what `commit` staged, as during snapshot derivation.
+    const transition = this.resolveTransition(type, stagedContext);
     if (!transition) {
       // Roll back: the staged context is dropped along with the move.
       this.pending = null;
@@ -498,14 +498,10 @@ export class JourneyRuntime {
    * `result` is the work's run result during that same routing pass; outside a
    * work send (plain sends, snapshot introspection) guards see it as undefined.
    */
-  private isEnabled(
-    transition: RuntimeTransition,
-    context: unknown = this.context,
-    result?: unknown
-  ): boolean {
+  private isEnabled(transition: RuntimeTransition, context: unknown = this.context): boolean {
     if (!transition.when) return true;
     try {
-      return transition.when({ context, handlers: this.config.handlers, result });
+      return transition.when({ context, handlers: this.config.handlers });
     } catch {
       return false;
     }
@@ -514,14 +510,13 @@ export class JourneyRuntime {
   /** First enabled candidate for `event` from the current step, in declaration order. */
   private resolveTransition(
     event: string,
-    context: unknown = this.context,
-    result?: unknown
+    context: unknown = this.context
   ): RuntimeTransition | undefined {
     return this.config.transitions.find(
       (candidate) =>
         candidate.event === event &&
         candidate.from === this.currentStepId() &&
-        this.isEnabled(candidate, context, result)
+        this.isEnabled(candidate, context)
     );
   }
 

@@ -125,15 +125,13 @@ failed run's staged context is rolled back with the unmatched send — which is 
 at build time when every candidate of a work declaration is guarded. An intentionally partial event
 declares `allowRollback: true` on the work to silence it.
 
-Three follow-ups worth knowing:
+Two follow-ups worth knowing:
 
 - A self-transition (including `stay()`) is an ordinary move. There is no `from === to` special
   case: the step's `onLeave` and `onEnter` both run again, `onTransition` fires, and the step's
   visit count increments.
 - `onTransition` runs after the destination commits (see the next section) — by then the staged
   context **is** the context.
-- Snapshot introspection evaluates guards outside any send, so a guard that reads `result` sees it
-  as `undefined` there — details on the [snapshot page](../snapshot#graph-snapshot).
 
 ## Transition and step effects
 

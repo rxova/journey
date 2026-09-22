@@ -211,6 +211,47 @@ describe("declared work on an event", () => {
     expect(machine.getSnapshot().context).toMatchObject({ method: null });
   });
 
+  it("hands guards only context and handlers, never the run result", async () => {
+    const seen: string[][] = [];
+    const record =
+      (method: Ctx["method"]) =>
+      (args: { context: Ctx }): boolean => {
+        seen.push(Object.keys(args).sort());
+        return args.context.method === method;
+      };
+    const machine = withGraphTypes<SubmitBag>()({
+      steps: {
+        login: {
+          on: {
+            SUBMIT: {
+              run: () => ({ method: "email" as const }),
+              commit: ({ result, updateContext }) =>
+                updateContext((c) => ({ ...c, method: result?.method ?? null })),
+              candidates: [
+                { to: "email", when: record("email") },
+                { to: "sms", when: record("sms") }
+              ]
+            }
+          }
+        },
+        email: {},
+        sms: {},
+        blocked: {}
+      },
+      initial: "login",
+      context: { method: null, attempts: 0 }
+    });
+    machine.controls.start();
+    await flush();
+    seen.length = 0;
+
+    expect(await machine.send("SUBMIT")).toEqual({ ok: true, from: "login", to: "email" });
+    // The first guard call after the send is the routing pass, where a result
+    // could leak in; snapshot derivation afterwards must match it.
+    expect(seen.length).toBeGreaterThan(0);
+    for (const keys of seen) expect(keys).toEqual(["context", "handlers"]);
+  });
+
   it("an event with no declared work routes straight off its candidates", async () => {
     const machine = await startedGraph({ method: "email" });
     expect(await machine.send("SUBMIT")).toEqual({ ok: true, from: "login", to: "email" });
