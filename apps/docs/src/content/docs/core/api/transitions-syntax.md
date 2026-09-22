@@ -124,6 +124,10 @@ on: {
 `goToNextStep({ run, timeoutMs: 30_000 })`. It must be a finite number greater than zero, checked
 when the definition is built rather than when the timer first matters.
 
+A work timeout also aborts the `signal` that `run` and `commit` receive, with the timeout error as
+its `reason`, so `run: ({ handlers, signal }) => handlers.creditCheck({ signal })` stops the call
+rather than letting it finish unobserved.
+
 ## Validation
 
 Factories reject empty definitions, duplicate linear ids, unknown graph initial steps, and

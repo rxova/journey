@@ -109,6 +109,8 @@ export class JourneyRuntime {
   private restoreSeed: RuntimeConfig["restore"] | null = null;
   /** Bumped by terminate/restart/dispose so stale hook continuations bail out. */
   private generation = 0;
+  /** One per work call in flight; a generation change aborts them all. */
+  private readonly inFlight = new Set<AbortController>();
   private raiseQueue: JourneyEventObject[] = [];
   private processingRaised = false;
   private lastPluginExtensions: Readonly<Record<string, unknown>> = {};
@@ -172,7 +174,7 @@ export class JourneyRuntime {
 
   terminate(payload?: unknown): boolean {
     if (this.disposed || this.status === "terminated") return false;
-    this.generation += 1;
+    this.nextGeneration();
     this.pending = null;
     this.entryAsync = SUCCESS_ASYNC;
     this.raiseQueue = [];
@@ -185,7 +187,7 @@ export class JourneyRuntime {
     if (this.disposed || (this.status !== "completed" && this.status !== "terminated")) {
       return false;
     }
-    this.generation += 1;
+    this.nextGeneration();
     this.pending = null;
     this.raiseQueue = [];
     this.timeline = [];
@@ -202,7 +204,7 @@ export class JourneyRuntime {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    this.generation += 1;
+    this.nextGeneration();
     this.pending = null;
     this.raiseQueue = [];
     for (const callback of this.disposeCallbacks.splice(0)) {
@@ -352,17 +354,21 @@ export class JourneyRuntime {
     this.entryAsync = LOADING_ASYNC;
     this.publish();
 
+    const controller = new AbortController();
+    this.inFlight.add(controller);
     try {
       const args: AnySendWorkArgs = {
         snapshot: this.store.getSnapshot(),
         from,
         event,
-        handlers: this.config.handlers
+        handlers: this.config.handlers,
+        signal: controller.signal
       };
       result = await this.withTimeout(
         Promise.resolve(work.run(args)),
         `send work(${work.label ?? `${type} from ${from}`})`,
-        work.timeoutMs
+        work.timeoutMs,
+        controller
       );
       if (!this.isCurrent(generation)) return this.staleResult();
       const commitResult = (work.commit as ((value: unknown) => unknown) | undefined)?.({
@@ -388,6 +394,8 @@ export class JourneyRuntime {
       const snapshot = this.publish();
       this.store.emit("error", { snapshot, error, phase: "work", stepId: from });
       return this.blocked({ ok: false, reason: "error", error }, null);
+    } finally {
+      this.inFlight.delete(controller);
     }
 
     if (!this.isCurrent(generation)) return this.staleResult();
@@ -601,15 +609,24 @@ export class JourneyRuntime {
    * `defaultTimeoutMs` so that one slow third-party call does not force every
    * other edge onto the slow one's budget; `undefined` falls back to the
    * global, and a global of `undefined` means no bound at all.
+   *
+   * With a `controller`, a timeout also aborts it with the timeout error, so
+   * work that honours its `signal` stops instead of running on unobserved.
    */
-  private withTimeout<T>(promise: Promise<T>, label: string, overrideMs?: number): Promise<T> {
+  private withTimeout<T>(
+    promise: Promise<T>,
+    label: string,
+    overrideMs?: number,
+    controller?: AbortController
+  ): Promise<T> {
     const ms = overrideMs ?? this.config.defaultTimeoutMs;
     if (ms === undefined) return promise;
     return new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(
-        () => reject(new Error(`journey: ${label} timed out after ${ms}ms`)),
-        ms
-      );
+      const timer = setTimeout(() => {
+        const error = new Error(`journey: ${label} timed out after ${ms}ms`);
+        controller?.abort(error);
+        reject(error);
+      }, ms);
       promise.then(
         (value) => {
           clearTimeout(timer);
@@ -669,17 +686,21 @@ export class JourneyRuntime {
       this.entryAsync = LOADING_ASYNC;
       this.publish();
 
+      const controller = new AbortController();
+      this.inFlight.add(controller);
       try {
         const args = {
           snapshot: this.store.getSnapshot(),
           from,
           to,
-          direction
+          direction,
+          signal: controller.signal
         };
         const result = await this.withTimeout(
           Promise.resolve(work.run(args)),
           `${direction} navigation work(${from} -> ${to})`,
-          work.timeoutMs
+          work.timeoutMs,
+          controller
         );
         if (!this.isCurrent(generation)) return this.staleResult();
         const commitResult = (work.commit as ((value: unknown) => unknown) | undefined)?.({
@@ -705,6 +726,8 @@ export class JourneyRuntime {
         const snapshot = this.publish();
         this.store.emit("error", { snapshot, error, phase: "work", stepId: from });
         return this.blocked({ ok: false, reason: "error", error }, to);
+      } finally {
+        this.inFlight.delete(controller);
       }
     }
     if (!this.isCurrent(generation)) return this.staleResult();
@@ -887,6 +910,16 @@ export class JourneyRuntime {
     } finally {
       this.processingRaised = false;
     }
+  }
+
+  /**
+   * Makes every continuation of the old generation stale, and cancels its work.
+   * Each call's `finally` removes its own controller, so the set needs no
+   * clearing here; aborting one twice is a no-op.
+   */
+  private nextGeneration(): void {
+    this.generation += 1;
+    this.inFlight.forEach((controller) => controller.abort());
   }
 
   private isCurrent(generation: number): boolean {

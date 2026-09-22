@@ -242,6 +242,13 @@ export type SendWorkArgs<
   readonly from: TStepId;
   readonly event: TEvents;
   readonly handlers: THandlers;
+  /**
+   * Aborted when this call stops mattering: its timeout elapses (the reason is
+   * the timeout error), or the machine is terminated, restarted or disposed
+   * while it runs. Pass it to `fetch` or any abortable call so the work stops
+   * instead of running on unobserved. `commit` receives the same signal.
+   */
+  readonly signal: AbortSignal;
 };
 
 /**

@@ -72,8 +72,25 @@ const machine = createLinearJourney(definition, {
 ```
 
 The timeout applies to navigation `run` and each async hook invocation. Terminating, restarting, or disposing increments
-the runtime generation so stale continuations cannot settle machine state. Journey does not supply
-an `AbortSignal`; cancel underlying I/O in your own integration when needed.
+the runtime generation so stale continuations cannot settle machine state.
+
+Work — a graph send's `run`, or navigation work passed to `goToNextStep` and friends — receives a
+`signal`, and `commit` receives the same one. It aborts when the runtime stops waiting for the call:
+on a timeout (its `reason` is the timeout error) or when the machine is terminated, restarted, or
+disposed. Hand it to the I/O so a call nobody is waiting for stops instead of running on:
+
+```ts
+on: {
+  SUBMIT: {
+    run: ({ signal }) => fetch("/api/submit", { method: "POST", signal }),
+    timeoutMs: 10_000,
+    candidates: [{ to: "done" }]
+  }
+}
+```
+
+A call that finishes, or fails on its own, keeps a signal that never aborts. Hooks do not receive
+one.
 
 ## Raised events
 

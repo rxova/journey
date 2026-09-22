@@ -24,6 +24,7 @@ export type AnySendWorkArgs = {
   readonly from: string;
   readonly event: JourneyEventObject;
   readonly handlers: unknown;
+  readonly signal: AbortSignal;
 };
 
 export type AnySendWork = {

@@ -59,6 +59,10 @@ and emits an `error` event with phase `raise`.
 returns `reason: "error"`; a post-commit hook timeout surfaces as the destination step's async
 error.
 
+Each work call gets its own `AbortController`, whose `signal` is handed to `run` and `commit`. A work
+timeout aborts it with the timeout error, and terminate, restart, and dispose — the calls that bump
+the generation — abort every one still in flight.
+
 ## Where to next
 
 - [Store](./store)
