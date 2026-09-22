@@ -196,6 +196,44 @@ describe("graph bundle", () => {
 });
 
 describe("graph bundle edges", () => {
+  it("renders every step of an always chain, with no torn read along the way", async () => {
+    const bundle = createGraphJourney({
+      steps: {
+        form: { on: { SUBMIT: "check" } },
+        check: {
+          always: {
+            run: () => new Promise((resolve) => setTimeout(resolve, 5)),
+            commit: ({ updateContext }) =>
+              updateContext((context) => ({ attempts: context.attempts + 1 })),
+            candidates: [{ to: "route" }]
+          }
+        },
+        route: { always: [{ to: "done", when: ({ context }) => context.attempts > 0 }] },
+        done: {}
+      },
+      initial: "form",
+      context: { attempts: 0 } as Ctx
+    });
+    const seen: string[] = [];
+    const Probe = () => {
+      const step = bundle.useStep()?.id ?? "idle";
+      const fromSelector = bundle.useSelector((snapshot) => snapshot.currentStep?.id ?? "idle");
+      if (step !== fromSelector) throw new Error(`torn read: ${step} vs ${fromSelector}`);
+      if (seen.at(-1) !== step) seen.push(step);
+      return <span data-testid="at">{step}</span>;
+    };
+
+    render(<Probe />);
+    await flush();
+    await act(async () => {
+      await bundle.send("SUBMIT");
+    });
+
+    expect(seen).toEqual(["idle", "form", "check", "route", "done"]);
+    expect(screen.getByTestId("at").textContent).toBe("done");
+    expect(bundle.machine.getSnapshot().context.attempts).toBe(1);
+  });
+
   it("updates context through the bundle and honours custom selector equality", async () => {
     const bundle = makeBundle();
     const seen: unknown[] = [];
