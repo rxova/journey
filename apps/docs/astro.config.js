@@ -271,6 +271,34 @@ export default defineConfig({
             ]
           },
           {
+            label: "Judge",
+            items: [
+              { label: "Learn", collapsed: false, items: ["judge/getting-started"] },
+              { label: "Reference", collapsed: true, items: ["judge/how-it-works"] },
+              {
+                label: "API reference",
+                collapsed: true,
+                items: [
+                  {
+                    label: "Functions",
+                    collapsed: true,
+                    items: [{ autogenerate: { directory: "judge/api/reference/functions" } }]
+                  },
+                  {
+                    label: "Classes",
+                    collapsed: true,
+                    items: [{ autogenerate: { directory: "judge/api/reference/classes" } }]
+                  },
+                  {
+                    label: "Type aliases",
+                    collapsed: true,
+                    items: [{ autogenerate: { directory: "judge/api/reference/type-aliases" } }]
+                  }
+                ]
+              }
+            ]
+          },
+          {
             label: "Chrome DevTools",
             items: [
               "devtool/overview",

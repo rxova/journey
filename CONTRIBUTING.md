@@ -7,6 +7,7 @@ Rxova Journey is a small monorepo with package and app workspaces:
 - `packages/core`: framework-agnostic journey state machine, types, and runtime logic.
 - `packages/react`: React bindings — one bundle per machine — built on top of core.
 - `packages/devtools-bridge`: bridge API for integrating machines with devtools.
+- `packages/judge`: rules and a sampled model panel, run as a core graph.
 - `apps/docs`: Astro Starlight documentation site.
 - `apps/demo`: local playground app for runtime integration checks.
 - `apps/devtools`: browser extension app.
@@ -119,6 +120,7 @@ Releases are automated with Changesets and GitHub Actions.
 
 - `@rxova/journey-core`, `@rxova/journey-react`, and `@rxova/journey-devtools-bridge` are independently versioned with Changesets.
 - Their major versions must stay aligned (`pnpm run version:major:check` enforces this in CI).
+- `@rxova/journey-judge` is versioned with Changesets on its own `0.x` line, outside that alignment.
 - Private app workspaces `@rxova/journey-docs` and `apps-devtools` are also versioned with Changesets for docs/version tracking, but they are not published to npm.
 - `apps-demo` remains ignored by Changesets.
 - The `1.0.0-rc` line is where the public contract is still being settled: breaking changes belong

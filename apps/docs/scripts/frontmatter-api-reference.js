@@ -19,7 +19,7 @@
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join, basename, extname } from "node:path";
 
-const ROOTS = ["core", "react", "bridge"].map((s) =>
+const ROOTS = ["core", "react", "bridge", "judge"].map((s) =>
   join("apps/docs/src/content/docs", s, "api/reference")
 );
 

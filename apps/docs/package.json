@@ -46,6 +46,7 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
     "@rxova/journey-devtools-bridge": "workspace:^",
+    "@rxova/journey-judge": "workspace:^",
     "@rxova/journey-react": "workspace:^",
     "lucide-static": "^1.45.0",
     "typescript": "^6.0.3"

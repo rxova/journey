@@ -35,6 +35,8 @@
       "@rxova/journey-devtools-bridge/testing": [
         "./packages/devtools-bridge/src/__tests__/helpers.ts"
       ],
+      "@rxova/journey-judge": ["./packages/judge/src/index.ts"],
+      "@rxova/journey-judge/testing": ["./packages/judge/src/__tests__/helpers.ts"],
       "@rxova/journey-common": ["./packages/common/src/index.ts"],
       "@rxova/journey-common/*": ["./packages/common/src/*.ts"]
     }

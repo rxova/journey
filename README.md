@@ -45,11 +45,13 @@ Journey supports:
 | `@rxova/journey-core`            | Framework-independent linear and graph machines |
 | `@rxova/journey-react`           | Linear and graph bundle factories for React     |
 | `@rxova/journey-devtools-bridge` | Connect a machine to Journey Chrome DevTools    |
+| `@rxova/journey-judge`           | Rules and a sampled model panel, run as a graph |
 
 ```bash
 npm install @rxova/journey-core
 npm install @rxova/journey-react react
 npm install @rxova/journey-devtools-bridge
+npm install @rxova/journey-judge
 ```
 
 ## Core linear journey

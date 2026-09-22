@@ -15,7 +15,12 @@ import process from "node:process";
  */
 
 /** Directory prefixes of packages that are published to npm. */
-const publishedPackageDirs = ["packages/core/", "packages/react/", "packages/devtools-bridge/"];
+const publishedPackageDirs = [
+  "packages/core/",
+  "packages/react/",
+  "packages/devtools-bridge/",
+  "packages/judge/"
+];
 
 /**
  * Files that never require a changeset when they are the whole diff.

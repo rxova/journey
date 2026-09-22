@@ -12,6 +12,7 @@ const perFileCoveragePrefixes = [
   "packages/core/",
   "packages/react/",
   "packages/devtools-bridge/",
+  "packages/judge/",
   "apps/devtools/"
 ] as const;
 const enforcePerFileCoverage =
@@ -72,6 +73,16 @@ export default defineConfig({
         replacement: fileURLToPath(
           new URL("./packages/devtools-bridge/src/index.ts", import.meta.url)
         )
+      },
+      {
+        find: "@rxova/journey-judge/testing",
+        replacement: fileURLToPath(
+          new URL("./packages/judge/src/__tests__/helpers.ts", import.meta.url)
+        )
+      },
+      {
+        find: "@rxova/journey-judge",
+        replacement: fileURLToPath(new URL("./packages/judge/src/index.ts", import.meta.url))
       },
       {
         find: "@rxova/journey-common/predicates",

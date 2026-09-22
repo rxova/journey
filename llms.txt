@@ -30,6 +30,8 @@ rename.
   runtime — a bundle around one standalone machine, deliberately thin.
 - [@rxova/journey-devtools-bridge](packages/devtools-bridge): connects a running
   machine to the Chrome DevTools panel. Optional, and not imported by the core.
+- [@rxova/journey-judge](packages/judge): answers questions about a state with
+  rules, then a sampled panel of models. Built on core; brings no provider SDK.
 
 ## Docs
 

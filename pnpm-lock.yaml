@@ -418,6 +418,9 @@ importers:
       '@rxova/journey-devtools-bridge':
         specifier: workspace:^
         version: link:../../packages/devtools-bridge
+      '@rxova/journey-judge':
+        specifier: workspace:^
+        version: link:../../packages/judge
       '@rxova/journey-react':
         specifier: workspace:^
         version: link:../../packages/react
@@ -804,6 +807,18 @@ importers:
       '@rxova/journey-common':
         specifier: workspace:*
         version: link:../common
+      '@rxova/journey-core':
+        specifier: workspace:^
+        version: link:../core
+      publint:
+        specifier: ^0.3.24
+        version: 0.3.24
+
+  packages/judge:
+    devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: ^0.18.5
+        version: 0.18.5
       '@rxova/journey-core':
         specifier: workspace:^
         version: link:../core

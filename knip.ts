@@ -25,7 +25,7 @@ export default {
     // workspace down. Knip matches the two up only within one workspace.
     "publint",
     "@arethetypeswrong/cli",
-    // Named in typedoc.core.json / typedoc.react.json / typedoc.bridge.json as
+    // Named in each typedoc.<package>.json as
     // a `plugin` entry. Knip does not read a typedoc config.
     "typedoc-plugin-markdown"
   ],
@@ -36,7 +36,11 @@ export default {
       // declared budget when the dist is absent. Declaring them is what puts
       // them ahead of the docs in Turbo's `^build` order, so the published page
       // reports a measurement rather than a ceiling.
-      ignoreDependencies: ["@rxova/journey-react", "@rxova/journey-devtools-bridge"],
+      ignoreDependencies: [
+        "@rxova/journey-react",
+        "@rxova/journey-devtools-bridge",
+        "@rxova/journey-judge"
+      ],
       ignore: [
         // A one-shot Docusaurus-to-Starlight migration, deliberately kept: its
         // own header says it stays so "the transforms it applied are auditable
@@ -78,6 +82,9 @@ export default {
       entry: ["src/**/__tests__/*.type.ts"]
     },
     "packages/react": {
+      entry: ["src/**/__tests__/*.type.ts"]
+    },
+    "packages/judge": {
       entry: ["src/**/__tests__/*.type.ts"]
     }
   }

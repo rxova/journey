@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "paths": {
+      "@rxova/journey-core": ["../core/src/index.ts"],
+      "@rxova/journey-judge": ["./src/index.ts"],
+      "@rxova/journey-judge/testing": ["./src/__tests__/helpers.ts"]
+    }
+  },
+  "include": ["src"]
+}

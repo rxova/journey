@@ -15,7 +15,7 @@
  * (`measured: false`, and the page renders it as "≤ 7.9 kB"), because quoting a
  * ceiling as though it were a measurement is the exact failure this file
  * exists to prevent. In a normal build the fallback should never fire: the docs
- * app depends on all three packages, so turbo's `^build` builds them first.
+ * app depends on every package, so turbo's `^build` builds them first.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -89,6 +89,13 @@ const PACKAGES = [
     check: "devtools-bridge/attachJourneyDevtools",
     label: "DevTools bridge",
     note: "Opt-in — nothing reaches your bundle unless you attach it"
+  },
+  {
+    dir: "judge",
+    npm: "@rxova/journey-judge",
+    check: "judge/createJudge",
+    label: "Judge",
+    note: "Rules and a sampled model panel, as a graph over core"
   }
 ];
 

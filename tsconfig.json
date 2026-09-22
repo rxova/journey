@@ -12,6 +12,9 @@
     },
     {
       "path": "./packages/devtools-bridge/tsconfig.build.json"
+    },
+    {
+      "path": "./packages/judge/tsconfig.build.json"
     }
   ],
   "include": [

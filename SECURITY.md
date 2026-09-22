@@ -14,6 +14,7 @@ not supported: upgrade to 1.0 or later.
 | `< 1.0.0`    | No                                |
 
 This covers `@rxova/journey-core`, `@rxova/journey-react`, and `@rxova/journey-devtools-bridge`.
+`@rxova/journey-judge` is on a `0.x` line: only its latest release receives fixes.
 The DevTools browser extension is supported at its current published version only.
 
 ## Response Targets
@@ -49,3 +50,8 @@ If you use `@rxova/journey-devtools-bridge` in a browser app, keep a strict Cont
 - The bridge uses `window.postMessage` and does not require `unsafe-inline`, `unsafe-eval`, remote script hosts, or `chrome-extension:` / `moz-extension:` sources in `script-src`.
 - Prefer nonces or hashes for any inline bootstrap code instead of weakening the entire policy.
 - Package-specific guidance lives in [`packages/devtools-bridge/SECURITY.md`](packages/devtools-bridge/SECURITY.md).
+
+If you use `@rxova/journey-judge`, every `ask` serializes its `state` into the prompt sent to each
+model on the panel. Send only what you would share with those providers. The prompt marks the state
+as untrusted material, which lowers but does not remove the chance that text inside it sways a
+model, so treat the answers as evidence rather than authority.
