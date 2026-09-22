@@ -5,6 +5,17 @@ import type { StepAsyncState, TransitionInfo } from "./types";
 export const MAX_RAISED_EVENTS = 25;
 
 /**
+ * The event name a step's `always` entry is normalized under. Routing it
+ * through the `on` machinery gives `always` the same staging, rollback, guards
+ * and structural checks as any send; the name is reserved so no declared event
+ * can collide with it, and it is left out of `declaredEvents`/`availableEvents`.
+ */
+export const ALWAYS = "$always";
+
+/** Default cap on consecutive `always` moves made without an outside call. */
+export const MAX_AUTO_STEPS = 100;
+
+/**
  * Key for definition-declared send work. Work belongs to an (origin step,
  * event) pair, not to an event alone — the same event name can be declared
  * from several steps with different work on each. Length-prefixing the step id

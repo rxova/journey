@@ -349,7 +349,7 @@ export type JourneyEventPayloads<
     readonly snapshot: TSnap;
     readonly error: unknown;
     /** Which pipeline stage threw. */
-    readonly phase: "work" | "leave" | "enter" | "transition" | "raise";
+    readonly phase: "work" | "leave" | "enter" | "transition" | "raise" | "always";
     readonly stepId: TStepId | null;
   };
 };

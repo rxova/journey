@@ -22,7 +22,8 @@ export type AnyNavigationWork = NavigationWork<unknown, string, JourneySnapshot,
 export type AnySendWorkArgs = {
   readonly snapshot: JourneySnapshot;
   readonly from: string;
-  readonly event: JourneyEventObject;
+  /** Null for a step's `always` work, which no event triggered. */
+  readonly event: JourneyEventObject | null;
   readonly handlers: unknown;
   readonly signal: AbortSignal;
 };
@@ -89,6 +90,8 @@ export type RuntimeConfig = {
   readonly handlers: unknown;
   readonly autoStart: boolean;
   readonly defaultTimeoutMs: number | undefined;
+  /** Graph only: cap on consecutive `always` moves; defaults to 100. */
+  readonly maxAutoSteps?: number;
   /** Routes isolated subscriber failures; defaults to the console reporter. */
   readonly onListenerError?: (error: unknown) => void;
   /**

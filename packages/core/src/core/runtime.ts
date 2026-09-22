@@ -1,10 +1,12 @@
 import { isDevelopmentEnvironment } from "@rxova/journey-common/dev";
 import { JourneyError } from "./errors";
 import {
+  ALWAYS,
   describeTransition,
   eventWorkKey,
   hasOwn,
   LOADING_ASYNC,
+  MAX_AUTO_STEPS,
   MAX_RAISED_EVENTS,
   shallowEqual,
   SUCCESS_ASYNC,
@@ -113,6 +115,8 @@ export class JourneyRuntime {
   private readonly inFlight = new Set<AbortController>();
   private raiseQueue: JourneyEventObject[] = [];
   private processingRaised = false;
+  /** `always` moves since the last outside call; capped by `maxAutoSteps`. */
+  private autoSteps = 0;
   private lastPluginExtensions: Readonly<Record<string, unknown>> = {};
   /** The last built snapshot — the sharing baseline for buildSnapshot(). */
   private lastSnapshot: JourneySnapshot | null = null;
@@ -248,6 +252,7 @@ export class JourneyRuntime {
         (candidate) =>
           candidate.from === this.currentStepId() &&
           candidate.to === id &&
+          candidate.event !== ALWAYS &&
           this.isEnabled(candidate)
       );
       if (!transition) return this.blocked({ ok: false, reason: "invalid-target" }, id);
@@ -339,7 +344,7 @@ export class JourneyRuntime {
    */
   private async sendWithWork(
     type: string,
-    event: JourneyEventObject,
+    event: JourneyEventObject | null,
     work: AnySendWork
   ): Promise<NavigationResult> {
     const generation = this.generation;
@@ -532,6 +537,9 @@ export class JourneyRuntime {
     if (this.disposed) return { ok: false, reason: "disposed" };
     if (this.status !== "running") return { ok: false, reason: "not-running" };
     if (this.pending) return { ok: false, reason: "transitioning" };
+    // Every outside call passes here and `advance` never does, so this is where
+    // a chain of `always` moves ends and the next one starts counting.
+    this.autoSteps = 0;
     return null;
   }
 
@@ -644,6 +652,7 @@ export class JourneyRuntime {
   private async enterInitialStep(): Promise<void> {
     const generation = this.generation;
     const seed = this.restoreSeed;
+    this.autoSteps = 0;
     this.restoreSeed = null;
     if (seed) {
       const to = seed.timeline[seed.currentIndex] as string;
@@ -872,7 +881,41 @@ export class JourneyRuntime {
       }
     }
     this.refreshPluginSnapshot();
-    void this.processRaisedEvents(generation);
+    // Awaited, so the call that entered this step resolves once the chain of
+    // `always` moves rests. A move settles again through here and drains the
+    // raise queue itself; only a step that stays drains it now.
+    if (!(await this.advance(to, generation))) void this.processRaisedEvents(generation);
+  }
+
+  /**
+   * Runs the settled step's `always` entry, if it declares one: its work first,
+   * staged and rolled back exactly as a work send is, then the first enabled
+   * candidate. No enabled candidate leaves the machine on the step and emits
+   * `navigationBlocked`, with or without work. Resolves true only on a move.
+   */
+  private async advance(from: string, generation: number): Promise<boolean> {
+    if (this.status !== "running" || !this.isCurrent(generation)) return false;
+    const work = this.config.eventWork?.[eventWorkKey(from, ALWAYS)];
+    if (!work && !this.config.transitions.some((t) => t.from === from && t.event === ALWAYS)) {
+      return false;
+    }
+    const max = this.config.maxAutoSteps ?? MAX_AUTO_STEPS;
+    if (++this.autoSteps > max) {
+      this.store.emit("error", {
+        snapshot: this.store.getSnapshot(),
+        error: new Error(`journey: always chain exceeded ${max} moves; stopped at "${from}"`),
+        phase: "always",
+        stepId: from
+      });
+      return false;
+    }
+    if (work) return (await this.sendWithWork(ALWAYS, null, work)).ok;
+    const transition = this.resolveTransition(ALWAYS);
+    return (
+      await (transition
+        ? this.runNavigation(transition.to, { kind: "append" }, null, transition)
+        : this.blocked({ ok: false, reason: "no-enabled-transition" }, null))
+    ).ok;
   }
 
   /**
@@ -1040,7 +1083,10 @@ export class JourneyRuntime {
         for (const transition of this.config.transitions) {
           if (transition.from !== currentId) continue;
           hasOutgoing = true;
-          if (!declaredEvents.includes(transition.event)) declaredEvents.push(transition.event);
+          const named = transition.event !== ALWAYS;
+          if (named && !declaredEvents.includes(transition.event)) {
+            declaredEvents.push(transition.event);
+          }
 
           const priority = priorities.get(transition.event) ?? 0;
           priorities.set(transition.event, priority + 1);
@@ -1059,7 +1105,9 @@ export class JourneyRuntime {
           );
 
           if (enabled) {
-            if (!availableEvents.includes(transition.event)) availableEvents.push(transition.event);
+            if (named && !availableEvents.includes(transition.event)) {
+              availableEvents.push(transition.event);
+            }
             if (!availableSteps.includes(transition.to)) availableSteps.push(transition.to);
           }
         }

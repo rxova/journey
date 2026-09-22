@@ -216,9 +216,13 @@ one edge so a single slow third-party call does not set the budget for the whole
 receives a `signal` that aborts on its timeout and on terminate, restart, or dispose; pass it to
 `fetch` or your client so abandoned calls stop.
 
+A step's `always` declares the move it makes on its own once entered — candidates, or work and
+candidates, like an `on` entry with no event. The call that entered the step resolves once the chain
+rests, and `maxAutoSteps` (default 100) caps a runaway chain.
+
 For larger graphs, `withGraphTypes<Bag>()` pins the types once and `GraphStep<Bag>` lets each step live in its own file, and
 `defineWork<Bag, "EVENT">()` reads a work entry's result type off its `run` instead of restating it
-in the bag. See the [Graph guide](https://rxova.org/docs/core/usage/graph).
+in the bag; `defineAlways<Bag>()` does the same for an `always` entry. See the [Graph guide](https://rxova.org/docs/core/usage/graph).
 
 ## Connectors
 

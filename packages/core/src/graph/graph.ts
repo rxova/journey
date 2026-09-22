@@ -1,5 +1,5 @@
 import { JourneyError } from "../core/errors";
-import { eventWorkKey, hasOwn } from "../core/helpers";
+import { ALWAYS, eventWorkKey, hasOwn } from "../core/helpers";
 import { buildMachineSurface } from "../core/machine";
 import { JourneyRuntime } from "../core/runtime";
 import { persistOptionToPlugin } from "../plugins/persistence/persistence";
@@ -130,9 +130,17 @@ export function normalizeGraphDefinition(definition: LooseGraphDefinition): {
   };
 
   for (const from of stepIds) {
-    const on = definition.steps[from]?.on;
-    if (!on) continue;
-    for (const [event, entry] of Object.entries(on)) {
+    const { on = {}, always } = definition.steps[from] as LooseGraphDefinition["steps"][string];
+    if (hasOwn(on, ALWAYS)) {
+      throw new JourneyError(
+        "reserved-event",
+        `step "${from}" declares "${ALWAYS}" in "on"; use "always" instead`,
+        { event: ALWAYS, stepId: from }
+      );
+    }
+    const entries = Object.entries(on);
+    if (always !== undefined) entries.push([ALWAYS, always]);
+    for (const [event, entry] of entries) {
       if (entry === undefined) continue;
       if (typeof entry === "string") {
         pushCandidate(event, from, { to: entry }, 0);
@@ -253,6 +261,7 @@ export function createGraphJourney<
     handlers: options.handlers ?? definition.handlers,
     autoStart: options.autoStart ?? true,
     defaultTimeoutMs: options.defaultTimeoutMs,
+    ...(options.maxAutoSteps !== undefined ? { maxAutoSteps: options.maxAutoSteps } : {}),
     ...(options.onListenerError !== undefined ? { onListenerError: options.onListenerError } : {}),
     plugins: [
       ...(options.persist ? [persistOptionToPlugin(options.persist)] : []),

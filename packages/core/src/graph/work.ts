@@ -1,5 +1,11 @@
 import type { Bag, HandlersOf, MetaOf, ResultOf } from "./bag.types";
-import type { GraphOnEntry, GraphTransition, SendWorkArgs } from "./graph.types";
+import type {
+  AlwaysWorkArgs,
+  GraphAlwaysEntry,
+  GraphOnEntry,
+  GraphTransition,
+  SendWorkArgs
+} from "./graph.types";
 import type { ContextUpdater, GraphSnapshot } from "../core/types";
 
 /** The event an entry is declared under, narrowed out of the bag's union. */
@@ -117,4 +123,73 @@ export const defineWork =
       MetaOf<TBag>,
       ResultOf<TBag, TType>,
       TriggerOf<TBag, TType>
+    >;
+
+type AlwaysArgs<TBag extends Bag> = AlwaysWorkArgs<
+  TBag["stepId"],
+  GraphSnapshot<TBag["context"], TBag["stepId"], MetaOf<TBag>, TBag["events"]>,
+  HandlersOf<TBag>
+>;
+
+/**
+ * The config {@link defineAlways} checks: the work arm of
+ * {@link GraphAlwaysEntry}, with `TResult` free to infer from `run`.
+ */
+export type AlwaysConfig<TBag extends Bag, TResult> = {
+  readonly run: (args: AlwaysArgs<TBag>) => TResult | Promise<TResult>;
+  readonly commit?: (
+    args: AlwaysArgs<TBag> & {
+      readonly result: TResult;
+      readonly updateContext: (updater: ContextUpdater<TBag["context"]>) => void;
+    }
+  ) => void;
+  /** Names this work in timeout and error messages. */
+  readonly label?: string;
+  /** Budget for `run`, overriding `defaultTimeoutMs`. */
+  readonly timeoutMs?: number;
+  readonly candidates: readonly GraphTransition<
+    TBag["context"],
+    TBag["stepId"],
+    TBag["events"],
+    HandlersOf<TBag>,
+    MetaOf<TBag>,
+    never
+  >[];
+};
+
+/**
+ * {@link defineWork} for a step's `always` work: `run`'s return type flows
+ * into `commit`, with no event to name.
+ *
+ * ```ts
+ * check: {
+ *   always: defineAlways<AuthBag>()({
+ *     run: ({ handlers, signal }) => handlers.session({ signal }),
+ *     commit: ({ result, updateContext }) =>
+ *       updateContext((c) => ({ ...c, signedIn: result.valid })),
+ *     candidates: [{ to: "home", when: ({ context }) => context.signedIn }, { to: "login" }]
+ *   })
+ * }
+ * ```
+ *
+ * Returns its argument unchanged; the cast widens it into the slot, as
+ * `defineWork`'s does.
+ */
+export const defineAlways =
+  <TBag extends Bag>() =>
+  <TResult>(
+    config: AlwaysConfig<TBag, TResult>
+  ): GraphAlwaysEntry<
+    TBag["context"],
+    TBag["stepId"],
+    TBag["events"],
+    HandlersOf<TBag>,
+    MetaOf<TBag>
+  > =>
+    config as unknown as GraphAlwaysEntry<
+      TBag["context"],
+      TBag["stepId"],
+      TBag["events"],
+      HandlersOf<TBag>,
+      MetaOf<TBag>
     >;

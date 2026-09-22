@@ -109,13 +109,13 @@
       "name": "core/createLinearJourney",
       "path": "dist/index.js",
       "import": "{ createLinearJourney }",
-      "limit": "6.2 kB"
+      "limit": "6.3 kB"
     },
     {
       "name": "core/createGraphJourney",
       "path": "dist/index.js",
       "import": "{ createGraphJourney }",
-      "limit": "6.5 kB"
+      "limit": "6.8 kB"
     },
     {
       "name": "core/immerConnector",
@@ -139,7 +139,7 @@
       "name": "core/analyzeStructure",
       "path": "dist/index.js",
       "import": "{ analyzeStructure }",
-      "limit": "1.5 kB"
+      "limit": "1.55 kB"
     },
     {
       "name": "core/createPersistencePlugin",

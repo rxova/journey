@@ -133,6 +133,55 @@ Two follow-ups worth knowing:
 - `onTransition` runs after the destination commits (see the next section) — by then the staged
   context **is** the context.
 
+## Steps that advance themselves: `always`
+
+Some steps decide rather than ask: a router that sends a returning user to the dashboard, a check
+that runs a call and routes on its answer. `always` declares the move a step makes on its own, as
+soon as it is entered. It takes the same three forms as an `on` entry, with no event:
+
+```ts
+const definition = {
+  initial: "route",
+  context: { signedIn: false, verdict: null as "pass" | "fail" | null },
+  steps: {
+    route: {
+      always: [{ to: "dashboard", when: ({ context }) => context.signedIn }, { to: "signIn" }]
+    },
+    check: {
+      always: {
+        run: ({ handlers, signal }) => handlers.api.review({ signal }),
+        commit: ({ result, updateContext }) =>
+          updateContext((context) => ({ ...context, verdict: result.verdict })),
+        candidates: [
+          { to: "done", when: ({ context }) => context.verdict === "pass" },
+          { to: "fix" }
+        ]
+      }
+    }
+    // ...
+  }
+};
+```
+
+- The step is entered first: `onEnter` and every effect of the move that led here settle, then
+  `always` runs. The call that entered the step resolves only once the chain comes to rest, so
+  `await machine.send("NEXT")` returns with the machine on the step where it stopped.
+- Candidates are tried in order, against the context as it stands after entry; with work, against
+  the staged context, exactly as a work send. No enabled candidate leaves the machine on the step
+  and emits `navigationBlocked` — an `always` step that can rest there is how a step waits for
+  context to change and a caller to send an event it declares in `on`.
+- Hooks and work see `event: null`. The edge itself is visible: it is the `transition` argument
+  hooks receive, it appears in `outgoingTransitions` and `availableSteps` under the event name
+  `"$always"`, and `analyzeStructure` reports it. It is not in `declaredEvents` or
+  `availableEvents`, since nobody can send it, and `goToStepById` does not follow it. Declaring
+  `$always` in `on` throws a `JourneyError` with code `reserved-event`.
+- A chain of `always` moves is capped: past `maxAutoSteps` consecutive moves (a creation option,
+  default 100) the machine stops where it is and emits an `error` with phase `"always"`. The count
+  restarts with every outside call, so the cap only cuts a cycle, not a long journey.
+- A machine restored from persistence onto an `always` step runs it again on start.
+
+`defineAlways<Bag>()` is `defineWork` for an `always` entry: it reads the result type off `run`.
+
 ## Transition and step effects
 
 `onTransition` runs after the destination commits and before the destination step's `onEnter`.

@@ -63,6 +63,9 @@ candidate to know which it is:
 | `SUBMIT: [{ to, … }, …]`               | Ordered candidates; the first enabled one wins.       |
 | `SUBMIT: { run, commit?, candidates }` | Async the machine owns, routed by the staged context. |
 
+A step's `always` takes the same three forms, for the move it makes on its own once entered; see
+[Steps that advance themselves](../usage/graph#steps-that-advance-themselves-always).
+
 A guarded lone candidate is written `[{ to, when }]`. The extra brackets are deliberate: a guarded
 lone candidate means the event can fail, and the array form is where that reads honestly.
 
@@ -132,7 +135,8 @@ rather than letting it finish unobserved.
 
 Factories reject empty definitions, duplicate linear ids, unknown graph initial steps, and
 transitions pointing at undeclared steps. A source step cannot be undeclared — it is the key the
-entry is written under. Graph guards that throw are treated as disabled.
+entry is written under. Graph guards that throw are treated as disabled. A step's `on` cannot declare `$always`, the event
+name `always` edges use.
 
 ## Where to next
 

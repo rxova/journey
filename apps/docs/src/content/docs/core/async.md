@@ -98,6 +98,10 @@ Graph hooks should use `raise(event)` to enqueue follow-up work. The queue runs 
 current transition settles, preventing re-entrant navigation. A cascade beyond
 `MAX_RAISED_EVENTS` is dropped and emitted as an `error` with phase `"raise"`.
 
+A step's `always` move runs once the entry settles, before raised events drain, and the call that
+entered the step waits for the whole chain. A chain longer than `maxAutoSteps` stops and is
+emitted as an `error` with phase `"always"`.
+
 ## Where to next
 
 - [Effects](./effects)

@@ -38,7 +38,7 @@ try {
 
 `code` is the stable contract and a closed union: `empty-definition`, `duplicate-step-id`,
 `unknown-step`, `unknown-initial-step`, `dangling-transition`, `duplicate-plugin-name`,
-`storage-unavailable`, `async-commit`. Messages are for humans and may be reworded in any release —
+`storage-unavailable`, `async-commit`, `invalid-label`, `invalid-timeout`, `reserved-event`. Messages are for humans and may be reworded in any release —
 never match on them.
 
 Failures that are not Core's own stay untyped. `NavigationResult.error` and the `error` subscription
@@ -52,7 +52,8 @@ createGraphJourney(definition, options?);
 withGraphTypes<Bag>()(definition, options?);
 ```
 
-Graph options additionally allow `handlers` to replace handlers stored on the definition.
+Graph options additionally allow `handlers` to replace handlers stored on the definition, and
+`maxAutoSteps` to cap a chain of `always` moves (default 100).
 
 ### Creation options
 

@@ -15,6 +15,8 @@ export type {
 // publishing it would freeze those shapes into the 1.0 contract.
 export { createGraphJourney, withGraphTypes } from "./graph/graph";
 export type {
+  AlwaysWorkArgs,
+  GraphAlwaysEntry,
   GraphHookArgs,
   GraphJourneyDefinition,
   GraphJourneyMachine,
@@ -31,8 +33,8 @@ export type {
 
 // Puts a declared `run` back at an inference site, so `commit` and the
 // candidates' guards read their result type off it instead of the bag.
-export { defineWork } from "./graph/work";
-export type { WorkConfig } from "./graph/work";
+export { defineAlways, defineWork } from "./graph/work";
+export type { AlwaysConfig, WorkConfig } from "./graph/work";
 
 // The bag exists so steps can live in separate files, and so `withTypes` has
 // somewhere to pin what a definition cannot infer on its own.

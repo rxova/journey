@@ -111,6 +111,20 @@ price of pinning the first two and inferring the third.
 `defineWork` pairs with a bag, so reach for it through `withGraphTypes<TBag>()` — a definition that
 infers `stepId`, `events` and `handlers` on its own will not line up with the bag's.
 
+`defineAlways<TBag>()` is the same call for a step's `always` work. It names no event, since none
+triggered the work, so there is one type argument and `run` sees `event: null`:
+
+```ts
+check: {
+  always: defineAlways<AuthBag>()({
+    run: ({ handlers, signal }) => handlers.review({ signal }),
+    commit: ({ result, updateContext }) =>
+      updateContext((context) => ({ ...context, ok: result.ok })),
+    candidates: [{ to: "done", when: ({ context }) => context.ok }, { to: "fix" }]
+  });
+}
+```
+
 ## `GraphStep` — steps in their own files
 
 ```ts

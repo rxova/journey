@@ -135,6 +135,63 @@ export type GraphOnEntry<
       >[];
     };
 
+/**
+ * Arguments for a step's `always` work: those of send work, with `event` null
+ * because no event triggered it.
+ */
+export type AlwaysWorkArgs<TStepId extends string, TSnap, THandlers> = Omit<
+  SendWorkArgs<TStepId, never, TSnap, THandlers>,
+  "event"
+> & { readonly event: null };
+
+/**
+ * What a step does on its own once its entry effects settle. The three forms of
+ * {@link GraphOnEntry}, with no event: a step id, ordered candidates, or work
+ * whose `commit` stages the context the candidates are evaluated against.
+ *
+ * No enabled candidate leaves the machine on the step, as a send with none
+ * would. A cycle through `always` steps needs a guard over context to end it,
+ * and is cut off after `maxAutoSteps` moves in any case.
+ */
+export type GraphAlwaysEntry<
+  TContext = unknown,
+  TStepId extends string = string,
+  TEvents extends JourneyEventObject = JourneyEventObject,
+  THandlers = unknown,
+  TMeta = Record<string, unknown>,
+  TResult = unknown
+> =
+  | TStepId
+  | readonly GraphTransition<TContext, TStepId, TEvents, THandlers, TMeta, never>[]
+  | {
+      readonly run: (
+        args: AlwaysWorkArgs<TStepId, GraphSnapshot<TContext, TStepId, TMeta, TEvents>, THandlers>
+      ) => TResult | Promise<TResult>;
+      /** A method for the same bivariance {@link GraphOnEntry}'s `commit` relies on. */
+      commit?(
+        args: AlwaysWorkArgs<
+          TStepId,
+          GraphSnapshot<TContext, TStepId, TMeta, TEvents>,
+          THandlers
+        > & {
+          readonly result: TResult;
+          readonly updateContext: (updater: ContextUpdater<TContext>) => void;
+        }
+      ): void;
+      /** Names this work in timeout and error messages. */
+      readonly label?: string;
+      /** Budget for `run`, overriding `defaultTimeoutMs`. */
+      readonly timeoutMs?: number;
+      readonly candidates: readonly GraphTransition<
+        TContext,
+        TStepId,
+        TEvents,
+        THandlers,
+        TMeta,
+        never
+      >[];
+    };
+
 export type GraphStepConfig<
   TContext = unknown,
   TStepId extends string = string,
@@ -143,6 +200,11 @@ export type GraphStepConfig<
   THandlers = unknown
 > = {
   readonly metadata?: TMeta;
+  /**
+   * Runs once the step's entry effects settle, and moves the machine without a
+   * send. For steps with no screen: a redirect, a loading step, a decision.
+   */
+  readonly always?: GraphAlwaysEntry<TContext, TStepId, TEvents, THandlers, TMeta>;
   /** Outgoing transitions, keyed by event. */
   readonly on?: {
     readonly [TType in TEvents["type"]]?: GraphOnEntry<
@@ -217,6 +279,12 @@ export type GraphJourneyOptions<
 > = JourneyRuntimeOptions<TPlugins, TStepId> & {
   /** Overrides the definition's handlers — one definition serves app and tests. */
   handlers?: THandlers;
+  /**
+   * Cap on consecutive `always` moves made without an outside call. Past it the
+   * chain stops where it is and an `error` event with phase `"always"` fires.
+   * Defaults to 100.
+   */
+  maxAutoSteps?: number;
 };
 
 export type SendArgs<TEvents extends JourneyEventObject, TType extends TEvents["type"]> =
@@ -347,7 +415,13 @@ export type LooseTransition = {
 /** Internal, generics-erased view of a definition used by normalization. */
 export type LooseGraphDefinition = {
   readonly steps: Readonly<
-    Record<string, GraphStepConfig & { readonly on?: Readonly<Record<string, LooseOnEntry>> }>
+    Record<
+      string,
+      Omit<GraphStepConfig, "on" | "always"> & {
+        readonly on?: Readonly<Record<string, LooseOnEntry>>;
+        readonly always?: LooseOnEntry;
+      }
+    >
   >;
   readonly initial: string;
   readonly context: unknown;
