@@ -1,5 +1,27 @@
 # apps-devtools
 
+## 1.0.0-rc.3
+
+### Patch Changes
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - Rebuild the browser DevTools panel around bridge protocol v7 and generic machine operations.
+
+  - Render operation forms from bridge-provided descriptors, including typed text, integer, boolean,
+    and JSON inputs, mutation state, structured output, and operation errors.
+  - Add context patching, graph event dispatch, lifecycle and navigation controls, snapshot inspection,
+    and protocol compatibility messaging without hard-coding machine-specific commands.
+  - Improve multi-machine discovery and selection, connection state, replay registration, operation
+    result routing, and stale-machine cleanup across the content, background, and panel boundaries.
+  - Replace the monolithic panel store and application component with reducer, selector, provider,
+    bridge-hook, feature-component, and section error-boundary layers.
+  - Rebuild the timeline inspector with filtering, sorting, virtualized entries, selection details,
+    snapshot diffs, current context, plugin state, and enabled graph event visibility.
+  - Refresh the panel layout, theming, icons, empty states, responsive behavior, and accessible form
+    controls for a denser inspection workflow.
+
+- Updated dependencies [[`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827), [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827), [`51c20e6`](https://github.com/rxova/journey/commit/51c20e632119698195d3be2b3b7f82bdfb951902)]:
+  - @rxova/journey-devtools-bridge@1.0.0-rc.4
+
 ## 1.0.0-rc.2
 
 ### Patch Changes
