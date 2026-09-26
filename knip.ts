@@ -36,7 +36,14 @@ export default {
       // declared budget when the dist is absent. Declaring them is what puts
       // them ahead of the docs in Turbo's `^build` order, so the published page
       // reports a measurement rather than a ceiling.
-      ignoreDependencies: ["@rxova/journey-react", "@rxova/journey-devtools-bridge"],
+      ignoreDependencies: [
+        "@rxova/journey-react",
+        "@rxova/journey-devtools-bridge",
+        // Reached only as a string: the Starlight preset from @rxova/astro-ui
+        // lists `@rxova/brand/fonts.css` in `customCss`, which Vite resolves
+        // from this site's root. Knip reads imports, so the path is invisible.
+        "@rxova/brand"
+      ],
       ignore: [
         // A one-shot Docusaurus-to-Starlight migration, deliberately kept: its
         // own header says it stays so "the transforms it applied are auditable
