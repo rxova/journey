@@ -393,9 +393,12 @@ importers:
       '@astrojs/starlight':
         specifier: ^0.42.0
         version: 0.42.0(@astrojs/markdown-remark@7.3.1(supports-color@10.2.2))(astro@7.3.2(@astrojs/markdown-remark@7.3.1(supports-color@10.2.2))(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.3)(@types/node@26.5.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.13)(yaml@2.9.1))(supports-color@10.2.2)(typescript@6.0.3)
+      '@rxova/astro-ui':
+        specifier: ^0.1.0
+        version: 0.1.0(@astrojs/starlight@0.42.0(@astrojs/markdown-remark@7.3.1(supports-color@10.2.2))(astro@7.3.2(@astrojs/markdown-remark@7.3.1(supports-color@10.2.2))(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.3)(@types/node@26.5.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.13)(yaml@2.9.1))(supports-color@10.2.2)(typescript@6.0.3))(astro@7.3.2(@astrojs/markdown-remark@7.3.1(supports-color@10.2.2))(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.3)(@types/node@26.5.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.13)(yaml@2.9.1))
       '@rxova/brand':
-        specifier: ^0.14.2
-        version: 0.14.2(@astrojs/starlight@0.42.0(@astrojs/markdown-remark@7.3.1(supports-color@10.2.2))(astro@7.3.2(@astrojs/markdown-remark@7.3.1(supports-color@10.2.2))(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.3)(@types/node@26.5.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.13)(yaml@2.9.1))(supports-color@10.2.2)(typescript@6.0.3))(astro@7.3.2(@astrojs/markdown-remark@7.3.1(supports-color@10.2.2))(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.3)(@types/node@26.5.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.13)(yaml@2.9.1))
+        specifier: ^1.0.0
+        version: 1.0.0
       '@rxova/journey-core':
         specifier: workspace:^
         version: link:../../packages/core
@@ -2360,8 +2363,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@rxova/brand@0.14.2':
-    resolution: {integrity: sha512-yOf8b9wcwQehZjZlN4rzd2Micd/aUr19FaDg1XpJbUK85vs+ahC7Ke8EbySnV7gicZ/jF6MQnk8dHg67X75ZIw==}
+  '@rxova/astro-ui@0.1.0':
+    resolution: {integrity: sha512-9IzyeDg/xRx8+4/QD/YF1EB1aN73Z45jbcdl7d+d/UrksKKMDDNEQPvqYhf2CtWxku6ZfWoBOEdmmIJD6QLm+g==}
     engines: {node: '>=24.0.0'}
     peerDependencies:
       '@astrojs/starlight': '>=0.36.0'
@@ -2369,6 +2372,10 @@ packages:
     peerDependenciesMeta:
       '@astrojs/starlight':
         optional: true
+
+  '@rxova/brand@1.0.0':
+    resolution: {integrity: sha512-4XcJzXdMQbHw0bnHqrvMxA8J3BcwmgVZMQCPnu2hoINQzD1YKl2L3aRJzn/tWZ6ymjfbwbxMOaw2sSJnltLHrg==}
+    engines: {node: '>=24.0.0'}
 
   '@shikijs/core@4.4.3':
     resolution: {integrity: sha512-QCR4q2ZO/ILJEuwiBMel4wdcTDb1JGwfjKTxPDF6x8ixOaluPrVqIn06C99AcRPhmYlBR56d/Fb+GN58GzExpg==}
@@ -6667,13 +6674,17 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.62.2':
     optional: true
 
-  '@rxova/brand@0.14.2(@astrojs/starlight@0.42.0(@astrojs/markdown-remark@7.3.1(supports-color@10.2.2))(astro@7.3.2(@astrojs/markdown-remark@7.3.1(supports-color@10.2.2))(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.3)(@types/node@26.5.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.13)(yaml@2.9.1))(supports-color@10.2.2)(typescript@6.0.3))(astro@7.3.2(@astrojs/markdown-remark@7.3.1(supports-color@10.2.2))(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.3)(@types/node@26.5.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.13)(yaml@2.9.1))':
+  '@rxova/astro-ui@0.1.0(@astrojs/starlight@0.42.0(@astrojs/markdown-remark@7.3.1(supports-color@10.2.2))(astro@7.3.2(@astrojs/markdown-remark@7.3.1(supports-color@10.2.2))(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.3)(@types/node@26.5.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.13)(yaml@2.9.1))(supports-color@10.2.2)(typescript@6.0.3))(astro@7.3.2(@astrojs/markdown-remark@7.3.1(supports-color@10.2.2))(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.3)(@types/node@26.5.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.13)(yaml@2.9.1))':
     dependencies:
-      '@fontsource/ibm-plex-mono': 5.3.0
-      '@fontsource/space-grotesk': 5.3.0
+      '@rxova/brand': 1.0.0
       astro: 7.3.2(@astrojs/markdown-remark@7.3.1(supports-color@10.2.2))(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.3)(@types/node@26.5.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.13)(yaml@2.9.1)
     optionalDependencies:
       '@astrojs/starlight': 0.42.0(@astrojs/markdown-remark@7.3.1(supports-color@10.2.2))(astro@7.3.2(@astrojs/markdown-remark@7.3.1(supports-color@10.2.2))(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.3)(@types/node@26.5.1)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.13)(yaml@2.9.1))(supports-color@10.2.2)(typescript@6.0.3)
+
+  '@rxova/brand@1.0.0':
+    dependencies:
+      '@fontsource/ibm-plex-mono': 5.3.0
+      '@fontsource/space-grotesk': 5.3.0
 
   '@shikijs/core@4.4.3':
     dependencies:
