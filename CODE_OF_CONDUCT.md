@@ -6,6 +6,6 @@ This project follows the
 ## Reporting
 
 If you experience or witness unacceptable behavior, report it to:
-rxova@proton.me
+jonatan@rxova.org
 
 We will review and respond as promptly as possible.

@@ -6,7 +6,7 @@ Thanks for your interest in Rxova Journey. Use the channels below so requests la
 
 - GitHub Issues: bug reports and concrete feature requests.
 - GitHub Discussions: questions, usage help, and open-ended ideas.
-- Email: sensitive or private inquiries at rxova@proton.me.
+- Email: sensitive or private inquiries at jonatan@rxova.org.
 
 ## Security
 

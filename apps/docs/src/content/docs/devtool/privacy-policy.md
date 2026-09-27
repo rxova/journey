@@ -90,4 +90,4 @@ For issues, use GitHub:
 
 For privacy questions, email:
 
-- `rxova@proton.me`
+- `jonatan@rxova.org`
