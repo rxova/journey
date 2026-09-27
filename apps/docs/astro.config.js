@@ -98,7 +98,7 @@ export default defineConfig({
         // of what @rxova/brand ships behind this flag since 0.9.0. One flag now
         // says what the build is, and the theme owns how that looks.
         pageComponent: true,
-        customCss: ["./src/styles/journey.css"],
+        customCss: ["@rxova/astro-ui/styles/landing.css"],
         // Docusaurus served the four products as four plugin instances with a
         // navbar tab each. Starlight is one site with one sidebar, so they
         // become four top-level groups.

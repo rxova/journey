@@ -12,14 +12,17 @@ hero:
     scattered across click handlers.
 ---
 
-import Section from "../../components/home/Section.astro";
-import CtaBand from "../../components/home/CtaBand.astro";
-import QuickStart from "../../components/home/QuickStart.astro";
+import Section from "@rxova/astro-ui/components/Section.astro";
+import CtaBand from "@rxova/astro-ui/components/CtaBand.astro";
+import QuickStart from "@rxova/astro-ui/components/QuickStart.astro";
+import ModeTabs from "@rxova/astro-ui/components/ModeTabs.astro";
+import ValueGrid from "@rxova/astro-ui/components/ValueGrid.astro";
+import ProofStats from "@rxova/astro-ui/components/ProofStats.astro";
+import ScreenshotGrid from "@rxova/astro-ui/components/ScreenshotGrid.astro";
 import JourneyDemo from "../../components/home/JourneyDemo.astro";
-import ModeTabs from "../../components/home/ModeTabs.astro";
-import ValueGrid from "../../components/home/ValueGrid.astro";
-import ProofStats from "../../components/home/ProofStats.astro";
-import DevtoolsShowcase from "../../components/home/DevtoolsShowcase.astro";
+import panelOverview from "../../assets/devtool/panel-overview.png";
+import panelLogs from "../../assets/devtool/panel-logs.png";
+import panelCommands from "../../assets/devtool/panel-commands.png";
 import { packageSizes, coverageFloor, packageCount } from "../../lib/proof";
 
 export const sizes = packageSizes();
@@ -132,7 +135,7 @@ steps: {
   <ValueGrid
     items={[
       {
-        icon: "typed",
+        icon: "braces",
         title: "Typed step IDs",
         body: "Invalid step names, events and transition targets are compile errors, not runtime bugs. The types are checked where the flow is authored."
       },
@@ -142,22 +145,22 @@ steps: {
         body: "The runtime keeps the realized path, so <code>goToPreviousStep()</code> and <code>goToLastVisitedStep()</code> are deterministic instead of guesswork."
       },
       {
-        icon: "async",
+        icon: "timer",
         title: "Async guards",
         body: "Loading, failure, timeout and retry are part of flow behaviour. Check with async <code>when</code>, and read the phase off the snapshot."
       },
       {
-        icon: "plugins",
+        icon: "blocks",
         title: "Plugins, not baggage",
         body: "Persistence, analytics, replay and execution paths extend the machine without adding to the base cost."
       },
       {
-        icon: "zero",
+        icon: "unplug",
         title: "Zero dependencies",
         body: "Nothing to inherit and nothing to audit. Tree-shakeable, so you ship the parts of it you actually reach for."
       },
       {
-        icon: "agnostic",
+        icon: "layers",
         title: "Framework-agnostic core",
         body: "The runtime is vanilla TypeScript. React bindings are a thin separate package; Vue, Svelte and plain TS need no shim at all."
       }
@@ -203,7 +206,29 @@ steps: {
   title="Watch the runtime tell the truth"
   lede="A native Chrome extension that reads the machine while your app runs: the realized timeline, the context behind the current step, the transition each event matched, and a command panel to send events back in."
 >
-  <DevtoolsShowcase href={chromeStore} />
+  <ScreenshotGrid
+    shots={[
+      {
+        src: panelOverview,
+        alt: "Rxova Journey DevTools: Timeline and state",
+        title: "Timeline and state",
+        body: "The realized timeline, the current step, and the context behind it."
+      },
+      {
+        src: panelLogs,
+        alt: "Rxova Journey DevTools: Transition log",
+        title: "Transition log",
+        body: "Every event, the transition it matched, and the diff it committed."
+      },
+      {
+        src: panelCommands,
+        alt: "Rxova Journey DevTools: Live commands",
+        title: "Live commands",
+        body: "Send events into the running machine and watch the snapshot answer."
+      }
+    ]}
+    link={{ href: chromeStore, text: "Get it from the Chrome Web Store", external: true }}
+  />
 </Section>
 
 <Section
