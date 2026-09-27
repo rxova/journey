@@ -1,5 +1,235 @@
 # @rxova/journey-react
 
+## 1.0.0-rc.4
+
+### Major Changes
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - **Breaking:** the React tier no longer starts the machine inside the factory by default. It now
+  starts from a layout effect on first mount, so subscribers attach before the journey's first
+  `stepEnter` — previously that event fired during `createLinearJourney()` / `createGraphJourney()`
+  and was structurally impossible to observe through `useEventEffect`.
+
+  `autoStart` becomes three-way in this tier:
+
+  - **omitted (new default)** — the machine starts when the first Provider, reactive hook,
+    `useEventEffect`, or `useStepHandler` mounts. `controls.start()` is idempotent, so mounting
+    many components still starts it exactly once.
+  - **`true`** — the previous behaviour: the machine starts eagerly inside the factory. Use it when
+    the server must render step content, or when the bundle is driven entirely from non-React code.
+  - **`false`** — unchanged: nothing starts until you call `controls.start()`.
+
+  Consequences to check when upgrading:
+
+  - **SSR now renders `fallback` by default.** Layout effects do not run on the server, so the
+    machine is still idle there and both sides agree — which is what makes hydration deterministic.
+    Pass `autoStart: true` to restore server-rendered step content.
+  - **A bundle driven only from non-React code needs `autoStart: true`** (or an explicit
+    `controls.start()`), because nothing ever mounts to start it.
+  - **`useEventEffect` now receives the initial `stepEnter` and `statusChange`.** Listeners that
+    assumed the first entry was already missed will see one more event than before.
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - Replace the `1.0.0-rc.2` runtime-object React API with two twin bundle factories (linear and
+  graph) built on the final Core machine contract, plus a documented bring-your-own-machine pattern
+  over React's `useSyncExternalStore`.
+
+  ## Linear factory API
+  - Add `createLinearJourney(definition, options?)`, the linear tier's single entry point and a
+    structural twin of the graph factory. The definition is core's `LinearJourneyDefinition` shape —
+    `context` (the initial value and the type anchor) plus ordered `steps` (bare-string shorthand or
+    `{ id, metadata? }` — this tier declines Core's step lifecycle hooks, since a step's view mounts
+    on enter and unmounts on leave — with an optional `name` used for the Provider's React
+    DevTools displayName). Both type parameters are inferred from the one definition argument, so
+    hooks and components need no generics at call sites.
+  - The factory creates **one standalone machine** and returns a bundle around it: `machine`,
+    `Provider` (`views` + `children` only), `StepRenderer`, reactive hooks (`useSnapshot`,
+    `useSelector`, `useStep`, `useContextSelector`, `useEventEffect`), verbatim `controls` /
+    `navigate` / `updateContext` delegates callable outside React, and `useStepHandler(stepId, handler)` — per-step Core navigation work gating
+    `goToNextStep`, whose `run` and transactional `commit` use the same machine-owned pending/error
+    state as direct navigation.
+  - `views` is `{ [id in StepId]: ReactNode }`, exhaustively type-checked so a missing or undeclared
+    key is a compile error (a `null` view is a legal render-nothing step; a missing key at runtime
+    renders `StepRenderer`'s fallback). Machine options (`persist`, `plugins`, `autoStart`,
+    `startAt`, `defaultTimeoutMs`, `onListenerError`) live in the factory's second argument, and
+    `currentStep` is null while idle. `autoStart` is three-way in this tier — see the deferred-start
+    entry below for the default and its SSR consequences.
+  - Hooks work with or without the Provider; the machine survives remounts and is never disposed by
+    React — reset explicitly via `controls` (`terminate()` + `restart()`).
+
+  ## Graph entry point and caller-owned machines
+  - Add `@rxova/journey-react/graph`. `createGraphJourney(definition, options?)` creates **one
+    standalone machine in the factory** and returns a typed bundle around it: `machine`, `Provider`,
+    `StepRenderer`, reactive hooks (`useSnapshot`, `useSelector`, `useStep`, `useContextSelector`,
+    `useEventEffect`), and verbatim `controls` / `send` / `updateContext` delegates callable outside
+    React. Hooks work with or without
+    the Provider — the Provider only carries the `views` record (elements keyed exhaustively by step
+    id, same contract as the linear tier) for `StepRenderer`. The machine survives remounts and is
+    never disposed by React; `autoStart` behaves exactly as in the linear tier.
+  - There is no headless hook entry point. Caller-owned Core machines are consumed with React's own
+    `useSyncExternalStore` over `machine.subscriptions` — the root package exports the structural
+    types for it (`AnyJourneyMachine`, `SnapshotOf`, `ContextOf`, `StepIdOf`, `EventPayloadOf`).
+  - Keep `@rxova/journey-react/client` as the `"use client"` re-export of the root linear API. Both
+    factories share one shape — a standalone machine per factory call, a views-only Provider, and a
+    `StepRenderer` placed among ordinary siblings — differing only in their verbs (`navigate` +
+    `useStepHandler` vs `send`).
+
+  ## Migration
+  - Remove `createJourney`, `createJourneyFactory`, the returned bound runtime object,
+    `JourneyProvider`, and their legacy hooks. Choose the linear factory for ordered wizards, the
+    graph entry point for event-driven branching, or a caller-owned Core machine read through
+    `useSyncExternalStore` when machine ownership and rendering must remain separate.
+  - Align all React snapshots, controls, navigation results, events, plugins, and graph definitions
+    with the new Core V1 types. Graph custom events are discriminated `{ type; payload? }` unions.
+  - Make ownership explicit for SSR and React Server Component applications: every bundle factory
+    creates a deliberate, visible module-scope machine; where per-request or per-mount isolation
+    matters, own a Core machine yourself and read it with `useSyncExternalStore`.
+  - Require React `>=18.2.0`, `@rxova/journey-core` V1, and Node `>=20.11.0`.
+  - Rewrite the React documentation and examples around the two bundle factories and the
+    caller-owned machine pattern.
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - Leave one way to read and one way to command. The bundle exposed ten hooks; three of them were not
+  reactive at all, and two more were second spellings of things that belong elsewhere.
+
+  ## Renamed
+  - `useSubscribeEvent` → **`useEventEffect`**. It is an effect that happens to subscribe, and the
+    name now puts it next to `useEffect` in a reader's head rather than next to `machine.subscriptions`.
+  - `useContext()` → **`useContextSelector(selector, equalityFn?)`**, selector required.
+    `useContextSelector((context) => context)` is the explicit way to ask for the whole object and
+    re-render on every context write — by construction rather than by accident.
+
+  ## Removed
+
+  `useMachine()`, `useControls()` and `useNavigation()` are gone. None of them subscribed to anything;
+  each returned an object already reachable on the bundle. The machine's command groups are frozen
+  objects with stable references, so they are plain properties now: `machine`, `controls`, `navigate`
+  (linear) or `send` (graph), and `updateContext`.
+
+  ## Step lifecycle hooks are effects
+
+  React step configs no longer accept Core's `onEnter` / `onLeave`. `<StepRenderer>` keys the active
+  view by step id, so a step's own component mounts when the step is entered and unmounts when it is
+  left — a `useEffect` with a cleanup says both, scoped to the component that cares and able to reach
+  component state and React context, which a hook running inside Core cannot.
+
+  This is enforced, not just documented. The tier's step types declare `onEnter?: never` and
+  `onLeave?: never`, because a bare `Omit` only rejects inline object literals: a step declared in its
+  own file and annotated with Core's `GraphStep<Bag>` would otherwise keep its hooks and compile
+  clean. Use `ReactLinearStepInput`, `ReactGraphStep<Bag>` and `ReactGraphDefinition<Bag>` where you
+  would have reached for Core's equivalents. Core keeps both hooks for machines driven outside React.
+
+  ## Unchanged, deliberately
+
+  `autoStart` stays three-way in this tier — omitted starts the machine from a layout effect on first
+  mount, so subscribers attach before the initial `stepEnter` and SSR renders `fallback` on both
+  sides. Core's default is now `true`, which makes this tier's `options?.autoStart === true` guard
+  load-bearing: forwarding options unchanged would start every bundle inside the factory and break
+  hydration.
+
+### Minor Changes
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - React review cleanups. Bundle `useSelector` hooks keep a single machine subscription across re-renders with inline selectors (the getter-side cache returns stable references).
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - Add `useJourney(factory)`, which owns a bundle for one component instance: the factory runs once,
+  the bundle survives re-renders, and the machine is disposed when the component really unmounts.
+
+  This replaces the `useState` lazy initializer the README previously recommended for per-mount
+  isolation. React double-invokes those initializers under StrictMode, so that pattern built two
+  fully-configured machines per mount — two plugin `setup()` passes, two persistence reads and
+  writes, two armed autosave timers — and abandoned one without disposing it. `useJourney`
+  initializes into a ref and defers disposal by a macrotask, so StrictMode's simulated unmount
+  cancels it while a real unmount still disposes.
+
+  Also exports the `OwnedJourneyBundle` type, and documents the lifecycle of module-scope bundles:
+  they are never disposed, and one such bundle is shared by every request in a server process.
+
+### Patch Changes
+
+- [#152](https://github.com/rxova/journey/pull/152) [`e8d1669`](https://github.com/rxova/journey/commit/e8d16695ea4f7736defac9397d58cf1298b75dbd) - Documentation accuracy. The React docs described the API as it stood before deferred start and
+  `useJourney` landed, so three of the corrections below are not stale phrasing but active
+  misdirection.
+
+  - **`autoStart` is documented as three-way**, matching what ships. The docs said it "defaults to
+    `true`" in six places; the default is to start when the bundle's first Provider or hook mounts.
+  - **`useJourney` is now taught in the narrative docs.** It was reachable only from the generated
+    API reference, because the docs' banned-identifier check still listed `useJourney` as an rc-era
+    name — the check was silently keeping the shipping API out of the documentation.
+  - **The `useState` lazy-initializer pattern is no longer recommended for per-component ownership.**
+    It was documented in full, including the claim that the machine "holds no global registrations or
+    timers at rest" — which is false with `persist` or `autosave` configured. That pattern builds two
+    machines per StrictMode mount and abandons one undisposed; `useJourney` exists to fix it.
+  - **The root README's "React: headless hooks" section is gone.** It documented
+    `@rxova/journey-react/headless`, an entry point that no longer exists, alongside `useApi`,
+    `useLinearJourney`, and `<LinearJourney>`. Replaced with the linear bundle, the graph bundle,
+    `useJourney`, and the caller-owned `useSyncExternalStore` pattern.
+
+  - **The rc.2 → 1.0 migration guide's React section is rewritten.** Its "migrate to this" side
+    taught a three-tier design that never shipped: `<LinearJourney>` with `LinearJourney.Step`
+    children, `useLinearJourney`, and a `@rxova/journey-react/headless` entry point with
+    `useOwnedJourney` and machine-argument hooks. It now describes the twin bundle factories,
+    `useJourney` for per-component ownership, and the caller-owned `useSyncExternalStore` pattern,
+    and it corrects the graph tier's ownership claim — the factory creates one machine, not one per
+    Provider mount.
+
+  The banned-identifier check now scans `README.md` and every `packages/*/README.md` in addition to
+  the docs site. It already banned each removed identifier — the READMEs were simply never scanned,
+  which is exactly how the headless section survived. The migration guide is deliberately exempt from
+  that check, since it must name rc-era identifiers to teach the mapping; that exemption is also why
+  its stale 1.0 side went unnoticed, so it is worth reading manually whenever the API moves.
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - Test-only. Covers three surfaces the package shipped without: the `./client` entry (previously
+  verified only by a string match for its `"use client"` directive against the built bundle), error
+  boundaries around `StepRenderer` and a throwing step view, and a suspending view inside
+  `<Suspense>`.
+
+  The client-entry test asserts its export surface matches the root entry, so a missing re-export
+  fails here rather than in a consumer's app.
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - `createLinearJourney` now forwards the whole definition to core instead of hand-picking `steps`
+  and `context`. Its own `name` field is rest-destructured off and the remainder is passed through,
+  matching what the graph factory already did. The two are equivalent today, but the old shape would
+  have silently dropped any field core added to the linear definition later.
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - Fix type resolution for consumers on `moduleResolution: "node16"` / `"nodenext"`. The published
+  `.d.ts` and `.d.cts` files carried extensionless relative imports, which those resolvers cannot
+  follow — all three entrypoints reported an internal resolution error. The published declarations
+  now carry explicit `.js` extensions, added at build time.
+
+  Also adds size budgets for the previously unmeasured `dist/client.js` and for `useJourney`.
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - The bindings no longer write refs during render. `useSelector`'s cache is rebuilt through
+  `useMemo` per derivation, and the last committed selection now lives in a ref advanced from an
+  effect — mirroring React's own `useSyncExternalStoreWithSelector`. The latest-ref assignments
+  behind `useEventEffect` and `useStepHandler` moved into effects for the same reason.
+
+  Previously a render that React started and then discarded could advance the baseline that
+  `equalityFn` compares against, which with an identity-field equality could pin a stale value.
+  Selected-reference stability across parent re-renders with inline selectors is unchanged.
+
+  This also makes the package compatible with the React Compiler, and lets `react-hooks/refs` be
+  enforced repo-wide rather than switched off.
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - A bundle now opens a single machine subscription for its whole component tree instead of one per
+  mounted hook. Core runs every registered selector on every publish, so subscribing per hook made
+  it repeat identical selector and equality work once per subscriber — five subscribed components
+  meant five subscriptions and five times the per-publish cost. It is now constant regardless of
+  how many views are mounted, and the subscription is released when the last one unmounts.
+
+  The multiplexer and the selection cache moved to `@rxova/journey-common/bindings`, since both are
+  pure logic a Vue or Angular wrapper would otherwise reimplement. No new published package: common
+  is internal and bundled into the wrapper.
+
+- [#152](https://github.com/rxova/journey/pull/152) [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827) - React 18.2 is now a verified minimum rather than an unverified claim. The peer range already said
+  `>=18.2.0`, but only React 19 was ever installed or tested, and the README said 19 while
+  `CONTRIBUTING.md` said 18+. All three now say 18.2+, and CI runs the React suite and a typecheck
+  against React 18.2 alongside the default 19.
+
+  One development-only difference is documented rather than papered over: React 18's StrictMode
+  re-mounts hooks on its second render pass, so `useJourney()`'s factory runs twice there and once
+  on React 19. Only the committed bundle is ever started — the discarded one never mounts, so its
+  start effect never runs and it holds no timers, subscriptions, or journey state.
+
+- Updated dependencies [[`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827), [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827), [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827), [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827), [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827), [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827), [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827), [`3893a1b`](https://github.com/rxova/journey/commit/3893a1b491083c276c97eaeb0f1fffae12f2961c), [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827), [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827), [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827), [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827), [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827), [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827), [`c805d79`](https://github.com/rxova/journey/commit/c805d796a5b99766636cbf2f5064366b3f87b827)]:
+  - @rxova/journey-core@1.0.0-rc.4
+
 ## 1.0.0-rc.3
 
 ### Patch Changes
