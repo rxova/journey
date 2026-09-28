@@ -366,6 +366,9 @@ importers:
       '@rxova/journey-common':
         specifier: workspace:*
         version: link:../../packages/common
+      '@rxova/ts-utils':
+        specifier: ^0.1.0
+        version: 0.1.0(react@19.3.0)
       '@types/chrome':
         specifier: ^0.2.9
         version: 0.2.9
@@ -792,6 +795,9 @@ importers:
       '@rxova/journey-common':
         specifier: workspace:*
         version: link:../common
+      '@rxova/ts-utils':
+        specifier: ^0.1.0
+        version: 0.1.0(react@19.3.0)
       immer:
         specifier: ^11.1.15
         version: 11.1.15
@@ -825,6 +831,9 @@ importers:
       '@rxova/journey-core':
         specifier: workspace:^
         version: link:../core
+      '@rxova/ts-utils':
+        specifier: ^0.1.0
+        version: 0.1.0(react@19.3.0)
       '@testing-library/react':
         specifier: ^16.3.3
         version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -2406,6 +2415,15 @@ packages:
       typescript-eslint:
         optional: true
       vitest:
+        optional: true
+
+  '@rxova/ts-utils@0.1.0':
+    resolution: {integrity: sha512-LQEz0XF5xXkFWnNMu2R487/fahNyHAUPBJ552d9wagLBESfGR42zki4T3Rco92DDhaPc6L/rtyd9iN2Wbzn8CQ==}
+    engines: {node: '>=22.13'}
+    peerDependencies:
+      react: '>=18'
+    peerDependenciesMeta:
+      react:
         optional: true
 
   '@shikijs/core@4.4.3':
@@ -6726,6 +6744,10 @@ snapshots:
       globals: 17.12.0
       typescript: 6.0.3
       vitest: 5.0.0(@types/node@26.5.1)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1)(vite@7.3.6(@types/node@26.5.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.23.13)(yaml@2.9.1))
+
+  '@rxova/ts-utils@0.1.0(react@19.3.0)':
+    optionalDependencies:
+      react: 19.3.0
 
   '@shikijs/core@4.4.3':
     dependencies:

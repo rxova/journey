@@ -1,4 +1,5 @@
 import { isDevelopmentEnvironment } from "@rxova/journey-common/dev";
+import { shallowEqual } from "@rxova/ts-utils";
 import { JourneyError } from "./errors";
 import {
   describeTransition,
@@ -6,7 +7,6 @@ import {
   hasOwn,
   LOADING_ASYNC,
   MAX_RAISED_EVENTS,
-  shallowEqual,
   SUCCESS_ASYNC,
   transitionInfo
 } from "./helpers";
