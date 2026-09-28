@@ -2,7 +2,7 @@
 
 This roadmap captures planned product, ecosystem, and tooling work for Journey. It is a living document and will change as the runtime stabilizes, adoption grows, and feedback sharpens priorities.
 
-The current emphasis is clear: finish hardening the core contract ahead of the `1.0.0-rc` line, keep the React integration strong, and expand the ecosystem only where it meaningfully reduces adoption friction.
+The current emphasis is clear: keep the `1.0.0` core contract stable, keep the React integration strong, and expand the ecosystem only where it meaningfully reduces adoption friction.
 
 ## Current Status
 

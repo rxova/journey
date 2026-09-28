@@ -121,9 +121,8 @@ Releases are automated with Changesets and GitHub Actions.
 - Their major versions must stay aligned (`pnpm run version:major:check` enforces this in CI).
 - Private app workspaces `@rxova/journey-docs` and `apps-devtools` are also versioned with Changesets for docs/version tracking, but they are not published to npm.
 - `apps-demo` remains ignored by Changesets.
-- The `1.0.0-rc` line is where the public contract is still being settled: breaking changes belong
-  here, not after GA. Leaving prerelease mode is a deliberate act — `.changeset/pre.json` exists to
-  keep the line on the `rc` tag until someone decides otherwise.
+- `1.0.0` is GA: the `rc` prerelease line is closed. Entering prerelease mode again
+  (`changeset pre enter <tag>`) is a deliberate act, reserved for the run-up to the next major.
 - A breaking change needs a `major` changeset on every package it touches, a mapping entry in the
   migration guide, and the prose updated in the same PR. Core, React and the bridge share a major,
   so a `major` on one usually means a `major` on all three (`pnpm run version:major:check`).
