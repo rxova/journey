@@ -229,6 +229,11 @@ jobs:
   # without this the minimum supported version is an untested claim. It is a
   # separate job rather than a matrix dimension because it has to rewrite the
   # React version, which --frozen-lockfile forbids.
+  #
+  # `react:min:install` pins the root as well as packages/react: @rxova/ts-utils
+  # is declared at the root, so its `react` peer resolves there. Pinning only the
+  # package leaves the inlined `useIsomorphicLayoutEffect` on React 19 while the
+  # suite renders with 18 — two Reacts, and every hook call fails.
   react-minimum-version:
     needs: [commitlint]
     runs-on: ubuntu-latest

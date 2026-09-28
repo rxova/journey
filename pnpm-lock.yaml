@@ -229,6 +229,9 @@ importers:
       '@rxova/repo-config':
         specifier: ^0.2.0
         version: 0.2.0(@commitlint/config-conventional@21.2.2)(@eslint/js@10.0.1(eslint@10.10.0(jiti@2.7.0)(supports-color@10.2.2)))(eslint@10.10.0(jiti@2.7.0)(supports-color@10.2.2))(globals@17.12.0)(typescript@6.0.3)(vitest@5.0.0)
+      '@rxova/ts-utils':
+        specifier: ^0.1.0
+        version: 0.1.0(react@19.3.0)
       '@size-limit/esbuild':
         specifier: ^13.0.3
         version: 13.1.1(size-limit@13.1.1)
@@ -366,9 +369,6 @@ importers:
       '@rxova/journey-common':
         specifier: workspace:*
         version: link:../../packages/common
-      '@rxova/ts-utils':
-        specifier: ^0.1.0
-        version: 0.1.0(react@19.3.0)
       '@types/chrome':
         specifier: ^0.2.9
         version: 0.2.9
@@ -795,9 +795,6 @@ importers:
       '@rxova/journey-common':
         specifier: workspace:*
         version: link:../common
-      '@rxova/ts-utils':
-        specifier: ^0.1.0
-        version: 0.1.0(react@19.3.0)
       immer:
         specifier: ^11.1.15
         version: 11.1.15
@@ -831,9 +828,6 @@ importers:
       '@rxova/journey-core':
         specifier: workspace:^
         version: link:../core
-      '@rxova/ts-utils':
-        specifier: ^0.1.0
-        version: 0.1.0(react@19.3.0)
       '@testing-library/react':
         specifier: ^16.3.3
         version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)

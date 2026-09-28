@@ -93,7 +93,6 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@rxova/journey-common": "workspace:*",
-    "@rxova/ts-utils": "^0.1.0",
     "immer": "^11.1.15",
     "publint": "^0.3.24"
   },
