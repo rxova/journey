@@ -1,4 +1,4 @@
-import { isPlainObject } from "@rxova/journey-common/predicates";
+import { isPlainObject } from "@rxova/ts-utils";
 
 export type JourneyPanelStructuredDiff = {
   added: Record<string, unknown>;

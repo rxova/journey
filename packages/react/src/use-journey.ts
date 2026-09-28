@@ -1,5 +1,5 @@
 import React from "react";
-import { useSafeLayoutEffect } from "./use-safe-layout-effect";
+import { useIsomorphicLayoutEffect } from "@rxova/ts-utils/react";
 import type { OwnedJourneyBundle } from "./react.types";
 
 /**
@@ -47,7 +47,7 @@ export const useJourney = <TBundle extends OwnedJourneyBundle>(factory: () => TB
   // https://react.dev/reference/react/useRef#avoiding-recreating-the-ref-contents
   const bundle = (bundleRef.current ??= factory());
 
-  useSafeLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     // A remount landed before the deferred disposal ran — keep the machine.
     if (disposeTimerRef.current !== null) {
       clearTimeout(disposeTimerRef.current);

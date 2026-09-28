@@ -1,6 +1,6 @@
 import React from "react";
 import { createSelectorCache } from "./selector-cache";
-import { useSafeLayoutEffect } from "./use-safe-layout-effect";
+import { useIsomorphicLayoutEffect } from "@rxova/ts-utils/react";
 import type { JourneySubscriptionEvent } from "@rxova/journey-core";
 import type {
   JourneyBundleBase,
@@ -55,7 +55,7 @@ export const createAutoStartHook = (
   // bundle's lifetime, but branching on it outside the hook would make the hook
   // count depend on a value read at build time, which is needlessly subtle.
   return () => {
-    useSafeLayoutEffect(() => {
+    useIsomorphicLayoutEffect(() => {
       if (startOnMount) machine.controls.start();
     }, []);
   };
@@ -122,7 +122,7 @@ export const createJourneyBindings = <
     const selected = React.useSyncExternalStore(subscribe, getSelected, getSelected);
 
     // The baseline advances only once a render commits.
-    useSafeLayoutEffect(() => {
+    useIsomorphicLayoutEffect(() => {
       committedRef.current = { value: selected };
     }, [selected]);
     // Declared last on purpose: layout effects fire in hook order, so the store
@@ -183,10 +183,10 @@ export const createJourneyBindings = <
       // advances from an effect, never during render, so a discarded render
       // cannot leave it pointing at a closure that was never committed.
       const listenerRef = React.useRef(listener);
-      useSafeLayoutEffect(() => {
+      useIsomorphicLayoutEffect(() => {
         listenerRef.current = listener;
       });
-      useSafeLayoutEffect(
+      useIsomorphicLayoutEffect(
         () =>
           runtime.subscriptions.subscribeEvent(event, (payload) =>
             // Correlated-union cast: TypeScript cannot connect the generic

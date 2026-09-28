@@ -37,7 +37,7 @@ import { isRecord } from "@rxova/journey-common/predicates";
 
 | Subpath          | Exports                                                                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------------------- |
-| `/predicates`    | `isRecord`, `isPlainObject`                                                                                   |
+| `/predicates`    | `isRecord`                                                                                                    |
 | `/serialization` | `cloneForTransport`, `serializeError`, `serializeTransportError`, `SerializedError`                           |
 | `/dev`           | `isDevelopmentEnvironment`, `warnInDevelopment`, `resolveNonProductionEnvironment`, `NonProductionBundlerEnv` |
 | `/origin`        | `resolveWindowTargetOrigin`, `isExpectedWindowOrigin`                                                         |

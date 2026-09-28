@@ -2,7 +2,7 @@ import React from "react";
 import { warnInDevelopment } from "@rxova/journey-common/dev";
 import { createLinearJourney as coreCreateLinearJourney } from "@rxova/journey-core";
 import { createAutoStartHook, createJourneyBindings } from "./react.helpers";
-import { useSafeLayoutEffect } from "./use-safe-layout-effect";
+import { useIsomorphicLayoutEffect } from "@rxova/ts-utils/react";
 import type { AnyJourneyPlugin, LinearStepIdOf } from "@rxova/journey-core";
 /**
  * The generics-erased handler shape the registry stores. `unknown` args rather
@@ -170,10 +170,10 @@ export const createLinearJourney = <
       // The ref advances from an effect, never during render, so a discarded
       // render cannot leave it pointing at a closure that was never committed.
       const handlerRef = React.useRef(handler);
-      useSafeLayoutEffect(() => {
+      useIsomorphicLayoutEffect(() => {
         handlerRef.current = handler;
       });
-      useSafeLayoutEffect(() => {
+      useIsomorphicLayoutEffect(() => {
         const entry = handlerRef as unknown as { current: AnyStepHandler };
         const stack = stepHandlers.get(stepId) ?? [];
         if (stack.length > 0) {
