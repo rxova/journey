@@ -69,10 +69,10 @@ export type WorkConfig<TBag extends Bag, TType extends TBag["events"]["type"], T
  *   SUBMIT: defineWork<AuthBag, "SUBMIT">()({
  *     run: ({ handlers }) => handlers.login(),   // TResult inferred here
  *     commit: ({ result, updateContext }) =>     // ...and typed here
- *       updateContext((c) => ({ ...c, token: result.token })),
+ *       updateContext((c) => ({ ...c, token: result.token, needsTwoFactor: result.twoFactor })),
  *     timeoutMs: 10_000,
  *     candidates: [
- *       { to: "twofa", label: "needs-2fa", when: ({ result }) => result?.twoFactor === true },
+ *       { to: "twofa", label: "needs-2fa", when: ({ context }) => context.needsTwoFactor },
  *       { to: "home", label: "logged-in" }
  *     ]
  *   })
@@ -91,7 +91,7 @@ export type WorkConfig<TBag extends Bag, TType extends TBag["events"]["type"], T
  *
  * At runtime this returns its argument unchanged. The cast is what erases the
  * narrowed `event` and the inferred `TResult` back down to the slot's wider
- * shape — a guard's `result` sits at a contravariant position, so a pinned
+ * shape — `commit`'s `result` sits at a contravariant position, so a pinned
  * config cannot be assigned into an `unknown` slot directly. That is the same
  * erasure the v1 builder did, and it is sound because the config has already
  * been checked, against sharper types, at this call site.

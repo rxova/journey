@@ -119,21 +119,20 @@ A work send is a transaction. The exact order:
 
 Rule 4 has a practical consequence, the **totality rule**: any outcome that must persist needs an
 enabled candidate to carry it. A success outcome routes forward; a failure outcome that should keep
-its staged context (an error message, an attempt counter) needs a fallback candidate. `stay()` is
-the named form of that fallback: an unguarded candidate back at the current step. Without one, a
-failed run's staged context is rolled back with the unmatched send — which is why the builder warns
-at build time when every candidate of a work declaration is guarded. An intentionally partial event
-declares `allowRollback: true` on the work to silence it.
+its staged context (an error message, an attempt counter) needs a fallback candidate: an
+unguarded candidate back at the current step. Without one, a failed run's staged context is rolled
+back with the unmatched send. That is the right shape for an intentionally partial event, where a
+failed check should leave nothing behind.
 
 Three follow-ups worth knowing:
 
-- A self-transition (including `stay()`) is an ordinary move. There is no `from === to` special
+- A self-transition (including that fallback) is an ordinary move. There is no `from === to` special
   case: the step's `onLeave` and `onEnter` both run again, `onTransition` fires, and the step's
   visit count increments.
 - `onTransition` runs after the destination commits (see the next section) — by then the staged
   context **is** the context.
-- Snapshot introspection evaluates guards outside any send, so a guard that reads `result` sees it
-  as `undefined` there — details on the [snapshot page](../snapshot#graph-snapshot).
+- Snapshot introspection evaluates the same guards outside any send, against the live context —
+  details on the [snapshot page](../snapshot#graph-snapshot).
 
 ## Transition and step effects
 
