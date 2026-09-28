@@ -67,4 +67,4 @@ The code is already standalone; the packaging is not. Extracting it means:
 - adding `publint`, `attw`, and `size` scripts. `attw` currently reports node10 resolution failure and ESM-only, both of which the dual build resolves;
 - moving `tooling/` out, since it is repo infrastructure and must not ship.
 
-Flipping `private` alone is enough to enrol the package in `docs:api:check`, `pack:smoke`, `publint`, and `attw`, so do the build first.
+Flipping `private` alone is enough to enrol the package in `docs:api:check`, `publint`, and `attw`, so do the build first. `pack:smoke` names it: drop the `!@rxova/journey-common` filter from the root script.

@@ -176,7 +176,8 @@ jobs:
       - uses: ./.github/actions/setup-pnpm
       - uses: ./.github/actions/turbo-cache
       - run: pnpm install --frozen-lockfile
-      # `pack:smoke` inspects the real tarballs, so it needs the real dist.
+      # `pack:smoke` packs, installs and imports the real tarballs without
+      # running any build script, so it needs the real dist.
       # Turbo replays the build from cache when nothing feeding it changed.
       - name: Build packages
         run: pnpm exec turbo run build --filter='./packages/*'

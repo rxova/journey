@@ -147,12 +147,13 @@
     // which changes without any file here changing, so a cached pass could
     // replay over a newly-disclosed CVE.
     //
-    // `pack:smoke` — it packs every publishable package and inspects the
-    // tarballs, so the side effect is the point and it must never be cached. It
-    // also cannot express what it needs here: a root task's `dependsOn: [build]`
-    // resolves to the *root* package's `build` script, which is `turbo run
-    // build` — turbo rejects the recursion outright. `verify` runs it in the
-    // step after the build instead, which is the ordering it actually wants.
+    // `pack:smoke` — it runs `rxova-repo-config pack-smoke` in every publishable
+    // package, which packs, installs and imports the real tarball, so the side
+    // effect is the point and it must never be cached. It also cannot express
+    // what it needs here: a root task's `dependsOn: [build]` resolves to the
+    // *root* package's `build` script, which is `turbo run build` — turbo
+    // rejects the recursion outright. `verify` runs it in the step after the
+    // build instead, which is the ordering it actually wants.
     "dev": {
       "cache": false,
       "persistent": true
