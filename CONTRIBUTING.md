@@ -61,24 +61,28 @@ pnpm --filter @rxova/journey-react run test
 ### Pre-PR Checklist
 
 `pnpm run verify` covers all of it, and the pre-push hook runs it for you. It is
-one ordered list defined in `scripts/verify.js`, so the local gate and CI cannot
-drift:
+one ordered list, `repoConfig.verify.steps` in the root `package.json`, run by
+`rxova-repo-config verify` from [`@rxova/repo-config`](https://github.com/rxova/shared/tree/main/packages/repo-config),
+so the local gate and CI cannot drift. `pnpm run verify --only lint,format` runs a subset:
 
 1. `audit:check` — dependency advisories
 2. `dedupe:check` — duplicate dependency graph entries
-3. `format:check`
-4. `lint`
-5. `version:major:check`
-6. `docs:api:check`, `docs:release-notes:check`
-7. `typecheck`, `typecheck:tests`, `test`
-8. `build`, `size`, `publint`
-9. `pack:smoke`
+3. `sherif:check` — one version of each dependency across the workspace
+4. `knip:check` — unused files, exports and dependencies
+5. `format:check`
+6. `lint`
+7. `version:major:check`
+8. `docs:banned:check`, `changeset:overrides:check`
+9. `docs:api:check`, `docs:release-notes:check`
+10. `typecheck`, `typecheck:tests`, `test`
+11. `build`, `size`, `publint`
+12. `pack:smoke`
 
 Commits run `lint-staged` only — the full gate is on push, because a gate slow
 enough to invite `--no-verify` stops being a gate.
 
 - `pnpm run size`
-- Ensure a changeset exists for user-facing changes. If your PR is docs/CI-only/tooling that doesn't affect the packages, add the `skip-changeset` label.
+- Ensure a changeset exists for user-facing changes, one package per changeset file. CI (`rxova-repo-config check-changeset`) requires one whenever a published package's shipped files change; tests and Markdown inside a package do not count. If your PR changes a package without publishing anything (a dev-dependency bump, say), add the `skip-changeset` label or `[skip-changeset]` to the title.
 - **If you changed behavior, change the prose in the same PR.** A `minor` or `major` changeset that
   touches `packages/*/src` should almost always come with a diff under `apps/docs/src/content/docs/**` or a
   package `README.md`. Check three things no linter can:

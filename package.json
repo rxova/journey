@@ -58,7 +58,7 @@
     "knip:check": "knip",
     "sherif:check": "sherif --fail-on-warnings",
     "pack:smoke": "node --import tsx ./packages/common/tooling/pack-smoke.ts",
-    "verify": "node --import tsx ./packages/common/tooling/verify.ts"
+    "verify": "rxova-repo-config verify"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
@@ -67,6 +67,7 @@
     "@commitlint/cli": "^21.2.2",
     "@commitlint/config-conventional": "^21.2.2",
     "@eslint/js": "^10.0.1",
+    "@rxova/repo-config": "^0.1.0",
     "@size-limit/esbuild": "^13.0.3",
     "@size-limit/file": "^13.0.3",
     "@types/node": "^26.5.1",
@@ -99,5 +100,66 @@
     "*.{js,jsx,ts,tsx,cjs}": "prettier --write",
     "*.{json,md,mdx,yaml,yml,css,scss,html}": "prettier --write"
   },
-  "packageManager": "pnpm@12.5.1"
+  "packageManager": "pnpm@12.5.1",
+  "repoConfig": {
+    "verify": {
+      "steps": [
+        {
+          "name": "audit",
+          "command": "pnpm run audit:check"
+        },
+        {
+          "name": "dependency dedupe",
+          "command": "pnpm exec turbo run //#dedupe:check"
+        },
+        {
+          "name": "dependency versions",
+          "command": "pnpm run sherif:check"
+        },
+        {
+          "name": "unused code",
+          "command": "pnpm run knip:check"
+        },
+        {
+          "name": "format",
+          "command": "pnpm run format:check"
+        },
+        {
+          "name": "lint",
+          "command": "pnpm run lint"
+        },
+        {
+          "name": "major version bumps",
+          "command": "pnpm run version:major:check"
+        },
+        {
+          "name": "docs banned identifiers",
+          "command": "pnpm run docs:banned:check"
+        },
+        {
+          "name": "changeset changelog overrides",
+          "command": "pnpm run changeset:overrides:check"
+        },
+        {
+          "name": "docs api and release notes",
+          "command": "pnpm exec turbo run docs:api:check docs:release-notes:check"
+        },
+        {
+          "name": "typecheck and test",
+          "command": "pnpm exec turbo run typecheck typecheck:tests test"
+        },
+        {
+          "name": "build, size and package contracts",
+          "command": "pnpm exec turbo run build size check:exports"
+        },
+        {
+          "name": "pack smoke",
+          "command": "pnpm run pack:smoke"
+        }
+      ]
+    },
+    "changeset": {
+      "singlePackage": true
+    }
+  }
 }

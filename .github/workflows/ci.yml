@@ -74,13 +74,6 @@ jobs:
   changeset:
     needs: [commitlint]
     if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main'
-    permissions:
-      contents: read
-      # check-changeset.ts reads the skip-changeset label through the API
-      # (`gh api repos/.../labels`). Without this the call 403s, the script
-      # warns and proceeds label-blind, and the documented escape hatch
-      # silently does nothing.
-      pull-requests: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -88,14 +81,17 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup-pnpm
       - run: pnpm install --frozen-lockfile
+      # The labels come from the event payload rather than the API, so the job
+      # needs no `pull-requests: read`. `labeled`/`unlabeled` above re-run it
+      # with the fresh list. Each changeset must name exactly one package:
+      # `repoConfig.changeset.singlePackage` in the root package.json.
       - name: Require a changeset for published-package changes
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
           PR_TITLE: ${{ github.event.pull_request.title }}
-        run: node --import tsx ./packages/common/tooling/check-changeset.ts
+        run: pnpm exec rxova-repo-config check-changeset
 
   checks:
     needs: [commitlint]
@@ -140,7 +136,7 @@ jobs:
       - uses: ./.github/actions/turbo-cache
       - run: pnpm install --frozen-lockfile
       # Every check here is in the local pre-push gate too
-      # (packages/common/tooling/verify.ts). Running them here as well is what
+      # (package.json#repoConfig.verify). Running them here as well is what
       # keeps a stale local checkout from being the only thing between a
       # newly-disclosed advisory and a release.
       #
