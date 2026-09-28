@@ -226,6 +226,9 @@ importers:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.10.0(jiti@2.7.0)(supports-color@10.2.2))
+      '@rxova/repo-config':
+        specifier: ^0.1.0
+        version: 0.1.0(@commitlint/config-conventional@21.2.2)(@eslint/js@10.0.1(eslint@10.10.0(jiti@2.7.0)(supports-color@10.2.2)))(eslint@10.10.0(jiti@2.7.0)(supports-color@10.2.2))(globals@17.12.0)(typescript@6.0.3)(vitest@5.0.0)
       '@size-limit/esbuild':
         specifier: ^13.0.3
         version: 13.1.1(size-limit@13.1.1)
@@ -2373,6 +2376,37 @@ packages:
   '@rxova/brand@1.2.0':
     resolution: {integrity: sha512-Skh3CUlljjKhZ6RHCZsEpTJjrYcNaYJYEW5Pi2PP0r91Tf0E3qD05SsiMifp/a2Vum+Lkn2rQW8WcX1DxorhBw==}
     engines: {node: '>=24.0.0'}
+
+  '@rxova/repo-config@0.1.0':
+    resolution: {integrity: sha512-En6AotdRBXVgHuGXEtPKbB8EKpNwKDhKteaPV0k0dC98zG7V2HfhBCdmUUl9cEaRAvs2b3Oee3AT2HtJHVbHZg==}
+    engines: {node: '>=22.13'}
+    hasBin: true
+    peerDependencies:
+      '@commitlint/config-conventional': '>=19'
+      '@eslint/js': '>=9'
+      eslint: '>=9'
+      globals: '>=15'
+      tsdown: '>=0.15'
+      typescript: '>=5.5'
+      typescript-eslint: '>=8'
+      vitest: '>=3'
+    peerDependenciesMeta:
+      '@commitlint/config-conventional':
+        optional: true
+      '@eslint/js':
+        optional: true
+      eslint:
+        optional: true
+      globals:
+        optional: true
+      tsdown:
+        optional: true
+      typescript:
+        optional: true
+      typescript-eslint:
+        optional: true
+      vitest:
+        optional: true
 
   '@shikijs/core@4.4.3':
     resolution: {integrity: sha512-QCR4q2ZO/ILJEuwiBMel4wdcTDb1JGwfjKTxPDF6x8ixOaluPrVqIn06C99AcRPhmYlBR56d/Fb+GN58GzExpg==}
@@ -6683,6 +6717,15 @@ snapshots:
     dependencies:
       '@fontsource/ibm-plex-mono': 5.3.0
       '@fontsource/space-grotesk': 5.3.0
+
+  '@rxova/repo-config@0.1.0(@commitlint/config-conventional@21.2.2)(@eslint/js@10.0.1(eslint@10.10.0(jiti@2.7.0)(supports-color@10.2.2)))(eslint@10.10.0(jiti@2.7.0)(supports-color@10.2.2))(globals@17.12.0)(typescript@6.0.3)(vitest@5.0.0)':
+    optionalDependencies:
+      '@commitlint/config-conventional': 21.2.2
+      '@eslint/js': 10.0.1(eslint@10.10.0(jiti@2.7.0)(supports-color@10.2.2))
+      eslint: 10.10.0(jiti@2.7.0)(supports-color@10.2.2)
+      globals: 17.12.0
+      typescript: 6.0.3
+      vitest: 5.0.0(@types/node@26.5.1)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1)(vite@7.3.6(@types/node@26.5.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.46.0)(tsx@4.23.13)(yaml@2.9.1))
 
   '@shikijs/core@4.4.3':
     dependencies:

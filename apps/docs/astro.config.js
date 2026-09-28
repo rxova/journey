@@ -52,7 +52,7 @@ export default defineConfig({
   // ```mermaid fences. Docusaurus rendered them via @docusaurus/theme-mermaid;
   // Starlight has no built-in equivalent, and every drop-in (rehype-mermaid)
   // wants a headless browser at build time — which is the one thing the
-  // pre-push gate in packages/common/tooling/verify.ts deliberately avoids
+  // pre-push gate (package.json#repoConfig.verify) deliberately avoids
   // needing. Left as code blocks, which are readable but not diagrams. Wiring a
   // client-side renderer is a follow-up, not a rebase decision.
   markdown: {

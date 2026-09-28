@@ -132,10 +132,14 @@ overrides:
 # and `@rxova/astro-ui` are our own packages from the sibling rxova/rxova-website
 # repo, so the window buys nothing and would instead mean the docs site could not
 # pick up a brand fix for a day. Same exclusion the use-everywhere repo carries.
+# `@rxova/repo-config` and `@rxova/ts-utils` come from rxova/shared on the same
+# terms: the repo tooling and the inlined runtime helpers.
 # Everything third-party stays subject to the policy.
 minimumReleaseAgeExclude:
   - "@rxova/brand"
   - "@rxova/astro-ui"
+  - "@rxova/repo-config"
+  - "@rxova/ts-utils"
 
 # `allowBuilds` replaces pnpm 10's `onlyBuiltDependencies`. Same meaning — which
 # dependencies may run install scripts — but explicit per package rather than an
