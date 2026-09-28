@@ -57,7 +57,7 @@
     "dedupe:check": "pnpm dedupe --check",
     "knip:check": "knip",
     "sherif:check": "sherif --fail-on-warnings",
-    "pack:smoke": "node --import tsx ./packages/common/tooling/pack-smoke.ts",
+    "pack:smoke": "pnpm -r --workspace-concurrency=1 --filter \"./packages/*\" --filter \"!@rxova/journey-common\" exec rxova-repo-config pack-smoke",
     "verify": "rxova-repo-config verify"
   },
   "devDependencies": {
