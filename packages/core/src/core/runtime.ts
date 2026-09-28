@@ -392,8 +392,9 @@ export class JourneyRuntime {
 
     if (!this.isCurrent(generation)) return this.staleResult();
 
-    // Route against the staged context, not the committed one; the guards also
-    // see the run result directly, so transient outcomes need not be persisted.
+    // Route against the staged context, not the committed one. The run result is
+    // passed along too, but guard types expose only context and handlers: a
+    // routing fact reaches them through what `commit` staged.
     const transition = this.resolveTransition(type, stagedContext, result);
     if (!transition) {
       // Roll back: the staged context is dropped along with the move.

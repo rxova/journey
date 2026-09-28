@@ -78,7 +78,7 @@ Failures are represented by the result, `navigationBlocked`, and `error` events.
 ## Route post-commit work
 
 ```ts
-const verify = createStep("verify", {
+const verify = {
   onEnter: async ({ snapshot, updateContext, raise }) => {
     try {
       const receipt = await charge(snapshot.context.paymentToken);
@@ -90,10 +90,10 @@ const verify = createStep("verify", {
     }
   },
   on: {
-    SUCCEEDED: [to("done")],
-    FAILED: [to("payment")]
+    SUCCEEDED: "done",
+    FAILED: "payment"
   }
-});
+};
 ```
 
 ## Resume a saved position

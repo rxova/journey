@@ -32,7 +32,7 @@ event-driven graph process, model long-running work as a step: perform it in `on
 domain event that selects the success or failure destination.
 
 ```ts
-const loading = createStep("loading", {
+const loading = {
   onEnter: async ({ snapshot, updateContext, raise }) => {
     try {
       const user = await loadUser(snapshot.context.id);
@@ -44,10 +44,10 @@ const loading = createStep("loading", {
     }
   },
   on: {
-    LOADED: [to("ready")],
-    FAILED: [to("failed")]
+    LOADED: "ready",
+    FAILED: "failed"
   }
-});
+};
 ```
 
 The current step remains `loading` while `onEnter` runs, and its async state is visible in the

@@ -106,11 +106,10 @@ explains both projections with each candidate's target, priority, guard result, 
 whether first-enabled event dispatch would select it. A terminal step has no declared outgoing
 transitions, regardless of guard results.
 
-Introspection shows the resting-state answer. A
-[work send's](./usage/graph#transactional-sends-event-work) candidate guard that reads the run
-`result` is evaluated here with `result: undefined` — outside a send there is no result yet. During
-the send itself the same guard sees the live result, so a result-dependent candidate can report
-`guard: "failed"` in the snapshot and still win the route once the work has run.
+Introspection shows the resting-state answer: guards are evaluated against the live context. A
+[work send's](./usage/graph#transactional-sends-event-work) candidates are evaluated during the send
+against the context its `commit` staged instead, so a candidate that reports `guard: "failed"` here
+can still win the route once the work has run and staged the fact it checks.
 
 ## Update rules
 

@@ -30,7 +30,7 @@ export type {
 } from "./graph/graph.types";
 
 // Puts a declared `run` back at an inference site, so `commit` and the
-// candidates' guards read their result type off it instead of the bag.
+// reads its result type off it instead of the bag.
 export { defineWork } from "./graph/work";
 export type { WorkConfig } from "./graph/work";
 

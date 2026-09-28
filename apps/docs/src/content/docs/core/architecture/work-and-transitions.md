@@ -27,42 +27,43 @@ No match returns `no-enabled-transition`.
 
 ## Transactional work
 
-Next/previous navigation and builder-declared work-sends carry the same transaction shape: an
+Next/previous navigation and step-declared work-sends carry the same transaction shape: an
 asynchronous `run` executes first, an optional synchronous `commit` stages a context update, and
 the move is decided afterwards — all-or-nothing.
 
-For a work-send, candidate guards are evaluated **against the staged context**, and in the
-candidates-callback form they additionally receive the typed **result of `run`**:
+For a work-send, candidate guards are evaluated **against the staged context**. They never see the
+result of `run` directly: a routing fact goes through `commit` into the staged context, and the
+guards read it from there.
 
 ```ts
-b.createStep("review", {
+const review = {
   on: {
-    submit: ({ work }) =>
-      work({
-        run: async ({ context, handlers }) => handlers.verify(context),
-        candidates: ({ to, stay }) => [
-          to("done").when(({ result }) => result.ok),
-          stay() // totality fallback
-        ]
-      })
+    submit: {
+      run: ({ snapshot, handlers }) => handlers.verify(snapshot.context),
+      commit: ({ result, updateContext }) =>
+        updateContext((context) => ({ ...context, verified: result.ok })),
+      candidates: [
+        { to: "done", when: ({ context }) => context.verified },
+        { to: "review" } // totality fallback
+      ]
+    }
   }
-});
+};
 ```
 
-Control-flow intermediates never need to be laundered through persistent context: read them from
-`result`. Resting-state introspection (`outgoingTransitions`) evaluates result-reading guards with
-`result: undefined`.
+That keeps guards total functions of context, so resting-state introspection
+(`outgoingTransitions`, `availableEvents`) reports the same answer a live send would.
 
 If `run` throws, rejects, or times out — or no candidate is enabled — nothing commits: the machine
 stays on the source step and staged context updates are discarded. The caller receives a failed
 `NavigationResult`.
 
-## `stay()` totality
+## Totality
 
-`stay()` is an unguarded candidate pointing back at the declaring step — the named totality
-fallback. The builder's `build()` emits a dev-mode warning when a work declaration has no unguarded
-fallback candidate; `allowRollback: true` silences it when discarding the work result on rollback
-is intended.
+An unguarded last candidate pointing back at the declaring step is the totality fallback: it keeps
+the event routable whatever `run` returned, so a staged failure outcome (an error message, an
+attempt counter) commits instead of being rolled back. Leave it out when discarding the staged
+context on an unmatched send is what you want.
 
 ## Committing a move
 

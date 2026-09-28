@@ -150,7 +150,13 @@ export const BANNED_IDENTIFIERS: readonly BannedIdentifier[] = [
   { name: "journey-core/analytics", pattern: /journey-core\/analytics/ },
   { name: "journey-core/persistence", pattern: /journey-core\/persistence/ },
   { name: "journey-core/replay", pattern: /journey-core\/replay/ },
-  { name: "journey-core/execution-paths", pattern: /journey-core\/execution-paths/ }
+  { name: "journey-core/execution-paths", pattern: /journey-core\/execution-paths/ },
+  // The builder's step and candidate helpers, removed by the v2 subtraction: a
+  // step is a plain object, and the totality fallback is an unguarded candidate
+  // back at the declaring step. Matched as calls, since "stay" is ordinary prose.
+  { name: "createStep", pattern: /\bcreateStep\(/ },
+  { name: "stay()", pattern: /\bstay\(\)/ },
+  { name: "allowRollback", pattern: /\ballowRollback\b/ }
 ];
 
 /**
