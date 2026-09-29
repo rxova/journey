@@ -18,15 +18,15 @@ Journey supports:
 - A [Chrome DevTools extension](https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm)
   backed by a versioned bridge.
 
-📖 [Read the documentation](https://rxova.org/packages/journey/)
+📖 [Read the documentation](https://rxova.dev/packages/journey/)
 
-🚀 [Core Quickstart](https://rxova.org/packages/journey/core/getting-started/)
+🚀 [Core Quickstart](https://rxova.dev/packages/journey/core/getting-started/)
 
-⚛️ [React Quickstart](https://rxova.org/packages/journey/react/quickstart/)
+⚛️ [React Quickstart](https://rxova.dev/packages/journey/react/quickstart/)
 
-🔧 [Chrome DevTools](https://rxova.org/packages/journey/devtool/overview/)
+🔧 [Chrome DevTools](https://rxova.dev/packages/journey/devtool/overview/)
 
-🧭 [Pre-1.0 Migration](https://rxova.org/packages/journey/core/pre-1-0-migration/)
+🧭 [Pre-1.0 Migration](https://rxova.dev/packages/journey/core/pre-1-0-migration/)
 
 💬 [GitHub Discussions](https://github.com/rxova/journey)
 
@@ -35,7 +35,7 @@ Journey supports:
 - [`llms.txt`](llms.txt) — the repository index: which package is which, and what to read next.
 - [`MANIFEST.MD`](MANIFEST.MD) — why the library is shaped this way, and what it deliberately is not.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — for an agent _editing_ this repo, not using it.
-- [Runtime reference](https://rxova.org/packages/journey/core/runtime-reference/) — the canonical
+- [Runtime reference](https://rxova.dev/packages/journey/core/runtime-reference/) — the canonical
   snapshot, field by field. Read this before writing calling code.
 
 ## Packages
@@ -406,7 +406,7 @@ mutating operations unless `mutationsEnabled: false` is supplied. The transport 
 
 ## Documentation and development
 
-Full guides and generated API reference are available at [rxova.org](https://rxova.org/packages/journey/).
+Full guides and generated API reference are available at [rxova.dev](https://rxova.dev/packages/journey/).
 
 ```bash
 pnpm install

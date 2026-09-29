@@ -6,7 +6,7 @@ Documentation site for `@rxova/journey-core`, `@rxova/journey-react`,
 tokens with the other rxova docs sites through
 [`@rxova/brand`](https://www.npmjs.com/package/@rxova/brand).
 
-Production docs URL: `https://rxova.org/packages/journey/`
+Production docs URL: `https://rxova.dev/packages/journey/`
 
 ## Run locally
 
@@ -28,12 +28,12 @@ compile: `starlight-links-validator` fails it on any broken internal link.
 
 ### Building at the aggregator base path
 
-The site is standalone at the domain root by default, but rxova.org mounts it
+The site is standalone at the domain root by default, but rxova.dev mounts it
 under `/packages/journey/`. Absolute references that only work at the root are
 invisible in a root build and break once mounted, so CI builds it both ways:
 
 ```bash
-DOCS_URL=https://rxova.org DOCS_BASE_URL=/packages/journey/ pnpm run docs:build
+DOCS_URL=https://rxova.dev DOCS_BASE_URL=/packages/journey/ pnpm run docs:build
 ```
 
 Write internal links as relative file links (`./architecture.md`) and they stay
@@ -86,7 +86,7 @@ pnpm run docs:api:check
 
 ## Deploy
 
-Docs are published as part of rxova.org by the `rxova/rxova-website` aggregator,
+Docs are published as part of rxova.dev by the `rxova/rxova-website` aggregator,
 not from this repo's Pages. The aggregator never builds them — it only validates
 and publishes what it is sent, so this repo owns the build end to end.
 
@@ -101,7 +101,7 @@ and publishes what it is sent, so this repo owns the build end to end.
 
 The aggregator then re-validates the metadata and the dist, persists the dist as
 a release asset, and redeploys. A rejection at either gate fails that ingest run
-and leaves the live site untouched — a bad push here cannot take rxova.org down,
+and leaves the live site untouched — a bad push here cannot take rxova.dev down,
 it just does not publish.
 
 ## Migration note

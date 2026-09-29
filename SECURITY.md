@@ -29,7 +29,7 @@ This is a volunteer-maintained project, so these are goals rather than contractu
 
 Use one of the following:
 
-- Email: jonatan@rxova.org
+- Email: jonyk@rxova.dev
 - [GitHub Security Advisory form](https://github.com/rxova/journey/security/advisories/new)
 
 If the advisory link is unavailable, use email.

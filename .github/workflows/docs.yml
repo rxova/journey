@@ -1,10 +1,10 @@
 name: Docs Check
 
-# Docs are published as part of rxova.org (the rxova/rxova-website aggregator),
+# Docs are published as part of rxova.dev (the rxova/rxova-website aggregator),
 # not from this repo's Pages. The aggregator does not build them: this workflow
 # builds the dist for /packages/journey/, uploads it as the `docs-dist`
 # artifact, and dispatches a `docs` event naming this run — gate 1 of the
-# contract in rxova/rxova-website docs/INPUTS-CONTRACT.md. rxova.org validates
+# contract in rxova/rxova-website docs/INPUTS-CONTRACT.md. rxova.dev validates
 # what arrives, persists it, and republishes; a rejection leaves the live site
 # untouched.
 #
@@ -66,7 +66,7 @@ jobs:
       # href, an <img src>, a hero action link — are invisible in a root build
       # and break silently once deployed. starlight-links-validator runs as part
       # of the build and fails on any broken internal link, so catching them
-      # here turns a red rxova.org deploy (which blocks every project on the
+      # here turns a red rxova.dev deploy (which blocks every project on the
       # site, not just this one) into a failed PR check.
       #
       # Only the base-path build runs here: the root-path build is what the
@@ -74,11 +74,11 @@ jobs:
       # repeating it would be the same work twice.
       - name: Build docs at the aggregator base path
         env:
-          DOCS_URL: https://rxova.org
+          DOCS_URL: https://rxova.dev
           DOCS_BASE_URL: /packages/journey/
         run: pnpm run docs:build
 
-      # The dist rxova.org publishes as built. `docs-dist` is the fixed
+      # The dist rxova.dev publishes as built. `docs-dist` is the fixed
       # artifact name in the contract — ingest.yml downloads it by that name from
       # this run — so it is not ours to rename. Pointing `path` at the dist
       # directory (not its parent) is what puts index.html at the artifact root,
@@ -93,7 +93,7 @@ jobs:
           path: apps/docs/dist
           if-no-files-found: error
 
-  # Gate 1 of the docs pipeline: tell rxova.org that this run holds a dist built
+  # Gate 1 of the docs pipeline: tell rxova.dev that this run holds a dist built
   # for /packages/journey/. The aggregator validates the payload, downloads the
   # artifact above, and persists + publishes it — it never builds these docs
   # itself. Contract: rxova/rxova-website docs/INPUTS-CONTRACT.md.
@@ -102,7 +102,7 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - name: Dispatch docs ingest to rxova.org
+      - name: Dispatch docs ingest to rxova.dev
         # No continue-on-error, unlike the pre-contract dispatch this replaces.
         # Back then the aggregator rebuilt the docs from source on its own
         # schedule, so a dropped notification only delayed a publish. Now the

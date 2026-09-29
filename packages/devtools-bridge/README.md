@@ -35,8 +35,8 @@ The transport uses same-page `window.postMessage`. Treat inspected snapshot/cont
 to other scripts on the page, avoid secrets in journey state, keep production attachment disabled
 unless required, and detach on teardown.
 
-- [Bridge API](https://rxova.org/docs/bridge/bridge-api)
-- [Protocol](https://rxova.org/docs/bridge/protocol)
+- [Bridge API](https://rxova.dev/docs/bridge/bridge-api)
+- [Protocol](https://rxova.dev/docs/bridge/protocol)
 - [Chrome extension](https://chromewebstore.google.com/detail/rxova-journey-devtools/bkmdccobpcagbmknjmmhbabcfphinjcm)
 
 ## License

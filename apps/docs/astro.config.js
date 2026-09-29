@@ -8,11 +8,11 @@ import { unified } from "@astrojs/markdown-remark";
 import { rehypeRelativeDocLinks } from "./src/plugins/rehype-relative-doc-links.js";
 
 /**
- * Defaults keep journey's standalone build at the domain root; the rxova.org
+ * Defaults keep journey's standalone build at the domain root; the rxova.dev
  * aggregator sets DOCS_URL / DOCS_BASE_URL to mount these docs under
  * /packages/journey/. Same contract the Docusaurus config had.
  */
-const site = process.env.DOCS_URL ?? "https://rxova.org";
+const site = process.env.DOCS_URL ?? "https://rxova.dev";
 const base = process.env.DOCS_BASE_URL ?? "/";
 
 const contentDir = fileURLToPath(new URL("./src/content/docs", import.meta.url));
@@ -76,7 +76,7 @@ export default defineConfig({
     // Emitted at the mount, not the domain root: under the aggregator this build
     // lives at /packages/journey/, so the file lands at <base>sitemap-index.xml
     // and claims only URLs beneath that prefix, which is the scope a sitemap at
-    // a subpath is allowed to claim. rxova.org's root robots.txt is what points
+    // a subpath is allowed to claim. rxova.dev's root robots.txt is what points
     // at it — this build cannot serve a robots.txt any crawler would honour,
     // because robots.txt is read only from the origin root and this build never
     // owns one.

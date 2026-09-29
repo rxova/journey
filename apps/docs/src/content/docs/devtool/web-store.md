@@ -14,7 +14,7 @@ The extension is available on Chrome Web Store:
 
 Use this direct URL in the Chrome Web Store listing:
 
-- `https://rxova.org/docs/devtool/privacy-policy`
+- `https://rxova.dev/docs/devtool/privacy-policy`
 
 ## Manifest Baseline
 
