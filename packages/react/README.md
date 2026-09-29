@@ -234,7 +234,7 @@ React.useEffect(() => attachJourneyDevtools(checkout.machine, { enabled: true })
 
 Return the bridge detach function, and use `mutationsEnabled: false` for inspect-only sessions.
 
-See the [React documentation](https://rxova.org/docs/react/overview) for complete guides and API
+See the [React documentation](https://rxova.dev/docs/react/overview) for complete guides and API
 reference.
 
 ## License

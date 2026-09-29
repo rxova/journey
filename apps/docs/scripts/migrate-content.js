@@ -15,7 +15,7 @@
  *     directive and the block renders as literal `:::tip ... :::` text.
  *  3. Links were absolute doc-id paths (`/docs/core/recipes`). Those only ever
  *     resolved because Docusaurus served the docs at the domain root; under the
- *     rxova.org aggregator the site is mounted at /packages/journey/ and every
+ *     rxova.dev aggregator the site is mounted at /packages/journey/ and every
  *     one of them would 404. They become relative file links, which Astro
  *     resolves against the content collection and rewrites to the final URL,
  *     base path included. The `.md` extension is kept on purpose — stripping it

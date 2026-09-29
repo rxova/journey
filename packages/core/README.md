@@ -216,7 +216,7 @@ one edge so a single slow third-party call does not set the budget for the whole
 
 For larger graphs, `withGraphTypes<Bag>()` pins the types once and `GraphStep<Bag>` lets each step live in its own file, and
 `defineWork<Bag, "EVENT">()` reads a work entry's result type off its `run` instead of restating it
-in the bag. See the [Graph guide](https://rxova.org/docs/core/usage/graph).
+in the bag. See the [Graph guide](https://rxova.dev/docs/core/usage/graph).
 
 ## Connectors
 
@@ -240,7 +240,7 @@ machine.context.update(
 
 It also works with the `updateContext` passed to hooks and transactional commits. Immer remains an
 optional peer, so consumers that do not import this connector do not install or bundle it. See the
-[Immer connector guide](https://rxova.org/docs/core/connectors/immer) for replacement recipes,
+[Immer connector guide](https://rxova.dev/docs/core/connectors/immer) for replacement recipes,
 freezing, draftability, and transactional behavior.
 
 ## Plugins
@@ -266,13 +266,13 @@ transitions and cycles without creating a machine.
 
 ## Documentation
 
-- [Quickstart](https://rxova.org/docs/core/getting-started)
-- [Linear journeys](https://rxova.org/docs/core/usage/linear)
-- [Async behavior](https://rxova.org/docs/core/async)
-- [Machine API](https://rxova.org/docs/core/api/machine-api)
-- [Snapshot](https://rxova.org/docs/core/snapshot)
-- [Pre-1.0 migration](https://rxova.org/docs/core/pre-1-0-migration)
-- [Stability contract](https://rxova.org/docs/core/stability)
+- [Quickstart](https://rxova.dev/docs/core/getting-started)
+- [Linear journeys](https://rxova.dev/docs/core/usage/linear)
+- [Async behavior](https://rxova.dev/docs/core/async)
+- [Machine API](https://rxova.dev/docs/core/api/machine-api)
+- [Snapshot](https://rxova.dev/docs/core/snapshot)
+- [Pre-1.0 migration](https://rxova.dev/docs/core/pre-1-0-migration)
+- [Stability contract](https://rxova.dev/docs/core/stability)
 
 ## License
 

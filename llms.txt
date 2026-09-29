@@ -33,21 +33,21 @@ rename.
 
 ## Docs
 
-- [Documentation](https://rxova.org/packages/journey/): guides and the API
+- [Documentation](https://rxova.dev/packages/journey/): guides and the API
   reference, generated from the source.
-- [Core: getting started](https://rxova.org/packages/journey/core/getting-started)
-  · [React: quickstart](https://rxova.org/packages/journey/react/quickstart)
-- [Snapshot](https://rxova.org/packages/journey/core/snapshot): the canonical
+- [Core: getting started](https://rxova.dev/packages/journey/core/getting-started)
+  · [React: quickstart](https://rxova.dev/packages/journey/react/quickstart)
+- [Snapshot](https://rxova.dev/packages/journey/core/snapshot): the canonical
   read model, field by field — read this before writing calling code.
-- [Async and guards](https://rxova.org/packages/journey/core/async) ·
-  [History and the timeline](https://rxova.org/packages/journey/core/history)
-  · [Plugins](https://rxova.org/packages/journey/core/plugins/overview/)
-- [Stability](https://rxova.org/packages/journey/core/stability): what the
+- [Async and guards](https://rxova.dev/packages/journey/core/async) ·
+  [History and the timeline](https://rxova.dev/packages/journey/core/history)
+  · [Plugins](https://rxova.dev/packages/journey/core/plugins/overview/)
+- [Stability](https://rxova.dev/packages/journey/core/stability): what the
   version contract covers, and what it does not.
-- [Pre-1.0 migration](https://rxova.org/packages/journey/core/pre-1-0-migration):
+- [Pre-1.0 migration](https://rxova.dev/packages/journey/core/pre-1-0-migration):
   the breaking changes, in order.
-- [Chrome DevTools](https://rxova.org/packages/journey/devtool/overview) ·
-  [Bridge API](https://rxova.org/packages/journey/bridge/bridge-api)
+- [Chrome DevTools](https://rxova.dev/packages/journey/devtool/overview) ·
+  [Bridge API](https://rxova.dev/packages/journey/bridge/bridge-api)
 
 ## Contributing
 

@@ -7,5 +7,5 @@ contact_links:
     url: "https://github.com/rxova/journey/security/policy"
     about: "Please report security issues via the policy page."
   - name: "Private contact"
-    url: "mailto:jonatan@rxova.org"
+    url: "mailto:jonyk@rxova.dev"
     about: "Use email for sensitive or private inquiries."

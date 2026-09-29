@@ -103,7 +103,7 @@ jobs:
       publish: true
     secrets: inherit
 
-# No docs dispatch here any more. Under the rxova.org ingest contract
+# No docs dispatch here any more. Under the rxova.dev ingest contract
 # (rxova/rxova-website docs/INPUTS-CONTRACT.md) a `docs` dispatch names the run
 # holding a `docs-dist` artifact, and this run has none — it publishes packages,
 # it does not build the site. Rebuilding the docs a second time here just to
