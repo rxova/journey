@@ -209,45 +209,64 @@ function assertInvariants(snapshot: JourneySnapshot): void {
   }
 }
 
-describe("determinism fuzz", () => {
-  it("the same linear command sequence always produces the same snapshot", async () => {
-    await fc.assert(
-      fc.asyncProperty(sequenceArbitrary, async (ops) => {
-        const first = createLinearJourney(linearDefinition, FUZZ_OPTIONS) as unknown as FuzzMachine;
-        const second = createLinearJourney(
-          linearDefinition,
-          FUZZ_OPTIONS,
-        ) as unknown as FuzzMachine;
-        for (const op of ops) {
-          await apply(first, op);
-          assertInvariants(first.getSnapshot());
-        }
-        for (const op of ops) {
-          await apply(second, op);
-        }
-        expect(second.getSnapshot()).toEqual(first.getSnapshot());
-      }),
-      { numRuns: 40 },
-    );
-  });
+// Every run awaits real timers, and a Windows runner's timer granularity is
+// ~15 ms, so forty sequences can outlast Vitest's 5 s default there while
+// taking a fraction of it elsewhere. The properties are unchanged.
+const FUZZ_TIMEOUT_MS = 30_000;
 
-  it("the same graph command sequence always produces the same snapshot", async () => {
-    await fc.assert(
-      fc.asyncProperty(sequenceArbitrary, async (ops) => {
-        const first = createGraphJourney(graphDefinition, FUZZ_OPTIONS) as unknown as FuzzMachine;
-        const second = createGraphJourney(graphDefinition, FUZZ_OPTIONS) as unknown as FuzzMachine;
-        for (const op of ops) {
-          await apply(first, op);
-          assertInvariants(first.getSnapshot());
-        }
-        for (const op of ops) {
-          await apply(second, op);
-        }
-        expect(second.getSnapshot()).toEqual(first.getSnapshot());
-      }),
-      { numRuns: 40 },
-    );
-  });
+describe("determinism fuzz", () => {
+  it(
+    "the same linear command sequence always produces the same snapshot",
+    async () => {
+      await fc.assert(
+        fc.asyncProperty(sequenceArbitrary, async (ops) => {
+          const first = createLinearJourney(
+            linearDefinition,
+            FUZZ_OPTIONS,
+          ) as unknown as FuzzMachine;
+          const second = createLinearJourney(
+            linearDefinition,
+            FUZZ_OPTIONS,
+          ) as unknown as FuzzMachine;
+          for (const op of ops) {
+            await apply(first, op);
+            assertInvariants(first.getSnapshot());
+          }
+          for (const op of ops) {
+            await apply(second, op);
+          }
+          expect(second.getSnapshot()).toEqual(first.getSnapshot());
+        }),
+        { numRuns: 40 },
+      );
+    },
+    FUZZ_TIMEOUT_MS,
+  );
+
+  it(
+    "the same graph command sequence always produces the same snapshot",
+    async () => {
+      await fc.assert(
+        fc.asyncProperty(sequenceArbitrary, async (ops) => {
+          const first = createGraphJourney(graphDefinition, FUZZ_OPTIONS) as unknown as FuzzMachine;
+          const second = createGraphJourney(
+            graphDefinition,
+            FUZZ_OPTIONS,
+          ) as unknown as FuzzMachine;
+          for (const op of ops) {
+            await apply(first, op);
+            assertInvariants(first.getSnapshot());
+          }
+          for (const op of ops) {
+            await apply(second, op);
+          }
+          expect(second.getSnapshot()).toEqual(first.getSnapshot());
+        }),
+        { numRuns: 40 },
+      );
+    },
+    FUZZ_TIMEOUT_MS,
+  );
 
   it("slow work raced against terminate/restart never commits stale state", async () => {
     const raceOp = fc.constantFrom("terminate" as const, "restart" as const, "none" as const);
