@@ -92,11 +92,6 @@
     "typescript": "^6.0.3",
     "vitest": "^5.0.0"
   },
-  "lint-staged": {
-    "*.{js,jsx,ts,tsx}": "eslint --max-warnings=0 --no-warn-ignored",
-    "*.{js,jsx,ts,tsx,cjs}": "prettier --write",
-    "*.{json,md,mdx,yaml,yml,css,scss,html}": "prettier --write"
-  },
   "packageManager": "pnpm@12.5.1",
   "repoConfig": {
     "verify": {
