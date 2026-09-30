@@ -73,7 +73,7 @@ for (const dtsPath of entryTypeFiles) {
   writeFileSync(dctsPath, dcts, "utf8");
 
   if (existsSync(dtsMapPath)) {
-    const map = JSON.parse(readFileSync(dtsMapPath, "utf8"));
+    const map = JSON.parse(readFileSync(dtsMapPath, "utf8")) as { file?: string };
     map.file = `${name}.d.cts`;
     writeFileSync(dctsMapPath, JSON.stringify(map), "utf8");
   }

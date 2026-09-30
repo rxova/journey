@@ -8,9 +8,7 @@ type DevtoolsPanelsWithThemeHandler = typeof chrome.devtools.panels & {
 };
 
 const getDevtoolsPanels = (): DevtoolsPanelsWithThemeHandler | undefined =>
-  typeof chrome === "undefined"
-    ? undefined
-    : (chrome.devtools?.panels as DevtoolsPanelsWithThemeHandler | undefined);
+  typeof chrome === "undefined" ? undefined : chrome.devtools?.panels;
 
 const applyTheme = (theme: ThemeName) => {
   document.documentElement.dataset.theme = theme;

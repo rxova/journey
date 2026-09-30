@@ -168,18 +168,17 @@ export const createTransportErrorEnvelope = (
   requestId: string,
   error: JourneyDevtoolsSerializedError,
   version: JourneyDevtoolsProtocolVersion = JOURNEY_DEVTOOLS_PROTOCOL_VERSION
-): JourneyDevtoolsBridgeOperationErrorEnvelope =>
-  ({
-    channel: JOURNEY_DEVTOOLS_CHANNEL,
-    version,
-    source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
-    kind: "operationError",
-    machineId,
-    requestId,
-    operationId: "transport",
-    error,
-    timestamp: Date.now()
-  }) as JourneyDevtoolsBridgeOperationErrorEnvelope;
+): JourneyDevtoolsBridgeOperationErrorEnvelope => ({
+  channel: JOURNEY_DEVTOOLS_CHANNEL,
+  version,
+  source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
+  kind: "operationError",
+  machineId,
+  requestId,
+  operationId: "transport",
+  error,
+  timestamp: Date.now()
+});
 
 export const serializeTransportError = (error: unknown): JourneyDevtoolsSerializedError =>
   serializeTransportErrorCommon(error);

@@ -1,5 +1,6 @@
 import { rmSync } from "node:fs";
 import { build } from "esbuild";
+import type { BuildOptions } from "esbuild";
 
 rmSync("dist", { recursive: true, force: true });
 
@@ -14,7 +15,7 @@ const common = {
   platform: "neutral",
   format: "esm",
   external: ["@rxova/journey-core"]
-};
+} satisfies BuildOptions;
 
 await build(common);
 

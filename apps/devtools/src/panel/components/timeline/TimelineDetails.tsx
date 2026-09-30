@@ -34,7 +34,7 @@ const buildActionDetailsPayload = (selectedEntry: JourneyPanelTimelineEntry | nu
     selectedEntry.invocation
   ) {
     return {
-      ...((selectedEntry.actionPayload as Record<string, unknown>) ?? {}),
+      ...(selectedEntry.actionPayload ?? {}),
       summary: {
         status: "no-op",
         message: `${selectedEntry.invocation.operationId} did not produce a transition or state change.`

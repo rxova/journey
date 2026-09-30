@@ -57,7 +57,7 @@ describe("persistence plugin — debounced writes", () => {
       ...storage,
       setItem: (key, value) => {
         writes += 1;
-        storage.setItem(key, value);
+        void storage.setItem(key, value);
       }
     };
     const machine = createLinearJourney(

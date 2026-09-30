@@ -192,7 +192,7 @@ describe("sync-doc-release-notes script", () => {
   it("checkReleaseNotes uses default exit handler when stale", async () => {
     const root = await makeWorkspace();
     const exitSpy = vi.spyOn(process, "exit").mockImplementation(((
-      code?: string | number | null | undefined
+      code?: string | number | null
     ) => {
       throw new Error(`exit:${code}`);
     }) as never);
@@ -240,7 +240,7 @@ describe("sync-doc-release-notes script", () => {
   it("main uses default exit handler in stale check mode", async () => {
     const root = await makeWorkspace();
     const exitSpy = vi.spyOn(process, "exit").mockImplementation(((
-      code?: string | number | null | undefined
+      code?: string | number | null
     ) => {
       throw new Error(`exit:${code}`);
     }) as never);

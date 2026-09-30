@@ -61,10 +61,7 @@ const EMPTY_PLUGINS: Readonly<Record<string, unknown>> = Object.freeze({});
 
 /** Freezes and returns the rebuilt sub-object, or the previous one when content-equal. */
 const shared = <T extends object>(next: T, previous: T | null | undefined): T =>
-  previous != null &&
-  shallowEqual(next as Record<string, unknown>, previous as Record<string, unknown>)
-    ? previous
-    : Object.freeze(next);
+  previous != null && shallowEqual(next, previous) ? previous : Object.freeze(next);
 
 /** Reuses the previous frozen array when elements are pairwise equal. */
 const sharedArray = <T>(
@@ -76,7 +73,7 @@ const sharedArray = <T>(
   previous.length === next.length &&
   next.every((item, index) => equal(item, previous[index] as T))
     ? previous
-    : (Object.freeze([...next]) as readonly T[]);
+    : Object.freeze<readonly T[]>([...next]);
 
 const getGraphGuardState = (
   guard: RuntimeTransition["when"],
@@ -131,7 +128,7 @@ export class JourneyRuntime {
 
   constructor(config: RuntimeConfig) {
     this.config = config;
-    this.frozenStepOrder = Object.freeze([...config.stepIds]) as readonly string[];
+    this.frozenStepOrder = Object.freeze<readonly string[]>([...config.stepIds]);
     this.restoreSeed = config.restore ?? null;
     this.context = freezeContextInDevelopment(
       config.restore ? config.restore.context : config.initialContext
@@ -165,7 +162,7 @@ export class JourneyRuntime {
 
   complete(payload?: unknown): boolean {
     if (this.disposed || this.status !== "running" || this.pending) return false;
-    this.outcome = Object.freeze({ type: "completed", payload }) as JourneyOutcome;
+    this.outcome = Object.freeze({ type: "completed", payload });
     this.setStatus("completed");
     return true;
   }
@@ -176,7 +173,7 @@ export class JourneyRuntime {
     this.pending = null;
     this.entryAsync = SUCCESS_ASYNC;
     this.raiseQueue = [];
-    this.outcome = Object.freeze({ type: "terminated", payload }) as JourneyOutcome;
+    this.outcome = Object.freeze({ type: "terminated", payload });
     this.setStatus("terminated");
     return true;
   }
@@ -309,8 +306,7 @@ export class JourneyRuntime {
   send(type: string, payload?: unknown, work?: AnySendWork): Promise<NavigationResult> {
     const rejected = this.checkNavigable();
     if (rejected) return this.blocked(rejected, null);
-    const event: JourneyEventObject =
-      payload === undefined ? { type } : ({ type, payload } as JourneyEventObject);
+    const event: JourneyEventObject = payload === undefined ? { type } : { type, payload };
 
     const from = this.currentStepId();
     const declaredWork =
@@ -424,7 +420,7 @@ export class JourneyRuntime {
       getSnapshot: () => this.store.getSnapshot(),
       structure: Object.freeze({
         kind: this.config.kind,
-        stepIds: Object.freeze([...this.config.stepIds]) as readonly string[],
+        stepIds: Object.freeze<readonly string[]>([...this.config.stepIds]),
         initial: this.config.initial,
         transitions: Object.freeze(
           this.config.transitions.map((transition) =>
@@ -440,8 +436,8 @@ export class JourneyRuntime {
         )
       }),
       onTransition: (callback) => {
-        this.transitionListeners.add(callback as TransitionListener);
-        return () => this.transitionListeners.delete(callback as TransitionListener);
+        this.transitionListeners.add(callback);
+        return () => this.transitionListeners.delete(callback);
       },
       onNavigationBlocked: (callback) => this.store.subscribeEvent("navigationBlocked", callback),
       onStatusChange: (callback) => this.store.subscribeEvent("statusChange", callback),
@@ -935,7 +931,7 @@ export class JourneyRuntime {
     const visited =
       previousHistory != null && shallowEqual(previousHistory.visited, visitedNext)
         ? previousHistory.visited
-        : (Object.freeze(visitedNext) as Readonly<Record<string, boolean>>);
+        : Object.freeze<Record<string, boolean>>(visitedNext);
 
     const base = {
       status: this.status,
@@ -1000,7 +996,7 @@ export class JourneyRuntime {
           previousLinear?.steps
         ),
         plugins: EMPTY_PLUGINS
-      } as JourneySnapshot;
+      };
     } else {
       const declaredEvents: string[] = [];
       const availableEvents: string[] = [];
@@ -1058,7 +1054,7 @@ export class JourneyRuntime {
           (a, b) => shallowEqual(a, b as unknown as Record<string, unknown>)
         ),
         plugins: EMPTY_PLUGINS
-      } as JourneySnapshot;
+      };
     }
 
     if (this.snapshotDerivers.size > 0) {
@@ -1086,18 +1082,11 @@ export class JourneyRuntime {
           previousPlugins != null && shallowEqual(previousPlugins, extensions)
             ? previousPlugins
             : Object.freeze(extensions)
-      } as JourneySnapshot;
+      };
     }
 
     const frozen = Object.freeze(snapshot) as JourneySnapshot;
-    const result =
-      previous !== null &&
-      shallowEqual(
-        frozen as unknown as Record<string, unknown>,
-        previous as unknown as Record<string, unknown>
-      )
-        ? previous
-        : frozen;
+    const result = previous !== null && shallowEqual(frozen, previous) ? previous : frozen;
     this.lastSnapshot = result;
     return result;
   }

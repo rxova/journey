@@ -139,7 +139,9 @@ export function normalizeGraphDefinition(definition: LooseGraphDefinition): {
         continue;
       }
       if (Array.isArray(entry)) {
-        entry.forEach((candidate, index) => pushCandidate(event, from, candidate, index));
+        (entry as readonly LooseTransition[]).forEach((candidate, index) =>
+          pushCandidate(event, from, candidate, index)
+        );
         continue;
       }
       const declared = entry as Exclude<LooseOnEntry, string | readonly LooseTransition[]>;

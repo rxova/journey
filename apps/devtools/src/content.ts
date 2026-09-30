@@ -67,13 +67,13 @@ const cacheEnvelope = (envelope: ContentToBackgroundMessage["envelope"]) => {
 const replayCacheToBackground = () => {
   for (const cachedJourneyMachine of journeyMachineCache.values()) {
     if (cachedJourneyMachine.register) {
-      chrome.runtime.sendMessage({
+      void chrome.runtime.sendMessage({
         type: "bridge-envelope",
         envelope: cachedJourneyMachine.register
       } satisfies ContentToBackgroundMessage);
     }
     // Cached machines are only retained after register/snapshot envelopes, both of which seed snapshot state.
-    chrome.runtime.sendMessage({
+    void chrome.runtime.sendMessage({
       type: "bridge-envelope",
       envelope: cachedJourneyMachine.snapshot!
     } satisfies ContentToBackgroundMessage);
@@ -99,7 +99,7 @@ if (!maybeWindow[CONTENT_BRIDGE_FLAG]) {
       envelope: event.data
     };
 
-    chrome.runtime.sendMessage(message);
+    void chrome.runtime.sendMessage(message);
   });
 
   chrome.runtime.onMessage.addListener((message: unknown) => {

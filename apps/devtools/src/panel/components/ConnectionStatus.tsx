@@ -1,4 +1,3 @@
-import React from "react";
 import type { PanelWarning } from "../../shared";
 import panelStyles from "./panelPrimitives.module.css";
 

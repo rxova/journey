@@ -12,7 +12,7 @@ export default function App() {
   // The machine is standalone on the bundle — devtools attach to it directly.
   React.useEffect(
     () =>
-      attachJourneyDevtools(loginJourney.machine as never, {
+      attachJourneyDevtools(loginJourney.machine, {
         machineId: "react-showcase-linear",
         label: "React Showcase Linear",
         appName: "React Showcase Linear",

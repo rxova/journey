@@ -110,7 +110,7 @@ export function resolvePersistStorage(option: JourneyPersistOption): JourneyStor
 
   let ambient: JourneyStorage | undefined;
   try {
-    ambient = globalThis.localStorage as JourneyStorage | undefined;
+    ambient = globalThis.localStorage;
   } catch (error) {
     throw new JourneyError(
       "storage-unavailable",

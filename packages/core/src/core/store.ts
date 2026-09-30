@@ -87,9 +87,9 @@ export class JourneyStore<TContext, TStepId extends string> {
       listeners = new Set();
       this.eventListeners.set(event, listeners);
     }
-    listeners.add(listener as (payload: never) => void);
+    listeners.add(listener);
     return () => {
-      listeners.delete(listener as (payload: never) => void);
+      listeners.delete(listener);
     };
   }
 

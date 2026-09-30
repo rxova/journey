@@ -14,7 +14,7 @@ const execNode = (args: string[]) =>
   new Promise<void>((resolvePromise, rejectPromise) => {
     execFile(process.execPath, ["--import", "tsx", ...args], (error) => {
       if (error) {
-        rejectPromise(error);
+        rejectPromise(error as Error);
         return;
       }
       resolvePromise();

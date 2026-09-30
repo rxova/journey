@@ -121,6 +121,8 @@ describe("suspense", () => {
     });
 
     const Suspending = () => {
+      // Suspense protocol: a pending render throws the promise it waits on.
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
       if (!settled) throw ready;
       return <span data-testid="loaded">loaded</span>;
     };

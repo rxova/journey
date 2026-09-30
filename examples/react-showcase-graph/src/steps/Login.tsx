@@ -36,7 +36,7 @@ export const Login = () => {
     try {
       const result = await mockApi.login(username, password);
       if (!result.success) {
-        await journey.updateContext((ctx) => ({
+        journey.updateContext((ctx) => ({
           ...ctx,
           error: "Login failed. Try a different password."
         }));
@@ -54,7 +54,7 @@ export const Login = () => {
         qrCode = null;
       }
 
-      await journey.updateContext((ctx) => ({
+      journey.updateContext((ctx) => ({
         ...ctx,
         twoFactorMethod: result.method,
         qrCode,
@@ -101,7 +101,7 @@ export const Login = () => {
             placeholder="password (use 'blocked' to fail)"
           />
         </label>
-        <p className="hint">Hint: any password will work except "blocked".</p>
+        <p className="hint">Hint: any password will work except &quot;blocked&quot;.</p>
         {snapshot.context.error && <div className="error">{snapshot.context.error}</div>}
         <div className="actions">
           <button type="submit" disabled={isBusy} aria-busy={isBusy}>

@@ -98,6 +98,8 @@ const describeValue = (value: unknown): unknown => {
     return { "[Set]": [...(value as Set<unknown>).values()] };
   }
   if (tag === "RegExp") {
+    // A RegExp from any realm: `String` gives its `/source/flags` form.
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string
     return String(value);
   }
   if (tag === "DataView" || tag === "ArrayBuffer" || tag === "SharedArrayBuffer") {
@@ -212,6 +214,9 @@ export const cloneForTransport = (value: unknown): unknown => {
     return JSON.parse(serialized) as unknown;
   } catch {
     try {
+      // The value's own `toString` is the point of the last resort; one that
+      // does not exist or throws lands in the catch below.
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string
       return String(value);
     } catch {
       // A null-prototype object has no `toString`, so even the last resort can

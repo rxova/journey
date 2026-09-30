@@ -92,6 +92,10 @@ export function buildOperationRunners(
   attachable: JourneyDevtoolsAttachableMachine
 ): OperationRunner[] {
   const machine = attachable as unknown as LooseMachine;
+  // Every runner is `async` whether or not it awaits: the protocol handler
+  // awaits `run()`, and an input check that throws must reach it as a rejected
+  // operation rather than as a synchronous throw out of the message listener.
+  /* eslint-disable @typescript-eslint/require-await */
   const runners: OperationRunner[] = [
     {
       descriptor: {
@@ -256,11 +260,17 @@ export function buildOperationRunners(
         ]
       },
       run: async (input) => {
+        // Machines from @rxova/journey-core define `send` as an arrow property, so
+        // it is safe detached; LooseMachine declares it with method syntax only to
+        // accept either form.
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         const send = machine.send as NonNullable<LooseMachine["send"]>;
         return navigationResult(machine, await send(stringField(input, "type"), input?.payload));
       }
     });
   }
+
+  /* eslint-enable @typescript-eslint/require-await */
 
   return runners;
 }

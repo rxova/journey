@@ -66,7 +66,7 @@
     "build": "pnpm run clean && node --import tsx ./scripts/build.ts && tsc -p tsconfig.build.json && node --import tsx ../../scripts/packages/clean-paths.ts dist/internal && node --import tsx ../../scripts/packages/copy-types.ts dist",
     "clean": "node --import tsx ../../scripts/packages/clean-paths.ts dist tsconfig.build.tsbuildinfo",
     "test": "vitest run --coverage",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p scripts/tsconfig.json",
     "check:exports": "publint --strict",
     "pack:smoke": "rxova-repo-config pack-smoke",
     "attw": "attw --pack . --profile node16",

@@ -49,6 +49,9 @@ export type PersistenceState = {
   /** When the last **confirmed** write landed, not when one was attempted. */
   readonly lastSavedAt: number | null;
   /** The most recent write failure, cleared by the next successful write. */
+  // `| null` is the documented "no error" state, spelled out for readers of the
+  // published types even though `unknown` already includes it.
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   readonly error: unknown | null;
 };
 

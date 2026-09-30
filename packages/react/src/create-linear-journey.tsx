@@ -149,7 +149,7 @@ export const createLinearJourney = <
     return machine.navigate.goToNextStep({
       run: (args) => handler.run(args),
       commit: (args) => handler.commit?.(args)
-    } as NonNullable<NextStepWork>);
+    });
   }) as Machine["navigate"]["goToNextStep"];
 
   const navigate: Machine["navigate"] = { ...machine.navigate, goToNextStep };
@@ -181,7 +181,7 @@ export const createLinearJourney = <
           // only the last registration runs, so the other's work silently never
           // fires. StrictMode's double-mount is exempt — it unregisters first.
           warnInDevelopment(
-            `journey: shadowed a live registration for step "${stepId}" — last registration wins.`
+            `journey: shadowed a live registration for step "${stepId as string}" — last registration wins.`
           );
         }
         stack.push(entry);
