@@ -25,52 +25,24 @@ jobs:
   release:
     # workflow_run fires on both success and failure, so the conclusion has to
     # be checked explicitly. A manual dispatch has no upstream run to gate on.
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ubuntu-latest
-    env:
-      # The changesets action makes a version commit, which would otherwise fire
-      # the pre-commit hook and run the workspace typecheck and test suite
-      # against a generated bump. CI already gated this code on the PR.
-      HUSKY: "0"
+    if: >-
+      github.repository == 'rxova/journey' &&
+      (github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success')
     permissions:
       contents: write # version commit and tags
       pull-requests: write # the version PR
       id-token: write # npm trusted publishing (OIDC provenance)
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          # Check out main by name (not the workflow_run's detached SHA) so the
-          # changesets action knows its base branch when opening the version PR.
-          ref: main
-          fetch-depth: 0
-      - uses: ./.github/actions/setup-pnpm
-        with:
-          registry-url: "https://registry.npmjs.org"
-      - uses: ./.github/actions/turbo-cache
-      - name: Upgrade npm for Trusted Publishing
-        run: npm install -g npm@^11.5.1
-      - run: pnpm install --frozen-lockfile
-      - name: Create Release PR or Publish
-        uses: changesets/action@v2
-        with:
-          # v2 renamed every one of these inputs. The old names were accepted
-          # silently as "unexpected input" warnings, so the action ran with its
-          # defaults instead — including the "Version Packages" commit subject
-          # that commitlint rejects.
-          # v2 also stopped reading the token from the `GITHUB_TOKEN` env
-          # var; it has to come through this input or the action runs
-          # unauthenticated and cannot open the version PR.
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          version-script: pnpm run changeset:version
-          publish-script: pnpm run release
-          # Conventional, and not optional: commitlint is now the root job of
-          # CI and runs `--last` on every push to main, so the action's default
-          # "Version Packages" subject would fail the whole workflow on the one
-          # commit that must not be blocked. Matches the sibling repos.
-          commit-message: "chore: version packages"
-          pr-title: "chore: version packages"
-        env:
-          NPM_CONFIG_PROVENANCE: "true"
+    # changesets/action opens the `chore: version packages` pull request, and
+    # publishes once it is merged. `changeset:version` is `rxova-repo-config
+    # version` (bump, root version from core, lockfile) followed by the docs
+    # release-notes sync; `release` builds through Turbo, then `changeset
+    # publish`. This file keeps its name: npm trusted publishing is bound to it.
+    uses: rxova/shared/.github/workflows/changesets-release.yml@main
+    with:
+      version-script: pnpm run changeset:version
+      publish-script: pnpm run release
+      turbo-cache: true
 
   check-devtools:
     needs: release

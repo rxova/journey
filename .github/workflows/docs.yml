@@ -52,8 +52,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup-pnpm
-      - uses: ./.github/actions/turbo-cache
+      - uses: rxova/shared/actions/setup-pnpm@main
+      - uses: rxova/shared/actions/turbo-cache@main
       - run: pnpm install --frozen-lockfile
 
       # `astro check` over the site's own .astro/.mdx sources. Cheap, and it
@@ -108,18 +108,10 @@ jobs:
         # schedule, so a dropped notification only delayed a publish. Now the
         # dispatch *is* the publish: swallowing a failure would leave the site
         # serving stale docs with a green tick here and nothing to look at.
-        env:
-          GH_TOKEN: ${{ secrets.AGGREGATOR_DISPATCH_TOKEN }}
-        # `-F` only for schema, which the receiver compares as the number 1;
-        # everything else goes through `-f` so it stays a string, and an
-        # all-digit ref or sha cannot arrive as a number.
-        run: |
-          gh api repos/rxova/rxova-website/dispatches \
-            -f event_type=docs \
-            -F 'client_payload[schema]=1' \
-            -f 'client_payload[project]=journey' \
-            -f "client_payload[ref]=${GITHUB_REF_NAME}" \
-            -f "client_payload[sha]=${GITHUB_SHA}" \
-            -f "client_payload[run_id]=${GITHUB_RUN_ID}" \
-            -f 'client_payload[base]=/packages/journey/' \
-            -f 'client_payload[framework]=astro'
+        #
+        # The shared action sends the contract's payload: schema 1, this run's
+        # ref, sha and id, base /packages/journey/ and framework astro.
+        uses: rxova/shared/actions/notify-website@main
+        with:
+          project: journey
+          token: ${{ secrets.AGGREGATOR_DISPATCH_TOKEN }}

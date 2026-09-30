@@ -35,7 +35,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - uses: ./.github/actions/setup-pnpm
+      - uses: rxova/shared/actions/setup-pnpm@main
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
