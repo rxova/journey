@@ -1,271 +1,142 @@
 name: CI
 
+# Every job is a reusable workflow from rxova/shared, called at @main. What
+# stays here is the graph: which jobs run, and when. The steps are the ones
+# `pnpm run verify` runs, and the pre-push hook runs that end to end, so a green
+# push is a green pipeline.
+#
+# Release is gated on this workflow succeeding for the commit being released,
+# so a push to main that skipped CI would never publish.
+
 on:
   push:
     branches: [main]
   pull_request:
-    # `labeled`/`unlabeled` are added on top of the defaults (opened,
-    # synchronize, reopened) so that adding the `skip-changeset` label to an
-    # already-opened PR re-runs the `changeset` gate instead of leaving its
-    # earlier failure stuck red until the next push.
-    #
-    # `edited`: retitling a PR must re-check it, because the title becomes the
-    # squash-merge commit message and nothing else validates it.
-    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
-    # No paths-ignore. The old filter skipped `docs/**` and `**/*.md`, but
-    # `.changeset/*.md` matches `**/*.md` — so the one push most likely to need
-    # a release, a merge whose only new file is a changeset, was exactly the one
-    # whose checks never ran. Turbo's cache is what makes dropping the filter
-    # cheap: on a prose-only change every task replays.
+    # No `edited`: the title check lives in pr-title.yml. `labeled`/`unlabeled`
+    # re-run the changeset gate, whose escape hatch is the `skip-changeset` label.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 permissions:
   contents: read
 
+# Superseded pull request runs are cancelled; main runs always finish, because
+# Release reads this workflow's conclusion to decide whether to publish.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  # The root of the graph: everything else declares `needs: [commitlint]`.
-  # Replaces the standalone Commitlint workflow, which billed a full minute of
-  # its own and gated nothing — a bad message failed a check no other job
-  # depended on.
-  #
-  # It runs on push as well as pull_request on purpose. A job that is skipped
-  # also skips its dependents, so gating this on `pull_request` alone would
-  # silently skip the entire workflow on main — and the alternative, an
-  # `if: always() && !failure()` on every other job, is the kind of expression
-  # that is wrong in a way nobody notices until something ships unchecked.
+  # The root of the graph: commitlint over the range, then `check-scope`, whose
+  # outputs let a documentation-only or release-bookkeeping range skip the rest.
   commitlint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/setup-pnpm
-      - run: pnpm install --frozen-lockfile
+    name: commit messages
+    uses: rxova/shared/.github/workflows/commit-messages.yml@main
 
-      - name: Lint the branch commits
-        if: github.event_name == 'pull_request'
-        run: >-
-          pnpm exec commitlint --verbose
-          --from ${{ github.event.pull_request.base.sha }}
-          --to ${{ github.event.pull_request.head.sha }}
-
-      # The squash-merge subject is the PR *title*, which no commit in the
-      # branch contains and which `edited` lets someone change after CI already
-      # went green. The old wagoid action linted commits only, so the one
-      # message that actually lands on main was the one nothing checked.
-      # Passed through the environment, never interpolated into the shell — a
-      # title is attacker-controlled text.
-      - name: Lint the PR title
-        if: github.event_name == 'pull_request'
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-        run: echo "$PR_TITLE" | pnpm exec commitlint --verbose
-
-      # On main this is the squashed subject already linted above, plus the
-      # changesets `chore: version packages` commit. Cheap, and it is what keeps
-      # this job unskippable.
-      - name: Lint the pushed commit
-        if: github.event_name == 'push'
-        run: pnpm exec commitlint --last --verbose
-
-  changeset:
-    needs: [commitlint]
-    if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/setup-pnpm
-      - run: pnpm install --frozen-lockfile
-      # The labels come from the event payload rather than the API, so the job
-      # needs no `pull-requests: read`. `labeled`/`unlabeled` above re-run it
-      # with the fresh list. Each changeset must name exactly one package:
-      # `repoConfig.changeset.singlePackage` in the root package.json.
-      - name: Require a changeset for published-package changes
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
-        run: pnpm exec rxova-repo-config check-changeset
-
+  # Unlike the sibling rxova repos, the docs site is NOT left out of the build:
+  # journey's Starlight site renders no mermaid, so it needs no headless
+  # chromium and builds here like any other workspace, the devtools extension
+  # included. That is also why this job runs on a range that only touched the
+  # docs site (`docs-changed`).
   checks:
+    name: lint · format · types · build
     needs: [commitlint]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup-pnpm
-      - uses: ./.github/actions/turbo-cache
-      - run: pnpm install --frozen-lockfile
-      - name: Lint
-        run: pnpm run lint
-      - name: Check formatting
-        run: pnpm run format:check
-      - name: Check major version bumps
-        run: pnpm run version:major:check
-      - name: Check changeset changelog overrides
-        run: pnpm run changeset:overrides:check
-      - name: Docs API surface and release notes
-        run: pnpm exec turbo run docs:api:check docs:release-notes:check
-      # Turbo knows dependents typecheck and measure against the libraries'
-      # emitted .d.ts, so it builds those first. This replaces the explicit
-      # per-package build these jobs used to open with, and replays whatever
-      # this commit did not touch.
-      #
-      # Unlike the sibling rxova repos, the docs site is NOT filtered out of the
-      # build: journey's Starlight site renders no mermaid, so it needs no
-      # headless chromium and builds here like any other workspace. That is also
-      # why the old standalone `devtools-browser` job is gone — building the
-      # extension is `apps-devtools#build`, which this already covers.
-      - name: Typecheck
-        run: pnpm exec turbo run typecheck typecheck:tests
-      - name: Build, size budgets and package contracts
-        run: pnpm exec turbo run build size check:exports
+    if: needs.commitlint.outputs.code-changed == 'true' || needs.commitlint.outputs.docs-changed == 'true'
+    uses: rxova/shared/.github/workflows/repo-checks.yml@main
+    with:
+      extra-command: >-
+        pnpm run version:major:check &&
+        pnpm run changeset:overrides:check &&
+        pnpm run docs:banned:check &&
+        pnpm exec turbo run docs:api:check docs:release-notes:check //#typecheck:scripts
+      build-command: pnpm exec turbo run build size check:exports
+
+  # Each package's suite with its per-file coverage gate, plus the repository's
+  # own scripts: `pnpm test`.
+  test:
+    name: unit
+    needs: [commitlint]
+    if: needs.commitlint.outputs.code-changed == 'true'
+    uses: rxova/shared/.github/workflows/unit-tests.yml@main
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   supply-chain:
+    name: audit · sherif · knip · dedupe
     needs: [commitlint]
-    if: github.head_ref != 'changeset-release/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup-pnpm
-      - uses: ./.github/actions/turbo-cache
-      - run: pnpm install --frozen-lockfile
-      # Every check here is in the local pre-push gate too
-      # (package.json#repoConfig.verify). Running them here as well is what
-      # keeps a stale local checkout from being the only thing between a
-      # newly-disclosed advisory and a release.
-      #
-      # `audit:check` is deliberately not a Turbo task: its verdict depends on
-      # the upstream advisory database, which changes without any file here
-      # changing, so a cached pass could replay over a fresh CVE.
-      #
-      # `--ignore-registry-errors` keeps an unreachable advisory endpoint from
-      # failing the job: pnpm exits 0 when the registry was at fault and leaves
-      # every other failure alone. How long it waits first is bounded by
-      # `fetchTimeout` / `fetchRetries` in pnpm-workspace.yaml; `timeout-minutes`
-      # is the backstop for pnpm not coming back at all.
-      - name: Audit dependencies
-        timeout-minutes: 5
-        run: pnpm run audit:check
-      # One version of each dependency across the workspace. Two packages on two
-      # minors of the same library typecheck fine and then disagree at runtime,
-      # which is the kind of bug that costs an afternoon.
-      - name: Check dependency versions across the workspace
-        run: pnpm run sherif:check
-      # Unused files, exports and dependencies. Cheap to run, and the only check
-      # here that notices an export nothing imports.
-      - name: Check for unused files, exports and dependencies
-        run: pnpm run knip:check
-      # Last, and it has to stay last: `pnpm dedupe --check` removes the modules
-      # directory when CI is set, so any step after it runs without node_modules
-      # and fails looking for its own binary.
-      - name: Check dependency dedupe
-        run: pnpm run dedupe:check
+    if: needs.commitlint.outputs.code-changed == 'true'
+    uses: rxova/shared/.github/workflows/supply-chain.yml@main
 
-  pack-smoke:
+  package:
+    name: package contract
     needs: [commitlint]
-    if: github.head_ref != 'changeset-release/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup-pnpm
-      - uses: ./.github/actions/turbo-cache
-      - run: pnpm install --frozen-lockfile
-      # `pack:smoke` packs, installs and imports the real tarballs without
-      # running any build script, so it needs the real dist.
-      # Turbo replays the build from cache when nothing feeding it changed.
-      - name: Build packages
-        run: pnpm exec turbo run build --filter='./packages/*'
-      - name: Pack smoke test
-        run: pnpm run pack:smoke
+    if: needs.commitlint.outputs.code-changed == 'true'
+    uses: rxova/shared/.github/workflows/package-contract.yml@main
 
-  test:
+  # The packages declare Node >= 20.11, but pnpm needs >= 22.13 to install, so
+  # the floor is exercised against the real tarballs with plain `node`.
+  compat:
+    name: published packages on the engines floor
     needs: [commitlint]
-    if: github.head_ref != 'changeset-release/main'
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        # pnpm 11 requires Node >= 22.13, so the node 20 leg this matrix used to
-        # carry cannot even install and had to go. The published packages declare
-        # no `engines` of their own, so nothing about what consumers may run has
-        # changed — but node 20 is genuinely no longer exercised here. If that
-        # matters, the way back is a job that installs with an older pnpm purely
-        # to run the suite, not re-adding a leg that cannot install.
-        node-version: [22, 24]
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup-pnpm
-        with:
-          node-version: ${{ matrix.node-version }}
-      # Deliberately no turbo-cache here, and `pnpm run test` rather than a
-      # turbo task. Turbo hashes files and env, not the Node binary, and the
-      # cache action keys on `github.job` — the same string for every leg of a
-      # matrix. Both legs would share one cache, so node 24 could replay a
-      # result computed under node 22, which is exactly what this matrix exists
-      # to prevent.
-      - run: pnpm install --frozen-lockfile
-      - name: Test with coverage thresholds
-        run: pnpm run test
-      # Root `test` enforces the global thresholds; this enforces the per-file
-      # ones each package declares in its own vitest config.
-      - name: Enforce per-file package coverage
-        run: pnpm run packages:coverage
-      - name: Add coverage summary
-        if: always() && matrix.node-version == 24
-        run: node --import tsx ./packages/common/tooling/coverage-summary.ts
-      - name: Upload coverage report
-        if: always() && matrix.node-version == 24
-        uses: actions/upload-artifact@v7
-        with:
-          name: coverage-report
-          path: coverage
+    if: needs.commitlint.outputs.code-changed == 'true'
+    uses: rxova/shared/.github/workflows/node-floor-smoke.yml@main
 
   # The peer range allows React 18.2, but the lockfile only ever installs 19, so
-  # without this the minimum supported version is an untested claim. It is a
-  # separate job rather than a matrix dimension because it has to rewrite the
-  # React version, which --frozen-lockfile forbids.
-  #
-  # `react:min:install` pins the root as well as packages/react: @rxova/ts-utils
-  # is declared at the root, so its `react` peer resolves there. Pinning only the
-  # package leaves the inlined `useIsomorphicLayoutEffect` on React 19 while the
-  # suite renders with 18 — two Reacts, and every hook call fails.
+  # without this the minimum supported version is an untested claim. React is
+  # pinned at the root as well as in packages/react: @rxova/ts-utils is declared
+  # at the root, so its `react` peer resolves there, and pinning only the package
+  # would leave the inlined `useIsomorphicLayoutEffect` on React 19 while the
+  # suite renders with 18 — two Reacts, and every hook call fails. The coverage
+  # gate is the regular suite's job; this one only asks whether 18.2 works.
   react-minimum-version:
+    name: unit (react 18.2)
     needs: [commitlint]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup-pnpm
-        with:
-          node-version: 22
-      - run: pnpm install --frozen-lockfile
-      - name: Install the minimum supported React
-        run: pnpm run react:min:install
-      - name: Typecheck against React 18 types
-        run: pnpm --filter @rxova/journey-react typecheck
-      - name: Run the React suite against React 18.2
-        run: pnpm --workspace-root vitest run packages/react --coverage.enabled=false
+    if: needs.commitlint.outputs.code-changed == 'true'
+    uses: rxova/shared/.github/workflows/react-minimum-version.yml@main
+    with:
+      react-version: 18.2.0
+      types-version: 18.3.27
+      types-dom-version: 18.3.7
+      filters: "@rxova/journey-react"
+      node-version: "22"
+      test-command: pnpm --filter @rxova/journey-react exec vitest run --coverage.enabled=false
+      typecheck-command: pnpm --filter @rxova/journey-react typecheck
 
-  # The one check the org ruleset requires on main. A ruleset names checks one
-  # by one, so this job stands in for the whole graph: it waits for every other
-  # job and fails if any of them failed or was cancelled. A new job added above
-  # has to be added to `needs` here too, or nothing requires it.
-  #
-  # Skipped counts as passing: `changeset` never runs on push, and the release
-  # PR skips most of the suite on purpose. `if: always()` is what makes it run
-  # after an upstream failure — without it the gate itself would be skipped,
-  # and a skipped required check satisfies the ruleset.
+  docs-checks:
+    name: docs checks
+    needs: [commitlint]
+    if: needs.commitlint.outputs.docs-only == 'true'
+    uses: rxova/shared/.github/workflows/docs-checks.yml@main
+    with:
+      command: pnpm run format:check && pnpm run docs:banned:check
+
+  # Each changeset must name exactly one package
+  # (`repoConfig.changeset.singlePackage` in the root package.json).
+  changeset:
+    name: changeset present
+    needs: [commitlint]
+    uses: rxova/shared/.github/workflows/changeset-gate.yml@main
+
+  # The one context branch protection requires. `skipped` passes; `failure`
+  # and `cancelled` do not. A job added above has to be added to `needs` here
+  # too, or nothing requires it.
   all-checks:
     name: all checks
     if: always()
-    needs: [commitlint, changeset, checks, supply-chain, pack-smoke, test, react-minimum-version]
+    needs:
+      [
+        commitlint,
+        checks,
+        test,
+        supply-chain,
+        package,
+        compat,
+        react-minimum-version,
+        docs-checks,
+        changeset,
+      ]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Fail if any job failed or was cancelled
-        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
-        run: exit 1
-      - run: echo "Every job passed or was skipped."
+      - uses: rxova/shared/actions/require-jobs@main
+        with:
+          needs: ${{ toJSON(needs) }}

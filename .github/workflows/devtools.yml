@@ -9,9 +9,7 @@ on:
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
-      - "tsconfig.json"
       - "tsconfig.base.json"
-      - "vitest.config.ts"
       - "eslint.config.js"
       - ".github/workflows/devtools.yml"
   workflow_dispatch:
@@ -29,9 +27,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - uses: ./.github/actions/setup-pnpm
+      - uses: rxova/shared/actions/setup-pnpm@main
 
-      - uses: ./.github/actions/turbo-cache
+      - uses: rxova/shared/actions/turbo-cache@main
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

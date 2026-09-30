@@ -1,0 +1,27 @@
+name: PR title
+
+# The squash-merge subject is the PR *title*: no commit in the branch contains
+# it, and `edited` lets someone change it after CI has already gone green, so it
+# is checked on every edit. It lives here rather than in CI's `types:` because
+# `edited` also fires on body edits, and there is no trigger-level way to tell
+# the two apart. Here the same edit costs one job under a name nothing requires.
+
+on:
+  pull_request:
+    types: [opened, edited, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  title:
+    name: commit message (PR title)
+    # `changes.title` is only present when the edit touched the title, so a
+    # body edit costs no runner at all.
+    if: github.event.action != 'edited' || github.event.changes.title
+    uses: rxova/shared/.github/workflows/lint-pr-title.yml@main
