@@ -25,7 +25,7 @@ export const parseDisplayLimit = (value: string): number | null | undefined => {
 
 export const updateDisplayLimit = (
   value: string,
-  onDisplayLimitChange: (value: number | null) => void
+  onDisplayLimitChange: (value: number | null) => void,
 ): void => {
   const displayLimitValue = parseDisplayLimit(value);
   if (displayLimitValue !== undefined) {
@@ -38,7 +38,7 @@ export const TimelineToolbar = ({
   displayLimit,
   onFollowLatestChange,
   onDisplayLimitChange,
-  onPrune
+  onPrune,
 }: TimelineToolbarProps) => (
   <div className={styles.toolbar}>
     <button

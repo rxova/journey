@@ -4,7 +4,7 @@ import type {
   JourneyDevtoolsMachineMeta,
   JourneyDevtoolsOperationInvoke,
   JourneyDevtoolsProtocolVersion,
-  JourneyDevtoolsSerializableSnapshot
+  JourneyDevtoolsSerializableSnapshot,
 } from "@rxova/journey-devtools-bridge";
 
 export type TimelineEnvelopeKind =
@@ -93,7 +93,7 @@ export const INITIAL_SNAPSHOT: JourneyDevtoolsSerializableSnapshot = {
     currentIndex: -1,
     visited: {},
     canGoBack: false,
-    canGoForward: false
+    canGoForward: false,
   },
   context: {},
   status: "idle",
@@ -104,5 +104,5 @@ export const INITIAL_SNAPSHOT: JourneyDevtoolsSerializableSnapshot = {
   declaredEvents: [],
   availableEvents: [],
   availableSteps: [],
-  outgoingTransitions: []
+  outgoingTransitions: [],
 };

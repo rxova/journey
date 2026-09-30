@@ -19,13 +19,13 @@ const DECLARATION_FILES = [
   "graph.d.ts",
   "graph.d.cts",
   "client.d.ts",
-  "client.d.cts"
+  "client.d.cts",
 ] as const;
 
 const CJS_ENTRYPOINTS = [
   ["index.cjs", "createLinearJourney"],
   ["graph.cjs", "createGraphJourney"],
-  ["client.cjs", "createLinearJourney"]
+  ["client.cjs", "createLinearJourney"],
 ] as const;
 
 type Module = Record<string, unknown>;
@@ -98,7 +98,7 @@ export const inspectDist = async (dist: string): Promise<string[]> => {
     try {
       const bundle = (index?.createLinearJourney as (definition: unknown) => LinearProbe)({
         context: { ok: true },
-        steps: ["a", "b"]
+        steps: ["a", "b"],
       });
       if (bundle.machine.getSnapshot().context.ok !== true) {
         problems.push("linear bundle from dist produced an unexpected snapshot");
@@ -113,7 +113,7 @@ export const inspectDist = async (dist: string): Promise<string[]> => {
       const bundle = (graph?.createGraphJourney as (definition: unknown) => { send: unknown })({
         steps: { a: { on: { GO: "b" } }, b: {} },
         initial: "a",
-        context: {}
+        context: {},
       });
       if (typeof bundle.send !== "function") problems.push("graph bundle from dist lacks send");
     } catch (error) {

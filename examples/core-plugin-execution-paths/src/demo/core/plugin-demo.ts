@@ -7,7 +7,7 @@ import type {
   GraphJourneyMachine,
   JourneySnapshot,
   JourneySubscriptionEvent,
-  LinearJourneyMachine
+  LinearJourneyMachine,
 } from "@rxova/journey-core";
 import "../styles/demo.css";
 import {
@@ -19,7 +19,7 @@ import {
   type PluginDemoKind,
   type PluginStepId,
   type StructureEvent,
-  type StructureStepId
+  type StructureStepId,
 } from "../fixtures/plugin-fixtures";
 import { createLogStore, createStoragePreview, formatJson } from "../fixtures/support";
 
@@ -37,7 +37,7 @@ const OBSERVED_EVENTS: readonly JourneySubscriptionEvent[] = [
   "statusChange",
   "contextChange",
   "navigationBlocked",
-  "error"
+  "error",
 ];
 
 const isStructureDemo = (kind: PluginDemoKind) =>
@@ -55,15 +55,15 @@ export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => 
         return createGraphJourney(structureDefinition);
       case "execution-paths":
         return createGraphJourney(structureDefinition, {
-          plugins: [createExecutionPathsPlugin()] as const
+          plugins: [createExecutionPathsPlugin()] as const,
         });
       case "analytics":
         return createLinearJourney(pluginDefinition, {
           plugins: [
             createAnalyticsPlugin({
-              track: (event) => eventStore.push({ name: event.name, payload: event.payload })
-            })
-          ] as const
+              track: (event) => eventStore.push({ name: event.name, payload: event.payload }),
+            }),
+          ] as const,
         });
       case "persistence":
         return createLinearJourney(pluginDefinition, {
@@ -72,13 +72,13 @@ export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => 
             createPersistencePlugin({
               storage: window.localStorage,
               key: storageKey,
-              debounceMs: 250
-            })
-          ] as const
+              debounceMs: 250,
+            }),
+          ] as const,
         });
       case "replay":
         return createLinearJourney(pluginDefinition, {
-          plugins: [createReplayPlugin({ maxEntries: 60 })] as const
+          plugins: [createReplayPlugin({ maxEntries: 60 })] as const,
         });
     }
   };
@@ -113,7 +113,7 @@ export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => 
 
     (machine as LinearDemoMachine).context.update((context) => ({
       ...context,
-      [field]: target.value
+      [field]: target.value,
     }));
   });
 
@@ -123,7 +123,7 @@ export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => 
         .getSnapshot()
         .map(
           (entry) =>
-            `<div class="log-item"><strong>${entry.name}</strong><pre class="json">${formatJson(entry.payload)}</pre></div>`
+            `<div class="log-item"><strong>${entry.name}</strong><pre class="json">${formatJson(entry.payload)}</pre></div>`,
         )
         .join("");
     }
@@ -147,7 +147,7 @@ export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => 
           (issue) =>
             `<div class="issue-item"><strong class="severity-${issue.severity}">${issue.code}</strong> ${
               issue.stepId ?? issue.from ?? "structural"
-            }</div>`
+            }</div>`,
         )
         .join("")}</div><pre class="json">${formatJson(diagnostics.summary)}</pre>`;
     }
@@ -159,7 +159,7 @@ export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => 
       renderPath(paths.getCurrentPath(), "Current run"),
       ...paths
         .getCompletedPaths()
-        .map((steps, index) => renderPath(steps, `Finished run ${index + 1}`))
+        .map((steps, index) => renderPath(steps, `Finished run ${index + 1}`)),
     ].join("")}</div>`;
   };
 
@@ -270,7 +270,7 @@ export const mountCorePluginDemo = (kind: PluginDemoKind, root: HTMLElement) => 
       }
       if (action === "marker") {
         pluginApi.analytics?.trackAnalyticsEvent("manual_marker", {
-          stepId: machine.getSnapshot().currentStep?.id ?? null
+          stepId: machine.getSnapshot().currentStep?.id ?? null,
         });
       }
       if (action === "flush") {

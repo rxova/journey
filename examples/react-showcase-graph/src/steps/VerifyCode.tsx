@@ -24,7 +24,7 @@ export const VerifyCode = () => {
         journey.updateContext((context) => ({
           ...context,
           attempts: context.attempts + 1,
-          error: context.attempts + 1 >= 3 ? "Too many failed attempts." : "Invalid code."
+          error: context.attempts + 1 >= 3 ? "Too many failed attempts." : "Invalid code.",
         }));
       }
       await journey.send(result.success ? "verifyCodeSuccess" : "verifyCodeFailure", { code });

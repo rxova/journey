@@ -6,7 +6,7 @@ import type {
   NavigationDirection,
   NavigationWork,
   NavigationResult,
-  StepHookArgs
+  StepHookArgs,
 } from "./types";
 
 /** Internal, kind-agnostic hook shapes (public typing lives in the creators). */
@@ -32,7 +32,7 @@ export type AnySendWork = {
     args: AnySendWorkArgs & {
       readonly result: unknown;
       readonly updateContext: (updater: ContextUpdater<unknown>) => void;
-    }
+    },
   ) => unknown;
   /** Per-entry budget for `run`; falls back to `defaultTimeoutMs` when unset. */
   readonly timeoutMs?: number;

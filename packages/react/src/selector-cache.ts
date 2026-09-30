@@ -7,7 +7,7 @@ export type EqualityFn<TSelected> = (a: TSelected, b: TSelected) => boolean;
  */
 export type SelectorCache<TSnapshot, TSelected> = (
   snapshot: TSnapshot,
-  committed: { readonly value: TSelected } | null
+  committed: { readonly value: TSelected } | null,
 ) => TSelected;
 
 /**
@@ -40,7 +40,7 @@ export type SelectorCache<TSnapshot, TSelected> = (
  */
 export const createSelectorCache = <TSnapshot, TSelected>(
   selector: (snapshot: TSnapshot) => TSelected,
-  equalityFn?: EqualityFn<TSelected>
+  equalityFn?: EqualityFn<TSelected>,
 ): SelectorCache<TSnapshot, TSelected> => {
   let cached: { snapshot: TSnapshot; selected: TSelected } | null = null;
 

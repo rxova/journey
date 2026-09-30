@@ -94,7 +94,7 @@ const requestJson = async <T>(label: string, url: string, init: RequestOptions):
 
   if (!response.ok) {
     throw new Error(
-      `${label}: ${explainFailure(responseBody, response.statusText || "Request failed")}`
+      `${label}: ${explainFailure(responseBody, response.statusText || "Request failed")}`,
     );
   }
 
@@ -116,15 +116,15 @@ const exchangeRefreshToken = async (input: {
     {
       method: "POST",
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
+        "Content-Type": "application/x-www-form-urlencoded",
       },
       body: new URLSearchParams({
         client_id: input.clientId,
         client_secret: input.clientSecret,
         refresh_token: input.refreshToken,
-        grant_type: "refresh_token"
-      })
-    }
+        grant_type: "refresh_token",
+      }),
+    },
   );
 
   if (!response.access_token) {
@@ -140,14 +140,14 @@ const createHeaders = (token: string, fileName: string): Record<string, string> 
     "x-goog-api-version": "2",
     "Content-Type": "application/zip",
     "X-Goog-Upload-Protocol": "raw",
-    "X-Goog-Upload-File-Name": fileName
+    "X-Goog-Upload-File-Name": fileName,
   };
 };
 
 const fetchReviewStatus = async (
   publisherId: string,
   extensionId: string,
-  accessToken: string
+  accessToken: string,
 ): Promise<string | undefined> => {
   const response = await requestJson<ReviewStatusResponse>(
     "Failed to fetch item status",
@@ -155,9 +155,9 @@ const fetchReviewStatus = async (
     {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${accessToken}`
-      }
-    }
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
   );
 
   return response.submittedItemRevisionStatus?.state;
@@ -189,8 +189,8 @@ const pushBundle = async (input: {
     {
       method: "POST",
       headers: createHeaders(input.accessToken, fileName),
-      body: fileBuffer
-    }
+      body: fileBuffer,
+    },
   );
 
   if (!response.uploadState || response.uploadState === "FAILURE") {
@@ -201,7 +201,7 @@ const pushBundle = async (input: {
 const finalizeListing = async (
   publisherId: string,
   extensionId: string,
-  accessToken: string
+  accessToken: string,
 ): Promise<void> => {
   const response = await requestJson<PublishResponse>(
     "Failed to publish extension",
@@ -210,10 +210,10 @@ const finalizeListing = async (
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify({})
-    }
+      body: JSON.stringify({}),
+    },
   );
 
   if (!response.status || !response.status.includes("OK")) {
@@ -253,7 +253,7 @@ export const main = async (env: EnvShape = process.env): Promise<void> => {
   const accessToken = await exchangeRefreshToken({
     clientId,
     clientSecret,
-    refreshToken
+    refreshToken,
   });
 
   console.log("Checking Chrome Web Store review state...");
@@ -269,7 +269,7 @@ export const main = async (env: EnvShape = process.env): Promise<void> => {
   } catch (error) {
     if (isInReviewUploadError(error)) {
       console.log(
-        "Chrome Web Store item entered review before upload completed. Skipping publish."
+        "Chrome Web Store item entered review before upload completed. Skipping publish.",
       );
       return;
     }

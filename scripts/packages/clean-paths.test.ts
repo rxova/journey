@@ -15,7 +15,7 @@ const execNode = (args: string[]): { stdout: string; stderr: string; status: num
     // stderr to the parent, leaking the CLI's usage message into the test run.
     const stdout = execFileSync(process.execPath, ["--import", tsxLoaderPath, ...args], {
       encoding: "utf8",
-      stdio: "pipe"
+      stdio: "pipe",
     });
     return { stdout, stderr: "", status: 0 };
   } catch (err: unknown) {

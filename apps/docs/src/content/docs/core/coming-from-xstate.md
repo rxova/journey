@@ -45,8 +45,8 @@ const loading = {
   },
   on: {
     LOADED: "ready",
-    FAILED: "failed"
-  }
+    FAILED: "failed",
+  },
 };
 ```
 

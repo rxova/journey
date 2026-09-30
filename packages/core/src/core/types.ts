@@ -120,7 +120,7 @@ export type JourneySnapshotBase<
   TStepId extends string,
   TMeta,
   TCompletePayload = unknown,
-  TTerminatePayload = unknown
+  TTerminatePayload = unknown,
 > = {
   readonly status: JourneyStatus;
   readonly context: TContext;
@@ -137,7 +137,7 @@ export type LinearSnapshot<
   TStepId extends string,
   TMeta,
   TCompletePayload = unknown,
-  TTerminatePayload = unknown
+  TTerminatePayload = unknown,
 > = Omit<
   JourneySnapshotBase<TContext, TStepId, TMeta, TCompletePayload, TTerminatePayload>,
   "currentStep"
@@ -184,7 +184,7 @@ export type GraphSnapshot<
   TMeta,
   TEvents extends JourneyEventObject = JourneyEventObject,
   TCompletePayload = unknown,
-  TTerminatePayload = unknown
+  TTerminatePayload = unknown,
 > = Omit<
   JourneySnapshotBase<TContext, TStepId, TMeta, TCompletePayload, TTerminatePayload>,
   "currentStep"
@@ -216,7 +216,7 @@ export type JourneySnapshot<
   TMeta = unknown,
   TEvents extends JourneyEventObject = JourneyEventObject,
   TCompletePayload = unknown,
-  TTerminatePayload = unknown
+  TTerminatePayload = unknown,
 > =
   | LinearSnapshot<TContext, TStepId, TMeta, TCompletePayload, TTerminatePayload>
   | GraphSnapshot<TContext, TStepId, TMeta, TEvents, TCompletePayload, TTerminatePayload>;
@@ -252,7 +252,7 @@ export type StepHookArgs<
   TContext,
   TStepId extends string,
   TEvents extends JourneyEventObject = never,
-  TSnap = JourneySnapshot<TContext, TStepId>
+  TSnap = JourneySnapshot<TContext, TStepId>,
 > = {
   readonly snapshot: TSnap;
   readonly from: TStepId | null;
@@ -277,7 +277,7 @@ export type OnLeaveHook<
   TContext,
   TStepId extends string,
   TEvents extends JourneyEventObject = never,
-  TSnap = JourneySnapshot<TContext, TStepId>
+  TSnap = JourneySnapshot<TContext, TStepId>,
 > = (args: StepHookArgs<TContext, TStepId, TEvents, TSnap>) => void | Promise<void>;
 
 /** `onEnter` is an awaited post-commit side effect and cannot block navigation. */
@@ -285,7 +285,7 @@ export type OnEnterHook<
   TContext,
   TStepId extends string,
   TEvents extends JourneyEventObject = never,
-  TSnap = JourneySnapshot<TContext, TStepId>
+  TSnap = JourneySnapshot<TContext, TStepId>,
 > = (args: StepHookArgs<TContext, TStepId, TEvents, TSnap>) => void | Promise<void>;
 
 /**
@@ -318,7 +318,7 @@ export type JourneySubscriptionEvent =
 export type JourneyEventPayloads<
   TContext,
   TStepId extends string,
-  TSnap = JourneySnapshot<TContext, TStepId>
+  TSnap = JourneySnapshot<TContext, TStepId>,
 > = {
   stepEnter: {
     readonly snapshot: TSnap;
@@ -362,7 +362,7 @@ export type Unsubscribe = () => void;
 export type JourneySubscriptions<
   TContext,
   TStepId extends string,
-  TSnap = JourneySnapshot<TContext, TStepId>
+  TSnap = JourneySnapshot<TContext, TStepId>,
 > = {
   /**
    * Fires on every committed snapshot; read the current one with
@@ -373,7 +373,7 @@ export type JourneySubscriptions<
   subscribe(listener: () => void): Unsubscribe;
   subscribeEvent<TEvent extends JourneySubscriptionEvent>(
     event: TEvent,
-    listener: (payload: JourneyEventPayloads<TContext, TStepId, TSnap>[TEvent]) => void
+    listener: (payload: JourneyEventPayloads<TContext, TStepId, TSnap>[TEvent]) => void,
   ): Unsubscribe;
 };
 
@@ -428,7 +428,7 @@ export type NavigationWork<TContext, TStepId extends string, TSnap, TResult = vo
     args: NavigationWorkArgs<TStepId, TSnap> & {
       readonly result: TResult;
       readonly updateContext: (updater: ContextUpdater<TContext>) => void;
-    }
+    },
   ) => void;
   /**
    * Budget for this `run`, overriding `defaultTimeoutMs`. Left unset, the
@@ -443,7 +443,7 @@ export type JourneyNavigation<TContext, TStepId extends string, TSnap> = {
   goToPreviousStep(n?: number): Promise<NavigationResult<TStepId>>;
   /** Timeline forward; linear falls back to next-in-declared-order at tip. */
   goToNextStep<TResult = void>(
-    work?: NavigationWork<TContext, TStepId, TSnap, TResult>
+    work?: NavigationWork<TContext, TStepId, TSnap, TResult>,
   ): Promise<NavigationResult<TStepId>>;
   /** Pointer → timeline tip; fails if already there. */
   goToLastVisitedStep(): Promise<NavigationResult<TStepId>>;
@@ -455,7 +455,7 @@ export type JourneyMachineBase<
   TStepId extends string,
   TSnap = JourneySnapshot<TContext, TStepId>,
   TCompletePayload = unknown,
-  TTerminatePayload = unknown
+  TTerminatePayload = unknown,
 > = {
   getSnapshot(): TSnap;
   controls: JourneyControls<TCompletePayload, TTerminatePayload>;
@@ -495,16 +495,16 @@ export type PluginHost<TContext = unknown, TStepId extends string = string> = {
       readonly from: TStepId | null;
       readonly to: TStepId;
       readonly snapshot: JourneySnapshot<TContext, TStepId>;
-    }) => void
+    }) => void,
   ): Unsubscribe;
   onNavigationBlocked(
-    callback: (info: JourneyEventPayloads<TContext, TStepId>["navigationBlocked"]) => void
+    callback: (info: JourneyEventPayloads<TContext, TStepId>["navigationBlocked"]) => void,
   ): Unsubscribe;
   onStatusChange(
-    callback: (info: JourneyEventPayloads<TContext, TStepId>["statusChange"]) => void
+    callback: (info: JourneyEventPayloads<TContext, TStepId>["statusChange"]) => void,
   ): Unsubscribe;
   onContextChange(
-    callback: (info: JourneyEventPayloads<TContext, TStepId>["contextChange"]) => void
+    callback: (info: JourneyEventPayloads<TContext, TStepId>["contextChange"]) => void,
   ): Unsubscribe;
   onError(callback: (info: JourneyEventPayloads<TContext, TStepId>["error"]) => void): Unsubscribe;
   onDispose(callback: () => void): void;
@@ -530,7 +530,7 @@ export type JourneyPlugin<TName extends string = string, TApi = unknown, TSnapEx
     api?: TApi;
     deriveSnapshot?: (
       snapshot: JourneySnapshot,
-      previousExtension: TSnapExt | undefined
+      previousExtension: TSnapExt | undefined,
     ) => TSnapExt;
   };
 };
@@ -570,7 +570,7 @@ export type JourneyPersistOption = {
 /** Runtime options shared by linear and graph journeys. */
 export type JourneyRuntimeOptions<
   TPlugins extends readonly AnyJourneyPlugin[] = readonly [],
-  TStepId extends string = string
+  TStepId extends string = string,
 > = {
   /**
    * Defaults to `true`: creating a journey starts it, so the common case needs

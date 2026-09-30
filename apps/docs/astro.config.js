@@ -45,7 +45,7 @@ export default defineConfig({
     "/core/autosave": "/core/persistence/",
     // Diagnostics stopped being a plugin: checking a definition never needed a
     // machine, so it is a plain `analyzeStructure(definition)` function now.
-    "/core/plugins/diagnostics-plugin": "/core/api/analyze-structure/"
+    "/core/plugins/diagnostics-plugin": "/core/api/analyze-structure/",
   },
 
   // Two pages (core/architecture, core/architecture/work-and-transitions) carry
@@ -63,8 +63,8 @@ export default defineConfig({
     // `processor: unified({...})` rather than a bare `markdown.rehypePlugins`:
     // Astro 7 deprecated the flat form and warns on every build.
     processor: unified({
-      rehypePlugins: [[rehypeRelativeDocLinks, { contentDir, base }]]
-    })
+      rehypePlugins: [[rehypeRelativeDocLinks, { contentDir, base }]],
+    }),
   },
 
   integrations: [
@@ -85,7 +85,7 @@ export default defineConfig({
       // the error page itself, which is the standard way to earn a soft-404
       // flag. It is the only route here that is not a destination: this build
       // has no redirects and no non-HTML endpoints.
-      filter: (page) => !/\/404\/?$/.test(new URL(page).pathname)
+      filter: (page) => !/\/404\/?$/.test(new URL(page).pathname),
     }),
     starlight({
       ...sharedStarlightConfig({
@@ -110,7 +110,7 @@ export default defineConfig({
               {
                 label: "Learn",
                 collapsed: false,
-                items: ["core/overview", "core/getting-started", "core/concepts"]
+                items: ["core/overview", "core/getting-started", "core/concepts"],
               },
               {
                 label: "Use it",
@@ -122,8 +122,8 @@ export default defineConfig({
                   "core/effects",
                   "core/handlers",
                   "core/recipes",
-                  "core/examples"
-                ]
+                  "core/examples",
+                ],
               },
               {
                 label: "Understand it",
@@ -138,14 +138,14 @@ export default defineConfig({
                       "core/architecture/store",
                       "core/architecture/machine-surface",
                       "core/architecture/plugin-host",
-                      "core/architecture/work-and-transitions"
-                    ]
+                      "core/architecture/work-and-transitions",
+                    ],
                   },
                   "core/snapshot",
                   "core/lifecycle",
                   "core/async",
-                  "core/history"
-                ]
+                  "core/history",
+                ],
               },
               {
                 label: "Extend it",
@@ -154,15 +154,15 @@ export default defineConfig({
                   {
                     label: "Connectors",
                     collapsed: true,
-                    items: ["core/connectors/overview", "core/connectors/immer"]
+                    items: ["core/connectors/overview", "core/connectors/immer"],
                   },
                   "core/plugins/overview",
                   "core/plugins/authoring",
                   "core/persistence",
                   "core/plugins/analytics-plugin",
                   "core/plugins/replay-plugin",
-                  "core/plugins/execution-paths-plugin"
-                ]
+                  "core/plugins/execution-paths-plugin",
+                ],
               },
               {
                 label: "Reference",
@@ -178,8 +178,8 @@ export default defineConfig({
                   "core/stability",
                   "core/pre-1-0-migration",
                   "core/faq",
-                  "core/releases"
-                ]
+                  "core/releases",
+                ],
               },
               {
                 label: "API reference",
@@ -188,16 +188,16 @@ export default defineConfig({
                   {
                     label: "Functions",
                     collapsed: true,
-                    items: [{ autogenerate: { directory: "core/api/reference/functions" } }]
+                    items: [{ autogenerate: { directory: "core/api/reference/functions" } }],
                   },
                   {
                     label: "Type aliases",
                     collapsed: true,
-                    items: [{ autogenerate: { directory: "core/api/reference/type-aliases" } }]
-                  }
-                ]
-              }
-            ]
+                    items: [{ autogenerate: { directory: "core/api/reference/type-aliases" } }],
+                  },
+                ],
+              },
+            ],
           },
           {
             label: "React",
@@ -210,20 +210,20 @@ export default defineConfig({
                   "react/provider-and-hooks",
                   "react/async-ui",
                   "react/patterns",
-                  "react/examples"
-                ]
+                  "react/examples",
+                ],
               },
               {
                 label: "Reference",
                 collapsed: true,
-                items: ["react/typescript", "react/devtools", "react/releases"]
+                items: ["react/typescript", "react/devtools", "react/releases"],
               },
               {
                 label: "API reference",
                 collapsed: true,
-                items: [{ autogenerate: { directory: "react/api/reference" } }]
-              }
-            ]
+                items: [{ autogenerate: { directory: "react/api/reference" } }],
+              },
+            ],
           },
           {
             label: "Bridge",
@@ -232,12 +232,12 @@ export default defineConfig({
               {
                 label: "Use it",
                 collapsed: false,
-                items: ["bridge/bridge-api", "bridge/examples"]
+                items: ["bridge/bridge-api", "bridge/examples"],
               },
               {
                 label: "Reference",
                 collapsed: true,
-                items: ["bridge/protocol", "bridge/releases"]
+                items: ["bridge/protocol", "bridge/releases"],
               },
               {
                 label: "API reference",
@@ -246,21 +246,21 @@ export default defineConfig({
                   {
                     label: "Functions",
                     collapsed: true,
-                    items: [{ autogenerate: { directory: "bridge/api/reference/functions" } }]
+                    items: [{ autogenerate: { directory: "bridge/api/reference/functions" } }],
                   },
                   {
                     label: "Type aliases",
                     collapsed: true,
-                    items: [{ autogenerate: { directory: "bridge/api/reference/type-aliases" } }]
+                    items: [{ autogenerate: { directory: "bridge/api/reference/type-aliases" } }],
                   },
                   {
                     label: "Variables",
                     collapsed: true,
-                    items: [{ autogenerate: { directory: "bridge/api/reference/variables" } }]
-                  }
-                ]
-              }
-            ]
+                    items: [{ autogenerate: { directory: "bridge/api/reference/variables" } }],
+                  },
+                ],
+              },
+            ],
           },
           {
             label: "Chrome DevTools",
@@ -270,10 +270,10 @@ export default defineConfig({
               "devtool/troubleshooting",
               "devtool/web-store",
               "devtool/privacy-policy",
-              "devtool/releases"
-            ]
-          }
-        ]
+              "devtool/releases",
+            ],
+          },
+        ],
       }),
 
       // Overrides the shared default of '/favicon.svg'. There is no vector
@@ -287,8 +287,8 @@ export default defineConfig({
         // site wrote ~90 absolute links of the form `/docs/core/foo`, resolved
         // by doc id. Those are now relative file links, and this fails the
         // build on any that did not survive the rewrite.
-        starlightLinksValidator({ errorOnRelativeLinks: false })
-      ]
-    })
-  ]
+        starlightLinksValidator({ errorOnRelativeLinks: false }),
+      ],
+    }),
+  ],
 });

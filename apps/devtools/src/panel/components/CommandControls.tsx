@@ -3,7 +3,7 @@ import type {
   JourneyDevtoolsMachineFeatureDescriptor,
   JourneyDevtoolsMachineOperationDescriptor,
   JourneyDevtoolsOperationInvoke,
-  JourneyDevtoolsSerializableSnapshot
+  JourneyDevtoolsSerializableSnapshot,
 } from "@rxova/journey-devtools-bridge";
 import panelStyles from "./panelPrimitives.module.css";
 import styles from "./commands/commandControls.module.css";
@@ -15,7 +15,7 @@ import {
   isEventsSection,
   isLifecycleOperationDisabled,
   isMachineCommandsSection,
-  isNavigationSection
+  isNavigationSection,
 } from "./commands/commands";
 import { OperationForm } from "./commands/OperationForm";
 import { OperationSectionCard } from "./commands/OperationSectionCard";
@@ -25,26 +25,26 @@ const getOperationFieldOptions = (
   currentStepId: string,
   stepIds: readonly string[],
   eventTypesBySource: Record<string, readonly string[]> | undefined,
-  goToStepTargetsBySource: Record<string, readonly string[]> | undefined
+  goToStepTargetsBySource: Record<string, readonly string[]> | undefined,
 ): Partial<Record<string, readonly string[]>> | undefined => {
   switch (operationId) {
     case "core.goToStepById":
       return {
         stepId: [
           ...(goToStepTargetsBySource?.[currentStepId] ?? []),
-          ...(goToStepTargetsBySource?.["*"] ?? [])
-        ].filter((stepId, index, allStepIds) => allStepIds.indexOf(stepId) === index)
+          ...(goToStepTargetsBySource?.["*"] ?? []),
+        ].filter((stepId, index, allStepIds) => allStepIds.indexOf(stepId) === index),
       };
     case "core.forceStepTransition":
       return {
-        stepId: stepIds.filter((stepId) => stepId !== currentStepId)
+        stepId: stepIds.filter((stepId) => stepId !== currentStepId),
       };
     case "core.clearStepError":
       return stepIds.length > 0 ? { stepId: stepIds } : undefined;
     case "core.sendEvent": {
       const eventTypes = [
         ...(eventTypesBySource?.[currentStepId] ?? []),
-        ...(eventTypesBySource?.["*"] ?? [])
+        ...(eventTypesBySource?.["*"] ?? []),
       ].filter((eventType, index, allEventTypes) => allEventTypes.indexOf(eventType) === index);
       // No advertised events for this step — an empty select would be a dead
       // end, so fall back to the free-text input and let the user name the
@@ -74,7 +74,7 @@ const getOperationClasses = (operationId: string) => {
   ) {
     return {
       form: styles.navigationInlineForm,
-      button: styles.navigationInlineButton
+      button: styles.navigationInlineButton,
     };
   }
   if (operationId === "core.sendEvent") {
@@ -91,7 +91,7 @@ const getOperationDisabled = (
   sectionId: string,
   disabled: boolean,
   mutationsEnabled: boolean,
-  snapshotStatus: JourneyDevtoolsSerializableSnapshot["status"]
+  snapshotStatus: JourneyDevtoolsSerializableSnapshot["status"],
 ) =>
   disabled ||
   (operation.mutates && !mutationsEnabled) ||
@@ -104,7 +104,7 @@ const getSubmitDisabled = (
   disabled: boolean,
   mutationsEnabled: boolean,
   snapshotStatus: JourneyDevtoolsSerializableSnapshot["status"],
-  fieldValues: Record<string, string>
+  fieldValues: Record<string, string>,
 ) =>
   getOperationDisabled(operation, sectionId, disabled, mutationsEnabled, snapshotStatus) ||
   hasMissingRequiredFields(operation, fieldValues) ||
@@ -113,7 +113,7 @@ const getSubmitDisabled = (
 const renderSectionOperations = (
   sectionId: string,
   operations: readonly JourneyDevtoolsMachineOperationDescriptor[],
-  renderOperation: (operation: JourneyDevtoolsMachineOperationDescriptor) => React.ReactNode
+  renderOperation: (operation: JourneyDevtoolsMachineOperationDescriptor) => React.ReactNode,
 ) => {
   if (isNavigationSection(sectionId)) {
     const operationsById = new Map(operations.map((operation) => [operation.id, operation]));
@@ -125,7 +125,7 @@ const renderSectionOperations = (
           "core.forceStepTransition",
           "core.goToPreviousStep",
           "core.goToNextStep",
-          "core.goToLastVisitedStep"
+          "core.goToLastVisitedStep",
         ].flatMap((operationId) => {
           const operation = operationsById.get(operationId);
           return operation ? [renderOperation(operation)] : [];
@@ -168,7 +168,7 @@ export const CommandControls = ({
   mutationsEnabled,
   stepIds = [],
   eventTypesBySource,
-  goToStepTargetsBySource
+  goToStepTargetsBySource,
 }: {
   features: readonly JourneyDevtoolsMachineFeatureDescriptor[];
   snapshotStatus: JourneyDevtoolsSerializableSnapshot["status"];
@@ -184,7 +184,7 @@ export const CommandControls = ({
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({});
   const [fieldValues, setFieldValues] = React.useState<Record<string, string>>({});
   const [formError, setFormError] = React.useState<{ sectionId: string; message: string } | null>(
-    null
+    null,
   );
 
   const setFieldValue = React.useCallback((key: string, value: string) => {
@@ -225,10 +225,10 @@ export const CommandControls = ({
       onInvoke(
         Object.keys(input).length === 0
           ? { operationId: operation.id }
-          : { operationId: operation.id, input }
+          : { operationId: operation.id, input },
       );
     },
-    [fieldValues, onInvoke]
+    [fieldValues, onInvoke],
   );
 
   return (
@@ -251,7 +251,7 @@ export const CommandControls = ({
               onToggle={() =>
                 setOpenSections((current) => ({
                   ...current,
-                  [section.id]: !(current[section.id] ?? true)
+                  [section.id]: !(current[section.id] ?? true),
                 }))
               }
             >
@@ -269,7 +269,7 @@ export const CommandControls = ({
                       section.id,
                       disabled,
                       mutationsEnabled,
-                      snapshotStatus
+                      snapshotStatus,
                     )}
                     submitDisabled={getSubmitDisabled(
                       operation,
@@ -277,7 +277,7 @@ export const CommandControls = ({
                       disabled,
                       mutationsEnabled,
                       snapshotStatus,
-                      fieldValues
+                      fieldValues,
                     )}
                     fieldValues={fieldValues}
                     fieldOptions={getOperationFieldOptions(
@@ -285,7 +285,7 @@ export const CommandControls = ({
                       currentStepId,
                       stepIds,
                       eventTypesBySource,
-                      goToStepTargetsBySource
+                      goToStepTargetsBySource,
                     )}
                     selectOnlyFields={getSelectOnlyFields(operation.id)}
                     onFieldChange={setFieldValue}
@@ -298,7 +298,7 @@ export const CommandControls = ({
               ) : null}
             </OperationSectionCard>
           );
-        })
+        }),
       )}
 
       {disabled && disabledReason ? (

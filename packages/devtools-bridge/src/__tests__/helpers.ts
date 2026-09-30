@@ -6,7 +6,7 @@ import {
   isJourneyDevtoolsBridgeEnvelope,
   type JourneyDevtoolsBridgeEnvelope,
   type JourneyDevtoolsExtensionInvokeEnvelope,
-  type JourneyDevtoolsProtocolVersion
+  type JourneyDevtoolsProtocolVersion,
 } from "@rxova/journey-devtools-bridge";
 
 // The sanctioned bridge to package internals: the environment, origin,
@@ -16,7 +16,7 @@ import {
 export {
   isDevelopmentEnvironment,
   resolveNonProductionEnvironment,
-  warnInDevelopment
+  warnInDevelopment,
 } from "../internal/dev";
 export { isExpectedWindowOrigin, resolveWindowTargetOrigin } from "../internal/origin";
 export { isRecord } from "../internal/predicates";
@@ -37,7 +37,7 @@ export async function startedGraphMachine() {
   const machine = createGraphJourney({
     steps: { a: { on: { GO: "b" } }, b: {} },
     initial: "a",
-    context: { n: 0 }
+    context: { n: 0 },
   });
   machine.controls.start();
   await flush();
@@ -58,12 +58,12 @@ export function captureBridgeEnvelopes() {
     ofKind: <TKind extends JourneyDevtoolsBridgeEnvelope["kind"]>(kind: TKind) =>
       envelopes.filter(
         (envelope): envelope is Extract<JourneyDevtoolsBridgeEnvelope, { kind: TKind }> =>
-          envelope.kind === kind
+          envelope.kind === kind,
       ),
     clear: () => {
       envelopes.length = 0;
     },
-    stop: () => window.removeEventListener("message", onMessage)
+    stop: () => window.removeEventListener("message", onMessage),
   };
 }
 
@@ -71,7 +71,7 @@ export function buildInvokeEnvelope(
   machineId: string,
   operationId: string,
   input?: Record<string, unknown>,
-  overrides: { requestId?: string; version?: JourneyDevtoolsProtocolVersion } = {}
+  overrides: { requestId?: string; version?: JourneyDevtoolsProtocolVersion } = {},
 ): JourneyDevtoolsExtensionInvokeEnvelope {
   return {
     channel: JOURNEY_DEVTOOLS_CHANNEL,
@@ -81,7 +81,7 @@ export function buildInvokeEnvelope(
     machineId,
     timestamp: Date.now(),
     requestId: overrides.requestId ?? `req-${Math.random().toString(36).slice(2, 8)}`,
-    invocation: { operationId, ...(input === undefined ? {} : { input }) }
+    invocation: { operationId, ...(input === undefined ? {} : { input }) },
   };
 }
 

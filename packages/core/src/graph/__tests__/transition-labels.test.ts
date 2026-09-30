@@ -18,13 +18,13 @@ const checkout = (tier: Ctx["tier"], onEnter?: (label: string | null) => void) =
         on: {
           PAY: [
             { to: "review", label: "needs-review", when: ({ context }) => context.tier === "free" },
-            { to: "done", label: "straight-through" }
-          ]
-        }
+            { to: "done", label: "straight-through" },
+          ],
+        },
       },
       review: { onEnter: ({ transition }) => onEnter?.(transition?.label ?? null) },
-      done: { onEnter: ({ transition }) => onEnter?.(transition?.label ?? null) }
-    }
+      done: { onEnter: ({ transition }) => onEnter?.(transition?.label ?? null) },
+    },
   });
 
 describe("transition labels", () => {
@@ -59,8 +59,8 @@ describe("transition labels", () => {
       context: {},
       steps: {
         a: { on: { GO: [{ to: "b", when: () => false }, { to: "b" }] } },
-        b: { onEnter: (args) => void (info = args.transition) }
-      }
+        b: { onEnter: (args) => void (info = args.transition) },
+      },
     });
     machine.controls.start();
     await flush();
@@ -77,8 +77,8 @@ describe("transition labels", () => {
       context: {},
       steps: {
         a: { on: { GO: "b" }, onEnter: (args) => void seen.push(args.transition) },
-        b: {}
-      }
+        b: {},
+      },
     });
     machine.controls.start();
     await flush();
@@ -98,7 +98,7 @@ describe("transition labels", () => {
       setup: (host) => {
         structure = host.structure;
         return {};
-      }
+      },
     };
     const machine = createGraphJourney(
       {
@@ -107,14 +107,14 @@ describe("transition labels", () => {
         steps: {
           checkout: {
             on: {
-              PAY: [{ to: "review", label: "needs-review", when: () => true }, { to: "done" }]
-            }
+              PAY: [{ to: "review", label: "needs-review", when: () => true }, { to: "done" }],
+            },
           },
           review: {},
-          done: {}
-        }
+          done: {},
+        },
       },
-      { autoStart: false, plugins: [probe] as const }
+      { autoStart: false, plugins: [probe] as const },
     );
 
     expect(machine.getSnapshot().status).toBe("idle");
@@ -125,9 +125,9 @@ describe("transition labels", () => {
         to: "review",
         guarded: true,
         label: "needs-review",
-        index: 0
+        index: 0,
       },
-      { event: "PAY", from: "checkout", to: "done", guarded: false, label: null, index: 1 }
+      { event: "PAY", from: "checkout", to: "done", guarded: false, label: null, index: 1 },
     ]);
   });
 
@@ -140,10 +140,10 @@ describe("transition labels", () => {
         context: {},
         steps: {
           a: { on: { GO: [{ to: "b", label: "slow-edge", onTransition: () => wait(5_000) }] } },
-          b: {}
-        }
+          b: {},
+        },
       },
-      { defaultTimeoutMs: 10 }
+      { defaultTimeoutMs: 10 },
     );
     machine.subscriptions.subscribeEvent("error", ({ error }) => void errors.push(error));
     machine.controls.start();
@@ -165,10 +165,10 @@ describe("transition labels", () => {
         context: {},
         steps: {
           a: { on: { GO: [{ to: "b", onTransition: () => wait(5_000) }] } },
-          b: {}
-        }
+          b: {},
+        },
       },
-      { defaultTimeoutMs: 10 }
+      { defaultTimeoutMs: 10 },
     );
     machine.subscriptions.subscribeEvent("error", ({ error }) => void errors.push(error));
     machine.controls.start();
@@ -186,7 +186,7 @@ describe("transition labels", () => {
       createGraphJourney({
         initial: "a",
         context: {},
-        steps: { a: { on: { GO: [{ to: "b", label: label as string }] } }, b: {} }
+        steps: { a: { on: { GO: [{ to: "b", label: label as string }] } }, b: {} },
       });
 
     expect(() => build("")).toThrow(JourneyError);

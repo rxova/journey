@@ -10,8 +10,8 @@ describe("cloneForTransport", () => {
       error: {
         name: "TypeError",
         message: "nested failure",
-        cause: "upstream"
-      }
+        cause: "upstream",
+      },
     });
   });
 
@@ -83,7 +83,7 @@ describe("cloneForTransport", () => {
     // out would silently lose data at the far end of the transport.
     expect(cloneForTransport({ a: shared, b: shared })).toEqual({
       a: { id: 1 },
-      b: { id: 1 }
+      b: { id: 1 },
     });
   });
 
@@ -96,7 +96,7 @@ describe("cloneForTransport", () => {
     const shared = { id: 1 };
     expect(cloneForTransport({ deep: { nested: shared }, shallow: shared })).toEqual({
       deep: { nested: { id: 1 } },
-      shallow: { id: 1 }
+      shallow: { id: 1 },
     });
   });
 
@@ -105,7 +105,7 @@ describe("cloneForTransport", () => {
     delete error.stack;
 
     expect(cloneForTransport({ error })).toEqual({
-      error: { name: "Error", message: "nested stackless", stack: null, cause: null }
+      error: { name: "Error", message: "nested stackless", stack: null, cause: null },
     });
   });
 
@@ -115,7 +115,7 @@ describe("cloneForTransport", () => {
     const error = Object.assign(new Error("undefined cause"), { cause: undefined });
 
     expect(cloneForTransport({ error })).toMatchObject({
-      error: { message: "undefined cause", cause: null }
+      error: { message: "undefined cause", cause: null },
     });
   });
 
@@ -133,7 +133,7 @@ describe("cloneForTransport", () => {
 
   it("tags a Map so its entries survive", () => {
     expect(cloneForTransport({ m: new Map([["a", 1]]) })).toEqual({
-      m: { "[Map]": [["a", 1]] }
+      m: { "[Map]": [["a", 1]] },
     });
   });
 
@@ -143,16 +143,16 @@ describe("cloneForTransport", () => {
 
   it("tags a typed array with its concrete type", () => {
     expect(cloneForTransport({ bytes: new Uint8Array([1, 2, 3]) })).toEqual({
-      bytes: { "[Uint8Array]": [1, 2, 3] }
+      bytes: { "[Uint8Array]": [1, 2, 3] },
     });
   });
 
   it("describes buffers and views without inventing contents", () => {
     expect(cloneForTransport({ buffer: new ArrayBuffer(8) })).toEqual({
-      buffer: "[ArrayBuffer byteLength=8]"
+      buffer: "[ArrayBuffer byteLength=8]",
     });
     expect(cloneForTransport({ view: new DataView(new ArrayBuffer(4)) })).toEqual({
-      view: "[DataView byteLength=4]"
+      view: "[DataView byteLength=4]",
     });
   });
 
@@ -169,7 +169,7 @@ describe("cloneForTransport", () => {
     expect(cloneForTransport({ a: NaN, b: Infinity, c: -Infinity })).toEqual({
       a: "[NaN]",
       b: "[Infinity]",
-      c: "[-Infinity]"
+      c: "[-Infinity]",
     });
   });
 
@@ -205,7 +205,7 @@ describe("cloneForTransport", () => {
       toJSON() {
         throw new Error("cannot serialize");
       },
-      toString: () => "fallback value"
+      toString: () => "fallback value",
     };
     expect(cloneForTransport(value)).toBe("fallback value");
   });

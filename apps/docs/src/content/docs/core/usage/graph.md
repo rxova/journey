@@ -19,8 +19,8 @@ const machine = createGraphJourney<{ valid: boolean }, "form" | "review" | "done
   steps: {
     form: { on: { SUBMIT: [{ to: "review", when: ({ context }) => context.valid }] } },
     review: { on: { APPROVE: "done", EDIT: "form" } },
-    done: {}
-  }
+    done: {},
+  },
 });
 ```
 
@@ -55,16 +55,16 @@ const definition = {
     form: {
       on: {
         APPROVE: [
-          { to: "done", when: ({ context, handlers }) => handlers.canApprove(context.role) }
-        ]
-      }
+          { to: "done", when: ({ context, handlers }) => handlers.canApprove(context.role) },
+        ],
+      },
     },
-    done: {}
-  }
+    done: {},
+  },
 };
 
 const testMachine = createGraphJourney(definition, {
-  handlers: { canApprove: () => true }
+  handlers: { canApprove: () => true },
 });
 ```
 
@@ -84,16 +84,16 @@ const cart = {
       commit: ({ result, updateContext }) =>
         updateContext((context) => ({
           ...context,
-          error: result.charged ? null : "Charge failed."
+          error: result.charged ? null : "Charge failed.",
         })),
       candidates: [
         { to: "receipt", when: ({ context }) => context.error === null },
         // Unguarded last: a failed charge still routes (back here), so its
         // outcome commits instead of being rolled back.
-        { to: "cart" }
-      ]
-    }
-  }
+        { to: "cart" },
+      ],
+    },
+  },
 };
 ```
 
@@ -148,8 +148,8 @@ form: {
         onTransition: async ({ event, snapshot, updateContext, raise }) => {
           updateContext((context) => ({ ...context, email: event?.payload.email ?? "" }));
           raise({ type: "APPROVE" });
-        }
-      }
+        },
+      },
     ];
   }
 }

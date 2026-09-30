@@ -29,7 +29,7 @@ export type WorkConfig<TBag extends Bag, TType extends TBag["events"]["type"], T
     args: WorkArgs<TBag, TType> & {
       readonly result: TResult;
       readonly updateContext: (updater: ContextUpdater<TBag["context"]>) => void;
-    }
+    },
   ) => void;
   /** Names this work in timeout and error messages. */
   readonly label?: string;
@@ -99,7 +99,7 @@ export type WorkConfig<TBag extends Bag, TType extends TBag["events"]["type"], T
 export const defineWork =
   <TBag extends Bag, TType extends TBag["events"]["type"] = TBag["events"]["type"]>() =>
   <TResult>(
-    config: WorkConfig<TBag, TType, TResult>
+    config: WorkConfig<TBag, TType, TResult>,
   ): GraphOnEntry<
     TBag["context"],
     TBag["stepId"],

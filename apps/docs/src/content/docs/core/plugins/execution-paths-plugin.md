@@ -9,7 +9,7 @@ paths.
 import { createExecutionPathsPlugin } from "@rxova/journey-core/plugins";
 
 const machine = createLinearJourney(definition, {
-  plugins: [createExecutionPathsPlugin()]
+  plugins: [createExecutionPathsPlugin()],
 });
 
 await waitUntilSettled(machine);

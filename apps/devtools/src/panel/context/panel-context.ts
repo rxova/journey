@@ -1,13 +1,13 @@
 import React from "react";
 import type {
   JourneyDevtoolsOperationInvoke,
-  JourneyDevtoolsSerializableSnapshot
+  JourneyDevtoolsSerializableSnapshot,
 } from "@rxova/journey-devtools-bridge";
 import type { JourneyPanelStructuredDiff } from "../diff";
 import type {
   JourneyPanelMachineState,
   JourneyPanelState,
-  JourneyPanelTimelineEntry
+  JourneyPanelTimelineEntry,
 } from "../store";
 import type { PanelWarning } from "../../shared";
 

@@ -30,7 +30,7 @@ import { createLinearJourney, useJourney } from "@rxova/journey-react";
 
 const SignupWizard = () => {
   const signup = useJourney(() =>
-    createLinearJourney({ context: { email: "" }, steps: ["email", "review", "done"] })
+    createLinearJourney({ context: { email: "" }, steps: ["email", "review", "done"] }),
   );
 
   return (
@@ -81,7 +81,7 @@ listenerMiddleware.startListening({
   actionCreator: paymentAuthorized,
   effect: async () => {
     await checkout.send("continue");
-  }
+  },
 });
 
 // A module-scope subscriber feeding analytics — no React involved:
@@ -108,7 +108,7 @@ or memoize it when they do:
 ```tsx
 const views = React.useMemo(
   () => ({ email: <Email />, review: <Review theme={theme} /> }),
-  [theme]
+  [theme],
 );
 ```
 
@@ -148,7 +148,7 @@ Snapshot context is immutable. Always return the next value:
 ```tsx
 checkout.updateContext((context) => ({
   ...context,
-  email: nextEmail
+  email: nextEmail,
 }));
 ```
 

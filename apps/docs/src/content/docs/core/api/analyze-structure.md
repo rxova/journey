@@ -13,9 +13,9 @@ const result = analyzeStructure({
     login: { on: { submit: "verify" } },
     verify: { on: { ok: "done" } },
     done: {},
-    orphan: {}
+    orphan: {},
   },
-  initial: "login"
+  initial: "login",
 });
 ```
 

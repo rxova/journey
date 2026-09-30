@@ -14,9 +14,9 @@ const machine = createGraphJourney(definition, {
   plugins: [
     createAnalyticsPlugin({
       track: (event) => analytics.track(event.name, event.payload),
-      onError: (error, event) => report(error, event)
-    })
-  ]
+      onError: (error, event) => report(error, event),
+    }),
+  ],
 });
 ```
 

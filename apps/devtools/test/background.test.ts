@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
   JOURNEY_DEVTOOLS_CHANNEL,
-  JOURNEY_DEVTOOLS_PROTOCOL_VERSION
+  JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
 } from "@rxova/journey-devtools-bridge";
 import { JOURNEY_DEVTOOLS_PANEL_PORT, type ContentToBackgroundMessage } from "../src/shared";
 
@@ -29,7 +29,7 @@ const createListenerSet = <TArgs extends unknown[]>(): ListenerSet<TArgs> => {
       for (const listener of listeners) {
         listener(...args);
       }
-    }
+    },
   };
 };
 
@@ -42,7 +42,7 @@ type PortHarness = {
 
 const createPortHarness = (
   name: string,
-  options: { throwOnPostMessage?: boolean } = {}
+  options: { throwOnPostMessage?: boolean } = {},
 ): PortHarness => {
   const onMessage = createListenerSet<[unknown]>();
   const onDisconnect = createListenerSet<[]>();
@@ -59,19 +59,19 @@ const createPortHarness = (
     disconnect: vi.fn(),
     onMessage: {
       addListener: onMessage.addListener,
-      removeListener: onMessage.removeListener
+      removeListener: onMessage.removeListener,
     },
     onDisconnect: {
       addListener: onDisconnect.addListener,
-      removeListener: onDisconnect.removeListener
-    }
+      removeListener: onDisconnect.removeListener,
+    },
   } as unknown as chrome.runtime.Port;
 
   return {
     port,
     postedMessages,
     emitMessage: (message) => onMessage.emit(message),
-    emitDisconnect: () => onDisconnect.emit()
+    emitDisconnect: () => onDisconnect.emit(),
   };
 };
 
@@ -85,7 +85,7 @@ type ChromeHarness = {
   emitTabUpdated: (
     tabId: number,
     changeInfo: chrome.tabs.OnUpdatedInfo,
-    tab?: chrome.tabs.Tab
+    tab?: chrome.tabs.Tab,
   ) => void;
   setSendMessageImpl: (impl: SendMessageImpl) => void;
   setRuntimeLastError: (error: Error | undefined) => void;
@@ -115,7 +115,7 @@ const createChromeHarness = (options?: {
     (_injection: unknown, callback?: (injectionResults?: unknown[]) => void) => {
       runtimeState.lastError = undefined;
       callback?.([]);
-    }
+    },
   );
   const contentScriptFile =
     options && "contentScriptFile" in options ? options.contentScriptFile : "src/content.ts";
@@ -125,34 +125,34 @@ const createChromeHarness = (options?: {
     runtime: {
       getManifest: () =>
         ({
-          content_scripts: contentScriptFile ? [{ js: [contentScriptFile] }] : []
+          content_scripts: contentScriptFile ? [{ js: [contentScriptFile] }] : [],
         }) as chrome.runtime.Manifest,
       onConnect: {
-        addListener: onConnect.addListener
+        addListener: onConnect.addListener,
       },
       onMessage: {
-        addListener: onRuntimeMessage.addListener
+        addListener: onRuntimeMessage.addListener,
       },
       get lastError() {
         return runtimeState.lastError;
-      }
+      },
     },
     tabs: {
       sendMessage,
       onRemoved: {
-        addListener: onTabRemoved.addListener
+        addListener: onTabRemoved.addListener,
       },
       onUpdated: {
-        addListener: onTabUpdated.addListener
-      }
+        addListener: onTabUpdated.addListener,
+      },
     },
     ...(includeScripting
       ? {
           scripting: {
-            executeScript
-          }
+            executeScript,
+          },
         }
-      : {})
+      : {}),
   } as unknown as typeof chrome;
 
   return {
@@ -169,7 +169,7 @@ const createChromeHarness = (options?: {
       runtimeState.lastError = error;
     },
     sendMessage,
-    executeScript: includeScripting ? executeScript : null
+    executeScript: includeScripting ? executeScript : null,
   };
 };
 
@@ -199,11 +199,11 @@ const createRegisterEnvelope = (machineId: string) =>
               description: null,
               mutates: true,
               output: "snapshot",
-              fields: []
-            }
-          ]
-        }
-      ]
+              fields: [],
+            },
+          ],
+        },
+      ],
     },
     snapshot: {
       currentStepId: "start",
@@ -211,8 +211,8 @@ const createRegisterEnvelope = (machineId: string) =>
       context: { count: 0 },
       visited: { start: true },
       status: "running",
-      async: { isLoading: false, byStep: {} }
-    }
+      async: { isLoading: false, byStep: {} },
+    },
   }) as const;
 
 const createSnapshotEnvelope = (machineId: string, currentStepId: string) =>
@@ -229,13 +229,13 @@ const createSnapshotEnvelope = (machineId: string, currentStepId: string) =>
       context: { count: 1 },
       visited: { start: true, [currentStepId]: true },
       status: "running",
-      async: { isLoading: false, byStep: {} }
-    }
+      async: { isLoading: false, byStep: {} },
+    },
   }) as const;
 
 const asContentMessage = (envelope: unknown): ContentToBackgroundMessage => ({
   type: "bridge-envelope",
-  envelope: envelope as ContentToBackgroundMessage["envelope"]
+  envelope: envelope as ContentToBackgroundMessage["envelope"],
 });
 
 const senderForTab = (tabId: number): chrome.runtime.MessageSender =>
@@ -282,23 +282,23 @@ describe("background transport", () => {
 
     expect(panelPort.postedMessages).toContainEqual({
       type: "panel-connected",
-      connected: false
+      connected: false,
     });
     expect(panelPort.postedMessages).toContainEqual({
       type: "panel-warning",
-      warning: null
+      warning: null,
     });
     expect(harness.executeScript).toHaveBeenCalledWith(
       {
         target: { tabId: 15 },
-        files: ["src/content.ts"]
+        files: ["src/content.ts"],
       },
-      expect.any(Function)
+      expect.any(Function),
     );
     expect(harness.sendMessage).toHaveBeenCalledWith(
       15,
       { type: "bridge-replay-request" },
-      expect.any(Function)
+      expect.any(Function),
     );
   });
 
@@ -315,8 +315,8 @@ describe("background transport", () => {
         code: "injection-missing-entry",
         message: "Content bridge entry is missing from extension manifest.",
         recoverable: false,
-        tabId: 12
-      }
+        tabId: 12,
+      },
     });
 
     vi.resetModules();
@@ -333,8 +333,8 @@ describe("background transport", () => {
         code: "injection-unavailable",
         message: "Content script injection is unavailable in this browser context.",
         recoverable: false,
-        tabId: 13
-      }
+        tabId: 13,
+      },
     });
   });
 
@@ -359,8 +359,8 @@ describe("background transport", () => {
         code: "injection-failed",
         message: "Content script injection failed: Cannot access contents of the page",
         recoverable: true,
-        tabId: 18
-      }
+        tabId: 18,
+      },
     });
   });
 
@@ -380,8 +380,8 @@ describe("background transport", () => {
       type: "panel-warning",
       warning: expect.objectContaining({
         message: "Content script injection failed: plain failure",
-        tabId: 19
-      })
+        tabId: 19,
+      }),
     });
 
     vi.resetModules();
@@ -401,8 +401,8 @@ describe("background transport", () => {
       type: "panel-warning",
       warning: expect.objectContaining({
         message: "Content script injection failed: object failure",
-        tabId: 20
-      })
+        tabId: 20,
+      }),
     });
 
     vi.resetModules();
@@ -423,8 +423,8 @@ describe("background transport", () => {
       warning: expect.objectContaining({
         code: "injection-failed",
         message: "Content script injection failed: Unknown transport error",
-        tabId: 23
-      })
+        tabId: 23,
+      }),
     });
   });
 
@@ -433,7 +433,7 @@ describe("background transport", () => {
     harness.emitRuntimeMessage(asContentMessage(createRegisterEnvelope("m1")), senderForTab(21));
     harness.emitRuntimeMessage(
       asContentMessage(createSnapshotEnvelope("m1", "review")),
-      senderForTab(21)
+      senderForTab(21),
     );
 
     const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
@@ -442,19 +442,19 @@ describe("background transport", () => {
 
     expect(panelPort.postedMessages).toContainEqual({
       type: "panel-connected",
-      connected: true
+      connected: true,
     });
     expect(panelPort.postedMessages).toContainEqual({
       type: "panel-warning",
-      warning: null
+      warning: null,
     });
     expect(panelPort.postedMessages).toContainEqual({
       type: "panel-bridge-envelope",
-      envelope: expect.objectContaining({ kind: "register", machineId: "m1" })
+      envelope: expect.objectContaining({ kind: "register", machineId: "m1" }),
     });
     expect(panelPort.postedMessages).toContainEqual({
       type: "panel-bridge-envelope",
-      envelope: expect.objectContaining({ kind: "snapshot", machineId: "m1" })
+      envelope: expect.objectContaining({ kind: "snapshot", machineId: "m1" }),
     });
     expect(harness.executeScript).not.toHaveBeenCalled();
   });
@@ -463,7 +463,7 @@ describe("background transport", () => {
     const harness = await loadBackground();
     harness.emitRuntimeMessage(
       asContentMessage(createSnapshotEnvelope("m1", "review")),
-      senderForTab(25)
+      senderForTab(25),
     );
 
     const panelPort = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
@@ -472,11 +472,11 @@ describe("background transport", () => {
 
     expect(panelPort.postedMessages).toContainEqual({
       type: "panel-connected",
-      connected: true
+      connected: true,
     });
     expect(panelPort.postedMessages).toContainEqual({
       type: "panel-bridge-envelope",
-      envelope: expect.objectContaining({ kind: "snapshot", machineId: "m1" })
+      envelope: expect.objectContaining({ kind: "snapshot", machineId: "m1" }),
     });
   });
 
@@ -496,8 +496,8 @@ describe("background transport", () => {
         code: "injection-missing-entry",
         message: "Content bridge entry is missing from extension manifest.",
         recoverable: false,
-        tabId: 24
-      }
+        tabId: 24,
+      },
     });
   });
 
@@ -525,8 +525,8 @@ describe("background transport", () => {
         machineId: "m1",
         requestId: "req-1",
         invocation: { operationId: "core.goToNextStep" },
-        timestamp: Date.now()
-      }
+        timestamp: Date.now(),
+      },
     });
 
     expect(harness.sendMessage).toHaveBeenCalledWith(
@@ -535,10 +535,10 @@ describe("background transport", () => {
         type: "extension-envelope",
         envelope: expect.objectContaining({
           kind: "invoke",
-          requestId: "req-1"
-        })
+          requestId: "req-1",
+        }),
       },
-      expect.any(Function)
+      expect.any(Function),
     );
     expect(panelPort.postedMessages).toContainEqual({
       type: "panel-bridge-envelope",
@@ -546,14 +546,14 @@ describe("background transport", () => {
         kind: "operationError",
         operationId: "transport",
         requestId: "req-1",
-        machineId: "m1"
-      })
+        machineId: "m1",
+      }),
     });
 
     panelPort.postedMessages.length = 0;
     harness.setSendMessageImpl((_tabId, _message, callback) => {
       harness.setRuntimeLastError(
-        new Error("The message port closed before a response was received.")
+        new Error("The message port closed before a response was received."),
       );
       callback?.();
       harness.setRuntimeLastError(undefined);
@@ -569,8 +569,8 @@ describe("background transport", () => {
         machineId: "m1",
         requestId: "req-2",
         invocation: { operationId: "core.goToNextStep" },
-        timestamp: Date.now()
-      }
+        timestamp: Date.now(),
+      },
     });
     expect(panelPort.postedMessages).toHaveLength(0);
 
@@ -590,15 +590,15 @@ describe("background transport", () => {
         machineId: "m1",
         requestId: "req-3",
         invocation: { operationId: "core.goToNextStep" },
-        timestamp: Date.now()
-      }
+        timestamp: Date.now(),
+      },
     });
     expect(panelPort.postedMessages).toContainEqual({
       type: "panel-bridge-envelope",
       envelope: expect.objectContaining({
         kind: "operationError",
-        requestId: "req-3"
-      })
+        requestId: "req-3",
+      }),
     });
 
     panelPort.postedMessages.length = 0;
@@ -618,15 +618,15 @@ describe("background transport", () => {
         machineId: "m1",
         requestId: "req-4",
         invocation: { operationId: "core.goToNextStep" },
-        timestamp: Date.now()
-      }
+        timestamp: Date.now(),
+      },
     });
     expect(panelPort.postedMessages).toContainEqual({
       type: "panel-bridge-envelope",
       envelope: expect.objectContaining({
         kind: "operationError",
-        requestId: "req-4"
-      })
+        requestId: "req-4",
+      }),
     });
 
     panelPort.postedMessages.length = 0;
@@ -646,8 +646,8 @@ describe("background transport", () => {
         machineId: "m1",
         requestId: "req-5",
         invocation: { operationId: "core.goToNextStep" },
-        timestamp: Date.now()
-      }
+        timestamp: Date.now(),
+      },
     });
     expect(panelPort.postedMessages).toHaveLength(0);
   });
@@ -662,17 +662,17 @@ describe("background transport", () => {
     harness.emitRuntimeMessage(asContentMessage(createRegisterEnvelope("m1")), senderForTab(30));
     expect(panelPort.postedMessages).toContainEqual({
       type: "panel-connected",
-      connected: true
+      connected: true,
     });
     expect(panelPort.postedMessages).toContainEqual({
       type: "panel-bridge-envelope",
-      envelope: expect.objectContaining({ kind: "register", machineId: "m1" })
+      envelope: expect.objectContaining({ kind: "register", machineId: "m1" }),
     });
 
     harness.emitTabUpdated(30, { status: "loading" });
     expect(panelPort.postedMessages).toContainEqual({
       type: "panel-connected",
-      connected: false
+      connected: false,
     });
 
     panelPort.postedMessages.length = 0;
@@ -680,16 +680,16 @@ describe("background transport", () => {
     expect(harness.executeScript).toHaveBeenCalledWith(
       {
         target: { tabId: 30 },
-        files: ["src/content.ts"]
+        files: ["src/content.ts"],
       },
-      expect.any(Function)
+      expect.any(Function),
     );
 
     harness.emitTabRemoved(30);
     panelPort.postedMessages.length = 0;
     harness.emitRuntimeMessage(
       asContentMessage(createSnapshotEnvelope("m1", "done")),
-      senderForTab(30)
+      senderForTab(30),
     );
     expect(panelPort.postedMessages).toHaveLength(0);
   });
@@ -714,11 +714,11 @@ describe("background transport", () => {
         result: {
           kind: "snapshot",
           snapshot: createRegisterEnvelope("m1").snapshot,
-          transitioned: true
+          transitioned: true,
         },
-        timestamp: Date.now()
+        timestamp: Date.now(),
       }),
-      senderForTab(35)
+      senderForTab(35),
     );
     harness.emitRuntimeMessage(
       asContentMessage({
@@ -727,9 +727,9 @@ describe("background transport", () => {
         source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
         kind: "unregister",
         machineId: "m1",
-        timestamp: Date.now()
+        timestamp: Date.now(),
       }),
-      senderForTab(35)
+      senderForTab(35),
     );
 
     const latePanel = createPortHarness(JOURNEY_DEVTOOLS_PANEL_PORT);
@@ -738,7 +738,7 @@ describe("background transport", () => {
 
     expect(latePanel.postedMessages).toContainEqual({
       type: "panel-connected",
-      connected: false
+      connected: false,
     });
   });
 
@@ -759,18 +759,18 @@ describe("background transport", () => {
     harness.emitRuntimeMessage(asContentMessage(createRegisterEnvelope("m1")), senderForTab(40));
     expect(healthyPort.postedMessages).toContainEqual({
       type: "panel-bridge-envelope",
-      envelope: expect.objectContaining({ kind: "register", machineId: "m1" })
+      envelope: expect.objectContaining({ kind: "register", machineId: "m1" }),
     });
 
     healthyPort.postedMessages.length = 0;
     stalePort.emitDisconnect();
     harness.emitRuntimeMessage(
       asContentMessage(createSnapshotEnvelope("m1", "review")),
-      senderForTab(40)
+      senderForTab(40),
     );
     expect(healthyPort.postedMessages).toContainEqual({
       type: "panel-bridge-envelope",
-      envelope: expect.objectContaining({ kind: "snapshot", machineId: "m1" })
+      envelope: expect.objectContaining({ kind: "snapshot", machineId: "m1" }),
     });
   });
 

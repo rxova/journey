@@ -1,11 +1,11 @@
 import {
   JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
-  type JourneyDevtoolsProtocolVersion
+  type JourneyDevtoolsProtocolVersion,
 } from "@rxova/journey-devtools-bridge";
 
 export const getProtocolMismatchReason = (
-  protocolVersion: JourneyDevtoolsProtocolVersion | undefined
+  protocolVersion: JourneyDevtoolsProtocolVersion | undefined,
 ): string | null => {
   if (protocolVersion === undefined || protocolVersion === JOURNEY_DEVTOOLS_PROTOCOL_VERSION) {
     return null;
@@ -15,5 +15,5 @@ export const getProtocolMismatchReason = (
 };
 
 export const isLegacyProtocolVersion = (
-  protocolVersion: JourneyDevtoolsProtocolVersion | undefined
+  protocolVersion: JourneyDevtoolsProtocolVersion | undefined,
 ): boolean => protocolVersion === JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION;

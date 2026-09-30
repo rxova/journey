@@ -24,7 +24,7 @@ describe("client entry", () => {
     render(
       <journey.Provider views={{ a: <StepA />, b: <StepA /> }}>
         <journey.StepRenderer fallback={<span>loading</span>} />
-      </journey.Provider>
+      </journey.Provider>,
     );
     await flush();
 

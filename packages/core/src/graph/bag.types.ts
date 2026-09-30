@@ -61,7 +61,7 @@ export type ResultsOf<TBag extends Bag> = TBag extends { results?: infer TResult
  * `run` rather than accepting any.
  */
 export type ResultOf<TBag extends Bag, TType extends string> = [ResultsOf<TBag>] extends [
-  Record<string, never>
+  Record<string, never>,
 ]
   ? unknown
   : TType extends keyof ResultsOf<TBag>

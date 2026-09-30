@@ -19,5 +19,5 @@ export const mockApi = {
   sendEmailCode: async () => {
     await delay(2_000);
     return { sent: true };
-  }
+  },
 };

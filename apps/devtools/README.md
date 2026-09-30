@@ -28,7 +28,7 @@ const machine = createLinearJourney(definition);
 const detach = attachJourneyDevtools(machine, {
   machineId: "checkout",
   label: "Checkout",
-  mutationsEnabled: false
+  mutationsEnabled: false,
 });
 ```
 

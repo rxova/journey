@@ -12,21 +12,21 @@ export const createExampleViteConfig = ({ reactApp = false }: { reactApp?: boole
       alias: [
         {
           find: "@rxova/journey-core/plugins",
-          replacement: workspacePath("packages/core/src/plugins/index.ts")
+          replacement: workspacePath("packages/core/src/plugins/index.ts"),
         },
         {
           find: /^@rxova\/journey-core$/,
-          replacement: workspacePath("packages/core/src/index.ts")
+          replacement: workspacePath("packages/core/src/index.ts"),
         },
         {
           find: "@rxova/journey-react/graph",
-          replacement: workspacePath("packages/react/src/graph.tsx")
+          replacement: workspacePath("packages/react/src/graph.tsx"),
         },
         {
           find: /^@rxova\/journey-react$/,
-          replacement: workspacePath("packages/react/src/index.ts")
-        }
+          replacement: workspacePath("packages/react/src/index.ts"),
+        },
       ],
-      dedupe: ["react", "react-dom"]
-    }
+      dedupe: ["react", "react-dom"],
+    },
   });

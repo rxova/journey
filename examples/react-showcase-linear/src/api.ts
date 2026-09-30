@@ -14,5 +14,5 @@ export const mockApi = {
   verifyCode: async (code: string) => {
     await delay(600);
     return { success: code === "123456" };
-  }
+  },
 };

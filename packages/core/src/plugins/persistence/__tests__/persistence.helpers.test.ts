@@ -7,7 +7,7 @@ describe("buildPersistedState", () => {
   it("extracts the serializable slice from a live snapshot", async () => {
     const machine = createLinearJourney(
       { steps: ["a", "b"], context: { n: 1 } },
-      { autoStart: true }
+      { autoStart: true },
     );
     await flush();
     await machine.navigate.goToNextStep();
@@ -17,7 +17,7 @@ describe("buildPersistedState", () => {
       context: { n: 1 },
       timeline: ["a", "b"],
       currentIndex: 1,
-      savedAt: 123
+      savedAt: 123,
     });
   });
 });
@@ -39,9 +39,9 @@ describe("parsePersistedState", () => {
     ["missing timeline", JSON.stringify({ status: "running", currentIndex: 0, savedAt: 1 })],
     [
       "string index",
-      JSON.stringify({ status: "running", timeline: [], currentIndex: "0", savedAt: 1 })
+      JSON.stringify({ status: "running", timeline: [], currentIndex: "0", savedAt: 1 }),
     ],
-    ["missing savedAt", JSON.stringify({ status: "running", timeline: [], currentIndex: 0 })]
+    ["missing savedAt", JSON.stringify({ status: "running", timeline: [], currentIndex: 0 })],
   ])("rejects %s", (_label, raw) => {
     expect(parsePersistedState(raw as string | null)).toBeNull();
   });

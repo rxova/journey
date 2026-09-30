@@ -35,7 +35,7 @@ const initialContext: Context = { email: "" };
 const signup = createLinearJourney({
   name: "signup",
   context: initialContext,
-  steps: ["email", "password", "review"]
+  steps: ["email", "password", "review"],
 });
 
 function Controls() {
@@ -93,7 +93,7 @@ function Review() {
     run: ({ snapshot }) => api.submit(snapshot.context),
     commit: ({ result, updateContext }) => {
       updateContext((context) => ({ ...context, receiptId: result.id }));
-    }
+    },
   });
 
   return <ReviewForm />;
@@ -111,12 +111,12 @@ movement.
 import { createGraphJourney } from "@rxova/journey-react/graph";
 
 const checkout = createGraphJourney(definition, {
-  plugins: [createReplayPlugin()] as const
+  plugins: [createReplayPlugin()] as const,
 });
 
 function Continue() {
   const canContinue = checkout.useSelector((snapshot) =>
-    snapshot.availableEvents.includes("continue")
+    snapshot.availableEvents.includes("continue"),
   );
 
   return (
@@ -173,7 +173,7 @@ import { createLinearJourney, useJourney } from "@rxova/journey-react";
 
 function Wizard() {
   const signup = useJourney(() =>
-    createLinearJourney({ context: initialContext, steps: ["email", "review", "done"] })
+    createLinearJourney({ context: initialContext, steps: ["email", "review", "done"] }),
   );
   const step = signup.useStep();
   return <signup.Provider views={views}>{/* … */}</signup.Provider>;
@@ -207,7 +207,7 @@ function Inspector() {
       machine.subscriptions.subscribeEvent("navigationBlocked", ({ reason, error }) => {
         report(reason, error);
       }),
-    []
+    [],
   );
 
   return <output>{snapshot.currentStep?.id}</output>;

@@ -2,7 +2,7 @@ import React from "react";
 import {
   createLinearJourney,
   type GraphDefinition,
-  type LinearJourneyDefinition
+  type LinearJourneyDefinition,
 } from "@rxova/journey-core";
 import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 import { withGraphTypes } from "@rxova/journey-react/graph";
@@ -32,21 +32,21 @@ const reactDefinition = {
       on: {
         next: [
           { to: "details", when: ({ context }) => context.includeDetails },
-          { to: "review", when: ({ context }) => !context.includeDetails }
+          { to: "review", when: ({ context }) => !context.includeDetails },
         ],
-        requestClose: [{ to: "confirmExit", when: ({ context }) => context.dirty }]
-      }
+        requestClose: [{ to: "confirmExit", when: ({ context }) => context.dirty }],
+      },
     },
     details: {
       metadata: { label: "Details" },
-      on: { next: "review", requestClose: "confirmExit" }
+      on: { next: "review", requestClose: "confirmExit" },
     },
     review: {
       metadata: { label: "Review" },
-      on: { requestClose: "confirmExit" }
+      on: { requestClose: "confirmExit" },
     },
-    confirmExit: { metadata: { label: "Confirm Exit" } }
-  }
+    confirmExit: { metadata: { label: "Confirm Exit" } },
+  },
 } satisfies GraphDefinition<ReactBag>;
 
 const reactJourney = withGraphTypes<ReactBag>()(reactDefinition);
@@ -60,9 +60,9 @@ const ReactBridge = () => {
         label: "React Flow",
         appName: "Journey Demo",
         enabled: true,
-        mutationsEnabled: true
+        mutationsEnabled: true,
       }),
-    [machine]
+    [machine],
   );
   return null;
 };
@@ -91,7 +91,7 @@ const ReactStart = () => {
             reactJourney.updateContext((context) => ({
               ...context,
               name: event.target.value,
-              dirty: true
+              dirty: true,
             }))
           }
           placeholder="Ada Lovelace"
@@ -104,7 +104,7 @@ const ReactStart = () => {
             reactJourney.updateContext((context) => ({
               ...context,
               includeDetails: event.target.checked,
-              dirty: true
+              dirty: true,
             }))
           }
           type="checkbox"
@@ -186,7 +186,7 @@ const reactViews: Record<ReactStepId, React.ReactNode> = {
   start: <ReactStart />,
   details: <ReactDetails />,
   review: <ReactReview />,
-  confirmExit: <ReactConfirmExit />
+  confirmExit: <ReactConfirmExit />,
 };
 
 const ReactMachinePanel = () => {
@@ -222,8 +222,8 @@ const coreDefinition: LinearJourneyDefinition<CoreStepId, CoreContext> = {
   steps: [
     { id: "one", metadata: { label: "One" } },
     { id: "two", metadata: { label: "Two" } },
-    { id: "three", metadata: { label: "Three" } }
-  ]
+    { id: "three", metadata: { label: "Three" } },
+  ],
 };
 
 const coreMachine = createLinearJourney(coreDefinition);
@@ -233,7 +233,7 @@ const useCoreSnapshot = () =>
   React.useSyncExternalStore(
     subscribeToCoreSnapshot,
     coreMachine.getSnapshot,
-    coreMachine.getSnapshot
+    coreMachine.getSnapshot,
   );
 
 const CoreMachinePanel = () => {
@@ -243,7 +243,7 @@ const CoreMachinePanel = () => {
     coreMachine.context.update((context) => ({
       ...context,
       owner: `Core Tester ${suffix}`,
-      dirty: true
+      dirty: true,
     }));
   };
   return (
@@ -293,9 +293,9 @@ const App = () => {
         label: "Core Flow",
         appName: "Journey Demo",
         enabled: true,
-        mutationsEnabled: true
+        mutationsEnabled: true,
       }),
-    []
+    [],
   );
   // No start effect: creating the machine above started it (autoStart defaults
   // to true). The bridge attaches afterwards and reports the running machine.

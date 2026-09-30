@@ -45,14 +45,14 @@ describe("context freezing in development", () => {
   it("freezes the context staged by navigation work", async () => {
     const machine = createLinearJourney(
       { context: { count: 0 }, steps: ["a", "b"] },
-      { autoStart: true }
+      { autoStart: true },
     );
     await flush();
     await machine.navigate.goToNextStep({
       run: () => 5,
       commit: ({ result, updateContext }) => {
         updateContext(() => ({ count: result }));
-      }
+      },
     });
 
     const context = machine.getSnapshot().context;
@@ -70,7 +70,7 @@ describe("context freezing in development", () => {
   it("freezes shallowly, leaving nested values mutable", () => {
     const machine = createLinearJourney({
       context: { nested: { n: 0 } },
-      steps: ["a"]
+      steps: ["a"],
     });
     const context = machine.getSnapshot().context;
 

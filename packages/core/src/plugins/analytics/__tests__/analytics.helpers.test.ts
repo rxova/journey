@@ -6,7 +6,7 @@ describe("RECENT_EVENT_CAPACITY", () => {
   it("is the exact cap the recent-events buffer enforces", () => {
     const machine = createLinearJourney(
       { steps: ["a"], context: {} },
-      { plugins: [createAnalyticsPlugin({ track: () => undefined })] as const }
+      { plugins: [createAnalyticsPlugin({ track: () => undefined })] as const },
     );
     for (let index = 0; index < RECENT_EVENT_CAPACITY + 10; index += 1) {
       machine.plugins.analytics.trackAnalyticsEvent(`event-${index}`);

@@ -27,16 +27,16 @@ describe("withGraphTypes", () => {
       steps: {
         cart: { on: { PAY: "payment" } },
         payment: { on: { PAY: "done", BACK: "cart" } },
-        done: {}
+        done: {},
       },
       initial: "cart",
-      context: { attempts: 0 }
+      context: { attempts: 0 },
     });
 
     render(
       <journey.Provider views={views}>
         <journey.StepRenderer fallback={<span data-testid="fallback">…</span>} />
-      </journey.Provider>
+      </journey.Provider>,
     );
     await flush();
     expect(screen.getByTestId("step-cart")).toBeTruthy();

@@ -18,7 +18,7 @@ const result = await machine.navigate.goToNextStep({
   run: async ({ snapshot }) => authenticate(snapshot.context.credentials),
   commit: ({ result, updateContext }) => {
     updateContext((context) => ({ ...context, user: result.user, password: "" }));
-  }
+  },
 });
 ```
 
@@ -44,7 +44,7 @@ snapshot.currentStep?.async = {
   isLoading: false,
   isSuccess: false,
   isError: true,
-  error
+  error,
 };
 ```
 
@@ -67,7 +67,7 @@ runtime's current context.
 
 ```ts
 const machine = createLinearJourney(definition, {
-  defaultTimeoutMs: 5_000
+  defaultTimeoutMs: 5_000,
 });
 ```
 

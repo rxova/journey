@@ -9,8 +9,8 @@ export const loginStep: ReactGraphStep<AuthBag> = {
       { to: "emailCode", when: ({ context }) => context.twoFactorMethod === "email" },
       {
         to: "authenticatorCode",
-        when: ({ context }) => context.twoFactorMethod === "authenticator"
-      }
-    ]
-  }
+        when: ({ context }) => context.twoFactorMethod === "authenticator",
+      },
+    ],
+  },
 };

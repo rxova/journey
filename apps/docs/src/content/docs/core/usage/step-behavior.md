@@ -15,7 +15,7 @@ const step = {
   },
   onEnter: ({ from, event, raise }) => {
     if (event?.type === "SUBMIT") raise({ type: "AUDIT" });
-  }
+  },
 };
 ```
 
@@ -46,7 +46,7 @@ await machine.navigate.goToNextStep({
   },
   commit: ({ result, updateContext }) => {
     updateContext((context) => ({ ...context, validatedAt: result.checkedAt }));
-  }
+  },
 });
 ```
 

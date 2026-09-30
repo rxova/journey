@@ -42,7 +42,7 @@ export const createAuthHandlers = (maxAttempts: number, api: AuthApi): AuthHandl
   api,
   requiresMethod: (context, method) => context.twoFactorMethod === method,
   hasExhaustedAttempts: (context) => context.attempts >= maxAttempts,
-  describeRetryPolicy: () => `${maxAttempts} attempts`
+  describeRetryPolicy: () => `${maxAttempts} attempts`,
 });
 
 /**
@@ -79,7 +79,7 @@ export const authApi = {
   verifyCode: async (code: string) => {
     await delay(400);
     return { success: code === "123456" };
-  }
+  },
 };
 
 export const initialLoginContext = (): LoginContext => ({
@@ -89,7 +89,7 @@ export const initialLoginContext = (): LoginContext => ({
   verificationCode: "",
   qrCode: null,
   error: null,
-  attempts: 0
+  attempts: 0,
 });
 
 export type AuthBag = {
@@ -126,25 +126,25 @@ const loginStep: GraphStep<AuthBag> = {
           ...context,
           twoFactorMethod: result.success ? result.method : null,
           password: result.success ? "" : context.password,
-          error: result.success ? null : "Login failed"
+          error: result.success ? null : "Login failed",
         })),
       candidates: [
         {
           to: "setup2fa",
-          when: ({ context, handlers }) => handlers.requiresMethod(context, "no_2fa")
+          when: ({ context, handlers }) => handlers.requiresMethod(context, "no_2fa"),
         },
         {
           to: "emailCode",
-          when: ({ context, handlers }) => handlers.requiresMethod(context, "email")
+          when: ({ context, handlers }) => handlers.requiresMethod(context, "email"),
         },
         {
           to: "authenticatorCode",
-          when: ({ context, handlers }) => handlers.requiresMethod(context, "authenticator")
+          when: ({ context, handlers }) => handlers.requiresMethod(context, "authenticator"),
         },
-        { to: "login" }
-      ]
-    }
-  }
+        { to: "login" },
+      ],
+    },
+  },
 };
 
 const setup2faStep: GraphStep<AuthBag> = {
@@ -157,7 +157,7 @@ const setup2faStep: GraphStep<AuthBag> = {
     const { qrCode } = await authApi.generateQrCode();
     updateContext((context) => ({ ...context, qrCode }));
   },
-  on: { setup2fa: "verifyCode" }
+  on: { setup2fa: "verifyCode" },
 };
 
 /**
@@ -175,7 +175,7 @@ const verificationStep = (
   metadata: StepMeta,
   self: "verifyCode" | "emailCode" | "authenticatorCode",
   blockedError: string,
-  retryError: string
+  retryError: string,
 ): GraphStep<AuthBag> => ({
   metadata,
   on: {
@@ -185,7 +185,7 @@ const verificationStep = (
         updateContext((context) => ({
           ...context,
           attempts: result.success ? context.attempts : context.attempts + 1,
-          error: result.success ? null : retryError
+          error: result.success ? null : retryError,
         })),
       candidates: [
         // `commit` always writes `error`, so a null one means this verify
@@ -195,33 +195,33 @@ const verificationStep = (
           to: "blocked",
           when: ({ context, handlers }) => handlers.hasExhaustedAttempts(context),
           onTransition: ({ updateContext }) =>
-            updateContext((context) => ({ ...context, error: blockedError }))
+            updateContext((context) => ({ ...context, error: blockedError })),
         },
-        { to: self }
-      ]
-    }
-  }
+        { to: self },
+      ],
+    },
+  },
 });
 
 const verifyCodeStep = verificationStep(
   { label: "Verify Code", icon: "\u2705" },
   "verifyCode",
   "Too many failed attempts.",
-  "Invalid code. Try 123456."
+  "Invalid code. Try 123456.",
 );
 
 const emailCodeStep = verificationStep(
   { label: "Email Code", icon: "\u2709\ufe0f" },
   "emailCode",
   "Email verification failed too many times.",
-  "Use 123456 from the email."
+  "Use 123456 from the email.",
 );
 
 const authenticatorCodeStep = verificationStep(
   { label: "Authenticator", icon: "\ud83d\udee1\ufe0f" },
   "authenticatorCode",
   "Authenticator verification failed too many times.",
-  "Use 123456 from the authenticator app."
+  "Use 123456 from the authenticator app.",
 );
 
 const loggedInStep: GraphStep<AuthBag> = { metadata: { label: "Logged In", icon: "\ud83c\udf89" } };
@@ -242,6 +242,6 @@ export const graphDefinition = {
     emailCode: emailCodeStep,
     authenticatorCode: authenticatorCodeStep,
     loggedIn: loggedInStep,
-    blocked: blockedStep
-  }
+    blocked: blockedStep,
+  },
 } satisfies GraphDefinition<AuthBag>;

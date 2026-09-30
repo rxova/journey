@@ -6,7 +6,7 @@ import type { JourneyPersistOption, JourneySnapshot } from "../../core/types";
 export const DEFAULT_SAVE_REASONS: readonly PersistenceReason[] = [
   "context",
   "transition",
-  "status"
+  "status",
 ];
 
 /** Omitted means "write immediately"; anything else is clamped to a whole >= 0. */
@@ -21,7 +21,7 @@ export function buildPersistedState(snapshot: JourneySnapshot, now: number): Jou
     context: snapshot.context,
     timeline: snapshot.history.timeline,
     currentIndex: snapshot.history.currentIndex,
-    savedAt: now
+    savedAt: now,
   };
 }
 
@@ -30,7 +30,7 @@ const JOURNEY_STATUSES = new Set([
   "running",
   "paused",
   "completed",
-  "terminated"
+  "terminated",
 ]) as ReadonlySet<string>;
 
 /**
@@ -90,7 +90,7 @@ export function parsePersistedState(raw: string | null): JourneyPersistedState |
     context: scrub(candidate.context),
     timeline: candidate.timeline,
     currentIndex: candidate.currentIndex,
-    savedAt: candidate.savedAt
+    savedAt: candidate.savedAt,
   } as JourneyPersistedState;
 }
 
@@ -116,14 +116,14 @@ export function resolvePersistStorage(option: JourneyPersistOption): JourneyStor
       "storage-unavailable",
       "localStorage access was blocked by the environment; pass persist.storage explicitly",
       {},
-      error
+      error,
     );
   }
 
   if (!ambient) {
     throw new JourneyError(
       "storage-unavailable",
-      "persist.storage is required when localStorage is unavailable"
+      "persist.storage is required when localStorage is unavailable",
     );
   }
   return ambient;
@@ -137,7 +137,7 @@ export function resolvePersistStorage(option: JourneyPersistOption): JourneyStor
  */
 export function readRestorableState(
   option: JourneyPersistOption,
-  isDeclaredStep: (id: string) => boolean
+  isDeclaredStep: (id: string) => boolean,
 ): JourneyPersistedState | null {
   let raw: string | null;
   try {

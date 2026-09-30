@@ -31,7 +31,7 @@ const initialContext: CheckoutContext = { shipping: null, shippingId: null };
 const checkout = createLinearJourney({
   name: "checkout",
   context: initialContext,
-  steps: ["account", { id: "shipping", metadata: { title: "Shipping" } }, "review"]
+  steps: ["account", { id: "shipping", metadata: { title: "Shipping" } }, "review"],
 });
 ```
 
@@ -96,7 +96,7 @@ a view supplies markup, nothing else.
   views={{
     account: <Account />,
     shipping: <Shipping />,
-    review: <Review />
+    review: <Review />,
   }}
 >
   <Progress />
@@ -165,7 +165,7 @@ const step = checkout.useStep();
 const email = checkout.useContextSelector((context) => context.email);
 
 checkout.useEventEffect("stepEnter", ({ from, to, direction }) =>
-  analytics.track("step", { from, to, direction })
+  analytics.track("step", { from, to, direction }),
 );
 ```
 
@@ -223,9 +223,9 @@ function ShippingStep() {
     commit: ({ result, updateContext }) => {
       updateContext((context) => ({
         ...context,
-        shippingId: result.id
+        shippingId: result.id,
       }));
-    }
+    },
   });
 
   return <ShippingForm />;
@@ -267,7 +267,7 @@ const checkout = createGraphJourney(checkoutDefinition);
     cart: <Cart />,
     shipping: <Shipping />,
     review: <Review />,
-    done: <Done />
+    done: <Done />,
   }}
 >
   <ProgressHeader />
@@ -363,7 +363,7 @@ getter unchanged. Observe events in an effect — `subscribeEvent` returns its u
 ```tsx
 React.useEffect(
   () => machine.subscriptions.subscribeEvent("stepEnter", ({ from, to }) => console.log(from, to)),
-  []
+  [],
 );
 ```
 

@@ -11,7 +11,7 @@ function memoryStorage(): JourneyStorage & { dump(): Map<string, string> } {
     getItem: (key) => data.get(key) ?? null,
     setItem: (key, value) => void data.set(key, value),
     removeItem: (key) => void data.delete(key),
-    dump: () => data
+    dump: () => data,
   };
 }
 
@@ -21,9 +21,9 @@ async function startedWithPersistence(options: { clearOnTerminate?: boolean } = 
     { steps: ["a", "b"], context: { n: 0 } },
     {
       plugins: [
-        createPersistencePlugin({ storage, key: "journey", now: () => 99, ...options })
-      ] as const
-    }
+        createPersistencePlugin({ storage, key: "journey", now: () => 99, ...options }),
+      ] as const,
+    },
   );
   machine.controls.start();
   await flush();
@@ -36,7 +36,7 @@ describe("persistence plugin", () => {
     const storage = memoryStorage();
     const machine = createLinearJourney(
       { steps: ["a"], context: {} },
-      { plugins: [createPersistencePlugin({ storage, key: "journey" })] as const }
+      { plugins: [createPersistencePlugin({ storage, key: "journey" })] as const },
     );
     machine.controls.start();
     await flush();
@@ -56,13 +56,13 @@ describe("persistence plugin", () => {
       context: { n: 1 },
       timeline: ["a", "b"],
       currentIndex: 1,
-      savedAt: 99
+      savedAt: 99,
     });
     expect(machine.plugins.persistence.inspectPersistedState()).toEqual(persisted);
     expect(machine.getSnapshot().plugins.persistence).toEqual({
       status: "saved",
       lastSavedAt: 99,
-      error: null
+      error: null,
     });
   });
 
@@ -111,7 +111,7 @@ describe("persist creation option", () => {
     const storage = memoryStorage();
     const machine = createLinearJourney(
       { steps: ["a", "b"], context: { n: 0 } },
-      { autoStart: true, persist: { key: "wizard", storage } }
+      { autoStart: true, persist: { key: "wizard", storage } },
     );
     await flush();
     await machine.navigate.goToNextStep();
@@ -132,7 +132,7 @@ describe("persist creation option", () => {
     try {
       const machine = createLinearJourney(
         { steps: ["a", "b"], context: {} },
-        { autoStart: true, persist: { key: "wizard" } }
+        { autoStart: true, persist: { key: "wizard" } },
       );
       await flush();
       await machine.navigate.goToNextStep();
@@ -146,7 +146,7 @@ describe("persist creation option", () => {
     vi.stubGlobal("localStorage", undefined);
     try {
       expect(() =>
-        createLinearJourney({ steps: ["a"], context: {} }, { persist: { key: "wizard" } })
+        createLinearJourney({ steps: ["a"], context: {} }, { persist: { key: "wizard" } }),
       ).toThrow(/persist\.storage is required/);
     } finally {
       vi.unstubAllGlobals();
@@ -160,9 +160,9 @@ describe("persist creation option", () => {
         { steps: ["a"], context: {} },
         {
           persist: { key: "wizard", storage },
-          plugins: [createPersistencePlugin({ key: "other", storage })]
-        }
-      )
+          plugins: [createPersistencePlugin({ key: "other", storage })],
+        },
+      ),
     ).toThrow(/duplicate plugin name "persistence"/);
   });
 });

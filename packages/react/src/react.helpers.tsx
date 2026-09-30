@@ -6,7 +6,7 @@ import type {
   JourneyBundleBase,
   JourneyProviderProps,
   JourneyStepRendererProps,
-  JourneyViews
+  JourneyViews,
 } from "./react.types";
 
 /**
@@ -20,7 +20,7 @@ type BindableRuntime<TContext, TSnapshot> = {
     subscribe: (listener: () => void) => () => void;
     subscribeEvent: (
       event: JourneySubscriptionEvent,
-      listener: (payload: unknown) => void
+      listener: (payload: unknown) => void,
     ) => () => void;
   };
   context: { update: (updater: (context: TContext) => TContext) => unknown };
@@ -31,10 +31,10 @@ type BindableRuntime<TContext, TSnapshot> = {
 // same-snapshot fast path in useSelector's cache.
 const selectSnapshot = <TSnapshot,>(snapshot: TSnapshot): TSnapshot => snapshot;
 const selectStep = <TSnapshot extends { currentStep: unknown }>(
-  snapshot: TSnapshot
+  snapshot: TSnapshot,
 ): TSnapshot["currentStep"] => snapshot.currentStep;
 const selectStepId = <TSnapshot extends { currentStep: { readonly id: string } | null }>(
-  snapshot: TSnapshot
+  snapshot: TSnapshot,
 ): string | undefined => snapshot.currentStep?.id;
 
 /**
@@ -49,7 +49,7 @@ const selectStepId = <TSnapshot extends { currentStep: { readonly id: string } |
  */
 export const createAutoStartHook = (
   machine: { controls: { start: () => boolean } },
-  startOnMount: boolean
+  startOnMount: boolean,
 ): (() => void) => {
   // The effect is registered unconditionally — `startOnMount` is fixed for the
   // bundle's lifetime, but branching on it outside the hook would make the hook
@@ -72,11 +72,11 @@ export const createJourneyBindings = <
   TMachine extends { controls: unknown; navigate: unknown },
   TContext,
   TStepId extends string,
-  TSnapshot extends { currentStep: { readonly id: TStepId } | null; context: TContext }
+  TSnapshot extends { currentStep: { readonly id: TStepId } | null; context: TContext },
 >(
   machine: TMachine,
   displayBase: string,
-  useAutoStart: () => void
+  useAutoStart: () => void,
 ): JourneyBundleBase<TMachine, TContext, TStepId, TSnapshot> => {
   const runtime = machine as unknown as BindableRuntime<TContext, TSnapshot>;
 
@@ -107,7 +107,7 @@ export const createJourneyBindings = <
    */
   const useSelector = <TSelected,>(
     selector: (snapshot: TSnapshot) => TSelected,
-    equalityFn?: (a: TSelected, b: TSelected) => boolean
+    equalityFn?: (a: TSelected, b: TSelected) => boolean,
   ): TSelected => {
     const committedRef = React.useRef<{ value: TSelected } | null>(null);
 
@@ -145,7 +145,7 @@ export const createJourneyBindings = <
     const views = React.useContext(ViewsContext);
     if (views === null) {
       throw new Error(
-        `${displayBase}.StepRenderer must be rendered inside this bundle's <Provider>.`
+        `${displayBase}.StepRenderer must be rendered inside this bundle's <Provider>.`,
       );
     }
     const currentStepId = useSelector(selectStepId);
@@ -173,7 +173,7 @@ export const createJourneyBindings = <
       // never hit its same-snapshot fast path.
       const selectFromSnapshot = React.useMemo(
         () => (snapshot: TSnapshot) => selector(snapshot.context),
-        [selector]
+        [selector],
       );
       return useSelector(selectFromSnapshot, equalityFn);
     },
@@ -191,15 +191,15 @@ export const createJourneyBindings = <
           runtime.subscriptions.subscribeEvent(event, (payload) =>
             // Correlated-union cast: TypeScript cannot connect the generic
             // event name to its payload through the ref indirection.
-            listenerRef.current(payload as never)
+            listenerRef.current(payload as never),
           ),
-        [event]
+        [event],
       );
       // Declared last on purpose: this listener must be attached before the
       // start effect runs, or it misses the journey's very first stepEnter.
       useAutoStart();
     },
     controls: machine.controls,
-    updateContext: (updater) => runtime.context.update(updater)
+    updateContext: (updater) => runtime.context.update(updater),
   };
 };

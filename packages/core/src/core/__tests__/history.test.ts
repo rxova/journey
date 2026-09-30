@@ -56,15 +56,15 @@ describe("timeline history (browser model)", () => {
       aEnter: vi.fn(),
       bEnter: vi.fn(),
       bLeave: vi.fn(),
-      cLeave: vi.fn()
+      cLeave: vi.fn(),
     };
     const machine = createLinearJourney({
       steps: [
         { id: "a", onEnter: hooks.aEnter },
         { id: "b", onEnter: hooks.bEnter, onLeave: hooks.bLeave },
-        { id: "c", onLeave: hooks.cLeave }
+        { id: "c", onLeave: hooks.cLeave },
       ],
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();

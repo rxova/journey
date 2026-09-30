@@ -18,7 +18,7 @@ describe("server-side rendering (no window)", () => {
         <p>head</p>
         <journey.StepRenderer fallback={<p>loading</p>} />
         <p>foot</p>
-      </journey.Provider>
+      </journey.Provider>,
     );
     // Layout effects never run on the server, so the machine is still idle and
     // both sides agree on the fallback — this is what makes hydration
@@ -34,7 +34,7 @@ describe("server-side rendering (no window)", () => {
     const html = renderToString(
       <journey.Provider views={{ a: <A /> }}>
         <journey.StepRenderer fallback={<p>loading</p>} />
-      </journey.Provider>
+      </journey.Provider>,
     );
     expect(html).toContain("step:a");
   });
@@ -44,7 +44,7 @@ describe("server-side rendering (no window)", () => {
     const html = renderToString(
       <journey.Provider views={{ a: <A /> }}>
         <journey.StepRenderer fallback={<p>loading</p>} />
-      </journey.Provider>
+      </journey.Provider>,
     );
     expect(html).toContain("loading");
     expect(html).not.toContain("step:a");
@@ -54,14 +54,14 @@ describe("server-side rendering (no window)", () => {
     // No headless tier: React's own primitive consumes any core machine.
     const machine = createLinearJourney(
       { steps: ["watching", "flagged"], context: {} },
-      { autoStart: true }
+      { autoStart: true },
     );
     const subscribe = (onStoreChange: () => void) => machine.subscriptions.subscribe(onStoreChange);
     const Owned = () => {
       const snapshot = React.useSyncExternalStore(
         subscribe,
         machine.getSnapshot,
-        machine.getSnapshot
+        machine.getSnapshot,
       );
       return <div>{`phase:${snapshot.currentStep?.id}`}</div>;
     };
@@ -73,14 +73,14 @@ describe("server-side rendering (no window)", () => {
       {
         steps: { form: { on: { FINISH: "done" } }, done: {} },
         initial: "form",
-        context: {}
+        context: {},
       },
-      { autoStart: true }
+      { autoStart: true },
     );
     const html = renderToString(
       <bundle.Provider views={{ form: <Form />, done: <Form /> }}>
         <bundle.StepRenderer />
-      </bundle.Provider>
+      </bundle.Provider>,
     );
     expect(html).toContain("step:form");
   });

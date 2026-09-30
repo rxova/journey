@@ -19,7 +19,7 @@ export const Setup2fa = () => {
             fontSize: "0.8rem",
             color: "#4ade80",
             marginBottom: "0.75rem",
-            wordBreak: "break-all"
+            wordBreak: "break-all",
           }}
         >
           {snapshot.context.qrCode}

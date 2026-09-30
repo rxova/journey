@@ -11,5 +11,5 @@ export default baseVitestConfig({
   exclude: ["scripts/**/*.test.ts"],
   thresholds: false,
   reporter: ["text", "json-summary"],
-  silent: true
+  silent: true,
 });

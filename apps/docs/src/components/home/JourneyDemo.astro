@@ -24,18 +24,16 @@ const { steps } = Astro.props;
 <div class="rx-demo" data-demo>
   <div class="rx-demo__stage">
     <ol class="rx-demo__steps">
-      {
-        steps.map((step) => (
-          <li
-            class="rx-demo__step"
-            data-step={step.id}
-            data-state={step.id === "plan" ? "current" : "upcoming"}
-          >
-            <span class="rx-demo__dot" aria-hidden="true" />
-            <span class="rx-demo__label">{step.label}</span>
-          </li>
-        ))
-      }
+      {steps.map((step) => (
+        <li
+          class="rx-demo__step"
+          data-step={step.id}
+          data-state={step.id === "plan" ? "current" : "upcoming"}
+        >
+          <span class="rx-demo__dot" aria-hidden="true" />
+          <span class="rx-demo__label">{step.label}</span>
+        </li>
+      ))}
     </ol>
 
     <div class="rx-demo__panel">
@@ -60,7 +58,9 @@ const { steps } = Astro.props;
         <span class="rx-demo__hint">history.timeline</span>
       </p>
       <ol class="rx-demo__timeline" data-timeline>
-        <li class="rx-demo__chip" data-at="true">plan</li>
+        <li class="rx-demo__chip" data-at="true">
+          plan
+        </li>
       </ol>
     </div>
   </div>
@@ -76,12 +76,18 @@ const { steps } = Astro.props;
     </div>
 
     <div class="rx-demo__group">
-      <button type="button" class="rx-demo__btn" data-action="back">Back</button>
+      <button type="button" class="rx-demo__btn" data-action="back">
+        Back
+      </button>
       <button type="button" class="rx-demo__btn rx-demo__btn--primary" data-action="next">
         Next
       </button>
-      <button type="button" class="rx-demo__btn" data-action="latest">Last visited</button>
-      <button type="button" class="rx-demo__btn" data-action="reset">Restart</button>
+      <button type="button" class="rx-demo__btn" data-action="latest">
+        Last visited
+      </button>
+      <button type="button" class="rx-demo__btn" data-action="reset">
+        Restart
+      </button>
     </div>
   </div>
 
@@ -89,8 +95,9 @@ const { steps } = Astro.props;
       break that sits next to an element, which silently glues "pick" to the
       <strong> that follows it. */}
   <p class="rx-demo__note" data-note>
-    Pick <strong>Pro</strong> and the flow routes through the <code>payment</code> step. Pick <strong>Free</strong> and it skips straight to <code>review</code>.
-    Step back, change your mind, and the guard is re-evaluated on the way forward.
+    Pick <strong>Pro</strong> and the flow routes through the <code>payment</code> step. Pick{" "}
+    <strong>Free</strong> and it skips straight to <code>review</code>. Step back, change your mind,
+    and the guard is re-evaluated on the way forward.
   </p>
 </div>
 
@@ -115,13 +122,13 @@ const { steps } = Astro.props;
           on: {
             next: [
               { to: "payment", when: ({ context }) => context.plan === "pro" },
-              { to: "review" }
-            ]
-          }
+              { to: "review" },
+            ],
+          },
         },
         payment: { on: { next: "review" } },
-        review: {}
-      }
+        review: {},
+      },
     });
 
     const el = <T extends Element>(sel: string) => root.querySelector<T>(sel);
@@ -144,8 +151,7 @@ const { steps } = Astro.props;
       const seen = new Set<string>(history.timeline.slice(0, history.currentIndex));
       for (const node of root.querySelectorAll<HTMLElement>("[data-step]")) {
         const id = node.dataset.step ?? "";
-        node.dataset.state =
-          id === currentStepId ? "current" : seen.has(id) ? "done" : "upcoming";
+        node.dataset.state = id === currentStepId ? "current" : seen.has(id) ? "done" : "upcoming";
       }
 
       if (timelineList) {
@@ -159,7 +165,7 @@ const { steps } = Astro.props;
             if (index === history.currentIndex) chip.dataset.at = "true";
             else if (index > history.currentIndex) chip.dataset.ahead = "true";
             return chip;
-          })
+          }),
         );
       }
 
@@ -270,7 +276,9 @@ const { steps } = Astro.props;
     border: 2px solid var(--rx-rule-strong);
     border-radius: var(--rx-radius-pill);
     background: var(--rx-bg);
-    transition: border-color 0.2s ease, background-color 0.2s ease;
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease;
   }
 
   .rx-demo__label {

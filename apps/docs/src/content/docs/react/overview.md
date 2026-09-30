@@ -36,13 +36,13 @@ type SignupContext = {
 
 const initialContext: SignupContext = {
   email: "",
-  acceptedTerms: false
+  acceptedTerms: false,
 };
 
 const signup = createLinearJourney({
   name: "signup",
   context: initialContext,
-  steps: ["email", "terms", "review"]
+  steps: ["email", "terms", "review"],
 });
 
 function SignupFooter() {
@@ -67,7 +67,7 @@ export function Signup() {
       views={{
         email: <EmailStep />,
         terms: <TermsStep />,
-        review: <ReviewStep />
+        review: <ReviewStep />,
       }}
     >
       <signup.StepRenderer />
@@ -141,7 +141,7 @@ The factory's second argument passes Core's creation options through verbatim, f
 ```ts
 const signup = createLinearJourney(
   { name: "signup", context: initialContext, steps: ["email", "terms", "review"] },
-  { persist: sessionPersist, startAt: "email" }
+  { persist: sessionPersist, startAt: "email" },
 );
 ```
 
@@ -158,12 +158,12 @@ import { createGraphJourney } from "@rxova/journey-react/graph";
 import { checkoutDefinition } from "./checkout-definition";
 
 const checkout = createGraphJourney(checkoutDefinition, {
-  plugins: [createReplayPlugin()] as const
+  plugins: [createReplayPlugin()] as const,
 });
 
 function CheckoutControls() {
   const canContinue = checkout.useSelector((snapshot) =>
-    snapshot.availableEvents.includes("continue")
+    snapshot.availableEvents.includes("continue"),
   );
   const isLoading = checkout.useSelector((snapshot) => snapshot.transition.pending);
 
@@ -181,7 +181,7 @@ export function Checkout() {
         cart: <CartStep />,
         shipping: <ShippingStep />,
         payment: <PaymentStep />,
-        done: <DoneStep />
+        done: <DoneStep />,
       }}
     >
       <ProgressHeader />
@@ -228,7 +228,7 @@ import { createLinearJourney } from "@rxova/journey-core";
 
 export const machine = createLinearJourney(
   { context: initialContext, steps: ["email", "review"] },
-  { autoStart: true }
+  { autoStart: true },
 );
 
 // The machine is a module-scope singleton, so the subscribe adapter is a
@@ -246,7 +246,7 @@ function MachinePanel() {
       machine.subscriptions.subscribeEvent("navigationBlocked", ({ reason, error }) => {
         reportNavigationFailure(reason, error);
       }),
-    []
+    [],
   );
 
   return (

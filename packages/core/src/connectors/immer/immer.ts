@@ -12,7 +12,7 @@ export type { ImmerContextRecipe } from "./immer.types";
  * normal draftability and auto-freezing behavior.
  */
 export function immerConnector<TContext>(
-  recipe: ImmerContextRecipe<TContext>
+  recipe: ImmerContextRecipe<TContext>,
 ): ContextUpdater<TContext> {
   return (previous) => produce(previous, recipe);
 }

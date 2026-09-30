@@ -11,9 +11,9 @@ payloads.
 const machine = createLinearJourney({
   steps: [
     { id: "account", metadata: { title: "Account" } },
-    { id: "review", metadata: { title: "Review" } }
+    { id: "review", metadata: { title: "Review" } },
   ] as const,
-  context: { email: "" }
+  context: { email: "" },
 });
 
 await machine.navigate.goToStepById("review");
@@ -61,8 +61,8 @@ const machine = createGraphJourney<Context, StepId, Event>({
   context: { code: "" },
   steps: {
     form: { on: { SUBMIT: "done" } },
-    done: { on: { RESET: "form" } }
-  }
+    done: { on: { RESET: "form" } },
+  },
 });
 
 await machine.send("SUBMIT", { code: "1234" });

@@ -7,7 +7,7 @@ export type {
   LinearStepConfig,
   LinearStepIdOf,
   LinearStepInput,
-  TerminatePayloadOf
+  TerminatePayloadOf,
 } from "./linear/linear.types";
 
 // normalizeGraphDefinition is deliberately not exported: its return type names
@@ -26,7 +26,7 @@ export type {
   SendVerb,
   SendWork,
   SendWorkArgs,
-  TransitionGuard
+  TransitionGuard,
 } from "./graph/graph.types";
 
 // Puts a declared `run` back at an inference site, so `commit` and the
@@ -43,7 +43,7 @@ export type {
   HandlersOf,
   MetaOf,
   ResultOf,
-  ResultsOf
+  ResultsOf,
 } from "./graph/bag.types";
 
 // A plain function, not a plugin: checking a definition needs no runtime, so
@@ -94,7 +94,7 @@ export type {
   StepHookArgs,
   TransitionInfo,
   TransitionState,
-  Unsubscribe
+  Unsubscribe,
 } from "./core/types";
 
 // Named by the exported JourneyPersistOption, so it has to be reachable here too.

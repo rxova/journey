@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   isExpectedWindowOrigin,
-  resolveWindowTargetOrigin
+  resolveWindowTargetOrigin,
 } from "@rxova/journey-devtools-bridge/testing";
 
 describe("resolveWindowTargetOrigin", () => {
@@ -14,7 +14,7 @@ describe("resolveWindowTargetOrigin", () => {
   it("returns the window origin when it is a real origin", () => {
     vi.spyOn(window, "location", "get").mockReturnValue({
       ...window.location,
-      origin: "https://example.com"
+      origin: "https://example.com",
     });
     expect(resolveWindowTargetOrigin()).toBe("https://example.com");
   });
@@ -39,7 +39,7 @@ describe("isExpectedWindowOrigin", () => {
   it("returns true when origin matches window.location.origin", () => {
     vi.spyOn(window, "location", "get").mockReturnValue({
       ...window.location,
-      origin: "https://example.com"
+      origin: "https://example.com",
     });
     expect(isExpectedWindowOrigin("https://example.com")).toBe(true);
   });
@@ -47,7 +47,7 @@ describe("isExpectedWindowOrigin", () => {
   it("returns false when origin does not match", () => {
     vi.spyOn(window, "location", "get").mockReturnValue({
       ...window.location,
-      origin: "https://example.com"
+      origin: "https://example.com",
     });
     expect(isExpectedWindowOrigin("https://other.com")).toBe(false);
   });
@@ -60,7 +60,7 @@ describe("isExpectedWindowOrigin", () => {
   it("returns false for 'null' origin when window.location.origin is a real origin", () => {
     vi.spyOn(window, "location", "get").mockReturnValue({
       ...window.location,
-      origin: "https://example.com"
+      origin: "https://example.com",
     });
     expect(isExpectedWindowOrigin("null")).toBe(false);
   });

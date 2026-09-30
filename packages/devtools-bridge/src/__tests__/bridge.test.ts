@@ -3,7 +3,7 @@ import { createLinearJourney } from "@rxova/journey-core";
 import {
   attachJourneyDevtools,
   JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
-  JOURNEY_DEVTOOLS_REPLAY_REQUEST
+  JOURNEY_DEVTOOLS_REPLAY_REQUEST,
 } from "@rxova/journey-devtools-bridge";
 import {
   buildInvokeEnvelope,
@@ -11,7 +11,7 @@ import {
   flush,
   postToBridge,
   startedGraphMachine,
-  startedLinearMachine
+  startedLinearMachine,
 } from "@rxova/journey-devtools-bridge/testing";
 import type { JourneyDevtoolsBridgeOptions } from "@rxova/journey-devtools-bridge";
 
@@ -32,7 +32,7 @@ async function attachedLinear(options: JourneyDevtoolsBridgeOptions = {}) {
     label: "Test",
     appName: "Bridge Suite",
     enabled: true,
-    ...options
+    ...options,
   });
   detachers.push(detach);
   await flush();
@@ -52,12 +52,12 @@ describe("registration", () => {
       appName: "Bridge Suite",
       mutationsEnabled: true,
       mode: "linear",
-      stepIds: ["a", "b", "c"]
+      stepIds: ["a", "b", "c"],
     });
     expect(register.snapshot).toMatchObject({
       type: "linear",
       status: "running",
-      currentStep: { id: "a" }
+      currentStep: { id: "a" },
     });
 
     const featureIds = register.meta.features.map((feature) => feature.id);
@@ -72,8 +72,8 @@ describe("registration", () => {
       attachJourneyDevtools(machine, {
         machineId: "graph-machine",
         enabled: true,
-        eventTypes: ["GO", "RESET"]
-      })
+        eventTypes: ["GO", "RESET"],
+      }),
     );
     await flush();
 
@@ -147,8 +147,8 @@ describe("operation invokes", () => {
         "test-machine",
         "navigation.goToStepById",
         { stepId: "c" },
-        { requestId: "r1" }
-      )
+        { requestId: "r1" },
+      ),
     );
 
     const results = capture.ofKind("operationResult");
@@ -156,7 +156,7 @@ describe("operation invokes", () => {
     expect(results[0]).toMatchObject({
       requestId: "r1",
       operationId: "navigation.goToStepById",
-      result: { kind: "snapshot", transitioned: true }
+      result: { kind: "snapshot", transitioned: true },
     });
     expect(machine.getSnapshot().currentStep?.id).toBe("c");
   });
@@ -169,7 +169,7 @@ describe("operation invokes", () => {
     const result = capture.ofKind("operationResult")[0]!;
     expect(result.result).toMatchObject({ kind: "snapshot", transitioned: false });
     expect((result.result as { error?: { message: string } }).error?.message).toContain(
-      "out-of-bounds"
+      "out-of-bounds",
     );
   });
 
@@ -178,12 +178,12 @@ describe("operation invokes", () => {
     capture.clear();
 
     await postToBridge(
-      buildInvokeEnvelope("test-machine", "lifecycle.complete", { payload: { score: 9 } })
+      buildInvokeEnvelope("test-machine", "lifecycle.complete", { payload: { score: 9 } }),
     );
     expect(machine.getSnapshot().status).toBe("completed");
     expect(machine.getSnapshot().machine.outcome).toEqual({
       type: "completed",
-      payload: { score: 9 }
+      payload: { score: 9 },
     });
     expect(capture.ofKind("operationResult")[0]?.result).toMatchObject({ transitioned: true });
   });
@@ -263,12 +263,12 @@ describe("operation invokes", () => {
       // constant rather than a literal, which silently became a different
       // version every time the protocol window shifted.
       buildInvokeEnvelope("test-machine", "machine.inspectSnapshot", undefined, {
-        version: JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION
-      })
+        version: JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
+      }),
     );
     await postToBridge({
       ...buildInvokeEnvelope("test-machine", "machine.inspectSnapshot"),
-      kind: "unregister"
+      kind: "unregister",
     });
 
     expect(capture.ofKind("operationResult")).toHaveLength(0);
@@ -304,7 +304,7 @@ describe("remaining operations", () => {
     await postToBridge(buildInvokeEnvelope("test-machine", "lifecycle.resume"));
     expect(machine.getSnapshot().status).toBe("running");
     await postToBridge(
-      buildInvokeEnvelope("test-machine", "lifecycle.terminate", { payload: "why" })
+      buildInvokeEnvelope("test-machine", "lifecycle.terminate", { payload: "why" }),
     );
     expect(machine.getSnapshot().machine.outcome).toEqual({ type: "terminated", payload: "why" });
     await postToBridge(buildInvokeEnvelope("test-machine", "lifecycle.restart"));
@@ -320,7 +320,7 @@ describe("remaining operations", () => {
     await postToBridge(buildInvokeEnvelope("test-machine", "lifecycle.start")); // already running
     expect(capture.ofKind("operationResult")[0]?.result).toMatchObject({
       kind: "snapshot",
-      transitioned: false
+      transitioned: false,
     });
   });
 
@@ -331,7 +331,7 @@ describe("remaining operations", () => {
     capture.clear();
 
     await postToBridge(
-      buildInvokeEnvelope("test-machine", "navigation.goToPreviousStep", { steps: 2 })
+      buildInvokeEnvelope("test-machine", "navigation.goToPreviousStep", { steps: 2 }),
     );
     expect(machine.getSnapshot().currentStep?.id).toBe("a");
 
@@ -339,7 +339,7 @@ describe("remaining operations", () => {
     expect(machine.getSnapshot().currentStep?.id).toBe("c");
 
     await postToBridge(
-      buildInvokeEnvelope("test-machine", "navigation.goToPreviousStep", { steps: 0 })
+      buildInvokeEnvelope("test-machine", "navigation.goToPreviousStep", { steps: 0 }),
     );
     expect(capture.ofKind("operationError")[0]?.error.message).toContain("positive integer");
   });
@@ -363,11 +363,11 @@ describe("lifecycle effect errors", () => {
           id: "a",
           onLeave: () => {
             throw new Error("no leaving");
-          }
+          },
         },
-        "b"
+        "b",
       ],
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();
@@ -383,8 +383,8 @@ describe("lifecycle effect errors", () => {
       kind: "snapshot",
       transitioned: true,
       snapshot: {
-        currentStep: { id: "b", async: { isError: true, error: { message: "no leaving" } } }
-      }
+        currentStep: { id: "b", async: { isError: true, error: { message: "no leaving" } } },
+      },
     });
   });
 });

@@ -8,7 +8,7 @@ const EventLog = () => {
   const append = React.useCallback((event: string) => {
     setEvents((previous) => [
       ...previous.slice(-29),
-      `${new Date().toLocaleTimeString()} ${event}`
+      `${new Date().toLocaleTimeString()} ${event}`,
     ]);
   }, []);
 
@@ -16,7 +16,7 @@ const EventLog = () => {
   journey.useEventEffect("stepLeave", ({ from }) => append(`stepLeave -> ${from}`));
   journey.useEventEffect("statusChange", ({ current }) => append(`statusChange -> ${current}`));
   journey.useEventEffect("navigationBlocked", ({ reason }) =>
-    append(`navigationBlocked -> ${reason}`)
+    append(`navigationBlocked -> ${reason}`),
   );
 
   return (

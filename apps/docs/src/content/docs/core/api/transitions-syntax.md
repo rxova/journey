@@ -14,13 +14,13 @@ const definition = {
     {
       id: "form",
       metadata: { title: "Form" },
-      onLeave: ({ snapshot }) => analytics.track("form_left", snapshot.context)
+      onLeave: ({ snapshot }) => analytics.track("form_left", snapshot.context),
     },
     {
       id: "done",
-      onEnter: ({ snapshot }) => report(snapshot.context)
-    }
-  ] as const
+      onEnter: ({ snapshot }) => report(snapshot.context),
+    },
+  ] as const,
 };
 ```
 
@@ -39,16 +39,16 @@ const definition = {
   steps: {
     form: {
       on: {
-        SUBMIT: [{ to: "review", when: ({ context }) => context.valid }, { to: "form" }]
-      }
+        SUBMIT: [{ to: "review", when: ({ context }) => context.valid }, { to: "form" }],
+      },
     },
     review: {
       on: {
-        APPROVE: [{ to: "done", onTransition: ({ raise }) => raise({ type: "AUDIT" }) }]
-      }
+        APPROVE: [{ to: "done", onTransition: ({ raise }) => raise({ type: "AUDIT" }) }],
+      },
     },
-    done: {}
-  }
+    done: {},
+  },
 };
 ```
 
@@ -88,7 +88,7 @@ on: {
   PAY: [
     { to: "review", label: "needs-review", when: ({ context }) => context.tier === "free" },
     { to: "review", label: "flagged", when: ({ context }) => context.flagged },
-    { to: "done", label: "straight-through" }
+    { to: "done", label: "straight-through" },
   ];
 }
 ```

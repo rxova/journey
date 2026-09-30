@@ -40,20 +40,20 @@ const definition = {
           commit: ({ result, updateContext }) =>
             updateContext((context) => ({
               ...context,
-              error: result.charged ? null : "Your cart is empty."
+              error: result.charged ? null : "Your cart is empty.",
             })),
           candidates: [
             { to: "receipt", when: ({ context }) => context.error === null },
-            { to: "cart" }
-          ]
-        }
-      }
+            { to: "cart" },
+          ],
+        },
+      },
     },
     // Terminal step: no outgoing transitions. Arriving here does NOT complete
     // the journey — completion is an explicit outcome, declared below via
     // controls.
-    receipt: {}
-  }
+    receipt: {},
+  },
 } satisfies GraphDefinition<CheckoutBag>;
 
 // ── 3. Machine ───────────────────────────────────────────────────────────────

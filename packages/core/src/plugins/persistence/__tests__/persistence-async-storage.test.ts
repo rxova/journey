@@ -21,7 +21,7 @@ function rejectingStorage(error: unknown): JourneyStorage & { calls: number } {
       this.calls += 1;
       return Promise.reject(error);
     },
-    removeItem: () => undefined
+    removeItem: () => undefined,
   } as JourneyStorage & { calls: number };
 }
 
@@ -37,7 +37,7 @@ describe("persistence with an async storage adapter", () => {
 
     const machine = createLinearJourney(
       { steps: ["a", "b", "c"], context: { n: 0 } },
-      { plugins: [createPersistencePlugin({ key: KEY, storage })] as const }
+      { plugins: [createPersistencePlugin({ key: KEY, storage })] as const },
     );
     machine.controls.start();
     await flush();
@@ -57,7 +57,7 @@ describe("persistence with an async storage adapter", () => {
 
     const machine = createLinearJourney(
       { steps: ["a", "b", "c"], context: { n: 0 } },
-      { plugins: [createPersistencePlugin({ key: KEY, storage })] as const }
+      { plugins: [createPersistencePlugin({ key: KEY, storage })] as const },
     );
     machine.controls.start();
     await flush();
@@ -78,12 +78,12 @@ describe("persistence with an async storage adapter", () => {
         Promise.resolve().then(() => {
           written.set(key, value);
         }),
-      removeItem: (key) => void written.delete(key)
+      removeItem: (key) => void written.delete(key),
     };
 
     const machine = createLinearJourney(
       { steps: ["a", "b"], context: { n: 0 } },
-      { plugins: [createPersistencePlugin({ key: KEY, storage })] as const }
+      { plugins: [createPersistencePlugin({ key: KEY, storage })] as const },
     );
     machine.controls.start();
     await flush();

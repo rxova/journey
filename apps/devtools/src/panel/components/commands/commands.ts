@@ -1,7 +1,7 @@
 import type {
   JourneyDevtoolsMachineFeatureDescriptor,
   JourneyDevtoolsMachineOperationDescriptor,
-  JourneyDevtoolsSerializableSnapshot
+  JourneyDevtoolsSerializableSnapshot,
 } from "@rxova/journey-devtools-bridge";
 
 export type OperationSection = {
@@ -22,7 +22,7 @@ const CORE_OPERATION_SECTION_ORDER = [
   "machine-commands",
   "navigation",
   "events",
-  "commands"
+  "commands",
 ] as const;
 
 const CORE_OPERATION_SECTIONS: Record<
@@ -38,8 +38,8 @@ const CORE_OPERATION_SECTIONS: Record<
       "core.startJourney",
       "core.resetJourney",
       "core.terminateJourney",
-      "core.completeJourney"
-    ]
+      "core.completeJourney",
+    ],
   },
   navigation: {
     label: "Navigation",
@@ -48,21 +48,21 @@ const CORE_OPERATION_SECTIONS: Record<
       "core.goToStepById",
       "core.forceStepTransition",
       "core.goToPreviousStep",
-      "core.goToLastVisitedStep"
-    ]
+      "core.goToLastVisitedStep",
+    ],
   },
   events: {
     label: "Events",
-    operationIds: ["core.sendEvent", "core.clearStepError"]
+    operationIds: ["core.sendEvent", "core.clearStepError"],
   },
   commands: {
     label: "Context",
-    operationIds: ["core.patchContext", "core.updateContext"]
-  }
+    operationIds: ["core.patchContext", "core.updateContext"],
+  },
 };
 
 export const groupFeatureSections = (
-  feature: JourneyDevtoolsMachineFeatureDescriptor
+  feature: JourneyDevtoolsMachineFeatureDescriptor,
 ): readonly OperationSection[] => {
   if (feature.id !== "core") {
     return [
@@ -70,8 +70,8 @@ export const groupFeatureSections = (
         id: feature.id,
         label: feature.label,
         description: feature.description,
-        operations: feature.operations
-      }
+        operations: feature.operations,
+      },
     ];
   }
 
@@ -82,15 +82,15 @@ export const groupFeatureSections = (
     operations: CORE_OPERATION_SECTIONS[sectionId].operationIds
       .map((operationId) => operationsById.get(operationId))
       .filter((operation): operation is JourneyDevtoolsMachineOperationDescriptor =>
-        Boolean(operation)
-      )
+        Boolean(operation),
+      ),
   })).filter((section) => section.operations.length > 0);
 
   const groupedOperationIds = new Set(
-    groupedSections.flatMap((section) => section.operations.map((operation) => operation.id))
+    groupedSections.flatMap((section) => section.operations.map((operation) => operation.id)),
   );
   const ungroupedOperations = feature.operations.filter(
-    (operation) => !groupedOperationIds.has(operation.id)
+    (operation) => !groupedOperationIds.has(operation.id),
   );
 
   return ungroupedOperations.length > 0
@@ -99,15 +99,15 @@ export const groupFeatureSections = (
         {
           id: "core:other",
           label: "Other",
-          operations: ungroupedOperations
-        }
+          operations: ungroupedOperations,
+        },
       ]
     : groupedSections;
 };
 
 export const buildInputValue = (
   raw: string,
-  type: "text" | "integer" | "boolean" | "json"
+  type: "text" | "integer" | "boolean" | "json",
 ): { ok: true; value: unknown } | { ok: false; error: string } => {
   switch (type) {
     case "text":
@@ -141,7 +141,7 @@ export const buildInputValue = (
 
 export const isLifecycleOperationDisabled = (
   operationId: string,
-  snapshotStatus: JourneyDevtoolsSerializableSnapshot["status"]
+  snapshotStatus: JourneyDevtoolsSerializableSnapshot["status"],
 ): boolean => {
   switch (snapshotStatus) {
     case "running":
@@ -158,7 +158,7 @@ export const isLifecycleOperationDisabled = (
 
 export const hasMissingRequiredFields = (
   operation: JourneyDevtoolsMachineOperationDescriptor,
-  fieldValues: Record<string, string>
+  fieldValues: Record<string, string>,
 ): boolean =>
   operation.fields.some((field) => {
     if (!field.required || field.type === "boolean") {
@@ -171,7 +171,7 @@ export const hasMissingRequiredFields = (
 
 export const getFieldValidationError = (
   raw: string,
-  type: "text" | "integer" | "boolean" | "json"
+  type: "text" | "integer" | "boolean" | "json",
 ): string | null => {
   if (type === "text" || type === "boolean") {
     return null;
@@ -183,7 +183,7 @@ export const getFieldValidationError = (
 
 export const hasInvalidFieldValues = (
   operation: JourneyDevtoolsMachineOperationDescriptor,
-  fieldValues: Record<string, string>
+  fieldValues: Record<string, string>,
 ): boolean =>
   operation.fields.some((field) => {
     if (field.type === "text" || field.type === "boolean") {

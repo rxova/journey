@@ -10,7 +10,7 @@ function memoryStorage(): JourneyStorage & { dump(): Map<string, string> } {
     getItem: (key) => data.get(key) ?? null,
     setItem: (key, value) => void data.set(key, value),
     removeItem: (key) => void data.delete(key),
-    dump: () => data
+    dump: () => data,
   };
 }
 
@@ -18,7 +18,7 @@ const KEY = "journey";
 
 const linearDefinition = {
   steps: ["a", "b", "c"],
-  context: { n: 0 } as { n: number }
+  context: { n: 0 } as { n: number },
 } as const;
 
 /** Runs a persisted session to step "b" with context { n: 1 } and returns its storage. */
@@ -41,14 +41,14 @@ describe("persist option restore", () => {
     // inside the constructor.
     const revived = createLinearJourney(linearDefinition, {
       persist: { key: KEY, storage },
-      autoStart: false
+      autoStart: false,
     });
     expect(revived.getSnapshot().status).toBe("idle");
     expect(revived.getSnapshot().context).toEqual({ n: 1 });
 
     const entered: { from: string | null; to: string; direction: string }[] = [];
     revived.subscriptions.subscribeEvent("stepEnter", ({ from, to, direction }) =>
-      entered.push({ from, to, direction })
+      entered.push({ from, to, direction }),
     );
     revived.controls.start();
     await flush();
@@ -67,7 +67,7 @@ describe("persist option restore", () => {
     const definition = {
       steps: { a: { on: { NEXT: "b" } }, b: { on: { NEXT: "c" } }, c: {} },
       initial: "a",
-      context: { n: 0 }
+      context: { n: 0 },
     } as const;
 
     const machine = createGraphJourney(definition, { persist: { key: KEY, storage } });
@@ -90,7 +90,7 @@ describe("persist option restore", () => {
 
     const revived = createLinearJourney(linearDefinition, {
       persist: { key: KEY, storage },
-      startAt: "c"
+      startAt: "c",
     });
     revived.controls.start();
     await flush();
@@ -135,7 +135,7 @@ describe("persist option restore", () => {
     const storage = await persistedLinearSession();
 
     const revived = createLinearJourney({ steps: ["a", "x"], context: { n: 0 } } as const, {
-      persist: { key: KEY, storage }
+      persist: { key: KEY, storage },
     });
     revived.controls.start();
     await flush();
@@ -153,8 +153,8 @@ describe("persist option restore", () => {
         context: {},
         timeline: ["a"],
         currentIndex: 5,
-        savedAt: 1
-      })
+        savedAt: 1,
+      }),
     ]) {
       const storage = memoryStorage();
       void storage.setItem(KEY, raw);
@@ -187,7 +187,7 @@ describe("persist option restore", () => {
     const storage = await persistedLinearSession();
 
     const revived = createLinearJourney(linearDefinition, {
-      plugins: [createPersistencePlugin({ storage, key: KEY })] as const
+      plugins: [createPersistencePlugin({ storage, key: KEY })] as const,
     });
     revived.controls.start();
     await flush();

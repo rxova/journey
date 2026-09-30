@@ -63,7 +63,7 @@ describe("subscriptions", () => {
     const machine = createLinearJourney({ steps: ["a"], context: {} }, { autoStart: false });
     const changes: string[] = [];
     machine.subscriptions.subscribeEvent("statusChange", ({ previous, current }) =>
-      changes.push(`${previous}→${current}`)
+      changes.push(`${previous}→${current}`),
     );
     machine.controls.start();
     await flush();
@@ -76,12 +76,12 @@ describe("subscriptions", () => {
     const machine = await startedLinear();
     const seen: unknown[] = [];
     machine.subscriptions.subscribeEvent("contextChange", ({ previous, current, snapshot }) =>
-      seen.push({ previous, current, snapshotContext: snapshot.context })
+      seen.push({ previous, current, snapshotContext: snapshot.context }),
     );
 
     machine.context.update((c) => ({ ...c, count: 7 }));
     expect(seen).toEqual([
-      { previous: { count: 0 }, current: { count: 7 }, snapshotContext: { count: 7 } }
+      { previous: { count: 0 }, current: { count: 7 }, snapshotContext: { count: 7 } },
     ]);
   });
 
@@ -89,7 +89,7 @@ describe("subscriptions", () => {
     const machine = await startedLinear();
     const seen: unknown[] = [];
     machine.subscriptions.subscribeEvent("navigationBlocked", ({ reason, from, to }) =>
-      seen.push({ reason, from, to })
+      seen.push({ reason, from, to }),
     );
 
     await machine.navigate.goToPreviousStep();

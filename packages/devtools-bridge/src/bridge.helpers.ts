@@ -3,11 +3,11 @@ import type { NavigationResult } from "@rxova/journey-core";
 import type {
   JourneyDevtoolsAttachableMachine,
   LooseMachine,
-  OperationRunner
+  OperationRunner,
 } from "./bridge.types";
 import type {
   JourneyDevtoolsOperationResultPayload,
-  JourneyDevtoolsSerializableSnapshot
+  JourneyDevtoolsSerializableSnapshot,
 } from "./protocol.types";
 
 /** Creates a collision-resistant default id for a machine attached to DevTools. */
@@ -19,7 +19,7 @@ export class OperationRateLimiter {
 
   constructor(
     private readonly maxPerWindow = 100,
-    private readonly windowMs = 10_000
+    private readonly windowMs = 10_000,
   ) {}
 
   isAllowed(): boolean {
@@ -41,17 +41,17 @@ export const serializeSnapshot = (snapshot: unknown): JourneyDevtoolsSerializabl
 /** Snapshot result payload for a lifecycle verb (`transitioned` = applied). */
 const lifecycleResult = (
   machine: LooseMachine,
-  applied: boolean
+  applied: boolean,
 ): JourneyDevtoolsOperationResultPayload => ({
   kind: "snapshot",
   snapshot: serializeSnapshot(machine.getSnapshot()),
-  transitioned: applied
+  transitioned: applied,
 });
 
 /** Snapshot result payload for a navigation verb / send. */
 const navigationResult = (
   machine: LooseMachine,
-  result: NavigationResult
+  result: NavigationResult,
 ): JourneyDevtoolsOperationResultPayload => ({
   kind: "snapshot",
   snapshot: serializeSnapshot(machine.getSnapshot()),
@@ -62,9 +62,9 @@ const navigationResult = (
         error: serializeError(
           "error" in result && result.error !== undefined
             ? result.error
-            : new Error(`navigation rejected: ${result.reason}`)
-        )
-      })
+            : new Error(`navigation rejected: ${result.reason}`),
+        ),
+      }),
 });
 
 const stringField = (input: Record<string, unknown> | undefined, key: string): string => {
@@ -77,7 +77,7 @@ const stringField = (input: Record<string, unknown> | undefined, key: string): s
 
 const optionalIntegerField = (
   input: Record<string, unknown> | undefined,
-  key: string
+  key: string,
 ): number | undefined => {
   const value = input?.[key];
   if (value === undefined) return undefined;
@@ -89,7 +89,7 @@ const optionalIntegerField = (
 
 /** Builds the operation set the bridge registers for a machine. */
 export function buildOperationRunners(
-  attachable: JourneyDevtoolsAttachableMachine
+  attachable: JourneyDevtoolsAttachableMachine,
 ): OperationRunner[] {
   const machine = attachable as unknown as LooseMachine;
   // Every runner is `async` whether or not it awaits: the protocol handler
@@ -104,9 +104,9 @@ export function buildOperationRunners(
         description: "idle → running; enters the first/initial step.",
         mutates: true,
         output: "snapshot",
-        fields: []
+        fields: [],
       },
-      run: async () => lifecycleResult(machine, machine.controls.start())
+      run: async () => lifecycleResult(machine, machine.controls.start()),
     },
     {
       descriptor: {
@@ -115,9 +115,9 @@ export function buildOperationRunners(
         description: null,
         mutates: true,
         output: "snapshot",
-        fields: []
+        fields: [],
       },
-      run: async () => lifecycleResult(machine, machine.controls.pause())
+      run: async () => lifecycleResult(machine, machine.controls.pause()),
     },
     {
       descriptor: {
@@ -126,9 +126,9 @@ export function buildOperationRunners(
         description: null,
         mutates: true,
         output: "snapshot",
-        fields: []
+        fields: [],
       },
-      run: async () => lifecycleResult(machine, machine.controls.resume())
+      run: async () => lifecycleResult(machine, machine.controls.resume()),
     },
     {
       descriptor: {
@@ -137,9 +137,9 @@ export function buildOperationRunners(
         description: "Explicit completion with an optional outcome payload.",
         mutates: true,
         output: "snapshot",
-        fields: [{ key: "payload", label: "Payload", type: "json" }]
+        fields: [{ key: "payload", label: "Payload", type: "json" }],
       },
-      run: async (input) => lifecycleResult(machine, machine.controls.complete(input?.payload))
+      run: async (input) => lifecycleResult(machine, machine.controls.complete(input?.payload)),
     },
     {
       descriptor: {
@@ -148,9 +148,9 @@ export function buildOperationRunners(
         description: "Terminates from any status with an optional outcome payload.",
         mutates: true,
         output: "snapshot",
-        fields: [{ key: "payload", label: "Payload", type: "json" }]
+        fields: [{ key: "payload", label: "Payload", type: "json" }],
       },
-      run: async (input) => lifecycleResult(machine, machine.controls.terminate(input?.payload))
+      run: async (input) => lifecycleResult(machine, machine.controls.terminate(input?.payload)),
     },
     {
       descriptor: {
@@ -159,9 +159,9 @@ export function buildOperationRunners(
         description: "completed | terminated → running; resets timeline and context.",
         mutates: true,
         output: "snapshot",
-        fields: []
+        fields: [],
       },
-      run: async () => lifecycleResult(machine, machine.controls.restart())
+      run: async () => lifecycleResult(machine, machine.controls.restart()),
     },
     {
       descriptor: {
@@ -170,9 +170,9 @@ export function buildOperationRunners(
         description: null,
         mutates: true,
         output: "snapshot",
-        fields: []
+        fields: [],
       },
-      run: async () => navigationResult(machine, await machine.navigate.goToNextStep())
+      run: async () => navigationResult(machine, await machine.navigate.goToNextStep()),
     },
     {
       descriptor: {
@@ -181,13 +181,13 @@ export function buildOperationRunners(
         description: "Timeline pointer back n entries (default 1).",
         mutates: true,
         output: "snapshot",
-        fields: [{ key: "steps", label: "Steps", type: "integer" }]
+        fields: [{ key: "steps", label: "Steps", type: "integer" }],
       },
       run: async (input) =>
         navigationResult(
           machine,
-          await machine.navigate.goToPreviousStep(optionalIntegerField(input, "steps"))
-        )
+          await machine.navigate.goToPreviousStep(optionalIntegerField(input, "steps")),
+        ),
     },
     {
       descriptor: {
@@ -196,10 +196,13 @@ export function buildOperationRunners(
         description: null,
         mutates: true,
         output: "snapshot",
-        fields: [{ key: "stepId", label: "Step id", type: "text", required: true }]
+        fields: [{ key: "stepId", label: "Step id", type: "text", required: true }],
       },
       run: async (input) =>
-        navigationResult(machine, await machine.navigate.goToStepById(stringField(input, "stepId")))
+        navigationResult(
+          machine,
+          await machine.navigate.goToStepById(stringField(input, "stepId")),
+        ),
     },
     {
       descriptor: {
@@ -208,9 +211,9 @@ export function buildOperationRunners(
         description: null,
         mutates: true,
         output: "snapshot",
-        fields: []
+        fields: [],
       },
-      run: async () => navigationResult(machine, await machine.navigate.goToLastVisitedStep())
+      run: async () => navigationResult(machine, await machine.navigate.goToLastVisitedStep()),
     },
     {
       descriptor: {
@@ -219,7 +222,7 @@ export function buildOperationRunners(
         description: "Shallow-merges the given object into the journey context.",
         mutates: true,
         output: "snapshot",
-        fields: [{ key: "patch", label: "Patch", type: "json", required: true }]
+        fields: [{ key: "patch", label: "Patch", type: "json", required: true }],
       },
       run: async (input) => {
         const patch = input?.patch;
@@ -228,10 +231,10 @@ export function buildOperationRunners(
         }
         machine.context.update((previous) => ({
           ...(previous as Record<string, unknown>),
-          ...(patch as Record<string, unknown>)
+          ...(patch as Record<string, unknown>),
         }));
         return lifecycleResult(machine, true);
-      }
+      },
     },
     {
       descriptor: {
@@ -240,10 +243,10 @@ export function buildOperationRunners(
         description: null,
         mutates: false,
         output: "data",
-        fields: []
+        fields: [],
       },
-      run: async () => ({ kind: "data", data: serializeSnapshot(machine.getSnapshot()) })
-    }
+      run: async () => ({ kind: "data", data: serializeSnapshot(machine.getSnapshot()) }),
+    },
   ];
 
   if (machine.send) {
@@ -256,8 +259,8 @@ export function buildOperationRunners(
         output: "snapshot",
         fields: [
           { key: "type", label: "Event type", type: "text", required: true },
-          { key: "payload", label: "Payload", type: "json" }
-        ]
+          { key: "payload", label: "Payload", type: "json" },
+        ],
       },
       run: async (input) => {
         // Machines from @rxova/journey-core define `send` as an arrow property, so
@@ -266,7 +269,7 @@ export function buildOperationRunners(
         // eslint-disable-next-line @typescript-eslint/unbound-method
         const send = machine.send as NonNullable<LooseMachine["send"]>;
         return navigationResult(machine, await send(stringField(input, "type"), input?.payload));
-      }
+      },
     });
   }
 

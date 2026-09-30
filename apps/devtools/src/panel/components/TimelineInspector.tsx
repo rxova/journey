@@ -37,13 +37,13 @@ export const TimelineInspector = ({
   onSelectEntry,
   onFollowLatestChange,
   onDisplayLimitChange,
-  onPrune
+  onPrune,
 }: TimelineInspectorProps) => {
   const [isTimelineOpen, setIsTimelineOpen] = React.useState(true);
 
   const visibleEntries = React.useMemo(
     () => selectVisibleTimelineEntries(entries, displayLimit),
-    [entries, displayLimit]
+    [entries, displayLimit],
   );
   const visibleStartIndex = Math.max(0, entries.length - visibleEntries.length);
 

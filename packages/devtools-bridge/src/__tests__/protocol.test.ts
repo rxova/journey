@@ -9,7 +9,7 @@ import {
   isJourneyDevtoolsBridgeEnvelope,
   isJourneyDevtoolsEnvelope,
   isJourneyDevtoolsExtensionEnvelope,
-  type JourneyDevtoolsMachineMeta
+  type JourneyDevtoolsMachineMeta,
 } from "@rxova/journey-devtools-bridge";
 import { buildInvokeEnvelope } from "@rxova/journey-devtools-bridge/testing";
 
@@ -32,11 +32,11 @@ const meta: JourneyDevtoolsMachineMeta = {
           description: null,
           mutates: true,
           output: "snapshot",
-          fields: [{ key: "stepId", label: "Step id", type: "text", required: true }]
-        }
-      ]
-    }
-  ]
+          fields: [{ key: "stepId", label: "Step id", type: "text", required: true }],
+        },
+      ],
+    },
+  ],
 };
 
 const base = {
@@ -44,7 +44,7 @@ const base = {
   version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
   source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
   machineId: "m1",
-  timestamp: 1
+  timestamp: 1,
 } as const;
 
 describe("bridge envelope guard", () => {
@@ -54,23 +54,23 @@ describe("bridge envelope guard", () => {
         ...base,
         kind: "register",
         meta,
-        snapshot: { status: "idle" }
-      })
+        snapshot: { status: "idle" },
+      }),
     ).toBe(true);
     expect(isJourneyDevtoolsBridgeEnvelope({ ...base, kind: "unregister" })).toBe(true);
     expect(
       isJourneyDevtoolsBridgeEnvelope({
         ...base,
         kind: "snapshot",
-        snapshot: { status: "running" }
-      })
+        snapshot: { status: "running" },
+      }),
     ).toBe(true);
     expect(
       isJourneyDevtoolsBridgeEnvelope({
         ...base,
         kind: "observation",
-        event: { type: "stepEnter" }
-      })
+        event: { type: "stepEnter" },
+      }),
     ).toBe(true);
     expect(
       isJourneyDevtoolsBridgeEnvelope({
@@ -78,8 +78,8 @@ describe("bridge envelope guard", () => {
         kind: "operationResult",
         requestId: "r",
         operationId: "navigation.goToNextStep",
-        result: { kind: "void" }
-      })
+        result: { kind: "void" },
+      }),
     ).toBe(true);
     expect(
       isJourneyDevtoolsBridgeEnvelope({
@@ -87,14 +87,14 @@ describe("bridge envelope guard", () => {
         kind: "operationError",
         requestId: "r",
         operationId: "x",
-        error: { name: "Error", message: "boom", stack: null, cause: null }
-      })
+        error: { name: "Error", message: "boom", stack: null, cause: null },
+      }),
     ).toBe(true);
   });
 
   it("rejects wrong channel, unknown kinds, and malformed meta", () => {
     expect(isJourneyDevtoolsBridgeEnvelope({ ...base, channel: "other", kind: "unregister" })).toBe(
-      false
+      false,
     );
     expect(isJourneyDevtoolsBridgeEnvelope({ ...base, kind: "mystery" })).toBe(false);
     expect(
@@ -102,8 +102,8 @@ describe("bridge envelope guard", () => {
         ...base,
         kind: "register",
         meta: { ...meta, features: [{ id: "", label: "x", description: null, operations: [] }] },
-        snapshot: {}
-      })
+        snapshot: {},
+      }),
     ).toBe(false);
     // v7 register requires mutationsEnabled
     const withoutMutations: Record<string, unknown> = { ...meta };
@@ -113,8 +113,8 @@ describe("bridge envelope guard", () => {
         ...base,
         kind: "register",
         meta: withoutMutations,
-        snapshot: {}
-      })
+        snapshot: {},
+      }),
     ).toBe(false);
     // …but prior-version registers may omit it
     expect(
@@ -123,8 +123,8 @@ describe("bridge envelope guard", () => {
         version: JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION,
         kind: "register",
         meta: withoutMutations,
-        snapshot: {}
-      })
+        snapshot: {},
+      }),
     ).toBe(true);
   });
 
@@ -134,22 +134,22 @@ describe("bridge envelope guard", () => {
       isJourneyDevtoolsBridgeEnvelope({
         ...base,
         kind: "snapshot",
-        snapshot: { weird: new Exotic() }
-      })
+        snapshot: { weird: new Exotic() },
+      }),
     ).toBe(false);
 
     let deep: Record<string, unknown> = { leaf: true };
     for (let index = 0; index < 12; index += 1) deep = { nested: deep };
     expect(isJourneyDevtoolsBridgeEnvelope({ ...base, kind: "observation", event: deep })).toBe(
-      false
+      false,
     );
 
     expect(
       isJourneyDevtoolsBridgeEnvelope({
         ...base,
         kind: "observation",
-        event: { blob: "x".repeat(500_001) }
-      })
+        event: { blob: "x".repeat(500_001) },
+      }),
     ).toBe(false);
   });
 });
@@ -165,27 +165,27 @@ describe("extension envelope guard", () => {
 
   it("rejects invalid invocations", () => {
     expect(
-      isJourneyDevtoolsExtensionEnvelope({ ...buildInvokeEnvelope("m1", ""), requestId: "r" })
+      isJourneyDevtoolsExtensionEnvelope({ ...buildInvokeEnvelope("m1", ""), requestId: "r" }),
     ).toBe(false);
     expect(isJourneyDevtoolsExtensionEnvelope(buildInvokeEnvelope("m1", "x".repeat(201)))).toBe(
-      false
+      false,
     );
     const bridgeSourced = {
       ...buildInvokeEnvelope("m1", "op"),
-      source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE
+      source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
     };
     expect(isJourneyDevtoolsExtensionEnvelope(bridgeSourced)).toBe(false);
     expect(
       isJourneyDevtoolsExtensionEnvelope({
         ...buildInvokeEnvelope("m1", "op"),
-        kind: "unregister"
-      })
+        kind: "unregister",
+      }),
     ).toBe(false);
     expect(
       isJourneyDevtoolsExtensionEnvelope({
         ...buildInvokeEnvelope("m1", "op"),
-        invocation: null
-      })
+        invocation: null,
+      }),
     ).toBe(false);
   });
 });
@@ -205,15 +205,15 @@ describe("operation result payload variants", () => {
     kind: "operationResult",
     requestId: "r",
     operationId: "op",
-    result
+    result,
   });
 
   it("accepts data, text, and void payloads; rejects malformed ones", () => {
     expect(isJourneyDevtoolsBridgeEnvelope(resultEnvelope({ kind: "data", data: { a: 1 } }))).toBe(
-      true
+      true,
     );
     expect(isJourneyDevtoolsBridgeEnvelope(resultEnvelope({ kind: "text", text: "hi" }))).toBe(
-      true
+      true,
     );
     expect(isJourneyDevtoolsBridgeEnvelope(resultEnvelope({ kind: "void" }))).toBe(true);
     expect(isJourneyDevtoolsBridgeEnvelope(resultEnvelope({ kind: "void", extra: 1 }))).toBe(false);
@@ -221,8 +221,8 @@ describe("operation result payload variants", () => {
     expect(isJourneyDevtoolsBridgeEnvelope(resultEnvelope({ kind: "text", text: 5 }))).toBe(false);
     expect(
       isJourneyDevtoolsBridgeEnvelope(
-        resultEnvelope({ kind: "snapshot", snapshot: {}, transitioned: "yes" })
-      )
+        resultEnvelope({ kind: "snapshot", snapshot: {}, transitioned: "yes" }),
+      ),
     ).toBe(false);
     expect(isJourneyDevtoolsBridgeEnvelope(resultEnvelope("nope"))).toBe(false);
   });
@@ -231,10 +231,10 @@ describe("operation result payload variants", () => {
     const circular: Record<string, unknown> = {};
     circular.self = circular;
     expect(isJourneyDevtoolsBridgeEnvelope(resultEnvelope({ kind: "data", data: circular }))).toBe(
-      false
+      false,
     );
     expect(
-      isJourneyDevtoolsBridgeEnvelope(resultEnvelope({ kind: "data", data: { fn: () => 1 } }))
+      isJourneyDevtoolsBridgeEnvelope(resultEnvelope({ kind: "data", data: { fn: () => 1 } })),
     ).toBe(false);
   });
 });
@@ -244,7 +244,7 @@ describe("meta field validation", () => {
     ...base,
     kind: "register",
     meta: { ...meta, ...metaOverrides },
-    snapshot: {}
+    snapshot: {},
   });
 
   it("validates optional meta fields", () => {
@@ -253,11 +253,11 @@ describe("meta field validation", () => {
     expect(isJourneyDevtoolsBridgeEnvelope(register({ eventTypes: ["GO"] }))).toBe(true);
     expect(
       isJourneyDevtoolsBridgeEnvelope(
-        register({ steps: { a: { hasOnEnter: true, hasOnLeave: false, hasMetadata: true } } })
-      )
+        register({ steps: { a: { hasOnEnter: true, hasOnLeave: false, hasMetadata: true } } }),
+      ),
     ).toBe(true);
     expect(isJourneyDevtoolsBridgeEnvelope(register({ steps: { a: { hasOnEnter: "yes" } } }))).toBe(
-      false
+      false,
     );
     expect(isJourneyDevtoolsBridgeEnvelope(register({ appName: 5 }))).toBe(false);
     expect(isJourneyDevtoolsBridgeEnvelope(register({ features: null }))).toBe(false);
@@ -278,25 +278,25 @@ describe("meta field validation", () => {
                 description: null,
                 mutates: false,
                 output: "void",
-                fields: [field]
-              }
-            ]
-          }
-        ]
+                fields: [field],
+              },
+            ],
+          },
+        ],
       });
     expect(
-      isJourneyDevtoolsBridgeEnvelope(withField({ key: "k", label: "K", type: "integer", min: 1 }))
+      isJourneyDevtoolsBridgeEnvelope(withField({ key: "k", label: "K", type: "integer", min: 1 })),
     ).toBe(true);
     expect(isJourneyDevtoolsBridgeEnvelope(withField({ key: "k", label: "K", type: "date" }))).toBe(
-      false
+      false,
     );
     expect(isJourneyDevtoolsBridgeEnvelope(withField({ key: "", label: "K", type: "text" }))).toBe(
-      false
+      false,
     );
     expect(
       isJourneyDevtoolsBridgeEnvelope(
-        withField({ key: "k", label: "K", type: "text", required: "y" })
-      )
+        withField({ key: "k", label: "K", type: "text", required: "y" }),
+      ),
     ).toBe(false);
     expect(isJourneyDevtoolsBridgeEnvelope(withField(null as never))).toBe(false);
     expect(
@@ -309,9 +309,9 @@ describe("meta field validation", () => {
           description: "Count",
           placeholder: "0",
           min: 0,
-          max: 10
-        })
-      )
+          max: 10,
+        }),
+      ),
     ).toBe(true);
     expect(
       isJourneyDevtoolsBridgeEnvelope(
@@ -321,11 +321,11 @@ describe("meta field validation", () => {
               id: "f",
               label: "f",
               description: null,
-              operations: [null]
-            }
-          ]
-        })
-      )
+              operations: [null],
+            },
+          ],
+        }),
+      ),
     ).toBe(false);
   });
 
@@ -333,10 +333,10 @@ describe("meta field validation", () => {
     const circular: Record<string, unknown> = {};
     circular.self = circular;
     expect(isJourneyDevtoolsExtensionEnvelope(buildInvokeEnvelope("m1", "op", circular))).toBe(
-      false
+      false,
     );
     expect(isJourneyDevtoolsExtensionEnvelope(buildInvokeEnvelope("m1", "op", { ok: true }))).toBe(
-      true
+      true,
     );
   });
 });
@@ -349,8 +349,8 @@ describe("guard sub-branches", () => {
         kind: "operationResult",
         requestId: "r",
         operationId: "op",
-        result: { kind: "data", data: undefined }
-      })
+        result: { kind: "data", data: undefined },
+      }),
     ).toBe(true);
     expect(
       isJourneyDevtoolsBridgeEnvelope({
@@ -370,14 +370,14 @@ describe("guard sub-branches", () => {
                   description: "documented op",
                   mutates: false,
                   output: "text",
-                  fields: []
-                }
-              ]
-            }
-          ]
+                  fields: [],
+                },
+              ],
+            },
+          ],
         },
-        snapshot: {}
-      })
+        snapshot: {},
+      }),
     ).toBe(true);
   });
 
@@ -387,19 +387,19 @@ describe("guard sub-branches", () => {
         ...base,
         kind: "register",
         meta: { ...meta, features: [{ id: "f", label: "F", description: null, operations: "x" }] },
-        snapshot: {}
-      })
+        snapshot: {},
+      }),
     ).toBe(false);
     expect(
       isJourneyDevtoolsBridgeEnvelope({
         ...base,
         kind: "register",
         meta: { ...meta, steps: { a: 5 } },
-        snapshot: {}
-      })
+        snapshot: {},
+      }),
     ).toBe(false);
     expect(
-      isJourneyDevtoolsExtensionEnvelope({ ...buildInvokeEnvelope("m1", "op"), requestId: 5 })
+      isJourneyDevtoolsExtensionEnvelope({ ...buildInvokeEnvelope("m1", "op"), requestId: 5 }),
     ).toBe(false);
   });
 });

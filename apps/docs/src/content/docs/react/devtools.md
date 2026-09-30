@@ -13,9 +13,9 @@ function Checkout() {
     () =>
       attachJourneyDevtools(checkout.machine, {
         label: "Checkout",
-        mutationsEnabled: false
+        mutationsEnabled: false,
       }),
-    []
+    [],
   );
 
   return (

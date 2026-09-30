@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   isDevelopmentEnvironment,
   resolveNonProductionEnvironment,
-  warnInDevelopment
+  warnInDevelopment,
 } from "@rxova/journey-devtools-bridge/testing";
 
 type DiagnosticGlobal = typeof globalThis & {
@@ -117,7 +117,7 @@ describe("resolveNonProductionEnvironment", () => {
 
   it("returns false when bundlerEnv is null and nodeEnv is production", () => {
     expect(resolveNonProductionEnvironment({ bundlerEnv: null, nodeEnv: "production" })).toBe(
-      false
+      false,
     );
   });
 
@@ -134,7 +134,7 @@ describe("resolveNonProductionEnvironment", () => {
 
   it("prefers bundlerEnv.PROD over a development nodeEnv", () => {
     expect(
-      resolveNonProductionEnvironment({ bundlerEnv: { PROD: true }, nodeEnv: "development" })
+      resolveNonProductionEnvironment({ bundlerEnv: { PROD: true }, nodeEnv: "development" }),
     ).toBe(false);
   });
 
@@ -142,8 +142,8 @@ describe("resolveNonProductionEnvironment", () => {
     expect(
       resolveNonProductionEnvironment({
         bundlerEnv: { DEV: "yes", PROD: 0 },
-        nodeEnv: "development"
-      })
+        nodeEnv: "development",
+      }),
     ).toBe(true);
   });
 

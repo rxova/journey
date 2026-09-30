@@ -101,18 +101,18 @@ for (const file of walk(SRC)) {
   // 1. Repoint the three files that import components, before the H1 lift —
   //    the imports sit above the H1 in the Docusaurus sources.
   const usesComponents = /@theme\/Tabs|@theme\/TabItem|@site\/src\/components\/DocAccordion/.test(
-    body
+    body,
   );
   if (usesComponents) {
     body = body
       .replace(/^import Tabs from "@theme\/Tabs";\n/m, "")
       .replace(
         /^import TabItem from "@theme\/TabItem";\n/m,
-        `import { Tabs, TabItem } from '@astrojs/starlight/components';\n`
+        `import { Tabs, TabItem } from '@astrojs/starlight/components';\n`,
       )
       .replace(
         /^import DocAccordion, \{ DocAccordionItem \} from "@site\/src\/components\/DocAccordion";\n/m,
-        `import DocAccordion from '../../../components/DocAccordion.astro';\nimport DocAccordionItem from '../../../components/DocAccordionItem.astro';\n`
+        `import DocAccordion from '../../../components/DocAccordion.astro';\nimport DocAccordionItem from '../../../components/DocAccordionItem.astro';\n`,
       );
     // Starlight's TabItem keys off `label` alone; Docusaurus also carried a
     // `value` used for tab-group syncing, which has no equivalent here.
@@ -147,7 +147,7 @@ for (const file of walk(SRC)) {
   //    catch, but for assets rather than links.
   body = body.replace(
     /\]\(\/img\//g,
-    `](${"../".repeat(relative(SRC, file).split(sep).length + 2)}assets/`
+    `](${"../".repeat(relative(SRC, file).split(sep).length + 2)}assets/`,
   );
 
   // 5. Absolute doc-id links -> relative file links.

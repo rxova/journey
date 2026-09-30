@@ -8,14 +8,14 @@ import type {
   OnEnterHook,
   OnLeaveHook,
   PluginApis,
-  TerminatePayloadOf
+  TerminatePayloadOf,
 } from "../core/types";
 
 // Termination payload helpers moved to core/types: both tiers name them now.
 export type {
   CompletePayloadOf,
   JourneyTerminationPayloads,
-  TerminatePayloadOf
+  TerminatePayloadOf,
 } from "../core/types";
 
 /** Full linear step config; a bare string is shorthand for `{ id, metadata: {} }`. */
@@ -24,7 +24,7 @@ export type LinearStepConfig<
   TStepId extends string = string,
   TMeta = Record<string, unknown>,
   TCompletePayload = unknown,
-  TTerminatePayload = unknown
+  TTerminatePayload = unknown,
 > = {
   readonly id: TStepId;
   readonly metadata?: TMeta;
@@ -47,7 +47,7 @@ export type LinearStepInput<
   TMeta,
   TStepId extends string = string,
   TCompletePayload = unknown,
-  TTerminatePayload = unknown
+  TTerminatePayload = unknown,
 > = TStepId | LinearStepConfig<TContext, TStepId, TMeta, TCompletePayload, TTerminatePayload>;
 
 /** Pure-data linear definition: testable and reusable. */
@@ -55,7 +55,7 @@ export type LinearJourneyDefinition<
   TStepId extends string = string,
   TContext = unknown,
   TTerminationPayloads extends JourneyTerminationPayloads = JourneyTerminationPayloads,
-  TMeta = Record<string, unknown>
+  TMeta = Record<string, unknown>,
 > = {
   readonly steps: readonly LinearStepInput<
     TContext,
@@ -83,7 +83,7 @@ export type LinearJourneyMachine<
   TMeta = Record<string, unknown>,
   TPlugins extends readonly AnyJourneyPlugin[] = readonly [],
   TCompletePayload = unknown,
-  TTerminatePayload = unknown
+  TTerminatePayload = unknown,
 > = Omit<
   JourneyMachineBase<
     TContext,

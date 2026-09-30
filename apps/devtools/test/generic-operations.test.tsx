@@ -7,7 +7,7 @@ import {
   JOURNEY_DEVTOOLS_CHANNEL,
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
   type JourneyDevtoolsBridgeEnvelope,
-  type JourneyDevtoolsMachineFeatureDescriptor
+  type JourneyDevtoolsMachineFeatureDescriptor,
 } from "@rxova/journey-devtools-bridge";
 import { CommandControls } from "../src/panel/components/CommandControls";
 import { createInitialPanelState, panelReducer, type JourneyPanelState } from "../src/panel/store";
@@ -15,7 +15,7 @@ import {
   createInvokeEnvelope,
   createTransportErrorEnvelope,
   isBackgroundToContentMessage,
-  isPanelToBackgroundMessage
+  isPanelToBackgroundMessage,
 } from "../src/shared";
 import { createGraphSnapshot } from "./fixtures";
 
@@ -41,7 +41,7 @@ const features: JourneyDevtoolsMachineFeatureDescriptor[] = [
         description: null,
         mutates: true,
         output: "snapshot",
-        fields: []
+        fields: [],
       },
       {
         id: "core.resetJourney",
@@ -49,7 +49,7 @@ const features: JourneyDevtoolsMachineFeatureDescriptor[] = [
         description: null,
         mutates: true,
         output: "snapshot",
-        fields: []
+        fields: [],
       },
       {
         id: "core.goToNextStep",
@@ -57,7 +57,7 @@ const features: JourneyDevtoolsMachineFeatureDescriptor[] = [
         description: null,
         mutates: true,
         output: "snapshot",
-        fields: []
+        fields: [],
       },
       {
         id: "core.goToStepById",
@@ -65,7 +65,7 @@ const features: JourneyDevtoolsMachineFeatureDescriptor[] = [
         description: null,
         mutates: true,
         output: "snapshot",
-        fields: [{ key: "stepId", label: "stepId", type: "text", required: true }]
+        fields: [{ key: "stepId", label: "stepId", type: "text", required: true }],
       },
       {
         id: "core.forceStepTransition",
@@ -73,7 +73,7 @@ const features: JourneyDevtoolsMachineFeatureDescriptor[] = [
         description: null,
         mutates: true,
         output: "snapshot",
-        fields: [{ key: "stepId", label: "to", type: "text", required: true }]
+        fields: [{ key: "stepId", label: "to", type: "text", required: true }],
       },
       {
         id: "core.sendEvent",
@@ -83,8 +83,8 @@ const features: JourneyDevtoolsMachineFeatureDescriptor[] = [
         output: "snapshot",
         fields: [
           { key: "type", label: "type", type: "text", required: true },
-          { key: "payload", label: "payload", type: "json" }
-        ]
+          { key: "payload", label: "payload", type: "json" },
+        ],
       },
       {
         id: "core.updateContext",
@@ -92,7 +92,7 @@ const features: JourneyDevtoolsMachineFeatureDescriptor[] = [
         description: null,
         mutates: true,
         output: "snapshot",
-        fields: [{ key: "context", label: "context", type: "json", required: true }]
+        fields: [{ key: "context", label: "context", type: "json", required: true }],
       },
       {
         id: "core.patchContext",
@@ -102,8 +102,8 @@ const features: JourneyDevtoolsMachineFeatureDescriptor[] = [
         output: "snapshot",
         fields: [
           { key: "key", label: "key", type: "text", required: true },
-          { key: "value", label: "value", type: "json", required: true }
-        ]
+          { key: "value", label: "value", type: "json", required: true },
+        ],
       },
       {
         id: "core.completeJourney",
@@ -111,7 +111,7 @@ const features: JourneyDevtoolsMachineFeatureDescriptor[] = [
         description: null,
         mutates: true,
         output: "snapshot",
-        fields: []
+        fields: [],
       },
       {
         id: "core.terminateJourney",
@@ -119,7 +119,7 @@ const features: JourneyDevtoolsMachineFeatureDescriptor[] = [
         description: null,
         mutates: true,
         output: "snapshot",
-        fields: []
+        fields: [],
       },
       {
         id: "core.clearStepError",
@@ -127,10 +127,10 @@ const features: JourneyDevtoolsMachineFeatureDescriptor[] = [
         description: null,
         mutates: true,
         output: "snapshot",
-        fields: [{ key: "stepId", label: "stepId", type: "text" }]
-      }
-    ]
-  }
+        fields: [{ key: "stepId", label: "stepId", type: "text" }],
+      },
+    ],
+  },
 ];
 
 const registerEnvelope = (): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "register" }> => ({
@@ -148,12 +148,12 @@ const registerEnvelope = (): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "reg
     mode: "graph",
     stepIds: ["start", "review", "done"],
     eventTypes: ["journey.start", "review.submit"],
-    features
+    features,
   },
   snapshot: createGraphSnapshot("start", {
     availableEvents: ["journey.start"],
-    availableSteps: ["review", "done"]
-  })
+    availableSteps: ["review", "done"],
+  }),
 });
 
 const operationResultEnvelope = (): Extract<
@@ -171,14 +171,14 @@ const operationResultEnvelope = (): Extract<
   result: {
     kind: "snapshot",
     snapshot: createGraphSnapshot("review", { timeline: ["start", "review"] }),
-    transitioned: true
-  }
+    transitioned: true,
+  },
 });
 
 const liveSnapshotEnvelope = (
   timestamp = 1002,
   currentStepId: "start" | "review" | "done" = "review",
-  status: "idle" | "running" | "completed" | "terminated" = "running"
+  status: "idle" | "running" | "completed" | "terminated" = "running",
 ): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "snapshot" }> => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
   version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
@@ -188,35 +188,35 @@ const liveSnapshotEnvelope = (
   timestamp,
   snapshot: createGraphSnapshot(currentStepId, {
     timeline: currentStepId === "start" ? ["start"] : ["start", currentStepId],
-    status
-  })
+    status,
+  }),
 });
 
 describe("generic devtools operations", () => {
   it("creates and validates generic invoke envelopes", () => {
     const envelope = createInvokeEnvelope("machine-1", "req-1", {
-      operationId: "core.goToNextStep"
+      operationId: "core.goToNextStep",
     });
 
     expect(
       isPanelToBackgroundMessage({
         type: "panel-command",
         tabId: 1,
-        envelope
-      })
+        envelope,
+      }),
     ).toBe(true);
     expect(
       isBackgroundToContentMessage({
         type: "extension-envelope",
-        envelope
-      })
+        envelope,
+      }),
     ).toBe(true);
 
     const transportError = createTransportErrorEnvelope("machine-1", "req-1", {
       name: "Error",
       message: "boom",
       stack: null,
-      cause: null
+      cause: null,
     });
     expect(transportError.kind).toBe("operationError");
     expect(transportError.operationId).toBe("transport");
@@ -230,11 +230,11 @@ describe("generic devtools operations", () => {
       machineId: "machine-1",
       requestId: "req-1",
       invocation: { operationId: "core.goToNextStep" },
-      timestamp: 1000
+      timestamp: 1000,
     });
     state = panelReducer(state, {
       type: "bridge-envelope",
-      envelope: operationResultEnvelope()
+      envelope: operationResultEnvelope(),
     });
 
     const machine = state.machines["machine-1"];
@@ -265,11 +265,11 @@ describe("generic devtools operations", () => {
           eventTypesBySource={{
             start: ["journey.start"],
             review: ["review.submit"],
-            "*": ["journey.start"]
+            "*": ["journey.start"],
           }}
           goToStepTargetsBySource={{ start: ["review"], review: ["done"], "*": ["done"] }}
           onInvoke={onInvoke}
-        />
+        />,
       );
     });
 
@@ -279,7 +279,7 @@ describe("generic devtools operations", () => {
     expect(container.textContent).toContain("restartJourney");
 
     const navigationSelect = [...container.querySelectorAll("select")].find(
-      (select) => select.querySelector('option[value="review"]') !== null
+      (select) => select.querySelector('option[value="review"]') !== null,
     );
     expect(navigationSelect).toBeTruthy();
     expect(navigationSelect?.querySelector('option[value="review"]')).toBeTruthy();
@@ -288,15 +288,15 @@ describe("generic devtools operations", () => {
 
     const eventTypeSelect = [...container.querySelectorAll("select")].find((select) =>
       [...select.querySelectorAll("option")].some(
-        (option) => option.textContent === "journey.start"
-      )
+        (option) => option.textContent === "journey.start",
+      ),
     );
     expect(eventTypeSelect).toBeTruthy();
     expect(eventTypeSelect?.querySelector('option[value="journey.start"]')).toBeTruthy();
     expect(eventTypeSelect?.querySelector('option[value="review.submit"]')).toBeNull();
 
     const nextButton = [...container.querySelectorAll("button")].find((button) =>
-      button.textContent?.includes("goToNextStep")
+      button.textContent?.includes("goToNextStep"),
     );
     if (!nextButton) {
       throw new Error("generic operation button not found");
@@ -329,11 +329,11 @@ describe("generic devtools operations", () => {
           eventTypesBySource={{
             start: ["journey.start"],
             review: ["review.submit"],
-            "*": ["journey.start"]
+            "*": ["journey.start"],
           }}
           goToStepTargetsBySource={{ start: ["review"], review: ["done"], "*": ["done"] }}
           onInvoke={onInvoke}
-        />
+        />,
       );
     });
 
@@ -359,11 +359,11 @@ describe("generic devtools operations", () => {
       machineId: "machine-1",
       requestId: "req-1",
       invocation: { operationId: "core.resetJourney" },
-      timestamp: 1000
+      timestamp: 1000,
     });
     state = panelReducer(state, {
       type: "bridge-envelope",
-      envelope: liveSnapshotEnvelope(1002, "start", "running")
+      envelope: liveSnapshotEnvelope(1002, "start", "running"),
     });
     state = panelReducer(state, {
       type: "bridge-envelope",
@@ -373,9 +373,9 @@ describe("generic devtools operations", () => {
         operationId: "core.resetJourney",
         result: {
           kind: "snapshot",
-          snapshot: createGraphSnapshot(null, { status: "idle" })
-        }
-      }
+          snapshot: createGraphSnapshot(null, { status: "idle" }),
+        },
+      },
     });
 
     expect(state.machines["machine-1"]?.snapshot.status).toBe("running");
@@ -399,16 +399,16 @@ describe("generic devtools operations", () => {
           eventTypesBySource={{
             start: ["journey.start"],
             review: ["review.submit"],
-            "*": ["journey.start"]
+            "*": ["journey.start"],
           }}
           goToStepTargetsBySource={{ start: ["review"], review: ["done"], "*": ["done"] }}
           onInvoke={onInvoke}
-        />
+        />,
       );
     });
 
     const patchButton = [...container.querySelectorAll("button")].find(
-      (button) => button.textContent === "patchContext"
+      (button) => button.textContent === "patchContext",
     );
     if (!patchButton) {
       throw new Error("patchContext button not found");
@@ -420,10 +420,10 @@ describe("generic devtools operations", () => {
     }
 
     const keyInput = [...patchForm.querySelectorAll("input")].find((input) =>
-      input.parentElement?.textContent?.includes("key")
+      input.parentElement?.textContent?.includes("key"),
     );
     const valueTextarea = [...patchForm.querySelectorAll("textarea")].find((textarea) =>
-      textarea.parentElement?.textContent?.includes("value")
+      textarea.parentElement?.textContent?.includes("value"),
     );
 
     if (!keyInput || !valueTextarea) {
@@ -456,7 +456,7 @@ describe("generic devtools operations", () => {
 
     expect(onInvoke).toHaveBeenCalledWith({
       operationId: "core.patchContext",
-      input: { key: "attempts", value: 2 }
+      input: { key: "attempts", value: 2 },
     });
 
     await act(async () => {

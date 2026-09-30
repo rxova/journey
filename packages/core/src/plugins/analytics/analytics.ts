@@ -5,7 +5,7 @@ import type {
   AnalyticsApi,
   AnalyticsPluginOptions,
   AnalyticsRecentEvent,
-  AnalyticsTrackedEvent
+  AnalyticsTrackedEvent,
 } from "./analytics.types";
 import type { JourneyPlugin } from "../../core/types";
 
@@ -14,7 +14,7 @@ import type { JourneyPlugin } from "../../core/types";
  * errors) into analytics envelopes delivered to the configured sink.
  */
 export function createAnalyticsPlugin(
-  options: AnalyticsPluginOptions
+  options: AnalyticsPluginOptions,
 ): JourneyPlugin<"analytics", AnalyticsApi, never> {
   const now = options.now ?? Date.now;
 
@@ -35,13 +35,13 @@ export function createAnalyticsPlugin(
       const trackSafely = (
         source: AnalyticsRecentEvent["source"],
         name: string,
-        payload: Record<string, unknown>
+        payload: Record<string, unknown>,
       ): AnalyticsTrackedEvent => {
         const tracked: AnalyticsTrackedEvent = {
           name,
           timestamp: now(),
           stepId: host.getSnapshot().currentStep?.id ?? null,
-          payload
+          payload,
         };
         try {
           options.track(tracked);
@@ -79,9 +79,9 @@ export function createAnalyticsPlugin(
           getRecentEvents: () => [...recent],
           clearRecentEvents: () => {
             recent = [];
-          }
-        }
+          },
+        },
       };
-    }
+    },
   };
 }

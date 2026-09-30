@@ -6,7 +6,7 @@ type LegacySnapshot = {
 
 /** Reads v7 snapshots while keeping older, read-only protocol views usable. */
 export const getSnapshotCurrentStepId = (
-  snapshot: JourneyDevtoolsSerializableSnapshot
+  snapshot: JourneyDevtoolsSerializableSnapshot,
 ): string | null => {
   if (snapshot.currentStep) {
     return snapshot.currentStep.id;

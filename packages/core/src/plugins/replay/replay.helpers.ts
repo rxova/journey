@@ -41,7 +41,7 @@ function walk(value: unknown, state: WalkState, depth: number): unknown {
     return {
       name: value.name,
       message: value.message,
-      ...(value.stack ? { stack: value.stack } : {})
+      ...(value.stack ? { stack: value.stack } : {}),
     };
   }
   if (value instanceof Date) return value.toISOString();
@@ -92,16 +92,16 @@ export function toSerializable(value: unknown, options: { maxDepth?: number } = 
     {
       memo: new Map<object, unknown>(),
       inProgress: new Set<object>(),
-      maxDepth: options.maxDepth ?? DEFAULT_MAX_DEPTH
+      maxDepth: options.maxDepth ?? DEFAULT_MAX_DEPTH,
     },
-    0
+    0,
   );
 }
 
 /** Serializes a replay session into a JSON string safe for logging or export. */
 export function serializeReplaySession(
   session: ReplaySession,
-  options?: ReplayExportOptions
+  options?: ReplayExportOptions,
 ): string {
   return JSON.stringify(toSerializable(session), null, options?.pretty ? 2 : undefined);
 }

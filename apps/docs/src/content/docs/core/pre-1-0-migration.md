@@ -38,8 +38,8 @@ const machine = createGraphJourney({
   context,
   transitions: {
     submit: [{ from: "login", to: "verify" }],
-    check: [{ from: "verify", to: "done", when: ({ context }) => context.ok }]
-  }
+    check: [{ from: "verify", to: "done", when: ({ context }) => context.ok }],
+  },
 });
 
 // next
@@ -47,10 +47,10 @@ const machine = createGraphJourney({
   steps: {
     login: { on: { submit: "verify" } },
     verify: { on: { check: [{ to: "done", when: ({ context }) => context.ok }] } },
-    done: {}
+    done: {},
   },
   initial: "login",
-  context
+  context,
 });
 ```
 
@@ -188,7 +188,7 @@ the old headless factory's caller-driven jumps map to linear `navigate.goToStepB
 // Linear
 const machine = createLinearJourney({
   context,
-  steps: ["intro", { id: "details", metadata: { title: "Details" } }, "done"] as const
+  steps: ["intro", { id: "details", metadata: { title: "Details" } }, "done"] as const,
 });
 
 // Graph
@@ -198,8 +198,8 @@ const machine = createGraphJourney({
   steps: { form: {}, review: {}, done: {} },
   transitions: {
     SUBMIT: { from: "form", to: "review" },
-    APPROVE: { from: "review", to: "done" }
-  }
+    APPROVE: { from: "review", to: "done" },
+  },
 });
 ```
 
@@ -237,7 +237,7 @@ plugin when you need them:
 import { createSubscriptionEnhancerPlugin } from "@rxova/journey-core/subscription-enhancer";
 
 const machine = createLinearJourney(definition, {
-  plugins: [createSubscriptionEnhancerPlugin()]
+  plugins: [createSubscriptionEnhancerPlugin()],
 });
 
 machine.plugins["subscription-enhancer"].subscribeComplete(({ snapshot }) => save(snapshot));
@@ -282,8 +282,8 @@ const waiting = createStep("waiting", {
     raise({ type: "TIMED_OUT" });
   },
   on: {
-    TIMED_OUT: [to("timeout")]
-  }
+    TIMED_OUT: [to("timeout")],
+  },
 });
 ```
 
@@ -330,7 +330,7 @@ import { createLinearJourney } from "@rxova/journey-react";
 const signup = createLinearJourney({
   name: "signup",
   context: { name: "" },
-  steps: ["intro", { id: "details", metadata: { title: "Details" } }]
+  steps: ["intro", { id: "details", metadata: { title: "Details" } }],
 });
 
 <signup.Provider views={{ intro: <Intro />, details: <Details /> }}>

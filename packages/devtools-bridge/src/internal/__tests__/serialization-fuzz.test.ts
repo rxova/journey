@@ -17,7 +17,7 @@ const makeThrowingGetter = (): Record<string, unknown> => {
     get() {
       throw new Error("getter exploded");
     },
-    enumerable: true
+    enumerable: true,
   });
   return value;
 };
@@ -25,7 +25,7 @@ const makeThrowingGetter = (): Record<string, unknown> => {
 const makeThrowingToJson = (): Record<string, unknown> => ({
   toJSON() {
     throw new Error("toJSON exploded");
-  }
+  },
 });
 
 const makeSelfCycle = (): Record<string, unknown> => {
@@ -58,7 +58,7 @@ const hostileExtras = fc.oneof(
   fc.constant(null).map(() => makeThrowingGetter()),
   fc.constant(null).map(() => makeThrowingToJson()),
   fc.constant(null).map(() => makeSelfCycle()),
-  fc.constant(null).map(() => makeNullPrototypeBag())
+  fc.constant(null).map(() => makeNullPrototypeBag()),
 );
 
 const anythingValue = fc.anything({
@@ -69,7 +69,7 @@ const anythingValue = fc.anything({
   withNullPrototype: true,
   withObjectString: true,
   withSparseArray: true,
-  withTypedArray: true
+  withTypedArray: true,
 });
 
 const hostileValue = fc.oneof(anythingValue, hostileExtras);
@@ -81,13 +81,13 @@ const hostileTree = fc.oneof(
   fc.dictionary(
     fc.string().filter((key) => key !== "__proto__"),
     hostileValue,
-    { maxKeys: 6 }
+    { maxKeys: 6 },
   ),
   fc.dictionary(
     fc.string().filter((key) => key !== "__proto__"),
     fc.array(hostileValue, { maxLength: 4 }),
-    { maxKeys: 4 }
-  )
+    { maxKeys: 4 },
+  ),
 );
 
 const isJsonObject = (value: unknown): value is Record<string, unknown> =>
@@ -99,7 +99,7 @@ describe("cloneForTransport properties", () => {
       fc.property(hostileTree, (value) => {
         expect(() => cloneForTransport(value)).not.toThrow();
       }),
-      { numRuns: 500 }
+      { numRuns: 500 },
     );
   });
 
@@ -112,7 +112,7 @@ describe("cloneForTransport properties", () => {
         fc.pre(result !== undefined);
         expect(JSON.parse(JSON.stringify(result)) as unknown).toStrictEqual(result);
       }),
-      { numRuns: 500 }
+      { numRuns: 500 },
     );
   });
 
@@ -122,7 +122,7 @@ describe("cloneForTransport properties", () => {
         const once = cloneForTransport(value);
         expect(cloneForTransport(once)).toStrictEqual(once);
       }),
-      { numRuns: 500 }
+      { numRuns: 500 },
     );
   });
 
@@ -132,7 +132,7 @@ describe("cloneForTransport properties", () => {
         fc.dictionary(
           fc.string().filter((key) => key !== "__proto__"),
           hostileValue,
-          { maxKeys: 8 }
+          { maxKeys: 8 },
         ),
         (value) => {
           const result = cloneForTransport(value);
@@ -140,9 +140,9 @@ describe("cloneForTransport properties", () => {
           // that is the documented fallback, not a dropped key.
           fc.pre(isJsonObject(result));
           expect(Object.keys(result).sort()).toStrictEqual(Object.keys(value).sort());
-        }
+        },
       ),
-      { numRuns: 500 }
+      { numRuns: 500 },
     );
   });
 
@@ -167,7 +167,7 @@ describe("cloneForTransport properties", () => {
       fc.property(hostileTree, (value) => {
         assertNoUndefined(cloneForTransport(value));
       }),
-      { numRuns: 500 }
+      { numRuns: 500 },
     );
   });
 });
@@ -181,7 +181,7 @@ describe("error serializer properties", () => {
         expect(result.stack === null || typeof result.stack === "string").toBe(true);
         expect(JSON.parse(JSON.stringify(result)) as unknown).toStrictEqual(result);
       }),
-      { numRuns: 500 }
+      { numRuns: 500 },
     );
   });
 });

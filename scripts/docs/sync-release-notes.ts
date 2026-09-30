@@ -64,27 +64,27 @@ export const releaseNoteSources: readonly ReleaseNoteSource[] = [
     source: "packages/core/CHANGELOG.md",
     target: "apps/docs/src/content/docs/core/releases.md",
     title: "Core Releases",
-    description: "Release notes sourced from the Core package changelog (Changesets)."
+    description: "Release notes sourced from the Core package changelog (Changesets).",
   },
   {
     source: "packages/react/CHANGELOG.md",
     target: "apps/docs/src/content/docs/react/releases.md",
     title: "React Releases",
-    description: "Release notes sourced from the React package changelog (Changesets)."
+    description: "Release notes sourced from the React package changelog (Changesets).",
   },
   {
     source: "packages/devtools-bridge/CHANGELOG.md",
     target: "apps/docs/src/content/docs/bridge/releases.md",
     title: "Bridge Releases",
-    description: "Release notes sourced from the Devtools Bridge package changelog (Changesets)."
+    description: "Release notes sourced from the Devtools Bridge package changelog (Changesets).",
   },
   {
     source: "apps/devtools/CHANGELOG.md",
     target: "apps/docs/src/content/docs/devtool/releases.md",
     title: "Chrome DevTools Releases",
     description:
-      "Release notes sourced from the Chrome DevTools app changelog (outside package Changesets)."
-  }
+      "Release notes sourced from the Chrome DevTools app changelog (outside package Changesets).",
+  },
 ];
 
 export const toRepoPath = (repoRoot: string, ...parts: string[]): string => {
@@ -142,7 +142,7 @@ ${body}`;
 
 export const expectedContent = (
   entry: ReleaseNoteSource | undefined,
-  repoRoot = defaultRepoRoot
+  repoRoot = defaultRepoRoot,
 ): string => {
   if (!entry) {
     throw new Error("Missing release note source entry.");
@@ -183,7 +183,7 @@ export const checkMatches = (filePath: string, content: string): boolean => {
 export const syncReleaseNotes = ({
   repoRoot = defaultRepoRoot,
   sources = releaseNoteSources,
-  log = console.log
+  log = console.log,
 }: SyncReleaseNotesOptions = {}): SyncReleaseNotesResult => {
   const updated: string[] = [];
 
@@ -212,7 +212,7 @@ export const checkReleaseNotes = ({
   sources = releaseNoteSources,
   log = console.log,
   error = console.error,
-  exit = defaultExit
+  exit = defaultExit,
 }: CheckReleaseNotesOptions = {}): CheckReleaseNotesResult => {
   const stale: string[] = [];
 
@@ -243,7 +243,7 @@ export const main = ({
   sources = releaseNoteSources,
   log = console.log,
   error = console.error,
-  exit = defaultExit
+  exit = defaultExit,
 }: MainOptions = {}): MainResult => {
   if (argv.includes("--check")) {
     return checkReleaseNotes({ repoRoot, sources, log, error, exit });
@@ -254,7 +254,7 @@ export const main = ({
 
 export const isEntrypoint = (
   entryArg: string | undefined = process.argv[1],
-  moduleUrl: string = import.meta.url
+  moduleUrl: string = import.meta.url,
 ): boolean => {
   if (!entryArg) return false;
   return pathToFileURL(entryArg).href === moduleUrl;

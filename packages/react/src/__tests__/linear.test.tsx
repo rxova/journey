@@ -37,7 +37,7 @@ describe("linear bundle rendering and navigation", () => {
       <journey.Provider views={abcViews}>
         <journey.StepRenderer />
         <Nav />
-      </journey.Provider>
+      </journey.Provider>,
     );
     await flush();
 
@@ -68,7 +68,7 @@ describe("linear bundle rendering and navigation", () => {
     const view = render(
       <journey.Provider views={{ only: <Probe flavor="salt" /> }}>
         <journey.StepRenderer />
-      </journey.Provider>
+      </journey.Provider>,
     );
     await flush();
     expect(screen.getByTestId("probe").textContent).toBe("salt");
@@ -76,7 +76,7 @@ describe("linear bundle rendering and navigation", () => {
     view.rerender(
       <journey.Provider views={{ only: <Probe flavor="pepper" /> }}>
         <journey.StepRenderer />
-      </journey.Provider>
+      </journey.Provider>,
     );
     await flush();
     expect(screen.getByTestId("probe").textContent).toBe("pepper");
@@ -85,7 +85,7 @@ describe("linear bundle rendering and navigation", () => {
     render(
       <silent.Provider views={{ quiet: null }}>
         <silent.StepRenderer fallback={<span data-testid="fb">fb</span>} />
-      </silent.Provider>
+      </silent.Provider>,
     );
     await flush();
     // A declared null view renders nothing — the fallback is only for ids
@@ -99,7 +99,7 @@ describe("linear bundle rendering and navigation", () => {
     render(
       <journey.Provider views={{ intro: <StepA /> } as never}>
         <journey.StepRenderer fallback={<span data-testid="missing">missing view</span>} />
-      </journey.Provider>
+      </journey.Provider>,
     );
     await flush();
     expect(screen.getByTestId("step-a")).toBeTruthy();
@@ -172,8 +172,8 @@ describe("definition step config and start position", () => {
       context: {},
       steps: [
         { id: "a", metadata: "Alpha" },
-        { id: "b", metadata: "Beta" }
-      ]
+        { id: "b", metadata: "Beta" },
+      ],
     });
     const Meta = () => {
       const step = journey.useStep();
@@ -193,7 +193,7 @@ describe("definition step config and start position", () => {
     render(
       <journey.Provider views={{ a: <StepA />, b: <StepB /> }}>
         <journey.StepRenderer />
-      </journey.Provider>
+      </journey.Provider>,
     );
     await flush();
 
@@ -215,7 +215,7 @@ describe("useStepHandler", () => {
         },
         commit: ({ result, updateContext }) => {
           updateContext((context) => ({ ...context, n: context.n + result }));
-        }
+        },
       });
       return <span data-testid="guarded">guarded</span>;
     };
@@ -241,7 +241,7 @@ describe("useStepHandler", () => {
       <journey.Provider views={{ guarded: <Guarded />, b: <StepB /> }}>
         <journey.StepRenderer />
         <Chrome />
-      </journey.Provider>
+      </journey.Provider>,
     );
     await flush();
 
@@ -310,7 +310,7 @@ describe("events, persistence, and factory validation", () => {
     // the deferred default would leave the machine idle with nothing mounted.
     const first = createLinearJourney(
       { context: { n: 0 }, steps: ["a", "b"] },
-      { persist: { key: "wiz", storage }, autoStart: true }
+      { persist: { key: "wiz", storage }, autoStart: true },
     );
     // The factory's initial entry is still settling right after creation; let
     // it commit before navigating.
@@ -327,7 +327,7 @@ describe("events, persistence, and factory validation", () => {
     // A new bundle over the same key restores the persisted position/context.
     const second = createLinearJourney(
       { context: { n: 0 }, steps: ["a", "b"] },
-      { persist: { key: "wiz", storage }, autoStart: true }
+      { persist: { key: "wiz", storage }, autoStart: true },
     );
     const snapshot = second.machine.getSnapshot();
     expect(snapshot.currentStep?.id).toBe("b");
@@ -339,7 +339,7 @@ describe("events, persistence, and factory validation", () => {
     render(
       <journey.Provider views={{ a: <StepA /> }}>
         <journey.StepRenderer fallback={<span data-testid="idle">idle</span>} />
-      </journey.Provider>
+      </journey.Provider>,
     );
     await flush();
     expect(screen.getByTestId("idle")).toBeTruthy();
@@ -353,15 +353,15 @@ describe("events, persistence, and factory validation", () => {
 
   it("rejects duplicate and empty step declarations, names the Provider, converts to graph", () => {
     expect(() => createLinearJourney({ context: {}, steps: ["dup", "dup"] })).toThrow(
-      /must be unique/
+      /must be unique/,
     );
     expect(() => createLinearJourney({ context: {}, steps: [] as never })).toThrow(
-      /at least one step/
+      /at least one step/,
     );
 
     const anonymous = createLinearJourney({ context: {}, steps: ["a"] });
     expect((anonymous.Provider as { displayName?: string }).displayName).toBe(
-      "LinearJourney.Provider"
+      "LinearJourney.Provider",
     );
     const named = createLinearJourney({ name: "signup", context: {}, steps: ["a"] });
     expect((named.Provider as { displayName?: string }).displayName).toBe("signup.Provider");

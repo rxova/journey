@@ -21,7 +21,7 @@ import type {
   LinearJourneyMachine,
   LinearJourneySnapshot,
   LinearJourneyStepHandler,
-  ReactLinearStepInput
+  ReactLinearStepInput,
 } from "./react.types";
 
 const stepIdOf = (step: string | { readonly id: string }): string =>
@@ -72,12 +72,12 @@ export const createLinearJourney = <
   TContext,
   const TSteps extends readonly [
     ReactLinearStepInput<NoInfer<TContext>, unknown>,
-    ...ReactLinearStepInput<NoInfer<TContext>, unknown>[]
+    ...ReactLinearStepInput<NoInfer<TContext>, unknown>[],
   ],
-  const TPlugins extends readonly AnyJourneyPlugin[] = readonly []
+  const TPlugins extends readonly AnyJourneyPlugin[] = readonly [],
 >(
   definition: LinearJourneyBundleDefinition<TContext, TSteps>,
-  options?: LinearJourneyBundleOptions<LinearStepIdOf<TSteps>, TPlugins>
+  options?: LinearJourneyBundleOptions<LinearStepIdOf<TSteps>, TPlugins>,
 ): LinearJourneyBundle<TContext, LinearStepIdOf<TSteps>, TPlugins> => {
   type TStepId = LinearStepIdOf<TSteps>;
   type Machine = LinearJourneyMachine<TContext, TStepId, TPlugins>;
@@ -89,7 +89,7 @@ export const createLinearJourney = <
   }
   if (new Set(declaredStepIds).size !== declaredStepIds.length) {
     throw new Error(
-      `createLinearJourney() step ids must be unique; received [${declaredStepIds.join(", ")}].`
+      `createLinearJourney() step ids must be unique; received [${declaredStepIds.join(", ")}].`,
     );
   }
 
@@ -119,7 +119,7 @@ export const createLinearJourney = <
   // default off so the mount effect below can own starting instead.
   const machine = coreCreateLinearJourney(coreDefinition, {
     ...options,
-    autoStart: options?.autoStart === true
+    autoStart: options?.autoStart === true,
   }) as unknown as Machine;
 
   const useAutoStart = createAutoStartHook(machine, options?.autoStart === undefined);
@@ -148,7 +148,7 @@ export const createLinearJourney = <
     const handler = registered.current as unknown as NonNullable<NextStepWork>;
     return machine.navigate.goToNextStep({
       run: (args) => handler.run(args),
-      commit: (args) => handler.commit?.(args)
+      commit: (args) => handler.commit?.(args),
     });
   }) as Machine["navigate"]["goToNextStep"];
 
@@ -159,11 +159,11 @@ export const createLinearJourney = <
     ...createJourneyBindings<Machine, TContext, TStepId, Snapshot>(
       boundMachine,
       name ?? "LinearJourney",
-      useAutoStart
+      useAutoStart,
     ),
     useStepHandler: <TResult = void,>(
       stepId: TStepId,
-      handler: LinearJourneyStepHandler<TContext, TResult, TStepId>
+      handler: LinearJourneyStepHandler<TContext, TResult, TStepId>,
     ): void => {
       // Latest-ref: inline handlers change identity every render; the
       // registration must not tear down on each one — it is per mounted caller.
@@ -181,7 +181,7 @@ export const createLinearJourney = <
           // only the last registration runs, so the other's work silently never
           // fires. StrictMode's double-mount is exempt — it unregisters first.
           warnInDevelopment(
-            `journey: shadowed a live registration for step "${stepId as string}" — last registration wins.`
+            `journey: shadowed a live registration for step "${stepId as string}" — last registration wins.`,
           );
         }
         stack.push(entry);
@@ -210,6 +210,6 @@ export const createLinearJourney = <
       useAutoStart();
     },
     machine: boundMachine,
-    navigate
+    navigate,
   };
 };

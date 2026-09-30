@@ -16,7 +16,7 @@ export const OperationSectionCard = ({
   isOpen,
   onToggle,
   errorMessage,
-  children
+  children,
 }: OperationSectionCardProps) => (
   <section className={panelStyles.card}>
     <div

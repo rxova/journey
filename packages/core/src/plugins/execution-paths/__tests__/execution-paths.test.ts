@@ -8,7 +8,7 @@ describe("execution-paths plugin", () => {
     const plugin = createExecutionPathsPlugin();
     const machine = createLinearJourney(
       { steps: ["a", "b", "c"], context: {} },
-      { plugins: [plugin] as const }
+      { plugins: [plugin] as const },
     );
     machine.controls.start();
     await flush();
@@ -25,7 +25,7 @@ describe("execution-paths plugin", () => {
     const plugin = createExecutionPathsPlugin();
     const machine = createLinearJourney(
       { steps: ["a", "b"], context: {} },
-      { plugins: [plugin] as const }
+      { plugins: [plugin] as const },
     );
     machine.controls.start();
     await flush();

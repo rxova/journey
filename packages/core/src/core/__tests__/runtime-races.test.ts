@@ -19,7 +19,7 @@ describe("runtime race branches", () => {
   it("dispose during a post-commit onLeave keeps the committed navigation successful", async () => {
     const machine = createLinearJourney({
       steps: [{ id: "a", onLeave: () => wait(30) }, "b"],
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();
@@ -32,7 +32,7 @@ describe("runtime race branches", () => {
   it("terminate during a pending onEnter keeps the committed navigation successful", async () => {
     const machine = createLinearJourney({
       steps: ["a", { id: "b", onEnter: () => wait(30) }],
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();
@@ -52,7 +52,7 @@ describe("runtime race branches", () => {
           if (to === "b") machineRef.controls.complete();
         });
         return {};
-      }
+      },
     };
     const machine = createGraphJourney(
       {
@@ -62,14 +62,14 @@ describe("runtime race branches", () => {
               raise({ type: "GO" });
               raise({ type: "GO" });
             },
-            on: { GO: "b" }
+            on: { GO: "b" },
           },
-          b: {}
+          b: {},
         },
         initial: "a",
-        context: {}
+        context: {},
       },
-      { plugins: [completer] as const }
+      { plugins: [completer] as const },
     );
     const machineRef = machine;
     machine.controls.start();
@@ -86,11 +86,11 @@ describe("runtime race branches", () => {
       {
         steps: [
           { id: "a", onLeave: () => undefined },
-          { id: "b", onEnter: async () => undefined }
+          { id: "b", onEnter: async () => undefined },
         ],
-        context: {}
+        context: {},
       },
-      { defaultTimeoutMs: 1000 }
+      { defaultTimeoutMs: 1000 },
     );
     machine.controls.start();
     await flush();

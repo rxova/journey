@@ -32,7 +32,7 @@ describe("toSerializable on shared subtrees", () => {
 
     expect(toSerializable({ a: shared, b: shared })).toEqual({
       a: { leaf: { value: 1 } },
-      b: { leaf: { value: 1 } }
+      b: { leaf: { value: 1 } },
     });
   });
 
@@ -42,7 +42,7 @@ describe("toSerializable on shared subtrees", () => {
     expect(toSerializable([shared, shared, shared])).toEqual([
       { id: "s" },
       { id: "s" },
-      { id: "s" }
+      { id: "s" },
     ]);
   });
 });
@@ -104,7 +104,7 @@ describe("toSerializable depth cap", () => {
 
     expect(toSerializable(value)).toEqual({
       list: [1, "two", null],
-      when: "2026-07-22T00:00:00.000Z"
+      when: "2026-07-22T00:00:00.000Z",
     });
   });
 });

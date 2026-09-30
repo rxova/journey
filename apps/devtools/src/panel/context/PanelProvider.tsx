@@ -5,14 +5,14 @@ import {
   selectActiveMachine,
   selectDisplayedSnapshot,
   selectSelectedDiff,
-  selectSelectedTimelineEntry
+  selectSelectedTimelineEntry,
 } from "../store";
 import {
   PanelActionsContext,
   PanelStateContext,
   useRequiredContext,
   type PanelActionsContextValue,
-  type PanelStateContextValue
+  type PanelStateContextValue,
 } from "./panel-context";
 import { usePanelBridge } from "../hooks/usePanelBridge";
 import { getProtocolMismatchReason } from "../utils/protocol";
@@ -28,17 +28,17 @@ export const PanelProvider = ({ children }: { children: React.ReactNode }) => {
     selectTimelineEntry,
     setFollowLatest,
     setDisplayLimit,
-    pruneTimeline
+    pruneTimeline,
   } = usePanelBridge();
 
   const activeMachine = React.useMemo(() => selectActiveMachine(panelState), [panelState]);
   const displayedSnapshot = React.useMemo(
     () => selectDisplayedSnapshot(activeMachine),
-    [activeMachine]
+    [activeMachine],
   );
   const selectedTimelineEntry = React.useMemo(
     () => selectSelectedTimelineEntry(activeMachine),
-    [activeMachine]
+    [activeMachine],
   );
   const selectedDiff = React.useMemo(() => selectSelectedDiff(activeMachine), [activeMachine]);
   const protocolMismatchReason = getProtocolMismatchReason(activeMachine?.protocolVersion);
@@ -59,7 +59,7 @@ export const PanelProvider = ({ children }: { children: React.ReactNode }) => {
       isCommandChannelReady,
       protocolMismatchReason,
       areCommandsDisabled,
-      commandDisabledReason
+      commandDisabledReason,
     }),
     [
       activeMachine,
@@ -72,8 +72,8 @@ export const PanelProvider = ({ children }: { children: React.ReactNode }) => {
       panelState,
       protocolMismatchReason,
       selectedDiff,
-      selectedTimelineEntry
-    ]
+      selectedTimelineEntry,
+    ],
   );
 
   const actionsValue = React.useMemo<PanelActionsContextValue>(
@@ -83,7 +83,7 @@ export const PanelProvider = ({ children }: { children: React.ReactNode }) => {
       setFollowLatest,
       setDisplayLimit,
       pruneTimeline,
-      invokeOperation
+      invokeOperation,
     }),
     [
       invokeOperation,
@@ -91,8 +91,8 @@ export const PanelProvider = ({ children }: { children: React.ReactNode }) => {
       selectMachine,
       selectTimelineEntry,
       setDisplayLimit,
-      setFollowLatest
-    ]
+      setFollowLatest,
+    ],
   );
 
   return (
@@ -119,7 +119,7 @@ export const useActiveMachine = () => {
     selectedDiff,
     protocolMismatchReason,
     areCommandsDisabled,
-    commandDisabledReason
+    commandDisabledReason,
   } = usePanelState();
 
   return {
@@ -129,7 +129,7 @@ export const useActiveMachine = () => {
     selectedDiff,
     protocolMismatchReason,
     areCommandsDisabled,
-    commandDisabledReason
+    commandDisabledReason,
   };
 };
 
@@ -138,7 +138,7 @@ export const useLegacyProtocolState = () => {
 
   return {
     protocolMismatchReason,
-    isLegacyProtocol: activeMachine?.protocolVersion === JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION
+    isLegacyProtocol: activeMachine?.protocolVersion === JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
   };
 };
 

@@ -7,7 +7,7 @@ vi.mock("node:fs", async () => {
   const actual = await vi.importActual<typeof NodeFs>("node:fs");
   return {
     ...actual,
-    readFileSync: readFileSyncMock
+    readFileSync: readFileSyncMock,
   };
 });
 
@@ -24,11 +24,11 @@ describe("publish-devtools script", () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ access_token: "access-token" }), { status: 200 })
+        new Response(JSON.stringify({ access_token: "access-token" }), { status: 200 }),
       )
       .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }))
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ uploadState: "SUCCESS" }), { status: 200 })
+        new Response(JSON.stringify({ uploadState: "SUCCESS" }), { status: 200 }),
       )
       .mockResolvedValueOnce(new Response(JSON.stringify({ status: ["OK"] }), { status: 200 }));
 
@@ -40,7 +40,7 @@ describe("publish-devtools script", () => {
       CWS_CLIENT_ID: "client-id",
       CWS_CLIENT_SECRET: "client-secret",
       CWS_REFRESH_TOKEN: "refresh-token",
-      ZIP_FILE_PATH: "apps-devtools.zip"
+      ZIP_FILE_PATH: "apps-devtools.zip",
     });
 
     expect(readFileSyncMock).toHaveBeenCalledWith("apps-devtools.zip");
@@ -50,8 +50,8 @@ describe("publish-devtools script", () => {
       "https://oauth2.googleapis.com/token",
       expect.objectContaining({
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" }
-      })
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
@@ -59,9 +59,9 @@ describe("publish-devtools script", () => {
       expect.objectContaining({
         method: "GET",
         headers: expect.objectContaining({
-          Authorization: "Bearer access-token"
-        })
-      })
+          Authorization: "Bearer access-token",
+        }),
+      }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       3,
@@ -73,10 +73,10 @@ describe("publish-devtools script", () => {
           "x-goog-api-version": "2",
           "Content-Type": "application/zip",
           "X-Goog-Upload-Protocol": "raw",
-          "X-Goog-Upload-File-Name": "apps-devtools.zip"
+          "X-Goog-Upload-File-Name": "apps-devtools.zip",
         }),
-        body: expect.any(Buffer)
-      })
+        body: expect.any(Buffer),
+      }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       4,
@@ -85,10 +85,10 @@ describe("publish-devtools script", () => {
         method: "POST",
         headers: expect.objectContaining({
           Authorization: "Bearer access-token",
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         }),
-        body: JSON.stringify({})
-      })
+        body: JSON.stringify({}),
+      }),
     );
   });
 
@@ -100,8 +100,8 @@ describe("publish-devtools script", () => {
         CWS_PUBLISHER_ID: "publisher-id",
         CWS_CLIENT_ID: "client-id",
         CWS_CLIENT_SECRET: "client-secret",
-        CWS_REFRESH_TOKEN: "refresh-token"
-      })
+        CWS_REFRESH_TOKEN: "refresh-token",
+      }),
     ).rejects.toThrow("Missing required env: CWS_EXTENSION_ID");
   });
 
@@ -111,13 +111,13 @@ describe("publish-devtools script", () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ access_token: "access-token" }), { status: 200 })
+        new Response(JSON.stringify({ access_token: "access-token" }), { status: 200 }),
       )
       .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }))
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ uploadState: "FAILURE", itemError: ["bad"] }), {
-          status: 200
-        })
+          status: 200,
+        }),
       );
 
     const { main } = await import("./publish-devtools.ts");
@@ -128,8 +128,8 @@ describe("publish-devtools script", () => {
         CWS_EXTENSION_ID: "extension-id",
         CWS_CLIENT_ID: "client-id",
         CWS_CLIENT_SECRET: "client-secret",
-        CWS_REFRESH_TOKEN: "refresh-token"
-      })
+        CWS_REFRESH_TOKEN: "refresh-token",
+      }),
     ).rejects.toThrow('Upload failed: {"uploadState":"FAILURE","itemError":["bad"]}');
   });
 
@@ -139,14 +139,14 @@ describe("publish-devtools script", () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ access_token: "access-token" }), { status: 200 })
+        new Response(JSON.stringify({ access_token: "access-token" }), { status: 200 }),
       )
       .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }))
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ uploadState: "SUCCESS" }), { status: 200 })
+        new Response(JSON.stringify({ uploadState: "SUCCESS" }), { status: 200 }),
       )
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: { message: "publish denied" } }), { status: 403 })
+        new Response(JSON.stringify({ error: { message: "publish denied" } }), { status: 403 }),
       );
 
     const { main } = await import("./publish-devtools.ts");
@@ -157,8 +157,8 @@ describe("publish-devtools script", () => {
         CWS_EXTENSION_ID: "extension-id",
         CWS_CLIENT_ID: "client-id",
         CWS_CLIENT_SECRET: "client-secret",
-        CWS_REFRESH_TOKEN: "refresh-token"
-      })
+        CWS_REFRESH_TOKEN: "refresh-token",
+      }),
     ).rejects.toThrow("Failed to publish extension: publish denied");
   });
 
@@ -170,8 +170,8 @@ describe("publish-devtools script", () => {
         CWS_EXTENSION_ID: "extension-id",
         CWS_CLIENT_ID: "client-id",
         CWS_CLIENT_SECRET: "client-secret",
-        CWS_REFRESH_TOKEN: "refresh-token"
-      })
+        CWS_REFRESH_TOKEN: "refresh-token",
+      }),
     ).rejects.toThrow("Missing required env: CWS_PUBLISHER_ID");
   });
 
@@ -179,12 +179,12 @@ describe("publish-devtools script", () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ access_token: "access-token" }), { status: 200 })
+        new Response(JSON.stringify({ access_token: "access-token" }), { status: 200 }),
       )
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ submittedItemRevisionStatus: { state: "PENDING_REVIEW" } }), {
-          status: 200
-        })
+          status: 200,
+        }),
       );
 
     const { main } = await import("./publish-devtools.ts");
@@ -194,7 +194,7 @@ describe("publish-devtools script", () => {
       CWS_EXTENSION_ID: "extension-id",
       CWS_CLIENT_ID: "client-id",
       CWS_CLIENT_SECRET: "client-secret",
-      CWS_REFRESH_TOKEN: "refresh-token"
+      CWS_REFRESH_TOKEN: "refresh-token",
     });
 
     expect(readFileSyncMock).not.toHaveBeenCalled();
@@ -207,16 +207,16 @@ describe("publish-devtools script", () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ access_token: "access-token" }), { status: 200 })
+        new Response(JSON.stringify({ access_token: "access-token" }), { status: 200 }),
       )
       .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
-            error: { message: "You may not edit or publish an item that is in review." }
+            error: { message: "You may not edit or publish an item that is in review." },
           }),
-          { status: 400 }
-        )
+          { status: 400 },
+        ),
       );
 
     const { main } = await import("./publish-devtools.ts");
@@ -226,7 +226,7 @@ describe("publish-devtools script", () => {
       CWS_EXTENSION_ID: "extension-id",
       CWS_CLIENT_ID: "client-id",
       CWS_CLIENT_SECRET: "client-secret",
-      CWS_REFRESH_TOKEN: "refresh-token"
+      CWS_REFRESH_TOKEN: "refresh-token",
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(3);

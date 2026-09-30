@@ -23,7 +23,7 @@ export const VerifyCode = () => {
             nextAttempts >= 3
               ? "Too many failed attempts. Account blocked."
               : "Invalid code. Try 123456.",
-          attempts: nextAttempts
+          attempts: nextAttempts,
         }));
 
         if (nextAttempts >= 3) {
@@ -51,7 +51,7 @@ export const VerifyCode = () => {
             loginJourney.updateContext((ctx) => ({
               ...ctx,
               verificationCode,
-              error: null
+              error: null,
             }));
           }}
           placeholder="123456"

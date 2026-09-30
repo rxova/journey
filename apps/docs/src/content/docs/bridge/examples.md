@@ -6,14 +6,14 @@ title: "Examples"
 
 ```ts
 const machine = createGraphJourney(definition, {
-  plugins: [createExecutionPathsPlugin()] as const
+  plugins: [createExecutionPathsPlugin()] as const,
 });
 
 const detach = attachJourneyDevtools(machine, {
   machineId: "checkout",
   label: "Checkout graph",
   eventTypes: ["continue", "cancel"],
-  mutationsEnabled: true
+  mutationsEnabled: true,
 });
 ```
 
@@ -22,7 +22,7 @@ const detach = attachJourneyDevtools(machine, {
 ```ts
 attachJourneyDevtools(machine, {
   enabled: true,
-  mutationsEnabled: false
+  mutationsEnabled: false,
 });
 ```
 
@@ -37,9 +37,9 @@ function Checkout() {
     () =>
       attachJourneyDevtools(checkout.machine, {
         label: "Checkout",
-        mutationsEnabled: false
+        mutationsEnabled: false,
       }),
-    []
+    [],
   );
 
   return (

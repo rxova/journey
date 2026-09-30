@@ -7,7 +7,7 @@ describe("replay plugin", () => {
   it("records lifecycle activity into an exportable session", async () => {
     const machine = createLinearJourney(
       { steps: ["a", "b"], context: { n: 0 } },
-      { plugins: [createReplayPlugin({ now: () => 7 })] as const }
+      { plugins: [createReplayPlugin({ now: () => 7 })] as const },
     );
     machine.controls.start();
     await flush();
@@ -31,7 +31,7 @@ describe("replay plugin", () => {
   it("caps entries at maxEntries, dropping the oldest", async () => {
     const machine = createLinearJourney(
       { steps: ["a"], context: { n: 0 } },
-      { plugins: [createReplayPlugin({ maxEntries: 3, captureSnapshots: false })] as const }
+      { plugins: [createReplayPlugin({ maxEntries: 3, captureSnapshots: false })] as const },
     );
     machine.controls.start();
     await flush();
@@ -49,7 +49,7 @@ describe("replay plugin", () => {
   it("clearReplaySession starts a fresh session", async () => {
     const machine = createLinearJourney(
       { steps: ["a"], context: {} },
-      { plugins: [createReplayPlugin()] as const }
+      { plugins: [createReplayPlugin()] as const },
     );
     machine.controls.start();
     await flush();
@@ -66,19 +66,19 @@ describe("replay plugin", () => {
             id: "b",
             onEnter: () => {
               throw new Error("boom");
-            }
-          }
+            },
+          },
         ],
-        context: {}
+        context: {},
       },
-      { plugins: [createReplayPlugin()] as const }
+      { plugins: [createReplayPlugin()] as const },
     );
     machine.controls.start();
     await flush();
     await machine.navigate.goToNextStep();
 
     expect(machine.plugins.replay.getReplaySession().entries).toContainEqual(
-      expect.objectContaining({ kind: "error" })
+      expect.objectContaining({ kind: "error" }),
     );
   });
 
@@ -91,9 +91,9 @@ describe("replay plugin", () => {
         {
           at: 2,
           kind: "error" as const,
-          data: { error: new Error("boom"), when: new Date(0), circular }
-        }
-      ]
+          data: { error: new Error("boom"), when: new Date(0), circular },
+        },
+      ],
     };
     const parsed = JSON.parse(serializeReplaySession(session));
     expect(parsed.entries[0].data.error).toMatchObject({ name: "Error", message: "boom" });
@@ -110,16 +110,16 @@ describe("toSerializable edge cases", () => {
         {
           at: 2,
           kind: "context" as const,
-          data: { big: 10n, fn: () => undefined, sym: Symbol("x"), nested: [undefined] }
-        }
-      ]
+          data: { big: 10n, fn: () => undefined, sym: Symbol("x"), nested: [undefined] },
+        },
+      ],
     };
     const parsed = JSON.parse(serializeReplaySession(session));
     expect(parsed.entries[0].data).toEqual({
       big: "10",
       fn: "[unsupported:function]",
       sym: "[unsupported:symbol]",
-      nested: [null]
+      nested: [null],
     });
   });
 });
@@ -129,7 +129,7 @@ describe("stackless errors", () => {
     const error = new Error("bare");
     delete (error as { stack?: string }).stack;
     const parsed = JSON.parse(
-      serializeReplaySession({ startedAt: 1, entries: [{ at: 2, kind: "error", data: error }] })
+      serializeReplaySession({ startedAt: 1, entries: [{ at: 2, kind: "error", data: error }] }),
     );
     expect(parsed.entries[0].data).toEqual({ name: "Error", message: "bare" });
   });

@@ -17,7 +17,7 @@ describe("the linear bundle's goToNextStep wrapper", () => {
     const result = await journey.navigate.goToNextStep({
       run: ({ to }) => {
         ran.push(to);
-      }
+      },
     });
 
     expect(result).toMatchObject({ ok: true, from: "a", to: "b" });

@@ -30,7 +30,7 @@ const machine = createLinearJourney(definition);
 const detach = attachJourneyDevtools(machine, {
   machineId: "checkout",
   label: "Checkout",
-  appName: "Storefront"
+  appName: "Storefront",
 });
 ```
 
@@ -53,7 +53,7 @@ mode when the panel should be unable to navigate or change context:
 
 ```ts
 attachJourneyDevtools(machine, {
-  mutationsEnabled: false
+  mutationsEnabled: false,
 });
 ```
 
@@ -65,7 +65,7 @@ production build, both decisions should be explicit:
 ```ts
 attachJourneyDevtools(machine, {
   enabled: true,
-  mutationsEnabled: false
+  mutationsEnabled: false,
 });
 ```
 
@@ -76,7 +76,7 @@ union to build a stable event selector. Supply it through `eventTypes`:
 
 ```ts
 attachJourneyDevtools(graphMachine, {
-  eventTypes: ["continue", "skip", "cancel"]
+  eventTypes: ["continue", "skip", "cancel"],
 });
 ```
 
@@ -88,7 +88,7 @@ Attach to `bundle.machine` directly, at module scope or in an effect:
 ```ts
 const detach = attachJourneyDevtools(checkout.machine, {
   label: "Checkout",
-  mutationsEnabled: false
+  mutationsEnabled: false,
 });
 ```
 

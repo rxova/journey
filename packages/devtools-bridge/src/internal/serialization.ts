@@ -64,7 +64,7 @@ const describeValue = (value: unknown): unknown => {
       name: value.name,
       message: value.message,
       stack: typeof value.stack === "string" ? value.stack : null,
-      cause: "cause" in value ? (value.cause ?? null) : null
+      cause: "cause" in value ? (value.cause ?? null) : null,
     };
   }
   if (value === undefined) {
@@ -256,7 +256,7 @@ export const serializeError = (error: unknown): SerializedError => {
       name: error.name,
       message: error.message,
       stack: typeof error.stack === "string" ? error.stack : null,
-      cause: cloneCause(cause)
+      cause: cloneCause(cause),
     };
   }
 
@@ -264,6 +264,6 @@ export const serializeError = (error: unknown): SerializedError => {
     name: null,
     message: typeof error === "string" ? error : "Unknown error",
     stack: null,
-    cause: cloneCause(error)
+    cause: cloneCause(error),
   };
 };

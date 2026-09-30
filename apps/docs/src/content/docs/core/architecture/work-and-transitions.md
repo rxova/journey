@@ -44,10 +44,10 @@ const review = {
         updateContext((context) => ({ ...context, verified: result.ok })),
       candidates: [
         { to: "done", when: ({ context }) => context.verified },
-        { to: "review" } // totality fallback
-      ]
-    }
-  }
+        { to: "review" }, // totality fallback
+      ],
+    },
+  },
 };
 ```
 

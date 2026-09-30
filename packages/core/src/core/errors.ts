@@ -58,7 +58,7 @@ export class JourneyError extends Error {
     code: JourneyErrorCode,
     message: string,
     details: JourneyErrorDetails = {},
-    cause?: unknown
+    cause?: unknown,
   ) {
     super(`journey: ${message}`, cause === undefined ? undefined : { cause });
     this.name = "JourneyError";

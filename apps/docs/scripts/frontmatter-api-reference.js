@@ -20,7 +20,7 @@ import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from "
 import { join, basename, extname } from "node:path";
 
 const ROOTS = ["core", "react", "bridge"].map((s) =>
-  join("apps/docs/src/content/docs", s, "api/reference")
+  join("apps/docs/src/content/docs", s, "api/reference"),
 );
 
 /** Escape for a double-quoted YAML scalar, after undoing markdown escaping. */

@@ -8,12 +8,12 @@ export default defineConfig({
   resolve: {
     alias: {
       "@rxova/journey-core": fileURLToPath(
-        new URL("../../packages/core/src/index.ts", import.meta.url)
+        new URL("../../packages/core/src/index.ts", import.meta.url),
       ),
       "@rxova/journey-devtools-bridge": fileURLToPath(
-        new URL("../../packages/devtools-bridge/src/index.ts", import.meta.url)
-      )
-    }
+        new URL("../../packages/devtools-bridge/src/index.ts", import.meta.url),
+      ),
+    },
   },
   plugins: [react(), crx({ manifest })],
   build: {
@@ -22,8 +22,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         panel: "src/panel.html",
-        integrationHarness: "src/integration-harness.html"
-      }
-    }
-  }
+        integrationHarness: "src/integration-harness.html",
+      },
+    },
+  },
 });

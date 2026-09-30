@@ -12,7 +12,7 @@ import {
   createGraphJourney,
   withLinearTypes,
   withGraphTypes,
-  analyzeStructure
+  analyzeStructure,
 } from "@rxova/journey-core";
 ```
 

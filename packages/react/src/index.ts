@@ -20,7 +20,7 @@ export type {
   ReactLinearStepConfig,
   ReactLinearStepInput,
   SnapshotOf,
-  StepIdOf
+  StepIdOf,
 } from "./react.types";
 
 export type {
@@ -38,5 +38,5 @@ export type {
   NavigationResult,
   NavigationWork,
   StepAsyncState,
-  StepEnterDirection
+  StepEnterDirection,
 } from "@rxova/journey-core";

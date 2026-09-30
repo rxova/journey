@@ -5,13 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
-  JOURNEY_DEVTOOLS_PROTOCOL_VERSION
+  JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
 } from "@rxova/journey-devtools-bridge";
 import type { JourneyDevtoolsSerializableSnapshot } from "@rxova/journey-devtools-bridge";
 import {
   INITIAL_SNAPSHOT,
   type JourneyPanelMachineState,
-  type JourneyPanelState
+  type JourneyPanelState,
 } from "../src/panel/store";
 import {
   PanelProvider,
@@ -20,12 +20,12 @@ import {
   usePanelActions,
   usePanelConnection,
   usePanelState,
-  usePanelTimelineRetention
+  usePanelTimelineRetention,
 } from "../src/panel/context/PanelProvider";
 import { usePanelBridge } from "../src/panel/hooks/usePanelBridge";
 
 vi.mock("../src/panel/hooks/usePanelBridge", () => ({
-  usePanelBridge: vi.fn()
+  usePanelBridge: vi.fn(),
 }));
 
 type MountedView = {
@@ -49,7 +49,7 @@ const mount = async (node: React.ReactElement): Promise<MountedView> => {
         root.unmount();
       });
       container.remove();
-    }
+    },
   };
 };
 
@@ -61,14 +61,14 @@ const snapshot: JourneyDevtoolsSerializableSnapshot = {
     metadata: null,
     isFirstTimeVisit: true,
     async: { isLoading: false, isSuccess: true, isError: false, error: null },
-    isTerminal: false
+    isTerminal: false,
   },
   history: {
     timeline: ["start"],
     currentIndex: 0,
     visited: { start: true },
     canGoBack: false,
-    canGoForward: false
+    canGoForward: false,
   },
   context: { attempts: 1 },
   status: "running",
@@ -84,9 +84,9 @@ const snapshot: JourneyDevtoolsSerializableSnapshot = {
       priority: 0,
       guard: "none",
       enabled: true,
-      selected: true
-    }
-  ]
+      selected: true,
+    },
+  ],
 };
 
 const machine: JourneyPanelMachineState = {
@@ -98,14 +98,14 @@ const machine: JourneyPanelMachineState = {
     mode: "graph",
     stepIds: ["start", "review"],
     eventTypes: ["submitLogin"],
-    features: []
+    features: [],
   },
   protocolVersion: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
   snapshot,
   timelineEntries: [],
   selectedTimelineIndex: 0,
   followLatest: true,
-  pendingCommandsByRequestId: {}
+  pendingCommandsByRequestId: {},
 };
 
 const panelState: JourneyPanelState = {
@@ -113,7 +113,7 @@ const panelState: JourneyPanelState = {
   machines: { "machine-1": machine },
   machineOrder: ["machine-1"],
   selectedMachineId: "machine-1",
-  displayLimit: 25
+  displayLimit: 25,
 };
 
 const HookProbe = () => {
@@ -130,16 +130,16 @@ const HookProbe = () => {
         stateMachineId: state.activeMachine?.meta.machineId ?? null,
         connection: {
           displayConnected: connection.displayConnected,
-          isCommandChannelReady: connection.isCommandChannelReady
+          isCommandChannelReady: connection.isCommandChannelReady,
         },
         active: {
           currentStepId: active.displayedSnapshot?.currentStep?.id ?? null,
           disabled: active.areCommandsDisabled,
-          reason: active.commandDisabledReason
+          reason: active.commandDisabledReason,
         },
         legacy,
         retention,
-        actionKeys: Object.keys(actions).sort()
+        actionKeys: Object.keys(actions).sort(),
       })}
     </pre>
   );
@@ -162,7 +162,7 @@ describe("panel context hooks", () => {
       selectTimelineEntry: vi.fn(),
       setFollowLatest: vi.fn(),
       setDisplayLimit: vi.fn(),
-      pruneTimeline: vi.fn()
+      pruneTimeline: vi.fn(),
     });
   });
 
@@ -175,7 +175,7 @@ describe("panel context hooks", () => {
     const view = await mount(
       <PanelProvider>
         <HookProbe />
-      </PanelProvider>
+      </PanelProvider>,
     );
 
     expect(view.container.textContent).toContain('"stateMachineId":"machine-1"');
@@ -184,7 +184,7 @@ describe("panel context hooks", () => {
     expect(view.container.textContent).toContain('"retention":2000');
     expect(view.container.textContent).toContain('"isLegacyProtocol":false');
     expect(view.container.textContent).toContain(
-      '"actionKeys":["invokeOperation","pruneTimeline","selectMachine","selectTimelineEntry","setDisplayLimit","setFollowLatest"]'
+      '"actionKeys":["invokeOperation","pruneTimeline","selectMachine","selectTimelineEntry","setDisplayLimit","setFollowLatest"]',
     );
 
     await view.unmount();
@@ -197,9 +197,9 @@ describe("panel context hooks", () => {
         machines: {
           "machine-1": {
             ...machine,
-            protocolVersion: JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION
-          }
-        }
+            protocolVersion: JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
+          },
+        },
       },
       connectionWarning: null,
       displayConnected: true,
@@ -209,13 +209,13 @@ describe("panel context hooks", () => {
       selectTimelineEntry: vi.fn(),
       setFollowLatest: vi.fn(),
       setDisplayLimit: vi.fn(),
-      pruneTimeline: vi.fn()
+      pruneTimeline: vi.fn(),
     });
 
     const view = await mount(
       <PanelProvider>
         <HookProbe />
-      </PanelProvider>
+      </PanelProvider>,
     );
 
     expect(view.container.textContent).toContain('"isLegacyProtocol":true');

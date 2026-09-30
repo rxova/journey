@@ -20,9 +20,9 @@ const definition = {
   steps: [
     { id: "account" as const, metadata: { label: "Account" } },
     { id: "shipping" as const, metadata: { label: "Shipping" } },
-    { id: "review" as const, metadata: { label: "Review" } }
+    { id: "review" as const, metadata: { label: "Review" } },
   ],
-  context: { total: 0 }
+  context: { total: 0 },
 };
 
 describe("withLinearTypes", () => {
@@ -41,7 +41,7 @@ describe("withLinearTypes", () => {
     expect(await machine.navigate.goToNextStep()).toEqual({
       ok: true,
       from: "account",
-      to: "shipping"
+      to: "shipping",
     });
   });
 
@@ -49,7 +49,7 @@ describe("withLinearTypes", () => {
     const machine = withLinearTypes<CheckoutBag>()({
       // @ts-expect-error `title` is not part of the bag's metadata
       steps: [{ id: "account" as const, metadata: { title: "Account" } }],
-      context: { total: 0 }
+      context: { total: 0 },
     });
 
     expect(machine.getSnapshot().steps.totalSteps).toBe(1);

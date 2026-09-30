@@ -5,7 +5,7 @@ import type {
   JourneyEventPayloads,
   JourneyMachineBase,
   JourneySubscriptionEvent,
-  Unsubscribe
+  Unsubscribe,
 } from "./types";
 
 /**
@@ -13,7 +13,7 @@ import type {
  * nested group) is created once — all changing state lives in the snapshot.
  */
 export function buildMachineSurface(
-  runtime: JourneyRuntime
+  runtime: JourneyRuntime,
 ): JourneyMachineBase<unknown, string> & { plugins: Readonly<Record<string, unknown>> } {
   return {
     getSnapshot: () => runtime.store.getSnapshot(),
@@ -23,28 +23,28 @@ export function buildMachineSurface(
       resume: () => runtime.resume(),
       complete: (payload?: unknown) => runtime.complete(payload),
       terminate: (payload?: unknown) => runtime.terminate(payload),
-      restart: () => runtime.restart()
+      restart: () => runtime.restart(),
     },
     dispose: () => runtime.dispose(),
     navigate: {
       goToStepById: (id: string) => runtime.goToStepById(id),
       goToPreviousStep: (n?: number) => runtime.goToPreviousStep(n),
       goToNextStep: (work) => runtime.goToNextStep(work as AnyNavigationWork | undefined),
-      goToLastVisitedStep: () => runtime.goToLastVisitedStep()
+      goToLastVisitedStep: () => runtime.goToLastVisitedStep(),
     },
     subscriptions: {
       subscribe: (listener: () => void): Unsubscribe => runtime.store.subscribe(listener),
       subscribeEvent: <TEvent extends JourneySubscriptionEvent>(
         event: TEvent,
-        listener: (payload: JourneyEventPayloads<unknown, string>[TEvent]) => void
-      ): Unsubscribe => runtime.store.subscribeEvent(event, listener)
+        listener: (payload: JourneyEventPayloads<unknown, string>[TEvent]) => void,
+      ): Unsubscribe => runtime.store.subscribeEvent(event, listener),
     },
     context: {
-      update: (updater: ContextUpdater<unknown>) => runtime.updateContext(updater)
+      update: (updater: ContextUpdater<unknown>) => runtime.updateContext(updater),
     },
     async: {
-      clearError: () => runtime.clearAsyncError()
+      clearError: () => runtime.clearAsyncError(),
     },
-    plugins: runtime.pluginApis
+    plugins: runtime.pluginApis,
   };
 }

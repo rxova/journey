@@ -1,7 +1,7 @@
 import type {
   JourneyControls,
   JourneySubscriptionEvent,
-  NavigationResult
+  NavigationResult,
 } from "@rxova/journey-core";
 import type { JourneyDevtoolsOperationResultPayload } from "./protocol.types";
 
@@ -47,7 +47,7 @@ export type JourneyDevtoolsAttachableMachine = {
     subscribe(listener: () => void): () => void;
     subscribeEvent(
       event: JourneySubscriptionEvent,
-      listener: (payload: unknown) => void
+      listener: (payload: unknown) => void,
     ): () => void;
   };
   context: { update(updater: never): void };
@@ -69,7 +69,7 @@ export type LooseMachine = {
     subscribe(listener: () => void): () => void;
     subscribeEvent(
       event: JourneySubscriptionEvent,
-      listener: (payload: Record<string, unknown>) => void
+      listener: (payload: Record<string, unknown>) => void,
     ): () => void;
   };
   context: { update(updater: (previous: unknown) => unknown): void };
@@ -92,6 +92,6 @@ export type OperationRunner = {
     }[];
   };
   run: (
-    input: Record<string, unknown> | undefined
+    input: Record<string, unknown> | undefined,
   ) => Promise<JourneyDevtoolsOperationResultPayload>;
 };

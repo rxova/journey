@@ -6,7 +6,7 @@ describe("snapshot structural sharing", () => {
   it("preserves sub-object identity across an unrelated context change (linear)", async () => {
     const machine = createLinearJourney(
       { steps: ["a", "b"], context: { n: 0 } },
-      { autoStart: true }
+      { autoStart: true },
     );
     await flush();
 
@@ -27,7 +27,7 @@ describe("snapshot structural sharing", () => {
   it("returns the identical snapshot object when nothing changed at all", async () => {
     const machine = createLinearJourney(
       { steps: ["a", "b"], context: { n: 0 } },
-      { autoStart: true }
+      { autoStart: true },
     );
     await flush();
 
@@ -39,7 +39,7 @@ describe("snapshot structural sharing", () => {
   it("does not notify selector subscribers for a content-identical publish", async () => {
     const machine = createLinearJourney(
       { steps: ["a", "b"], context: { n: 0 } },
-      { autoStart: true }
+      { autoStart: true },
     );
     await flush();
 
@@ -56,9 +56,9 @@ describe("snapshot structural sharing", () => {
       {
         steps: { form: { on: { SUBMIT: "review" } }, review: {} },
         initial: "form",
-        context: { attempts: 0 }
+        context: { attempts: 0 },
       },
-      { autoStart: true }
+      { autoStart: true },
     );
     await flush();
 

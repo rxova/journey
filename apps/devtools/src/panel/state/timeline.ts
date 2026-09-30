@@ -3,7 +3,7 @@ import type {
   JourneyDevtoolsMachineMeta,
   JourneyDevtoolsOperationInvoke,
   JourneyDevtoolsProtocolVersion,
-  JourneyDevtoolsSerializableSnapshot
+  JourneyDevtoolsSerializableSnapshot,
 } from "@rxova/journey-devtools-bridge";
 import { JOURNEY_DEVTOOLS_PROTOCOL_VERSION } from "@rxova/journey-devtools-bridge";
 import type {
@@ -12,7 +12,7 @@ import type {
   JourneyPanelPendingCommand,
   JourneyPanelTimelineEntry,
   NonUnregisterBridgeEnvelope,
-  TimelineEnvelopeKind
+  TimelineEnvelopeKind,
 } from "./types";
 import { MAX_MACHINE_TIMELINE_ENTRIES } from "./types";
 import { getSnapshotCurrentStepId } from "../utils/snapshot";
@@ -20,14 +20,14 @@ import { getSnapshotCurrentStepId } from "../utils/snapshot";
 export const buildJourneyMachineState = (
   machineId: string,
   snapshot: JourneyDevtoolsSerializableSnapshot,
-  protocolVersion: JourneyDevtoolsProtocolVersion = JOURNEY_DEVTOOLS_PROTOCOL_VERSION
+  protocolVersion: JourneyDevtoolsProtocolVersion = JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
 ): JourneyPanelMachineState => ({
   meta: {
     machineId,
     label: machineId,
     appName: null,
     mutationsEnabled: true,
-    features: []
+    features: [],
   },
   protocolVersion,
   snapshot,
@@ -35,15 +35,15 @@ export const buildJourneyMachineState = (
   selectedTimelineIndex: 0,
   followLatest: true,
   timelineSequence: 0,
-  pendingCommandsByRequestId: {}
+  pendingCommandsByRequestId: {},
 });
 
 export const normalizeMachineMeta = (
-  meta: JourneyDevtoolsMachineMeta
+  meta: JourneyDevtoolsMachineMeta,
 ): JourneyPanelMachineMeta => ({
   ...meta,
   mutationsEnabled: meta.mutationsEnabled ?? true,
-  features: meta.features ?? []
+  features: meta.features ?? [],
 });
 
 export const applyMachineUpdateForEnvelope = (
@@ -51,7 +51,7 @@ export const applyMachineUpdateForEnvelope = (
   envelope: NonUnregisterBridgeEnvelope,
   options: {
     applyOperationResultSnapshot?: boolean;
-  } = {}
+  } = {},
 ): JourneyPanelMachineState => {
   switch (envelope.kind) {
     case "register":
@@ -59,7 +59,7 @@ export const applyMachineUpdateForEnvelope = (
         ...machine,
         meta: normalizeMachineMeta(envelope.meta),
         protocolVersion: envelope.version,
-        snapshot: envelope.snapshot
+        snapshot: envelope.snapshot,
       };
     case "snapshot":
       return { ...machine, protocolVersion: envelope.version, snapshot: envelope.snapshot };
@@ -70,7 +70,7 @@ export const applyMachineUpdateForEnvelope = (
         snapshot:
           options.applyOperationResultSnapshot !== false && envelope.result.kind === "snapshot"
             ? envelope.result.snapshot
-            : machine.snapshot
+            : machine.snapshot,
       };
     default:
       return machine;
@@ -81,7 +81,7 @@ const buildEntryId = (
   machineId: string,
   envelopeKind: TimelineEnvelopeKind,
   timestamp: number,
-  nextSequence: number
+  nextSequence: number,
 ): string => `${machineId}-timeline-${envelopeKind}-${timestamp}-${nextSequence}`;
 
 const buildOperationLabel = (operationId: string, prefix: "OP" | "ERROR" | "EVENT" | "SNAPSHOT") =>
@@ -92,7 +92,7 @@ export const buildQueuedTimelineEntry = (
   machineId: string,
   requestId: string,
   invocation: JourneyDevtoolsOperationInvoke,
-  timestamp: number
+  timestamp: number,
 ): JourneyPanelTimelineEntry => {
   const nextSequence = (machine.timelineSequence ?? machine.timelineEntries.length) + 1;
   return {
@@ -107,18 +107,18 @@ export const buildQueuedTimelineEntry = (
     actionPayload: {
       machineId,
       requestId,
-      invocation
+      invocation,
     },
     meta: {
       machineId,
-      operationId: invocation.operationId
-    }
+      operationId: invocation.operationId,
+    },
   };
 };
 
 export const buildTimelineEntry = (
   machine: JourneyPanelMachineState,
-  envelope: Exclude<JourneyDevtoolsBridgeEnvelope, { kind: "unregister" }>
+  envelope: Exclude<JourneyDevtoolsBridgeEnvelope, { kind: "unregister" }>,
 ): JourneyPanelTimelineEntry => {
   const nextSequence = (machine.timelineSequence ?? machine.timelineEntries.length) + 1;
 
@@ -134,7 +134,7 @@ export const buildTimelineEntry = (
         envelopeKind: envelope.kind,
         snapshot: envelope.snapshot,
         actionPayload: { machineId: envelope.machineId, meta: envelope.meta },
-        meta: { machineId: envelope.machineId }
+        meta: { machineId: envelope.machineId },
       };
     case "snapshot":
       return {
@@ -143,14 +143,14 @@ export const buildTimelineEntry = (
         kind: "snapshot",
         label: buildOperationLabel(
           getSnapshotCurrentStepId(envelope.snapshot) ?? envelope.snapshot.status,
-          "SNAPSHOT"
+          "SNAPSHOT",
         ),
         requestId: null,
         invocation: null,
         envelopeKind: envelope.kind,
         snapshot: envelope.snapshot,
         actionPayload: envelope.snapshot,
-        meta: { machineId: envelope.machineId }
+        meta: { machineId: envelope.machineId },
       };
     case "observation":
       return {
@@ -164,7 +164,7 @@ export const buildTimelineEntry = (
         envelopeKind: envelope.kind,
         snapshot: null,
         actionPayload: envelope.event,
-        meta: { machineId: envelope.machineId }
+        meta: { machineId: envelope.machineId },
       };
     case "operationResult": {
       const pending = machine.pendingCommandsByRequestId[envelope.requestId] ?? null;
@@ -189,8 +189,8 @@ export const buildTimelineEntry = (
           "transitionId" in envelope.result &&
           typeof envelope.result.transitionId === "string"
             ? { transitionId: envelope.result.transitionId }
-            : {})
-        }
+            : {}),
+        },
       };
     }
     case "operationError": {
@@ -208,8 +208,8 @@ export const buildTimelineEntry = (
         meta: {
           machineId: envelope.machineId,
           operationId: envelope.operationId,
-          errorMessage: envelope.error.message
-        }
+          errorMessage: envelope.error.message,
+        },
       };
     }
   }
@@ -217,7 +217,7 @@ export const buildTimelineEntry = (
 
 export const appendTimelineEntry = (
   machine: JourneyPanelMachineState,
-  entry: JourneyPanelTimelineEntry
+  entry: JourneyPanelTimelineEntry,
 ): JourneyPanelMachineState => {
   const nextSequence = (machine.timelineSequence ?? machine.timelineEntries.length) + 1;
   const entriesWithNext = [...machine.timelineEntries, entry];
@@ -232,14 +232,14 @@ export const appendTimelineEntry = (
     timelineSequence: nextSequence,
     selectedTimelineIndex: machine.followLatest
       ? lastIndex
-      : Math.min(boundedSelectedIndex, lastIndex)
+      : Math.min(boundedSelectedIndex, lastIndex),
   };
 };
 
 export const replaceTimelineEntry = (
   machine: JourneyPanelMachineState,
   entryId: string,
-  nextEntry: JourneyPanelTimelineEntry
+  nextEntry: JourneyPanelTimelineEntry,
 ): JourneyPanelMachineState => {
   const index = machine.timelineEntries.findIndex((entry) => entry.id === entryId);
   if (index === -1) {
@@ -253,7 +253,7 @@ export const replaceTimelineEntry = (
 
 export const pruneTimelineEntries = (
   machine: JourneyPanelMachineState,
-  keep: number
+  keep: number,
 ): JourneyPanelMachineState => {
   const safeKeep = Math.max(0, keep);
   if (safeKeep >= machine.timelineEntries.length) {
@@ -270,7 +270,7 @@ export const pruneTimelineEntries = (
     timelineEntries: nextEntries,
     selectedTimelineIndex: machine.followLatest
       ? lastIndex
-      : Math.min(boundedSelectedIndex, lastIndex)
+      : Math.min(boundedSelectedIndex, lastIndex),
   };
 };
 
@@ -282,7 +282,7 @@ export const removeJourneyMachineOrder = (order: string[], machineId: string): s
 
 export const clearPendingCommand = (
   pendingCommandsByRequestId: Record<string, JourneyPanelPendingCommand>,
-  requestId: string
+  requestId: string,
 ) => {
   if (!(requestId in pendingCommandsByRequestId)) {
     return pendingCommandsByRequestId;
@@ -295,7 +295,7 @@ export const clearPendingCommand = (
 
 export const resolveSnapshotAtIndex = (
   entries: readonly JourneyPanelTimelineEntry[],
-  index: number
+  index: number,
 ): JourneyDevtoolsSerializableSnapshot | null => {
   for (let cursor = index; cursor >= 0; cursor -= 1) {
     const candidate = entries[cursor]?.snapshot;

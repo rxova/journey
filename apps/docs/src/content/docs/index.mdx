@@ -40,7 +40,7 @@ export const chromeStore =
   actions={[
     { text: "Start with Core", href: `${base}core/getting-started/`, variant: "primary" },
     { text: "React quickstart", href: `${base}react/quickstart/` },
-    { text: "GitHub", href: "https://github.com/rxova/journey", external: true }
+    { text: "GitHub", href: "https://github.com/rxova/journey", external: true },
   ]}
 />
 
@@ -55,7 +55,7 @@ import { createLinearJourney } from "@rxova/journey-core";
 
 const machine = createLinearJourney({
   context: { name: "" },
-  steps: ["account", "review"]
+  steps: ["account", "review"],
 });
 
 await machine.navigate.goToNextStep();
@@ -74,7 +74,7 @@ await machine.navigate.goToNextStep();
       { id: "plan", label: "plan" },
       { id: "account", label: "account" },
       { id: "payment", label: "payment" },
-      { id: "review", label: "review" }
+      { id: "review", label: "review" },
     ]}
   />
 </Section>
@@ -115,7 +115,7 @@ steps: {
     on: {
       submit: [
         { to: "admin", when: ({ context }) => context.role === "admin" },
-        { to: "dashboard" }
+        { to: "dashboard" },
       ];
     }
   }
@@ -137,33 +137,33 @@ steps: {
       {
         icon: "braces",
         title: "Typed step IDs",
-        body: "Invalid step names, events and transition targets are compile errors, not runtime bugs. The types are checked where the flow is authored."
+        body: "Invalid step names, events and transition targets are compile errors, not runtime bugs. The types are checked where the flow is authored.",
       },
       {
         icon: "history",
         title: "Timeline history",
-        body: "The runtime keeps the realized path, so <code>goToPreviousStep()</code> and <code>goToLastVisitedStep()</code> are deterministic instead of guesswork."
+        body: "The runtime keeps the realized path, so <code>goToPreviousStep()</code> and <code>goToLastVisitedStep()</code> are deterministic instead of guesswork.",
       },
       {
         icon: "timer",
         title: "Async guards",
-        body: "Loading, failure, timeout and retry are part of flow behaviour. Check with async <code>when</code>, and read the phase off the snapshot."
+        body: "Loading, failure, timeout and retry are part of flow behaviour. Check with async <code>when</code>, and read the phase off the snapshot.",
       },
       {
         icon: "blocks",
         title: "Plugins, not baggage",
-        body: "Persistence, analytics, replay and execution paths extend the machine without adding to the base cost."
+        body: "Persistence, analytics, replay and execution paths extend the machine without adding to the base cost.",
       },
       {
         icon: "unplug",
         title: "Zero dependencies",
-        body: "Nothing to inherit and nothing to audit. Tree-shakeable, so you ship the parts of it you actually reach for."
+        body: "Nothing to inherit and nothing to audit. Tree-shakeable, so you ship the parts of it you actually reach for.",
       },
       {
         icon: "layers",
         title: "Framework-agnostic core",
-        body: "The runtime is vanilla TypeScript. React bindings are a thin separate package; Vue, Svelte and plain TS need no shim at all."
-      }
+        body: "The runtime is vanilla TypeScript. React bindings are a thin separate package; Vue, Svelte and plain TS need no shim at all.",
+      },
     ]}
   />
 </Section>
@@ -179,24 +179,24 @@ steps: {
       {
         value: "0",
         label: "Runtime dependencies",
-        note: "Across core, the React bindings and the DevTools bridge"
+        note: "Across core, the React bindings and the DevTools bridge",
       },
       ...sizes.map((pkg) => ({ value: pkg.value, label: pkg.label, note: pkg.note })),
       {
         value: `${coverage.statements}%`,
         label: "Coverage floor, per file",
-        note: `Statements, branches, functions and lines — enforced by vitest in CI`
+        note: `Statements, branches, functions and lines — enforced by vitest in CI`,
       },
       {
         value: `${packages}`,
         label: "Published packages",
-        note: "Take only what you need — each one is independently installable"
+        note: "Take only what you need — each one is independently installable",
       },
       {
         value: "MIT",
         label: "Licensed, every package",
-        note: "Open source, developed in the open at github.com/rxova/journey"
-      }
+        note: "Open source, developed in the open at github.com/rxova/journey",
+      },
     ]}
   />
 </Section>
@@ -212,20 +212,20 @@ steps: {
         src: panelOverview,
         alt: "Rxova Journey DevTools: Timeline and state",
         title: "Timeline and state",
-        body: "The realized timeline, the current step, and the context behind it."
+        body: "The realized timeline, the current step, and the context behind it.",
       },
       {
         src: panelLogs,
         alt: "Rxova Journey DevTools: Transition log",
         title: "Transition log",
-        body: "Every event, the transition it matched, and the diff it committed."
+        body: "Every event, the transition it matched, and the diff it committed.",
       },
       {
         src: panelCommands,
         alt: "Rxova Journey DevTools: Live commands",
         title: "Live commands",
-        body: "Send events into the running machine and watch the snapshot answer."
-      }
+        body: "Send events into the running machine and watch the snapshot answer.",
+      },
     ]}
     link={{ href: chromeStore, text: "Get it from the Chrome Web Store", external: true }}
   />
@@ -243,7 +243,7 @@ import { createLinearJourney } from "@rxova/journey-react";
 const signup = createLinearJourney({
   name: "signup",
   context: { email: "" },
-  steps: ["start", "review"]
+  steps: ["start", "review"],
 });
 
 const App = () => (
@@ -264,6 +264,6 @@ Need one runtime per request, route boundary or owned component boundary? Use <a
     { text: "Core quickstart", href: `${base}core/getting-started/`, variant: "primary" },
     { text: "React quickstart", href: `${base}react/quickstart/` },
     { text: "Plugins", href: `${base}core/plugins/overview/` },
-    { text: "Star on GitHub", href: "https://github.com/rxova/journey", external: true }
+    { text: "Star on GitHub", href: "https://github.com/rxova/journey", external: true },
   ]}
 />

@@ -38,17 +38,17 @@ const checkout = createLinearJourney<CheckoutStepId, CheckoutContext, CheckoutTe
   steps: [
     { id: "account", metadata: { title: "Account" } },
     { id: "shipping", metadata: { title: "Shipping" } },
-    { id: "review", metadata: { title: "Review" } }
+    { id: "review", metadata: { title: "Review" } },
   ],
   context: {
     email: "",
-    shippingId: null
-  }
+    shippingId: null,
+  },
 });
 
 checkout.context.update((context) => ({
   ...context,
-  email: "ada@example.com"
+  email: "ada@example.com",
 }));
 
 await checkout.navigate.goToNextStep();
@@ -60,7 +60,7 @@ needed:
 ```ts
 createLinearJourney({
   steps: ["account", "shipping", "review"],
-  context: {}
+  context: {},
 });
 ```
 
@@ -78,9 +78,9 @@ const result = await checkout.navigate.goToNextStep({
   commit: ({ result: shipping, updateContext }) => {
     updateContext((context) => ({
       ...context,
-      shippingId: shipping.id
+      shippingId: shipping.id,
     }));
-  }
+  },
 });
 
 if (!result.ok) {
@@ -120,16 +120,16 @@ const machine = createLinearJourney({
   steps: [
     {
       id: "payment",
-      onLeave: ({ snapshot }) => analytics.track("payment_left", snapshot.context)
+      onLeave: ({ snapshot }) => analytics.track("payment_left", snapshot.context),
     },
     {
       id: "receipt",
       onEnter: async ({ snapshot, updateContext }) => {
         const receipt = await loadReceipt(snapshot.context);
         updateContext((context) => ({ ...context, receiptId: receipt.id }));
-      }
-    }
-  ]
+      },
+    },
+  ],
 });
 ```
 
@@ -234,7 +234,7 @@ machine.context.update(
   immerConnector<CheckoutContext>((draft) => {
     draft.cart.items.push(item);
     draft.cart.total += item.price;
-  })
+  }),
 );
 ```
 
@@ -254,9 +254,9 @@ import { createAnalyticsPlugin } from "@rxova/journey-core/plugins";
 const machine = createLinearJourney(definition, {
   plugins: [
     createAnalyticsPlugin({
-      track: (event) => analytics.track(event.name, event.payload)
-    })
-  ]
+      track: (event) => analytics.track(event.name, event.payload),
+    }),
+  ],
 });
 ```
 

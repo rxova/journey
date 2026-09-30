@@ -13,5 +13,5 @@ export const initialContext: LoginContext = {
   verificationCode: "",
   qrCode: null,
   error: null,
-  attempts: 0
+  attempts: 0,
 };

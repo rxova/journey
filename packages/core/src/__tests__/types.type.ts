@@ -9,7 +9,7 @@ import type {
   GraphSnapshot,
   JourneyPlugin,
   LinearSnapshot,
-  NavigationResult
+  NavigationResult,
 } from "@rxova/journey-core";
 
 type Equal<A, B> =
@@ -21,7 +21,7 @@ type Expect<T extends true> = T;
 export function linearTypes() {
   const machine = createLinearJourney({
     steps: ["intro", { id: "details" }, "done"],
-    context: { n: 0 }
+    context: { n: 0 },
   });
 
   type StepId = Parameters<typeof machine.navigate.goToStepById>[0];
@@ -45,7 +45,7 @@ export function linearTypes() {
     commit: ({ result, updateContext }) => {
       type _result = Expect<Equal<typeof result, { amount: number }>>;
       updateContext((context) => ({ n: context.n + result.amount }));
-    }
+    },
   });
   void machine.navigate.goToPreviousStep();
   void machine.navigate.goToPreviousStep(2);
@@ -73,19 +73,19 @@ export function linearOutcomeTypes() {
     }
   >({
     steps: ["form", "result"],
-    context: { draftId: null }
+    context: { draftId: null },
   });
 
   createLinearJourney<"form" | "result", { draftId: string | null }>({
     // @ts-expect-error explicit step ids reject undeclared steps
     steps: ["form", "other"],
-    context: { draftId: null }
+    context: { draftId: null },
   });
 
   createLinearJourney<"form" | "result", { draftId: string | null }>({
     steps: ["form", "result"],
     // @ts-expect-error explicit context rejects the wrong shape
-    context: { draftId: 42 }
+    context: { draftId: 42 },
   });
 
   machine.controls.complete({ receiptId: "receipt-1" });
@@ -129,13 +129,13 @@ export function graphTypes() {
                 type _payload = Expect<
                   Equal<NonNullable<typeof event>["payload"], { code: string }>
                 >;
-              }
-            }
-          ]
-        }
+              },
+            },
+          ],
+        },
       },
-      done: {}
-    }
+      done: {},
+    },
   });
 
   void machine.send("submit", { code: "1234" });
@@ -178,7 +178,7 @@ export function discriminants(
   snapshot:
     | LinearSnapshot<{ n: number }, "a" | "b", unknown>
     | GraphSnapshot<{ n: number }, "a" | "b", unknown>,
-  result: NavigationResult<"a" | "b">
+  result: NavigationResult<"a" | "b">,
 ) {
   if (snapshot.type === "linear") {
     type _linear = Expect<Equal<typeof snapshot.steps.stepOrder, readonly ("a" | "b")[]>>;
@@ -200,11 +200,11 @@ export function discriminants(
 export function pluginTypes() {
   const counter: JourneyPlugin<"counter", { count(): number }, { count: number }> = {
     name: "counter",
-    setup: () => ({ api: { count: () => 0 } })
+    setup: () => ({ api: { count: () => 0 } }),
   };
   const machine = createLinearJourney(
     { steps: ["a"], context: {} },
-    { plugins: [counter] as const }
+    { plugins: [counter] as const },
   );
 
   type _api = Expect<Equal<typeof machine.plugins.counter, { count(): number }>>;

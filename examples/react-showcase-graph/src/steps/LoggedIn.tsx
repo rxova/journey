@@ -14,12 +14,12 @@ export const LoggedIn = () => {
   React.useEffect(() => {
     console.log(
       "[journey] loggedIn: authenticated as",
-      journey.machine.getSnapshot().context.username
+      journey.machine.getSnapshot().context.username,
     );
     return () => {
       console.log(
         "[journey] loggedIn: leaving session for",
-        journey.machine.getSnapshot().context.username
+        journey.machine.getSnapshot().context.username,
       );
     };
   }, []);

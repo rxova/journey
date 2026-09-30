@@ -49,7 +49,7 @@ describe("a rejected navigation names its source and target", () => {
     const result = await machine.navigate.goToNextStep({
       run: () => {
         throw boom;
-      }
+      },
     });
     await flush();
 
@@ -60,7 +60,7 @@ describe("a rejected navigation names its source and target", () => {
     const machine = createGraphJourney({
       steps: { a: {}, b: { on: { GO: "a" } } },
       initial: "a",
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();

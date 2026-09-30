@@ -17,7 +17,7 @@ const PROTOTYPE_KEYS = [
   "hasOwnProperty",
   "isPrototypeOf",
   "propertyIsEnumerable",
-  "toLocaleString"
+  "toLocaleString",
 ] as const;
 
 const KEY = "journey";
@@ -28,7 +28,7 @@ function memoryStorage(seed?: string): JourneyStorage {
   return {
     getItem: (key) => data.get(key) ?? null,
     setItem: (key, value) => void data.set(key, value),
-    removeItem: (key) => void data.delete(key)
+    removeItem: (key) => void data.delete(key),
   };
 }
 
@@ -36,7 +36,7 @@ describe("step-id guards reject inherited properties", () => {
   describe.each(PROTOTYPE_KEYS)("%s", (key) => {
     it("is rejected as a linear startAt", () => {
       expect(() =>
-        createLinearJourney({ steps: ["a", "b"], context: {} }, { startAt: key as "a" })
+        createLinearJourney({ steps: ["a", "b"], context: {} }, { startAt: key as "a" }),
       ).toThrow(/startAt references unknown step/);
     });
 
@@ -46,10 +46,10 @@ describe("step-id guards reject inherited properties", () => {
           {
             steps: { a: { on: { GO: "b" } }, b: {} },
             initial: "a",
-            context: {}
+            context: {},
           },
-          { startAt: key as "a" }
-        )
+          { startAt: key as "a" },
+        ),
       ).toThrow(/startAt references unknown step/);
     });
 
@@ -72,13 +72,13 @@ describe("step-id guards reject inherited properties", () => {
           context: { n: 9 },
           timeline: ["a", key],
           currentIndex: 1,
-          savedAt: 1
-        })
+          savedAt: 1,
+        }),
       );
 
       const machine = createLinearJourney(
         { steps: ["a", "b"], context: { n: 0 } },
-        { persist: { key: KEY, storage } }
+        { persist: { key: KEY, storage } },
       );
       machine.controls.start();
       await flush();
@@ -95,8 +95,8 @@ describe("step-id guards reject inherited properties", () => {
     expect(() =>
       createLinearJourney(
         { steps: ["a"], context: {} },
-        { plugins: [{ name: "constructor", setup: () => ({ api: { ok: true } }) }] as const }
-      )
+        { plugins: [{ name: "constructor", setup: () => ({ api: { ok: true } }) }] as const },
+      ),
     ).not.toThrow();
   });
 
@@ -104,7 +104,7 @@ describe("step-id guards reject inherited properties", () => {
     const plugin = { name: "dup", setup: () => ({ api: {} }) };
 
     expect(() =>
-      createLinearJourney({ steps: ["a"], context: {} }, { plugins: [plugin, plugin] as const })
+      createLinearJourney({ steps: ["a"], context: {} }, { plugins: [plugin, plugin] as const }),
     ).toThrow(/duplicate plugin name "dup"/);
   });
 });
@@ -132,7 +132,7 @@ describe("a step legitimately named after a prototype key still works", () => {
 
   it("is still caught when declared twice", () => {
     expect(() =>
-      createLinearJourney({ steps: ["a", "toString", "toString"], context: {} })
+      createLinearJourney({ steps: ["a", "toString", "toString"], context: {} }),
     ).toThrow(/duplicate step id "toString"/);
   });
 
@@ -143,13 +143,13 @@ describe("a step legitimately named after a prototype key still works", () => {
         context: { n: 9 },
         timeline: ["a", "toString"],
         currentIndex: 1,
-        savedAt: 1
-      })
+        savedAt: 1,
+      }),
     );
 
     const machine = createLinearJourney(
       { steps: ["a", "toString"], context: { n: 0 } },
-      { persist: { key: KEY, storage } }
+      { persist: { key: KEY, storage } },
     );
     machine.controls.start();
     await flush();

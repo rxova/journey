@@ -79,22 +79,22 @@ export const PACKAGES = [
     npm: "@rxova/journey-core",
     check: "core/createLinearJourney",
     label: "Core, brotlied",
-    note: "A linear journey and everything it pulls in, measured by size-limit"
+    note: "A linear journey and everything it pulls in, measured by size-limit",
   },
   {
     dir: "react",
     npm: "@rxova/journey-react",
     check: "react/createLinearJourney",
     label: "React bindings",
-    note: "Provider, step renderer and typed hooks"
+    note: "Provider, step renderer and typed hooks",
   },
   {
     dir: "devtools-bridge",
     npm: "@rxova/journey-devtools-bridge",
     check: "devtools-bridge/attachJourneyDevtools",
     label: "DevTools bridge",
-    note: "Opt-in — nothing reaches your bundle unless you attach it"
-  }
+    note: "Opt-in — nothing reaches your bundle unless you attach it",
+  },
 ];
 
 const readJson = (path: string): Record<string, unknown> =>
@@ -117,7 +117,7 @@ function measure(dir: string): Map<string, SizeLimitCheck> | null {
       cwd,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
-      timeout: 120_000
+      timeout: 120_000,
     });
     const checks = JSON.parse(stdout) as SizeLimitCheck[];
     return new Map(checks.map((check) => [check.name, check]));
@@ -145,14 +145,14 @@ let cache: PackageSize[] | undefined;
 export function resolveSize(
   pkg: (typeof PACKAGES)[number],
   budgets: SizeLimitBudget[] | undefined,
-  checks: Map<string, SizeLimitCheck> | null
+  checks: Map<string, SizeLimitCheck> | null,
 ): PackageSize {
   const budget = budgets?.find((entry) => entry.name === pkg.check);
   const measured = checks?.get(pkg.check);
   if (!budget || (checks && !measured)) {
     const known = (budgets ?? []).map((entry) => entry.name).join(", ") || "none";
     throw new Error(
-      `proof.ts: ${pkg.npm} has no size-limit entry named "${pkg.check}" (entries: ${known})`
+      `proof.ts: ${pkg.npm} has no size-limit entry named "${pkg.check}" (entries: ${known})`,
     );
   }
 
@@ -163,7 +163,7 @@ export function resolveSize(
     measured: Boolean(measured),
     // "7.58 kB" when measured, "≤ 7.9 kB" when falling back to the budget.
     value: measured ? toKb(measured.size) : `≤ ${budget.limit}`,
-    budget: budget.limit
+    budget: budget.limit,
   };
 }
 
@@ -179,7 +179,7 @@ export function packageSizes(): PackageSize[] {
   const skip = process.env.DOCS_MEASURE === "0";
 
   cache = PACKAGES.map((pkg) =>
-    resolveSize(pkg, sizeBudgets(pkg.dir), skip ? null : measure(pkg.dir))
+    resolveSize(pkg, sizeBudgets(pkg.dir), skip ? null : measure(pkg.dir)),
   );
 
   return cache;
@@ -200,7 +200,7 @@ export function coverageFloor(): Record<"statements" | "branches" | "functions" 
     statements: read("statements"),
     branches: read("branches"),
     functions: read("functions"),
-    lines: read("lines")
+    lines: read("lines"),
   };
 }
 

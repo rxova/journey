@@ -11,7 +11,7 @@ function mountPanel(rootElement = document.getElementById("root")) {
   createRoot(rootElement).render(
     <React.StrictMode>
       <App />
-    </React.StrictMode>
+    </React.StrictMode>,
   );
 }
 

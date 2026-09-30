@@ -22,13 +22,13 @@ export const pluginDefinition = {
   context: {
     name: "",
     email: "",
-    notes: ""
+    notes: "",
   },
   steps: [
     { id: "profile", metadata: { label: "Profile" } },
     { id: "review", metadata: { label: "Review" } },
-    { id: "done", metadata: { label: "Done" } }
-  ]
+    { id: "done", metadata: { label: "Done" } },
+  ],
 } satisfies LinearJourneyDefinition<PluginStepId, PluginContext>;
 
 type StructureBag = {
@@ -47,20 +47,20 @@ export const structureDefinition = {
   steps: {
     start: {
       metadata: { label: "Start" },
-      on: { next: [{ to: "address" }, { to: "review" }] }
+      on: { next: [{ to: "address" }, { to: "review" }] },
     },
     address: {
       metadata: { label: "Address" },
-      on: { next: [{ to: "review" }, { to: "done" }], reject: "blocked" }
+      on: { next: [{ to: "review" }, { to: "done" }], reject: "blocked" },
     },
     review: {
       metadata: { label: "Review" },
-      on: { next: "done", reject: "address" }
+      on: { next: "done", reject: "address" },
     },
     blocked: { metadata: { label: "Blocked" } },
     done: { metadata: { label: "Done" } },
-    orphan: { metadata: { label: "Orphan" } }
-  }
+    orphan: { metadata: { label: "Orphan" } },
+  },
 } satisfies GraphDefinition<StructureBag>;
 
 export const pluginTitles: Record<PluginDemoKind, string> = {
@@ -68,5 +68,5 @@ export const pluginTitles: Record<PluginDemoKind, string> = {
   diagnostics: "Structure Analysis",
   "execution-paths": "Execution Paths Plugin",
   persistence: "Persistence Plugin",
-  replay: "Replay Plugin"
+  replay: "Replay Plugin",
 };

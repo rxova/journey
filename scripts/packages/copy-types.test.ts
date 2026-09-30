@@ -33,7 +33,7 @@ describe("copy-types script", () => {
       file: "index.d.ts",
       sources: [],
       names: [],
-      mappings: ""
+      mappings: "",
     });
 
     await writeFile(join(distDir, "index.d.ts"), dts, "utf8");
@@ -91,7 +91,7 @@ describe("copy-types script", () => {
       file: `${fileBaseName}.d.ts`,
       sources: [],
       names: [],
-      mappings: ""
+      mappings: "",
     });
 
     await writeFile(join(distDir, `${fileBaseName}.d.ts`), dts, "utf8");

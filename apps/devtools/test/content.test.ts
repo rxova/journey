@@ -4,7 +4,7 @@ import {
   JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
   JOURNEY_DEVTOOLS_CHANNEL,
   JOURNEY_DEVTOOLS_EXTENSION_SOURCE,
-  JOURNEY_DEVTOOLS_PROTOCOL_VERSION
+  JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
 } from "@rxova/journey-devtools-bridge";
 
 type RuntimeMessageListener = (message: unknown) => void;
@@ -36,11 +36,11 @@ const createRegisterEnvelope = () =>
               description: null,
               mutates: true,
               output: "snapshot",
-              fields: []
-            }
-          ]
-        }
-      ]
+              fields: [],
+            },
+          ],
+        },
+      ],
     },
     snapshot: {
       currentStepId: "start",
@@ -48,9 +48,9 @@ const createRegisterEnvelope = () =>
       context: { count: 0 },
       visited: { start: true },
       status: "running",
-      async: { isLoading: false, byStep: {} }
+      async: { isLoading: false, byStep: {} },
     },
-    timestamp: Date.now()
+    timestamp: Date.now(),
   }) as const;
 
 const createSnapshotEnvelope = () =>
@@ -66,9 +66,9 @@ const createSnapshotEnvelope = () =>
       context: { count: 1 },
       visited: { start: true, review: true },
       status: "running",
-      async: { isLoading: false, byStep: {} }
+      async: { isLoading: false, byStep: {} },
     },
-    timestamp: Date.now()
+    timestamp: Date.now(),
   }) as const;
 
 describe("content bridge", () => {
@@ -97,16 +97,16 @@ describe("content bridge", () => {
         onMessage: {
           addListener: vi.fn((listener: RuntimeMessageListener) => {
             runtimeRef.current = listener;
-          })
-        }
-      }
+          }),
+        },
+      },
     } as unknown as typeof chrome);
 
     await import("../src/content");
 
     expect(postMessage).toHaveBeenCalledWith(
       { type: "__RXOVA_JOURNEY_DEVTOOLS_REPLAY_REQUEST__" },
-      window.location.origin
+      window.location.origin,
     );
 
     const runtime = runtimeRef.current;
@@ -121,24 +121,24 @@ describe("content bridge", () => {
       new MessageEvent("message", {
         source: window,
         origin: window.location.origin,
-        data: registerEnvelope
-      })
+        data: registerEnvelope,
+      }),
     );
     windowListener(
       new MessageEvent("message", {
         source: window,
         origin: window.location.origin,
-        data: snapshotEnvelope
-      })
+        data: snapshotEnvelope,
+      }),
     );
 
     expect(sendMessage).toHaveBeenCalledWith({
       type: "bridge-envelope",
-      envelope: registerEnvelope
+      envelope: registerEnvelope,
     });
     expect(sendMessage).toHaveBeenCalledWith({
       type: "bridge-envelope",
-      envelope: snapshotEnvelope
+      envelope: snapshotEnvelope,
     });
 
     const invokeEnvelope = {
@@ -149,7 +149,7 @@ describe("content bridge", () => {
       machineId: "machine-1",
       requestId: "req-1",
       invocation: { operationId: "core.goToNextStep" },
-      timestamp: Date.now()
+      timestamp: Date.now(),
     } as const;
 
     runtime({ type: "extension-envelope", envelope: invokeEnvelope });
@@ -159,15 +159,15 @@ describe("content bridge", () => {
     runtime({ type: "bridge-replay-request" });
     expect(postMessage).toHaveBeenCalledWith(
       { type: "__RXOVA_JOURNEY_DEVTOOLS_REPLAY_REQUEST__" },
-      window.location.origin
+      window.location.origin,
     );
     expect(sendMessage).toHaveBeenCalledWith({
       type: "bridge-envelope",
-      envelope: registerEnvelope
+      envelope: registerEnvelope,
     });
     expect(sendMessage).toHaveBeenCalledWith({
       type: "bridge-envelope",
-      envelope: snapshotEnvelope
+      envelope: snapshotEnvelope,
     });
   });
 
@@ -190,9 +190,9 @@ describe("content bridge", () => {
         onMessage: {
           addListener: vi.fn((listener: RuntimeMessageListener) => {
             runtimeRef.current = listener;
-          })
-        }
-      }
+          }),
+        },
+      },
     } as unknown as typeof chrome);
 
     await import("../src/content");
@@ -208,15 +208,15 @@ describe("content bridge", () => {
       new MessageEvent("message", {
         source: window,
         origin: "",
-        data: createSnapshotEnvelope()
-      })
+        data: createSnapshotEnvelope(),
+      }),
     );
     windowListener(
       new MessageEvent("message", {
         source: window,
         origin: "https://evil.example",
-        data: createSnapshotEnvelope()
-      })
+        data: createSnapshotEnvelope(),
+      }),
     );
     windowListener(
       new MessageEvent("message", {
@@ -224,21 +224,21 @@ describe("content bridge", () => {
         origin: window.location.origin,
         data: {
           ...createSnapshotEnvelope(),
-          source: JOURNEY_DEVTOOLS_EXTENSION_SOURCE
-        }
-      })
+          source: JOURNEY_DEVTOOLS_EXTENSION_SOURCE,
+        },
+      }),
     );
 
     expect(sendMessage).not.toHaveBeenCalledWith(
       expect.objectContaining({
-        type: "bridge-envelope"
-      })
+        type: "bridge-envelope",
+      }),
     );
 
     runtime({ type: "bad-message" });
     runtime({
       type: "extension-envelope",
-      envelope: createSnapshotEnvelope()
+      envelope: createSnapshotEnvelope(),
     });
     expect(postMessage).toHaveBeenCalledTimes(1);
   });
@@ -260,9 +260,9 @@ describe("content bridge", () => {
         onMessage: {
           addListener: vi.fn((listener: RuntimeMessageListener) => {
             runtimeRef.current = listener;
-          })
-        }
-      }
+          }),
+        },
+      },
     } as unknown as typeof chrome);
 
     await import("../src/content");
@@ -278,8 +278,8 @@ describe("content bridge", () => {
       new MessageEvent("message", {
         source: window,
         origin: window.location.origin,
-        data: registerEnvelope
-      })
+        data: registerEnvelope,
+      }),
     );
     windowListener(
       new MessageEvent("message", {
@@ -297,11 +297,11 @@ describe("content bridge", () => {
             kind: "snapshot",
             snapshot: registerEnvelope.snapshot,
             transitioned: true,
-            transitionId: "goToNextStep"
+            transitionId: "goToNextStep",
           },
-          timestamp: Date.now()
-        }
-      })
+          timestamp: Date.now(),
+        },
+      }),
     );
     windowListener(
       new MessageEvent("message", {
@@ -313,9 +313,9 @@ describe("content bridge", () => {
           source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
           kind: "unregister",
           machineId: "machine-1",
-          timestamp: Date.now()
-        }
-      })
+          timestamp: Date.now(),
+        },
+      }),
     );
 
     sendMessage.mockClear();
@@ -341,9 +341,9 @@ describe("content bridge", () => {
         onMessage: {
           addListener: vi.fn((listener: RuntimeMessageListener) => {
             runtimeRef.current = listener;
-          })
-        }
-      }
+          }),
+        },
+      },
     } as unknown as typeof chrome);
 
     await import("../src/content");
@@ -359,8 +359,8 @@ describe("content bridge", () => {
       new MessageEvent("message", {
         source: window,
         origin: window.location.origin,
-        data: snapshotEnvelope
-      })
+        data: snapshotEnvelope,
+      }),
     );
 
     sendMessage.mockClear();
@@ -368,7 +368,7 @@ describe("content bridge", () => {
     expect(sendMessage).toHaveBeenCalledTimes(1);
     expect(sendMessage).toHaveBeenCalledWith({
       type: "bridge-envelope",
-      envelope: snapshotEnvelope
+      envelope: snapshotEnvelope,
     });
 
     vi.resetModules();

@@ -9,7 +9,7 @@ export type JourneyPanelStructuredDiff = {
 export const EMPTY_STRUCTURED_DIFF: JourneyPanelStructuredDiff = {
   added: {},
   removed: {},
-  changed: {}
+  changed: {},
 };
 
 const ROOT_PATH = "root";
@@ -27,7 +27,7 @@ const buildPath = (basePath: string, key: string | number, isArrayIndex: boolean
 
 export const computeStructuredDiff = (
   previousValue: unknown,
-  nextValue: unknown
+  nextValue: unknown,
 ): JourneyPanelStructuredDiff => {
   const added: Record<string, unknown> = {};
   const removed: Record<string, unknown> = {};
@@ -77,7 +77,7 @@ export const computeStructuredDiff = (
 
     changed[path || ROOT_PATH] = {
       before: previous,
-      after: next
+      after: next,
     };
   };
 
@@ -86,6 +86,6 @@ export const computeStructuredDiff = (
   return {
     added,
     removed,
-    changed
+    changed,
   };
 };

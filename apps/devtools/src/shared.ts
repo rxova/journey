@@ -11,7 +11,7 @@ import {
   type JourneyDevtoolsExtensionEnvelope,
   type JourneyDevtoolsOperationInvoke,
   type JourneyDevtoolsProtocolVersion,
-  type JourneyDevtoolsSerializedError
+  type JourneyDevtoolsSerializedError,
 } from "@rxova/journey-devtools-bridge";
 
 export const JOURNEY_DEVTOOLS_PANEL_PORT = "rxova-journey-devtools-panel";
@@ -85,7 +85,7 @@ const isPanelWarning = (value: unknown): value is PanelWarning => {
 };
 
 export const isContentToBackgroundMessage = (
-  value: unknown
+  value: unknown,
 ): value is ContentToBackgroundMessage => {
   if (!isRecord(value) || value.type !== "bridge-envelope") {
     return false;
@@ -94,7 +94,7 @@ export const isContentToBackgroundMessage = (
 };
 
 export const isBackgroundToContentMessage = (
-  value: unknown
+  value: unknown,
 ): value is BackgroundToContentMessage => {
   if (!isRecord(value) || typeof value.type !== "string") {
     return false;
@@ -151,7 +151,7 @@ export const createInvokeEnvelope = (
   machineId: string,
   requestId: string,
   invocation: JourneyDevtoolsOperationInvoke,
-  version: JourneyDevtoolsProtocolVersion = JOURNEY_DEVTOOLS_PROTOCOL_VERSION
+  version: JourneyDevtoolsProtocolVersion = JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
 ): JourneyDevtoolsExtensionEnvelope => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
   version,
@@ -160,14 +160,14 @@ export const createInvokeEnvelope = (
   machineId,
   requestId,
   invocation,
-  timestamp: Date.now()
+  timestamp: Date.now(),
 });
 
 export const createTransportErrorEnvelope = (
   machineId: string,
   requestId: string,
   error: JourneyDevtoolsSerializedError,
-  version: JourneyDevtoolsProtocolVersion = JOURNEY_DEVTOOLS_PROTOCOL_VERSION
+  version: JourneyDevtoolsProtocolVersion = JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
 ): JourneyDevtoolsBridgeOperationErrorEnvelope => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
   version,
@@ -177,7 +177,7 @@ export const createTransportErrorEnvelope = (
   requestId,
   operationId: "transport",
   error,
-  timestamp: Date.now()
+  timestamp: Date.now(),
 });
 
 export const serializeTransportError = (error: unknown): JourneyDevtoolsSerializedError =>

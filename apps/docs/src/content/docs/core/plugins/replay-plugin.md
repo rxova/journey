@@ -9,7 +9,7 @@ observations.
 import { createReplayPlugin } from "@rxova/journey-core/plugins";
 
 const machine = createLinearJourney(definition, {
-  plugins: [createReplayPlugin({ maxEntries: 500, captureSnapshots: true })]
+  plugins: [createReplayPlugin({ maxEntries: 500, captureSnapshots: true })],
 });
 ```
 

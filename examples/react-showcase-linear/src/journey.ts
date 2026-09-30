@@ -10,7 +10,7 @@ import { initialContext } from "./context";
 export const loginJourney = createLinearJourney({
   name: "loginJourney",
   context: initialContext,
-  steps: ["login", "setup2fa", "verifyCode", { id: "loggedIn", metadata: { label: "Logged In" } }]
+  steps: ["login", "setup2fa", "verifyCode", { id: "loggedIn", metadata: { label: "Logged In" } }],
 });
 
 // The machine is standalone: observers attach at module scope, no React needed.

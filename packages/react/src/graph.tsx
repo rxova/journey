@@ -6,7 +6,7 @@ import type {
   GraphJourneyMachine,
   GraphJourneyOptions,
   GraphSnapshot,
-  JourneyEventObject
+  JourneyEventObject,
 } from "@rxova/journey-core";
 import type { GraphJourneyBundle, ReactGraphDefinition, ReactGraphStepConfig } from "./react.types";
 
@@ -17,7 +17,7 @@ export type {
   JourneyViews,
   ReactGraphDefinition,
   ReactGraphStep,
-  ReactGraphStepConfig
+  ReactGraphStepConfig,
 } from "./react.types";
 
 /**
@@ -63,7 +63,7 @@ export function createGraphJourney<
   TEvents extends JourneyEventObject = JourneyEventObject,
   THandlers = unknown,
   TMeta = Record<string, unknown>,
-  const TPlugins extends readonly AnyJourneyPlugin[] = readonly []
+  const TPlugins extends readonly AnyJourneyPlugin[] = readonly [],
 >(
   definition: {
     readonly steps: Readonly<
@@ -85,7 +85,7 @@ export function createGraphJourney<
     /** Optional bundle name, used for the React DevTools display names. */
     readonly name?: string;
   },
-  options?: GraphJourneyOptions<NoInfer<THandlers>, TPlugins, NoInfer<TStepId>>
+  options?: GraphJourneyOptions<NoInfer<THandlers>, TPlugins, NoInfer<TStepId>>,
 ): GraphJourneyBundle<TContext, TStepId, TEvents, TMeta, TPlugins> {
   type Machine = GraphJourneyMachine<TContext, TStepId, TEvents, TMeta, TPlugins>;
   type Snapshot = GraphSnapshot<TContext, TStepId, TMeta, TEvents>;
@@ -95,16 +95,16 @@ export function createGraphJourney<
   // default — see the note in create-linear-journey.tsx.
   const machine: Machine = coreCreateGraphJourney(coreDefinition, {
     ...options,
-    autoStart: options?.autoStart === true
+    autoStart: options?.autoStart === true,
   });
 
   return {
     ...createJourneyBindings<Machine, TContext, TStepId, Snapshot>(
       machine,
       name ?? "GraphJourney",
-      createAutoStartHook(machine, options?.autoStart === undefined)
+      createAutoStartHook(machine, options?.autoStart === undefined),
     ),
-    send: machine.send
+    send: machine.send,
   };
 }
 
@@ -125,11 +125,11 @@ export const withGraphTypes =
   <TBag extends Bag>() =>
   <const TPlugins extends readonly AnyJourneyPlugin[] = readonly []>(
     definition: ReactGraphDefinition<TBag> & { readonly name?: string },
-    options?: GraphJourneyOptions<HandlersOf<TBag>, TPlugins, TBag["stepId"]>
+    options?: GraphJourneyOptions<HandlersOf<TBag>, TPlugins, TBag["stepId"]>,
   ): GraphJourneyBundle<TBag["context"], TBag["stepId"], TBag["events"], MetaOf<TBag>, TPlugins> =>
     createGraphJourney(
       definition as unknown as Parameters<typeof createGraphJourney>[0],
-      options as unknown as Parameters<typeof createGraphJourney>[1]
+      options as unknown as Parameters<typeof createGraphJourney>[1],
     ) as unknown as GraphJourneyBundle<
       TBag["context"],
       TBag["stepId"],

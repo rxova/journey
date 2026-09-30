@@ -17,9 +17,9 @@ export default function App() {
         label: "React Showcase Linear",
         appName: "React Showcase Linear",
         enabled: true,
-        mutationsEnabled: true
+        mutationsEnabled: true,
       }),
-    []
+    [],
   );
 
   return (
@@ -28,7 +28,7 @@ export default function App() {
         login: <Login />,
         setup2fa: <Setup2fa />,
         verifyCode: <VerifyCode />,
-        loggedIn: <LoggedIn />
+        loggedIn: <LoggedIn />,
       }}
     >
       <Shell>

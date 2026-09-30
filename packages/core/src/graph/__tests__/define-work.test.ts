@@ -20,7 +20,7 @@ const handlers = {
   submit: async () => {
     await wait(1);
     return { method: "sms", token: "t0ken" } as const;
-  }
+  },
 };
 
 describe("defineWork", () => {
@@ -49,16 +49,16 @@ describe("defineWork", () => {
                 {
                   to: "email",
                   label: "verify-by-email",
-                  when: ({ context }) => context.method === "email"
+                  when: ({ context }) => context.method === "email",
                 },
-                { to: "sms", label: "verify-by-sms" }
-              ]
-            })
-          }
+                { to: "sms", label: "verify-by-sms" },
+              ],
+            }),
+          },
         },
         email: {},
-        sms: {}
-      }
+        sms: {},
+      },
     });
 
     machine.controls.start();
@@ -84,14 +84,14 @@ describe("defineWork", () => {
                 updateContext((c) => ({ ...c, method: result.method })),
               candidates: [
                 { to: "email", when: ({ context }) => context.method === "email" },
-                { to: "sms" }
-              ]
-            })
-          }
+                { to: "sms" },
+              ],
+            }),
+          },
         },
         email: {},
-        sms: {}
-      }
+        sms: {},
+      },
     });
 
     machine.controls.start();
@@ -118,13 +118,13 @@ describe("defineWork", () => {
               },
               label: "submit-credentials",
               timeoutMs: 5,
-              candidates: [{ to: "sms" }]
-            })
-          }
+              candidates: [{ to: "sms" }],
+            }),
+          },
         },
         email: {},
-        sms: {}
-      }
+        sms: {},
+      },
     });
 
     machine.controls.start();
@@ -133,14 +133,14 @@ describe("defineWork", () => {
 
     expect(result).toMatchObject({ ok: false, reason: "error" });
     expect((result as { error: Error }).error.message).toContain(
-      "send work(submit-credentials) timed out after 5ms"
+      "send work(submit-credentials) timed out after 5ms",
     );
   });
 
   it("returns its argument unchanged at runtime", () => {
     const config = {
       run: () => Promise.resolve({ method: "sms", token: "t" } as Submitted),
-      candidates: [{ to: "sms" as const }]
+      candidates: [{ to: "sms" as const }],
     };
     expect(defineWork<AuthBag, "SUBMIT">()(config)).toBe(config);
   });

@@ -19,7 +19,7 @@ function analyzeJourneyStructure(structure: JourneyStructure): DiagnosticsResult
         severity: "warning",
         from: transition.from,
         event: transition.event,
-        message: `Transition "${transition.from}.${transition.event}" is shadowed by an earlier unconditional candidate.`
+        message: `Transition "${transition.from}.${transition.event}" is shadowed by an earlier unconditional candidate.`,
       });
       return;
     }
@@ -45,7 +45,7 @@ function analyzeJourneyStructure(structure: JourneyStructure): DiagnosticsResult
       code: "unreachable-step",
       severity: "warning",
       stepId,
-      message: `Step "${stepId}" is unreachable from the initial step "${structure.initial}".`
+      message: `Step "${stepId}" is unreachable from the initial step "${structure.initial}".`,
     });
   }
 
@@ -71,7 +71,7 @@ function analyzeJourneyStructure(structure: JourneyStructure): DiagnosticsResult
             from: transition.from,
             event: transition.event,
             steps: cycleSteps,
-            message: `Cycle detected: ${cycleSteps.join(" -> ")}.`
+            message: `Cycle detected: ${cycleSteps.join(" -> ")}.`,
           });
         }
         continue;
@@ -88,7 +88,7 @@ function analyzeJourneyStructure(structure: JourneyStructure): DiagnosticsResult
       code: "no-terminal-path",
       severity: "warning",
       stepId: structure.initial,
-      message: `No terminal step is reachable from the initial step "${structure.initial}".`
+      message: `No terminal step is reachable from the initial step "${structure.initial}".`,
     });
   }
 
@@ -101,8 +101,8 @@ function analyzeJourneyStructure(structure: JourneyStructure): DiagnosticsResult
       terminalStepIds,
       cycleCount: cycleKeys.size,
       shadowedTransitionCount: shadowedIndexes.size,
-      terminalPathExists
-    }
+      terminalPathExists,
+    },
   };
 }
 
@@ -123,7 +123,7 @@ export function analyzeStructure(definition: {
   readonly initial: string;
 }): DiagnosticsResult {
   const { stepIds, transitions } = normalizeGraphDefinition(
-    definition as Parameters<typeof normalizeGraphDefinition>[0]
+    definition as Parameters<typeof normalizeGraphDefinition>[0],
   );
   const structure: JourneyStructure = {
     kind: "graph",
@@ -135,8 +135,8 @@ export function analyzeStructure(definition: {
       to: transition.to,
       guarded: transition.when !== undefined,
       label: transition.label ?? null,
-      index: transition.index
-    }))
+      index: transition.index,
+    })),
   };
   return analyzeJourneyStructure(structure);
 }

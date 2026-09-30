@@ -9,7 +9,7 @@ import {
   useActiveMachine,
   usePanelActions,
   usePanelConnection,
-  usePanelState
+  usePanelState,
 } from "../context/PanelProvider";
 import styles from "./appShell.module.css";
 

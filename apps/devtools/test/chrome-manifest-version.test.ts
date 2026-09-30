@@ -5,14 +5,14 @@ describe("toChromeManifestVersion", () => {
   it("maps stable semver to a Chrome-safe release version", () => {
     expect(toChromeManifestVersion("1.0.0")).toEqual({
       version: "1.0.0.65535",
-      versionName: "1.0.0"
+      versionName: "1.0.0",
     });
   });
 
   it("maps prerelease semver into a lower Chrome build number and preserves the display version", () => {
     expect(toChromeManifestVersion("1.0.0-rc.1")).toEqual({
       version: "1.0.0.40001",
-      versionName: "1.0.0-rc.1"
+      versionName: "1.0.0-rc.1",
     });
   });
 

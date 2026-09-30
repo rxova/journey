@@ -45,7 +45,7 @@ describe("error boundaries", () => {
           <journey.Provider views={{ boom: <Exploding />, safe: <span>safe</span> }}>
             <journey.StepRenderer />
           </journey.Provider>
-        </Boundary>
+        </Boundary>,
       );
       await flush();
     });
@@ -67,7 +67,7 @@ describe("error boundaries", () => {
       render(
         <Boundary>
           <journey.StepRenderer />
-        </Boundary>
+        </Boundary>,
       );
       await flush();
     });
@@ -89,7 +89,7 @@ describe("error boundaries", () => {
           <journey.Provider views={{ a: <Flaky /> }}>
             <journey.StepRenderer />
           </journey.Provider>
-        </Boundary>
+        </Boundary>,
       );
       await flush();
     });
@@ -101,7 +101,7 @@ describe("error boundaries", () => {
     render(
       <journey.Provider views={{ a: <Flaky /> }}>
         <journey.StepRenderer />
-      </journey.Provider>
+      </journey.Provider>,
     );
     await flush();
     expect(screen.getByTestId("recovered")).toBeTruthy();
@@ -132,7 +132,7 @@ describe("suspense", () => {
         <journey.Provider views={{ lazy: <Suspending /> }}>
           <journey.StepRenderer />
         </journey.Provider>
-      </React.Suspense>
+      </React.Suspense>,
     );
     expect(screen.getByTestId("pending")).toBeTruthy();
     // The ordering that makes this work: the first pass renders StepRenderer's

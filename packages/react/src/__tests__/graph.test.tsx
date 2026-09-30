@@ -11,10 +11,10 @@ const makeBundle = () =>
     steps: {
       form: { on: { SUBMIT: "review" } },
       review: { on: { EDIT: "form", CONFIRM: "done" } },
-      done: {}
+      done: {},
     },
     initial: "form",
-    context: { attempts: 0 } as Ctx
+    context: { attempts: 0 } as Ctx,
   });
 
 const Form = makeStep("form");
@@ -41,7 +41,7 @@ describe("graph bundle", () => {
       <bundle.Provider views={views}>
         <Controls />
         <bundle.StepRenderer fallback={<span data-testid="fallback">…</span>} />
-      </bundle.Provider>
+      </bundle.Provider>,
     );
     await flush();
 
@@ -125,7 +125,7 @@ describe("graph bundle", () => {
         <bundle.Provider views={views}>
           <Attempts testId="second" />
         </bundle.Provider>
-      </>
+      </>,
     );
     await flush();
 
@@ -168,14 +168,14 @@ describe("graph bundle", () => {
       {
         steps: { form: { on: { FINISH: "done" } }, done: {} },
         initial: "form",
-        context: {}
+        context: {},
       },
-      { autoStart: false }
+      { autoStart: false },
     );
     render(
       <bundle.Provider views={{ form: <Form />, done: <Done /> }}>
         <bundle.StepRenderer fallback={<span data-testid="fallback">waiting</span>} />
-      </bundle.Provider>
+      </bundle.Provider>,
     );
     await flush();
     expect(screen.getByTestId("fallback")).toBeTruthy();
@@ -249,16 +249,16 @@ describe("graph bundle edges", () => {
       steps: { form: { on: { FINISH: "done" } }, done: {} },
       initial: "form",
       context: {},
-      name: "checkout"
+      name: "checkout",
     });
     expect((named.Provider as { displayName?: string }).displayName).toBe("checkout.Provider");
     expect((named.StepRenderer as { displayName?: string }).displayName).toBe(
-      "checkout.StepRenderer"
+      "checkout.StepRenderer",
     );
 
     const anonymous = makeBundle();
     expect((anonymous.Provider as { displayName?: string }).displayName).toBe(
-      "GraphJourney.Provider"
+      "GraphJourney.Provider",
     );
   });
 
@@ -269,7 +269,7 @@ describe("graph bundle edges", () => {
         <bundle.Provider views={views}>
           <bundle.StepRenderer />
         </bundle.Provider>
-      </React.StrictMode>
+      </React.StrictMode>,
     );
     await flush();
     expect(screen.getByTestId("step-form")).toBeTruthy();

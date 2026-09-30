@@ -15,7 +15,7 @@ export const JourneyMachineSelector = React.memo(function JourneyMachineSelector
   machineOrder,
   machines,
   selectedMachineId,
-  onSelect
+  onSelect,
 }: JourneyMachineSelectorProps) {
   return (
     <section className={panelStyles.card}>

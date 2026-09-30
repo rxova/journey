@@ -3,7 +3,7 @@ import { createLinearJourney } from "@rxova/journey-core";
 import {
   createPersistencePlugin,
   DEFAULT_SAVE_REASONS,
-  normalizeDebounceMs
+  normalizeDebounceMs,
 } from "@rxova/journey-core/plugins";
 import { flush, wait } from "@rxova/journey-core/testing";
 import type { JourneyStorage } from "@rxova/journey-core/plugins";
@@ -14,7 +14,7 @@ function memoryStorage(): JourneyStorage & { dump(): Map<string, string> } {
     getItem: (key) => data.get(key) ?? null,
     setItem: (key, value) => void data.set(key, value),
     removeItem: (key) => void data.delete(key),
-    dump: () => data
+    dump: () => data,
   };
 }
 
@@ -29,14 +29,14 @@ describe("persistence plugin — debounced writes", () => {
         plugins: [createPersistencePlugin({ storage, key: "auto", debounceMs: 10 })] as const,
         // The untouched state is the first assertion, and entering the initial
         // step already schedules a save.
-        autoStart: false
-      }
+        autoStart: false,
+      },
     );
     const api = machine.plugins.persistence;
     expect(api.getPersistenceState()).toEqual({
       status: "idle",
       lastSavedAt: null,
-      error: null
+      error: null,
     });
 
     machine.controls.start();
@@ -58,11 +58,11 @@ describe("persistence plugin — debounced writes", () => {
       setItem: (key, value) => {
         writes += 1;
         void storage.setItem(key, value);
-      }
+      },
     };
     const machine = createLinearJourney(
       { steps: ["a"], context: { n: 0 } },
-      { plugins: [createPersistencePlugin({ storage: counting, key: "auto", debounceMs: 15 })] }
+      { plugins: [createPersistencePlugin({ storage: counting, key: "auto", debounceMs: 15 })] },
     );
     await flush();
     writes = 0;
@@ -79,7 +79,7 @@ describe("persistence plugin — debounced writes", () => {
     const storage = memoryStorage();
     const machine = createLinearJourney(
       { steps: ["a"], context: { n: 0 } },
-      { plugins: [createPersistencePlugin({ storage, key: "auto" })] as const }
+      { plugins: [createPersistencePlugin({ storage, key: "auto" })] as const },
     );
     await flush();
 
@@ -93,7 +93,7 @@ describe("persistence plugin — debounced writes", () => {
     const storage = memoryStorage();
     const machine = createLinearJourney(
       { steps: ["a"], context: { n: 0 } },
-      { plugins: [createPersistencePlugin({ storage, key: "auto", debounceMs: 50 })] as const }
+      { plugins: [createPersistencePlugin({ storage, key: "auto", debounceMs: 50 })] as const },
     );
     await flush();
     const api = machine.plugins.persistence;
@@ -120,10 +120,10 @@ describe("persistence plugin — debounced writes", () => {
             storage,
             key: "auto",
             debounceMs: 5,
-            saveOn: ["transition"]
-          })
-        ] as const
-      }
+            saveOn: ["transition"],
+          }),
+        ] as const,
+      },
     );
     await wait(20); // let the initial entry's own debounced save land
     storage.dump().clear();
@@ -150,14 +150,14 @@ describe("persistence plugin — debounced writes", () => {
               setItem: () => {
                 throw boom;
               },
-              removeItem: () => undefined
+              removeItem: () => undefined,
             },
             key: "auto",
-            debounceMs: 5
-          })
+            debounceMs: 5,
+          }),
         ] as const,
-        onListenerError: (error) => reported.push(error)
-      }
+        onListenerError: (error) => reported.push(error),
+      },
     );
     await flush();
 
@@ -173,7 +173,7 @@ describe("persistence plugin — debounced writes", () => {
     const storage = memoryStorage();
     const machine = createLinearJourney(
       { steps: ["a"], context: { n: 0 } },
-      { plugins: [createPersistencePlugin({ storage, key: "auto", debounceMs: 15 })] as const }
+      { plugins: [createPersistencePlugin({ storage, key: "auto", debounceMs: 15 })] as const },
     );
     await wait(30); // let the initial entry's own debounced save land
     storage.dump().clear();

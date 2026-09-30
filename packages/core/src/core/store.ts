@@ -3,7 +3,7 @@ import type {
   JourneyEventPayloads,
   JourneySnapshot,
   JourneySubscriptionEvent,
-  Unsubscribe
+  Unsubscribe,
 } from "./types";
 
 /**
@@ -22,7 +22,7 @@ export class JourneyStore<TContext, TStepId extends string> {
 
   constructor(
     initial: JourneySnapshot<TContext, TStepId>,
-    onListenerError?: (error: unknown) => void
+    onListenerError?: (error: unknown) => void,
   ) {
     this.snapshot = initial;
     this.onListenerError = onListenerError;
@@ -79,7 +79,7 @@ export class JourneyStore<TContext, TStepId extends string> {
 
   subscribeEvent<TEvent extends JourneySubscriptionEvent>(
     event: TEvent,
-    listener: (payload: JourneyEventPayloads<TContext, TStepId>[TEvent]) => void
+    listener: (payload: JourneyEventPayloads<TContext, TStepId>[TEvent]) => void,
   ): Unsubscribe {
     if (this.disposed) return () => undefined;
     let listeners = this.eventListeners.get(event);
@@ -95,7 +95,7 @@ export class JourneyStore<TContext, TStepId extends string> {
 
   emit<TEvent extends JourneySubscriptionEvent>(
     event: TEvent,
-    payload: JourneyEventPayloads<TContext, TStepId>[TEvent]
+    payload: JourneyEventPayloads<TContext, TStepId>[TEvent],
   ): void {
     const listeners = this.eventListeners.get(event);
     if (!listeners) return;

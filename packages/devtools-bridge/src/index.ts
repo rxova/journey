@@ -3,12 +3,12 @@ export {
   buildOperationRunners,
   createJourneyMachineId,
   OperationRateLimiter,
-  serializeSnapshot
+  serializeSnapshot,
 } from "./bridge.helpers";
 export type {
   JourneyDevtoolsAttachableMachine,
   JourneyDevtoolsBridgeOptions,
-  OperationRunner
+  OperationRunner,
 } from "./bridge.types";
 
 export {
@@ -22,7 +22,7 @@ export {
   isCompatibleInvokeProtocolVersion,
   isJourneyDevtoolsEnvelope,
   isJourneyDevtoolsBridgeEnvelope,
-  isJourneyDevtoolsExtensionEnvelope
+  isJourneyDevtoolsExtensionEnvelope,
 } from "./protocol";
 
 export type {
@@ -46,5 +46,5 @@ export type {
   JourneyDevtoolsProtocolVersion,
   JourneyDevtoolsSerializableSnapshot,
   JourneyDevtoolsSerializedError,
-  JourneyDevtoolsStepFeatureDescriptor
+  JourneyDevtoolsStepFeatureDescriptor,
 } from "./protocol.types";

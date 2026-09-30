@@ -45,7 +45,7 @@ const addDeclarationExtensions = (dtsPath: string, contents: string): string =>
 
     throw new Error(
       `[copy-types] ${dtsPath}: cannot resolve "${spec}" to an emitted declaration. ` +
-        `Expected ${spec}.d.ts or ${spec}/index.d.ts next to it.`
+        `Expected ${spec}.d.ts or ${spec}/index.d.ts next to it.`,
     );
   });
 
