@@ -43,7 +43,7 @@ function findRepoRoot(from = process.cwd()) {
 const REPO = findRepoRoot();
 
 /** One entry of `size-limit --json` output. */
-interface SizeLimitCheck {
+export interface SizeLimitCheck {
   name: string;
   size: number;
   sizeLimit?: number;
@@ -51,7 +51,7 @@ interface SizeLimitCheck {
 }
 
 /** A `size-limit` entry as declared in a package's package.json. */
-interface SizeLimitBudget {
+export interface SizeLimitBudget {
   name: string;
   limit: string;
 }
@@ -67,19 +67,24 @@ export interface PackageSize {
   budget: string | null;
 }
 
-/** The one size-limit check per package that represents "the package". */
-const PACKAGES = [
+/**
+ * The one size-limit check per package that represents "the package". Each
+ * `check` must name an entry in that package's `size-limit` config:
+ * `resolveSize` throws on a name it cannot find, so a rename there fails the
+ * docs build instead of rendering "≤ ?".
+ */
+export const PACKAGES = [
   {
     dir: "core",
     npm: "@rxova/journey-core",
-    check: "core/createJourneyMachine",
+    check: "core/createLinearJourney",
     label: "Core, brotlied",
-    note: "The whole framework-agnostic runtime, measured by size-limit"
+    note: "A linear journey and everything it pulls in, measured by size-limit"
   },
   {
     dir: "react",
     npm: "@rxova/journey-react",
-    check: "react/createJourney",
+    check: "react/createLinearJourney",
     label: "React bindings",
     note: "Provider, step renderer and typed hooks"
   },
@@ -130,28 +135,51 @@ function measure(dir: string): Map<string, SizeLimitCheck> | null {
  */
 let cache: PackageSize[] | undefined;
 
+/**
+ * The figure for one package: the measurement when there is one, else the
+ * declared budget. Throws when the budget is missing, or when size-limit ran
+ * and did not report the check — either means `check` no longer names a
+ * size-limit entry, and there is no honest number left to print.
+ */
+export function resolveSize(
+  pkg: (typeof PACKAGES)[number],
+  budgets: SizeLimitBudget[] | undefined,
+  checks: Map<string, SizeLimitCheck> | null
+): PackageSize {
+  const budget = budgets?.find((entry) => entry.name === pkg.check);
+  const measured = checks?.get(pkg.check);
+  if (!budget || (checks && !measured)) {
+    const known = (budgets ?? []).map((entry) => entry.name).join(", ") || "none";
+    throw new Error(
+      `proof.ts: ${pkg.npm} has no size-limit entry named "${pkg.check}" (entries: ${known})`
+    );
+  }
+
+  return {
+    npm: pkg.npm,
+    label: pkg.label,
+    note: pkg.note,
+    measured: Boolean(measured),
+    // "7.58 kB" when measured, "≤ 7.9 kB" when falling back to the budget.
+    value: measured ? toKb(measured.size) : `≤ ${budget.limit}`,
+    budget: budget.limit
+  };
+}
+
+/** A package's declared size-limit entries. */
+export function sizeBudgets(dir: string): SizeLimitBudget[] | undefined {
+  const manifest = readJson(join(REPO, "packages", dir, "package.json"));
+  return manifest["size-limit"] as SizeLimitBudget[] | undefined;
+}
+
 export function packageSizes(): PackageSize[] {
   if (cache) return cache;
 
   const skip = process.env.DOCS_MEASURE === "0";
 
-  cache = PACKAGES.map((pkg): PackageSize => {
-    const manifest = readJson(join(REPO, "packages", pkg.dir, "package.json"));
-    const budgets = manifest["size-limit"] as SizeLimitBudget[] | undefined;
-    const budget = budgets?.find((entry) => entry.name === pkg.check);
-    const checks = skip ? null : measure(pkg.dir);
-    const measured = checks?.get(pkg.check);
-
-    return {
-      npm: pkg.npm,
-      label: pkg.label,
-      note: pkg.note,
-      measured: Boolean(measured),
-      // "7.58 kB" when measured, "≤ 7.9 kB" when falling back to the budget.
-      value: measured ? toKb(measured.size) : `≤ ${budget?.limit ?? "?"}`,
-      budget: budget?.limit ?? null
-    };
-  });
+  cache = PACKAGES.map((pkg) =>
+    resolveSize(pkg, sizeBudgets(pkg.dir), skip ? null : measure(pkg.dir))
+  );
 
   return cache;
 }
