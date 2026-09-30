@@ -14,13 +14,13 @@ export class SectionErrorBoundary extends React.Component<
   SectionErrorBoundaryProps,
   SectionErrorBoundaryState
 > {
-  state: SectionErrorBoundaryState = { error: null };
+  override state: SectionErrorBoundaryState = { error: null };
 
   static getDerivedStateFromError(error: Error): SectionErrorBoundaryState {
     return { error };
   }
 
-  render(): React.ReactNode {
+  override render(): React.ReactNode {
     if (this.state.error) {
       return (
         <section className={`${panelStyles.card} ${panelStyles.errorCard}`}>
