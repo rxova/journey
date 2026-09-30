@@ -1,27 +1,14 @@
 {
+  // The shared strict preset with the DOM libs and the React JSX runtime,
+  // retargeted. Emit stays ES2020; `lib` only says which runtime APIs may be
+  // *typed*. Journey targets evergreen browsers and Node >= 20.11, all of which
+  // have had `Object.hasOwn` and `Error`'s `cause` since 2021.
+  "extends": "@rxova/repo-config/tsconfig.react.json",
   "compilerOptions": {
     "target": "ES2020",
-    // Emit stays ES2020; `lib` only says which runtime APIs may be *typed*.
-    // Journey targets evergreen browsers and Node >= 20.11, all of which have
-    // had `Object.hasOwn` and `Error`'s `cause` since 2021 — without this,
-    // every use needed a workaround.
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "strict": true,
-    "jsx": "react-jsx",
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "noEmit": true,
-    "skipLibCheck": true,
-    "exactOptionalPropertyTypes": true,
-    "noUncheckedIndexedAccess": true,
-    "noFallthroughCasesInSwitch": true,
-    "forceConsistentCasingInFileNames": true,
-    "esModuleInterop": true,
-    "isolatedModules": true,
-    "resolveJsonModule": true,
+    // Typecheck every workspace against the packages' sources rather than their
+    // built dist, so an app or example never checks against stale declarations.
     "paths": {
       "@rxova/journey-core": ["./packages/core/src/index.ts"],
       "@rxova/journey-core/connectors/immer": ["./packages/core/src/connectors/immer/immer.ts"],
