@@ -1,4 +1,4 @@
-import type { KnipConfig } from "knip";
+import { baseKnipConfig } from "@rxova/repo-config/knip";
 
 /**
  * Unused files, exports and dependencies, as a gate rather than a report.
@@ -9,11 +9,11 @@ import type { KnipConfig } from "knip";
  *
  * Entry points are inferred from each package's manifest, so what follows is
  * only what inference cannot know — every entry a place where a file is reached
- * by something other than a TypeScript import.
+ * by something other than a TypeScript import. The shared preset makes config
+ * hints errors and already knows the docs app reaches `@rxova/brand` through
+ * the Starlight preset's CSS.
  */
-export default {
-  // Advice nobody has to act on is advice that stops being read.
-  treatConfigHintsAsErrors: true,
+export default baseKnipConfig({
   ignoreDependencies: [
     // Named in typedoc.core.json / typedoc.react.json / typedoc.bridge.json as
     // a `plugin` entry. Knip does not read a typedoc config.
@@ -26,14 +26,7 @@ export default {
       // declared budget when the dist is absent. Declaring them is what puts
       // them ahead of the docs in Turbo's `^build` order, so the published page
       // reports a measurement rather than a ceiling.
-      ignoreDependencies: [
-        "@rxova/journey-react",
-        "@rxova/journey-devtools-bridge",
-        // Reached only as a string: the Starlight preset from @rxova/astro-ui
-        // lists `@rxova/brand/fonts.css` in `customCss`, which Vite resolves
-        // from this site's root. Knip reads imports, so the path is invisible.
-        "@rxova/brand"
-      ],
+      ignoreDependencies: ["@rxova/journey-react", "@rxova/journey-devtools-bridge"],
       ignore: [
         // A one-shot Docusaurus-to-Starlight migration, deliberately kept: its
         // own header says it stays so "the transforms it applied are auditable
@@ -84,4 +77,4 @@ export default {
       entry: ["src/**/__tests__/*.type.ts"]
     }
   }
-} satisfies KnipConfig;
+});
