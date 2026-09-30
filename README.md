@@ -408,6 +408,9 @@ mutating operations unless `mutationsEnabled: false` is supplied. The transport 
 
 Full guides and generated API reference are available at [rxova.dev](https://rxova.dev/packages/journey/).
 
+The repository's tooling (the `verify` gate, lint, format, test and build presets, CI) comes from
+[rxova/shared](https://github.com/rxova/shared); see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ```bash
 pnpm install
 pnpm lint
