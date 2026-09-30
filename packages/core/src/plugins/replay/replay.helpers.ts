@@ -45,9 +45,12 @@ function walk(value: unknown, state: WalkState, depth: number): unknown {
     };
   }
   if (value instanceof Date) return value.toISOString();
+  // Unreachable for the built-in `typeof` results, all handled above; kept as a
+  // defensive fallback for anything a host adds.
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string
   if (typeof value !== "object") return String(value);
 
-  const object = value as object;
+  const object = value;
   if (state.memo.has(object)) return state.memo.get(object);
   if (state.inProgress.has(object)) return CIRCULAR;
   if (depth >= state.maxDepth) return TRUNCATED;

@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import type { ExecutionPathsApi } from "@rxova/journey-core/plugins";
 import { journey } from "../journey";
 
 const EventLog = () => {
@@ -48,7 +47,7 @@ const StepMetaDisplay = () => {
 const ExecutionPathsViewer = () => {
   const snapshot = journey.useSnapshot();
   const { machine } = journey;
-  const paths = machine.plugins["execution-paths"] as ExecutionPathsApi;
+  const paths = machine.plugins["execution-paths"];
   const allPaths = [paths.getCurrentPath(), ...paths.getCompletedPaths()];
 
   return (

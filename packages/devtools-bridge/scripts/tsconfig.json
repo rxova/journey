@@ -1,0 +1,8 @@
+{
+  // The package's build scripts, which Node runs through tsx.
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["."]
+}

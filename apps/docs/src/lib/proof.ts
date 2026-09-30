@@ -97,7 +97,8 @@ export const PACKAGES = [
   }
 ];
 
-const readJson = (path: string): Record<string, unknown> => JSON.parse(readFileSync(path, "utf8"));
+const readJson = (path: string): Record<string, unknown> =>
+  JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
 
 /** kB to two decimals, the precision size-limit's own output supports. */
 const toKb = (bytes: number) => `${(bytes / 1000).toFixed(2)} kB`;

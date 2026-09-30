@@ -131,8 +131,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     pushLogEntry({ label: "stepLeave", detail: `${from} -> ${to}` });
   });
 
-  const currentStepId = (): LoginStepId =>
-    (machine.getSnapshot().currentStep?.id ?? "login") as LoginStepId;
+  const currentStepId = (): LoginStepId => machine.getSnapshot().currentStep?.id ?? "login";
 
   const finishJourney = (loggedInStatus: LoginContext["loggedInStatus"]): void => {
     if (loggedInStatus === "loggedIn") {
@@ -341,7 +340,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
   // Linear mode's declared step order is exactly what goToNextStep/goToPreviousStep
   // walk, so it doubles as the stepper's progression map.
   const stepOrder = linearDefinition.steps.map((step) => ({
-    id: step.id as LoginStepId,
+    id: step.id,
     label: (step.metadata as { label?: string } | undefined)?.label ?? step.id
   }));
 

@@ -1,5 +1,6 @@
 import { rmSync } from "node:fs";
 import { build } from "esbuild";
+import type { BuildOptions } from "esbuild";
 
 rmSync("dist", { recursive: true, force: true });
 
@@ -15,7 +16,7 @@ const common = {
   outbase: "src",
   platform: "neutral",
   format: "esm"
-};
+} satisfies BuildOptions;
 
 await build(common);
 

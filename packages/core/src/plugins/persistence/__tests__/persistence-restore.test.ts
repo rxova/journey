@@ -157,7 +157,7 @@ describe("persist option restore", () => {
       })
     ]) {
       const storage = memoryStorage();
-      storage.setItem(KEY, raw);
+      void storage.setItem(KEY, raw);
       const revived = createLinearJourney(linearDefinition, { persist: { key: KEY, storage } });
       revived.controls.start();
       await flush();

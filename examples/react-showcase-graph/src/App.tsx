@@ -32,7 +32,7 @@ export default function App() {
   // The machine is standalone on the bundle — devtools attach to it directly.
   React.useEffect(
     () =>
-      attachJourneyDevtools(journey.machine as never, {
+      attachJourneyDevtools(journey.machine, {
         label: "React Showcase Graph",
         appName: "React Showcase Graph",
         enabled: true,

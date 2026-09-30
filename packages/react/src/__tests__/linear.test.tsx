@@ -1,4 +1,3 @@
-import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { createLinearJourney } from "@rxova/journey-react";
@@ -225,7 +224,11 @@ describe("useStepHandler", () => {
       return (
         <div>
           <span data-testid="error">
-            {step?.async.error == null ? "none" : String(step.async.error)}
+            {step?.async.error == null
+              ? "none"
+              : // The thrown value as text, whatever the handler threw.
+                // eslint-disable-next-line @typescript-eslint/no-base-to-string
+                String(step.async.error)}
           </span>
           <button onClick={() => journey.updateContext((c) => ({ ...c, n: c.n + 1 }))}>bump</button>
           <button onClick={() => void journey.navigate.goToNextStep()}>next</button>

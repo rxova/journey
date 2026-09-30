@@ -76,6 +76,9 @@ export type StepAsyncState = {
   readonly isLoading: boolean;
   readonly isSuccess: boolean;
   readonly isError: boolean;
+  // `| null` is the documented "no error" state, spelled out for readers of the
+  // published types even though `unknown` already includes it.
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   readonly error: unknown | null;
 };
 

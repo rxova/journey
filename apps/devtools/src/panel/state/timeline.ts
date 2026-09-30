@@ -157,6 +157,7 @@ export const buildTimelineEntry = (
         id: buildEntryId(envelope.machineId, envelope.kind, envelope.timestamp, nextSequence),
         timestamp: envelope.timestamp,
         kind: "event",
+        // eslint-disable-next-line @typescript-eslint/no-base-to-string -- whatever the page sent as `type`, shown as text
         label: buildOperationLabel(String(envelope.event.type ?? "event"), "EVENT"),
         requestId: null,
         invocation: null,

@@ -167,9 +167,4 @@ export const withLinearTypes =
     >,
     options: JourneyRuntimeOptions<TPlugins, TBag["stepId"]> = {}
   ): LinearJourneyMachine<TBag["context"], TBag["stepId"], MetaOf<TBag>, TPlugins> =>
-    createLinearJourney(definition, options) as unknown as LinearJourneyMachine<
-      TBag["context"],
-      TBag["stepId"],
-      MetaOf<TBag>,
-      TPlugins
-    >;
+    createLinearJourney(definition, options);
