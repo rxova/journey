@@ -163,7 +163,7 @@ export default [
   },
   {
     files: [
-      "packages/common/tooling/**/*.{ts,js}",
+      "scripts/**/*.ts",
       "packages/*/scripts/**/*.ts",
       "apps/*/scripts/**/*.js",
       "apps/*/src/plugins/**/*.js",

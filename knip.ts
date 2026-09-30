@@ -14,17 +14,7 @@ import type { KnipConfig } from "knip";
 export default {
   // Advice nobody has to act on is advice that stops being read.
   treatConfigHintsAsErrors: true,
-  // The root `packages:coverage` script is `pnpm -r … coverage`, which runs each
-  // workspace's own `coverage` script. Knip reads the trailing word as a binary
-  // and looks for a package named `coverage`.
-  ignoreBinaries: ["coverage"],
   ignoreDependencies: [
-    // Both are invoked as binaries from each publishable package's own
-    // `check:exports` / `attw` script and resolved from the root's
-    // `node_modules/.bin`, so the declaration belongs here while the use is a
-    // workspace down. Knip matches the two up only within one workspace.
-    "publint",
-    "@arethetypeswrong/cli",
     // Named in typedoc.core.json / typedoc.react.json / typedoc.bridge.json as
     // a `plugin` entry. Knip does not read a typedoc config.
     "typedoc-plugin-markdown"
@@ -82,7 +72,13 @@ export default {
     // imports, because the assertion *is* the test and `tsc --noEmit` is what
     // runs it. A missing entry here would report the whole suite as dead code.
     "packages/core": {
-      entry: ["src/**/__tests__/*.type.ts"]
+      entry: [
+        "src/**/__tests__/*.type.ts",
+        // The published subpath barrels. Their exports are the public API of
+        // `./plugins` and `./connectors/immer`, which nothing here imports.
+        "src/plugins/index.ts",
+        "src/connectors/immer/immer.ts"
+      ]
     },
     "packages/react": {
       entry: ["src/**/__tests__/*.type.ts"]

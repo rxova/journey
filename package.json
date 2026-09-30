@@ -19,19 +19,19 @@
   },
   "scripts": {
     "build": "turbo run build",
-    "clean": "turbo run clean && node --import tsx ./packages/common/tooling/clean-paths.ts coverage",
-    "changeset:pkg": "node --import tsx ./packages/common/tooling/create-package-changeset.ts",
-    "version:major:check": "node --import tsx ./packages/common/tooling/check-package-major-versions.ts",
-    "changeset:overrides:check": "node --import tsx ./packages/common/tooling/check-changeset-overrides.ts",
-    "changeset:version": "node --import tsx ./packages/common/tooling/changeset-version.ts && pnpm run docs:release-notes:sync",
-    "docs:release-notes:sync": "node --import tsx ./packages/common/tooling/sync-doc-release-notes.ts",
-    "docs:release-notes:check": "node --import tsx ./packages/common/tooling/sync-doc-release-notes.ts --check",
-    "docs:api:check": "node --import tsx ./packages/common/tooling/check-public-api-tsdoc.ts",
-    "typecheck": "turbo run typecheck typecheck:tests",
-    "typecheck:tests": "tsc --noEmit -p tsconfig.test.json",
+    "clean": "turbo run clean && node --import tsx scripts/packages/clean-paths.ts coverage",
+    "changeset:pkg": "rxova-repo-config add-changeset",
+    "version:major:check": "rxova-repo-config check-majors",
+    "changeset:overrides:check": "rxova-repo-config lint-changesets",
+    "changeset:version": "rxova-repo-config version && pnpm run docs:release-notes:sync",
+    "docs:release-notes:sync": "node --import tsx scripts/docs/sync-release-notes.ts",
+    "docs:release-notes:check": "node --import tsx scripts/docs/sync-release-notes.ts --check",
+    "docs:api:check": "rxova-repo-config check-tsdoc",
+    "docs:banned:check": "rxova-repo-config check-banned",
+    "typecheck": "turbo run typecheck //#typecheck:scripts",
+    "typecheck:scripts": "tsc -p tsconfig.json",
     "docs": "turbo run dev --filter=@rxova/journey-docs",
     "docs:build": "turbo run build --filter=@rxova/journey-docs",
-    "docs:banned:check": "node --import tsx ./packages/common/tooling/check-docs-banned-identifiers.ts",
     "docs:api:generate": "pnpm docs:api:generate:core && pnpm docs:api:generate:react && pnpm docs:api:generate:bridge && node ./apps/docs/scripts/frontmatter-api-reference.js",
     "docs:api:generate:core": "typedoc --options typedoc.core.json",
     "docs:api:generate:react": "typedoc --options typedoc.react.json",
@@ -41,15 +41,11 @@
     "releases": "pnpm run changeset:version && pnpm run release",
     "lint": "eslint . --cache --cache-location node_modules/.cache/eslint/.eslintcache",
     "lint:fix": "eslint . --fix --cache --cache-location node_modules/.cache/eslint/.eslintcache",
-    "lint-staged": "lint-staged",
     "format": "prettier . --write --cache --cache-location node_modules/.cache/prettier/.prettiercache",
     "format:check": "prettier . --check --cache --cache-location node_modules/.cache/prettier/.prettiercache",
     "prepare": "husky",
-    "test": "vitest run --coverage --pool=threads",
-    "packages:coverage": "pnpm -r --workspace-concurrency=1 --filter @rxova/journey-common --filter @rxova/journey-core --filter @rxova/journey-react --filter @rxova/journey-devtools-bridge --filter apps-devtools coverage",
-    "react:min:install": "pnpm --filter @rxova/journey-react --filter rxova-journey add -D react@18.2.0 react-dom@18.2.0 @types/react@18.3.27 @types/react-dom@18.3.7",
-    "test:react-min": "pnpm run react:min:install && pnpm --workspace-root vitest run packages/react --coverage.enabled=false",
-    "test:watch": "vitest",
+    "test": "turbo run test //#test:scripts",
+    "test:scripts": "vitest run --coverage",
     "size": "turbo run size",
     "check:exports": "turbo run check:exports --filter=\"./packages/*\"",
     "attw": "turbo run attw --filter=\"./packages/*\"",
@@ -57,7 +53,7 @@
     "dedupe:check": "pnpm dedupe --check",
     "knip:check": "knip",
     "sherif:check": "sherif --fail-on-warnings",
-    "pack:smoke": "pnpm -r --workspace-concurrency=1 --filter \"./packages/*\" --filter \"!@rxova/journey-common\" exec rxova-repo-config pack-smoke",
+    "pack:smoke": "turbo run pack:smoke --concurrency=1 --filter=\"./packages/*\"",
     "verify": "rxova-repo-config verify"
   },
   "devDependencies": {
@@ -147,7 +143,7 @@
         },
         {
           "name": "typecheck and test",
-          "command": "pnpm exec turbo run typecheck typecheck:tests test"
+          "command": "pnpm exec turbo run typecheck test //#typecheck:scripts //#test:scripts"
         },
         {
           "name": "build, size and package contracts",
@@ -160,7 +156,282 @@
       ]
     },
     "changeset": {
-      "singlePackage": true
+      "singlePackage": true,
+      "aliasPrefix": "journey-",
+      "includePrivate": true,
+      "syncRootVersionFrom": "@rxova/journey-core"
+    },
+    "docs": {
+      "banned": [
+        {
+          "name": "createJourneyMachine",
+          "pattern": "\\bcreateJourneyMachine\\b"
+        },
+        {
+          "name": "createHeadlessJourney",
+          "pattern": "\\bcreateHeadlessJourney\\b"
+        },
+        {
+          "name": "createJourneyBuilder",
+          "pattern": "\\bcreateJourneyBuilder\\b"
+        },
+        {
+          "name": "createJourneyFactory",
+          "pattern": "\\bcreateJourneyFactory\\b"
+        },
+        {
+          "name": "updateStepMetadata",
+          "pattern": "\\bupdateStepMetadata\\b"
+        },
+        {
+          "name": "machine.subscribeStart",
+          "pattern": "\\bmachine\\.subscribeStart\\b"
+        },
+        {
+          "name": "useJourneyApi",
+          "pattern": "\\buseJourneyApi\\b"
+        },
+        {
+          "name": "useStepApi",
+          "pattern": "\\buseStepApi\\b"
+        },
+        {
+          "name": "useJourneyComputed",
+          "pattern": "\\buseJourneyComputed\\b"
+        },
+        {
+          "name": "JourneyProvider",
+          "pattern": "\\bJourneyProvider\\b"
+        },
+        {
+          "name": "commandsEnabled",
+          "pattern": "\\bcommandsEnabled\\b"
+        },
+        {
+          "name": "<LinearJourney>",
+          "pattern": "<LinearJourney[\\s/>]"
+        },
+        {
+          "name": "LinearJourney.Step",
+          "pattern": "\\bLinearJourney\\.Step\\b"
+        },
+        {
+          "name": "useLinearJourney",
+          "pattern": "\\buseLinearJourney\\b"
+        },
+        {
+          "name": "useLinearJourneySelector",
+          "pattern": "\\buseLinearJourneySelector\\b"
+        },
+        {
+          "name": "useLinearJourneyStep",
+          "pattern": "\\buseLinearJourneyStep\\b"
+        },
+        {
+          "name": "TypedLinearJourney",
+          "pattern": "\\bTypedLinearJourney\\b"
+        },
+        {
+          "name": "LinearJourneyProps",
+          "pattern": "\\bLinearJourneyProps\\b"
+        },
+        {
+          "name": "LinearJourneyStepConfig",
+          "pattern": "\\bLinearJourneyStepConfig\\b"
+        },
+        {
+          "name": "LinearJourneyStepProps",
+          "pattern": "\\bLinearJourneyStepProps\\b"
+        },
+        {
+          "name": "bundle.toGraphDefinition",
+          "pattern": "\\btoGraphDefinition\\b"
+        },
+        {
+          "name": "useApi",
+          "pattern": "\\buseApi\\b"
+        },
+        {
+          "name": "useEvent",
+          "pattern": "\\buseEvent\\b"
+        },
+        {
+          "name": "useStepLifecycle",
+          "pattern": "\\buseStepLifecycle\\b"
+        },
+        {
+          "name": "journey-react/headless",
+          "pattern": "journey-react\\/headless"
+        },
+        {
+          "name": "useOwnedJourney",
+          "pattern": "\\buseOwnedJourney\\b"
+        },
+        {
+          "name": "useJourneyStepLifecycle",
+          "pattern": "\\buseJourneyStepLifecycle\\b"
+        },
+        {
+          "name": "useStepAsyncState",
+          "pattern": "\\buseStepAsyncState\\b"
+        },
+        {
+          "name": "linearToGraphDefinition",
+          "pattern": "\\blinearToGraphDefinition\\b"
+        },
+        {
+          "name": "journey-core/convert",
+          "pattern": "journey-core\\/convert"
+        },
+        {
+          "name": "createSubscriptionEnhancerPlugin",
+          "pattern": "\\bcreateSubscriptionEnhancerPlugin\\b"
+        },
+        {
+          "name": "journey-core/subscription-enhancer",
+          "pattern": "journey-core\\/subscription-enhancer"
+        },
+        {
+          "name": "host.onStepEnter",
+          "pattern": "\\bhost\\.onStepEnter\\b"
+        },
+        {
+          "name": "host.onStepLeave",
+          "pattern": "\\bhost\\.onStepLeave\\b"
+        },
+        {
+          "name": "subscribeSelector",
+          "pattern": "\\bsubscribeSelector\\b"
+        },
+        {
+          "name": "createSnapshotSource",
+          "pattern": "\\bcreateSnapshotSource\\b"
+        },
+        {
+          "name": "transitions: { (central map)",
+          "pattern": "\\btransitions:\\s*\\{"
+        },
+        {
+          "name": "createGraphJourneyBuilder",
+          "pattern": "\\bcreateGraphJourneyBuilder\\b"
+        },
+        {
+          "name": "JourneyTypeBag",
+          "pattern": "\\bJourneyTypeBag\\b"
+        },
+        {
+          "name": "registerNextStepInterceptor",
+          "pattern": "\\bregisterNextStepInterceptor\\b"
+        },
+        {
+          "name": "UseLinearJourneyResult",
+          "pattern": "\\bUseLinearJourneyResult\\b"
+        },
+        {
+          "name": "machineRef",
+          "pattern": "\\bmachineRef\\b"
+        },
+        {
+          "name": "useSubscribeEvent",
+          "pattern": "\\buseSubscribeEvent\\b"
+        },
+        {
+          "name": "bundle.useContext()",
+          "pattern": "\\b\\w+\\.useContext\\("
+        },
+        {
+          "name": "bundle.useMachine()",
+          "pattern": "\\b\\w+\\.useMachine\\("
+        },
+        {
+          "name": "bundle.useControls()",
+          "pattern": "\\b\\w+\\.useControls\\("
+        },
+        {
+          "name": "bundle.useNavigation()",
+          "pattern": "\\b\\w+\\.useNavigation\\("
+        },
+        {
+          "name": "snapshot.machine.isLoading",
+          "pattern": "\\bmachine\\.isLoading\\b"
+        },
+        {
+          "name": "snapshot.machine.isIdle",
+          "pattern": "\\bmachine\\.isIdle\\b"
+        },
+        {
+          "name": "snapshot.machine.isRunning",
+          "pattern": "\\bmachine\\.isRunning\\b"
+        },
+        {
+          "name": "snapshot.machine.isPaused",
+          "pattern": "\\bmachine\\.isPaused\\b"
+        },
+        {
+          "name": "snapshot.machine.isCompleted",
+          "pattern": "\\bmachine\\.isCompleted\\b"
+        },
+        {
+          "name": "snapshot.machine.isTerminated",
+          "pattern": "\\bmachine\\.isTerminated\\b"
+        },
+        {
+          "name": "createAutosavePlugin",
+          "pattern": "\\bcreateAutosavePlugin\\b"
+        },
+        {
+          "name": "journey-core/autosave",
+          "pattern": "journey-core\\/autosave"
+        },
+        {
+          "name": "createDiagnosticsPlugin",
+          "pattern": "\\bcreateDiagnosticsPlugin\\b"
+        },
+        {
+          "name": "getGraphDiagnostics",
+          "pattern": "\\bgetGraphDiagnostics\\b"
+        },
+        {
+          "name": "journey-core/diagnostics",
+          "pattern": "journey-core\\/diagnostics"
+        },
+        {
+          "name": "journey-core/analytics",
+          "pattern": "journey-core\\/analytics"
+        },
+        {
+          "name": "journey-core/persistence",
+          "pattern": "journey-core\\/persistence"
+        },
+        {
+          "name": "journey-core/replay",
+          "pattern": "journey-core\\/replay"
+        },
+        {
+          "name": "journey-core/execution-paths",
+          "pattern": "journey-core\\/execution-paths"
+        },
+        {
+          "name": "createStep",
+          "pattern": "\\bcreateStep\\("
+        },
+        {
+          "name": "stay()",
+          "pattern": "\\bstay\\(\\)"
+        },
+        {
+          "name": "allowRollback",
+          "pattern": "\\ballowRollback\\b"
+        }
+      ],
+      "allow": [
+        "core/pre-1-0-migration.md",
+        "**/releases.md"
+      ],
+      "exclude": [
+        "**/versioned_docs/**",
+        "**/api/reference/**"
+      ]
     }
   }
 }

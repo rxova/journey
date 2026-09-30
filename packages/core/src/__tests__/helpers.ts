@@ -5,6 +5,8 @@ import { createLinearJourney, type JourneyRuntimeOptions } from "@rxova/journey-
 // direct unit coverage are re-exported here rather than made public API.
 // eslint-disable-next-line no-restricted-imports
 export { eventWorkKey, MAX_RAISED_EVENTS } from "../core/helpers";
+// eslint-disable-next-line no-restricted-imports
+export { isDevelopmentEnvironment, warnInDevelopment } from "../internal/dev";
 
 /** Waits a macrotask so pending entry effects settle. */
 export const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));

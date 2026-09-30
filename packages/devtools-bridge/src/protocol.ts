@@ -1,4 +1,4 @@
-import { isRecord } from "@rxova/journey-common/predicates";
+import { isRecord } from "./internal/predicates";
 import type {
   JourneyDevtoolsBridgeEnvelope,
   JourneyDevtoolsEnvelope,

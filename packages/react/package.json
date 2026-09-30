@@ -89,13 +89,13 @@
     }
   },
   "scripts": {
-    "build": "pnpm run clean && node --import tsx ./scripts/build.ts && tsc -p tsconfig.build.json && node --import tsx ../common/tooling/copy-types.ts dist && pnpm run smoke",
+    "build": "pnpm run clean && node --import tsx ./scripts/build.ts && tsc -p tsconfig.build.json && node --import tsx ../../scripts/packages/clean-paths.ts dist/internal && node --import tsx ../../scripts/packages/copy-types.ts dist && pnpm run smoke",
     "smoke": "node --import tsx ./scripts/smoke.ts",
-    "clean": "node --import tsx ../common/tooling/clean-paths.ts dist tsconfig.build.tsbuildinfo",
-    "coverage": "JOURNEY_COVERAGE_INCLUDE=packages/react/src/** JOURNEY_COVERAGE_DIR=coverage/react pnpm --workspace-root vitest run packages/react/src --coverage --coverage.reporter=text-summary",
-    "test": "pnpm --workspace-root vitest run packages/react --coverage.enabled=false",
+    "clean": "node --import tsx ../../scripts/packages/clean-paths.ts dist tsconfig.build.tsbuildinfo",
+    "test": "vitest run --coverage",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.tooling.json",
     "check:exports": "publint --strict",
+    "pack:smoke": "rxova-repo-config pack-smoke",
     "attw": "attw --pack . --profile node16",
     "size": "size-limit"
   },
@@ -127,7 +127,6 @@
   ],
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
-    "@rxova/journey-common": "workspace:*",
     "@rxova/journey-core": "workspace:^",
     "@testing-library/react": "^16.3.3",
     "@types/react": "^19.3.0",

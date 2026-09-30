@@ -1,4 +1,4 @@
-import { warnInDevelopment } from "@rxova/journey-common/dev";
+import { warnInDevelopment } from "../../internal/dev";
 import {
   buildPersistedState,
   DEFAULT_SAVE_REASONS,

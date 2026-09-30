@@ -1,7 +1,7 @@
 {
   "$schema": "https://v2-11-4.turborepo.dev/schema.json",
   "ui": "tui",
-  "globalDependencies": ["tsconfig.base.json", "tsconfig.json", ".nvmrc"],
+  "globalDependencies": ["tsconfig.base.json", ".nvmrc"],
   // `globalEnv`, not `globalPassThroughEnv`: these two change the docs output
   // (every URL gets the base path baked in) but not a single file on disk. A
   // pass-through variable is forwarded to the task without contributing to its
@@ -71,42 +71,46 @@
       "outputs": [],
       "outputLogs": "new-only"
     },
+    // Each package's suite, per-file coverage gate included. The suites alias
+    // every workspace package onto its sources (test/source-aliases.ts), so a
+    // suite needs no build in front of it but does read its siblings' src: the
+    // `$TURBO_ROOT$` inputs are what keep an edit to core from replaying
+    // react's cached pass.
+    "test": {
+      "outputs": ["coverage/**"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/*/src/**", "$TURBO_ROOT$/test/**"],
+      "outputLogs": "new-only"
+    },
+    // Tarball smoke test through `rxova-repo-config pack-smoke`: packs, installs
+    // and imports the real tarball, so it reads the package's own dist. Never
+    // cached: the install is the check, and the root script serialises it with
+    // --concurrency=1 because concurrent `pnpm pack` runs race on the store.
+    "pack:smoke": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "outputLogs": "new-only"
+    },
     // Root tasks (`//#`): each reads the whole workspace in one pass from the
     // root, so there is nothing to fan out. Narrow `inputs` are what make them
     // worth caching — the key is exactly the files that feed the check, so an
     // unrelated source edit replays instead of re-running.
     //
-    // The suite is aliased onto `packages/*/src` by vitest.config.ts, so it
-    // reads sources directly and needs no build in front of it.
-    "//#test": {
+    // The repository's own scripts under scripts/, and their typecheck.
+    "//#test:scripts": {
       "outputs": ["coverage/**"],
       "inputs": [
+        "scripts/**",
         "vitest.config.ts",
-        "tsconfig.test.json",
-        "packages/*/src/**",
-        "packages/*/test/**",
-        "apps/devtools/src/**",
-        "apps/devtools/test/**",
-        // The repo tooling is covered by this suite too, so a change to a
-        // script or its test has to invalidate it — otherwise editing a script
-        // would replay a pass recorded against the previous version.
-        "packages/common/tooling/**"
+        "package.json",
+        "packages/*/CHANGELOG.md",
+        "apps/devtools/CHANGELOG.md",
+        "apps/docs/src/content/docs/*/releases.md"
       ],
       "outputLogs": "new-only"
     },
-    // The suite's own typecheck: a root `tsc -p tsconfig.test.json` pass that
-    // covers `packages/*/test` and is not any package's task, so it cannot ride
-    // along on the fan-out.
-    "//#typecheck:tests": {
+    "//#typecheck:scripts": {
       "outputs": [],
-      "inputs": [
-        "tsconfig.test.json",
-        "tsconfig.base.json",
-        "packages/*/src/**",
-        "packages/*/test/**",
-        "apps/*/test/**",
-        "packages/common/tooling/**"
-      ],
+      "inputs": ["scripts/**", "test/**", "vitest.config.ts", "tsconfig.json", "package.json"],
       "outputLogs": "new-only"
     },
     "//#dedupe:check": {
@@ -121,11 +125,16 @@
       ],
       "outputLogs": "new-only"
     },
-    // Reads the public entry points and the TSDoc rule script; nothing else can
-    // change its verdict.
+    // `rxova-repo-config check-tsdoc` reads the public entry points through each
+    // package's tsconfig; nothing else can change its verdict.
     "//#docs:api:check": {
       "outputs": [],
-      "inputs": ["packages/common/tooling/check-public-api-tsdoc.ts", "packages/*/src/**"],
+      "inputs": [
+        "package.json",
+        "tsconfig.base.json",
+        "packages/*/tsconfig.json",
+        "packages/*/src/**"
+      ],
       "outputLogs": "new-only"
     },
     // A pure function of the four changelogs and the four pages generated from
@@ -133,27 +142,19 @@
     "//#docs:release-notes:check": {
       "outputs": [],
       "inputs": [
-        "packages/common/tooling/sync-doc-release-notes.ts",
+        "scripts/docs/sync-release-notes.ts",
         "packages/*/CHANGELOG.md",
         "apps/devtools/CHANGELOG.md",
         "apps/docs/src/content/docs/*/releases.md"
       ],
       "outputLogs": "new-only"
     },
-    // Two checks are deliberately absent from this file and stay plain root
-    // scripts:
+    // One check is deliberately absent from this file and stays a plain root
+    // script:
     //
     // `audit:check` — its verdict depends on the upstream advisory database,
     // which changes without any file here changing, so a cached pass could
     // replay over a newly-disclosed CVE.
-    //
-    // `pack:smoke` — it runs `rxova-repo-config pack-smoke` in every publishable
-    // package, which packs, installs and imports the real tarball, so the side
-    // effect is the point and it must never be cached. It also cannot express
-    // what it needs here: a root task's `dependsOn: [build]` resolves to the
-    // *root* package's `build` script, which is `turbo run build` — turbo
-    // rejects the recursion outright. `verify` runs it in the step after the
-    // build instead, which is the ordering it actually wants.
     "dev": {
       "cache": false,
       "persistent": true

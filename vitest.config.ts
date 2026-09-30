@@ -1,145 +1,15 @@
-import { fileURLToPath, URL } from "node:url";
-import { defineConfig } from "vitest/config";
+import { baseVitestConfig } from "@rxova/repo-config/vitest";
 
-const coverageInclude = process.env.JOURNEY_COVERAGE_INCLUDE?.split(",") ?? [
-  "packages/*/src/**/*.ts",
-  "packages/*/src/**/*.tsx",
-  "apps/devtools/src/**/*.ts",
-  "apps/devtools/src/**/*.tsx"
-];
-const perFileCoveragePrefixes = [
-  "packages/common/",
-  "packages/core/",
-  "packages/react/",
-  "packages/devtools-bridge/",
-  "apps/devtools/"
-] as const;
-const enforcePerFileCoverage =
-  process.env.JOURNEY_COVERAGE_INCLUDE !== undefined &&
-  coverageInclude.every((pattern) =>
-    perFileCoveragePrefixes.some((prefix) => pattern.startsWith(prefix))
-  );
-
-export default defineConfig({
-  resolve: {
-    alias: [
-      {
-        find: "@rxova/journey-core/connectors/immer",
-        replacement: fileURLToPath(
-          new URL("./packages/core/src/connectors/immer/immer.ts", import.meta.url)
-        )
-      },
-      {
-        find: "@rxova/journey-core/plugins",
-        replacement: fileURLToPath(new URL("./packages/core/src/plugins/index.ts", import.meta.url))
-      },
-      {
-        find: "@rxova/journey-core/testing",
-        replacement: fileURLToPath(
-          new URL("./packages/core/src/__tests__/helpers.ts", import.meta.url)
-        )
-      },
-      {
-        find: "@rxova/journey-core",
-        replacement: fileURLToPath(new URL("./packages/core/src/index.ts", import.meta.url))
-      },
-      {
-        find: "@rxova/journey-react/graph",
-        replacement: fileURLToPath(new URL("./packages/react/src/graph.tsx", import.meta.url))
-      },
-      {
-        find: "@rxova/journey-react/client",
-        replacement: fileURLToPath(new URL("./packages/react/src/client.ts", import.meta.url))
-      },
-      {
-        find: "@rxova/journey-react/testing",
-        replacement: fileURLToPath(
-          new URL("./packages/react/src/__tests__/helpers.tsx", import.meta.url)
-        )
-      },
-      {
-        find: "@rxova/journey-react",
-        replacement: fileURLToPath(new URL("./packages/react/src/index.ts", import.meta.url))
-      },
-      {
-        find: "@rxova/journey-devtools-bridge/testing",
-        replacement: fileURLToPath(
-          new URL("./packages/devtools-bridge/src/__tests__/helpers.ts", import.meta.url)
-        )
-      },
-      {
-        find: "@rxova/journey-devtools-bridge",
-        replacement: fileURLToPath(
-          new URL("./packages/devtools-bridge/src/index.ts", import.meta.url)
-        )
-      },
-      {
-        find: "@rxova/journey-common/predicates",
-        replacement: fileURLToPath(new URL("./packages/common/src/predicates.ts", import.meta.url))
-      },
-      {
-        find: "@rxova/journey-common/serialization",
-        replacement: fileURLToPath(
-          new URL("./packages/common/src/serialization.ts", import.meta.url)
-        )
-      },
-      {
-        find: "@rxova/journey-common/bindings",
-        replacement: fileURLToPath(new URL("./packages/common/src/bindings.ts", import.meta.url))
-      },
-      {
-        find: "@rxova/journey-common/dev",
-        replacement: fileURLToPath(new URL("./packages/common/src/dev.ts", import.meta.url))
-      },
-      {
-        find: "@rxova/journey-common/origin",
-        replacement: fileURLToPath(new URL("./packages/common/src/origin.ts", import.meta.url))
-      },
-      {
-        find: "@rxova/journey-common",
-        replacement: fileURLToPath(new URL("./packages/common/src/index.ts", import.meta.url))
-      }
-    ]
-  },
-  test: {
-    include: [
-      "packages/**/src/**/__tests__/**/*.test.{ts,tsx}",
-      "packages/**/test/**/*.test.ts",
-      "packages/**/test/**/*.test.tsx",
-      // Repo tooling lives outside any package's `src`, so the patterns above
-      // do not reach it.
-      "packages/common/tooling/__tests__/**/*.test.ts",
-      "apps/**/src/**/__tests__/**/*.test.{ts,tsx}",
-      "apps/**/test/**/*.test.ts",
-      "apps/**/test/**/*.test.tsx",
-      // The repo's own tooling. These sit next to the scripts they cover rather
-      // than in a test/ directory, because the scripts are not a package.
-      "packages/common/tooling/**/*.test.ts"
-    ],
-    exclude: ["**/node_modules/**"],
-    setupFiles: ["./test/setup.ts"],
-    globals: true,
-    silent: true,
-    environment: "jsdom",
-    coverage: {
-      provider: "v8",
-      reportsDirectory: process.env.JOURNEY_COVERAGE_DIR ?? "coverage",
-      reporter: ["text", "text-summary", "html", "json-summary", "lcov"],
-      thresholds: {
-        perFile: enforcePerFileCoverage,
-        statements: 95,
-        branches: 95,
-        functions: 95,
-        lines: 95
-      },
-      include: coverageInclude,
-      exclude: [
-        "**/*.d.ts",
-        "packages/**/types.ts",
-        "packages/**/*.types.ts",
-        "**/__tests__/**",
-        "packages/*/src/types/**/*.ts"
-      ]
-    }
-  }
+// The repository's own scripts (scripts/), outside any package. Coverage is
+// reported, not gated: the scripts were never held to the packages' per-file
+// bar, and two of them are mostly exercised as spawned CLIs, where v8 cannot
+// see the lines they run.
+export default baseVitestConfig({
+  root: import.meta.dirname,
+  include: ["scripts/**/*.test.ts"],
+  coverageInclude: ["scripts/**/*.ts"],
+  exclude: ["scripts/**/*.test.ts"],
+  thresholds: false,
+  reporter: ["text", "json-summary"],
+  silent: true
 });

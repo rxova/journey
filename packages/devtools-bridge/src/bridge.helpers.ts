@@ -1,4 +1,4 @@
-import { cloneForTransport, serializeError } from "@rxova/journey-common/serialization";
+import { cloneForTransport, serializeError } from "./internal/serialization";
 import type { NavigationResult } from "@rxova/journey-core";
 import type {
   JourneyDevtoolsAttachableMachine,
