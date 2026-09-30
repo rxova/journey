@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -78,7 +78,7 @@ describe("sync-doc-release-notes script", () => {
   });
 
   it("builds repo paths", () => {
-    expect(toRepoPath("/repo", "a", "b")).toBe("/repo/a/b");
+    expect(toRepoPath("/repo", "a", "b")).toBe(join("/repo", "a", "b"));
   });
 
   it("writes when file does not exist and skips when unchanged", async () => {
@@ -259,9 +259,12 @@ describe("sync-doc-release-notes script", () => {
   });
 
   it("entrypoint detection handles all branches", () => {
-    expect(isEntrypoint("", "file:///a/script.ts")).toBe(false);
-    expect(isEntrypoint("/a/script.ts", "file:///a/script.ts")).toBe(true);
-    expect(isEntrypoint("/a/other.ts", "file:///a/script.ts")).toBe(false);
+    // The URL is derived from the path, so the check holds on Windows too,
+    // where `/a/script.ts` resolves under the current drive.
+    const script = pathToFileURL("/a/script.ts").href;
+    expect(isEntrypoint("", script)).toBe(false);
+    expect(isEntrypoint("/a/script.ts", script)).toBe(true);
+    expect(isEntrypoint("/a/other.ts", script)).toBe(false);
   });
 
   it("script can run as a cli entrypoint in check mode", () => {

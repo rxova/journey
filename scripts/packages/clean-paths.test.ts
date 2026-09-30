@@ -2,12 +2,16 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { cleanPaths } from "./clean-paths.ts";
 
 const scriptPath = resolve(__dirname, "clean-paths.ts");
-const tsxLoaderPath = resolve(__dirname, "../../node_modules/tsx/dist/loader.mjs");
+// A file URL, not a path: `--import` rejects a bare `D:\\…` path on Windows.
+const tsxLoaderPath = pathToFileURL(
+  resolve(__dirname, "../../node_modules/tsx/dist/loader.mjs"),
+).href;
 
 const execNode = (args: string[]): { stdout: string; stderr: string; status: number } => {
   try {
