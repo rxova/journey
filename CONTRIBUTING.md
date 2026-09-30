@@ -10,7 +10,31 @@ Rxova Journey is a small monorepo with package and app workspaces:
 - `apps/docs`: Astro Starlight documentation site.
 - `apps/demo`: local playground app for runtime integration checks.
 - `apps/devtools`: browser extension app.
-- `packages/*/scripts`: build pipelines for each package.
+- `packages/*/scripts`: build pipelines for each package (esbuild, then `tsc` for the declarations).
+- `scripts/`: the repository's own scripts and their tests — the docs release-notes sync, the
+  Chrome Web Store publisher, and the two helpers the package builds call (`clean-paths`,
+  `copy-types`).
+
+### Shared setup
+
+The repo tooling comes from [rxova/shared](https://github.com/rxova/shared), declared once in the
+root `package.json` and never in a workspace package:
+
+- [`@rxova/repo-config`](https://github.com/rxova/shared/tree/main/packages/repo-config): the
+  `rxova-repo-config` bin (the `verify` gate, changesets, pack smoke, TSDoc, banned-docs and
+  major-version checks, all configured under `repoConfig` in the root `package.json`) and the
+  ESLint, Prettier, lint-staged, commitlint, changelog, Vitest, Knip and tsconfig presets.
+- [`@rxova/ts-utils`](https://github.com/rxova/shared/tree/main/packages/ts-utils): runtime helpers
+  (`shallowEqual`, `useIsomorphicLayoutEffect`, `isPlainObject`) that esbuild inlines into each
+  package's bundle, so the published packages keep zero dependencies.
+- CI calls the shared reusable workflows and actions at `@main`; only the graph (which jobs run,
+  and when) and the docs and devtools workflows live here.
+
+Runtime helpers whose semantics differ from `@rxova/ts-utils` stay in the package that uses them,
+under `src/internal/`: the development-warning helpers (`NODE_ENV=test` is quiet, and the
+environment is read through `globalThis` rather than a literal `process.env`), the devtools
+origin checks, the array-accepting `isRecord`, and the transport serializers. Their tests reach
+them through each package's `/testing` alias.
 
 If you are unsure where a change belongs, start in `packages/core` for
 state-machine behavior and in `packages/react` for React-specific API or
@@ -71,15 +95,18 @@ so the local gate and CI cannot drift. `pnpm run verify --only lint,format` runs
 4. `knip:check` — unused files, exports and dependencies
 5. `format:check`
 6. `lint`
-7. `version:major:check`
-8. `docs:banned:check`, `changeset:overrides:check`
-9. `docs:api:check`, `docs:release-notes:check`
-10. `typecheck`, `typecheck:tests`, `test`
+7. `version:major:check` (`rxova-repo-config check-majors`)
+8. `docs:banned:check` (`rxova-repo-config check-banned`, the names in `repoConfig.docs.banned`),
+   `changeset:overrides:check` (`rxova-repo-config lint-changesets`)
+9. `docs:api:check` (`rxova-repo-config check-tsdoc`), `docs:release-notes:check`
+10. `typecheck`, `test` — each package's own suite with its per-file 95% coverage gate — and the
+    root scripts' `typecheck:scripts` and `test:scripts`
 11. `build`, `size`, `publint`
-12. `pack:smoke`
+12. `pack:smoke` (`rxova-repo-config pack-smoke`, per published package)
 
-Commits run `lint-staged` only — the full gate is on push, because a gate slow
-enough to invite `--no-verify` stops being a gate.
+Commits run `lint-staged` and the typecheck and test tasks, which Turbo replays from cache for
+anything the commit did not touch; the full gate is on push, because a gate slow enough to invite
+`--no-verify` stops being a gate.
 
 - `pnpm run size`
 - Ensure a changeset exists for user-facing changes, one package per changeset file. CI (`rxova-repo-config check-changeset`) requires one whenever a published package's shipped files change; tests and Markdown inside a package do not count. If your PR changes a package without publishing anything (a dev-dependency bump, say), add the `skip-changeset` label or `[skip-changeset]` to the title.
@@ -108,15 +135,18 @@ Releases are automated with Changesets and GitHub Actions.
 ### Local Steps
 
 1. Create a changeset:
-   - Recommended (package-scoped): `pnpm run changeset:pkg -- <package> <patch|minor|major> "<summary>"`
+   - Recommended (package-scoped): `pnpm run changeset:pkg <package> <patch|minor|major> "<summary>"`
+     (`rxova-repo-config add-changeset`; `core`, `react` and `devtools-bridge` name the published packages)
    - Optional interactive: `pnpm run changeset` (if used, keep one package per changeset file).
 2. Run release versioning + publish pipeline locally (optional):
-   - `pnpm run releases`
+   - `pnpm run releases` (`changeset:version` is `rxova-repo-config version` — the bump, the root
+     version following core, the lockfile — then the docs release-notes sync)
 
 ### Publish Flow
 
 1. Merge changes to `main`.
-2. The Release workflow opens/updates a release PR with version bumps and changelog updates.
+2. The Release workflow (`release.yml`, which calls the shared `changesets-release.yml`) opens or
+   updates a release PR with version bumps and changelog updates.
 3. Merge the release PR to publish to npm.
 
 ### Versioning Policy
@@ -135,7 +165,9 @@ Releases are automated with Changesets and GitHub Actions.
 ## Browser Compatibility
 
 Rxova Journey targets modern evergreen browsers and React 18.2+ (the first release with
-`useSyncExternalStore`'s final semantics). CI runs the suite against both 18.2 and the latest 19.
+`useSyncExternalStore`'s final semantics). CI runs the suite against both 18.2 (the shared
+`react-minimum-version` workflow, which pins React at the root and in `packages/react`) and the
+latest 19.
 If you need legacy browser support (for example, older Safari or IE11),
 you must provide your own transpilation and polyfills in your app build.
 
