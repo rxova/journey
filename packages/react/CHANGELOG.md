@@ -1,5 +1,17 @@
 # @rxova/journey-react
 
+## 1.0.1
+
+### Patch Changes
+
+- [#170](https://github.com/rxova/journey/pull/170) [`5d464a5`](https://github.com/rxova/journey/commit/5d464a52e8972c3c327a48c3659e5e0fbf7fbb76) - Internal: the layout-effect hook now comes from @rxova/ts-utils/react, inlined at build time. It picks useEffect when there is no document (previously: no window), so a runtime that defines window without document no longer gets useLayoutEffect on the server. No public API or dependency change.
+
+- [#174](https://github.com/rxova/journey/pull/174) [`c6eaaa1`](https://github.com/rxova/journey/commit/c6eaaa1a57b9b0d07214d261a32d5b11eb8e3e86) - Point links at rxova.dev
+
+- [#177](https://github.com/rxova/journey/pull/177) [`adbab73`](https://github.com/rxova/journey/commit/adbab73c18c887bc1a1a776617ec5205637404bd) - Internal: the development-warning helper now lives in the package's own source instead of an unpublished workspace package, and the inlined @rxova/ts-utils is 0.2. Its React entry makes the ESM build's import from react name a few more hooks, all present since React 18 and none called; no public API, behaviour or dependency change.
+- Updated dependencies [[`5d464a5`](https://github.com/rxova/journey/commit/5d464a52e8972c3c327a48c3659e5e0fbf7fbb76), [`c6eaaa1`](https://github.com/rxova/journey/commit/c6eaaa1a57b9b0d07214d261a32d5b11eb8e3e86), [`adbab73`](https://github.com/rxova/journey/commit/adbab73c18c887bc1a1a776617ec5205637404bd)]:
+  - @rxova/journey-core@1.0.1
+
 ## 1.0.0
 
 ### Major Changes

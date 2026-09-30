@@ -10,6 +10,16 @@ Release notes sourced from the Devtools Bridge package changelog (Changesets).
 
 Source: [`packages/devtools-bridge/CHANGELOG.md`](https://github.com/rxova/journey/blob/main/packages/devtools-bridge/CHANGELOG.md)
 
+## 1.0.1
+
+### Patch Changes
+
+- [#174](https://github.com/rxova/journey/pull/174) [`c6eaaa1`](https://github.com/rxova/journey/commit/c6eaaa1a57b9b0d07214d261a32d5b11eb8e3e86) - Point links at rxova.dev
+
+- [#177](https://github.com/rxova/journey/pull/177) [`adbab73`](https://github.com/rxova/journey/commit/adbab73c18c887bc1a1a776617ec5205637404bd) - Internal: the environment, origin, predicate and serialization helpers now live in the bridge's own source instead of an unpublished workspace package. The bundled code is the same apart from minifier-chosen names; no public API or dependency change.
+- Updated dependencies [[`5d464a5`](https://github.com/rxova/journey/commit/5d464a52e8972c3c327a48c3659e5e0fbf7fbb76), [`c6eaaa1`](https://github.com/rxova/journey/commit/c6eaaa1a57b9b0d07214d261a32d5b11eb8e3e86), [`adbab73`](https://github.com/rxova/journey/commit/adbab73c18c887bc1a1a776617ec5205637404bd)]:
+  - @rxova/journey-core@1.0.1
+
 ## 1.0.0
 
 ### Major Changes
