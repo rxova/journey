@@ -1,5 +1,5 @@
 import React from "react";
-import { warnInDevelopment } from "@rxova/journey-common/dev";
+import { warnInDevelopment } from "./internal/dev";
 import { createLinearJourney as coreCreateLinearJourney } from "@rxova/journey-core";
 import { createAutoStartHook, createJourneyBindings } from "./react.helpers";
 import { useIsomorphicLayoutEffect } from "@rxova/ts-utils/react";

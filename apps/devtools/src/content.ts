@@ -1,4 +1,4 @@
-import { isExpectedWindowOrigin, resolveWindowTargetOrigin } from "@rxova/journey-common/origin";
+import { isExpectedWindowOrigin, resolveWindowTargetOrigin } from "./internal/origin";
 import {
   JOURNEY_DEVTOOLS_REPLAY_REQUEST,
   isJourneyDevtoolsBridgeEnvelope

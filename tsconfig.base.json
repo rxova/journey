@@ -4,7 +4,7 @@
     // Emit stays ES2020; `lib` only says which runtime APIs may be *typed*.
     // Journey targets evergreen browsers and Node >= 20.11, all of which have
     // had `Object.hasOwn` and `Error`'s `cause` since 2021 — without this,
-    // every use needed a workaround. Matches tsconfig.test.json.
+    // every use needed a workaround.
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
@@ -34,9 +34,7 @@
       "@rxova/journey-devtools-bridge": ["./packages/devtools-bridge/src/index.ts"],
       "@rxova/journey-devtools-bridge/testing": [
         "./packages/devtools-bridge/src/__tests__/helpers.ts"
-      ],
-      "@rxova/journey-common": ["./packages/common/src/index.ts"],
-      "@rxova/journey-common/*": ["./packages/common/src/*.ts"]
+      ]
     }
   }
 }

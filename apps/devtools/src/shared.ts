@@ -1,5 +1,5 @@
-import { isRecord } from "@rxova/journey-common/predicates";
-import { serializeTransportError as serializeTransportErrorCommon } from "@rxova/journey-common/serialization";
+import { isRecord } from "./internal/predicates";
+import { serializeTransportError as serializeTransportErrorCommon } from "./internal/serialization";
 import {
   JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
   JOURNEY_DEVTOOLS_CHANNEL,

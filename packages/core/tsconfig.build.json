@@ -10,16 +10,9 @@
     "rootDir": "src",
     "tsBuildInfoFile": "tsconfig.build.tsbuildinfo",
     "noEmit": false,
-    "paths": {
-      "@rxova/journey-common": ["../common/dist/index.d.ts"],
-      "@rxova/journey-common/*": ["../common/dist/*.d.ts"]
-    }
+    // No workspace path mappings: core imports no sibling package.
+    "paths": {}
   },
-  "references": [
-    {
-      "path": "../common/tsconfig.build.json"
-    }
-  ],
   "include": ["src"],
   "exclude": ["dist", "**/__tests__/**", "**/*.d.ts", "**/*.d.ts.map", "node_modules"]
 }

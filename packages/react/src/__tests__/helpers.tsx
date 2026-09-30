@@ -1,6 +1,11 @@
 import React from "react";
 import { act } from "@testing-library/react";
 
+// The sanctioned bridge to package internals: the development-warning helpers
+// get direct unit coverage without becoming public API.
+// eslint-disable-next-line no-restricted-imports
+export { isDevelopmentEnvironment, warnInDevelopment } from "../internal/dev";
+
 /** Flushes pending machine effects and queued React work. */
 export const flush = async (): Promise<void> => {
   await act(async () => {

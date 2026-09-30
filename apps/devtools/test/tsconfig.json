@@ -1,0 +1,9 @@
+{
+  // The extension's suites: the app's settings plus Node types for the tests
+  // that read `process.env` or spy on Node APIs.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["chrome", "node"]
+  },
+  "include": [".", "../src/vite-env.d.ts"]
+}

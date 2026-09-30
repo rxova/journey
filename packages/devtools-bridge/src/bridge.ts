@@ -1,7 +1,7 @@
-import { resolveNonProductionEnvironment, warnInDevelopment } from "@rxova/journey-common/dev";
-import { isExpectedWindowOrigin, resolveWindowTargetOrigin } from "@rxova/journey-common/origin";
-import { isRecord } from "@rxova/journey-common/predicates";
-import { cloneForTransport, serializeError } from "@rxova/journey-common/serialization";
+import { resolveNonProductionEnvironment, warnInDevelopment } from "./internal/dev";
+import { isExpectedWindowOrigin, resolveWindowTargetOrigin } from "./internal/origin";
+import { isRecord } from "./internal/predicates";
+import { cloneForTransport, serializeError } from "./internal/serialization";
 import {
   buildOperationRunners,
   createJourneyMachineId,

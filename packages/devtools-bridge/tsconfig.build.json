@@ -11,15 +11,10 @@
     "tsBuildInfoFile": "tsconfig.build.tsbuildinfo",
     "noEmit": false,
     "paths": {
-      "@rxova/journey-core": ["../core/dist/index.d.ts"],
-      "@rxova/journey-common": ["../common/dist/index.d.ts"],
-      "@rxova/journey-common/*": ["../common/dist/*.d.ts"]
+      "@rxova/journey-core": ["../core/dist/index.d.ts"]
     }
   },
   "references": [
-    {
-      "path": "../common/tsconfig.build.json"
-    },
     {
       "path": "../core/tsconfig.build.json"
     }

@@ -9,6 +9,20 @@ import {
   type JourneyDevtoolsProtocolVersion
 } from "@rxova/journey-devtools-bridge";
 
+// The sanctioned bridge to package internals: the environment, origin,
+// predicate and serialization helpers get direct unit coverage without becoming
+// public API.
+/* eslint-disable no-restricted-imports */
+export {
+  isDevelopmentEnvironment,
+  resolveNonProductionEnvironment,
+  warnInDevelopment
+} from "../internal/dev";
+export { isExpectedWindowOrigin, resolveWindowTargetOrigin } from "../internal/origin";
+export { isRecord } from "../internal/predicates";
+export { cloneForTransport, serializeError } from "../internal/serialization";
+/* eslint-enable no-restricted-imports */
+
 /** Waits for queued message events and pending machine effects to settle. */
 export const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
