@@ -10,6 +10,16 @@ Release notes sourced from the Core package changelog (Changesets).
 
 Source: [`packages/core/CHANGELOG.md`](https://github.com/rxova/journey/blob/main/packages/core/CHANGELOG.md)
 
+## 1.0.1
+
+### Patch Changes
+
+- [#170](https://github.com/rxova/journey/pull/170) [`5d464a5`](https://github.com/rxova/journey/commit/5d464a52e8972c3c327a48c3659e5e0fbf7fbb76) - Internal: the snapshot's shallow equality check now comes from @rxova/ts-utils, inlined at build time. Same own-key Object.is comparison, no public API or dependency change.
+
+- [#174](https://github.com/rxova/journey/pull/174) [`c6eaaa1`](https://github.com/rxova/journey/commit/c6eaaa1a57b9b0d07214d261a32d5b11eb8e3e86) - Point links at rxova.dev
+
+- [#177](https://github.com/rxova/journey/pull/177) [`adbab73`](https://github.com/rxova/journey/commit/adbab73c18c887bc1a1a776617ec5205637404bd) - Internal: the development-warning helpers now live in core's own source instead of an unpublished workspace package, and the inlined @rxova/ts-utils is 0.2. The bundled code is the same apart from minifier-chosen names; no public API or dependency change.
+
 ## 1.0.0
 
 ### Major Changes
