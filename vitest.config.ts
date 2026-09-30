@@ -10,6 +10,9 @@ export default baseVitestConfig({
   coverageInclude: ["scripts/**/*.ts"],
   exclude: ["scripts/**/*.test.ts"],
   thresholds: false,
+  // Several suites spawn Node with tsx to run a script as its CLI; a cold start
+  // on a Windows runner can take most of Vitest's 5 s default by itself.
+  testTimeout: 30_000,
   reporter: ["text", "json-summary"],
   silent: true,
 });
