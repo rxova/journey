@@ -16,10 +16,10 @@ export const Login = () => {
     () => () => {
       console.log(
         "[journey] login: submitting for",
-        journey.machine.getSnapshot().context.username
+        journey.machine.getSnapshot().context.username,
       );
     },
-    []
+    [],
   );
   const isLoading = snapshot.currentStep?.async.isLoading ?? false;
   const isBusy = isLoading || isSubmitting;
@@ -38,7 +38,7 @@ export const Login = () => {
       if (!result.success) {
         journey.updateContext((ctx) => ({
           ...ctx,
-          error: "Login failed. Try a different password."
+          error: "Login failed. Try a different password.",
         }));
         return;
       }
@@ -58,7 +58,7 @@ export const Login = () => {
         ...ctx,
         twoFactorMethod: result.method,
         qrCode,
-        error: null
+        error: null,
       }));
 
       await journey.send("submitLogin", { username, password });

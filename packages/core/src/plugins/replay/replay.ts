@@ -6,7 +6,7 @@ export { normalizeMaxEntries, serializeReplaySession, toSerializable } from "./r
 
 /** Records snapshot and lifecycle activity into an exportable replay session. */
 export function createReplayPlugin(
-  options: ReplayPluginOptions = {}
+  options: ReplayPluginOptions = {},
 ): JourneyPlugin<"replay", ReplayApi, { entryCount: number }> {
   const maxEntries = normalizeMaxEntries(options.maxEntries);
   const captureSnapshots = options.captureSnapshots ?? true;
@@ -23,7 +23,7 @@ export function createReplayPlugin(
           at: now(),
           kind,
           data: toSerializable(data),
-          ...(captureSnapshots ? { snapshot: toSerializable(host.getSnapshot()) } : {})
+          ...(captureSnapshots ? { snapshot: toSerializable(host.getSnapshot()) } : {}),
         };
         entries.push(entry);
         if (entries.length > maxEntries) {
@@ -35,7 +35,7 @@ export function createReplayPlugin(
       host.onStatusChange(({ previous, current }) => record("status", { previous, current }));
       host.onContextChange(({ previous, current }) => record("context", { previous, current }));
       host.onNavigationBlocked(({ reason, from, to }) =>
-        record("navigationBlocked", { reason, from, to })
+        record("navigationBlocked", { reason, from, to }),
       );
       host.onError(({ phase, stepId, error }) => record("error", { phase, stepId, error }));
 
@@ -47,11 +47,11 @@ export function createReplayPlugin(
             entries = [];
           },
           exportReplaySession: (exportOptions) =>
-            serializeReplaySession({ startedAt, entries: [...entries] }, exportOptions)
+            serializeReplaySession({ startedAt, entries: [...entries] }, exportOptions),
         },
         deriveSnapshot: (_snapshot, previous) =>
-          previous?.entryCount === entries.length ? previous : { entryCount: entries.length }
+          previous?.entryCount === entries.length ? previous : { entryCount: entries.length },
       };
-    }
+    },
   };
 }

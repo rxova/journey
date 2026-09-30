@@ -11,7 +11,7 @@ function memoryStorage(): JourneyStorage {
   return {
     getItem: (key) => data.get(key) ?? null,
     setItem: (key, value) => void data.set(key, value),
-    removeItem: (key) => void data.delete(key)
+    removeItem: (key) => void data.delete(key),
   };
 }
 
@@ -21,7 +21,7 @@ function storageWhoseRemoveThrows(error: unknown): JourneyStorage {
     setItem: () => undefined,
     removeItem: () => {
       throw error;
-    }
+    },
   };
 }
 
@@ -61,11 +61,11 @@ describe("a plugin instance shared across machines", () => {
 
     createLinearJourney(
       { steps: ["a"], context: {} },
-      { plugins: [createPersistencePlugin({ key: KEY, storage })] as const }
+      { plugins: [createPersistencePlugin({ key: KEY, storage })] as const },
     );
     createLinearJourney(
       { steps: ["a"], context: {} },
-      { plugins: [createPersistencePlugin({ key: KEY, storage })] as const }
+      { plugins: [createPersistencePlugin({ key: KEY, storage })] as const },
     );
 
     expect(warn).not.toHaveBeenCalled();
@@ -80,10 +80,10 @@ describe("clear APIs contain storage failures", () => {
       { steps: ["a"], context: {} },
       {
         plugins: [
-          createPersistencePlugin({ key: KEY, storage: storageWhoseRemoveThrows(boom) })
+          createPersistencePlugin({ key: KEY, storage: storageWhoseRemoveThrows(boom) }),
         ] as const,
-        onListenerError: (error) => reported.push(error)
-      }
+        onListenerError: (error) => reported.push(error),
+      },
     );
     machine.controls.start();
     await flush();
@@ -102,10 +102,10 @@ describe("clear APIs contain storage failures", () => {
           createPersistencePlugin({
             key: KEY,
             storage: storageWhoseRemoveThrows(boom),
-            debounceMs: 10
-          })
-        ] as const
-      }
+            debounceMs: 10,
+          }),
+        ] as const,
+      },
     );
     await flush();
 
@@ -120,8 +120,8 @@ describe("clear APIs contain storage failures", () => {
     const machine = createLinearJourney(
       { steps: ["a", "b"], context: {} },
       {
-        plugins: [createPersistencePlugin({ key: KEY, storage, clearOnTerminate: true })] as const
-      }
+        plugins: [createPersistencePlugin({ key: KEY, storage, clearOnTerminate: true })] as const,
+      },
     );
     machine.controls.start();
     await flush();

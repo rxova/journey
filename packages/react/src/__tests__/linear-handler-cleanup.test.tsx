@@ -21,7 +21,7 @@ describe("the linear bundle's step-handler registry", () => {
       journey.useStepHandler("a", {
         run: () => {
           ran.push("held");
-        }
+        },
       });
       return <span>holder</span>;
     };
@@ -29,7 +29,7 @@ describe("the linear bundle's step-handler registry", () => {
     const view = render(
       <React.StrictMode>
         <Holder />
-      </React.StrictMode>
+      </React.StrictMode>,
     );
     await flush();
 
@@ -48,7 +48,7 @@ describe("the linear bundle's step-handler registry", () => {
   it("drops each caller's own entry as overlapping holders unmount in turn", async () => {
     const journey = createLinearJourney(
       { context: {}, steps: ["a", "b", "c"] },
-      { autoStart: true }
+      { autoStart: true },
     );
     const ran: string[] = [];
 
@@ -56,7 +56,7 @@ describe("the linear bundle's step-handler registry", () => {
       journey.useStepHandler("a", {
         run: () => {
           ran.push(tag);
-        }
+        },
       });
       return <span>{tag}</span>;
     };
@@ -65,7 +65,7 @@ describe("the linear bundle's step-handler registry", () => {
       <>
         <Holder tag="first" />
         <Holder tag="second" />
-      </>
+      </>,
     );
     await flush();
 
@@ -73,7 +73,7 @@ describe("the linear bundle's step-handler registry", () => {
     view.rerender(
       <>
         <Holder tag="first" />
-      </>
+      </>,
     );
     await flush();
 
@@ -97,7 +97,7 @@ describe("the linear bundle's step-handler registry", () => {
       journey.useStepHandler(step, {
         run: () => {
           ran.push(step);
-        }
+        },
       });
       return <span>{step}</span>;
     };

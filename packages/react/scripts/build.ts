@@ -17,19 +17,19 @@ const common = {
     "react/jsx-runtime",
     "react/jsx-dev-runtime",
     "@rxova/journey-core",
-    "@rxova/journey-core/plugins"
-  ]
+    "@rxova/journey-core/plugins",
+  ],
 } satisfies BuildOptions;
 
 for (const [entryPoint, outfile] of [
   ["src/index.ts", "dist/index.js"],
   ["src/client.ts", "dist/client.js"],
-  ["src/graph.tsx", "dist/graph.js"]
+  ["src/graph.tsx", "dist/graph.js"],
 ] as const) {
   await build({
     ...common,
     entryPoints: [entryPoint],
-    outfile
+    outfile,
   });
 
   await build({
@@ -37,6 +37,6 @@ for (const [entryPoint, outfile] of [
     entryPoints: [entryPoint],
     outfile: outfile.replace(/\.js$/, ".cjs"),
     platform: "node",
-    format: "cjs"
+    format: "cjs",
   });
 }

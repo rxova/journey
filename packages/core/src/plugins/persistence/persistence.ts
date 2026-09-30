@@ -4,14 +4,14 @@ import {
   DEFAULT_SAVE_REASONS,
   normalizeDebounceMs,
   parsePersistedState,
-  resolvePersistStorage
+  resolvePersistStorage,
 } from "./persistence.helpers";
 import type {
   JourneyPersistedState,
   PersistenceApi,
   PersistencePluginOptions,
   PersistenceReason,
-  PersistenceState
+  PersistenceState,
 } from "./persistence.types";
 import type { JourneyPersistOption, JourneyPlugin } from "../../core/types";
 
@@ -19,7 +19,7 @@ export {
   buildPersistedState,
   DEFAULT_SAVE_REASONS,
   normalizeDebounceMs,
-  parsePersistedState
+  parsePersistedState,
 } from "./persistence.helpers";
 
 const IDLE_STATE: PersistenceState = { status: "idle", lastSavedAt: null, error: null };
@@ -35,7 +35,7 @@ const IDLE_STATE: PersistenceState = { status: "idle", lastSavedAt: null, error:
  * exposes the saved state for callers wiring this plugin explicitly.
  */
 export function createPersistencePlugin(
-  options: PersistencePluginOptions
+  options: PersistencePluginOptions,
 ): JourneyPlugin<"persistence", PersistenceApi, PersistenceState> {
   const now = options.now ?? Date.now;
   const debounceMs = normalizeDebounceMs(options.debounceMs);
@@ -50,7 +50,7 @@ export function createPersistencePlugin(
       setupCount += 1;
       if (setupCount > 1) {
         warnInDevelopment(
-          `journey: persistence plugin instance shared by ${setupCount} machines; they overwrite key "${options.key}". Create one per machine.`
+          `journey: persistence plugin instance shared by ${setupCount} machines; they overwrite key "${options.key}". Create one per machine.`,
         );
       }
       let lastWritten: JourneyPersistedState | null = null;
@@ -169,17 +169,17 @@ export function createPersistencePlugin(
             } catch (error) {
               failed(error);
             }
-          }
+          },
         },
-        deriveSnapshot: (_snapshot, previous) => (previous === state ? previous : state)
+        deriveSnapshot: (_snapshot, previous) => (previous === state ? previous : state),
       };
-    }
+    },
   };
 }
 
 /** Expands the creation-time `persist` option into the persistence plugin. */
 export function persistOptionToPlugin(
-  option: JourneyPersistOption
+  option: JourneyPersistOption,
 ): JourneyPlugin<"persistence", PersistenceApi, PersistenceState> {
   return createPersistencePlugin({ key: option.key, storage: resolvePersistStorage(option) });
 }

@@ -12,7 +12,7 @@ describe("devtools entrypoints", () => {
     const bootstrapPanel = vi.fn();
 
     vi.doMock("../src/panel/bootstrap", () => ({
-      bootstrapPanel
+      bootstrapPanel,
     }));
 
     await import("../src/panel/main");
@@ -26,9 +26,9 @@ describe("devtools entrypoints", () => {
     vi.stubGlobal("chrome", {
       devtools: {
         panels: {
-          create
-        }
-      }
+          create,
+        },
+      },
     });
 
     await import("../src/devtools");
@@ -37,7 +37,7 @@ describe("devtools entrypoints", () => {
       "Journey",
       "icons/icon16.png",
       "src/panel.html",
-      expect.any(Function)
+      expect.any(Function),
     );
   });
 });

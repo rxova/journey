@@ -10,7 +10,7 @@ import {
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
   type JourneyDevtoolsBridgeEnvelope,
   type JourneyDevtoolsProtocolVersion,
-  type JourneyDevtoolsOperationInvoke
+  type JourneyDevtoolsOperationInvoke,
 } from "@rxova/journey-devtools-bridge";
 import { PanelProvider, usePanelActions, usePanelState } from "../src/panel/context/PanelProvider";
 import { JOURNEY_DEVTOOLS_PANEL_PORT, type PanelWarning } from "../src/shared";
@@ -31,7 +31,7 @@ class MockPort {
     },
     removeListener: (listener: (message: unknown) => void) => {
       this.messageListeners.delete(listener);
-    }
+    },
   };
 
   public readonly onDisconnect = {
@@ -40,7 +40,7 @@ class MockPort {
     },
     removeListener: (listener: PortListener) => {
       this.disconnectListeners.delete(listener);
-    }
+    },
   };
 
   public constructor(name: string) {
@@ -85,7 +85,7 @@ const TestConsumer = () => {
 
 const createRegisterEnvelope = (
   machineId: string,
-  version: number = JOURNEY_DEVTOOLS_PROTOCOL_VERSION
+  version: number = JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
 ): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "register" }> => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
   version: version as JourneyDevtoolsProtocolVersion,
@@ -99,9 +99,9 @@ const createRegisterEnvelope = (
     appName: "Test app",
     mutationsEnabled: true,
     mode: "graph",
-    features: []
+    features: [],
   },
-  snapshot: createGraphSnapshot("start")
+  snapshot: createGraphSnapshot("start"),
 });
 
 describe("PanelProvider bridge lifecycle", () => {
@@ -131,14 +131,14 @@ describe("PanelProvider bridge lifecycle", () => {
       configurable: true,
       value: {
         runtime: {
-          connect: connectMock
+          connect: connectMock,
         },
         devtools: {
           inspectedWindow: {
-            tabId: 7
-          }
-        }
-      }
+            tabId: 7,
+          },
+        },
+      },
     });
   });
 
@@ -156,7 +156,7 @@ describe("PanelProvider bridge lifecycle", () => {
       root.render(
         <PanelProvider>
           <TestConsumer />
-        </PanelProvider>
+        </PanelProvider>,
       );
     });
 
@@ -172,8 +172,8 @@ describe("PanelProvider bridge lifecycle", () => {
       type: "panel-command",
       envelope: {
         machineId: "not-registered",
-        version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION
-      }
+        version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
+      },
     });
   });
 
@@ -182,7 +182,7 @@ describe("PanelProvider bridge lifecycle", () => {
       root.render(
         <PanelProvider>
           <TestConsumer />
-        </PanelProvider>
+        </PanelProvider>,
       );
     });
     const port = ports[0];
@@ -194,7 +194,7 @@ describe("PanelProvider bridge lifecycle", () => {
       port.emitMessage({ type: "panel-connected", connected: true });
       port.emitMessage({
         type: "panel-bridge-envelope",
-        envelope: createRegisterEnvelope("machine-1")
+        envelope: createRegisterEnvelope("machine-1"),
       });
       port.emitMessage({ type: "panel-connected", connected: false });
       await Promise.resolve();
@@ -216,7 +216,7 @@ describe("PanelProvider bridge lifecycle", () => {
       root.render(
         <PanelProvider>
           <TestConsumer />
-        </PanelProvider>
+        </PanelProvider>,
       );
     });
     const reconnect = setTimeoutSpy.mock.calls.find((call) => call[1] === 600)?.[0];
@@ -236,7 +236,7 @@ describe("PanelProvider bridge lifecycle", () => {
       root.render(
         <PanelProvider>
           <TestConsumer />
-        </PanelProvider>
+        </PanelProvider>,
       );
     });
 
@@ -249,7 +249,7 @@ describe("PanelProvider bridge lifecycle", () => {
       code: "injection-failed",
       message: "failed",
       tabId: 7,
-      recoverable: true
+      recoverable: true,
     };
 
     await act(async () => {
@@ -261,7 +261,7 @@ describe("PanelProvider bridge lifecycle", () => {
     await act(async () => {
       port.emitMessage({
         type: "panel-bridge-envelope",
-        envelope: createRegisterEnvelope("machine-1")
+        envelope: createRegisterEnvelope("machine-1"),
       });
       await Promise.resolve();
     });
@@ -279,7 +279,7 @@ describe("PanelProvider bridge lifecycle", () => {
       root.render(
         <PanelProvider>
           <TestConsumer />
-        </PanelProvider>
+        </PanelProvider>,
       );
     });
 
@@ -296,7 +296,7 @@ describe("PanelProvider bridge lifecycle", () => {
     await act(async () => {
       port.emitMessage({
         type: "panel-bridge-envelope",
-        envelope: createRegisterEnvelope("machine-1")
+        envelope: createRegisterEnvelope("machine-1"),
       });
       await Promise.resolve();
     });
@@ -308,18 +308,18 @@ describe("PanelProvider bridge lifecycle", () => {
 
     vi.spyOn(Date, "now").mockReturnValue(1234);
     vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue(
-      "00000000-0000-4000-8000-000000000000"
+      "00000000-0000-4000-8000-000000000000",
     );
 
     await act(async () => {
       actions.invokeOperation("machine-1", {
-        operationId: "core.goToNextStep"
+        operationId: "core.goToNextStep",
       } satisfies JourneyDevtoolsOperationInvoke);
       await Promise.resolve();
     });
 
     expect(latestState?.panelState.machines["machine-1"]?.timelineEntries[1]?.requestId).toBe(
-      "00000000-0000-4000-8000-000000000000"
+      "00000000-0000-4000-8000-000000000000",
     );
     expect(port.postedMessages[1]).toMatchObject({
       type: "panel-command",
@@ -329,9 +329,9 @@ describe("PanelProvider bridge lifecycle", () => {
         machineId: "machine-1",
         requestId: "00000000-0000-4000-8000-000000000000",
         invocation: {
-          operationId: "core.goToNextStep"
-        }
-      }
+          operationId: "core.goToNextStep",
+        },
+      },
     });
   });
 
@@ -340,7 +340,7 @@ describe("PanelProvider bridge lifecycle", () => {
       root.render(
         <PanelProvider>
           <TestConsumer />
-        </PanelProvider>
+        </PanelProvider>,
       );
     });
 
@@ -353,11 +353,11 @@ describe("PanelProvider bridge lifecycle", () => {
       port.emitMessage({ type: "panel-connected", connected: true });
       port.emitMessage({
         type: "panel-bridge-envelope",
-        envelope: createRegisterEnvelope("machine-1")
+        envelope: createRegisterEnvelope("machine-1"),
       });
       port.emitMessage({
         type: "panel-bridge-envelope",
-        envelope: createRegisterEnvelope("machine-2")
+        envelope: createRegisterEnvelope("machine-2"),
       });
       await Promise.resolve();
     });
@@ -383,7 +383,7 @@ describe("PanelProvider bridge lifecycle", () => {
     const originalRandomUUID = globalThis.crypto.randomUUID;
     Object.defineProperty(globalThis.crypto, "randomUUID", {
       configurable: true,
-      value: undefined
+      value: undefined,
     });
     vi.spyOn(Date, "now").mockReturnValue(0x1234);
     vi.spyOn(Math, "random").mockReturnValue(0.5);
@@ -396,13 +396,13 @@ describe("PanelProvider bridge lifecycle", () => {
     expect(port.postedMessages.at(-1)).toMatchObject({
       type: "panel-command",
       envelope: {
-        requestId: expect.stringMatching(/^req-/)
-      }
+        requestId: expect.stringMatching(/^req-/),
+      },
     });
 
     Object.defineProperty(globalThis.crypto, "randomUUID", {
       configurable: true,
-      value: originalRandomUUID
+      value: originalRandomUUID,
     });
   });
 
@@ -411,7 +411,7 @@ describe("PanelProvider bridge lifecycle", () => {
       root.render(
         <PanelProvider>
           <TestConsumer />
-        </PanelProvider>
+        </PanelProvider>,
       );
     });
 
@@ -428,7 +428,10 @@ describe("PanelProvider bridge lifecycle", () => {
     await act(async () => {
       port.emitMessage({
         type: "panel-bridge-envelope",
-        envelope: createRegisterEnvelope("machine-legacy", JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION)
+        envelope: createRegisterEnvelope(
+          "machine-legacy",
+          JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
+        ),
       });
       await Promise.resolve();
     });
@@ -444,7 +447,7 @@ describe("PanelProvider bridge lifecycle", () => {
     });
 
     expect(latestState?.protocolMismatchReason).toContain(
-      `protocol v${JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION}`
+      `protocol v${JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION}`,
     );
     expect(latestState?.areCommandsDisabled).toBe(true);
     expect(ports[0]?.postedMessages).toHaveLength(1);
@@ -455,7 +458,7 @@ describe("PanelProvider bridge lifecycle", () => {
       root.render(
         <PanelProvider>
           <TestConsumer />
-        </PanelProvider>
+        </PanelProvider>,
       );
     });
 
@@ -472,7 +475,7 @@ describe("PanelProvider bridge lifecycle", () => {
     await act(async () => {
       firstPort.emitMessage({
         type: "panel-bridge-envelope",
-        envelope: createRegisterEnvelope("machine-1")
+        envelope: createRegisterEnvelope("machine-1"),
       });
       await Promise.resolve();
     });
@@ -503,7 +506,7 @@ describe("PanelProvider bridge lifecycle", () => {
       root.render(
         <PanelProvider>
           <TestConsumer />
-        </PanelProvider>
+        </PanelProvider>,
       );
     });
 
@@ -516,7 +519,7 @@ describe("PanelProvider bridge lifecycle", () => {
       firstPort.emitMessage({ type: "panel-connected", connected: true });
       firstPort.emitMessage({
         type: "panel-bridge-envelope",
-        envelope: createRegisterEnvelope("machine-1")
+        envelope: createRegisterEnvelope("machine-1"),
       });
       await Promise.resolve();
     });
@@ -546,7 +549,7 @@ describe("PanelProvider bridge lifecycle", () => {
       root.render(
         <PanelProvider>
           <TestConsumer />
-        </PanelProvider>
+        </PanelProvider>,
       );
     });
 
@@ -581,7 +584,7 @@ describe("PanelProvider bridge lifecycle", () => {
       root.render(
         <PanelProvider>
           <TestConsumer />
-        </PanelProvider>
+        </PanelProvider>,
       );
     });
 
@@ -601,7 +604,7 @@ describe("PanelProvider bridge lifecycle", () => {
       root.render(
         <PanelProvider>
           <TestConsumer />
-        </PanelProvider>
+        </PanelProvider>,
       );
     });
 
@@ -633,11 +636,11 @@ describe("PanelProvider bridge lifecycle", () => {
     await act(async () => {
       firstPort.emitMessage({
         type: "panel-bridge-envelope",
-        envelope: createRegisterEnvelope("stale-machine")
+        envelope: createRegisterEnvelope("stale-machine"),
       });
       secondPort.emitMessage({
         type: "panel-bridge-envelope",
-        envelope: createRegisterEnvelope("fresh-machine")
+        envelope: createRegisterEnvelope("fresh-machine"),
       });
       await Promise.resolve();
     });
@@ -656,7 +659,7 @@ describe("PanelProvider bridge lifecycle", () => {
       root.render(
         <PanelProvider>
           <TestConsumer />
-        </PanelProvider>
+        </PanelProvider>,
       );
     });
 
@@ -677,7 +680,7 @@ describe("PanelProvider bridge lifecycle", () => {
       root.render(
         <PanelProvider>
           <TestConsumer />
-        </PanelProvider>
+        </PanelProvider>,
       );
     });
 

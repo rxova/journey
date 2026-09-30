@@ -5,14 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
-  JOURNEY_DEVTOOLS_PROTOCOL_VERSION
+  JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
 } from "@rxova/journey-devtools-bridge";
 import type { JourneyDevtoolsSerializableSnapshot } from "@rxova/journey-devtools-bridge";
 import type { JourneyPanelStructuredDiff } from "../src/panel/diff";
 import type {
   JourneyPanelMachineState,
   JourneyPanelState,
-  JourneyPanelTimelineEntry
+  JourneyPanelTimelineEntry,
 } from "../src/panel/store";
 import { ActiveMachinePanel } from "../src/panel/components/ActiveMachinePanel";
 import { AppShell } from "../src/panel/components/AppShell";
@@ -30,11 +30,11 @@ import { TimelineInspector } from "../src/panel/components/TimelineInspector";
 import {
   TimelineList,
   observeTimelineElementOffset,
-  observeTimelineElementRect
+  observeTimelineElementRect,
 } from "../src/panel/components/timeline/TimelineList";
 import {
   parseDisplayLimit,
-  updateDisplayLimit
+  updateDisplayLimit,
 } from "../src/panel/components/timeline/TimelineToolbar";
 import { getProtocolMismatchReason, isLegacyProtocolVersion } from "../src/panel/utils/protocol";
 import { createGraphSnapshot } from "./fixtures";
@@ -45,7 +45,7 @@ const panelProviderMocks = vi.hoisted(() => ({
   usePanelConnection: vi.fn(),
   useActiveMachine: vi.fn(),
   useLegacyProtocolState: vi.fn(),
-  usePanelTimelineRetention: vi.fn()
+  usePanelTimelineRetention: vi.fn(),
 }));
 
 vi.mock("../src/panel/context/PanelProvider", () => panelProviderMocks);
@@ -77,7 +77,7 @@ const mount = async (node: React.ReactElement): Promise<MountedView> => {
         root.unmount();
       });
       container.remove();
-    }
+    },
   };
 };
 
@@ -89,7 +89,7 @@ const click = async (element: Element) => {
 
 const setInputValue = async (
   element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement,
-  value: string
+  value: string,
 ) => {
   await act(async () => {
     let prototype: object = HTMLInputElement.prototype;
@@ -109,7 +109,7 @@ const snapshot: JourneyDevtoolsSerializableSnapshot = createGraphSnapshot("start
   timeline: ["start", "review"],
   context: { attempts: 1 },
   availableEvents: ["submitLogin"],
-  availableSteps: ["review"]
+  availableSteps: ["review"],
 });
 
 const diff: JourneyPanelStructuredDiff = {
@@ -118,13 +118,13 @@ const diff: JourneyPanelStructuredDiff = {
   changed: {
     "context.attempts": {
       before: 1,
-      after: 2
-    }
-  }
+      after: 2,
+    },
+  },
 };
 
 const createTimelineEntry = (
-  overrides: Partial<JourneyPanelTimelineEntry> = {}
+  overrides: Partial<JourneyPanelTimelineEntry> = {},
 ): JourneyPanelTimelineEntry => ({
   id: "entry-1",
   timestamp: 1,
@@ -135,15 +135,15 @@ const createTimelineEntry = (
   envelopeKind: "snapshot",
   snapshot: createGraphSnapshot("review", {
     timeline: ["start", "review"],
-    context: { attempts: 1 }
+    context: { attempts: 1 },
   }),
   actionPayload: { type: "SNAPSHOT/review" },
   meta: { machineId: "m1" },
-  ...overrides
+  ...overrides,
 });
 
 const createMachineState = (
-  overrides: Partial<JourneyPanelMachineState> = {}
+  overrides: Partial<JourneyPanelMachineState> = {},
 ): JourneyPanelMachineState => ({
   meta: {
     machineId: "m1",
@@ -165,11 +165,11 @@ const createMachineState = (
             description: null,
             mutates: true,
             output: "snapshot",
-            fields: []
-          }
-        ]
-      }
-    ]
+            fields: [],
+          },
+        ],
+      },
+    ],
   },
   protocolVersion: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
   snapshot,
@@ -177,7 +177,7 @@ const createMachineState = (
   selectedTimelineIndex: 0,
   followLatest: true,
   pendingCommandsByRequestId: {},
-  ...overrides
+  ...overrides,
 });
 
 beforeEach(() => {
@@ -194,7 +194,7 @@ beforeEach(() => {
       machines: {},
       machineOrder: [],
       selectedMachineId: null,
-      displayLimit: 50
+      displayLimit: 50,
     } satisfies JourneyPanelState,
     connectionWarning: null,
     displayConnected: true,
@@ -205,7 +205,7 @@ beforeEach(() => {
     isCommandChannelReady: true,
     protocolMismatchReason: null,
     areCommandsDisabled: false,
-    commandDisabledReason: null
+    commandDisabledReason: null,
   });
   panelProviderMocks.usePanelActions.mockReturnValue({
     selectMachine: vi.fn(),
@@ -213,12 +213,12 @@ beforeEach(() => {
     setFollowLatest: vi.fn(),
     setDisplayLimit: vi.fn(),
     pruneTimeline: vi.fn(),
-    invokeOperation: vi.fn()
+    invokeOperation: vi.fn(),
   });
   panelProviderMocks.usePanelConnection.mockReturnValue({
     connectionWarning: null,
     displayConnected: true,
-    isCommandChannelReady: true
+    isCommandChannelReady: true,
   });
   panelProviderMocks.useActiveMachine.mockReturnValue({
     activeMachine: null,
@@ -227,11 +227,11 @@ beforeEach(() => {
     selectedDiff: diff,
     protocolMismatchReason: null,
     areCommandsDisabled: false,
-    commandDisabledReason: null
+    commandDisabledReason: null,
   });
   panelProviderMocks.useLegacyProtocolState.mockReturnValue({
     protocolMismatchReason: null,
-    isLegacyProtocol: false
+    isLegacyProtocol: false,
   });
   panelProviderMocks.usePanelTimelineRetention.mockReturnValue(2000);
 
@@ -241,12 +241,12 @@ beforeEach(() => {
       observe() {}
       unobserve() {}
       disconnect() {}
-    }
+    },
   );
   vi.stubGlobal("navigator", {
     clipboard: {
-      writeText: vi.fn().mockResolvedValue(undefined)
-    }
+      writeText: vi.fn().mockResolvedValue(undefined),
+    },
   });
 });
 
@@ -278,9 +278,9 @@ describe("panel components", () => {
           code: "injection-failed",
           message: "Injection failed",
           recoverable: true,
-          tabId: 1
+          tabId: 1,
         }}
-      />
+      />,
     );
     expect(view.container.textContent).toContain("Reload the inspected tab");
 
@@ -291,9 +291,9 @@ describe("panel components", () => {
           code: "injection-missing-entry",
           message: "Missing bridge entry",
           recoverable: false,
-          tabId: 1
+          tabId: 1,
         }}
-      />
+      />,
     );
     expect(view.container.textContent).toContain("content bridge entry");
 
@@ -304,9 +304,9 @@ describe("panel components", () => {
           code: "injection-failed",
           message: "Permanent failure",
           recoverable: false,
-          tabId: 1
+          tabId: 1,
         }}
-      />
+      />,
     );
     expect(view.container.textContent).toContain("may not be recoverable");
 
@@ -317,9 +317,9 @@ describe("panel components", () => {
           code: "injection-unavailable",
           message: "Unavailable",
           recoverable: false,
-          tabId: 1
+          tabId: 1,
         }}
-      />
+      />,
     );
     expect(view.container.textContent).toContain("dynamic script injection");
 
@@ -330,9 +330,9 @@ describe("panel components", () => {
           code: "other" as never,
           message: "Unknown warning",
           recoverable: true,
-          tabId: 1
+          tabId: 1,
         }}
-      />
+      />,
     );
     expect(view.container.textContent).toContain("Unknown warning");
     expect(view.container.textContent).not.toContain("dynamic script injection");
@@ -347,7 +347,7 @@ describe("panel components", () => {
         machines={{ m1: createMachineState() }}
         selectedMachineId="m1"
         onSelect={onSelect}
-      />
+      />,
     );
     const select = selector.container.querySelector("select");
     expect(select).toBeTruthy();
@@ -361,11 +361,11 @@ describe("panel components", () => {
       <JourneyMachineSelector
         machineOrder={["m1"]}
         machines={{
-          m1: createMachineState({ meta: { ...createMachineState().meta, appName: null } })
+          m1: createMachineState({ meta: { ...createMachineState().meta, appName: null } }),
         }}
         selectedMachineId={null}
         onSelect={onSelect}
-      />
+      />,
     );
     expect(selector.container.textContent).toContain("Checkout");
     expect(selector.container.textContent).not.toContain("(Store)");
@@ -377,7 +377,7 @@ describe("panel components", () => {
         machines={{}}
         selectedMachineId={null}
         onSelect={onSelect}
-      />
+      />,
     );
     expect(emptySelector.container.textContent).toContain("Journey Machines");
     expect(emptySelector.container.textContent).not.toContain("No journey machines");
@@ -398,7 +398,7 @@ describe("panel components", () => {
     const boundary = await mount(
       <SectionErrorBoundary section="Timeline">
         <FailingSection />
-      </SectionErrorBoundary>
+      </SectionErrorBoundary>,
     );
     expect(boundary.container.textContent).toContain("Timeline Error");
     shouldThrow = false;
@@ -428,8 +428,8 @@ describe("panel components", () => {
       meta: {
         machineId: "m1",
         operationId: "core.goToStepById",
-        transitioned: false
-      }
+        transitioned: false,
+      },
     });
 
     const view = await mount(
@@ -446,7 +446,7 @@ describe("panel components", () => {
         onFollowLatestChange={onFollowLatestChange}
         onDisplayLimitChange={onDisplayLimitChange}
         onPrune={onPrune}
-      />
+      />,
     );
 
     expect(view.container.textContent).toContain("Showing 2 / 2");
@@ -457,7 +457,7 @@ describe("panel components", () => {
     expect(onSelectEntry).toHaveBeenCalledWith(0);
 
     const followButton = Array.from(view.container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Following latest")
+      button.textContent?.includes("Following latest"),
     );
     if (!followButton) {
       throw new Error("missing follow button");
@@ -481,7 +481,7 @@ describe("panel components", () => {
     expect(onDisplayLimitChange).not.toHaveBeenCalledWith(Infinity);
 
     const pruneButton = Array.from(view.container.querySelectorAll("button")).find(
-      (button) => button.textContent === "Prune to limit"
+      (button) => button.textContent === "Prune to limit",
     );
     if (!pruneButton) {
       throw new Error("missing prune button");
@@ -490,7 +490,7 @@ describe("panel components", () => {
     expect(onPrune).toHaveBeenCalled();
 
     const snapshotTab = Array.from(view.container.querySelectorAll("button")).find(
-      (button) => button.textContent === "Snapshot"
+      (button) => button.textContent === "Snapshot",
     );
     if (!snapshotTab) {
       throw new Error("missing snapshot tab");
@@ -499,7 +499,7 @@ describe("panel components", () => {
     expect(view.container.textContent).toContain('"id": "start"');
 
     const diffTab = Array.from(view.container.querySelectorAll("button")).find(
-      (button) => button.textContent === "Diff"
+      (button) => button.textContent === "Diff",
     );
     if (!diffTab) {
       throw new Error("missing diff tab");
@@ -508,7 +508,7 @@ describe("panel components", () => {
     expect(view.container.textContent).toContain("context.newFlag");
 
     const copyButton = Array.from(view.container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Copy")
+      button.textContent?.includes("Copy"),
     );
     if (!copyButton) {
       throw new Error("missing copy button");
@@ -517,7 +517,7 @@ describe("panel components", () => {
     expect(vi.mocked(navigator.clipboard.writeText)).toHaveBeenCalled();
 
     const toggleButton = Array.from(view.container.querySelectorAll("button")).find(
-      (button) => button.getAttribute("aria-label") === "Collapse Timeline"
+      (button) => button.getAttribute("aria-label") === "Collapse Timeline",
     );
     if (!toggleButton) {
       throw new Error("missing toggle button");
@@ -531,7 +531,7 @@ describe("panel components", () => {
     vi.stubGlobal("navigator", { clipboard: undefined });
     Object.defineProperty(document, "execCommand", {
       configurable: true,
-      value: vi.fn().mockReturnValue(true)
+      value: vi.fn().mockReturnValue(true),
     });
     const execCommand = vi.spyOn(document, "execCommand").mockReturnValue(true);
     const empty = await mount(
@@ -547,11 +547,11 @@ describe("panel components", () => {
         onFollowLatestChange={vi.fn()}
         onDisplayLimitChange={vi.fn()}
         onPrune={vi.fn()}
-      />
+      />,
     );
     expect(empty.container.textContent).toContain("No action selected.");
     const copyButton = Array.from(empty.container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Copy")
+      button.textContent?.includes("Copy"),
     );
     if (!copyButton) {
       throw new Error("missing copy button");
@@ -560,7 +560,7 @@ describe("panel components", () => {
     expect(execCommand).toHaveBeenCalledWith("copy");
 
     const snapshotTab = Array.from(empty.container.querySelectorAll("button")).find(
-      (button) => button.textContent === "Snapshot"
+      (button) => button.textContent === "Snapshot",
     );
     if (!snapshotTab) {
       throw new Error("missing snapshot tab");
@@ -571,7 +571,7 @@ describe("panel components", () => {
     execCommand.mockRestore();
 
     vi.stubGlobal("navigator", {
-      clipboard: { writeText: vi.fn().mockRejectedValue(new Error("nope")) }
+      clipboard: { writeText: vi.fn().mockRejectedValue(new Error("nope")) },
     });
     const failingCopy = await mount(
       <TimelineInspector
@@ -586,10 +586,10 @@ describe("panel components", () => {
         onFollowLatestChange={vi.fn()}
         onDisplayLimitChange={vi.fn()}
         onPrune={vi.fn()}
-      />
+      />,
     );
     const failingCopyButton = Array.from(failingCopy.container.querySelectorAll("button")).find(
-      (button) => button.textContent?.includes("Copy")
+      (button) => button.textContent?.includes("Copy"),
     );
     if (!failingCopyButton) {
       throw new Error("missing failing copy button");
@@ -607,7 +607,7 @@ describe("panel components", () => {
 
     Object.defineProperty(globalThis, "ResizeObserver", {
       configurable: true,
-      value: undefined
+      value: undefined,
     });
     window.setTimeout = ((callback: (...args: unknown[]) => void) => {
       callback();
@@ -629,28 +629,28 @@ describe("panel components", () => {
             kind: "event",
             label: "EVENT/custom",
             envelopeKind: "observation",
-            meta: { machineId: "m1" }
+            meta: { machineId: "m1" },
           }),
           createTimelineEntry({
             id: "noop-entry",
             kind: "operation",
             label: "OP/noop",
             envelopeKind: "operationResult",
-            meta: { machineId: "m1", transitioned: false }
+            meta: { machineId: "m1", transitioned: false },
           }),
           createTimelineEntry({
             id: "ok-entry",
             kind: "operation",
             label: "OP/ok",
             envelopeKind: "operationResult",
-            meta: { machineId: "m1", transitioned: true }
-          })
+            meta: { machineId: "m1", transitioned: true },
+          }),
         ]}
         visibleStartIndex={2}
         selectedIndex={3}
         followLatest
         onSelectEntry={onSelectEntry}
-      />
+      />,
     );
 
     expect(view.container.textContent).toContain("EVENT/custom");
@@ -670,7 +670,7 @@ describe("panel components", () => {
     expect(window.clearTimeout).toHaveBeenCalled();
 
     const selectedButton = Array.from(view.container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("OP/noop")
+      button.textContent?.includes("OP/noop"),
     );
     if (!selectedButton) {
       throw new Error("missing timeline row");
@@ -681,7 +681,7 @@ describe("panel components", () => {
     await view.unmount();
     Object.defineProperty(globalThis, "ResizeObserver", {
       configurable: true,
-      value: originalResizeObserver
+      value: originalResizeObserver,
     });
     window.setTimeout = originalSetTimeout;
     window.clearTimeout = originalClearTimeout;
@@ -697,7 +697,7 @@ describe("panel components", () => {
           throw new Error("copy serialization failed");
         }
         return { renderable: true };
-      }
+      },
     };
     const entry = createTimelineEntry({ actionPayload: payload });
     const view = await mount(
@@ -713,10 +713,10 @@ describe("panel components", () => {
         onFollowLatestChange={vi.fn()}
         onDisplayLimitChange={vi.fn()}
         onPrune={vi.fn()}
-      />
+      />,
     );
     const copyButton = Array.from(view.container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Copy")
+      button.textContent?.includes("Copy"),
     );
     if (!copyButton) {
       throw new Error("missing copy button");
@@ -743,7 +743,7 @@ describe("panel components", () => {
       envelopeKind: "operationResult",
       invocation: { operationId: "core.pause" },
       actionPayload: undefined,
-      meta: { machineId: "m1", transitioned: false }
+      meta: { machineId: "m1", transitioned: false },
     });
     const view = await mount(
       <TimelineInspector
@@ -758,7 +758,7 @@ describe("panel components", () => {
         onFollowLatestChange={vi.fn()}
         onDisplayLimitChange={vi.fn()}
         onPrune={vi.fn()}
-      />
+      />,
     );
     expect(view.container.textContent).toContain("did not produce a transition");
     await view.unmount();
@@ -778,7 +778,7 @@ describe("panel components", () => {
             description: null,
             mutates: true,
             output: "snapshot",
-            fields: [{ key: "stepId", label: "stepId", type: "text", required: true }]
+            fields: [{ key: "stepId", label: "stepId", type: "text", required: true }],
           },
           {
             id: "core.forceStepTransition",
@@ -786,7 +786,7 @@ describe("panel components", () => {
             description: null,
             mutates: true,
             output: "snapshot",
-            fields: [{ key: "stepId", label: "stepId", type: "text", required: true }]
+            fields: [{ key: "stepId", label: "stepId", type: "text", required: true }],
           },
           {
             id: "core.sendEvent",
@@ -796,8 +796,8 @@ describe("panel components", () => {
             output: "snapshot",
             fields: [
               { key: "type", label: "type", type: "text", required: true },
-              { key: "payload", label: "payload", type: "json" }
-            ]
+              { key: "payload", label: "payload", type: "json" },
+            ],
           },
           {
             id: "core.clearStepError",
@@ -805,7 +805,7 @@ describe("panel components", () => {
             description: null,
             mutates: true,
             output: "snapshot",
-            fields: [{ key: "stepId", label: "stepId", type: "text" }]
+            fields: [{ key: "stepId", label: "stepId", type: "text" }],
           },
           {
             id: "core.goToPreviousStep",
@@ -813,7 +813,7 @@ describe("panel components", () => {
             description: null,
             mutates: true,
             output: "snapshot",
-            fields: [{ key: "steps", label: "steps", type: "integer" }]
+            fields: [{ key: "steps", label: "steps", type: "integer" }],
           },
           {
             id: "custom.inspect",
@@ -821,10 +821,10 @@ describe("panel components", () => {
             description: null,
             mutates: false,
             output: "data",
-            fields: [{ key: "enabled", label: "enabled", type: "boolean" }]
-          }
-        ]
-      }
+            fields: [{ key: "enabled", label: "enabled", type: "boolean" }],
+          },
+        ],
+      },
     ] as const;
 
     const view = await mount(
@@ -839,14 +839,14 @@ describe("panel components", () => {
         stepIds={["start", "review"]}
         eventTypesBySource={{ start: ["custom"], "*": ["global"] }}
         goToStepTargetsBySource={{ start: ["review"], "*": ["start", "review"] }}
-      />
+      />,
     );
 
     expect(view.container.textContent).toContain("Mutations disabled");
     expect(view.container.textContent).toContain("Navigation");
 
     const goToStepButton = Array.from(view.container.querySelectorAll("button")).find(
-      (button) => button.textContent === "goToStepById"
+      (button) => button.textContent === "goToStepById",
     );
     if (!goToStepButton) {
       throw new Error("missing goToStepById button");
@@ -854,7 +854,7 @@ describe("panel components", () => {
     expect(goToStepButton.disabled).toBe(true);
 
     const inspectButton = Array.from(view.container.querySelectorAll("button")).find(
-      (button) => button.textContent === "inspect"
+      (button) => button.textContent === "inspect",
     );
     if (!inspectButton) {
       throw new Error("missing inspect button");
@@ -862,7 +862,7 @@ describe("panel components", () => {
     await click(inspectButton);
     expect(onInvoke).toHaveBeenCalledWith({
       operationId: "custom.inspect",
-      input: { enabled: false }
+      input: { enabled: false },
     });
     await view.unmount();
 
@@ -878,10 +878,10 @@ describe("panel components", () => {
         stepIds={[]}
         eventTypesBySource={undefined}
         goToStepTargetsBySource={undefined}
-      />
+      />,
     );
     const sendButton = Array.from(enabledView.container.querySelectorAll("button")).find(
-      (button) => button.textContent === "send"
+      (button) => button.textContent === "send",
     );
     if (!sendButton) {
       throw new Error("missing send button");
@@ -902,7 +902,7 @@ describe("panel components", () => {
     await click(sendButton);
     expect(onInvoke).toHaveBeenCalledWith({
       operationId: "core.sendEvent",
-      input: { type: "custom", payload: { ok: true } }
+      input: { type: "custom", payload: { ok: true } },
     });
     await enabledView.unmount();
   });
@@ -921,7 +921,7 @@ describe("panel components", () => {
             description: null,
             mutates: true,
             output: "snapshot",
-            fields: [{ key: "type", label: "type", type: "text", required: true }]
+            fields: [{ key: "type", label: "type", type: "text", required: true }],
           },
           {
             id: "core.clearStepError",
@@ -929,7 +929,7 @@ describe("panel components", () => {
             description: null,
             mutates: true,
             output: "snapshot",
-            fields: [{ key: "stepId", label: "stepId", type: "text" }]
+            fields: [{ key: "stepId", label: "stepId", type: "text" }],
           },
           {
             id: "core.updateContext",
@@ -937,7 +937,7 @@ describe("panel components", () => {
             description: null,
             mutates: true,
             output: "snapshot",
-            fields: [{ key: "context", label: "context", type: "json" }]
+            fields: [{ key: "context", label: "context", type: "json" }],
           },
           {
             id: "custom.optional",
@@ -945,10 +945,10 @@ describe("panel components", () => {
             description: null,
             mutates: false,
             output: "data",
-            fields: [{ key: "count", label: "count", type: "integer" }]
-          }
-        ]
-      }
+            fields: [{ key: "count", label: "count", type: "integer" }],
+          },
+        ],
+      },
     ] as const;
 
     const view = await mount(
@@ -963,12 +963,12 @@ describe("panel components", () => {
         stepIds={["start", "review"]}
         eventTypesBySource={undefined}
         goToStepTargetsBySource={undefined}
-      />
+      />,
     );
 
     expect(view.container.textContent).toContain("Commands are unavailable");
     const eventsToggle = Array.from(view.container.querySelectorAll("button")).find((button) =>
-      button.getAttribute("aria-label")?.includes("Collapse Events")
+      button.getAttribute("aria-label")?.includes("Collapse Events"),
     );
     if (!eventsToggle) {
       throw new Error("missing events toggle");
@@ -989,11 +989,11 @@ describe("panel components", () => {
         stepIds={["start", "review"]}
         eventTypesBySource={undefined}
         goToStepTargetsBySource={undefined}
-      />
+      />,
     );
 
     const optionalButton = Array.from(enabledView.container.querySelectorAll("button")).find(
-      (button) => button.textContent === "optional"
+      (button) => button.textContent === "optional",
     );
     if (!optionalButton) {
       throw new Error("missing optional button");
@@ -1007,7 +1007,7 @@ describe("panel components", () => {
     }
     await setInputValue(contextTextarea as HTMLTextAreaElement, '{"updated":true}');
     const updateContextButton = Array.from(enabledView.container.querySelectorAll("button")).find(
-      (button) => button.textContent === "updateContext"
+      (button) => button.textContent === "updateContext",
     );
     if (!updateContextButton) {
       throw new Error("missing updateContext button");
@@ -1015,7 +1015,7 @@ describe("panel components", () => {
     await click(updateContextButton);
     expect(onInvoke).toHaveBeenCalledWith({
       operationId: "core.updateContext",
-      input: { context: { updated: true } }
+      input: { context: { updated: true } },
     });
     await enabledView.unmount();
   });
@@ -1031,7 +1031,7 @@ describe("panel components", () => {
         options={undefined}
         validationError="Required"
         onChange={onChange}
-      />
+      />,
     );
     const booleanSelect = booleanField.container.querySelector("select");
     if (!booleanSelect) {
@@ -1051,10 +1051,10 @@ describe("panel components", () => {
         selectOnly
         validationError={null}
         onChange={onChange}
-      />
+      />,
     );
     expect(
-      (selectOnly.container.querySelector("select") as HTMLSelectElement | null)?.disabled
+      (selectOnly.container.querySelector("select") as HTMLSelectElement | null)?.disabled,
     ).toBe(true);
     await selectOnly.unmount();
 
@@ -1067,11 +1067,11 @@ describe("panel components", () => {
         options={["review"]}
         validationError="Invalid target"
         onChange={onChange}
-      />
+      />,
     );
     expect(optionField.container.textContent).toContain("review");
     expect(optionField.container.querySelector("select")?.getAttribute("aria-invalid")).toBe(
-      "true"
+      "true",
     );
     const optionSelect = optionField.container.querySelector("select");
     if (!optionSelect) {
@@ -1090,7 +1090,7 @@ describe("panel components", () => {
         options={undefined}
         validationError="Name is invalid"
         onChange={onChange}
-      />
+      />,
     );
     expect(textField.container.textContent).toContain("Name is invalid");
     expect(textField.container.querySelector("input")?.getAttribute("aria-invalid")).toBe("true");
@@ -1102,14 +1102,14 @@ describe("panel components", () => {
           id: "custom",
           label: "Custom",
           description: "Custom operations",
-          operations: []
+          operations: [],
         }}
         isOpen={false}
         onToggle={vi.fn()}
         errorMessage="Section failed"
       >
         <p>Hidden content</p>
-      </OperationSectionCard>
+      </OperationSectionCard>,
     );
     expect(card.container.textContent).toContain("Custom operations");
     expect(card.container.textContent).toContain("Section failed");
@@ -1120,29 +1120,29 @@ describe("panel components", () => {
   it("renders compatibility notice for legacy protocol machines", async () => {
     panelProviderMocks.useActiveMachine.mockReturnValue({
       activeMachine: createMachineState({
-        protocolVersion: JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION
+        protocolVersion: JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
       }),
       displayedSnapshot: snapshot,
       selectedTimelineEntry: createTimelineEntry(),
       selectedDiff: diff,
       protocolMismatchReason: "Legacy protocol mismatch",
       areCommandsDisabled: true,
-      commandDisabledReason: "Legacy protocol mismatch"
+      commandDisabledReason: "Legacy protocol mismatch",
     });
     panelProviderMocks.useLegacyProtocolState.mockReturnValue({
       protocolMismatchReason: "Legacy protocol mismatch",
-      isLegacyProtocol: true
+      isLegacyProtocol: true,
     });
 
     const view = await mount(<CompatibilityNotice />);
     expect(view.container.textContent).toContain("Legacy protocol mismatch");
     expect(view.container.textContent).toContain(
-      `Legacy protocol v${JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION} machines are read-only`
+      `Legacy protocol v${JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION} machines are read-only`,
     );
 
     panelProviderMocks.useLegacyProtocolState.mockReturnValue({
       protocolMismatchReason: "Newer protocol mismatch",
-      isLegacyProtocol: false
+      isLegacyProtocol: false,
     });
     await view.rerender(<CompatibilityNotice />);
     expect(view.container.textContent).toContain("Newer protocol mismatch");
@@ -1155,7 +1155,7 @@ describe("panel components", () => {
     expect(view.container.innerHTML).toBe("");
     expect(getProtocolMismatchReason(undefined)).toBeNull();
     expect(getProtocolMismatchReason(JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION)).toContain(
-      "selected machine"
+      "selected machine",
     );
     expect(isLegacyProtocolVersion(undefined)).toBe(false);
     expect(isLegacyProtocolVersion(JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION)).toBe(true);
@@ -1166,7 +1166,7 @@ describe("panel components", () => {
     const linearSnapshot = {
       ...snapshot,
       type: "linear",
-      currentStep: null
+      currentStep: null,
     } as unknown as JourneyDevtoolsSerializableSnapshot;
     const metaWithoutStepIds = { ...createMachineState().meta };
     delete metaWithoutStepIds.stepIds;
@@ -1175,8 +1175,8 @@ describe("panel components", () => {
       meta: {
         ...metaWithoutStepIds,
         appName: null,
-        mode: "linear"
-      }
+        mode: "linear",
+      },
     });
     panelProviderMocks.useActiveMachine.mockReturnValue({
       activeMachine: machine,
@@ -1185,7 +1185,7 @@ describe("panel components", () => {
       selectedDiff: diff,
       protocolMismatchReason: null,
       areCommandsDisabled: false,
-      commandDisabledReason: null
+      commandDisabledReason: null,
     });
 
     const view = await mount(<ActiveMachinePanel />);
@@ -1193,7 +1193,7 @@ describe("panel components", () => {
 
     const machineWithSteps = createMachineState({
       snapshot: linearSnapshot,
-      meta: { ...machine.meta, stepIds: ["start", "review"] }
+      meta: { ...machine.meta, stepIds: ["start", "review"] },
     });
     panelProviderMocks.useActiveMachine.mockReturnValue({
       activeMachine: machineWithSteps,
@@ -1202,7 +1202,7 @@ describe("panel components", () => {
       selectedDiff: diff,
       protocolMismatchReason: null,
       areCommandsDisabled: false,
-      commandDisabledReason: null
+      commandDisabledReason: null,
     });
     await view.rerender(<ActiveMachinePanel />);
     expect(view.container.textContent).toContain("Operations");
@@ -1216,7 +1216,7 @@ describe("panel components", () => {
       description: null,
       mutates: true,
       output: "snapshot" as const,
-      fields: []
+      fields: [],
     });
     const renderControls = (id: "core.sendEvent" | "core.clearStepError") => (
       <CommandControls
@@ -1253,7 +1253,7 @@ describe("panel components", () => {
         machines: { m1: machine },
         machineOrder: ["m1"],
         selectedMachineId: "m1",
-        displayLimit: 50
+        displayLimit: 50,
       },
       connectionWarning: null,
       displayConnected: true,
@@ -1264,7 +1264,7 @@ describe("panel components", () => {
       isCommandChannelReady: true,
       protocolMismatchReason: null,
       areCommandsDisabled: false,
-      commandDisabledReason: null
+      commandDisabledReason: null,
     });
     panelProviderMocks.usePanelActions.mockReturnValue({
       selectMachine,
@@ -1272,7 +1272,7 @@ describe("panel components", () => {
       setFollowLatest,
       setDisplayLimit,
       pruneTimeline,
-      invokeOperation
+      invokeOperation,
     });
     panelProviderMocks.useActiveMachine.mockReturnValue({
       activeMachine: machine,
@@ -1281,7 +1281,7 @@ describe("panel components", () => {
       selectedDiff: diff,
       protocolMismatchReason: null,
       areCommandsDisabled: false,
-      commandDisabledReason: null
+      commandDisabledReason: null,
     });
 
     const shell = await mount(<AppShell />);
@@ -1301,10 +1301,10 @@ describe("panel components", () => {
     expect(selectTimelineEntry).toHaveBeenCalledWith("m1", 0);
 
     const followButton = Array.from(active.container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Following latest")
+      button.textContent?.includes("Following latest"),
     );
     const pruneButton = Array.from(active.container.querySelectorAll("button")).find(
-      (button) => button.textContent === "Prune to limit"
+      (button) => button.textContent === "Prune to limit",
     );
     const limitInput = active.container.querySelector('input[type="number"]');
     if (!followButton || !pruneButton || !limitInput) {
@@ -1318,14 +1318,14 @@ describe("panel components", () => {
     expect(pruneTimeline).toHaveBeenCalledWith("m1", 50);
 
     const operationButton = Array.from(active.container.querySelectorAll("button")).find(
-      (button) => button.textContent === "goToNextStep"
+      (button) => button.textContent === "goToNextStep",
     );
     if (!operationButton) {
       throw new Error("missing active operation");
     }
     await click(operationButton);
     expect(invokeOperation).toHaveBeenCalledWith("m1", {
-      operationId: "core.goToNextStep"
+      operationId: "core.goToNextStep",
     });
     await active.unmount();
   });

@@ -21,7 +21,7 @@ export const OperationField = ({
   options,
   selectOnly = false,
   validationError,
-  onChange
+  onChange,
 }: OperationFieldProps) => {
   const stateKey = `${operationId}:${field.key}`;
   const placeholder = field.placeholder ?? field.key;

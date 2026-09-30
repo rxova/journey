@@ -9,7 +9,7 @@ import {
   type BackgroundToPanelMessage,
   type PanelCommandMessage,
   type PanelInitMessage,
-  type PanelWarning
+  type PanelWarning,
 } from "../../shared";
 import { getProtocolMismatchReason } from "../utils/protocol";
 
@@ -74,7 +74,7 @@ export const usePanelBridge = (): UsePanelBridgeResult => {
         window.clearTimeout(clearMachinesTimerRef.current);
       }
     },
-    []
+    [],
   );
 
   React.useEffect(() => {
@@ -111,7 +111,7 @@ export const usePanelBridge = (): UsePanelBridgeResult => {
 
       const initMessage: PanelInitMessage = {
         type: "panel-init",
-        tabId: chrome.devtools.inspectedWindow.tabId
+        tabId: chrome.devtools.inspectedWindow.tabId,
       };
       port.postMessage(initMessage);
 
@@ -212,24 +212,24 @@ export const usePanelBridge = (): UsePanelBridgeResult => {
         machineId,
         requestId,
         invocation,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
 
       const envelope = createInvokeEnvelope(
         machineId,
         requestId,
         invocation,
-        protocolVersion ?? JOURNEY_DEVTOOLS_PROTOCOL_VERSION
+        protocolVersion ?? JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
       );
       const message: PanelCommandMessage = {
         type: "panel-command",
         tabId: chrome.devtools.inspectedWindow.tabId,
-        envelope
+        envelope,
       };
 
       port.postMessage(message);
     },
-    [panelState.machines]
+    [panelState.machines],
   );
 
   return {
@@ -240,23 +240,23 @@ export const usePanelBridge = (): UsePanelBridgeResult => {
     invokeOperation,
     selectMachine: React.useCallback(
       (machineId: string) => dispatch({ type: "select-machine", machineId }),
-      []
+      [],
     ),
     selectTimelineEntry: React.useCallback(
       (machineId: string, index: number) =>
         dispatch({ type: "select-timeline-entry", machineId, index }),
-      []
+      [],
     ),
     setFollowLatest: React.useCallback(
       (machineId: string, followLatest: boolean) =>
         dispatch({ type: "set-follow-latest", machineId, followLatest }),
-      []
+      [],
     ),
     setDisplayLimit: React.useCallback((limit: number | null) => {
       dispatch({ type: "set-display-limit", limit });
     }, []),
     pruneTimeline: React.useCallback((machineId: string, keep: number | null) => {
       dispatch({ type: "prune-timeline", machineId, keep });
-    }, [])
+    }, []),
   };
 };

@@ -17,7 +17,7 @@ export default baseKnipConfig({
   ignoreDependencies: [
     // Named in typedoc.core.json / typedoc.react.json / typedoc.bridge.json as
     // a `plugin` entry. Knip does not read a typedoc config.
-    "typedoc-plugin-markdown"
+    "typedoc-plugin-markdown",
   ],
   workspaces: {
     "apps/docs": {
@@ -31,8 +31,8 @@ export default baseKnipConfig({
         // A one-shot Docusaurus-to-Starlight migration, deliberately kept: its
         // own header says it stays so "the transforms it applied are auditable
         // next to the diff they produced". Dead by design, not by accident.
-        "scripts/migrate-content.js"
-      ]
+        "scripts/migrate-content.js",
+      ],
     },
     // Every example is a standalone, copy-me artefact: it is read and pasted,
     // not imported. Two consequences knip cannot infer:
@@ -53,13 +53,13 @@ export default baseKnipConfig({
     // below) are left out rather than globbed over, so a pattern that stops
     // matching is reported instead of quietly covering nothing.
     "examples/*-plugin-*": {
-      entry: ["src/demo/fixtures/*.ts"]
+      entry: ["src/demo/fixtures/*.ts"],
     },
     "examples/core-showcase-*": {
-      entry: ["src/demo/fixtures/*.ts"]
+      entry: ["src/demo/fixtures/*.ts"],
     },
     "examples/react-showcase-graph": {
-      entry: ["src/types.ts", "src/journey.ts"]
+      entry: ["src/types.ts", "src/journey.ts"],
     },
     // Type-level suites: files of `expectTypeOf`-style assertions that nothing
     // imports, because the assertion *is* the test and `tsc --noEmit` is what
@@ -70,11 +70,11 @@ export default baseKnipConfig({
         // The published subpath barrels. Their exports are the public API of
         // `./plugins` and `./connectors/immer`, which nothing here imports.
         "src/plugins/index.ts",
-        "src/connectors/immer/immer.ts"
-      ]
+        "src/connectors/immer/immer.ts",
+      ],
     },
     "packages/react": {
-      entry: ["src/**/__tests__/*.type.ts"]
-    }
-  }
+      entry: ["src/**/__tests__/*.type.ts"],
+    },
+  },
 });

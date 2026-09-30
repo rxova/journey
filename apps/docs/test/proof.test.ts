@@ -9,7 +9,7 @@ describe("proof: package sizes", () => {
     (_check, pkg) => {
       const names = (sizeBudgets(pkg.dir) ?? []).map((entry) => entry.name);
       expect(names).toContain(pkg.check);
-    }
+    },
   );
 
   it("renders every package's budget when nothing is measured", () => {
@@ -23,7 +23,7 @@ describe("proof: package sizes", () => {
 
   it("renders the measured size when size-limit reports the check", () => {
     const checks = new Map<string, SizeLimitCheck>([
-      [core.check, { name: core.check, size: 6123 }]
+      [core.check, { name: core.check, size: 6123 }],
     ]);
     const size = resolveSize(core, [{ name: core.check, limit: "6.2 kB" }], checks);
     expect(size).toMatchObject({ measured: true, value: "6.12 kB", budget: "6.2 kB" });
@@ -31,14 +31,14 @@ describe("proof: package sizes", () => {
 
   it("throws when the check has no size-limit budget", () => {
     expect(() =>
-      resolveSize(core, [{ name: "core/createJourneyMachine", limit: "7 kB" }], null)
+      resolveSize(core, [{ name: "core/createJourneyMachine", limit: "7 kB" }], null),
     ).toThrow(/no size-limit entry named "core\/createLinearJourney".*core\/createJourneyMachine/);
     expect(() => resolveSize(core, undefined, null)).toThrow(/entries: none/);
   });
 
   it("throws when size-limit ran but did not report the check", () => {
     expect(() =>
-      resolveSize(core, [{ name: core.check, limit: "6.2 kB" }], new Map<string, SizeLimitCheck>())
+      resolveSize(core, [{ name: core.check, limit: "6.2 kB" }], new Map<string, SizeLimitCheck>()),
     ).toThrow(/no size-limit entry named/);
   });
 });

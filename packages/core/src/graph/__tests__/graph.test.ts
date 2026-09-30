@@ -13,13 +13,13 @@ async function startedGraph(context: Partial<Ctx> = {}) {
       review: {
         on: {
           EDIT: "form",
-          CONFIRM: [{ to: "done", when: ({ context: c }) => (c as Ctx).confirmed }, { to: "form" }]
-        }
+          CONFIRM: [{ to: "done", when: ({ context: c }) => (c as Ctx).confirmed }, { to: "form" }],
+        },
       },
-      done: {}
+      done: {},
     },
     initial: "form",
-    context: { valid: true, confirmed: false, retries: 0, ...context }
+    context: { valid: true, confirmed: false, retries: 0, ...context },
   });
   machine.controls.start();
   await flush();
@@ -37,15 +37,15 @@ describe("createGraphJourney — event-driven transitions", () => {
     const machine = await startedGraph({ valid: false });
     expect(await machine.send("SUBMIT")).toMatchObject({
       ok: false,
-      reason: "no-enabled-transition"
+      reason: "no-enabled-transition",
     });
     expect(await machine.send("UNKNOWN")).toMatchObject({
       ok: false,
-      reason: "no-enabled-transition"
+      reason: "no-enabled-transition",
     });
     expect(await machine.send("EDIT")).toMatchObject({
       ok: false,
-      reason: "no-enabled-transition"
+      reason: "no-enabled-transition",
     });
   });
 
@@ -59,22 +59,22 @@ describe("createGraphJourney — event-driven transitions", () => {
                 to: "b",
                 when: () => {
                   throw new Error("guard exploded");
-                }
-              }
-            ]
-          }
+                },
+              },
+            ],
+          },
         },
-        b: {}
+        b: {},
       },
       initial: "a",
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();
 
     expect(machine.getSnapshot().outgoingTransitions[0]).toMatchObject({
       guard: "failed",
-      enabled: false
+      enabled: false,
     });
     expect(await machine.send("GO")).toMatchObject({ ok: false, reason: "no-enabled-transition" });
   });
@@ -100,10 +100,10 @@ describe("createGraphJourney — event-driven transitions", () => {
         second: { on: { GO: "fromSecond" } },
         first: { on: { GO: "fromFirst" } },
         fromFirst: { on: { GO: "second" } },
-        fromSecond: {}
+        fromSecond: {},
       },
       initial: "first",
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();
@@ -119,12 +119,12 @@ describe("createGraphJourney — event-driven transitions", () => {
       steps: {
         a: {
           onLeave: () => void log.push("onLeave:a"),
-          on: { GO: [{ to: "b", onTransition: async () => void log.push("onTransition") }] }
+          on: { GO: [{ to: "b", onTransition: async () => void log.push("onTransition") }] },
         },
-        b: { onEnter: () => void log.push("onEnter:b") }
+        b: { onEnter: () => void log.push("onEnter:b") },
       },
       initial: "a",
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();
@@ -141,13 +141,13 @@ describe("createGraphJourney — event-driven transitions", () => {
       steps: {
         a: {
           on: {
-            GO: [{ to: "b", onTransition: ({ event }) => void seen.push(["transition", event]) }]
-          }
+            GO: [{ to: "b", onTransition: ({ event }) => void seen.push(["transition", event]) }],
+          },
         },
-        b: { onEnter: ({ event }) => void seen.push(["enter", event]) }
+        b: { onEnter: ({ event }) => void seen.push(["enter", event]) },
       },
       initial: "a",
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();
@@ -155,7 +155,7 @@ describe("createGraphJourney — event-driven transitions", () => {
     await machine.send("GO", { code: 42 });
     expect(seen).toEqual([
       ["transition", { type: "GO", payload: { code: 42 } }],
-      ["enter", { type: "GO", payload: { code: 42 } }]
+      ["enter", { type: "GO", payload: { code: 42 } }],
     ]);
   });
 
@@ -171,15 +171,15 @@ describe("createGraphJourney — event-driven transitions", () => {
                 to: "b",
                 onTransition: () => {
                   throw boom;
-                }
-              }
-            ]
-          }
+                },
+              },
+            ],
+          },
         },
-        b: { onEnter: enter }
+        b: { onEnter: enter },
       },
       initial: "a",
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();
@@ -196,12 +196,12 @@ describe("createGraphJourney — event-driven transitions", () => {
     const machine = await startedGraph();
     expect(await machine.navigate.goToStepById("done")).toMatchObject({
       ok: false,
-      reason: "invalid-target"
+      reason: "invalid-target",
     });
     expect(await machine.navigate.goToStepById("review")).toEqual({
       ok: true,
       from: "form",
-      to: "review"
+      to: "review",
     });
   });
 
@@ -210,7 +210,7 @@ describe("createGraphJourney — event-driven transitions", () => {
     const machine = createGraphJourney({
       steps: { a: { on: { GO: [{ to: "b", onTransition: effect }] } }, b: {} },
       initial: "a",
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();
@@ -224,7 +224,7 @@ describe("createGraphJourney — event-driven transitions", () => {
     const machine = createGraphJourney({
       steps: { a: { on: { GO: "b" } }, b: { onLeave: leaveB } }, // no way back via transitions
       initial: "a",
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();
@@ -236,7 +236,7 @@ describe("createGraphJourney — event-driven transitions", () => {
     // at the tip, graph has no declared-order fallback
     expect(await machine.navigate.goToNextStep()).toMatchObject({
       ok: false,
-      reason: "out-of-bounds"
+      reason: "out-of-bounds",
     });
   });
 
@@ -254,8 +254,8 @@ describe("createGraphJourney — event-driven transitions", () => {
         priority: 0,
         guard: "failed",
         enabled: false,
-        selected: false
-      }
+        selected: false,
+      },
     ]);
     expect(snapshot.currentStep?.isTerminal).toBe(false);
 
@@ -269,7 +269,7 @@ describe("createGraphJourney — event-driven transitions", () => {
       priority: 0,
       guard: "passed",
       enabled: true,
-      selected: true
+      selected: true,
     });
 
     await machine.send("SUBMIT");
@@ -284,7 +284,7 @@ describe("createGraphJourney — event-driven transitions", () => {
         priority: 0,
         guard: "none",
         enabled: true,
-        selected: true
+        selected: true,
       },
       {
         event: "CONFIRM",
@@ -292,7 +292,7 @@ describe("createGraphJourney — event-driven transitions", () => {
         priority: 0,
         guard: "failed",
         enabled: false,
-        selected: false
+        selected: false,
       },
       {
         event: "CONFIRM",
@@ -300,8 +300,8 @@ describe("createGraphJourney — event-driven transitions", () => {
         priority: 1,
         guard: "none",
         enabled: true,
-        selected: true
-      }
+        selected: true,
+      },
     ]);
 
     machine.context.update((c) => ({ ...(c as Ctx), confirmed: true }));
@@ -314,7 +314,7 @@ describe("createGraphJourney — event-driven transitions", () => {
         priority: 0,
         guard: "passed",
         enabled: true,
-        selected: true
+        selected: true,
       },
       {
         event: "CONFIRM",
@@ -322,8 +322,8 @@ describe("createGraphJourney — event-driven transitions", () => {
         priority: 1,
         guard: "none",
         enabled: true,
-        selected: false
-      }
+        selected: false,
+      },
     ]);
 
     await machine.send("CONFIRM");
@@ -351,14 +351,14 @@ describe("createGraphJourney — event-driven transitions", () => {
               {
                 to: "verify",
                 onTransition: ({ updateContext }) =>
-                  void updateContext((c) => ({ retries: (c as { retries: number }).retries + 1 }))
-              }
-            ]
-          }
-        }
+                  void updateContext((c) => ({ retries: (c as { retries: number }).retries + 1 })),
+              },
+            ],
+          },
+        },
       },
       initial: "verify",
-      context: { retries: 0 }
+      context: { retries: 0 },
     });
     machine.controls.start();
     await flush();
@@ -378,16 +378,16 @@ describe("createGraphJourney — event-driven transitions", () => {
               {
                 to: "b",
                 when: ({ handlers }: { context: unknown; handlers: unknown }) =>
-                  (handlers as { allowed(): boolean }).allowed()
-              }
-            ]
-          }
+                  (handlers as { allowed(): boolean }).allowed(),
+              },
+            ],
+          },
         },
-        b: {}
+        b: {},
       },
       initial: "a",
       context: {},
-      handlers: { allowed: () => false }
+      handlers: { allowed: () => false },
     } as const;
 
     const app = createGraphJourney(definition);
@@ -411,12 +411,12 @@ describe("createGraphJourney — event-driven transitions", () => {
             directResults.push(await machineRef.send("FINISH"));
             raise({ type: "FINISH" });
           },
-          on: { FINISH: "c" }
+          on: { FINISH: "c" },
         },
-        c: {}
+        c: {},
       },
       initial: "a",
-      context: {}
+      context: {},
     });
     const machineRef = machine;
     machine.controls.start();
@@ -437,11 +437,11 @@ describe("createGraphJourney — event-driven transitions", () => {
             raiseCount += 1;
             raise({ type: "AGAIN" });
           },
-          on: { AGAIN: "loop" }
-        }
+          on: { AGAIN: "loop" },
+        },
       },
       initial: "loop",
-      context: {}
+      context: {},
     });
     const errors: unknown[] = [];
     machine.subscriptions.subscribeEvent("error", (payload) => errors.push(payload));
@@ -459,21 +459,21 @@ describe("createGraphJourney — event-driven transitions", () => {
 
   it("validates the definition at creation", () => {
     expect(() => createGraphJourney({ steps: {}, initial: "a" as never, context: {} })).toThrow(
-      /at least one step/
+      /at least one step/,
     );
     expect(() =>
       createGraphJourney({
         steps: { a: {} },
         initial: "b" as never,
-        context: {}
-      })
+        context: {},
+      }),
     ).toThrow(/initial step "b"/);
     expect(() =>
       createGraphJourney({
         steps: { a: { on: { GO: "ghost" as never } } },
         initial: "a",
-        context: {}
-      })
+        context: {},
+      }),
     ).toThrow(/unknown step "ghost"/);
   });
 
@@ -481,7 +481,7 @@ describe("createGraphJourney — event-driven transitions", () => {
     const machine = createGraphJourney({
       steps: { a: { onLeave: () => wait(30), on: { GO: "b" } }, b: {} },
       initial: "a",
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();
@@ -498,9 +498,9 @@ describe("createGraphJourney — startAt", () => {
       {
         steps: { form: {}, review: { on: { EDIT: "form" } }, done: {} },
         initial: "form",
-        context: {}
+        context: {},
       },
-      { startAt: "review" }
+      { startAt: "review" },
     );
     machine.controls.start();
     await flush();
@@ -514,8 +514,8 @@ describe("createGraphJourney — startAt", () => {
     expect(() =>
       createGraphJourney(
         { steps: { a: {} }, initial: "a", context: {} },
-        { startAt: "nope" as never }
-      )
+        { startAt: "nope" as never },
+      ),
     ).toThrow(/startAt references unknown step "nope"/);
   });
 });

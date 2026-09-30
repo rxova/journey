@@ -150,7 +150,7 @@
       initial: "review",
       context: {},
       transitions: { CONFIRM: { from: "review", to: "done" } },
-      $payloads: {} as { complete: Receipt; terminate: "cancelled" }
+      $payloads: {} as { complete: Receipt; terminate: "cancelled" },
     });
     ```
 
@@ -484,7 +484,7 @@
     PAY: [
       { to: "review", label: "needs-review", when: ({ context }) => context.tier === "free" },
       { to: "review", label: "flagged", when: ({ context }) => context.flagged },
-      { to: "done", label: "straight-through" }
+      { to: "done", label: "straight-through" },
     ];
   }
   ```

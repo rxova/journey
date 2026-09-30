@@ -30,7 +30,7 @@ describe("navigation edges", () => {
       <journey.Provider views={{ a: <StepA />, b: <StepB /> }}>
         <journey.StepRenderer />
         <IndexNav />
-      </journey.Provider>
+      </journey.Provider>,
     );
     await flush();
 
@@ -66,7 +66,7 @@ describe("render chrome", () => {
         <header data-testid="head">header</header>
         <journey.StepRenderer />
         <footer data-testid="foot">footer</footer>
-      </journey.Provider>
+      </journey.Provider>,
     );
     await flush();
     expect(screen.getByTestId("head")).toBeTruthy();
@@ -86,7 +86,7 @@ describe("render chrome", () => {
     const journey = createLinearJourney({ context: { attempts: 0 }, steps: ["a"] });
     const seen: unknown[] = [];
     const kindSelector = (snapshot: { context: { attempts: number } }) => ({
-      attempts: snapshot.context.attempts
+      attempts: snapshot.context.attempts,
     });
     const closeEnough = (a: { attempts: number }, b: { attempts: number }) =>
       Math.abs(a.attempts - b.attempts) < 10;
@@ -114,7 +114,7 @@ describe("render chrome", () => {
     const Probe = ({ tick }: { tick: number }) => {
       const slice = journey.useSelector(
         (snapshot) => ({ attempts: snapshot.context.attempts }),
-        (a, b) => a.attempts === b.attempts
+        (a, b) => a.attempts === b.attempts,
       );
       seen.push(slice);
       return <span data-testid="tick">{tick}</span>;
@@ -137,7 +137,7 @@ describe("render chrome", () => {
       // still survive, because the baseline only advances on commit.
       const slice = journey.useSelector(
         (snapshot) => ({ attempts: snapshot.context.attempts }),
-        (a, b) => a.attempts === b.attempts
+        (a, b) => a.attempts === b.attempts,
       );
       seen.push(slice);
       return <span data-testid="tick">{tick}</span>;
@@ -145,7 +145,7 @@ describe("render chrome", () => {
     const view = render(
       <React.StrictMode>
         <Probe tick={0} />
-      </React.StrictMode>
+      </React.StrictMode>,
     );
     await flush();
 
@@ -154,12 +154,12 @@ describe("render chrome", () => {
     view.rerender(
       <React.StrictMode>
         <Probe tick={1} />
-      </React.StrictMode>
+      </React.StrictMode>,
     );
     view.rerender(
       <React.StrictMode>
         <Probe tick={2} />
-      </React.StrictMode>
+      </React.StrictMode>,
     );
     expect(seen.length).toBeGreaterThan(1);
     expect(new Set(seen).size).toBe(1);
@@ -195,7 +195,7 @@ describe("render chrome", () => {
       renders += 1;
       journey.useSelector(
         (snapshot) => ({ bucket: Math.floor(snapshot.context.attempts / 10) }),
-        (a, b) => a.bucket === b.bucket
+        (a, b) => a.bucket === b.bucket,
       );
       return null;
     };
@@ -288,7 +288,7 @@ describe("subscription lifecycle", () => {
       journey.useStepHandler(gated, {
         run: () => {
           throw new Error(`blocked on ${gated}`);
-        }
+        },
       });
       return null;
     };
@@ -310,7 +310,7 @@ describe("subscription lifecycle", () => {
   it("isolates component-owned bundles created with a useState lazy initializer", async () => {
     const Wizard = ({ marker }: { marker: string }) => {
       const [journey] = React.useState(() =>
-        createLinearJourney({ context: {}, steps: ["a", "b"] })
+        createLinearJourney({ context: {}, steps: ["a", "b"] }),
       );
       const step = journey.useStep();
       return (
@@ -324,7 +324,7 @@ describe("subscription lifecycle", () => {
       <React.StrictMode>
         <Wizard marker="one" />
         <Wizard marker="two" />
-      </React.StrictMode>
+      </React.StrictMode>,
     );
     await flush();
 
@@ -372,12 +372,12 @@ describe("machine error surfacing", () => {
       <>
         <First />
         <Second />
-      </>
+      </>,
     );
     await flush();
 
     expect(consoleWarn).toHaveBeenCalledWith(
-      expect.stringContaining('live registration for step "doubled"')
+      expect.stringContaining('live registration for step "doubled"'),
     );
     consoleWarn.mockRestore();
     delete (globalThis as { __DEV__?: boolean }).__DEV__;
@@ -405,7 +405,7 @@ describe("machine error surfacing", () => {
         <Probe />
         <Probe />
         <Probe />
-      </>
+      </>,
     );
     await flush();
 
@@ -423,7 +423,7 @@ describe("machine error surfacing", () => {
     const journey = createLinearJourney({ context: {}, steps: ["a", "b"] });
     const statuses: string[] = [];
     journey.machine.subscriptions.subscribeEvent("statusChange", ({ current }) =>
-      statuses.push(current)
+      statuses.push(current),
     );
     const Probe = () => {
       journey.useStep();
@@ -436,7 +436,7 @@ describe("machine error surfacing", () => {
         <journey.Provider views={{ a: <StepA />, b: <StepB /> }}>
           <journey.StepRenderer />
         </journey.Provider>
-      </>
+      </>,
     );
     await flush();
 
@@ -494,7 +494,7 @@ describe("machine error surfacing", () => {
         <journey.Provider views={{ a: <StepA />, b: <StepB /> }}>
           <journey.StepRenderer />
         </journey.Provider>
-      </React.StrictMode>
+      </React.StrictMode>,
     );
     await flush();
     expect(screen.getByTestId("step-a")).toBeTruthy();

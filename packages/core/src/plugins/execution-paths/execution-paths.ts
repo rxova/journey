@@ -1,14 +1,14 @@
 import type {
   ExecutionPathsApi,
   ExecutionPathsPluginOptions,
-  ExecutionPathsSnapshot
+  ExecutionPathsSnapshot,
 } from "./execution-paths.types";
 import type { JourneyPlugin } from "../../core/types";
 
 export type {
   ExecutionPathsApi,
   ExecutionPathsPluginOptions,
-  ExecutionPathsSnapshot
+  ExecutionPathsSnapshot,
 } from "./execution-paths.types";
 
 /** Retained finished runs. Diagnostic history, so a modest bound is enough. */
@@ -20,7 +20,7 @@ const DEFAULT_MAX_PATHS = 50;
  * `machine.plugins["execution-paths"]` and `snapshot.plugins["execution-paths"]`.
  */
 export function createExecutionPathsPlugin(
-  options: ExecutionPathsPluginOptions = {}
+  options: ExecutionPathsPluginOptions = {},
 ): JourneyPlugin<"execution-paths", ExecutionPathsApi, ExecutionPathsSnapshot> {
   const maxPaths = options.maxPaths ?? DEFAULT_MAX_PATHS;
   return {
@@ -50,7 +50,7 @@ export function createExecutionPathsPlugin(
           getCompletedPaths: () => Object.freeze([...completedPaths]),
           clearCompletedPaths: () => {
             completedPaths = [];
-          }
+          },
         },
         deriveSnapshot: (_snapshot, previous) => {
           if (
@@ -62,10 +62,10 @@ export function createExecutionPathsPlugin(
           }
           return Object.freeze({
             currentPath: Object.freeze([...currentPath]),
-            completedPaths: Object.freeze([...completedPaths])
+            completedPaths: Object.freeze([...completedPaths]),
           });
-        }
+        },
       };
-    }
+    },
   };
 }

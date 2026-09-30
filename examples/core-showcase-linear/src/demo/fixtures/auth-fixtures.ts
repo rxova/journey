@@ -28,7 +28,7 @@ export const authApi = {
 
     return {
       success: true as const,
-      sessionId: `session-${username.trim().toLowerCase() || "anonymous"}`
+      sessionId: `session-${username.trim().toLowerCase() || "anonymous"}`,
     };
   },
   generateQrCode: async () => {
@@ -46,7 +46,7 @@ export const authApi = {
     }
     const loggedInStatus = attempts + 1 >= 3 ? ("blocked" as const) : null;
     return { success: false as const, loggedInStatus };
-  }
+  },
 };
 
 export const initialLoginContext = (): LoginContext => ({
@@ -57,7 +57,7 @@ export const initialLoginContext = (): LoginContext => ({
   qrCode: null,
   error: null,
   attempts: 0,
-  loggedInStatus: null
+  loggedInStatus: null,
 });
 
 export const linearDefinition = {
@@ -70,11 +70,11 @@ export const linearDefinition = {
       onEnter: async ({ updateContext }) => {
         const enrollment = await authApi.generateQrCode();
         updateContext((context) => ({ ...context, qrCode: enrollment.qrCode }));
-      }
+      },
     },
     { id: "verifyCode", metadata: { label: "Verify Code" } },
-    { id: "loggedIn", metadata: { label: "Status" } }
-  ]
+    { id: "loggedIn", metadata: { label: "Status" } },
+  ],
 } satisfies LinearJourneyDefinition<
   LoginStepId,
   LoginContext,

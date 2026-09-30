@@ -12,13 +12,13 @@ import type { JourneyPlugin } from "@rxova/journey-core";
 
 const disposingPlugin = (
   name: string,
-  onDispose: () => void
+  onDispose: () => void,
 ): JourneyPlugin<string, Record<string, never>> => ({
   name,
   setup(host) {
     host.onDispose(onDispose);
     return { api: {} };
-  }
+  },
 });
 
 describe("a throwing plugin setup()", () => {
@@ -28,14 +28,14 @@ describe("a throwing plugin setup()", () => {
       name: "boom",
       setup() {
         throw new Error("setup failed");
-      }
+      },
     };
 
     expect(() =>
       createLinearJourney(
         { steps: ["a"], context: {} },
-        { plugins: [disposingPlugin("good", disposed), exploding] as const }
-      )
+        { plugins: [disposingPlugin("good", disposed), exploding] as const },
+      ),
     ).toThrow(/setup failed/);
 
     // Construction failed, so the machine is never returned and dispose() is
@@ -52,10 +52,10 @@ describe("a throwing plugin setup()", () => {
         {
           plugins: [
             disposingPlugin("dup", disposed),
-            disposingPlugin("dup", () => undefined)
-          ] as const
-        }
-      )
+            disposingPlugin("dup", () => undefined),
+          ] as const,
+        },
+      ),
     ).toThrow(/duplicate plugin name "dup"/);
 
     expect(disposed).toHaveBeenCalledTimes(1);
@@ -72,13 +72,13 @@ describe("a throwing deriveSnapshot", () => {
         api: {},
         deriveSnapshot: () => {
           throw failure;
-        }
-      })
+        },
+      }),
     };
 
     const machine = createLinearJourney(
       { steps: ["a", "b", "c"], context: { n: 0 } },
-      { plugins: [badDeriver] as const, onListenerError: (error) => reported.push(error) }
+      { plugins: [badDeriver] as const, onListenerError: (error) => reported.push(error) },
     );
     machine.controls.start();
     await flush();
@@ -102,14 +102,14 @@ describe("a throwing deriveSnapshot", () => {
             if (shouldThrow) throw new Error("nope");
             seen += 1;
             return { seen };
-          }
+          },
         };
-      }
+      },
     };
 
     const machine = createLinearJourney(
       { steps: ["a", "b", "c"], context: {} },
-      { plugins: [flaky] as const, onListenerError: () => undefined }
+      { plugins: [flaky] as const, onListenerError: () => undefined },
     );
     machine.controls.start();
     await flush();
@@ -126,7 +126,7 @@ describe("a throwing deriveSnapshot", () => {
   it("keeps other plugins' slices intact when one deriver throws", async () => {
     const good: JourneyPlugin<"good", Record<string, never>, { ok: boolean }> = {
       name: "good",
-      setup: () => ({ api: {}, deriveSnapshot: () => ({ ok: true }) })
+      setup: () => ({ api: {}, deriveSnapshot: () => ({ ok: true }) }),
     };
     const bad: JourneyPlugin<"bad", Record<string, never>, unknown> = {
       name: "bad",
@@ -134,13 +134,13 @@ describe("a throwing deriveSnapshot", () => {
         api: {},
         deriveSnapshot: () => {
           throw new Error("nope");
-        }
-      })
+        },
+      }),
     };
 
     const machine = createLinearJourney(
       { steps: ["a", "b"], context: {} },
-      { plugins: [good, bad] as const, onListenerError: () => undefined }
+      { plugins: [good, bad] as const, onListenerError: () => undefined },
     );
     machine.controls.start();
     await flush();

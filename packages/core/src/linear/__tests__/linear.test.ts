@@ -6,7 +6,7 @@ describe("createLinearJourney", () => {
   it("accepts string shorthand steps implying empty metadata", async () => {
     const machine = createLinearJourney({
       steps: ["intro", { id: "details", metadata: { label: "Details" } }],
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();
@@ -23,7 +23,7 @@ describe("createLinearJourney", () => {
     expect(snapshot.steps).toEqual({
       totalSteps: 4,
       stepOrder: ["a", "b", "c", "d"],
-      visitedStepCount: 1
+      visitedStepCount: 1,
     });
     expect(snapshot.currentStep).toMatchObject({ index: 0, isFirstStep: true, isLastStep: false });
 
@@ -43,14 +43,14 @@ describe("createLinearJourney", () => {
     expect(await machine.navigate.goToStepById("c")).toEqual({ ok: true, from: "a", to: "c" });
     expect(await machine.navigate.goToStepById("nope" as never)).toMatchObject({
       ok: false,
-      reason: "invalid-target"
+      reason: "invalid-target",
     });
   });
 
   it("rejects empty step lists and duplicate ids at creation", () => {
     expect(() => createLinearJourney({ steps: [], context: {} })).toThrow(/at least one step/);
     expect(() => createLinearJourney({ steps: ["a", { id: "a" }] as const, context: {} })).toThrow(
-      /duplicate step id "a"/
+      /duplicate step id "a"/,
     );
   });
 
@@ -97,15 +97,15 @@ describe("createLinearJourney — goToStepByIndex", () => {
 
     expect(await machine.navigate.goToStepByIndex(9)).toMatchObject({
       ok: false,
-      reason: "invalid-target"
+      reason: "invalid-target",
     });
     expect(await machine.navigate.goToStepByIndex(-1)).toMatchObject({
       ok: false,
-      reason: "invalid-target"
+      reason: "invalid-target",
     });
     expect(await machine.navigate.goToStepByIndex(1.5)).toMatchObject({
       ok: false,
-      reason: "invalid-target"
+      reason: "invalid-target",
     });
     expect(await machine.navigate.goToStepByIndex(0)).toMatchObject({ ok: false, reason: "no-op" });
     expect(blocked).toEqual(["invalid-target", "invalid-target", "invalid-target", "no-op"]);
@@ -120,11 +120,11 @@ describe("createLinearJourney — startAt", () => {
         steps: [
           { id: "a", onEnter: () => void entered.push("a") },
           { id: "b", onEnter: () => void entered.push("b") },
-          { id: "c", onEnter: () => void entered.push("c") }
+          { id: "c", onEnter: () => void entered.push("c") },
         ],
-        context: {}
+        context: {},
       },
-      { startAt: "c" }
+      { startAt: "c" },
     );
     machine.controls.start();
     await flush();
@@ -138,7 +138,7 @@ describe("createLinearJourney — startAt", () => {
 
   it("throws at creation for an unknown startAt id", () => {
     expect(() =>
-      createLinearJourney({ steps: ["a", "b"], context: {} }, { startAt: "nope" as never })
+      createLinearJourney({ steps: ["a", "b"], context: {} }, { startAt: "nope" as never }),
     ).toThrow(/startAt references unknown step "nope"/);
   });
 
@@ -146,7 +146,7 @@ describe("createLinearJourney — startAt", () => {
     const machine = await startedLinear({ startAt: "c" });
     expect(await machine.navigate.goToPreviousStep()).toMatchObject({
       ok: false,
-      reason: "out-of-bounds"
+      reason: "out-of-bounds",
     });
   });
 

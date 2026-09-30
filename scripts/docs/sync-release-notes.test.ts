@@ -17,7 +17,7 @@ import {
   renderReleaseDoc,
   syncReleaseNotes,
   toRepoPath,
-  writeIfChanged
+  writeIfChanged,
 } from "./sync-release-notes.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -28,8 +28,8 @@ const oneSource = [
     source: "changelogs/core.md",
     target: "docs/core/releases.md",
     title: "Core Releases",
-    description: "Generated from changelog."
-  }
+    description: "Generated from changelog.",
+  },
 ];
 
 const makeWorkspace = async (changelogBody = "# Core\n\n## 1.0.0-rc.1\n\n- Added thing\n") => {
@@ -52,7 +52,7 @@ describe("sync-doc-release-notes script", () => {
 
   it("normalizes changelog and escapes inline generics for MDX", () => {
     const normalized = normalizeChangelog(
-      "# Title\n\n## 1.0.0-rc.1\n\n- Uses Record<string, unknown>\n- Keeps `Map<string, number>` untouched\n"
+      "# Title\n\n## 1.0.0-rc.1\n\n- Uses Record<string, unknown>\n- Keeps `Map<string, number>` untouched\n",
     );
 
     expect(normalized).toContain("- Uses `Record<string, unknown>`");
@@ -72,7 +72,7 @@ describe("sync-doc-release-notes script", () => {
     const rendered = renderReleaseDoc(oneSource[0], "## 1.0.0-rc.1\n\n- Added\n");
     expect(rendered).toContain("title: Core Releases");
     expect(rendered).toContain(
-      "Source: [`changelogs/core.md`](https://github.com/rxova/journey/blob/main/changelogs/core.md)"
+      "Source: [`changelogs/core.md`](https://github.com/rxova/journey/blob/main/changelogs/core.md)",
     );
     expect(rendered).toContain("## 1.0.0-rc.1");
   });
@@ -123,7 +123,7 @@ describe("sync-doc-release-notes script", () => {
     const result = syncReleaseNotes({
       repoRoot: root,
       sources: oneSource,
-      log: (message) => logs.push(message)
+      log: (message) => logs.push(message),
     });
 
     expect(result.updated).toEqual(["docs/core/releases.md"]);
@@ -141,7 +141,7 @@ describe("sync-doc-release-notes script", () => {
     const result = syncReleaseNotes({
       repoRoot: root,
       sources: oneSource,
-      log: (message) => logs.push(message)
+      log: (message) => logs.push(message),
     });
 
     expect(result.updated).toEqual([]);
@@ -158,7 +158,7 @@ describe("sync-doc-release-notes script", () => {
     const result = checkReleaseNotes({
       repoRoot: root,
       sources: oneSource,
-      log: (message) => logs.push(message)
+      log: (message) => logs.push(message),
     });
 
     expect(result.stale).toEqual([]);
@@ -176,14 +176,14 @@ describe("sync-doc-release-notes script", () => {
       repoRoot: root,
       sources: oneSource,
       error: (message) => errors.push(message),
-      exit
+      exit,
     });
 
     expect(result.stale).toEqual(["docs/core/releases.md"]);
     expect(exit).toHaveBeenCalledWith(1);
     expect(errors).toEqual([
       "Release note docs are out of date. Run: pnpm run docs:release-notes:sync",
-      "- docs/core/releases.md"
+      "- docs/core/releases.md",
     ]);
 
     await rm(root, { recursive: true, force: true });
@@ -192,7 +192,7 @@ describe("sync-doc-release-notes script", () => {
   it("checkReleaseNotes uses default exit handler when stale", async () => {
     const root = await makeWorkspace();
     const exitSpy = vi.spyOn(process, "exit").mockImplementation(((
-      code?: string | number | null
+      code?: string | number | null,
     ) => {
       throw new Error(`exit:${code}`);
     }) as never);
@@ -201,8 +201,8 @@ describe("sync-doc-release-notes script", () => {
       checkReleaseNotes({
         repoRoot: root,
         sources: oneSource,
-        error: () => {}
-      })
+        error: () => {},
+      }),
     ).toThrow("exit:1");
 
     exitSpy.mockRestore();
@@ -217,7 +217,7 @@ describe("sync-doc-release-notes script", () => {
       argv: ["node", "script.ts"],
       repoRoot: root,
       sources: oneSource,
-      log: (message) => syncLogs.push(message)
+      log: (message) => syncLogs.push(message),
     });
 
     expect(syncResult.updated).toEqual(["docs/core/releases.md"]);
@@ -228,7 +228,7 @@ describe("sync-doc-release-notes script", () => {
       argv: ["node", "script.ts", "--check"],
       repoRoot: root,
       sources: oneSource,
-      log: (message) => checkLogs.push(message)
+      log: (message) => checkLogs.push(message),
     });
 
     expect(checkResult.stale).toEqual([]);
@@ -240,7 +240,7 @@ describe("sync-doc-release-notes script", () => {
   it("main uses default exit handler in stale check mode", async () => {
     const root = await makeWorkspace();
     const exitSpy = vi.spyOn(process, "exit").mockImplementation(((
-      code?: string | number | null
+      code?: string | number | null,
     ) => {
       throw new Error(`exit:${code}`);
     }) as never);
@@ -250,8 +250,8 @@ describe("sync-doc-release-notes script", () => {
         argv: ["node", "script.ts", "--check"],
         repoRoot: root,
         sources: oneSource,
-        error: () => {}
-      })
+        error: () => {},
+      }),
     ).toThrow("exit:1");
 
     exitSpy.mockRestore();
@@ -268,7 +268,7 @@ describe("sync-doc-release-notes script", () => {
     execFileSync(process.execPath, ["--import", "tsx", scriptPath, "--check"], {
       cwd: resolve(__dirname, "../.."),
       stdio: "pipe",
-      encoding: "utf8"
+      encoding: "utf8",
     });
   });
 });

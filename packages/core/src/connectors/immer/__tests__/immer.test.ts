@@ -14,7 +14,7 @@ type CheckoutContext = {
 
 const initialContext = (): CheckoutContext => ({
   cart: { items: ["book"], total: 20 },
-  profile: { name: "Ada" }
+  profile: { name: "Ada" },
 });
 
 describe("immerConnector", () => {
@@ -53,13 +53,13 @@ describe("immerConnector", () => {
   it("can be passed directly to the machine context API", () => {
     const machine = createLinearJourney({
       steps: ["cart"],
-      context: initialContext()
+      context: initialContext(),
     });
 
     machine.context.update(
       immerConnector<CheckoutContext>((draft) => {
         draft.cart.total = 30;
-      })
+      }),
     );
 
     expect(machine.getSnapshot().context.cart.total).toBe(30);

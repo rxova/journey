@@ -100,7 +100,7 @@ export type NonProductionBundlerEnv = {
 type ProcessLike = { env?: { NODE_ENV?: string } };
 
 const resolveImportMetaEnvironment = (
-  bundlerEnv: NonProductionBundlerEnv | null | undefined
+  bundlerEnv: NonProductionBundlerEnv | null | undefined,
 ): boolean | null => {
   if (!isRecord(bundlerEnv)) {
     return null;
@@ -148,7 +148,7 @@ export const resolveNonProductionEnvironment = (
   options: {
     bundlerEnv?: NonProductionBundlerEnv | null | undefined;
     nodeEnv?: string | undefined;
-  } = {}
+  } = {},
 ): boolean => {
   const resolvedNodeEnv = "nodeEnv" in options ? options.nodeEnv : readAmbientNodeEnv();
 

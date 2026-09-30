@@ -14,13 +14,13 @@ type TimelineTabId = "action" | "state" | "diff";
 const tabList: readonly { id: TimelineTabId; label: string }[] = [
   { id: "action", label: "Action" },
   { id: "state", label: "Snapshot" },
-  { id: "diff", label: "Diff" }
+  { id: "diff", label: "Diff" },
 ];
 
 const copyTitle: Record<"idle" | "copied" | "error", string> = {
   idle: "Copy current payload",
   copied: "Copied",
-  error: "Copy failed"
+  error: "Copy failed",
 };
 
 const buildActionDetailsPayload = (selectedEntry: JourneyPanelTimelineEntry | null): unknown => {
@@ -37,8 +37,8 @@ const buildActionDetailsPayload = (selectedEntry: JourneyPanelTimelineEntry | nu
       ...(selectedEntry.actionPayload ?? {}),
       summary: {
         status: "no-op",
-        message: `${selectedEntry.invocation.operationId} did not produce a transition or state change.`
-      }
+        message: `${selectedEntry.invocation.operationId} did not produce a transition or state change.`,
+      },
     };
   }
 
@@ -83,7 +83,7 @@ type TimelineDetailsProps = {
 export const TimelineDetails = ({
   selectedEntry,
   displayedSnapshot,
-  selectedDiff
+  selectedDiff,
 }: TimelineDetailsProps) => {
   const [activeTab, setActiveTab] = React.useState<TimelineTabId>("action");
   const [copyState, setCopyState] = React.useState<"idle" | "copied" | "error">("idle");

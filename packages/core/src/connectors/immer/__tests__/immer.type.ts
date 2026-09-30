@@ -16,7 +16,7 @@ const mutateReadonlyContext: ContextUpdater<Context> = immerConnector<Context>((
 });
 
 const replaceContext: ContextUpdater<Context> = immerConnector<Context>(() => ({
-  account: { name: "Lin", tags: ["owner"] }
+  account: { name: "Lin", tags: ["owner"] },
 }));
 
 immerConnector<Context>((draft) => {

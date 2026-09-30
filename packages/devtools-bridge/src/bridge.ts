@@ -6,7 +6,7 @@ import {
   buildOperationRunners,
   createJourneyMachineId,
   OperationRateLimiter,
-  serializeSnapshot
+  serializeSnapshot,
 } from "./bridge.helpers";
 import {
   JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
@@ -14,18 +14,18 @@ import {
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
   JOURNEY_DEVTOOLS_REPLAY_REQUEST,
   isCompatibleInvokeProtocolVersion,
-  isJourneyDevtoolsExtensionEnvelope
+  isJourneyDevtoolsExtensionEnvelope,
 } from "./protocol";
 import type {
   JourneyDevtoolsAttachableMachine,
   JourneyDevtoolsBridgeOptions,
   LooseMachine,
-  OperationRunner
+  OperationRunner,
 } from "./bridge.types";
 import type {
   JourneyDevtoolsBridgeEnvelope,
   JourneyDevtoolsMachineMeta,
-  JourneyDevtoolsOperationResultPayload
+  JourneyDevtoolsOperationResultPayload,
 } from "./protocol.types";
 import type { JourneySnapshot, JourneySubscriptionEvent } from "@rxova/journey-core";
 
@@ -35,7 +35,7 @@ const OBSERVED_EVENTS: readonly JourneySubscriptionEvent[] = [
   "statusChange",
   "contextChange",
   "navigationBlocked",
-  "error"
+  "error",
 ];
 
 const isReplayRequestMessage = (value: unknown): value is { type: string } =>
@@ -50,7 +50,7 @@ const isReplayRequestMessage = (value: unknown): value is { type: string } =>
  */
 export function attachJourneyDevtools(
   machine: JourneyDevtoolsAttachableMachine,
-  options: JourneyDevtoolsBridgeOptions = {}
+  options: JourneyDevtoolsBridgeOptions = {},
 ): () => void {
   const enabled = options.enabled ?? resolveNonProductionEnvironment({});
   if (!enabled || typeof window === "undefined") {
@@ -62,10 +62,10 @@ export function attachJourneyDevtools(
   const mutationsEnabled = options.mutationsEnabled ?? true;
   const rateLimiter = new OperationRateLimiter(
     options.rateLimit?.maxPerWindow,
-    options.rateLimit?.windowMs
+    options.rateLimit?.windowMs,
   );
   const runners = new Map<string, OperationRunner>(
-    buildOperationRunners(machine).map((runner) => [runner.descriptor.id, runner])
+    buildOperationRunners(machine).map((runner) => [runner.descriptor.id, runner]),
   );
   const targetOrigin = resolveWindowTargetOrigin();
   let detached = false;
@@ -79,7 +79,7 @@ export function attachJourneyDevtools(
     version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
     source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
     machineId,
-    timestamp: Date.now()
+    timestamp: Date.now(),
   });
 
   const buildMeta = (): JourneyDevtoolsMachineMeta => {
@@ -92,7 +92,7 @@ export function attachJourneyDevtools(
       mode: snapshot.type,
       stepIds: Object.keys(snapshot.history.visited),
       ...(options.eventTypes ? { eventTypes: options.eventTypes } : {}),
-      features: groupFeatures([...runners.values()])
+      features: groupFeatures([...runners.values()]),
     };
   };
 
@@ -101,7 +101,7 @@ export function attachJourneyDevtools(
       ...base(),
       kind: "register",
       meta: buildMeta(),
-      snapshot: serializeSnapshot(target.getSnapshot())
+      snapshot: serializeSnapshot(target.getSnapshot()),
     });
   };
 
@@ -111,14 +111,14 @@ export function attachJourneyDevtools(
       kind: "operationError",
       requestId,
       operationId,
-      error: serializeError(error)
+      error: serializeError(error),
     });
   };
 
   const runInvoke = async (
     requestId: string,
     operationId: string,
-    input?: Record<string, unknown>
+    input?: Record<string, unknown>,
   ) => {
     const runner = runners.get(operationId);
     if (!runner) {
@@ -129,7 +129,7 @@ export function attachJourneyDevtools(
       postOperationError(
         requestId,
         operationId,
-        new Error("mutations are disabled for this machine")
+        new Error("mutations are disabled for this machine"),
       );
       return;
     }
@@ -164,7 +164,7 @@ export function attachJourneyDevtools(
     }
     if (!isCompatibleInvokeProtocolVersion(envelope.version)) {
       warnInDevelopment(
-        `journey devtools: ignoring invoke from incompatible protocol version ${envelope.version}`
+        `journey devtools: ignoring invoke from incompatible protocol version ${envelope.version}`,
       );
       return;
     }
@@ -183,10 +183,10 @@ export function attachJourneyDevtools(
         post({
           ...base(),
           kind: "observation",
-          event: cloneForTransport(event) as Record<string, unknown>
+          event: cloneForTransport(event) as Record<string, unknown>,
         });
-      })
-    )
+      }),
+    ),
   ];
 
   window.addEventListener("message", onMessage);
@@ -207,7 +207,7 @@ export function attachJourneyDevtools(
 
 /** Groups flat operation runners into wire feature descriptors by id prefix. */
 function groupFeatures(
-  runners: readonly OperationRunner[]
+  runners: readonly OperationRunner[],
 ): JourneyDevtoolsMachineMeta["features"] {
   const groups = new Map<string, OperationRunner[]>();
   for (const runner of runners) {
@@ -220,6 +220,6 @@ function groupFeatures(
     id,
     label: id,
     description: null,
-    operations: bucket.map((runner) => runner.descriptor)
+    operations: bucket.map((runner) => runner.descriptor),
   }));
 }

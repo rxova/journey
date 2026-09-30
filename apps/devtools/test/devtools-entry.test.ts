@@ -13,9 +13,9 @@ describe("devtools entrypoint", () => {
     vi.stubGlobal("chrome", {
       devtools: {
         panels: {
-          create: createPanel
-        }
-      }
+          create: createPanel,
+        },
+      },
     } as unknown as typeof chrome);
 
     await import("../src/devtools");
@@ -24,7 +24,7 @@ describe("devtools entrypoint", () => {
       "Journey",
       "icons/icon16.png",
       "src/panel.html",
-      expect.any(Function)
+      expect.any(Function),
     );
     const callback = createPanel.mock.calls[0]?.[3] as (() => void) | undefined;
     expect(() => callback?.()).not.toThrow();

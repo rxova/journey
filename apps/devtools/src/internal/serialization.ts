@@ -66,7 +66,7 @@ const describeValue = (value: unknown): unknown => {
       name: value.name,
       message: value.message,
       stack: typeof value.stack === "string" ? value.stack : null,
-      cause: "cause" in value ? (value.cause ?? null) : null
+      cause: "cause" in value ? (value.cause ?? null) : null,
     };
   }
   if (value === undefined) {
@@ -255,7 +255,7 @@ export const serializeTransportError = (error: unknown): SerializedError => {
       name: error.name,
       message: error.message,
       stack: typeof error.stack === "string" ? error.stack : null,
-      cause: null
+      cause: null,
     };
   }
 
@@ -268,7 +268,7 @@ export const serializeTransportError = (error: unknown): SerializedError => {
       name,
       message: message ?? "Unknown transport error",
       stack,
-      cause: "cause" in error ? cloneCause(error.cause) : null
+      cause: "cause" in error ? cloneCause(error.cause) : null,
     };
   }
 
@@ -276,6 +276,6 @@ export const serializeTransportError = (error: unknown): SerializedError => {
     name: null,
     message: typeof error === "string" ? error : "Unknown transport error",
     stack: null,
-    cause: null
+    cause: null,
   };
 };

@@ -126,7 +126,7 @@ describe("lifecycle meta-state-machine", () => {
   it("lifecycle verbs (except terminate) are rejected during a pending transition", async () => {
     const machine = createLinearJourney({
       steps: [{ id: "a", onLeave: () => wait(30) }, "b"],
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();
@@ -142,7 +142,7 @@ describe("lifecycle meta-state-machine", () => {
   it("terminate during post-commit effects keeps the committed navigation successful", async () => {
     const machine = createLinearJourney({
       steps: [{ id: "a", onLeave: () => wait(30) }, "b"],
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();
@@ -165,11 +165,11 @@ describe("lifecycle meta-state-machine", () => {
     expect(await machine.navigate.goToNextStep()).toMatchObject({ ok: false, reason: "disposed" });
     expect(await machine.navigate.goToStepById("a")).toMatchObject({
       ok: false,
-      reason: "disposed"
+      reason: "disposed",
     });
     expect(await machine.navigate.goToLastVisitedStep()).toMatchObject({
       ok: false,
-      reason: "disposed"
+      reason: "disposed",
     });
     expect(() => machine.context.update((c) => c)).not.toThrow();
   });

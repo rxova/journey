@@ -34,9 +34,9 @@ const aStep: GraphStep<AuthBag> = {
         const api: Handlers["api"] = h.api;
         loaded = await api.load();
       },
-      candidates: [{ to: "b" }]
-    }
-  }
+      candidates: [{ to: "b" }],
+    },
+  },
 };
 
 const definition = {
@@ -44,7 +44,7 @@ const definition = {
   initial: "a" as const,
   context: { n: 0 },
   handlers,
-  $payloads: {} as Payloads
+  $payloads: {} as Payloads,
 };
 
 describe("declared work receives typed handlers", () => {
@@ -68,9 +68,9 @@ describe("declared work receives typed handlers", () => {
             // @ts-expect-error `missing` is not a declared handler
             void h.missing;
           },
-          candidates: [{ to: "b" }]
-        }
-      }
+          candidates: [{ to: "b" }],
+        },
+      },
     };
     expect(step.on?.GO).toBeTypeOf("object");
   });

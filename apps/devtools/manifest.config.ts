@@ -7,7 +7,7 @@ const DEFAULT_HOST_PERMISSIONS = [
   "http://localhost/*",
   "https://localhost/*",
   "http://127.0.0.1/*",
-  "https://127.0.0.1/*"
+  "https://127.0.0.1/*",
 ] as const;
 
 const manifestVersion = toChromeManifestVersion(packageJson.version);
@@ -21,15 +21,15 @@ export default defineManifest({
   devtools_page: "src/devtools.html",
   background: {
     service_worker: "src/background.ts",
-    type: "module"
+    type: "module",
   },
   content_scripts: [
     {
       // Kept as a build entry. Runtime injection is handled from the background worker.
       matches: [...DYNAMIC_CONTENT_ENTRY_MATCH],
       js: ["src/content.ts"],
-      run_at: "document_start"
-    }
+      run_at: "document_start",
+    },
   ],
   permissions: ["scripting"],
   host_permissions: [...DEFAULT_HOST_PERMISSIONS],
@@ -37,6 +37,6 @@ export default defineManifest({
     16: "icons/icon16.png",
     32: "icons/icon32.png",
     48: "icons/icon48.png",
-    128: "icons/icon128.png"
-  }
+    128: "icons/icon128.png",
+  },
 });

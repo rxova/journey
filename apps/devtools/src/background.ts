@@ -1,7 +1,7 @@
 import type {
   JourneyDevtoolsBridgeEnvelope,
   JourneyDevtoolsBridgeRegisterEnvelope,
-  JourneyDevtoolsBridgeSnapshotEnvelope
+  JourneyDevtoolsBridgeSnapshotEnvelope,
 } from "@rxova/journey-devtools-bridge";
 import {
   JOURNEY_DEVTOOLS_PANEL_PORT,
@@ -11,7 +11,7 @@ import {
   serializeTransportError,
   type BackgroundToContentMessage,
   type BackgroundToPanelMessage,
-  type PanelWarning
+  type PanelWarning,
 } from "./shared";
 
 type CachedJourneyMachine = {
@@ -80,7 +80,7 @@ const broadcastPanelWarning = (tabId: number, warning: Omit<PanelWarning, "tabId
   warningByTab.set(tabId, warningPayload);
   broadcastToPanel(tabId, {
     type: "panel-warning",
-    warning: warningPayload
+    warning: warningPayload,
   });
 };
 
@@ -89,7 +89,7 @@ const injectContentScript = (tabId: number) => {
     broadcastPanelWarning(tabId, {
       code: "injection-missing-entry",
       message: "Content bridge entry is missing from extension manifest.",
-      recoverable: false
+      recoverable: false,
     });
     return;
   }
@@ -98,7 +98,7 @@ const injectContentScript = (tabId: number) => {
     broadcastPanelWarning(tabId, {
       code: "injection-unavailable",
       message: "Content script injection is unavailable in this browser context.",
-      recoverable: false
+      recoverable: false,
     });
     return;
   }
@@ -106,9 +106,9 @@ const injectContentScript = (tabId: number) => {
   chrome.scripting.executeScript(
     {
       target: {
-        tabId
+        tabId,
       },
-      files: [CONTENT_SCRIPT_FILE]
+      files: [CONTENT_SCRIPT_FILE],
     },
     () => {
       const runtimeError = chrome.runtime.lastError;
@@ -117,20 +117,20 @@ const injectContentScript = (tabId: number) => {
         broadcastPanelWarning(tabId, {
           code: "injection-failed",
           message: `Content script injection failed: ${serialized.message}`,
-          recoverable: true
+          recoverable: true,
         });
         return;
       }
 
       broadcastPanelWarning(tabId, null);
       const replayRequest: BackgroundToContentMessage = {
-        type: "bridge-replay-request"
+        type: "bridge-replay-request",
       };
       chrome.tabs.sendMessage(tabId, replayRequest, () => {
         // Accessing lastError prevents unchecked runtime error noise when a receiver is unavailable.
         void chrome.runtime.lastError;
       });
-    }
+    },
   );
 };
 
@@ -167,14 +167,14 @@ const cacheEnvelope = (tabId: number, envelope: JourneyDevtoolsBridgeEnvelope) =
     journeyMachineCacheByTab.get(tabId) ?? new Map<string, CachedJourneyMachine>();
   const cachedJourneyMachine = tabJourneyMachineCache.get(envelope.machineId) ?? {
     register: null,
-    snapshot: null
+    snapshot: null,
   };
 
   if (envelope.kind === "register") {
     cachedJourneyMachine.register = envelope;
     cachedJourneyMachine.snapshot = {
       ...envelope,
-      kind: "snapshot"
+      kind: "snapshot",
     };
   }
 
@@ -196,7 +196,7 @@ const clearTabJourneyMachineCache = (tabId: number) => {
   warningByTab.delete(tabId);
   broadcastToPanel(tabId, {
     type: "panel-connected",
-    connected: false
+    connected: false,
   });
 };
 
@@ -246,7 +246,7 @@ const registerPanelPort = (port: chrome.runtime.Port, tabId: number) => {
   port.postMessage({ type: "panel-connected", connected } satisfies BackgroundToPanelMessage);
   port.postMessage({
     type: "panel-warning",
-    warning: warningByTab.get(tabId) ?? null
+    warning: warningByTab.get(tabId) ?? null,
   } satisfies BackgroundToPanelMessage);
   const replayedCachedState = replayCacheToPanel(tabId, port);
   if (!replayedCachedState) {
@@ -271,7 +271,7 @@ chrome.runtime.onConnect.addListener((port) => {
 
     const outboundMessage: BackgroundToContentMessage = {
       type: "extension-envelope",
-      envelope: message.envelope
+      envelope: message.envelope,
     };
 
     chrome.tabs.sendMessage(message.tabId, outboundMessage, () => {
@@ -284,11 +284,11 @@ chrome.runtime.onConnect.addListener((port) => {
         message.envelope.machineId,
         message.envelope.requestId,
         serializeTransportError(runtimeError),
-        message.envelope.version
+        message.envelope.version,
       );
       broadcastToPanel(message.tabId, {
         type: "panel-bridge-envelope",
-        envelope: errorEnvelope
+        envelope: errorEnvelope,
       });
     });
   });
@@ -312,11 +312,11 @@ chrome.runtime.onMessage.addListener((message: unknown, sender) => {
   const connected = isTabConnected(tabId);
   broadcastToPanel(tabId, {
     type: "panel-connected",
-    connected
+    connected,
   });
   broadcastToPanel(tabId, {
     type: "panel-bridge-envelope",
-    envelope: message.envelope
+    envelope: message.envelope,
   });
 });
 

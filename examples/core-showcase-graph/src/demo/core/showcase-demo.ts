@@ -7,7 +7,7 @@ import {
   createAuthHandlers,
   graphDefinition,
   type LoginContext,
-  type LoginStepId
+  type LoginStepId,
 } from "../fixtures/auth-fixtures";
 import type { AuthBag } from "../fixtures/auth-fixtures";
 import { formatJson } from "../fixtures/support";
@@ -25,7 +25,7 @@ import { formatJson } from "../fixtures/support";
 const OBSERVED_EVENTS: readonly JourneySubscriptionEvent[] = [
   "statusChange",
   "navigationBlocked",
-  "error"
+  "error",
 ];
 
 type LogEntry = { readonly label: string; readonly detail?: string };
@@ -51,7 +51,7 @@ const escapeHtml = (value: string): string =>
   value.replace(
     /[&<>"']/g,
     (character) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!,
   );
 
 const describeContextChange = (previous: LoginContext, current: LoginContext): string => {
@@ -75,7 +75,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
 
   const machine = withGraphTypes<AuthBag>()(graphDefinition, {
     handlers,
-    plugins: [createExecutionPathsPlugin()] as const
+    plugins: [createExecutionPathsPlugin()] as const,
   });
 
   const eventLog: LogEntry[] = [];
@@ -94,26 +94,26 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     disposers.push(
       machine.subscriptions.subscribeEvent(eventName, () => {
         pushLogEntry({ label: eventName });
-      })
+      }),
     );
   }
 
   disposers.push(
     machine.subscriptions.subscribeEvent("contextChange", ({ previous, current }) => {
       pushLogEntry({ label: "contextChange", detail: describeContextChange(previous, current) });
-    })
+    }),
   );
 
   disposers.push(
     machine.subscriptions.subscribeEvent("stepEnter", ({ from, to }) => {
       pushLogEntry({ label: "stepEnter", detail: `${from ?? "∅"} -> ${to}` });
-    })
+    }),
   );
 
   disposers.push(
     machine.subscriptions.subscribeEvent("stepLeave", ({ from, to }) => {
       pushLogEntry({ label: "stepLeave", detail: `${from} -> ${to}` });
-    })
+    }),
   );
 
   const currentStepId = (): LoginStepId => machine.getSnapshot().currentStep?.id ?? "login";
@@ -132,7 +132,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     machine.context.update((context) => ({
       ...context,
       [field]: target.value,
-      error: field === "verificationCode" ? null : context.error
+      error: field === "verificationCode" ? null : context.error,
     }));
   };
   root.addEventListener("input", handleInput);
@@ -229,7 +229,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     stepId: LoginStepId,
     context: LoginContext,
     isLoading: boolean,
-    status: ReturnType<typeof machine.getSnapshot>["status"]
+    status: ReturnType<typeof machine.getSnapshot>["status"],
   ) => {
     const errorEl = stepContainer.querySelector<HTMLElement>('[data-role="error"]');
     if (errorEl) {
@@ -248,7 +248,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     }
 
     const statusMessageEl = stepContainer.querySelector<HTMLElement>(
-      '[data-role="status-message"]'
+      '[data-role="status-message"]',
     );
     if (statusMessageEl) {
       statusMessageEl.textContent =
@@ -264,7 +264,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     // complete() is only accepted while the journey is running, so the button
     // goes dark the moment the outcome is declared.
     const completeButton = stepContainer.querySelector<HTMLButtonElement>(
-      '[data-action="complete"]'
+      '[data-action="complete"]',
     );
     if (completeButton) {
       completeButton.disabled = isLoading || status !== "running";
@@ -277,7 +277,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
   // candidate separate — the guard result and the first-enabled-wins pick — which
   // is the only place the routing rule is visible as data.
   const renderOutgoingTransitions = (
-    outgoing: ReturnType<typeof machine.getSnapshot>["outgoingTransitions"]
+    outgoing: ReturnType<typeof machine.getSnapshot>["outgoingTransitions"],
   ) => {
     if (outgoing.length === 0) {
       return `<div class="muted">No outgoing transitions — this step is terminal.</div>`;
@@ -286,7 +286,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     const guardClass: Record<string, string> = {
       passed: "token-success",
       failed: "token-error",
-      none: ""
+      none: "",
     };
 
     return outgoing
@@ -316,7 +316,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
       renderPath(api.getCurrentPath(), "Current run"),
       ...api
         .getCompletedPaths()
-        .map((steps, index) => renderPath(steps, `Finished run ${index + 1}`))
+        .map((steps, index) => renderPath(steps, `Finished run ${index + 1}`)),
     ].join("");
   };
 
@@ -416,7 +416,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
         (entry) =>
           `<div class="log-item"><strong>${escapeHtml(entry.label)}</strong>${
             entry.detail ? `<div class="muted">${escapeHtml(entry.detail)}</div>` : ""
-          }</div>`
+          }</div>`,
       )
       .join("");
   };

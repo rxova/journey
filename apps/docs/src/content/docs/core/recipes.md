@@ -13,7 +13,7 @@ const result = await machine.navigate.goToNextStep({
   },
   commit: ({ result, updateContext }) => {
     updateContext((context) => ({ ...context, validatedAt: result.validatedAt }));
-  }
+  },
 });
 ```
 
@@ -28,7 +28,7 @@ steps: {
       CONTINUE: [
         { to: "vipReview", when: ({ context }) => context.isVip },
         { to: "company", when: ({ context }) => context.isBusiness },
-        { to: "review" }
+        { to: "review" },
       ];
     }
   }
@@ -50,10 +50,10 @@ payment: {
         onTransition: ({ event, updateContext }) => {
           updateContext((context) => ({
             ...context,
-            coupon: event?.payload.code ?? null
+            coupon: event?.payload.code ?? null,
           }));
-        }
-      }
+        },
+      },
     ];
   }
 }
@@ -91,8 +91,8 @@ const verify = {
   },
   on: {
     SUCCEEDED: "done",
-    FAILED: "payment"
-  }
+    FAILED: "payment",
+  },
 };
 ```
 
@@ -151,7 +151,7 @@ const stop = machine.subscriptions.subscribe(() => {
 ```ts
 const stop = machine.subscriptions.subscribeEvent(
   "navigationBlocked",
-  ({ reason, from, to, error }) => log({ reason, from, to, error })
+  ({ reason, from, to, error }) => log({ reason, from, to, error }),
 );
 ```
 

@@ -18,14 +18,14 @@ export type {
   AnalyticsApi,
   AnalyticsPluginOptions,
   AnalyticsRecentEvent,
-  AnalyticsTrackedEvent
+  AnalyticsTrackedEvent,
 } from "./analytics/analytics.types";
 
 export { createExecutionPathsPlugin } from "./execution-paths/execution-paths";
 export type {
   ExecutionPathsApi,
   ExecutionPathsPluginOptions,
-  ExecutionPathsSnapshot
+  ExecutionPathsSnapshot,
 } from "./execution-paths/execution-paths.types";
 
 export {
@@ -34,7 +34,7 @@ export {
   DEFAULT_SAVE_REASONS,
   normalizeDebounceMs,
   parsePersistedState,
-  persistOptionToPlugin
+  persistOptionToPlugin,
 } from "./persistence/persistence";
 export type {
   JourneyPersistedState,
@@ -42,14 +42,14 @@ export type {
   PersistenceApi,
   PersistencePluginOptions,
   PersistenceReason,
-  PersistenceState
+  PersistenceState,
 } from "./persistence/persistence.types";
 
 export {
   createReplayPlugin,
   normalizeMaxEntries,
   serializeReplaySession,
-  toSerializable
+  toSerializable,
 } from "./replay/replay";
 export type {
   ReplayApi,
@@ -57,5 +57,5 @@ export type {
   ReplayEntryKind,
   ReplayExportOptions,
   ReplayPluginOptions,
-  ReplaySession
+  ReplaySession,
 } from "./replay/replay.types";

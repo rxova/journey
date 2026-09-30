@@ -21,9 +21,9 @@ function ContinueButton() {
       commit: ({ result: order, updateContext }) => {
         updateContext((context) => ({
           ...context,
-          orderId: order.id
+          orderId: order.id,
         }));
-      }
+      },
     });
 
     if (!result.ok && result.reason === "error") {

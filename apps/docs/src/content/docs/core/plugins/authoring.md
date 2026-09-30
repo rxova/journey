@@ -25,12 +25,12 @@ export function createCounterPlugin(): JourneyPlugin<"counter", CounterApi, Coun
 
       return {
         api: {
-          count: () => transitions
+          count: () => transitions,
         },
         deriveSnapshot: (_snapshot, previous) =>
-          previous?.transitions === transitions ? previous : { transitions }
+          previous?.transitions === transitions ? previous : { transitions },
       };
-    }
+    },
   };
 }
 ```

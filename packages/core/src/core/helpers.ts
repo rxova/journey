@@ -38,21 +38,21 @@ export const transitionInfo = (transition: RuntimeTransition | null): Transition
         from: transition.from,
         to: transition.to,
         label: transition.label ?? null,
-        index: transition.index
+        index: transition.index,
       };
 
 export const SUCCESS_ASYNC: StepAsyncState = Object.freeze({
   isLoading: false,
   isSuccess: true,
   isError: false,
-  error: null
+  error: null,
 });
 
 export const LOADING_ASYNC: StepAsyncState = Object.freeze({
   isLoading: true,
   isSuccess: false,
   isError: false,
-  error: null
+  error: null,
 });
 
 /**

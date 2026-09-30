@@ -27,6 +27,6 @@ export function memoryStorage() {
     getItem: (key: string) => data.get(key) ?? null,
     setItem: (key: string, value: string) => void data.set(key, value),
     removeItem: (key: string) => void data.delete(key),
-    dump: () => data
+    dump: () => data,
   };
 }

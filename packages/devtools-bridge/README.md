@@ -19,7 +19,7 @@ const detach = attachJourneyDevtools(machine, {
   machineId: "checkout",
   label: "Checkout",
   eventTypes: ["continue", "cancel"],
-  mutationsEnabled: false
+  mutationsEnabled: false,
 });
 ```
 

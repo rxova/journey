@@ -13,7 +13,7 @@ const badgeLabelByKind: Record<JourneyPanelTimelineEntry["kind"], string> = {
   snapshot: "SNAP",
   operation: "OP",
   event: "EVT",
-  error: "ERR"
+  error: "ERR",
 };
 
 const badgeClassByKind: Record<JourneyPanelTimelineEntry["kind"], string | undefined> = {
@@ -21,7 +21,7 @@ const badgeClassByKind: Record<JourneyPanelTimelineEntry["kind"], string | undef
   snapshot: styles.kindSnapshot,
   operation: styles.kindOperation,
   event: styles.kindEvent,
-  error: styles.kindError
+  error: styles.kindError,
 };
 
 const formatTime = (timestamp: number): string => new Date(timestamp).toLocaleTimeString();
@@ -36,7 +36,7 @@ const getOutcomeLabel = (entry: JourneyPanelTimelineEntry): string | null => {
 
 export const observeTimelineElementRect = (
   element: HTMLDivElement | null,
-  callback: (rect: { width: number; height: number }) => void
+  callback: (rect: { width: number; height: number }) => void,
 ): (() => void) | undefined => {
   if (!element) {
     return undefined;
@@ -45,7 +45,7 @@ export const observeTimelineElementRect = (
   const emit = () => {
     callback({
       width: element.clientWidth,
-      height: element.clientHeight || TIMELINE_FALLBACK_VIEWPORT_HEIGHT_PX
+      height: element.clientHeight || TIMELINE_FALLBACK_VIEWPORT_HEIGHT_PX,
     });
   };
 
@@ -67,7 +67,7 @@ export const observeTimelineElementRect = (
 
 export const observeTimelineElementOffset = (
   element: HTMLDivElement | null,
-  callback: (offset: number, isScrolling: boolean) => void
+  callback: (offset: number, isScrolling: boolean) => void,
 ): (() => void) | undefined => {
   if (!element) {
     return undefined;
@@ -111,7 +111,7 @@ export const TimelineList = ({
   visibleStartIndex,
   selectedIndex,
   followLatest,
-  onSelectEntry
+  onSelectEntry,
 }: TimelineListProps) => {
   const [timelineListElement, setTimelineListElement] = React.useState<HTMLDivElement | null>(null);
 
@@ -133,8 +133,8 @@ export const TimelineList = ({
       observeTimelineElementOffset(timelineListElement, callback),
     initialRect: {
       width: 0,
-      height: TIMELINE_FALLBACK_VIEWPORT_HEIGHT_PX
-    }
+      height: TIMELINE_FALLBACK_VIEWPORT_HEIGHT_PX,
+    },
   });
 
   React.useEffect(() => {
@@ -177,7 +177,7 @@ export const TimelineList = ({
                   <span
                     className={classNames(
                       styles.outcome,
-                      entry.meta.transitioned ? styles.outcomeSuccess : styles.outcomeNoop
+                      entry.meta.transitioned ? styles.outcomeSuccess : styles.outcomeNoop,
                     )}
                   >
                     {outcomeLabel}

@@ -8,9 +8,9 @@ describe("analyzeStructure", () => {
         a: { on: { GO: [{ to: "b" }, { to: "done" }] } },
         b: { on: { BACK: "a", FINISH: "done" } },
         orphan: {},
-        done: {}
+        done: {},
       },
-      initial: "a"
+      initial: "a",
     });
 
     const codes = result.issues.map((issue) => issue.code);
@@ -25,7 +25,7 @@ describe("analyzeStructure", () => {
       unreachableStepCount: 1,
       terminalStepIds: ["orphan", "done"],
       shadowedTransitionCount: 1,
-      terminalPathExists: true
+      terminalPathExists: true,
     });
     expect(result.summary.cycleCount).toBeGreaterThan(0);
   });
@@ -33,7 +33,7 @@ describe("analyzeStructure", () => {
   it("flags journeys with no reachable terminal step", () => {
     const result = analyzeStructure({
       steps: { a: { on: { GO: "b" } }, b: { on: { BACK: "a" } } },
-      initial: "a"
+      initial: "a",
     });
     expect(result.issues.map((issue) => issue.code)).toContain("no-terminal-path");
     expect(result.summary.terminalPathExists).toBe(false);
@@ -42,7 +42,7 @@ describe("analyzeStructure", () => {
   it("a clean pipeline produces no issues", () => {
     const result = analyzeStructure({
       steps: { a: { on: { NEXT: "b" } }, b: { on: { NEXT: "done" } }, done: {} },
-      initial: "a"
+      initial: "a",
     });
     expect(result.issues).toEqual([]);
   });
@@ -52,7 +52,7 @@ describe("analyzing a definition without a machine", () => {
   it("reports the same structure the runtime would build from it", () => {
     const result = analyzeStructure({
       steps: { a: { on: { GO: "b" } }, b: {}, orphan: {} },
-      initial: "a"
+      initial: "a",
     });
     expect(result.issues.map((issue) => issue.code)).toContain("unreachable-step");
     expect(result.summary.terminalStepIds).toEqual(["b", "orphan"]);
@@ -67,9 +67,9 @@ describe("diagnostics traversal edges", () => {
         a: { on: { START: "b", SKIP: "c" } },
         b: { on: { NEXT: "c" } },
         c: { on: { BACK: "b", FINISH: "done" } },
-        done: {}
+        done: {},
       },
-      initial: "a"
+      initial: "a",
     });
     expect(result.summary.cycleCount).toBe(1);
     expect(result.summary.terminalPathExists).toBe(true);
@@ -82,9 +82,9 @@ describe("guarded transitions", () => {
       steps: {
         a: { on: { GO: [{ to: "done", when: () => false }, { to: "b" }] } },
         b: { on: { FINISH: "done" } },
-        done: {}
+        done: {},
       },
-      initial: "a"
+      initial: "a",
     });
     expect(result.summary.shadowedTransitionCount).toBe(0);
     expect(result.issues).toEqual([]);

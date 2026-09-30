@@ -5,7 +5,7 @@ import {
   useActiveMachine,
   usePanelActions,
   usePanelState,
-  usePanelTimelineRetention
+  usePanelTimelineRetention,
 } from "../context/PanelProvider";
 import { getSnapshotCurrentStepId } from "../utils/snapshot";
 
@@ -21,7 +21,7 @@ export const ActiveMachinePanel = () => {
     selectedTimelineEntry,
     selectedDiff,
     areCommandsDisabled,
-    commandDisabledReason
+    commandDisabledReason,
   } = useActiveMachine();
   const { panelState } = usePanelState();
   const { selectTimelineEntry, setFollowLatest, setDisplayLimit, pruneTimeline, invokeOperation } =
@@ -44,8 +44,8 @@ export const ActiveMachinePanel = () => {
       ? { [currentStepId]: snapshot.availableSteps }
       : (legacyMeta.goToStepTargetsBySource ?? {
           [currentStepId]: (activeMachine.meta.stepIds ?? []).filter(
-            (stepId) => stepId !== currentStepId
-          )
+            (stepId) => stepId !== currentStepId,
+          ),
         });
 
   return (

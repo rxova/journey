@@ -15,7 +15,7 @@ import type {
   LinearJourneyMachine as CoreLinearJourneyMachine,
   LinearSnapshot,
   LinearStepConfig,
-  NavigationWork
+  NavigationWork,
 } from "@rxova/journey-core";
 
 // ---------------------------------------------------------------------------
@@ -41,7 +41,7 @@ export type AnyJourneyMachine = {
     subscribe(listener: () => void): () => void;
     subscribeEvent(
       event: JourneySubscriptionEvent,
-      listener: (payload: AnyEventPayload) => void
+      listener: (payload: AnyEventPayload) => void,
     ): () => void;
   };
   dispose(): void;
@@ -65,7 +65,7 @@ export type ContextOf<TMachine> =
 /** The payload a machine delivers for one of its subscription events. */
 export type EventPayloadOf<
   TMachine,
-  TEvent extends JourneySubscriptionEvent
+  TEvent extends JourneySubscriptionEvent,
 > = JourneyEventPayloads<ContextOf<TMachine>, StepIdOf<TMachine>, SnapshotOf<TMachine>>[TEvent];
 
 /**
@@ -115,7 +115,7 @@ export type JourneyBundleBase<
   TMachine extends { controls: unknown; navigate: unknown },
   TContext,
   TStepId extends string,
-  TSnapshot extends { currentStep: unknown }
+  TSnapshot extends { currentStep: unknown },
 > = {
   /** The bundle's machine — created by the factory, usable outside React. */
   machine: TMachine;
@@ -128,7 +128,7 @@ export type JourneyBundleBase<
   /** A derived slice of the snapshot; re-renders only when it changes (reactive). */
   useSelector: <TSelected>(
     selector: (snapshot: TSnapshot) => TSelected,
-    equalityFn?: (a: TSelected, b: TSelected) => boolean
+    equalityFn?: (a: TSelected, b: TSelected) => boolean,
   ) => TSelected;
   /** The current step — id, metadata, async state — or null while idle (reactive). */
   useStep: () => TSnapshot["currentStep"];
@@ -140,12 +140,12 @@ export type JourneyBundleBase<
    */
   useContextSelector: <TSelected>(
     selector: (context: TContext) => TSelected,
-    equalityFn?: (a: TSelected, b: TSelected) => boolean
+    equalityFn?: (a: TSelected, b: TSelected) => boolean,
   ) => TSelected;
   /** Subscribes a listener to a machine event for the component's lifetime. */
   useEventEffect: <TEvent extends JourneySubscriptionEvent>(
     event: TEvent,
-    listener: (payload: JourneyEventPayloads<TContext, TStepId, TSnapshot>[TEvent]) => void
+    listener: (payload: JourneyEventPayloads<TContext, TStepId, TSnapshot>[TEvent]) => void,
   ) => void;
 
   /**
@@ -190,7 +190,7 @@ type NoStepLifecycle = {
 export type ReactLinearStepConfig<
   TContext = unknown,
   TStepId extends string = string,
-  TMeta = Record<string, unknown>
+  TMeta = Record<string, unknown>,
 > = Omit<LinearStepConfig<TContext, TStepId, TMeta>, "onEnter" | "onLeave"> & NoStepLifecycle;
 
 /**
@@ -210,7 +210,7 @@ export type ReactGraphStepConfig<
   TStepId extends string,
   TEvents extends JourneyEventObject,
   TMeta,
-  THandlers
+  THandlers,
 > = Omit<GraphStepConfig<TContext, TStepId, TEvents, TMeta, THandlers>, "onEnter" | "onLeave"> &
   NoStepLifecycle;
 
@@ -235,7 +235,7 @@ export type ReactGraphDefinition<TBag extends Bag> = Omit<GraphDefinition<TBag>,
 export type LinearJourneyMachine<
   TContext = unknown,
   TStepId extends string = string,
-  TPlugins extends readonly AnyJourneyPlugin[] = readonly []
+  TPlugins extends readonly AnyJourneyPlugin[] = readonly [],
 > = CoreLinearJourneyMachine<TContext, TStepId, unknown, TPlugins>;
 
 /**
@@ -246,20 +246,20 @@ export type LinearJourneyMachine<
  */
 export type LinearJourneySnapshot<
   TContext = unknown,
-  TStepId extends string = string
+  TStepId extends string = string,
 > = LinearSnapshot<TContext, TStepId, unknown>;
 
 /** Core event payloads bound to the linear snapshot. */
 export type LinearJourneyEventPayloads<
   TContext = unknown,
-  TStepId extends string = string
+  TStepId extends string = string,
 > = JourneyEventPayloads<TContext, TStepId, LinearJourneySnapshot<TContext, TStepId>>;
 
 /** Transactional Core work registered for a step's forward navigation. */
 export type LinearJourneyStepHandler<
   TContext = unknown,
   TResult = void,
-  TStepId extends string = string
+  TStepId extends string = string,
 > = NavigationWork<TContext, TStepId, LinearJourneySnapshot<TContext, TStepId>, TResult>;
 
 /**
@@ -272,8 +272,8 @@ export type LinearJourneyBundleDefinition<
   TContext,
   TSteps extends readonly ReactLinearStepInput<TContext, unknown>[] = readonly [
     ReactLinearStepInput<TContext, unknown>,
-    ...ReactLinearStepInput<TContext, unknown>[]
-  ]
+    ...ReactLinearStepInput<TContext, unknown>[],
+  ],
 > = {
   /** Ordered steps — the machine's source of truth. A bare string is shorthand for `{ id }`. */
   readonly steps: TSteps;
@@ -286,7 +286,7 @@ export type LinearJourneyBundleDefinition<
 /** Core's creation options, passed through verbatim and frozen per bundle. */
 export type LinearJourneyBundleOptions<
   TStepId extends string = string,
-  TPlugins extends readonly AnyJourneyPlugin[] = readonly AnyJourneyPlugin[]
+  TPlugins extends readonly AnyJourneyPlugin[] = readonly AnyJourneyPlugin[],
 > = JourneyRuntimeOptions<TPlugins, TStepId>;
 
 /**
@@ -298,7 +298,7 @@ export type LinearJourneyBundleOptions<
 export type LinearJourneyBundle<
   TContext,
   TStepId extends string,
-  TPlugins extends readonly AnyJourneyPlugin[] = readonly []
+  TPlugins extends readonly AnyJourneyPlugin[] = readonly [],
 > = JourneyBundleBase<
   LinearJourneyMachine<TContext, TStepId, TPlugins>,
   TContext,
@@ -313,7 +313,7 @@ export type LinearJourneyBundle<
    */
   useStepHandler: <TResult = void>(
     stepId: TStepId,
-    handler: LinearJourneyStepHandler<TContext, TResult, TStepId>
+    handler: LinearJourneyStepHandler<TContext, TResult, TStepId>,
   ) => void;
 
   /** `machine.navigate`, verbatim — callable from anywhere, React or not. */
@@ -333,7 +333,7 @@ export type GraphJourneyBundle<
   TStepId extends string,
   TEvents extends JourneyEventObject = JourneyEventObject,
   TMeta = Record<string, unknown>,
-  TPlugins extends readonly AnyJourneyPlugin[] = readonly []
+  TPlugins extends readonly AnyJourneyPlugin[] = readonly [],
 > = JourneyBundleBase<
   GraphJourneyMachine<TContext, TStepId, TEvents, TMeta, TPlugins>,
   TContext,

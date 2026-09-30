@@ -4,7 +4,7 @@ import {
   createJourneyMachineId,
   OperationRateLimiter,
   serializeSnapshot,
-  type OperationRunner
+  type OperationRunner,
 } from "@rxova/journey-devtools-bridge";
 import { startedGraphMachine, startedLinearMachine } from "@rxova/journey-devtools-bridge/testing";
 
@@ -70,7 +70,7 @@ describe("buildOperationRunners", () => {
       "navigation.goToStepById",
       "navigation.goToLastVisitedStep",
       "context.patch",
-      "machine.inspectSnapshot"
+      "machine.inspectSnapshot",
     ]);
     expect(runners.every((runner) => runner.descriptor.mutates)).toBe(false);
     expect(runnerById(runners, "machine.inspectSnapshot").descriptor.mutates).toBe(false);
@@ -93,23 +93,23 @@ describe("buildOperationRunners", () => {
     const runners = buildOperationRunners(machine);
 
     expect(await runnerById(runners, "lifecycle.pause").run(undefined)).toMatchObject({
-      transitioned: true
+      transitioned: true,
     });
     expect(await runnerById(runners, "lifecycle.pause").run(undefined)).toMatchObject({
-      transitioned: false // already paused
+      transitioned: false, // already paused
     });
     expect(await runnerById(runners, "lifecycle.resume").run(undefined)).toMatchObject({
-      transitioned: true
+      transitioned: true,
     });
     expect(
-      await runnerById(runners, "lifecycle.complete").run({ payload: { done: true } })
+      await runnerById(runners, "lifecycle.complete").run({ payload: { done: true } }),
     ).toMatchObject({ transitioned: true });
     expect(machine.getSnapshot().machine.outcome).toEqual({
       type: "completed",
-      payload: { done: true }
+      payload: { done: true },
     });
     expect(await runnerById(runners, "lifecycle.restart").run(undefined)).toMatchObject({
-      transitioned: true
+      transitioned: true,
     });
   });
 
@@ -118,10 +118,10 @@ describe("buildOperationRunners", () => {
     const runners = buildOperationRunners(machine);
 
     await expect(runnerById(runners, "navigation.goToStepById").run({})).rejects.toThrow(
-      '"stepId" must be a non-empty string'
+      '"stepId" must be a non-empty string',
     );
     await expect(
-      runnerById(runners, "navigation.goToPreviousStep").run({ steps: 1.5 })
+      runnerById(runners, "navigation.goToPreviousStep").run({ steps: 1.5 }),
     ).rejects.toThrow('"steps" must be a positive integer');
 
     const blocked = await runnerById(runners, "navigation.goToPreviousStep").run(undefined);
@@ -138,13 +138,13 @@ describe("buildOperationRunners", () => {
       async () => ({ ok: false, reason: "error", error: boom });
 
     const result = await runnerById(buildOperationRunners(machine), "navigation.goToNextStep").run(
-      undefined
+      undefined,
     );
 
     expect(result).toMatchObject({
       kind: "snapshot",
       transitioned: false,
-      error: { message: "navigation exploded" }
+      error: { message: "navigation exploded" },
     });
   });
 

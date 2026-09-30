@@ -16,11 +16,11 @@ export const wait = (ms: number): Promise<void> =>
 
 /** A started 4-step linear journey (a → b → c → d), settled and ready. */
 export async function startedLinear(
-  options: JourneyRuntimeOptions<readonly [], "a" | "b" | "c" | "d"> = {}
+  options: JourneyRuntimeOptions<readonly [], "a" | "b" | "c" | "d"> = {},
 ) {
   const machine = createLinearJourney(
     { steps: ["a", "b", "c", "d"], context: { count: 0 } },
-    options
+    options,
   );
   machine.controls.start();
   await flush();

@@ -3,7 +3,7 @@ import {
   JourneyError,
   createGraphJourney,
   createLinearJourney,
-  isJourneyError
+  isJourneyError,
 } from "@rxova/journey-core";
 import { flush, startedLinear } from "@rxova/journey-core/testing";
 import type { JourneyErrorCode } from "@rxova/journey-core";
@@ -31,13 +31,13 @@ describe("creation-time failures carry a code", () => {
     expect(
       // With no steps declared the id union is `never`, so the cast is what a
       // JS caller reaching this failure would effectively be doing.
-      codeOf(() => createGraphJourney({ steps: {}, initial: "a" as never, context: {} }))
+      codeOf(() => createGraphJourney({ steps: {}, initial: "a" as never, context: {} })),
     ).toBe("empty-definition");
   });
 
   it("duplicate linear step id", () => {
     expect(codeOf(() => createLinearJourney({ steps: ["a", "a"], context: {} }))).toBe(
-      "duplicate-step-id"
+      "duplicate-step-id",
     );
   });
 
@@ -47,9 +47,9 @@ describe("creation-time failures carry a code", () => {
         createGraphJourney({
           steps: { a: {} },
           initial: "zzz" as "a",
-          context: {}
-        })
-      )
+          context: {},
+        }),
+      ),
     ).toBe("unknown-initial-step");
   });
 
@@ -59,15 +59,15 @@ describe("creation-time failures carry a code", () => {
         createGraphJourney({
           steps: { a: { on: { GO: "nope" as "a" } } },
           initial: "a",
-          context: {}
-        })
-      )
+          context: {},
+        }),
+      ),
     ).toBe("dangling-transition");
   });
 
   it("unknown startAt", () => {
     expect(
-      codeOf(() => createLinearJourney({ steps: ["a"], context: {} }, { startAt: "zzz" as "a" }))
+      codeOf(() => createLinearJourney({ steps: ["a"], context: {} }, { startAt: "zzz" as "a" })),
     ).toBe("unknown-step");
   });
 
@@ -76,8 +76,8 @@ describe("creation-time failures carry a code", () => {
 
     expect(
       codeOf(() =>
-        createLinearJourney({ steps: ["a"], context: {} }, { plugins: [plugin, plugin] })
-      )
+        createLinearJourney({ steps: ["a"], context: {} }, { plugins: [plugin, plugin] }),
+      ),
     ).toBe("duplicate-plugin-name");
   });
 
@@ -85,7 +85,7 @@ describe("creation-time failures carry a code", () => {
     vi.stubGlobal("localStorage", undefined);
     try {
       expect(
-        codeOf(() => createLinearJourney({ steps: ["a"], context: {} }, { persist: { key: "k" } }))
+        codeOf(() => createLinearJourney({ steps: ["a"], context: {} }, { persist: { key: "k" } })),
       ).toBe("storage-unavailable");
     } finally {
       vi.unstubAllGlobals();
@@ -99,7 +99,7 @@ describe("creation-time failures carry a code", () => {
       configurable: true,
       get() {
         throw blocked;
-      }
+      },
     });
 
     try {
@@ -121,7 +121,7 @@ describe("runtime failures carry a code", () => {
 
     const result = await machine.navigate.goToNextStep({
       run: () => undefined,
-      commit: (() => Promise.resolve()) as unknown as () => void
+      commit: (() => Promise.resolve()) as unknown as () => void,
     });
 
     expect(result.ok).toBe(false);
@@ -148,7 +148,7 @@ describe("structured fields name the offender", () => {
       createGraphJourney({
         steps: { a: { on: { SUBMIT: "missing" as "a" } } },
         initial: "a",
-        context: {}
+        context: {},
       });
       throw new Error("expected a throw");
     } catch (error) {
@@ -173,7 +173,7 @@ describe("structured fields name the offender", () => {
 describe("JourneyError shape", () => {
   it("is an Error, named, and keeps the journey: message prefix", () => {
     const error = new JourneyError("unknown-step", 'startAt references unknown step "x"', {
-      stepId: "x"
+      stepId: "x",
     });
 
     expect(error).toBeInstanceOf(Error);
@@ -195,7 +195,7 @@ describe("JourneyError shape", () => {
     const result = await machine.navigate.goToNextStep({
       run: () => {
         throw failure;
-      }
+      },
     });
 
     await flush();

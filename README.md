@@ -68,13 +68,13 @@ type Context = {
 const definition: LinearJourneyDefinition<StepId, Context> = {
   context: {
     email: "",
-    shippingId: null
+    shippingId: null,
   },
   steps: [
     { id: "account", metadata: { title: "Account" } },
     { id: "shipping", metadata: { title: "Shipping" } },
-    { id: "review", metadata: { title: "Review" } }
-  ]
+    { id: "review", metadata: { title: "Review" } },
+  ],
 };
 
 const checkout = createLinearJourney(definition);
@@ -82,7 +82,7 @@ checkout.controls.start();
 
 checkout.context.update((context) => ({
   ...context,
-  email: "ada@example.com"
+  email: "ada@example.com",
 }));
 
 await checkout.navigate.goToNextStep();
@@ -93,7 +93,7 @@ String steps are shorthand for steps without metadata or lifecycle hooks:
 ```ts
 createLinearJourney({
   context: {},
-  steps: ["account", "shipping", "review"]
+  steps: ["account", "shipping", "review"],
 });
 ```
 
@@ -120,9 +120,9 @@ const result = await checkout.navigate.goToNextStep({
   commit: ({ result: shipping, updateContext }) => {
     updateContext((context) => ({
       ...context,
-      shippingId: shipping.id
+      shippingId: shipping.id,
     }));
-  }
+  },
 });
 
 if (!result.ok) {
@@ -160,12 +160,12 @@ const machine = withGraphTypes<{
       metadata: { title: "Start" },
       on: {
         continue: [{ to: "details", when: ({ context }) => context.ready }],
-        skip: "done"
-      }
+        skip: "done",
+      },
     },
     details: { metadata: { title: "Details" }, on: { continue: "done" } },
-    done: { metadata: { title: "Done" } }
-  }
+    done: { metadata: { title: "Done" } },
+  },
 });
 
 await machine.send("continue");
@@ -219,7 +219,7 @@ it needs lifecycle detail:
 const stop = machine.subscriptions.subscribe(() => render(machine.getSnapshot().currentStep?.id));
 
 machine.subscriptions.subscribeEvent("navigationBlocked", ({ reason, error }) =>
-  report(reason, error)
+  report(reason, error),
 );
 
 stop();
@@ -251,7 +251,7 @@ import { createLinearJourney } from "@rxova/journey-react";
 const signup = createLinearJourney({
   name: "signup",
   context: { email: "" },
-  steps: ["account", "shipping", "review"]
+  steps: ["account", "shipping", "review"],
 });
 
 function Footer() {
@@ -334,7 +334,7 @@ import { createLinearJourney, useJourney } from "@rxova/journey-react";
 
 function Wizard() {
   const signup = useJourney(() =>
-    createLinearJourney({ context: { email: "" }, steps: ["email", "review", "done"] })
+    createLinearJourney({ context: { email: "" }, steps: ["email", "review", "done"] }),
   );
 
   return <signup.Provider views={views}>{/* … */}</signup.Provider>;
@@ -379,7 +379,7 @@ Plugins are imported from dedicated entrypoints. Their APIs remain namespaced on
 import { createReplayPlugin } from "@rxova/journey-core/plugins";
 
 const machine = createLinearJourney(definition, {
-  plugins: [createReplayPlugin({ maxEntries: 100 })] as const
+  plugins: [createReplayPlugin({ maxEntries: 100 })] as const,
 });
 
 machine.plugins.replay.getReplaySession();
@@ -396,7 +396,7 @@ import { attachJourneyDevtools } from "@rxova/journey-devtools-bridge";
 const detach = attachJourneyDevtools(machine, {
   machineId: "checkout",
   label: "Checkout",
-  mutationsEnabled: false
+  mutationsEnabled: false,
 });
 ```
 

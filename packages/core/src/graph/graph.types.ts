@@ -12,7 +12,7 @@ import type {
   OnEnterHook,
   OnLeaveHook,
   PluginApis,
-  StepHookArgs
+  StepHookArgs,
 } from "../core/types";
 
 /**
@@ -29,7 +29,7 @@ export type GraphHookArgs<
   TContext,
   TStepId extends string,
   TEvents extends JourneyEventObject,
-  TMeta = Record<string, unknown>
+  TMeta = Record<string, unknown>,
 > = StepHookArgs<TContext, TStepId, TEvents, GraphSnapshot<TContext, TStepId, TMeta, TEvents>>;
 
 /** One colocated candidate; `from` is the step that declares it. */
@@ -42,7 +42,7 @@ export type GraphTransition<
   // The event that triggered this edge, narrowed to the key the entry is
   // declared under. `raise` keeps the full union — you may raise any declared
   // event — so only `event` is overridden.
-  TTrigger extends JourneyEventObject = TEvents
+  TTrigger extends JourneyEventObject = TEvents,
 > = {
   readonly to: TStepId;
   readonly when?: TransitionGuard<TContext, THandlers>;
@@ -63,7 +63,7 @@ export type GraphTransition<
   readonly onTransition?: (
     args: Omit<GraphHookArgs<TContext, TStepId, TEvents, TMeta>, "event"> & {
       readonly event: TTrigger | null;
-    }
+    },
   ) => void | Promise<void>;
 };
 
@@ -86,7 +86,7 @@ export type GraphOnEntry<
   THandlers = unknown,
   TMeta = Record<string, unknown>,
   TResult = unknown,
-  TTrigger extends JourneyEventObject = TEvents
+  TTrigger extends JourneyEventObject = TEvents,
 > =
   | TStepId
   | readonly GraphTransition<TContext, TStepId, TEvents, THandlers, TMeta, TTrigger>[]
@@ -97,7 +97,7 @@ export type GraphOnEntry<
           TEvents,
           GraphSnapshot<TContext, TStepId, TMeta, TEvents>,
           THandlers
-        >
+        >,
       ) => TResult | Promise<TResult>;
       /**
        * Declared as a method rather than a function-typed property on purpose.
@@ -115,7 +115,7 @@ export type GraphOnEntry<
         > & {
           readonly result: TResult;
           readonly updateContext: (updater: ContextUpdater<TContext>) => void;
-        }
+        },
       ): void;
       /** Names this work in timeout and error messages. */
       readonly label?: string;
@@ -140,7 +140,7 @@ export type GraphStepConfig<
   TStepId extends string = string,
   TEvents extends JourneyEventObject = JourneyEventObject,
   TMeta = Record<string, unknown>,
-  THandlers = unknown
+  THandlers = unknown,
 > = {
   readonly metadata?: TMeta;
   /** Outgoing transitions, keyed by event. */
@@ -180,7 +180,7 @@ export type GraphJourneyDefinition<
   TEvents extends JourneyEventObject = JourneyEventObject,
   THandlers = unknown,
   TMeta = Record<string, unknown>,
-  TTerminationPayloads extends JourneyTerminationPayloads = JourneyTerminationPayloads
+  TTerminationPayloads extends JourneyTerminationPayloads = JourneyTerminationPayloads,
 > = {
   readonly steps: Readonly<
     Record<TStepId, GraphStepConfig<TContext, TStepId, TEvents, TMeta, THandlers>>
@@ -213,7 +213,7 @@ export type GraphJourneyDefinition<
 export type GraphJourneyOptions<
   THandlers = unknown,
   TPlugins extends readonly AnyJourneyPlugin[] = readonly [],
-  TStepId extends string = string
+  TStepId extends string = string,
 > = JourneyRuntimeOptions<TPlugins, TStepId> & {
   /** Overrides the definition's handlers — one definition serves app and tests. */
   handlers?: THandlers;
@@ -236,7 +236,7 @@ export type SendWorkArgs<
   TStepId extends string,
   TEvents extends JourneyEventObject,
   TSnap,
-  THandlers
+  THandlers,
 > = {
   readonly snapshot: TSnap;
   readonly from: TStepId;
@@ -259,16 +259,16 @@ export type SendWork<
   TEvents extends JourneyEventObject,
   TSnap,
   THandlers = unknown,
-  TResult = void
+  TResult = void,
 > = {
   readonly run: (
-    args: SendWorkArgs<TStepId, TEvents, TSnap, THandlers>
+    args: SendWorkArgs<TStepId, TEvents, TSnap, THandlers>,
   ) => TResult | Promise<TResult>;
   readonly commit?: (
     args: SendWorkArgs<TStepId, TEvents, TSnap, THandlers> & {
       readonly result: TResult;
       readonly updateContext: (updater: ContextUpdater<TContext>) => void;
-    }
+    },
   ) => void;
 };
 
@@ -281,7 +281,7 @@ export type SendWork<
  */
 export type SendVerb<
   TStepId extends string,
-  TEvents extends JourneyEventObject
+  TEvents extends JourneyEventObject,
 > = JourneyEventObject extends TEvents
   ? (type: string, payload?: unknown) => Promise<NavigationResult<TStepId>>
   : <TType extends TEvents["type"]>(
@@ -296,7 +296,7 @@ export type GraphJourneyMachine<
   TMeta = Record<string, unknown>,
   TPlugins extends readonly AnyJourneyPlugin[] = readonly [],
   TCompletePayload = unknown,
-  TTerminatePayload = unknown
+  TTerminatePayload = unknown,
 > = JourneyMachineBase<
   TContext,
   TStepId,

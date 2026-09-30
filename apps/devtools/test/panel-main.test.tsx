@@ -3,7 +3,7 @@ import { bootstrapPanel } from "../src/panel/bootstrap";
 
 const { createRootMock, renderMock } = vi.hoisted(() => ({
   createRootMock: vi.fn(),
-  renderMock: vi.fn()
+  renderMock: vi.fn(),
 }));
 
 type DevtoolsThemeName = "default" | "dark";
@@ -12,13 +12,13 @@ function stubMatchMedia(matches: boolean) {
   const mediaQuery = {
     matches,
     addEventListener: vi.fn(),
-    addListener: vi.fn()
+    addListener: vi.fn(),
   } as unknown as MediaQueryList;
 
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
     writable: true,
-    value: vi.fn().mockReturnValue(mediaQuery)
+    value: vi.fn().mockReturnValue(mediaQuery),
   });
 
   return mediaQuery;
@@ -33,21 +33,21 @@ function stubChrome(themeName: DevtoolsThemeName) {
         themeName,
         setThemeChangeHandler: vi.fn((callback?: (theme: DevtoolsThemeName) => void) => {
           themeChangeHandler = callback;
-        })
-      }
-    }
+        }),
+      },
+    },
   };
 
   vi.stubGlobal("chrome", chromeMock);
 
   return {
     chromeMock,
-    getThemeChangeHandler: () => themeChangeHandler
+    getThemeChangeHandler: () => themeChangeHandler,
   };
 }
 
 vi.mock("react-dom/client", () => ({
-  createRoot: createRootMock
+  createRoot: createRootMock,
 }));
 
 describe("panel main entrypoint", () => {
@@ -134,13 +134,13 @@ describe("panel main entrypoint", () => {
       addEventListener: undefined,
       addListener: vi.fn((listener: () => void) => {
         changeHandler = listener;
-      })
+      }),
     } as unknown as MediaQueryList;
 
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       writable: true,
-      value: vi.fn().mockReturnValue(mediaQuery)
+      value: vi.fn().mockReturnValue(mediaQuery),
     });
 
     bootstrapPanel();

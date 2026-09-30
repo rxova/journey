@@ -79,7 +79,7 @@ await machine.navigate.goToNextStep({
   },
   commit: ({ result, updateContext }) => {
     updateContext((context) => ({ ...context, submissionId: result.id }));
-  }
+  },
 });
 ```
 

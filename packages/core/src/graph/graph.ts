@@ -14,7 +14,7 @@ import type {
   LooseTransition,
   MutableRuntimeStep,
   MutableRuntimeTransition,
-  MutableSendWork
+  MutableSendWork,
 } from "./graph.types";
 import type { AnySendWork } from "../core/runtime.types";
 import type { Bag, GraphDefinition, HandlersOf, MetaOf } from "./bag.types";
@@ -23,7 +23,7 @@ import type {
   CompletePayloadOf,
   JourneyEventObject,
   JourneyTerminationPayloads,
-  TerminatePayloadOf
+  TerminatePayloadOf,
 } from "../core/types";
 
 /**
@@ -37,7 +37,7 @@ const assertLabel = (label: unknown, where: string, meta: { event: string; stepI
     throw new JourneyError(
       "invalid-label",
       `${where} must declare "label" as a non-empty string`,
-      meta
+      meta,
     );
   }
   return label;
@@ -48,7 +48,7 @@ const assertTimeout = (ms: unknown, where: string, meta: { event: string; stepId
     throw new JourneyError(
       "invalid-timeout",
       `${where} must declare "timeoutMs" as a finite number greater than 0`,
-      meta
+      meta,
     );
   }
   return ms;
@@ -80,7 +80,7 @@ export function normalizeGraphDefinition(definition: LooseGraphDefinition): {
     throw new JourneyError(
       "unknown-initial-step",
       `initial step "${definition.initial}" is not a declared step`,
-      { stepId: definition.initial }
+      { stepId: definition.initial },
     );
   }
 
@@ -104,13 +104,13 @@ export function normalizeGraphDefinition(definition: LooseGraphDefinition): {
     event: string,
     from: string,
     candidate: LooseTransition,
-    index: number
+    index: number,
   ): void => {
     if (!stepIds.includes(candidate.to)) {
       throw new JourneyError(
         "dangling-transition",
         `transition "${event}" references unknown step "${candidate.to}"`,
-        { event, stepId: candidate.to }
+        { event, stepId: candidate.to },
       );
     }
     const where = `transition "${event}"[${index}] on step "${from}"`;
@@ -123,7 +123,7 @@ export function normalizeGraphDefinition(definition: LooseGraphDefinition): {
     if (candidate.timeoutMs !== undefined) {
       runtimeTransition.timeoutMs = assertTimeout(candidate.timeoutMs, where, {
         event,
-        stepId: from
+        stepId: from,
       });
     }
     transitions.push(runtimeTransition);
@@ -140,7 +140,7 @@ export function normalizeGraphDefinition(definition: LooseGraphDefinition): {
       }
       if (Array.isArray(entry)) {
         (entry as readonly LooseTransition[]).forEach((candidate, index) =>
-          pushCandidate(event, from, candidate, index)
+          pushCandidate(event, from, candidate, index),
         );
         continue;
       }
@@ -156,7 +156,7 @@ export function normalizeGraphDefinition(definition: LooseGraphDefinition): {
       }
       eventWork[eventWorkKey(from, event)] = work;
       declared.candidates.forEach((candidate, index) =>
-        pushCandidate(event, from, candidate, index)
+        pushCandidate(event, from, candidate, index),
       );
     }
   }
@@ -179,7 +179,7 @@ export function createGraphJourney<
   THandlers = unknown,
   TMeta = Record<string, unknown>,
   const TPlugins extends readonly AnyJourneyPlugin[] = readonly [],
-  TTerminationPayloads extends JourneyTerminationPayloads = JourneyTerminationPayloads
+  TTerminationPayloads extends JourneyTerminationPayloads = JourneyTerminationPayloads,
 >(
   // Inline shape (not GraphJourneyDefinition) so TStepId infers from the
   // steps-record keys alone: every other occurrence is NoInfer-wrapped,
@@ -205,7 +205,7 @@ export function createGraphJourney<
     readonly $events?: TEvents;
     readonly $payloads?: TTerminationPayloads;
   },
-  options: GraphJourneyOptions<NoInfer<THandlers>, TPlugins, NoInfer<TStepId>> = {}
+  options: GraphJourneyOptions<NoInfer<THandlers>, TPlugins, NoInfer<TStepId>> = {},
   // THandlers is load-bearing: it types `handlers` inside send work, which is
   // the only channel injected clients reach. Omitting it here let the
   // annotation win over the cast below and erased it to `unknown`.
@@ -219,12 +219,12 @@ export function createGraphJourney<
   TerminatePayloadOf<TTerminationPayloads>
 > {
   const { stepIds, steps, transitions, eventWork } = normalizeGraphDefinition(
-    definition as unknown as LooseGraphDefinition
+    definition as unknown as LooseGraphDefinition,
   );
 
   if (options.startAt !== undefined && !hasOwn(steps, options.startAt)) {
     throw new JourneyError("unknown-step", `startAt references unknown step "${options.startAt}"`, {
-      stepId: options.startAt
+      stepId: options.startAt,
     });
   }
 
@@ -246,8 +246,8 @@ export function createGraphJourney<
           restore: {
             context: restored.context,
             timeline: restored.timeline,
-            currentIndex: restored.currentIndex
-          }
+            currentIndex: restored.currentIndex,
+          },
         }
       : {}),
     transitions,
@@ -258,13 +258,13 @@ export function createGraphJourney<
     ...(options.onListenerError !== undefined ? { onListenerError: options.onListenerError } : {}),
     plugins: [
       ...(options.persist ? [persistOptionToPlugin(options.persist)] : []),
-      ...(options.plugins ?? [])
-    ]
+      ...(options.plugins ?? []),
+    ],
   });
 
   const machine = {
     ...buildMachineSurface(runtime),
-    send: (type: string, payload?: unknown) => runtime.send(type, payload)
+    send: (type: string, payload?: unknown) => runtime.send(type, payload),
   };
   return machine as unknown as GraphJourneyMachine<
     TContext,
@@ -302,11 +302,11 @@ export const withGraphTypes =
   <TBag extends Bag>() =>
   <const TPlugins extends readonly AnyJourneyPlugin[] = readonly []>(
     definition: GraphDefinition<TBag>,
-    options: GraphJourneyOptions<HandlersOf<TBag>, TPlugins, TBag["stepId"]> = {}
+    options: GraphJourneyOptions<HandlersOf<TBag>, TPlugins, TBag["stepId"]> = {},
   ): GraphJourneyMachine<TBag["context"], TBag["stepId"], TBag["events"], MetaOf<TBag>, TPlugins> =>
     createGraphJourney(
       definition as unknown as Parameters<typeof createGraphJourney>[0],
-      options as unknown as Parameters<typeof createGraphJourney>[1]
+      options as unknown as Parameters<typeof createGraphJourney>[1],
     ) as unknown as GraphJourneyMachine<
       TBag["context"],
       TBag["stepId"],

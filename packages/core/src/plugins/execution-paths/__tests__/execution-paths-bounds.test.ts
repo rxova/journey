@@ -11,7 +11,7 @@ import type { ExecutionPathsSnapshot } from "@rxova/journey-core/plugins";
  */
 async function runAndComplete(
   machine: ReturnType<typeof createLinearJourney<"a" | "b", Record<string, never>>>,
-  runs: number
+  runs: number,
 ): Promise<void> {
   for (let i = 0; i < runs; i++) {
     if (i === 0) machine.controls.start();
@@ -28,7 +28,7 @@ describe("execution-paths retention", () => {
     const plugin = createExecutionPathsPlugin({ maxPaths: 3 });
     const machine = createLinearJourney(
       { steps: ["a", "b"], context: {} },
-      { plugins: [plugin] as const }
+      { plugins: [plugin] as const },
     );
 
     await runAndComplete(machine, 6);
@@ -41,7 +41,7 @@ describe("execution-paths retention", () => {
   it("defaults to a bounded retention rather than growing forever", async () => {
     const machine = createLinearJourney(
       { steps: ["a", "b"], context: {} },
-      { plugins: [createExecutionPathsPlugin()] as const }
+      { plugins: [createExecutionPathsPlugin()] as const },
     );
 
     await runAndComplete(machine, 60);
@@ -52,7 +52,7 @@ describe("execution-paths retention", () => {
   it("clearCompletedPaths drops history without touching the current run", async () => {
     const machine = createLinearJourney(
       { steps: ["a", "b"], context: {} },
-      { plugins: [createExecutionPathsPlugin()] as const }
+      { plugins: [createExecutionPathsPlugin()] as const },
     );
 
     await runAndComplete(machine, 2);
@@ -72,7 +72,7 @@ describe("execution-paths retention", () => {
   it("reflects the bound in the snapshot slice", async () => {
     const machine = createLinearJourney(
       { steps: ["a", "b"], context: {} },
-      { plugins: [createExecutionPathsPlugin({ maxPaths: 2 })] as const }
+      { plugins: [createExecutionPathsPlugin({ maxPaths: 2 })] as const },
     );
 
     await runAndComplete(machine, 5);

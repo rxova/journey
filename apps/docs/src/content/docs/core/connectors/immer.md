@@ -41,7 +41,7 @@ machine.context.update(
     draft.cart.items[0]!.quantity += 1;
     draft.cart.total += 12;
     draft.coupon = null;
-  })
+  }),
 );
 ```
 
@@ -58,7 +58,7 @@ commit: ({ result, updateContext }) => {
   updateContext(
     immerConnector<CheckoutContext>((draft) => {
       draft.cart.total = result.total;
-    })
+    }),
   );
 };
 ```
@@ -75,8 +75,8 @@ but must not do both:
 machine.context.update(
   immerConnector<CheckoutContext>(() => ({
     cart: { items: [], total: 0 },
-    coupon: null
-  }))
+    coupon: null,
+  })),
 );
 ```
 

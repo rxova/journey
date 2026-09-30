@@ -7,8 +7,8 @@ export const authenticatorCodeStep: ReactGraphStep<AuthBag> = {
     verifyCodeSuccess: "loggedIn",
     verifyCodeFailure: [
       { to: "blocked", when: ({ context }) => context.attempts >= 3 },
-      { to: "authenticatorCode" }
+      { to: "authenticatorCode" },
     ],
-    switchAuthMethod: "emailCode"
-  }
+    switchAuthMethod: "emailCode",
+  },
 };

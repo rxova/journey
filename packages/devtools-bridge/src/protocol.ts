@@ -13,7 +13,7 @@ import type {
   JourneyDevtoolsOperationResultPayload,
   JourneyDevtoolsProtocolVersion,
   JourneyDevtoolsSource,
-  JourneyDevtoolsStepFeatureDescriptor
+  JourneyDevtoolsStepFeatureDescriptor,
 } from "./protocol.types";
 
 /**
@@ -46,7 +46,7 @@ export const JOURNEY_DEVTOOLS_EXTENSION_SOURCE = "rxova-journey-extension" as co
  * the legacy version is tolerated for register envelopes but cannot invoke.
  */
 export const isCompatibleInvokeProtocolVersion = (
-  value: unknown
+  value: unknown,
 ): value is
   typeof JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION | typeof JOURNEY_DEVTOOLS_PROTOCOL_VERSION =>
   value === JOURNEY_DEVTOOLS_PROTOCOL_VERSION || value === JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION;
@@ -150,7 +150,7 @@ const isResultKind = (value: unknown): value is JourneyDevtoolsOperationResultKi
   value === "snapshot" || value === "data" || value === "text" || value === "void";
 
 const isOperationDescriptor = (
-  value: unknown
+  value: unknown,
 ): value is JourneyDevtoolsMachineOperationDescriptor => {
   if (!isRecord(value) || !Array.isArray(value.fields)) {
     return false;
@@ -185,7 +185,7 @@ const isFeatureDescriptor = (value: unknown): value is JourneyDevtoolsMachineFea
 
 const isMachineMeta = (
   value: unknown,
-  version: JourneyDevtoolsProtocolVersion
+  version: JourneyDevtoolsProtocolVersion,
 ): value is JourneyDevtoolsMachineMeta => {
   if (!isRecord(value) || !Array.isArray(value.features)) {
     return false;
@@ -251,7 +251,7 @@ const isResultPayload = (value: unknown): value is JourneyDevtoolsOperationResul
 
 /** Returns true when a payload matches the bridge-to-extension devtools envelope shape. */
 export const isJourneyDevtoolsBridgeEnvelope = (
-  value: unknown
+  value: unknown,
 ): value is JourneyDevtoolsBridgeEnvelope => {
   if (!hasBaseEnvelopeShape(value) || value.source !== JOURNEY_DEVTOOLS_BRIDGE_SOURCE) {
     return false;
@@ -291,7 +291,7 @@ export const isJourneyDevtoolsBridgeEnvelope = (
 
 /** Returns true when a payload matches the extension-to-bridge devtools envelope shape. */
 export const isJourneyDevtoolsExtensionEnvelope = (
-  value: unknown
+  value: unknown,
 ): value is JourneyDevtoolsExtensionEnvelope => {
   if (!hasBaseEnvelopeShape(value) || value.source !== JOURNEY_DEVTOOLS_EXTENSION_SOURCE) {
     return false;

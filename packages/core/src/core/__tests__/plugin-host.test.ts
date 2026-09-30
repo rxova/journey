@@ -14,14 +14,14 @@ describe("plugins — observe + extend, never intercept", () => {
         return {
           api: { count: () => count },
           deriveSnapshot: (_snapshot, previous) =>
-            previous?.count === count ? previous : { count }
+            previous?.count === count ? previous : { count },
         };
-      }
+      },
     };
 
     const machine = createLinearJourney(
       { steps: ["a", "b"], context: {} },
-      { plugins: [counter] as const }
+      { plugins: [counter] as const },
     );
     machine.controls.start();
     await flush();
@@ -41,12 +41,12 @@ describe("plugins — observe + extend, never intercept", () => {
         host.onContextChange(() => events.push("context"));
         host.onDispose(() => events.push("dispose"));
         return {};
-      }
+      },
     };
 
     const machine = createLinearJourney(
       { steps: ["a"], context: { n: 0 } },
-      { plugins: [observer] as const }
+      { plugins: [observer] as const },
     );
     machine.controls.start();
     await flush();
@@ -60,7 +60,10 @@ describe("plugins — observe + extend, never intercept", () => {
   it("rejects duplicate plugin names", () => {
     const p = (name: string): JourneyPlugin => ({ name, setup: () => ({}) });
     expect(() =>
-      createLinearJourney({ steps: ["a"], context: {} }, { plugins: [p("dup"), p("dup")] as const })
+      createLinearJourney(
+        { steps: ["a"], context: {} },
+        { plugins: [p("dup"), p("dup")] as const },
+      ),
     ).toThrow(/duplicate plugin name "dup"/);
   });
 
@@ -73,11 +76,11 @@ describe("plugins — observe + extend, never intercept", () => {
           throw new Error("plugin bug");
         });
         return {};
-      }
+      },
     };
     const machine = createLinearJourney(
       { steps: ["a", "b"], context: {} },
-      { plugins: [faulty] as const }
+      { plugins: [faulty] as const },
     );
     machine.controls.start();
     await flush();
@@ -95,11 +98,11 @@ describe("plugins — observe + extend, never intercept", () => {
         host.onContextChange(({ current }) => events.push(`context:${String(current)}`));
         stopTransition = host.onTransition(({ to }) => events.push(`transition:${to}`));
         return {};
-      }
+      },
     };
     const machine = createLinearJourney(
       { steps: ["a", "b"], context: 0 as number },
-      { plugins: [observer] as const }
+      { plugins: [observer] as const },
     );
     machine.controls.start();
     await flush();

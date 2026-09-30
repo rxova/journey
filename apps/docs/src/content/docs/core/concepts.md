@@ -10,7 +10,7 @@ factory validates and normalizes that definition, then creates a live machine.
 ```ts
 const machine = createLinearJourney({
   steps: ["profile", "confirm"] as const,
-  context: { name: "" }
+  context: { name: "" },
 });
 ```
 
@@ -147,7 +147,7 @@ type TerminationPayloads = {
 
 const machine = createLinearJourney<"form" | "result", {}, TerminationPayloads>({
   steps: ["form", "result"],
-  context: {}
+  context: {},
 });
 ```
 

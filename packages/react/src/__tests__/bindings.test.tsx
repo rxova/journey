@@ -20,7 +20,7 @@ const SHARED_KEYS = [
   "useContextSelector",
   "useEventEffect",
   "controls",
-  "updateContext"
+  "updateContext",
 ] as const;
 
 const makeLinear = (name?: string) =>
@@ -31,7 +31,7 @@ const makeGraph = (name?: string) =>
     ...(name === undefined ? {} : { name }),
     steps: { a: { on: { GO: "b" } }, b: {} },
     initial: "a",
-    context: {}
+    context: {},
   });
 
 describe("bundle parity", () => {

@@ -17,7 +17,7 @@ export const createLogStore = <T>() => {
     reset: () => {
       entries = [];
       listeners.forEach((listener) => listener());
-    }
+    },
   };
 };
 

@@ -7,7 +7,7 @@
 import type React from "react";
 import {
   createLinearJourney,
-  createGraphJourney as coreCreateGraphJourney
+  createGraphJourney as coreCreateGraphJourney,
 } from "@rxova/journey-core";
 import { createAnalyticsPlugin } from "@rxova/journey-core/plugins";
 import { createLinearJourney as createLinearJourneyBundle } from "@rxova/journey-react";
@@ -25,7 +25,7 @@ export function linearJourneyTypes() {
   const initialContext: { email: string } = { email: "" };
   const bundle = createLinearJourneyBundle({
     context: initialContext,
-    steps: ["intro", { id: "details" }, "done"]
+    steps: ["intro", { id: "details" }, "done"],
   });
 
   type Snapshot = ReturnType<typeof bundle.useSnapshot>;
@@ -63,7 +63,7 @@ export function linearJourneyTypes() {
     details: null,
     done: null,
     // @ts-expect-error undeclared view keys are rejected
-    typo: null
+    typo: null,
   };
   void withTypo;
 
@@ -76,7 +76,7 @@ export function graphBundleTypes() {
   const bundle = createGraphJourney({
     steps: { form: { on: { SUBMIT: "review" } }, review: {} },
     initial: "form",
-    context: { attempts: 0 }
+    context: { attempts: 0 },
   });
 
   type Views = React.ComponentProps<typeof bundle.Provider>["views"];
@@ -99,7 +99,7 @@ export function graphBundleTypes() {
 export function pluginThreadingTypes() {
   const bundle = createLinearJourneyBundle(
     { context: { n: 0 }, steps: ["a", "b"] },
-    { plugins: [createAnalyticsPlugin({ track: () => undefined })] }
+    { plugins: [createAnalyticsPlugin({ track: () => undefined })] },
   );
 
   type _pluginApis = Expect<Equal<keyof (typeof bundle.machine)["plugins"], "analytics">>;
@@ -114,7 +114,7 @@ export function ownedMachineTypes() {
   const graph = coreCreateGraphJourney({
     steps: { x: { on: { GO: "y" } }, y: {} },
     initial: "x",
-    context: {}
+    context: {},
   });
 
   type _linearSnapshotKind = Expect<Equal<ReturnType<typeof linear.getSnapshot>["type"], "linear">>;

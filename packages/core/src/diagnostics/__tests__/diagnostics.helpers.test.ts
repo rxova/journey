@@ -12,22 +12,22 @@ describe("analyzeStructure", () => {
         a: { on: { GO: "b" } },
         b: { on: { END: "done" } },
         done: {},
-        orphan: {}
+        orphan: {},
       },
-      initial: "a"
+      initial: "a",
     });
     expect(result.issues.map((issue) => issue.code)).toEqual(["unreachable-step"]);
     expect(result.summary).toMatchObject({
       terminalStepIds: ["done", "orphan"],
       terminalPathExists: true,
-      unreachableStepCount: 1
+      unreachableStepCount: 1,
     });
   });
 
   it("flags shadowed transitions only after an unguarded candidate", () => {
     const shadowed = analyzeStructure({
       steps: { a: { on: { GO: [{ to: "b" }, { to: "done" }] } }, b: {}, done: {} },
-      initial: "a"
+      initial: "a",
     });
     expect(shadowed.summary.shadowedTransitionCount).toBe(1);
 
@@ -35,9 +35,9 @@ describe("analyzeStructure", () => {
       steps: {
         a: { on: { GO: [{ to: "b", when: () => false }, { to: "done" }] } },
         b: {},
-        done: {}
+        done: {},
       },
-      initial: "a"
+      initial: "a",
     });
     expect(guardedFirst.summary.shadowedTransitionCount).toBe(0);
   });
@@ -45,7 +45,7 @@ describe("analyzeStructure", () => {
   it("detects cycles and missing terminal paths", () => {
     const result = analyzeStructure({
       steps: { a: { on: { GO: "b" } }, b: { on: { BACK: "a" } } },
-      initial: "a"
+      initial: "a",
     });
     const codes = result.issues.map((issue) => issue.code);
     expect(codes).toContain("cycle-detected");
@@ -57,7 +57,7 @@ describe("analyzeStructure", () => {
   it("reports the same cycle only once when duplicate edges discover it twice", () => {
     const result = analyzeStructure({
       steps: { a: { on: { GO: "b" } }, b: { on: { BACK: "a", BACK_AGAIN: "a" } } },
-      initial: "a"
+      initial: "a",
     });
 
     expect(result.issues.filter((issue) => issue.code === "cycle-detected")).toHaveLength(1);

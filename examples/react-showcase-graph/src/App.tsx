@@ -18,7 +18,7 @@ const views: Record<StepId, React.ReactNode> = {
   emailCode: <EmailCode />,
   authenticatorCode: <AuthenticatorCode />,
   loggedIn: <LoggedIn />,
-  blocked: <Blocked />
+  blocked: <Blocked />,
 };
 
 const EventLogger = () => {
@@ -36,9 +36,9 @@ export default function App() {
         label: "React Showcase Graph",
         appName: "React Showcase Graph",
         enabled: true,
-        mutationsEnabled: true
+        mutationsEnabled: true,
       }),
-    []
+    [],
   );
 
   return (

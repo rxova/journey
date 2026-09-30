@@ -5,7 +5,7 @@ import type {
   JOURNEY_DEVTOOLS_EXTENSION_SOURCE,
   JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION,
   JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION,
-  JOURNEY_DEVTOOLS_PROTOCOL_VERSION
+  JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
 } from "./protocol";
 
 /** Protocol versions accepted on the wire (current, prior, and legacy). */

@@ -17,7 +17,7 @@ type GraphSnapshotOptions = {
 
 export const createGraphSnapshot = (
   currentStepId: string | null,
-  options: GraphSnapshotOptions = {}
+  options: GraphSnapshotOptions = {},
 ): JourneyDevtoolsSerializableSnapshot => {
   const status = options.status ?? "running";
   const timeline = options.timeline ?? (currentStepId === null ? [] : [currentStepId]);
@@ -33,7 +33,7 @@ export const createGraphSnapshot = (
       currentIndex: timeline.length - 1,
       visited,
       canGoBack: timeline.length > 1,
-      canGoForward: false
+      canGoForward: false,
     },
     machine: { outcome: null },
     plugins: {},
@@ -45,12 +45,12 @@ export const createGraphSnapshot = (
             metadata: null,
             isFirstTimeVisit: true,
             async: { isLoading: false, isSuccess: true, isError: false, error: null },
-            isTerminal: false
+            isTerminal: false,
           },
     steps: { totalSteps: new Set(timeline).size, visitedStepCount: new Set(timeline).size },
     declaredEvents: options.declaredEvents ?? [],
     availableEvents: options.availableEvents ?? [],
     availableSteps: options.availableSteps ?? [],
-    outgoingTransitions: options.outgoingTransitions ?? []
+    outgoingTransitions: options.outgoingTransitions ?? [],
   };
 };

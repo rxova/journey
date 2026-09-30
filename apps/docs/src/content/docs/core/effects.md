@@ -18,7 +18,7 @@ await machine.navigate.goToNextStep({
   },
   commit: ({ result, updateContext }) => {
     updateContext((context) => ({ ...context, authorizationId: result.id }));
-  }
+  },
 });
 ```
 
@@ -57,8 +57,8 @@ review: {
         to: "done",
         onTransition: async ({ event }) => {
           await auditSubmission(event?.payload);
-        }
-      }
+        },
+      },
     ];
   }
 }

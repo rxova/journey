@@ -16,9 +16,9 @@ const machine = createLinearJourney(definition, {
     createPersistencePlugin({
       storage: localStorage,
       key: "checkout",
-      clearOnTerminate: true
-    })
-  ]
+      clearOnTerminate: true,
+    }),
+  ],
 });
 ```
 
@@ -31,7 +31,7 @@ createPersistencePlugin({
   storage: localStorage,
   key: "checkout-draft",
   debounceMs: 300,
-  saveOn: ["context", "transition"]
+  saveOn: ["context", "transition"],
 });
 ```
 
@@ -54,7 +54,7 @@ For the common case, every factory accepts `persist` as sugar over the plugin:
 
 ```ts
 const machine = createLinearJourney(definition, {
-  persist: { key: "checkout" }
+  persist: { key: "checkout" },
 });
 ```
 
@@ -111,7 +111,7 @@ the persisted current step instead of the first/initial one:
 
 ```ts
 const machine = createLinearJourney(definition, {
-  persist: { key: "checkout" }
+  persist: { key: "checkout" },
 });
 // creation starts the machine, resuming at the persisted step when a valid record existed
 ```

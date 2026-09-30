@@ -7,7 +7,7 @@ import {
   JOURNEY_DEVTOOLS_CHANNEL,
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
   type JourneyDevtoolsBridgeEnvelope,
-  type JourneyDevtoolsSerializableSnapshot
+  type JourneyDevtoolsSerializableSnapshot,
 } from "@rxova/journey-devtools-bridge";
 import { JOURNEY_DEVTOOLS_PANEL_PORT } from "../src/shared";
 import { App } from "../src/panel/App";
@@ -29,7 +29,7 @@ const createListenerSet = <TArgs extends unknown[]>() => {
       for (const listener of listeners) {
         listener(...args);
       }
-    }
+    },
   };
 };
 
@@ -41,11 +41,11 @@ class MockPort {
   public readonly name = JOURNEY_DEVTOOLS_PANEL_PORT;
   public readonly onMessage = {
     addListener: this.onMessageListeners.addListener,
-    removeListener: this.onMessageListeners.removeListener
+    removeListener: this.onMessageListeners.removeListener,
   };
   public readonly onDisconnect = {
     addListener: this.onDisconnectListeners.addListener,
-    removeListener: this.onDisconnectListeners.removeListener
+    removeListener: this.onDisconnectListeners.removeListener,
   };
 
   public postMessage(message: unknown) {
@@ -66,7 +66,7 @@ const createSnapshot = (currentStepId: string): JourneyDevtoolsSerializableSnaps
     timeline: currentStepId === "start" ? ["start"] : ["start", currentStepId],
     context: { count: currentStepId.length },
     availableEvents: currentStepId === "start" ? ["submitLogin"] : [],
-    availableSteps: currentStepId === "start" ? ["review"] : []
+    availableSteps: currentStepId === "start" ? ["review"] : [],
   });
 
 const createRegisterEnvelope = (machineId: string): JourneyDevtoolsBridgeEnvelope => ({
@@ -96,7 +96,7 @@ const createRegisterEnvelope = (machineId: string): JourneyDevtoolsBridgeEnvelop
             description: null,
             mutates: true,
             output: "snapshot",
-            fields: []
+            fields: [],
           },
           {
             id: "core.goToStepById",
@@ -104,18 +104,18 @@ const createRegisterEnvelope = (machineId: string): JourneyDevtoolsBridgeEnvelop
             description: null,
             mutates: true,
             output: "snapshot",
-            fields: [{ key: "stepId", label: "stepId", type: "text", required: true }]
-          }
-        ]
-      }
-    ]
+            fields: [{ key: "stepId", label: "stepId", type: "text", required: true }],
+          },
+        ],
+      },
+    ],
   },
-  snapshot: createSnapshot("start")
+  snapshot: createSnapshot("start"),
 });
 
 const createSnapshotEnvelope = (
   machineId: string,
-  currentStepId: string
+  currentStepId: string,
 ): JourneyDevtoolsBridgeEnvelope => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
   version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
@@ -123,7 +123,7 @@ const createSnapshotEnvelope = (
   kind: "snapshot",
   machineId,
   timestamp: Date.now(),
-  snapshot: createSnapshot(currentStepId)
+  snapshot: createSnapshot(currentStepId),
 });
 
 describe("panel app integration", () => {
@@ -146,25 +146,25 @@ describe("panel app integration", () => {
         observe() {}
         unobserve() {}
         disconnect() {}
-      }
+      },
     );
     vi.stubGlobal("navigator", {
       clipboard: {
-        writeText: vi.fn().mockResolvedValue(undefined)
-      }
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
     });
     vi.stubGlobal("chrome", {
       runtime: {
-        connect: connectMock
+        connect: connectMock,
       },
       devtools: {
         inspectedWindow: {
-          tabId: 42
-        }
-      }
+          tabId: 42,
+        },
+      },
     });
     vi.stubGlobal("crypto", {
-      randomUUID: vi.fn(() => "req-fixed")
+      randomUUID: vi.fn(() => "req-fixed"),
     } as unknown as Crypto);
   });
 
@@ -194,19 +194,19 @@ describe("panel app integration", () => {
           code: "injection-failed",
           message: "Injection failed",
           recoverable: true,
-          tabId: 42
-        }
+          tabId: 42,
+        },
       });
       port.emitMessage({ type: "panel-connected", connected: true });
       port.emitMessage({ type: "invalid" });
       port.emitMessage({ type: "panel-bridge-envelope", envelope: { bad: true } });
       port.emitMessage({
         type: "panel-bridge-envelope",
-        envelope: createRegisterEnvelope("machine-1")
+        envelope: createRegisterEnvelope("machine-1"),
       });
       port.emitMessage({
         type: "panel-bridge-envelope",
-        envelope: createSnapshotEnvelope("machine-1", "review")
+        envelope: createSnapshotEnvelope("machine-1", "review"),
       });
       await Promise.resolve();
     });
@@ -219,7 +219,7 @@ describe("panel app integration", () => {
     expect(container.textContent).toContain("goToNextStep");
 
     const nextButton = Array.from(container.querySelectorAll("button")).find(
-      (button) => button.textContent?.trim() === "goToNextStep"
+      (button) => button.textContent?.trim() === "goToNextStep",
     );
     if (!nextButton) {
       throw new Error("missing goToNextStep button");
@@ -240,12 +240,12 @@ describe("panel app integration", () => {
         kind: "invoke",
         machineId: "machine-1",
         requestId: "req-fixed",
-        invocation: { operationId: "core.goToNextStep" }
-      })
+        invocation: { operationId: "core.goToNextStep" },
+      }),
     });
 
     const toggleButton = Array.from(container.querySelectorAll("button")).find(
-      (button) => button.getAttribute("aria-label") === "Collapse Timeline"
+      (button) => button.getAttribute("aria-label") === "Collapse Timeline",
     );
     if (!toggleButton) {
       throw new Error("missing timeline toggle");

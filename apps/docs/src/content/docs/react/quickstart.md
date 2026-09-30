@@ -21,13 +21,13 @@ type SignupContext = {
 
 const initialContext: SignupContext = {
   email: "",
-  accountId: null
+  accountId: null,
 };
 
 const signup = createLinearJourney({
   name: "signup",
   context: initialContext,
-  steps: ["email", "review", "success"]
+  steps: ["email", "review", "success"],
 });
 
 function EmailStep() {
@@ -41,7 +41,7 @@ function EmailStep() {
         onChange={(event) =>
           signup.updateContext((current) => ({
             ...current,
-            email: event.target.value
+            email: event.target.value,
           }))
         }
       />
@@ -55,9 +55,9 @@ function ReviewStep() {
     commit: ({ result, updateContext }) => {
       updateContext((context) => ({
         ...context,
-        accountId: result.accountId
+        accountId: result.accountId,
       }));
-    }
+    },
   });
 
   return <p>Review and create the account.</p>;
@@ -101,7 +101,7 @@ export function Signup() {
       views={{
         email: <EmailStep />,
         review: <ReviewStep />,
-        success: <SuccessStep />
+        success: <SuccessStep />,
       }}
     >
       <CompletionLogger />
@@ -162,7 +162,7 @@ function GraphControls() {
   const navigate = checkout.machine.navigate;
   const canGoBack = checkout.useSelector((snapshot) => snapshot.history.canGoBack);
   const canContinue = checkout.useSelector((snapshot) =>
-    snapshot.availableEvents.includes("continue")
+    snapshot.availableEvents.includes("continue"),
   );
 
   return (
@@ -184,7 +184,7 @@ export function Checkout() {
         cart: <Cart />,
         shipping: <Shipping />,
         payment: <Payment />,
-        done: <Done />
+        done: <Done />,
       }}
     >
       <checkout.StepRenderer fallback={<p>Unknown step</p>} />
@@ -211,7 +211,7 @@ import { createLinearJourney } from "@rxova/journey-core";
 
 const machine = createLinearJourney(
   { context: initialContext, steps: ["email", "review", "success"] },
-  { autoStart: true }
+  { autoStart: true },
 );
 
 const subscribe = (onStoreChange: () => void) => machine.subscriptions.subscribe(onStoreChange);
@@ -224,7 +224,7 @@ function MachineStatus() {
       machine.subscriptions.subscribeEvent("statusChange", ({ previous, current }) => {
         console.log(previous, current);
       }),
-    []
+    [],
   );
 
   return (

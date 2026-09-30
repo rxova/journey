@@ -76,7 +76,7 @@ Use explicit enablement:
 
 ```ts
 attachJourneyDevtools(machine, {
-  enabled: true
+  enabled: true,
 });
 ```
 

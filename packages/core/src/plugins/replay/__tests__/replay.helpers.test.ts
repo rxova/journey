@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   normalizeMaxEntries,
   serializeReplaySession,
-  toSerializable
+  toSerializable,
 } from "@rxova/journey-core/plugins";
 
 describe("normalizeMaxEntries", () => {

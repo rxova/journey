@@ -40,7 +40,7 @@ snapshot.transition = {
   pending: false,
   phase: null, // "working" | "leaving" | "entering" | null
   from: null,
-  to: null
+  to: null,
 };
 ```
 
@@ -52,7 +52,7 @@ snapshot.history = {
   currentIndex: 1,
   visited: { account: true, review: true },
   canGoBack: true,
-  canGoForward: false
+  canGoForward: false,
 };
 ```
 

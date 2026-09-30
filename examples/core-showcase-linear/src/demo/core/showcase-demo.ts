@@ -2,7 +2,7 @@ import { createLinearJourney } from "@rxova/journey-core";
 import type {
   JourneySnapshot,
   JourneySubscriptionEvent,
-  StepAsyncState
+  StepAsyncState,
 } from "@rxova/journey-core";
 import "../styles/demo.css";
 import {
@@ -10,7 +10,7 @@ import {
   linearDefinition,
   type LoginContext,
   type LoginStepId,
-  type LoginTerminationPayloads
+  type LoginTerminationPayloads,
 } from "../fixtures/auth-fixtures";
 import { formatJson } from "../fixtures/support";
 
@@ -30,7 +30,7 @@ const getStepAsyncPresentation = (state: StepAsyncState | undefined) => {
 const OBSERVED_EVENTS: readonly JourneySubscriptionEvent[] = [
   "statusChange",
   "navigationBlocked",
-  "error"
+  "error",
 ];
 
 type LogEntry = { readonly label: string; readonly detail?: string };
@@ -50,11 +50,11 @@ const PENDING_LABELS: Partial<
   working: {
     login: "Authenticating (about 1.2 seconds)",
     setup2fa: "Confirming 2FA setup (about 6 seconds)",
-    verifyCode: "Verifying code"
+    verifyCode: "Verifying code",
   },
   entering: {
-    setup2fa: "Generating QR enrollment"
-  }
+    setup2fa: "Generating QR enrollment",
+  },
 };
 
 const getPendingLabel = (transition: LoginTransition): string => {
@@ -75,7 +75,7 @@ const escapeHtml = (value: string): string =>
   value.replace(
     /[&<>"']/g,
     (character) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!,
   );
 
 const describeContextChange = (previous: LoginContext, current: LoginContext): string => {
@@ -97,7 +97,7 @@ const describeContextChange = (previous: LoginContext, current: LoginContext): s
 //   async.*     – transition-level loading/error state (e.g. clearError)
 export const mountCoreShowcase = (root: HTMLElement) => {
   const machine = createLinearJourney<LoginStepId, LoginContext, LoginTerminationPayloads>(
-    linearDefinition
+    linearDefinition,
   );
 
   const eventLog: LogEntry[] = [];
@@ -156,7 +156,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     machine.context.update((context) => ({
       ...context,
       [field]: target.value,
-      error: null
+      error: null,
     }));
   });
 
@@ -172,9 +172,9 @@ export const mountCoreShowcase = (root: HTMLElement) => {
           ...current,
           password: "",
           sessionId: result.sessionId,
-          error: null
+          error: null,
         }));
-      }
+      },
     });
     if (!navigation.ok && navigation.reason === "error") {
       const message = navigation.error instanceof Error ? navigation.error.message : "Login failed";
@@ -191,7 +191,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
       run: async ({ snapshot }) => {
         const result = await authApi.verifyCode(
           snapshot.context.verificationCode,
-          snapshot.context.attempts
+          snapshot.context.attempts,
         );
         if (!result.success && result.loggedInStatus === null) {
           throw new InvalidVerificationCodeError();
@@ -203,9 +203,9 @@ export const mountCoreShowcase = (root: HTMLElement) => {
           ...current,
           attempts: result.success ? current.attempts : current.attempts + 1,
           loggedInStatus: result.loggedInStatus,
-          error: result.loggedInStatus === "blocked" ? "Too many failed attempts." : null
+          error: result.loggedInStatus === "blocked" ? "Too many failed attempts." : null,
         }));
-      }
+      },
     });
 
     if (navigation.ok) {
@@ -217,7 +217,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
         error:
           navigation.error instanceof InvalidVerificationCodeError
             ? navigation.error.message
-            : "Verification failed."
+            : "Verification failed.",
       }));
     }
   };
@@ -301,7 +301,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     stepContainer: HTMLElement,
     stepId: LoginStepId,
     context: LoginContext,
-    isLoading: boolean
+    isLoading: boolean,
   ) => {
     const errorEl = stepContainer.querySelector<HTMLElement>('[data-role="error"]');
     if (errorEl) {
@@ -320,7 +320,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
     }
 
     const statusMessageEl = stepContainer.querySelector<HTMLElement>(
-      '[data-role="status-message"]'
+      '[data-role="status-message"]',
     );
     if (statusMessageEl) {
       // Linear mode has no dedicated "blocked" step — 3 failed attempts still lands
@@ -341,7 +341,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
   // walk, so it doubles as the stepper's progression map.
   const stepOrder = linearDefinition.steps.map((step) => ({
     id: step.id,
-    label: (step.metadata as { label?: string } | undefined)?.label ?? step.id
+    label: (step.metadata as { label?: string } | undefined)?.label ?? step.id,
   }));
 
   const renderStepper = (currentIndex: number) =>
@@ -453,7 +453,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
         (entry) =>
           `<div class="log-item"><strong>${escapeHtml(entry.label)}</strong>${
             entry.detail ? `<div class="muted">${escapeHtml(entry.detail)}</div>` : ""
-          }</div>`
+          }</div>`,
       )
       .join("");
   };
@@ -477,7 +477,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
           run: async ({ snapshot }) => {
             const confirmed = await authApi.confirmTwoFactorSetup(snapshot.context.qrCode);
             if (!confirmed) throw new Error("Complete QR enrollment before continuing");
-          }
+          },
         });
       }
       if (action === "verify") await submitVerification();

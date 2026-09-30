@@ -17,7 +17,7 @@ type SubmitWork = Extract<NonNullable<GraphStep<SubmitBag>["on"]>["SUBMIT"], { r
 
 const candidates = [
   { to: "email", when: ({ context }) => context.method === "email" },
-  { to: "sms", when: ({ context }) => context.method === "sms" }
+  { to: "sms", when: ({ context }) => context.method === "sms" },
 ] satisfies NonNullable<GraphStep<SubmitBag>["on"]>["SUBMIT"];
 
 /**
@@ -35,15 +35,15 @@ async function startedGraph(context: Partial<Ctx> = {}, submitWork?: SubmitWork)
       login: {
         on: {
           SUBMIT: submitWork ? { ...submitWork, candidates } : candidates,
-          GIVE_UP: "blocked"
-        }
+          GIVE_UP: "blocked",
+        },
       },
       email: {},
       sms: {},
-      blocked: {}
+      blocked: {},
     },
     initial: "login",
-    context: { method: null, attempts: 0, ...context }
+    context: { method: null, attempts: 0, ...context },
   });
   machine.controls.start();
   await flush();
@@ -61,8 +61,8 @@ describe("declared work on an event", () => {
         },
         commit: ({ result, updateContext }) =>
           updateContext((c) => ({ ...c, method: result?.method ?? null })),
-        candidates
-      }
+        candidates,
+      },
     );
 
     // SUBMIT is declared from login but has no enabled candidate up front:
@@ -87,8 +87,8 @@ describe("declared work on an event", () => {
         },
         commit: ({ result, updateContext }) =>
           updateContext((c) => ({ ...c, method: result?.method ?? null })),
-        candidates
-      }
+        candidates,
+      },
     );
 
     const pending = machine.send("SUBMIT");
@@ -113,8 +113,8 @@ describe("declared work on an event", () => {
         run: async () => ({ method: null }),
         // Real work, real data — but it routes nowhere.
         commit: ({ updateContext }) => updateContext((c) => ({ ...c, attempts: 7 })),
-        candidates
-      }
+        candidates,
+      },
     );
 
     const result = await machine.send("SUBMIT");
@@ -137,7 +137,7 @@ describe("declared work on an event", () => {
     expect(blocked).toHaveBeenCalledTimes(1);
     expect(blocked.mock.calls[0]?.[0]).toMatchObject({
       reason: "no-enabled-transition",
-      from: "login"
+      from: "login",
     });
   });
 
@@ -150,8 +150,8 @@ describe("declared work on an event", () => {
           throw failure;
         },
         commit: ({ updateContext }) => updateContext((c) => ({ ...c, attempts: 99 })),
-        candidates
-      }
+        candidates,
+      },
     );
     const onError = vi.fn();
     machine.subscriptions.subscribeEvent("error", onError);
@@ -174,8 +174,8 @@ describe("declared work on an event", () => {
         },
         commit: ({ result, updateContext }) =>
           updateContext((c) => ({ ...c, method: result?.method ?? null })),
-        candidates
-      }
+        candidates,
+      },
     );
 
     const first = machine.send("SUBMIT");
@@ -198,8 +198,8 @@ describe("declared work on an event", () => {
         },
         commit: ({ result, updateContext }) =>
           updateContext((c) => ({ ...c, method: result?.method ?? null })),
-        candidates
-      }
+        candidates,
+      },
     );
 
     const pending = machine.send("SUBMIT");
@@ -219,7 +219,7 @@ describe("declared work on an event", () => {
   it("a commit returning a promise is rejected as an error", async () => {
     const machine = await startedGraph(
       {},
-      { run: () => undefined, commit: (() => Promise.resolve()) as never, candidates }
+      { run: () => undefined, commit: (() => Promise.resolve()) as never, candidates },
     );
     expect(await machine.send("SUBMIT")).toMatchObject({ ok: false, reason: "error" });
   });
@@ -251,16 +251,16 @@ function buildDeclaredWorkJourney(handlers: LoginHandlers) {
                 updateContext((c) => ({ ...c, method: result })),
               candidates: [
                 { to: "email", when: ({ context }) => context.method === "email" },
-                { to: "sms", when: ({ context }) => context.method === "sms" }
-              ]
-            }
-          }
+                { to: "sms", when: ({ context }) => context.method === "sms" },
+              ],
+            },
+          },
         },
         email: { on: { RESET: "login" } },
-        sms: { on: { RESET: "login" } }
-      }
+        sms: { on: { RESET: "login" } },
+      },
     },
-    { autoStart: true }
+    { autoStart: true },
   );
   return machine;
 }
@@ -301,7 +301,7 @@ describe("definition-declared send work", () => {
 
     expect(await machine.send("SUBMIT")).toMatchObject({
       ok: false,
-      reason: "no-enabled-transition"
+      reason: "no-enabled-transition",
     });
     expect(machine.getSnapshot().currentStep?.id).toBe("login");
     expect(machine.getSnapshot().context).toEqual({ method: null });
@@ -332,15 +332,15 @@ describe("an unguarded last candidate keeps the event total", () => {
                   updateContext((c) => ({ ...c, attempts: c.attempts + 1 })),
                 candidates: [
                   { to: "email", when: ({ context }) => context.attempts > 5 },
-                  { to: "login" }
-                ]
-              }
-            }
+                  { to: "login" },
+                ],
+              },
+            },
           },
-          email: {}
-        }
+          email: {},
+        },
       },
-      { autoStart: true }
+      { autoStart: true },
     );
     await flush();
 

@@ -38,7 +38,7 @@ const healthyFiles = (): Record<string, string> => ({
   "graph.d.ts": "export {};",
   "graph.d.cts": "export {};",
   "client.d.ts": "export {};",
-  "client.d.cts": "export {};"
+  "client.d.cts": "export {};",
 });
 
 const roots: string[] = [];
@@ -67,7 +67,7 @@ const runSmoke = (dist: string): Promise<{ code: number; output: string }> =>
       (error: Error | null, stdout: string, stderr: string) => {
         const code = error === null ? 0 : ((error as { code?: number }).code ?? 1);
         resolve({ code, output: `${stdout}${stderr}` });
-      }
+      },
     );
   });
 
@@ -90,7 +90,7 @@ describe("dist smoke check", () => {
 
   it('fails when the "use client" directive is dropped', async () => {
     const { code, output } = await runSmoke(
-      makeDist({ "client.js": `export const createLinearJourney = ${LINEAR_BODY};` })
+      makeDist({ "client.js": `export const createLinearJourney = ${LINEAR_BODY};` }),
     );
     expect(code).toBe(1);
     expect(output).toContain('dist/client.js lost its "use client" directive');
@@ -117,8 +117,8 @@ describe("dist smoke check", () => {
   it("fails when the graph entry merely re-exports the linear factory", async () => {
     const { code, output } = await runSmoke(
       makeDist({
-        "graph.js": `export { createLinearJourney as createGraphJourney } from "./index.js";`
-      })
+        "graph.js": `export { createLinearJourney as createGraphJourney } from "./index.js";`,
+      }),
     );
     expect(code).toBe(1);
     expect(output).toContain("re-exports the linear factory");
@@ -127,8 +127,8 @@ describe("dist smoke check", () => {
   it("fails when a factory cannot build a working bundle", async () => {
     const { code, output } = await runSmoke(
       makeDist({
-        "index.js": "export const createLinearJourney = () => { throw new Error('boom'); };"
-      })
+        "index.js": "export const createLinearJourney = () => { throw new Error('boom'); };",
+      }),
     );
     expect(code).toBe(1);
     expect(output).toContain("linear factory from dist threw: boom");

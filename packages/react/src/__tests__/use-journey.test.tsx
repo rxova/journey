@@ -22,7 +22,7 @@ describe("useJourney", () => {
     render(
       <React.StrictMode>
         <Wizard />
-      </React.StrictMode>
+      </React.StrictMode>,
     );
     await flush();
 
@@ -50,7 +50,7 @@ describe("useJourney", () => {
       <React.StrictMode>
         <Wizard marker="one" />
         <Wizard marker="two" />
-      </React.StrictMode>
+      </React.StrictMode>,
     );
     await flush();
 
@@ -79,7 +79,7 @@ describe("useJourney", () => {
     const view = render(
       <React.StrictMode>
         <Wizard />
-      </React.StrictMode>
+      </React.StrictMode>,
     );
     await flush();
     // StrictMode already ran a mount/unmount/mount cycle; the deferred disposal

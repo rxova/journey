@@ -15,7 +15,7 @@ const PRERELEASE_CHANNEL_BASES: Readonly<Record<string, number>> = {
   b: 20_000,
   pre: 30_000,
   preview: 30_000,
-  rc: 40_000
+  rc: 40_000,
 };
 
 export type ChromeManifestVersion = Readonly<{
@@ -26,7 +26,7 @@ export type ChromeManifestVersion = Readonly<{
 function assertChromeVersionPart(part: number, label: "major" | "minor" | "patch"): void {
   if (part > CHROME_VERSION_PART_MAX) {
     throw new Error(
-      `Chrome extension ${label} version part must be <= ${CHROME_VERSION_PART_MAX}. Received ${part}.`
+      `Chrome extension ${label} version part must be <= ${CHROME_VERSION_PART_MAX}. Received ${part}.`,
     );
   }
 }
@@ -41,7 +41,7 @@ function toPrereleaseSequence(identifiers: readonly string[]): number {
 
     sequence = Math.min(
       CHROME_PRERELEASE_SEQUENCE_MAX,
-      sequence * 100 + Number.parseInt(identifier, 10)
+      sequence * 100 + Number.parseInt(identifier, 10),
     );
   }
 
@@ -72,7 +72,7 @@ export function toChromeManifestVersion(versionName: string): ChromeManifestVers
 
   if (match?.groups === undefined) {
     throw new Error(
-      `Invalid package version "${versionName}". Expected a semver string that can be converted to a Chrome extension manifest version.`
+      `Invalid package version "${versionName}". Expected a semver string that can be converted to a Chrome extension manifest version.`,
     );
   }
 
@@ -94,6 +94,6 @@ export function toChromeManifestVersion(versionName: string): ChromeManifestVers
 
   return {
     version: `${major}.${minor}.${patch}.${build}`,
-    versionName
+    versionName,
   };
 }

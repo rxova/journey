@@ -16,15 +16,15 @@ const graphDefinition = {
         NEXT: "c",
         BRANCH: [
           { to: "d", when: ({ context }: { context: Ctx }) => context.n % 2 === 0 },
-          { to: "c" }
-        ]
-      }
+          { to: "c" },
+        ],
+      },
     },
     c: { on: { NEXT: "d" } },
-    d: {}
+    d: {},
   },
   initial: "a",
-  context: { n: 0 } as Ctx
+  context: { n: 0 } as Ctx,
 } as const;
 
 /**
@@ -57,20 +57,20 @@ const createWorkingMachine = () =>
             commit: ({ updateContext }) => {
               if (workUpdatesDuringRun) updateContext((previous) => ({ n: previous.n + 10 }));
             },
-            candidates: [{ to: "b" }]
+            candidates: [{ to: "b" }],
           },
-          SELF: "a"
-        }
+          SELF: "a",
+        },
       },
       b: {
         on: {
           NEXT: "c",
-          BRANCH: [{ to: "d", when: ({ context }) => context.n % 2 === 0 }, { to: "c" }]
-        }
+          BRANCH: [{ to: "d", when: ({ context }) => context.n % 2 === 0 }, { to: "c" }],
+        },
       },
       c: { on: { NEXT: "d" } },
-      d: {}
-    }
+      d: {},
+    },
   });
 
 /**
@@ -110,15 +110,15 @@ const opArbitrary = fc.oneof(
   fc.record({ kind: fc.constant("prev" as const), n: fc.integer({ min: 1, max: 3 }) }),
   fc.record({
     kind: fc.constant("byId" as const),
-    id: fc.constantFrom("a" as const, "b" as const, "c" as const, "d" as const)
+    id: fc.constantFrom("a" as const, "b" as const, "c" as const, "d" as const),
   }),
   fc.record({ kind: fc.constant("byIndex" as const), index: fc.integer({ min: -1, max: 5 }) }),
   fc.constant<Op>({ kind: "last" }),
   fc.constant<Op>({ kind: "update" }),
   fc.record({
     kind: fc.constant("send" as const),
-    event: fc.constantFrom("NEXT" as const, "BRANCH" as const, "SELF" as const)
-  })
+    event: fc.constantFrom("NEXT" as const, "BRANCH" as const, "SELF" as const),
+  }),
 );
 
 const sequenceArbitrary = fc.array(opArbitrary, { minLength: 1, maxLength: 25 });
@@ -216,7 +216,7 @@ describe("determinism fuzz", () => {
         const first = createLinearJourney(linearDefinition, FUZZ_OPTIONS) as unknown as FuzzMachine;
         const second = createLinearJourney(
           linearDefinition,
-          FUZZ_OPTIONS
+          FUZZ_OPTIONS,
         ) as unknown as FuzzMachine;
         for (const op of ops) {
           await apply(first, op);
@@ -227,7 +227,7 @@ describe("determinism fuzz", () => {
         }
         expect(second.getSnapshot()).toEqual(first.getSnapshot());
       }),
-      { numRuns: 40 }
+      { numRuns: 40 },
     );
   });
 
@@ -245,7 +245,7 @@ describe("determinism fuzz", () => {
         }
         expect(second.getSnapshot()).toEqual(first.getSnapshot());
       }),
-      { numRuns: 40 }
+      { numRuns: 40 },
     );
   });
 
@@ -288,9 +288,9 @@ describe("determinism fuzz", () => {
             expect(snapshot.currentStep?.id).toBe("a");
             expect((snapshot.context as Ctx).n).toBe(0);
           }
-        }
+        },
       ),
-      { numRuns: 30 }
+      { numRuns: 30 },
     );
   });
 });

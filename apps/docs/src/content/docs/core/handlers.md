@@ -16,11 +16,11 @@ const definition = {
   initial: "review" as const,
   context: { role: "member" },
   handlers: {
-    canApprove: (role: string) => role === "admin"
+    canApprove: (role: string) => role === "admin",
   } satisfies Handlers,
   steps: {
     review: {},
-    approved: {}
+    approved: {},
   },
   steps: {
     review: {
@@ -29,12 +29,12 @@ const definition = {
           {
             to: "approved" as const,
             when: ({ context, handlers }: { context: { role: string }; handlers: Handlers }) =>
-              handlers.canApprove(context.role)
-          }
-        ]
-      }
-    }
-  }
+              handlers.canApprove(context.role),
+          },
+        ],
+      },
+    },
+  },
 };
 ```
 
@@ -46,7 +46,7 @@ Creation options take precedence over handlers stored in the definition:
 const production = createGraphJourney(definition);
 
 const test = createGraphJourney(definition, {
-  handlers: { canApprove: () => true }
+  handlers: { canApprove: () => true },
 });
 ```
 

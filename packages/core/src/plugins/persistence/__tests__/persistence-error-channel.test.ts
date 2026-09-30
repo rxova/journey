@@ -14,7 +14,7 @@ function storageThatFails(mode: "sync" | "async"): JourneyStorage {
       if (mode === "sync") throw error;
       return Promise.reject(error);
     },
-    removeItem: () => undefined
+    removeItem: () => undefined,
   };
 }
 
@@ -25,10 +25,10 @@ describe("persistence write state", () => {
       { steps: ["a", "b"], context: { n: 0 } },
       {
         plugins: [
-          createPersistencePlugin({ key: KEY, storage: storageThatFails("async") })
+          createPersistencePlugin({ key: KEY, storage: storageThatFails("async") }),
         ] as const,
-        onListenerError: (error) => reported.push(error)
-      }
+        onListenerError: (error) => reported.push(error),
+      },
     );
     machine.controls.start();
     await flush();
@@ -50,10 +50,10 @@ describe("persistence write state", () => {
       { steps: ["a", "b"], context: {} },
       {
         plugins: [
-          createPersistencePlugin({ key: KEY, storage: storageThatFails("async") })
+          createPersistencePlugin({ key: KEY, storage: storageThatFails("async") }),
         ] as const,
-        onListenerError: (error) => reported.push(error)
-      }
+        onListenerError: (error) => reported.push(error),
+      },
     );
     machine.controls.start();
     await flush();
@@ -67,10 +67,10 @@ describe("persistence write state", () => {
       { steps: ["a", "b"], context: {} },
       {
         plugins: [
-          createPersistencePlugin({ key: KEY, storage: storageThatFails("sync") })
+          createPersistencePlugin({ key: KEY, storage: storageThatFails("sync") }),
         ] as const,
-        onListenerError: (error) => reported.push(error)
-      }
+        onListenerError: (error) => reported.push(error),
+      },
     );
     machine.controls.start();
     await flush();
@@ -90,15 +90,15 @@ describe("persistence write state", () => {
         written.set(key, value);
         return Promise.resolve();
       },
-      removeItem: (key) => void written.delete(key)
+      removeItem: (key) => void written.delete(key),
     };
 
     const machine = createLinearJourney(
       { steps: ["a", "b", "c"], context: {} },
       {
         plugins: [createPersistencePlugin({ key: KEY, storage })] as const,
-        onListenerError: () => undefined
-      }
+        onListenerError: () => undefined,
+      },
     );
     machine.controls.start();
     await flush();
@@ -121,7 +121,7 @@ describe("parsePersistedState validation", () => {
       context: {},
       timeline: ["a"],
       currentIndex: 0,
-      savedAt: 1
+      savedAt: 1,
     });
 
     expect(parsePersistedState(raw)).toBeNull();
@@ -133,7 +133,7 @@ describe("parsePersistedState validation", () => {
       context: {},
       timeline: ["a", 7],
       currentIndex: 0,
-      savedAt: 1
+      savedAt: 1,
     });
 
     expect(parsePersistedState(raw)).toBeNull();
@@ -145,7 +145,7 @@ describe("parsePersistedState validation", () => {
       context: {},
       timeline: ["a"],
       currentIndex: 1.5,
-      savedAt: 1
+      savedAt: 1,
     });
 
     expect(parsePersistedState(raw)).toBeNull();

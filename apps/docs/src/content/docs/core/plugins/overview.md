@@ -13,7 +13,7 @@ import { createReplayPlugin } from "@rxova/journey-core/plugins";
 import { createAnalyticsPlugin } from "@rxova/journey-core/plugins";
 
 const machine = createLinearJourney(definition, {
-  plugins: [createReplayPlugin(), createAnalyticsPlugin({ track })]
+  plugins: [createReplayPlugin(), createAnalyticsPlugin({ track })],
 });
 
 machine.plugins.replay.getReplaySession();

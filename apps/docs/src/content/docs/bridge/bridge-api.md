@@ -14,7 +14,7 @@ const detach = attachJourneyDevtools(machine, {
   label: "Checkout",
   appName: "Storefront",
   eventTypes: ["continue", "cancel"],
-  mutationsEnabled: false
+  mutationsEnabled: false,
 });
 ```
 

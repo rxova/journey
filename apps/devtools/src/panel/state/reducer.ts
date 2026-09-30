@@ -10,7 +10,7 @@ import {
   pruneTimelineEntries,
   removeJourneyMachineOrder,
   replaceTimelineEntry,
-  upsertJourneyMachineOrder
+  upsertJourneyMachineOrder,
 } from "./timeline";
 
 export const createInitialPanelState = (): JourneyPanelState => ({
@@ -18,12 +18,12 @@ export const createInitialPanelState = (): JourneyPanelState => ({
   machines: {},
   machineOrder: [],
   selectedMachineId: null,
-  displayLimit: null
+  displayLimit: null,
 });
 
 export const panelReducer = (
   state: JourneyPanelState,
-  action: JourneyPanelAction
+  action: JourneyPanelAction,
 ): JourneyPanelState => {
   switch (action.type) {
     case "clear-machines":
@@ -42,8 +42,8 @@ export const panelReducer = (
         selectedMachineId: action.machineId,
         machines: {
           ...state.machines,
-          [action.machineId]: { ...machine, followLatest: true, selectedTimelineIndex: lastIndex }
-        }
+          [action.machineId]: { ...machine, followLatest: true, selectedTimelineIndex: lastIndex },
+        },
       };
     }
     case "set-display-limit":
@@ -64,9 +64,9 @@ export const panelReducer = (
             followLatest: action.followLatest,
             selectedTimelineIndex: action.followLatest
               ? lastIndex
-              : Math.min(machine.selectedTimelineIndex, lastIndex)
-          }
-        }
+              : Math.min(machine.selectedTimelineIndex, lastIndex),
+          },
+        },
       };
     }
     case "select-timeline-entry": {
@@ -81,8 +81,8 @@ export const panelReducer = (
         ...state,
         machines: {
           ...state.machines,
-          [action.machineId]: { ...machine, selectedTimelineIndex: safeIndex, followLatest: false }
-        }
+          [action.machineId]: { ...machine, selectedTimelineIndex: safeIndex, followLatest: false },
+        },
       };
     }
     case "prune-timeline": {
@@ -95,8 +95,8 @@ export const panelReducer = (
         ...state,
         machines: {
           ...state.machines,
-          [action.machineId]: pruneTimelineEntries(machine, action.keep)
-        }
+          [action.machineId]: pruneTimelineEntries(machine, action.keep),
+        },
       };
     }
     case "queue-command": {
@@ -110,7 +110,7 @@ export const panelReducer = (
         action.machineId,
         action.requestId,
         action.invocation,
-        action.timestamp
+        action.timestamp,
       );
       const machineWithEntry = appendTimelineEntry(machine, queuedEntry);
 
@@ -126,11 +126,11 @@ export const panelReducer = (
                 requestId: action.requestId,
                 invocation: action.invocation,
                 timestamp: action.timestamp,
-                timelineEntryId: queuedEntry.id
-              }
-            }
-          }
-        }
+                timelineEntryId: queuedEntry.id,
+              },
+            },
+          },
+        },
       };
     }
     case "bridge-envelope": {
@@ -147,7 +147,7 @@ export const panelReducer = (
           selectedMachineId:
             state.selectedMachineId === envelope.machineId
               ? (nextOrder[0] ?? null)
-              : state.selectedMachineId
+              : state.selectedMachineId,
         };
       }
 
@@ -163,10 +163,10 @@ export const panelReducer = (
         envelope.result.kind === "snapshot" &&
         pending != null &&
         existingMachine.timelineEntries.some(
-          (entry) => entry.envelopeKind === "snapshot" && entry.timestamp > pending.timestamp
+          (entry) => entry.envelopeKind === "snapshot" && entry.timestamp > pending.timestamp,
         );
       const machineWithSnapshot = applyMachineUpdateForEnvelope(existingMachine, envelope, {
-        applyOperationResultSnapshot: !hasPostCommandSnapshot
+        applyOperationResultSnapshot: !hasPostCommandSnapshot,
       });
       const timelineEntry = buildTimelineEntry(machineWithSnapshot, envelope);
       const machineWithEntry =
@@ -176,7 +176,7 @@ export const panelReducer = (
               pending?.timelineEntryId ?? "",
               pending
                 ? { ...timelineEntry, id: pending.timelineEntryId, timestamp: pending.timestamp }
-                : timelineEntry
+                : timelineEntry,
             )
           : appendTimelineEntry(machineWithSnapshot, timelineEntry);
       const machineWithPendingCleanup =
@@ -185,8 +185,8 @@ export const panelReducer = (
               ...machineWithEntry,
               pendingCommandsByRequestId: clearPendingCommand(
                 machineWithEntry.pendingCommandsByRequestId,
-                envelope.requestId
-              )
+                envelope.requestId,
+              ),
             }
           : machineWithEntry;
       const nextOrder = upsertJourneyMachineOrder(state.machineOrder, envelope.machineId);
@@ -195,7 +195,7 @@ export const panelReducer = (
         ...state,
         machines: { ...state.machines, [envelope.machineId]: machineWithPendingCleanup },
         machineOrder: nextOrder,
-        selectedMachineId: state.selectedMachineId ?? envelope.machineId
+        selectedMachineId: state.selectedMachineId ?? envelope.machineId,
       };
     }
   }

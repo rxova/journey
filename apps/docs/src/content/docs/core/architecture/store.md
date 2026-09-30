@@ -35,7 +35,7 @@ report — a broken reporter can never re-enter the runtime.
 
 ```ts
 const machine = createLinearJourney(definition, {
-  onListenerError: (error) => errorTracker.capture(error)
+  onListenerError: (error) => errorTracker.capture(error),
 });
 ```
 

@@ -47,12 +47,12 @@ const login = withGraphTypes<AuthBag>()({
           run: ({ handlers }) => handlers.verify(),
           commit: ({ result, updateContext }) =>
             updateContext((context) => ({ ...context, ok: result.ok })),
-          candidates: [{ to: "done", when: ({ context }) => context.ok }, { to: "twofa" }]
-        }
-      }
+          candidates: [{ to: "done", when: ({ context }) => context.ok }, { to: "twofa" }],
+        },
+      },
     },
-    done: {}
-  }
+    done: {},
+  },
 });
 ```
 
@@ -85,13 +85,13 @@ const login = withGraphTypes<AuthBag>()({
             updateContext((context) => ({ ...context, ok: result.ok })),
           candidates: [
             { to: "done", label: "verified", when: ({ context }) => context.ok },
-            { to: "twofa", label: "retry" }
-          ]
-        })
-      }
+            { to: "twofa", label: "retry" },
+          ],
+        }),
+      },
     },
-    done: {}
-  }
+    done: {},
+  },
 });
 ```
 
@@ -124,9 +124,9 @@ export const loginStep: GraphStep<AuthBag> = {
   on: {
     submit: [
       { to: "admin", when: ({ context, handlers }) => handlers.isAdmin(context.role) },
-      { to: "dashboard" }
-    ]
-  }
+      { to: "dashboard" },
+    ],
+  },
 };
 ```
 
@@ -136,7 +136,7 @@ Compose them into the `steps` record keyed by id:
 const definition = {
   initial: "login",
   context: initialContext,
-  steps: { login: loginStep, dashboard: dashboardStep, admin: adminStep }
+  steps: { login: loginStep, dashboard: dashboardStep, admin: adminStep },
 } satisfies GraphDefinition<AuthBag>;
 
 export const journey = withGraphTypes<AuthBag>()(definition);
@@ -153,7 +153,7 @@ export const definition = {
   initial: "login",
   context: initialContext,
   handlers: realApi,
-  steps: { login: loginStep, done: {} }
+  steps: { login: loginStep, done: {} },
 } satisfies GraphDefinition<AuthBag>;
 
 const live = withGraphTypes<AuthBag>()(definition);

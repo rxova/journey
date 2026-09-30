@@ -51,7 +51,7 @@ describe("onListenerError creation option", () => {
     const machine = await startedLinear({
       onListenerError: () => {
         throw reporterFailure;
-      }
+      },
     });
 
     machine.subscriptions.subscribeEvent("stepEnter", () => {

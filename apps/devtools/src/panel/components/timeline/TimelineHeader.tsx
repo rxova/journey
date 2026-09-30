@@ -16,12 +16,12 @@ export const TimelineHeader = ({
   visibleEntriesCount,
   retentionCap,
   isOpen,
-  onToggle
+  onToggle,
 }: TimelineHeaderProps) => (
   <div
     className={classNames(
       panelStyles.sectionHeader,
-      isOpen && panelStyles.sectionHeaderWithContent
+      isOpen && panelStyles.sectionHeaderWithContent,
     )}
   >
     <h2 className={`${panelStyles.title} ${panelStyles.inlineTitle}`}>Timeline</h2>

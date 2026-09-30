@@ -1,12 +1,12 @@
 import {
   EMPTY_STRUCTURED_DIFF,
   computeStructuredDiff,
-  type JourneyPanelStructuredDiff
+  type JourneyPanelStructuredDiff,
 } from "../diff";
 import type {
   JourneyPanelMachineState,
   JourneyPanelState,
-  JourneyPanelTimelineEntry
+  JourneyPanelTimelineEntry,
 } from "./types";
 import { resolveSnapshotAtIndex } from "./timeline";
 
@@ -15,7 +15,7 @@ export const selectActiveMachine = (state: JourneyPanelState): JourneyPanelMachi
 
 export const selectVisibleTimelineEntries = (
   entries: readonly JourneyPanelTimelineEntry[],
-  limit: number | null
+  limit: number | null,
 ): JourneyPanelTimelineEntry[] => {
   if (limit === null) {
     return [...entries];
@@ -26,7 +26,7 @@ export const selectVisibleTimelineEntries = (
 };
 
 export const selectSelectedTimelineEntry = (
-  machine: JourneyPanelMachineState | null
+  machine: JourneyPanelMachineState | null,
 ): JourneyPanelTimelineEntry | null => {
   if (!machine || machine.timelineEntries.length === 0) {
     return null;
@@ -34,7 +34,7 @@ export const selectSelectedTimelineEntry = (
 
   const safeIndex = Math.max(
     0,
-    Math.min(machine.selectedTimelineIndex, machine.timelineEntries.length - 1)
+    Math.min(machine.selectedTimelineIndex, machine.timelineEntries.length - 1),
   );
   return machine.timelineEntries[safeIndex] ?? null;
 };
@@ -50,13 +50,13 @@ export const selectDisplayedSnapshot = (machine: JourneyPanelMachineState | null
 
   const safeIndex = Math.max(
     0,
-    Math.min(machine.selectedTimelineIndex, machine.timelineEntries.length - 1)
+    Math.min(machine.selectedTimelineIndex, machine.timelineEntries.length - 1),
   );
   return resolveSnapshotAtIndex(machine.timelineEntries, safeIndex) ?? machine.snapshot;
 };
 
 export const selectSelectedDiff = (
-  machine: JourneyPanelMachineState | null
+  machine: JourneyPanelMachineState | null,
 ): JourneyPanelStructuredDiff => {
   if (!machine || machine.timelineEntries.length === 0) {
     return EMPTY_STRUCTURED_DIFF;
@@ -64,7 +64,7 @@ export const selectSelectedDiff = (
 
   const safeIndex = Math.max(
     0,
-    Math.min(machine.selectedTimelineIndex, machine.timelineEntries.length - 1)
+    Math.min(machine.selectedTimelineIndex, machine.timelineEntries.length - 1),
   );
   const currentEntry = machine.timelineEntries[safeIndex] ?? null;
   const currentSnapshot = resolveSnapshotAtIndex(machine.timelineEntries, safeIndex);

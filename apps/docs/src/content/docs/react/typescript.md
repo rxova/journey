@@ -51,7 +51,7 @@ const initialContext: SignupContext = { email: "", accountId: null };
 
 const signup = createLinearJourney({
   context: initialContext,
-  steps: ["email", { id: "password" }, "review"]
+  steps: ["email", { id: "password" }, "review"],
 });
 
 // snapshot.currentStep?.id and machine.navigate targets are "email" | "password" | "review"
@@ -90,7 +90,7 @@ const createAccount: LinearJourneyStepHandler<SignupContext, { accountId: string
   run: ({ snapshot }) => api.create(snapshot.context.email),
   commit: ({ result, updateContext }) => {
     updateContext((context) => ({ ...context, accountId: result.accountId }));
-  }
+  },
 };
 ```
 
@@ -114,7 +114,7 @@ and delegate is pre-bound to those inferred types.
 
 ```ts
 const checkout = createGraphJourney(definition, {
-  plugins: [createReplayPlugin()] as const
+  plugins: [createReplayPlugin()] as const,
 });
 
 await checkout.send("continue");
@@ -138,15 +138,15 @@ one: `AnyJourneyMachine` is the machine surface every Core `create*Journey` resu
 import type { AnyJourneyMachine, EventPayloadOf, SnapshotOf } from "@rxova/journey-react";
 
 const useJourneySnapshot = <TMachine extends AnyJourneyMachine>(
-  machine: TMachine
+  machine: TMachine,
 ): SnapshotOf<TMachine> => {
   const subscribe = React.useCallback(
     (onStoreChange: () => void) => machine.subscriptions.subscribe(onStoreChange),
-    [machine]
+    [machine],
   );
   const getSnapshot = React.useCallback(
     () => machine.getSnapshot() as SnapshotOf<TMachine>,
-    [machine]
+    [machine],
   );
   return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 };

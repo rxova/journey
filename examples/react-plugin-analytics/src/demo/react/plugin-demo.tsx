@@ -10,7 +10,7 @@ import {
   pluginTitles,
   type PluginContext,
   type PluginDemoKind,
-  type PluginStepId
+  type PluginStepId,
 } from "../fixtures/plugin-fixtures";
 import { createLogStore, createStoragePreview, formatJson } from "../fixtures/support";
 import type { AnyJourneyMachine, EventPayloadOf, SnapshotOf } from "@rxova/journey-react";
@@ -20,26 +20,26 @@ import "../styles/demo.css";
 // Machine-argument bridges over React's own primitives — all a caller-owned
 // core machine needs (the headless hook package is gone by design).
 const useJourneySnapshot = <TMachine extends AnyJourneyMachine>(
-  machine: TMachine
+  machine: TMachine,
 ): SnapshotOf<TMachine> => {
   const subscribe = React.useCallback(
     (onStoreChange: () => void) => machine.subscriptions.subscribe(onStoreChange),
-    [machine]
+    [machine],
   );
   const getSnapshot = React.useCallback(
     () => machine.getSnapshot() as SnapshotOf<TMachine>,
-    [machine]
+    [machine],
   );
   return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 };
 
 const useJourneyEvent = <
   TMachine extends AnyJourneyMachine,
-  TEvent extends JourneySubscriptionEvent
+  TEvent extends JourneySubscriptionEvent,
 >(
   machine: TMachine,
   event: TEvent,
-  listener: (payload: EventPayloadOf<TMachine, TEvent>) => void
+  listener: (payload: EventPayloadOf<TMachine, TEvent>) => void,
 ): void => {
   const listenerRef = React.useRef(listener);
   // Advanced from an effect, never during render: a render React discards must
@@ -50,9 +50,9 @@ const useJourneyEvent = <
   React.useEffect(
     () =>
       machine.subscriptions.subscribeEvent(event, (payload) =>
-        listenerRef.current(payload as EventPayloadOf<TMachine, TEvent>)
+        listenerRef.current(payload as EventPayloadOf<TMachine, TEvent>),
       ),
-    [machine, event]
+    [machine, event],
   );
 };
 
@@ -72,8 +72,8 @@ const demoDefinition = {
   steps: {
     profile: { metadata: { label: "Profile" }, on: { next: "review" } },
     review: { metadata: { label: "Review" }, on: { next: "done" } },
-    done: { metadata: { label: "Done" } }
-  }
+    done: { metadata: { label: "Done" } },
+  },
 } satisfies GraphDefinition<PluginBag>;
 
 const useLogStore = <T,>(store: ReturnType<typeof createLogStore<T>>) =>
@@ -85,15 +85,15 @@ const makeApp = (kind: PluginDemoKind) => {
   const machine = createGraphJourney(demoDefinition, {
     plugins: [
       createAnalyticsPlugin({
-        track: (event) => analyticsStore.push({ name: event.name, payload: event.payload })
+        track: (event) => analyticsStore.push({ name: event.name, payload: event.payload }),
       }),
       createExecutionPathsPlugin(),
       createPersistencePlugin({
         storage: window.localStorage,
-        key: storageKey
+        key: storageKey,
       }),
-      createReplayPlugin({ maxEntries: 60 })
-    ] as const
+      createReplayPlugin({ maxEntries: 60 }),
+    ] as const,
   });
 
   const Controls = () => {
@@ -141,7 +141,7 @@ const makeApp = (kind: PluginDemoKind) => {
               className="secondary"
               onClick={() =>
                 machine.plugins.analytics.trackAnalyticsEvent("manual_marker", {
-                  stepId: snapshot.currentStep?.id
+                  stepId: snapshot.currentStep?.id,
                 })
               }
             >
@@ -233,7 +233,7 @@ const makeApp = (kind: PluginDemoKind) => {
       case "execution-paths": {
         const paths = [
           machine.plugins["execution-paths"].getCurrentPath(),
-          ...machine.plugins["execution-paths"].getCompletedPaths()
+          ...machine.plugins["execution-paths"].getCompletedPaths(),
         ];
         return (
           <div className="path-list">
@@ -317,6 +317,6 @@ export const mountReactPluginDemo = (kind: PluginDemoKind, element: HTMLElement)
   root.render(
     <React.StrictMode>
       <App />
-    </React.StrictMode>
+    </React.StrictMode>,
   );
 };

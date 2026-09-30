@@ -11,7 +11,7 @@ import type {
   LinearJourneyDefinition,
   LinearJourneyMachine,
   LinearStepConfig,
-  TerminatePayloadOf
+  TerminatePayloadOf,
 } from "./linear.types";
 import type { AnyJourneyPlugin, JourneyRuntimeOptions } from "../core/types";
 import type { Bag, MetaOf } from "../graph/bag.types";
@@ -33,10 +33,10 @@ export function createLinearJourney<
   // compiled clean whenever plugins were omitted or the first generics were
   // supplied explicitly.
   const TPlugins extends readonly AnyJourneyPlugin[] = readonly [],
-  TMeta = Record<string, unknown>
+  TMeta = Record<string, unknown>,
 >(
   definition: LinearJourneyDefinition<TStepId, TContext, TTerminationPayloads, TMeta>,
-  options: JourneyRuntimeOptions<TPlugins, NoInfer<TStepId>> = {}
+  options: JourneyRuntimeOptions<TPlugins, NoInfer<TStepId>> = {},
 ): LinearJourneyMachine<
   TContext,
   TStepId,
@@ -61,7 +61,7 @@ export function createLinearJourney<
     > = typeof input === "string" ? { id: input } : input;
     if (hasOwn(steps, config.id)) {
       throw new JourneyError("duplicate-step-id", `duplicate step id "${config.id}"`, {
-        stepId: config.id
+        stepId: config.id,
       });
     }
     stepIds.push(config.id);
@@ -81,7 +81,7 @@ export function createLinearJourney<
 
   if (options.startAt !== undefined && !hasOwn(steps, options.startAt)) {
     throw new JourneyError("unknown-step", `startAt references unknown step "${options.startAt}"`, {
-      stepId: options.startAt
+      stepId: options.startAt,
     });
   }
 
@@ -103,8 +103,8 @@ export function createLinearJourney<
           restore: {
             context: restored.context,
             timeline: restored.timeline,
-            currentIndex: restored.currentIndex
-          }
+            currentIndex: restored.currentIndex,
+          },
         }
       : {}),
     transitions: [],
@@ -114,8 +114,8 @@ export function createLinearJourney<
     ...(options.onListenerError !== undefined ? { onListenerError: options.onListenerError } : {}),
     plugins: [
       ...(options.persist ? [persistOptionToPlugin(options.persist)] : []),
-      ...(options.plugins ?? [])
-    ]
+      ...(options.plugins ?? []),
+    ],
   });
 
   const surface = buildMachineSurface(runtime);
@@ -123,8 +123,8 @@ export function createLinearJourney<
     ...surface,
     navigate: {
       ...surface.navigate,
-      goToStepByIndex: (index: number) => runtime.goToStepByIndex(index)
-    }
+      goToStepByIndex: (index: number) => runtime.goToStepByIndex(index),
+    },
   } as unknown as LinearJourneyMachine<
     TContext,
     TStepId,
@@ -165,6 +165,6 @@ export const withLinearTypes =
       JourneyTerminationPayloads,
       MetaOf<TBag>
     >,
-    options: JourneyRuntimeOptions<TPlugins, TBag["stepId"]> = {}
+    options: JourneyRuntimeOptions<TPlugins, TBag["stepId"]> = {},
   ): LinearJourneyMachine<TBag["context"], TBag["stepId"], MetaOf<TBag>, TPlugins> =>
     createLinearJourney(definition, options);

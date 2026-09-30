@@ -12,5 +12,5 @@ export default baseVitestConfig({
   alias: sourceAliases,
   setupFiles: [setupFile],
   globals: true,
-  silent: true
+  silent: true,
 });

@@ -26,12 +26,12 @@ const checkout = createLinearJourney<CheckoutStepId, CheckoutContext, CheckoutTe
   steps: [
     { id: "account", metadata: { title: "Account" } },
     { id: "shipping", metadata: { title: "Shipping" } },
-    { id: "review", metadata: { title: "Review" } }
+    { id: "review", metadata: { title: "Review" } },
   ] as const,
   context: {
     email: "",
-    country: ""
-  }
+    country: "",
+  },
 });
 ```
 
@@ -40,7 +40,7 @@ String steps are valid shorthand when a step has no metadata or hooks:
 ```ts
 const compact = createLinearJourney({
   steps: ["account", "shipping", "review"] as const,
-  context: { email: "", country: "" }
+  context: { email: "", country: "" },
 });
 ```
 
@@ -72,7 +72,7 @@ await waitUntilSettled(checkout);
 
 checkout.context.update((context) => ({
   ...context,
-  email: "ada@example.com"
+  email: "ada@example.com",
 }));
 
 const result = await checkout.navigate.goToNextStep();
@@ -114,7 +114,7 @@ Subscriptions are grouped under `machine.subscriptions`.
 
 ```ts
 const stopStepSubscription = checkout.subscriptions.subscribe(() =>
-  renderStep(checkout.getSnapshot().currentStep?.id)
+  renderStep(checkout.getSnapshot().currentStep?.id),
 );
 
 const stopErrors = checkout.subscriptions.subscribeEvent("error", ({ error, phase }) => {

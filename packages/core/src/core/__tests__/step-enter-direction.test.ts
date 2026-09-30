@@ -26,7 +26,7 @@ describe("stepEnter direction", () => {
       { from: "a", to: "b", direction: "forward" },
       { from: "b", to: "d", direction: "jump" },
       { from: "d", to: "b", direction: "backward" },
-      { from: "b", to: "d", direction: "jump" }
+      { from: "b", to: "d", direction: "jump" },
     ]);
   });
 
@@ -48,7 +48,7 @@ describe("stepEnter direction", () => {
     const machine = createGraphJourney({
       steps: { a: { on: { GO: "b" } }, b: { on: { FINISH: "c" } }, c: {} },
       initial: "a",
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();
@@ -61,7 +61,7 @@ describe("stepEnter direction", () => {
 
     expect(entries).toEqual([
       { from: "a", to: "b", direction: "jump" },
-      { from: "b", to: "c", direction: "jump" }
+      { from: "b", to: "c", direction: "jump" },
     ]);
   });
 });

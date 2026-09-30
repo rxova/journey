@@ -24,12 +24,12 @@ const definition = {
     verificationCode: "",
     qrCode: null,
     error: null,
-    attempts: 0
+    attempts: 0,
   },
   // Injected dependencies — the verifyCode step's guard calls handlers.verifyCode
   // instead of importing the API. A test passes a different verifyCode here.
   handlers: {
-    verifyCode: mockApi.verifyCode
+    verifyCode: mockApi.verifyCode,
   },
   steps: {
     login: loginStep,
@@ -38,13 +38,13 @@ const definition = {
     emailCode: emailCodeStep,
     authenticatorCode: authenticatorCodeStep,
     loggedIn: loggedInStep,
-    blocked: blockedStep
-  }
+    blocked: blockedStep,
+  },
 } satisfies ReactGraphDefinition<AuthBag>;
 
 const plugins = [createExecutionPathsPlugin()] as const;
 
 export const journey = withGraphTypes<AuthBag>()(definition, {
   defaultTimeoutMs: 15000,
-  plugins
+  plugins,
 });

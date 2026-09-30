@@ -14,7 +14,7 @@ const common = {
   outfile: "dist/index.js",
   platform: "neutral",
   format: "esm",
-  external: ["@rxova/journey-core"]
+  external: ["@rxova/journey-core"],
 } satisfies BuildOptions;
 
 await build(common);
@@ -26,5 +26,5 @@ await build({
   format: "cjs",
   // import.meta is intentionally used for bundler env detection and falls back
   // gracefully to undefined (→ process.env) in CJS environments.
-  logOverride: { "empty-import-meta": "silent" }
+  logOverride: { "empty-import-meta": "silent" },
 });

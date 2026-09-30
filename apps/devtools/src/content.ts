@@ -1,12 +1,12 @@
 import { isExpectedWindowOrigin, resolveWindowTargetOrigin } from "./internal/origin";
 import {
   JOURNEY_DEVTOOLS_REPLAY_REQUEST,
-  isJourneyDevtoolsBridgeEnvelope
+  isJourneyDevtoolsBridgeEnvelope,
 } from "@rxova/journey-devtools-bridge";
 import {
   isBackgroundToContentMessage,
   type BackgroundToContentMessage,
-  type ContentToBackgroundMessage
+  type ContentToBackgroundMessage,
 } from "./shared";
 
 const CONTENT_BRIDGE_FLAG = "__RXOVA_JOURNEY_DEVTOOLS_CONTENT_BRIDGE_INSTALLED__";
@@ -25,9 +25,9 @@ const journeyMachineCache = new Map<string, CachedJourneyMachine>();
 const requestBridgeReplayFromPage = () => {
   window.postMessage(
     {
-      type: JOURNEY_DEVTOOLS_REPLAY_REQUEST
+      type: JOURNEY_DEVTOOLS_REPLAY_REQUEST,
     },
-    WINDOW_TARGET_ORIGIN
+    WINDOW_TARGET_ORIGIN,
   );
 };
 
@@ -42,14 +42,14 @@ const cacheEnvelope = (envelope: ContentToBackgroundMessage["envelope"]) => {
 
   const cachedJourneyMachine = journeyMachineCache.get(envelope.machineId) ?? {
     register: null,
-    snapshot: null
+    snapshot: null,
   };
 
   if (envelope.kind === "register") {
     cachedJourneyMachine.register = envelope;
     cachedJourneyMachine.snapshot = {
       ...envelope,
-      kind: "snapshot"
+      kind: "snapshot",
     };
   }
 
@@ -69,13 +69,13 @@ const replayCacheToBackground = () => {
     if (cachedJourneyMachine.register) {
       void chrome.runtime.sendMessage({
         type: "bridge-envelope",
-        envelope: cachedJourneyMachine.register
+        envelope: cachedJourneyMachine.register,
       } satisfies ContentToBackgroundMessage);
     }
     // Cached machines are only retained after register/snapshot envelopes, both of which seed snapshot state.
     void chrome.runtime.sendMessage({
       type: "bridge-envelope",
-      envelope: cachedJourneyMachine.snapshot!
+      envelope: cachedJourneyMachine.snapshot!,
     } satisfies ContentToBackgroundMessage);
   }
 };
@@ -96,7 +96,7 @@ if (!maybeWindow[CONTENT_BRIDGE_FLAG]) {
 
     const message: ContentToBackgroundMessage = {
       type: "bridge-envelope",
-      envelope: event.data
+      envelope: event.data,
     };
 
     void chrome.runtime.sendMessage(message);

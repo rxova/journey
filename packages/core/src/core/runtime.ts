@@ -8,7 +8,7 @@ import {
   LOADING_ASYNC,
   MAX_RAISED_EVENTS,
   SUCCESS_ASYNC,
-  transitionInfo
+  transitionInfo,
 } from "./helpers";
 import { JourneyStore } from "./store";
 import type {
@@ -22,7 +22,7 @@ import type {
   RuntimeTransition,
   TimelineOp,
   TransitionListener,
-  WorkDirection
+  WorkDirection,
 } from "./runtime.types";
 import type {
   ContextUpdater,
@@ -36,7 +36,7 @@ import type {
   PluginHost,
   StepAsyncState,
   StepEnterDirection,
-  TransitionInfo
+  TransitionInfo,
 } from "./types";
 
 /**
@@ -67,7 +67,7 @@ const shared = <T extends object>(next: T, previous: T | null | undefined): T =>
 const sharedArray = <T>(
   next: readonly T[],
   previous: readonly T[] | undefined,
-  equal: (a: T, b: T) => boolean = Object.is
+  equal: (a: T, b: T) => boolean = Object.is,
 ): readonly T[] =>
   previous !== undefined &&
   previous.length === next.length &&
@@ -77,7 +77,7 @@ const sharedArray = <T>(
 
 const getGraphGuardState = (
   guard: RuntimeTransition["when"],
-  enabled: boolean
+  enabled: boolean,
 ): GraphTransitionSnapshot<string, string>["guard"] => {
   if (guard === undefined) return "none";
   return enabled ? "passed" : "failed";
@@ -131,7 +131,7 @@ export class JourneyRuntime {
     this.frozenStepOrder = Object.freeze<readonly string[]>([...config.stepIds]);
     this.restoreSeed = config.restore ?? null;
     this.context = freezeContextInDevelopment(
-      config.restore ? config.restore.context : config.initialContext
+      config.restore ? config.restore.context : config.initialContext,
     );
     this.store = new JourneyStore(this.buildSnapshot(), config.onListenerError);
     this.setupPlugins();
@@ -243,7 +243,7 @@ export class JourneyRuntime {
         (candidate) =>
           candidate.from === this.currentStepId() &&
           candidate.to === id &&
-          this.isEnabled(candidate)
+          this.isEnabled(candidate),
       );
       if (!transition) return this.blocked({ ok: false, reason: "invalid-target" }, id);
       return this.runNavigation(id, { kind: "append" }, this.eventFor(transition), transition);
@@ -263,7 +263,7 @@ export class JourneyRuntime {
       null,
       null,
       undefined,
-      "backward"
+      "backward",
     );
   }
 
@@ -334,7 +334,7 @@ export class JourneyRuntime {
   private async sendWithWork(
     type: string,
     event: JourneyEventObject,
-    work: AnySendWork
+    work: AnySendWork,
   ): Promise<NavigationResult> {
     const generation = this.generation;
     const from = this.currentStepId();
@@ -353,12 +353,12 @@ export class JourneyRuntime {
         snapshot: this.store.getSnapshot(),
         from,
         event,
-        handlers: this.config.handlers
+        handlers: this.config.handlers,
       };
       result = await this.withTimeout(
         Promise.resolve(work.run(args)),
         `send work(${work.label ?? `${type} from ${from}`})`,
-        work.timeoutMs
+        work.timeoutMs,
       );
       if (!this.isCurrent(generation)) return this.staleResult();
       const commitResult = (work.commit as ((value: unknown) => unknown) | undefined)?.({
@@ -367,7 +367,7 @@ export class JourneyRuntime {
         updateContext: (updater: ContextUpdater<unknown>) => {
           stagedContext = updater(stagedContext);
           contextWasUpdated = true;
-        }
+        },
       });
       if (typeof commitResult === "object" && commitResult !== null && "then" in commitResult) {
         throw new JourneyError("async-commit", "send work commit must be synchronous");
@@ -379,7 +379,7 @@ export class JourneyRuntime {
         isLoading: false,
         isSuccess: false,
         isError: true,
-        error
+        error,
       });
       const snapshot = this.publish();
       this.store.emit("error", { snapshot, error, phase: "work", stepId: from });
@@ -409,7 +409,7 @@ export class JourneyRuntime {
       generation,
       stagedContext,
       contextWasUpdated,
-      "jump"
+      "jump",
     );
   }
 
@@ -430,10 +430,10 @@ export class JourneyRuntime {
               to: transition.to,
               guarded: transition.when !== undefined,
               label: transition.label ?? null,
-              index: transition.index
-            })
-          )
-        )
+              index: transition.index,
+            }),
+          ),
+        ),
       }),
       onTransition: (callback) => {
         this.transitionListeners.add(callback);
@@ -446,7 +446,7 @@ export class JourneyRuntime {
       onDispose: (callback) => {
         this.disposeCallbacks.push(callback);
       },
-      reportError: (error) => this.store.report(error)
+      reportError: (error) => this.store.report(error),
     };
     // A failure part-way through leaves earlier plugins already subscribed and
     // holding onDispose callbacks — but the machine is never returned, so
@@ -460,8 +460,8 @@ export class JourneyRuntime {
             "duplicate-plugin-name",
             `duplicate plugin name "${plugin.name}"`,
             {
-              pluginName: plugin.name
-            }
+              pluginName: plugin.name,
+            },
           );
         }
         const contribution = plugin.setup(host);
@@ -469,7 +469,10 @@ export class JourneyRuntime {
         if (contribution.deriveSnapshot) {
           this.snapshotDerivers.set(
             plugin.name,
-            contribution.deriveSnapshot as (snapshot: JourneySnapshot, previous: unknown) => unknown
+            contribution.deriveSnapshot as (
+              snapshot: JourneySnapshot,
+              previous: unknown,
+            ) => unknown,
           );
         }
       }
@@ -498,7 +501,7 @@ export class JourneyRuntime {
   private isEnabled(
     transition: RuntimeTransition,
     context: unknown = this.context,
-    result?: unknown
+    result?: unknown,
   ): boolean {
     if (!transition.when) return true;
     try {
@@ -512,13 +515,13 @@ export class JourneyRuntime {
   private resolveTransition(
     event: string,
     context: unknown = this.context,
-    result?: unknown
+    result?: unknown,
   ): RuntimeTransition | undefined {
     return this.config.transitions.find(
       (candidate) =>
         candidate.event === event &&
         candidate.from === this.currentStepId() &&
-        this.isEnabled(candidate, context, result)
+        this.isEnabled(candidate, context, result),
     );
   }
 
@@ -555,7 +558,7 @@ export class JourneyRuntime {
         snapshot: this.store.getSnapshot(),
         reason: failure.reason,
         from: this.currentStepId(),
-        to: target
+        to: target,
       };
       if ("error" in failure) payload.error = failure.error;
       this.store.emit("navigationBlocked", payload);
@@ -567,7 +570,7 @@ export class JourneyRuntime {
     from: string | null,
     to: string,
     event: JourneyEventObject | null,
-    transition: TransitionInfo | null
+    transition: TransitionInfo | null,
   ): AnyHookArgs {
     return {
       snapshot: this.store.getSnapshot(),
@@ -579,7 +582,7 @@ export class JourneyRuntime {
       raise: (raised) => {
         if (this.config.kind !== "graph" || this.disposed) return;
         this.raiseQueue.push(raised);
-      }
+      },
     };
   }
 
@@ -587,7 +590,7 @@ export class JourneyRuntime {
     effect: AnyOnEffect | undefined,
     args: AnyHookArgs,
     label: string,
-    timeoutMs?: number
+    timeoutMs?: number,
   ): Promise<{ error: unknown } | null> {
     if (!effect) return null;
     try {
@@ -610,7 +613,7 @@ export class JourneyRuntime {
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(
         () => reject(new Error(`journey: ${label} timed out after ${ms}ms`)),
-        ms
+        ms,
       );
       promise.then(
         (value) => {
@@ -620,7 +623,7 @@ export class JourneyRuntime {
         (error) => {
           clearTimeout(timer);
           reject(error);
-        }
+        },
       );
     });
   }
@@ -659,7 +662,7 @@ export class JourneyRuntime {
     event: JourneyEventObject | null,
     transition: RuntimeTransition | null,
     work?: AnyNavigationWork,
-    direction?: WorkDirection
+    direction?: WorkDirection,
   ): Promise<NavigationResult> {
     const generation = this.generation;
     const from = this.currentStepId();
@@ -676,12 +679,12 @@ export class JourneyRuntime {
           snapshot: this.store.getSnapshot(),
           from,
           to,
-          direction
+          direction,
         };
         const result = await this.withTimeout(
           Promise.resolve(work.run(args)),
           `${direction} navigation work(${from} -> ${to})`,
-          work.timeoutMs
+          work.timeoutMs,
         );
         if (!this.isCurrent(generation)) return this.staleResult();
         const commitResult = (work.commit as ((value: unknown) => unknown) | undefined)?.({
@@ -690,7 +693,7 @@ export class JourneyRuntime {
           updateContext: (updater: ContextUpdater<unknown>) => {
             stagedContext = updater(stagedContext);
             contextWasUpdated = true;
-          }
+          },
         });
         if (typeof commitResult === "object" && commitResult !== null && "then" in commitResult) {
           throw new JourneyError("async-commit", "navigation work commit must be synchronous");
@@ -702,7 +705,7 @@ export class JourneyRuntime {
           isLoading: false,
           isSuccess: false,
           isError: true,
-          error
+          error,
         });
         const snapshot = this.publish();
         this.store.emit("error", { snapshot, error, phase: "work", stepId: from });
@@ -720,7 +723,7 @@ export class JourneyRuntime {
       generation,
       stagedContext,
       contextWasUpdated,
-      direction ?? "jump"
+      direction ?? "jump",
     );
   }
 
@@ -738,7 +741,7 @@ export class JourneyRuntime {
     generation: number,
     stagedContext: unknown,
     contextWasUpdated: boolean,
-    direction: StepEnterDirection
+    direction: StepEnterDirection,
   ): Promise<NavigationResult> {
     const previousContext = this.context;
     if (op.kind === "pointer") {
@@ -755,7 +758,7 @@ export class JourneyRuntime {
       to,
       direction,
       contextWasUpdated ? { previous: previousContext, current: stagedContext } : undefined,
-      fromStep?.onLeave !== undefined || transition?.onTransition !== undefined
+      fromStep?.onLeave !== undefined || transition?.onTransition !== undefined,
     );
 
     await this.runEntryEffects(from, to, event, transition, generation);
@@ -768,7 +771,7 @@ export class JourneyRuntime {
     to: string,
     direction: StepEnterDirection,
     contextChange?: { previous: unknown; current: unknown },
-    hasPreEnterEffect = false
+    hasPreEnterEffect = false,
   ): void {
     this.visitCounts.set(to, (this.visitCounts.get(to) ?? 0) + 1);
     const toStep = this.config.steps[to];
@@ -785,7 +788,7 @@ export class JourneyRuntime {
     to: string,
     event: JourneyEventObject | null,
     transition: RuntimeTransition | null,
-    generation: number
+    generation: number,
   ): Promise<void> {
     const fromStep = from === null ? undefined : this.config.steps[from];
     const toStep = this.config.steps[to];
@@ -796,7 +799,7 @@ export class JourneyRuntime {
     const leaveFailure = await this.invokeEffect(
       fromStep?.onLeave,
       this.hookArgs(from, to, event, edge),
-      `onLeave(${from ?? ""})`
+      `onLeave(${from ?? ""})`,
     );
     if (!this.isCurrent(generation)) return;
     if (leaveFailure && from !== null) {
@@ -810,7 +813,7 @@ export class JourneyRuntime {
       transition?.onTransition,
       this.hookArgs(from, to, event, edge),
       `onTransition(${transition ? describeTransition(transition) : (event?.type ?? "")})`,
-      transition?.timeoutMs
+      transition?.timeoutMs,
     );
     if (!this.isCurrent(generation)) return;
     if (transitionFailure) {
@@ -820,7 +823,7 @@ export class JourneyRuntime {
     const enterFailure = await this.invokeEffect(
       toStep?.onEnter,
       this.hookArgs(from, to, event, edge),
-      `onEnter(${to})`
+      `onEnter(${to})`,
     );
     if (!this.isCurrent(generation)) return;
     if (enterFailure) failures.push({ error: enterFailure.error, phase: "enter", stepId: to });
@@ -830,7 +833,7 @@ export class JourneyRuntime {
           isLoading: false,
           isSuccess: false,
           isError: true,
-          error: failures[0].error
+          error: failures[0].error,
         })
       : SUCCESS_ASYNC;
     this.pending = null;
@@ -840,7 +843,7 @@ export class JourneyRuntime {
         snapshot,
         error: failure.error,
         phase: failure.phase,
-        stepId: failure.stepId
+        stepId: failure.stepId,
       });
     }
     for (const listener of [...this.transitionListeners]) {
@@ -874,10 +877,10 @@ export class JourneyRuntime {
           this.store.emit("error", {
             snapshot: this.store.getSnapshot(),
             error: new Error(
-              `journey: raised-event cascade exceeded ${MAX_RAISED_EVENTS} events; queue dropped`
+              `journey: raised-event cascade exceeded ${MAX_RAISED_EVENTS} events; queue dropped`,
             ),
             phase: "raise",
-            stepId: this.currentStepId()
+            stepId: this.currentStepId(),
           });
           return;
         }
@@ -941,9 +944,9 @@ export class JourneyRuntime {
           pending: this.pending !== null,
           phase: this.pending?.phase ?? null,
           from: this.pending?.from ?? null,
-          to: this.pending?.to ?? null
+          to: this.pending?.to ?? null,
         },
-        previous?.transition
+        previous?.transition,
       ),
       history: shared(
         {
@@ -951,11 +954,11 @@ export class JourneyRuntime {
           currentIndex: this.currentIndex,
           visited,
           canGoBack: this.currentIndex > 0,
-          canGoForward: this.currentIndex >= 0 && this.currentIndex < this.timeline.length - 1
+          canGoForward: this.currentIndex >= 0 && this.currentIndex < this.timeline.length - 1,
         },
-        previousHistory
+        previousHistory,
       ),
-      machine: shared({ outcome: this.outcome }, previous?.machine)
+      machine: shared({ outcome: this.outcome }, previous?.machine),
     };
 
     const currentBase: CurrentStepBase<string, unknown> | null =
@@ -965,7 +968,7 @@ export class JourneyRuntime {
             id: currentId,
             metadata: this.config.steps[currentId]?.metadata ?? EMPTY_METADATA,
             isFirstTimeVisit: (this.visitCounts.get(currentId) ?? 0) === 1,
-            async: this.entryAsync
+            async: this.entryAsync,
           };
 
     let snapshot: JourneySnapshot;
@@ -983,19 +986,19 @@ export class JourneyRuntime {
                   ...currentBase,
                   index: orderIndex,
                   isFirstStep: orderIndex === 0,
-                  isLastStep: orderIndex === this.config.stepIds.length - 1
+                  isLastStep: orderIndex === this.config.stepIds.length - 1,
                 },
-                previousLinear?.currentStep
+                previousLinear?.currentStep,
               ),
         steps: shared(
           {
             totalSteps: this.config.stepIds.length,
             stepOrder: this.frozenStepOrder,
-            visitedStepCount
+            visitedStepCount,
           },
-          previousLinear?.steps
+          previousLinear?.steps,
         ),
-        plugins: EMPTY_PLUGINS
+        plugins: EMPTY_PLUGINS,
       };
     } else {
       const declaredEvents: string[] = [];
@@ -1023,8 +1026,8 @@ export class JourneyRuntime {
               priority,
               guard: getGraphGuardState(transition.when, enabled),
               enabled,
-              selected
-            })
+              selected,
+            }),
           );
 
           if (enabled) {
@@ -1043,7 +1046,7 @@ export class JourneyRuntime {
             : shared({ ...currentBase, isTerminal: !hasOutgoing }, previousGraph?.currentStep),
         steps: shared(
           { totalSteps: this.config.stepIds.length, visitedStepCount },
-          previousGraph?.steps
+          previousGraph?.steps,
         ),
         declaredEvents: sharedArray(declaredEvents, previousGraph?.declaredEvents),
         availableEvents: sharedArray(availableEvents, previousGraph?.availableEvents),
@@ -1051,9 +1054,9 @@ export class JourneyRuntime {
         outgoingTransitions: sharedArray(
           outgoingTransitions,
           previousGraph?.outgoingTransitions,
-          (a, b) => shallowEqual(a, b as unknown as Record<string, unknown>)
+          (a, b) => shallowEqual(a, b as unknown as Record<string, unknown>),
         ),
-        plugins: EMPTY_PLUGINS
+        plugins: EMPTY_PLUGINS,
       };
     }
 
@@ -1081,7 +1084,7 @@ export class JourneyRuntime {
         plugins:
           previousPlugins != null && shallowEqual(previousPlugins, extensions)
             ? previousPlugins
-            : Object.freeze(extensions)
+            : Object.freeze(extensions),
       };
     }
 

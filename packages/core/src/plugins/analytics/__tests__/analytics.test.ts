@@ -7,7 +7,7 @@ import { flush } from "@rxova/journey-core/testing";
 async function startedWithAnalytics(track: (event: AnalyticsTrackedEvent) => void) {
   const machine = createLinearJourney(
     { steps: ["a", "b"], context: {} },
-    { plugins: [createAnalyticsPlugin({ track, now: () => 1234 })] as const }
+    { plugins: [createAnalyticsPlugin({ track, now: () => 1234 })] as const },
   );
   machine.controls.start();
   await flush();
@@ -28,11 +28,11 @@ describe("analytics plugin", () => {
       "journey.transition",
       "journey.transition",
       "journey.transition",
-      "journey.completed"
+      "journey.completed",
     ]);
     expect(tracked[1]).toMatchObject({
       timestamp: 1234,
-      payload: { from: null, to: "a" }
+      payload: { from: null, to: "a" },
     });
   });
 
@@ -47,12 +47,12 @@ describe("analytics plugin", () => {
             id: "b",
             onEnter: () => {
               throw boom;
-            }
-          }
+            },
+          },
         ],
-        context: {}
+        context: {},
       },
-      { plugins: [createAnalyticsPlugin({ track: (event) => tracked.push(event) })] as const }
+      { plugins: [createAnalyticsPlugin({ track: (event) => tracked.push(event) })] as const },
     );
     machine.controls.start();
     await flush();
@@ -72,7 +72,7 @@ describe("analytics plugin", () => {
     // starting would track a `journey.running` lifecycle event first.
     const machine = createLinearJourney(
       { steps: ["a"], context: {} },
-      { plugins: [createAnalyticsPlugin({ track })] as const, autoStart: false }
+      { plugins: [createAnalyticsPlugin({ track })] as const, autoStart: false },
     );
     const api = machine.plugins.analytics;
 
@@ -98,10 +98,10 @@ describe("analytics plugin", () => {
             track: () => {
               throw new Error("sink down");
             },
-            onError
-          })
-        ] as const
-      }
+            onError,
+          }),
+        ] as const,
+      },
     );
     machine.controls.start();
     await flush();
@@ -117,7 +117,7 @@ describe("analytics recent-events buffer", () => {
   it("is capped at 100 entries, dropping the oldest", () => {
     const machine = createLinearJourney(
       { steps: ["a"], context: {} },
-      { plugins: [createAnalyticsPlugin({ track: () => undefined })] as const }
+      { plugins: [createAnalyticsPlugin({ track: () => undefined })] as const },
     );
     for (let index = 0; index < 130; index += 1) {
       machine.plugins.analytics.trackAnalyticsEvent(`event-${index}`);

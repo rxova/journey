@@ -22,16 +22,16 @@ const machine = createLinearJourney<StepId, Context, TerminationPayloads>({
     {
       id: "shipping",
       metadata: { title: "Shipping" },
-      onLeave: async ({ snapshot }) => analytics.track("shipping_left", snapshot.context)
+      onLeave: async ({ snapshot }) => analytics.track("shipping_left", snapshot.context),
     },
     {
       id: "review",
       onEnter: ({ raise }) => {
         // `raise` is a no-op for linear journeys.
-      }
-    }
+      },
+    },
   ] as const,
-  context: { address: "" }
+  context: { address: "" },
 });
 ```
 
@@ -108,7 +108,7 @@ await machine.navigate.goToNextStep({
   run: async ({ snapshot }) => submitShipping(snapshot.context),
   commit: ({ result, updateContext }) => {
     updateContext((context) => ({ ...context, shippingId: result.id }));
-  }
+  },
 });
 ```
 

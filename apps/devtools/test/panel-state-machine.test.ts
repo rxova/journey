@@ -5,7 +5,7 @@ import {
   JOURNEY_DEVTOOLS_CHANNEL,
   JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
   type JourneyDevtoolsBridgeEnvelope,
-  type JourneyDevtoolsSerializableSnapshot
+  type JourneyDevtoolsSerializableSnapshot,
 } from "@rxova/journey-devtools-bridge";
 import {
   INITIAL_SNAPSHOT,
@@ -19,7 +19,7 @@ import {
   selectVisibleTimelineEntries,
   type JourneyPanelMachineState,
   type JourneyPanelTimelineEntry,
-  type JourneyPanelState
+  type JourneyPanelState,
 } from "../src/panel/store";
 import {
   appendTimelineEntry,
@@ -31,7 +31,7 @@ import {
   normalizeMachineMeta,
   pruneTimelineEntries,
   replaceTimelineEntry,
-  resolveSnapshotAtIndex
+  resolveSnapshotAtIndex,
 } from "../src/panel/state/timeline";
 import { createGraphSnapshot } from "./fixtures";
 
@@ -40,14 +40,14 @@ type TestContext = Record<string, unknown>;
 const createSnapshot = (
   currentStepId: string,
   context: TestContext = {},
-  status: "idle" | "running" | "completed" | "terminated" = "running"
+  status: "idle" | "running" | "completed" | "terminated" = "running",
 ): JourneyDevtoolsSerializableSnapshot => createGraphSnapshot(currentStepId, { context, status });
 
 const createRegisterEnvelope = (
   machineId: string,
   timestamp: number,
   currentStepId: string,
-  context: TestContext = {}
+  context: TestContext = {},
 ): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "register" }> => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
   version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
@@ -60,16 +60,16 @@ const createRegisterEnvelope = (
     label: machineId,
     appName: "Test app",
     mode: "graph",
-    features: []
+    features: [],
   },
-  snapshot: createSnapshot(currentStepId, context)
+  snapshot: createSnapshot(currentStepId, context),
 });
 
 const createSnapshotEnvelope = (
   machineId: string,
   timestamp: number,
   currentStepId: string,
-  context: TestContext = {}
+  context: TestContext = {},
 ): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "snapshot" }> => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
   version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
@@ -77,13 +77,13 @@ const createSnapshotEnvelope = (
   kind: "snapshot",
   machineId,
   timestamp,
-  snapshot: createSnapshot(currentStepId, context)
+  snapshot: createSnapshot(currentStepId, context),
 });
 
 const createObservationEnvelope = (
   machineId: string,
   timestamp: number,
-  eventType: string
+  eventType: string,
 ): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "observation" }> => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
   version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
@@ -91,7 +91,7 @@ const createObservationEnvelope = (
   kind: "observation",
   machineId,
   timestamp,
-  event: { type: eventType }
+  event: { type: eventType },
 });
 
 const createOperationResultEnvelope = (
@@ -100,7 +100,7 @@ const createOperationResultEnvelope = (
   operationId: string,
   timestamp: number,
   snapshot = createSnapshot("review", { count: 1 }),
-  transitioned = true
+  transitioned = true,
 ): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "operationResult" }> => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
   version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
@@ -114,20 +114,20 @@ const createOperationResultEnvelope = (
     ? {
         kind: "snapshot",
         snapshot,
-        transitioned: true
+        transitioned: true,
       }
     : {
         kind: "snapshot",
         snapshot,
-        transitioned: false
-      }
+        transitioned: false,
+      },
 });
 
 const createOperationErrorEnvelope = (
   machineId: string,
   requestId: string,
   operationId: string,
-  timestamp: number
+  timestamp: number,
 ): Extract<JourneyDevtoolsBridgeEnvelope, { kind: "operationError" }> => ({
   channel: JOURNEY_DEVTOOLS_CHANNEL,
   version: JOURNEY_DEVTOOLS_PROTOCOL_VERSION,
@@ -141,13 +141,13 @@ const createOperationErrorEnvelope = (
     name: "Error",
     message: "boom",
     stack: null,
-    cause: null
-  }
+    cause: null,
+  },
 });
 
 const createMachine = (
   currentStepId = "start",
-  context: TestContext = {}
+  context: TestContext = {},
 ): JourneyPanelMachineState =>
   buildJourneyMachineState("machine-1", createSnapshot(currentStepId, context));
 
@@ -158,7 +158,7 @@ describe("panel state reducer and selectors", () => {
       machines: {},
       machineOrder: [],
       selectedMachineId: null,
-      displayLimit: null
+      displayLimit: null,
     });
   });
 
@@ -166,14 +166,14 @@ describe("panel state reducer and selectors", () => {
     let state = createInitialPanelState();
     state = panelReducer(state, {
       type: "bridge-envelope",
-      envelope: createRegisterEnvelope("machine-1", 1000, "start")
+      envelope: createRegisterEnvelope("machine-1", 1000, "start"),
     });
     state = panelReducer(state, {
       type: "queue-command",
       machineId: "machine-1",
       requestId: "req-1",
       invocation: { operationId: "core.goToNextStep" },
-      timestamp: 1001
+      timestamp: 1001,
     });
 
     const queuedEntryId = state.machines["machine-1"]?.timelineEntries[1]?.id;
@@ -185,8 +185,8 @@ describe("panel state reducer and selectors", () => {
         "req-1",
         "core.goToNextStep",
         1002,
-        createSnapshot("review", { count: 2 })
-      )
+        createSnapshot("review", { count: 2 }),
+      ),
     });
 
     const machine = state.machines["machine-1"];
@@ -201,18 +201,18 @@ describe("panel state reducer and selectors", () => {
     let state = createInitialPanelState();
     state = panelReducer(state, {
       type: "bridge-envelope",
-      envelope: createRegisterEnvelope("machine-1", 1000, "start", { count: 0 })
+      envelope: createRegisterEnvelope("machine-1", 1000, "start", { count: 0 }),
     });
     state = panelReducer(state, {
       type: "queue-command",
       machineId: "machine-1",
       requestId: "req-1",
       invocation: { operationId: "core.goToNextStep" },
-      timestamp: 1001
+      timestamp: 1001,
     });
     state = panelReducer(state, {
       type: "bridge-envelope",
-      envelope: createSnapshotEnvelope("machine-1", 1005, "done", { count: 9 })
+      envelope: createSnapshotEnvelope("machine-1", 1005, "done", { count: 9 }),
     });
 
     state = panelReducer(state, {
@@ -222,8 +222,8 @@ describe("panel state reducer and selectors", () => {
         "req-1",
         "core.goToNextStep",
         1002,
-        createSnapshot("review", { count: 1 })
-      )
+        createSnapshot("review", { count: 1 }),
+      ),
     });
 
     expect(state.machines["machine-1"]?.snapshot.currentStep?.id).toBe("done");
@@ -234,18 +234,18 @@ describe("panel state reducer and selectors", () => {
     let state = createInitialPanelState();
     state = panelReducer(state, {
       type: "bridge-envelope",
-      envelope: createRegisterEnvelope("machine-1", 1000, "start")
+      envelope: createRegisterEnvelope("machine-1", 1000, "start"),
     });
     state = panelReducer(state, {
       type: "queue-command",
       machineId: "machine-1",
       requestId: "req-1",
       invocation: { operationId: "core.goToNextStep" },
-      timestamp: 1001
+      timestamp: 1001,
     });
     state = panelReducer(state, {
       type: "bridge-envelope",
-      envelope: createOperationErrorEnvelope("machine-1", "req-1", "core.goToNextStep", 1002)
+      envelope: createOperationErrorEnvelope("machine-1", "req-1", "core.goToNextStep", 1002),
     });
 
     const entry = state.machines["machine-1"]?.timelineEntries[1];
@@ -258,11 +258,11 @@ describe("panel state reducer and selectors", () => {
     let state = createInitialPanelState();
     state = panelReducer(state, {
       type: "bridge-envelope",
-      envelope: createRegisterEnvelope("machine-1", 1000, "start")
+      envelope: createRegisterEnvelope("machine-1", 1000, "start"),
     });
     state = panelReducer(state, {
       type: "bridge-envelope",
-      envelope: createRegisterEnvelope("machine-2", 1001, "review")
+      envelope: createRegisterEnvelope("machine-2", 1001, "review"),
     });
     state = panelReducer(state, { type: "select-machine", machineId: "machine-2" });
 
@@ -274,8 +274,8 @@ describe("panel state reducer and selectors", () => {
         source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
         kind: "unregister",
         machineId: "machine-2",
-        timestamp: 1002
-      }
+        timestamp: 1002,
+      },
     });
 
     expect(state.selectedMachineId).toBe("machine-1");
@@ -287,11 +287,11 @@ describe("panel state reducer and selectors", () => {
     let state = createInitialPanelState();
     state = panelReducer(state, {
       type: "bridge-envelope",
-      envelope: createRegisterEnvelope("machine-1", 1000, "start")
+      envelope: createRegisterEnvelope("machine-1", 1000, "start"),
     });
     state = panelReducer(state, {
       type: "bridge-envelope",
-      envelope: createRegisterEnvelope("machine-2", 1001, "review")
+      envelope: createRegisterEnvelope("machine-2", 1001, "review"),
     });
     state = panelReducer(state, {
       type: "bridge-envelope",
@@ -301,8 +301,8 @@ describe("panel state reducer and selectors", () => {
         source: JOURNEY_DEVTOOLS_BRIDGE_SOURCE,
         kind: "unregister",
         machineId: "machine-2",
-        timestamp: 1002
-      }
+        timestamp: 1002,
+      },
     });
 
     expect(state.selectedMachineId).toBe("machine-1");
@@ -312,16 +312,16 @@ describe("panel state reducer and selectors", () => {
     let state: JourneyPanelState = createInitialPanelState();
     state = panelReducer(state, {
       type: "bridge-envelope",
-      envelope: createRegisterEnvelope("machine-1", 1000, "start")
+      envelope: createRegisterEnvelope("machine-1", 1000, "start"),
     });
     state = panelReducer(state, {
       type: "bridge-envelope",
-      envelope: createSnapshotEnvelope("machine-1", 1001, "review")
+      envelope: createSnapshotEnvelope("machine-1", 1001, "review"),
     });
     state = panelReducer(state, {
       type: "select-timeline-entry",
       machineId: "machine-1",
-      index: 99
+      index: 99,
     });
 
     const machine = selectActiveMachine(state);
@@ -338,22 +338,22 @@ describe("panel state reducer and selectors", () => {
       panelReducer(state, {
         type: "set-follow-latest",
         machineId: "missing",
-        followLatest: false
-      })
+        followLatest: false,
+      }),
     ).toBe(state);
     expect(
       panelReducer(state, {
         type: "select-timeline-entry",
         machineId: "missing",
-        index: 1
-      })
+        index: 1,
+      }),
     ).toBe(state);
     expect(
       panelReducer(state, {
         type: "prune-timeline",
         machineId: "missing",
-        keep: 1
-      })
+        keep: 1,
+      }),
     ).toBe(state);
     expect(
       panelReducer(state, {
@@ -361,8 +361,8 @@ describe("panel state reducer and selectors", () => {
         machineId: "missing",
         requestId: "req-1",
         invocation: { operationId: "core.goToNextStep" },
-        timestamp: 1
-      })
+        timestamp: 1,
+      }),
     ).toBe(state);
   });
 
@@ -370,11 +370,11 @@ describe("panel state reducer and selectors", () => {
     let state = createInitialPanelState();
     state = panelReducer(state, {
       type: "bridge-envelope",
-      envelope: createRegisterEnvelope("machine-1", 1000, "start")
+      envelope: createRegisterEnvelope("machine-1", 1000, "start"),
     });
     state = panelReducer(state, {
       type: "bridge-envelope",
-      envelope: createSnapshotEnvelope("machine-1", 1001, "review")
+      envelope: createSnapshotEnvelope("machine-1", 1001, "review"),
     });
 
     state = panelReducer(state, { type: "set-display-limit", limit: 25 });
@@ -383,7 +383,7 @@ describe("panel state reducer and selectors", () => {
     state = panelReducer(state, {
       type: "select-timeline-entry",
       machineId: "machine-1",
-      index: -10
+      index: -10,
     });
     expect(state.machines["machine-1"]?.selectedTimelineIndex).toBe(0);
     expect(state.machines["machine-1"]?.followLatest).toBe(false);
@@ -391,7 +391,7 @@ describe("panel state reducer and selectors", () => {
     state = panelReducer(state, {
       type: "set-follow-latest",
       machineId: "machine-1",
-      followLatest: true
+      followLatest: true,
     });
     expect(state.machines["machine-1"]?.selectedTimelineIndex).toBe(1);
 
@@ -400,8 +400,8 @@ describe("panel state reducer and selectors", () => {
       panelReducer(state, {
         type: "prune-timeline",
         machineId: "machine-1",
-        keep: null
-      })
+        keep: null,
+      }),
     ).toBe(beforeNullPrune);
   });
 
@@ -423,7 +423,7 @@ describe("panel state reducer and selectors", () => {
           envelopeKind: "register",
           snapshot: start,
           actionPayload: {},
-          meta: { machineId: "machine-1" }
+          meta: { machineId: "machine-1" },
         },
         {
           id: "snapshot",
@@ -435,7 +435,7 @@ describe("panel state reducer and selectors", () => {
           envelopeKind: "snapshot",
           snapshot: review,
           actionPayload: {},
-          meta: { machineId: "machine-1" }
+          meta: { machineId: "machine-1" },
         },
         {
           id: "result",
@@ -447,23 +447,23 @@ describe("panel state reducer and selectors", () => {
           envelopeKind: "operationResult",
           snapshot: review,
           actionPayload: {},
-          meta: { machineId: "machine-1", operationId: "core.goToNextStep", transitioned: true }
-        }
-      ]
+          meta: { machineId: "machine-1", operationId: "core.goToNextStep", transitioned: true },
+        },
+      ],
     };
 
     expect(selectSelectedDiff(machine)).toEqual({
       added: {
-        "history.visited.review": true
+        "history.visited.review": true,
       },
       removed: {
-        "history.visited.start": true
+        "history.visited.start": true,
       },
       changed: {
         "currentStep.id": { before: "start", after: "review" },
         "history.timeline[0]": { before: "start", after: "review" },
-        "context.count": { before: 0, after: 1 }
-      }
+        "context.count": { before: 0, after: 1 },
+      },
     });
   });
 });
@@ -476,12 +476,12 @@ describe("panel timeline helpers", () => {
         label: "Machine 1",
         appName: null,
         mode: "graph",
-        features: []
-      })
+        features: [],
+      }),
     ).toMatchObject({
       machineId: "machine-1",
       mutationsEnabled: true,
-      features: []
+      features: [],
     });
 
     expect(
@@ -490,19 +490,19 @@ describe("panel timeline helpers", () => {
         label: "Machine 2",
         appName: null,
         features: undefined,
-        mutationsEnabled: false
-      } as never)
+        mutationsEnabled: false,
+      } as never),
     ).toMatchObject({
       machineId: "machine-2",
       mutationsEnabled: false,
-      features: []
+      features: [],
     });
   });
 
   it("covers timeline helper default sequence and optional result metadata branches", () => {
     const machine = {
       ...createMachine(),
-      timelineSequence: undefined
+      timelineSequence: undefined,
     } as unknown as JourneyPanelMachineState;
 
     const queued = buildQueuedTimelineEntry(
@@ -510,7 +510,7 @@ describe("panel timeline helpers", () => {
       "machine-1",
       "req-queued",
       { operationId: "core.goToNextStep" },
-      1000
+      1000,
     );
     expect(queued.id).toBe("machine-1-timeline-queuedOperation-1000-1");
 
@@ -525,19 +525,19 @@ describe("panel timeline helpers", () => {
       operationId: "core.goToNextStep",
       result: {
         kind: "snapshot",
-        snapshot: createSnapshot("review")
-      }
+        snapshot: createSnapshot("review"),
+      },
     });
     expect(snapshotResult.meta).toMatchObject({
       machineId: "machine-1",
-      operationId: "core.goToNextStep"
+      operationId: "core.goToNextStep",
     });
     expect(snapshotResult.meta).not.toHaveProperty("transitioned");
     expect(snapshotResult.meta).not.toHaveProperty("transitionId");
 
     const appended = appendTimelineEntry(machine, {
       ...snapshotResult,
-      id: "appended"
+      id: "appended",
     });
     expect(appended.selectedTimelineIndex).toBe(0);
   });
@@ -545,13 +545,13 @@ describe("panel timeline helpers", () => {
   it("applies register and snapshot envelopes and can suppress operation-result snapshot replacement", () => {
     const registered = applyMachineUpdateForEnvelope(
       createMachine("unknown"),
-      createRegisterEnvelope("machine-1", 1000, "start", { count: 0 })
+      createRegisterEnvelope("machine-1", 1000, "start", { count: 0 }),
     );
     expect(registered.snapshot.currentStep?.id).toBe("start");
 
     const withSnapshot = applyMachineUpdateForEnvelope(
       registered,
-      createSnapshotEnvelope("machine-1", 1001, "review", { count: 1 })
+      createSnapshotEnvelope("machine-1", 1001, "review", { count: 1 }),
     );
     expect(withSnapshot.snapshot.currentStep?.id).toBe("review");
 
@@ -562,9 +562,9 @@ describe("panel timeline helpers", () => {
         "req-1",
         "core.goToNextStep",
         1002,
-        createSnapshot("done", { count: 2 })
+        createSnapshot("done", { count: 2 }),
       ),
-      { applyOperationResultSnapshot: false }
+      { applyOperationResultSnapshot: false },
     );
     expect(suppressed.snapshot.currentStep?.id).toBe("review");
 
@@ -577,13 +577,13 @@ describe("panel timeline helpers", () => {
       timestamp: 1003,
       requestId: "req-data",
       operationId: "custom.inspect",
-      result: { kind: "data", data: { ok: true } }
+      result: { kind: "data", data: { ok: true } },
     });
     expect(dataResult.snapshot.currentStep?.id).toBe("review");
 
     const observed = applyMachineUpdateForEnvelope(
       dataResult,
-      createObservationEnvelope("machine-1", 1004, "journey.start")
+      createObservationEnvelope("machine-1", 1004, "journey.start"),
     );
     expect(observed).toBe(dataResult);
   });
@@ -595,7 +595,7 @@ describe("panel timeline helpers", () => {
       "machine-1",
       "req-1",
       { operationId: "core.goToNextStep" },
-      1000
+      1000,
     );
     expect(queued.envelopeKind).toBe("queuedOperation");
     expect(queued.label).toBe("OP/core.goToNextStep");
@@ -606,7 +606,7 @@ describe("panel timeline helpers", () => {
 
     const observedWithoutType = buildTimelineEntry(machine, {
       ...createObservationEnvelope("machine-1", 1001, "x"),
-      event: {} as never
+      event: {} as never,
     });
     expect(observedWithoutType.label).toBe("EVENT/event");
 
@@ -617,13 +617,13 @@ describe("panel timeline helpers", () => {
           requestId: "req-1",
           invocation: { operationId: "core.goToNextStep" },
           timestamp: 1000,
-          timelineEntryId: queued.id
-        }
-      }
+          timelineEntryId: queued.id,
+        },
+      },
     };
     const result = buildTimelineEntry(
       pendingMachine,
-      createOperationResultEnvelope("machine-1", "req-1", "core.goToNextStep", 1002)
+      createOperationResultEnvelope("machine-1", "req-1", "core.goToNextStep", 1002),
     );
     expect(result.invocation).toEqual({ operationId: "core.goToNextStep" });
     expect(result.meta.transitioned).toBe(true);
@@ -637,14 +637,14 @@ describe("panel timeline helpers", () => {
       timestamp: 1003,
       requestId: "req-missing",
       operationId: "custom.inspect",
-      result: { kind: "data", data: { ok: true } }
+      result: { kind: "data", data: { ok: true } },
     });
     expect(dataResult.snapshot).toBeNull();
     expect(dataResult.invocation).toBeNull();
 
     const errorWithoutPending = buildTimelineEntry(
       machine,
-      createOperationErrorEnvelope("machine-1", "missing", "core.goToNextStep", 1004)
+      createOperationErrorEnvelope("machine-1", "missing", "core.goToNextStep", 1004),
     );
     expect(errorWithoutPending.invocation).toBeNull();
   });
@@ -667,9 +667,9 @@ describe("panel timeline helpers", () => {
           envelopeKind: "snapshot",
           snapshot: createSnapshot(`step-${index}`),
           actionPayload: {},
-          meta: { machineId: "machine-1" }
-        })
-      )
+          meta: { machineId: "machine-1" },
+        }),
+      ),
     };
 
     machine = appendTimelineEntry(machine, {
@@ -682,7 +682,7 @@ describe("panel timeline helpers", () => {
       envelopeKind: "snapshot",
       snapshot: createSnapshot("a"),
       actionPayload: {},
-      meta: { machineId: "machine-1" }
+      meta: { machineId: "machine-1" },
     });
     machine = appendTimelineEntry(machine, {
       id: "overflow-b",
@@ -694,7 +694,7 @@ describe("panel timeline helpers", () => {
       envelopeKind: "snapshot",
       snapshot: createSnapshot("b"),
       actionPayload: {},
-      meta: { machineId: "machine-1" }
+      meta: { machineId: "machine-1" },
     });
 
     expect(machine.timelineEntries).toHaveLength(MAX_MACHINE_TIMELINE_ENTRIES);
@@ -707,10 +707,10 @@ describe("panel timeline helpers", () => {
     }
     const replaced = replaceTimelineEntry(machine, "overflow-a", {
       ...secondToLastEntry,
-      label: "OP/replaced"
+      label: "OP/replaced",
     });
     expect(replaced.timelineEntries[replaced.timelineEntries.length - 2]?.label).toBe(
-      "OP/replaced"
+      "OP/replaced",
     );
 
     const appendedOnMiss = replaceTimelineEntry(machine, "missing", {
@@ -723,19 +723,19 @@ describe("panel timeline helpers", () => {
       envelopeKind: "observation",
       snapshot: null,
       actionPayload: {},
-      meta: { machineId: "machine-1" }
+      meta: { machineId: "machine-1" },
     });
     expect(appendedOnMiss.timelineEntries[appendedOnMiss.timelineEntries.length - 1]?.id).toBe(
-      "appended"
+      "appended",
     );
 
     const pruned = pruneTimelineEntries(
       {
         ...appendedOnMiss,
         followLatest: false,
-        selectedTimelineIndex: 5
+        selectedTimelineIndex: 5,
       },
-      3
+      3,
     );
     expect(pruned.timelineEntries).toHaveLength(3);
     expect(pruned.selectedTimelineIndex).toBe(0);
@@ -746,9 +746,9 @@ describe("panel timeline helpers", () => {
       {
         ...appendedOnMiss,
         followLatest: true,
-        selectedTimelineIndex: 0
+        selectedTimelineIndex: 0,
       },
-      2
+      2,
     );
     expect(followLatestPruned.selectedTimelineIndex).toBe(1);
 
@@ -762,8 +762,8 @@ describe("panel timeline helpers", () => {
         requestId: "req-1",
         invocation: { operationId: "core.goToNextStep" },
         timestamp: 1000,
-        timelineEntryId: "queued"
-      }
+        timelineEntryId: "queued",
+      },
     };
     expect(clearPendingCommand(pending, "missing")).toBe(pending);
     expect(clearPendingCommand(pending, "req-1")).toEqual({});
@@ -779,7 +779,7 @@ describe("panel timeline helpers", () => {
         envelopeKind: "observation",
         snapshot: null,
         actionPayload: {},
-        meta: { machineId: "machine-1" }
+        meta: { machineId: "machine-1" },
       },
       {
         id: "snapshot",
@@ -791,7 +791,7 @@ describe("panel timeline helpers", () => {
         envelopeKind: "snapshot",
         snapshot: createSnapshot("review"),
         actionPayload: {},
-        meta: { machineId: "machine-1" }
+        meta: { machineId: "machine-1" },
       },
       {
         id: "error",
@@ -803,8 +803,8 @@ describe("panel timeline helpers", () => {
         envelopeKind: "operationError",
         snapshot: null,
         actionPayload: {},
-        meta: { machineId: "machine-1" }
-      }
+        meta: { machineId: "machine-1" },
+      },
     ];
 
     expect(resolveSnapshotAtIndex(entries, 2)?.currentStep?.id).toBe("review");
@@ -829,7 +829,7 @@ describe("panel selectors", () => {
           envelopeKind: "register",
           snapshot: createSnapshot("start"),
           actionPayload: {},
-          meta: { machineId: "machine-1" }
+          meta: { machineId: "machine-1" },
         },
         {
           id: "1",
@@ -841,22 +841,22 @@ describe("panel selectors", () => {
           envelopeKind: "snapshot",
           snapshot: createSnapshot("review"),
           actionPayload: {},
-          meta: { machineId: "machine-1" }
-        }
-      ]
+          meta: { machineId: "machine-1" },
+        },
+      ],
     };
     const state: JourneyPanelState = {
       connected: true,
       machines: { "machine-1": machine },
       machineOrder: ["machine-1"],
       selectedMachineId: "machine-1",
-      displayLimit: null
+      displayLimit: null,
     };
 
     expect(selectActiveMachine(state)?.snapshot.currentStep?.id).toBe("review");
     expect(selectVisibleTimelineEntries(machine.timelineEntries, null)).toHaveLength(2);
     expect(
-      selectVisibleTimelineEntries(machine.timelineEntries, 1).map((entry) => entry.id)
+      selectVisibleTimelineEntries(machine.timelineEntries, 1).map((entry) => entry.id),
     ).toEqual(["1"]);
     expect(selectVisibleTimelineEntries(machine.timelineEntries, 0)).toEqual([]);
   });
@@ -866,7 +866,7 @@ describe("panel selectors", () => {
     expect(selectSelectedTimelineEntry(null)).toBeNull();
     expect(selectSelectedDiff(null)).toEqual({ added: {}, removed: {}, changed: {} });
     expect(selectDisplayedSnapshot({ ...createMachine("start"), followLatest: true })).toEqual(
-      createSnapshot("start")
+      createSnapshot("start"),
     );
     expect(INITIAL_SNAPSHOT.status).toBe("idle");
   });

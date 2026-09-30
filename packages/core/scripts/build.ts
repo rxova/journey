@@ -15,7 +15,7 @@ const common = {
   outdir: "dist",
   outbase: "src",
   platform: "neutral",
-  format: "esm"
+  format: "esm",
 } satisfies BuildOptions;
 
 await build(common);
@@ -25,6 +25,6 @@ await build({
   platform: "node",
   format: "cjs",
   outExtension: {
-    ".js": ".cjs"
-  }
+    ".js": ".cjs",
+  },
 });

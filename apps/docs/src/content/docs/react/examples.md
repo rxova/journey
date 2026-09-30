@@ -33,15 +33,15 @@ For example:
 import type { AnyJourneyMachine, SnapshotOf } from "@rxova/journey-react";
 
 const useJourneySnapshot = <TMachine extends AnyJourneyMachine>(
-  machine: TMachine
+  machine: TMachine,
 ): SnapshotOf<TMachine> => {
   const subscribe = React.useCallback(
     (onStoreChange: () => void) => machine.subscriptions.subscribe(onStoreChange),
-    [machine]
+    [machine],
   );
   const getSnapshot = React.useCallback(
     () => machine.getSnapshot() as SnapshotOf<TMachine>,
-    [machine]
+    [machine],
   );
   return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 };

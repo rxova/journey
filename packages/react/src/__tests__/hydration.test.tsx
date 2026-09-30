@@ -36,7 +36,7 @@ describe("hydration", () => {
     const serverHtml = renderToString(
       <server.Provider views={views}>
         <server.StepRenderer fallback={<span>loading</span>} />
-      </server.Provider>
+      </server.Provider>,
     );
     // The deferred start means the server emits the fallback, not a step.
     expect(serverHtml).toContain("loading");
@@ -47,7 +47,7 @@ describe("hydration", () => {
       container,
       <client.Provider views={views}>
         <client.StepRenderer fallback={<span>loading</span>} />
-      </client.Provider>
+      </client.Provider>,
     );
 
     // Once mounted, the client machine starts and takes over.

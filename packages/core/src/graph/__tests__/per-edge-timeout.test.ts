@@ -28,14 +28,14 @@ describe("per-edge timeoutMs", () => {
                   return "third-party";
                 },
                 timeoutMs: 5_000,
-                candidates: [{ to: "b" }]
-              })
-            }
+                candidates: [{ to: "b" }],
+              }),
+            },
           },
-          b: {}
-        }
+          b: {},
+        },
       },
-      { defaultTimeoutMs: 50 }
+      { defaultTimeoutMs: 50 },
     );
     machine.controls.start();
     await vi.advanceTimersByTimeAsync(1);
@@ -63,14 +63,14 @@ describe("per-edge timeoutMs", () => {
                 },
                 label: "third-party-call",
                 timeoutMs: 5_000,
-                candidates: [{ to: "b" }]
-              }
-            }
+                candidates: [{ to: "b" }],
+              },
+            },
           },
-          b: {}
-        }
+          b: {},
+        },
       },
-      { defaultTimeoutMs: 50 }
+      { defaultTimeoutMs: 50 },
     );
     machine.controls.start();
     await vi.advanceTimersByTimeAsync(1);
@@ -81,7 +81,7 @@ describe("per-edge timeoutMs", () => {
 
     expect(result).toMatchObject({ ok: false, reason: "error" });
     expect((result as { error: Error }).error.message).toContain(
-      "send work(third-party-call) timed out after 5000ms"
+      "send work(third-party-call) timed out after 5000ms",
     );
     vi.useRealTimers();
   });
@@ -98,19 +98,19 @@ describe("per-edge timeoutMs", () => {
               SLOW: {
                 run: () => wait(500),
                 timeoutMs: 5_000,
-                candidates: [{ to: "b" }]
+                candidates: [{ to: "b" }],
               },
               FAST: {
                 run: () => wait(500),
                 label: "should-have-been-quick",
-                candidates: [{ to: "b" }]
-              }
-            }
+                candidates: [{ to: "b" }],
+              },
+            },
           },
-          b: {}
-        }
+          b: {},
+        },
       },
-      { defaultTimeoutMs: 50 }
+      { defaultTimeoutMs: 50 },
     );
     machine.controls.start();
     await vi.advanceTimersByTimeAsync(1);
@@ -140,16 +140,16 @@ describe("per-edge timeoutMs", () => {
                   label: "slow-notify",
                   timeoutMs: 5_000,
                   when: ({ context }) => context.slow,
-                  onTransition: () => wait(500)
+                  onTransition: () => wait(500),
                 },
-                { to: "b", label: "quick", onTransition: () => wait(500) }
-              ]
-            }
+                { to: "b", label: "quick", onTransition: () => wait(500) },
+              ],
+            },
           },
-          b: {}
-        }
+          b: {},
+        },
       },
-      { defaultTimeoutMs: 50 }
+      { defaultTimeoutMs: 50 },
     );
     machine.subscriptions.subscribeEvent("error", ({ error }) => void errors.push(error as Error));
     machine.controls.start();
@@ -169,7 +169,7 @@ describe("per-edge timeoutMs", () => {
     vi.useFakeTimers();
     const machine = createGraphJourney(
       { initial: "a", context: {}, steps: { a: { on: { GO: "b" } }, b: {} } },
-      { defaultTimeoutMs: 50 }
+      { defaultTimeoutMs: 50 },
     );
     machine.controls.start();
     await vi.advanceTimersByTimeAsync(1);
@@ -183,7 +183,7 @@ describe("per-edge timeoutMs", () => {
         await wait(500);
         return "slow";
       },
-      timeoutMs: 5_000
+      timeoutMs: 5_000,
     });
     await vi.advanceTimersByTimeAsync(1_000);
 
@@ -198,8 +198,8 @@ describe("per-edge timeoutMs", () => {
         context: {},
         steps: {
           a: { on: { GO: [{ to: "b", timeoutMs: timeoutMs as number }] } },
-          b: {}
-        }
+          b: {},
+        },
       });
 
     expect(() => build(0)).toThrow(JourneyError);
@@ -215,9 +215,9 @@ describe("per-edge timeoutMs", () => {
         context: {},
         steps: {
           a: { on: { GO: { run: () => null, timeoutMs: -5, candidates: [{ to: "b" }] } } },
-          b: {}
-        }
-      })
+          b: {},
+        },
+      }),
     ).toThrow(/work on "GO" on step "a"/);
   });
 });

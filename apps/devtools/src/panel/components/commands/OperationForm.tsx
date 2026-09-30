@@ -29,14 +29,14 @@ export const OperationForm = ({
   className,
   buttonClassName,
   onFieldChange,
-  onSubmit
+  onSubmit,
 }: OperationFormProps) => {
   const buttonLabel = operation.id === "core.resetJourney" ? "restartJourney" : operation.label;
   const validationErrors = Object.fromEntries(
     operation.fields.map((field) => {
       const stateKey = `${operation.id}:${field.key}`;
       return [field.key, getFieldValidationError(fieldValues[stateKey] ?? "", field.type)] as const;
-    })
+    }),
   );
   const hasValidationErrors = Object.values(validationErrors).some((error) => error !== null);
 

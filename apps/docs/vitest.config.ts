@@ -6,5 +6,5 @@ export default baseVitestConfig({
   root: import.meta.dirname,
   include: ["test/**/*.test.ts"],
   coverage: false,
-  silent: true
+  silent: true,
 });

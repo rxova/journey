@@ -10,11 +10,11 @@ describe("computeStructuredDiff", () => {
   it("records removed array indexes", () => {
     const result = computeStructuredDiff(
       {
-        timeline: ["start", "details", "review"]
+        timeline: ["start", "details", "review"],
       },
       {
-        timeline: ["start"]
-      }
+        timeline: ["start"],
+      },
     );
 
     expect(result.removed["timeline[1]"]).toBe("details");

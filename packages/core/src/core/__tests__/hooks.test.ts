@@ -13,14 +13,14 @@ describe("step hooks", () => {
       run: async () => {
         await wait(20);
         throw boom;
-      }
+      },
     });
     await wait(5);
     expect(machine.getSnapshot().transition).toMatchObject({
       pending: true,
       phase: "working",
       from: "a",
-      to: "b"
+      to: "b",
     });
     expect(machine.getSnapshot().currentStep?.id).toBe("a");
 
@@ -32,7 +32,7 @@ describe("step hooks", () => {
   it("applies defaultTimeoutMs to navigation work", async () => {
     const machine = createLinearJourney(
       { steps: ["a", "b"], context: {} },
-      { defaultTimeoutMs: 10 }
+      { defaultTimeoutMs: 10 },
     );
     machine.controls.start();
     await flush();
@@ -49,7 +49,7 @@ describe("step hooks", () => {
     await flush();
     const snapshots: unknown[] = [];
     machine.subscriptions.subscribeEvent("contextChange", ({ snapshot }) =>
-      snapshots.push(snapshot)
+      snapshots.push(snapshot),
     );
     machine.subscriptions.subscribeEvent("stepEnter", ({ snapshot, to }) => {
       if (to === "b") snapshots.push(snapshot);
@@ -63,15 +63,15 @@ describe("step hooks", () => {
         },
         commit: ({ result, updateContext }) => {
           updateContext(() => ({ password: "", userId: result.userId }));
-        }
-      })
+        },
+      }),
     ).toEqual({ ok: true, from: "a", to: "b" });
 
     expect(snapshots).toHaveLength(2);
     expect(snapshots[0]).toBe(snapshots[1]);
     expect(machine.getSnapshot()).toMatchObject({
       context: { password: "", userId: "user-1" },
-      currentStep: { id: "b" }
+      currentStep: { id: "b" },
     });
   });
 
@@ -88,8 +88,8 @@ describe("step hooks", () => {
         commit: ({ result, updateContext }) => {
           expect(result).toEqual({ direction: "forward", from: "a", to: "b" });
           updateContext((context) => ({ ...context, saved: true }));
-        }
-      })
+        },
+      }),
     ).toEqual({ ok: true, from: "a", to: "b" });
     expect(machine.getSnapshot().context.saved).toBe(true);
   });
@@ -106,12 +106,12 @@ describe("step hooks", () => {
         commit: ({ updateContext }) => {
           updateContext(() => ({ value: 1 }));
           throw boom;
-        }
-      })
+        },
+      }),
     ).toMatchObject({ ok: false, reason: "error", error: boom });
     expect(machine.getSnapshot()).toMatchObject({
       context: { value: 0 },
-      currentStep: { id: "a" }
+      currentStep: { id: "a" },
     });
   });
 
@@ -122,13 +122,13 @@ describe("step hooks", () => {
 
     const result = await machine.navigate.goToNextStep({
       run: () => 1,
-      commit: (async () => wait(1)) as never
+      commit: (async () => wait(1)) as never,
     });
 
     expect(result).toMatchObject({ ok: false, reason: "error" });
     expect(machine.getSnapshot()).toMatchObject({
       context: { value: 0 },
-      currentStep: { id: "a" }
+      currentStep: { id: "a" },
     });
   });
 
@@ -140,11 +140,11 @@ describe("step hooks", () => {
           id: "a",
           onLeave: () => {
             throw boom;
-          }
+          },
         },
-        "b"
+        "b",
       ],
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();
@@ -166,10 +166,10 @@ describe("step hooks", () => {
           id: "b",
           onEnter: () => {
             throw boom;
-          }
-        }
+          },
+        },
       ],
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();
@@ -187,7 +187,7 @@ describe("step hooks", () => {
       isLoading: false,
       isSuccess: true,
       isError: false,
-      error: null
+      error: null,
     });
 
     // Clearing an already-successful or disposed machine is deliberately a no-op.
@@ -199,7 +199,7 @@ describe("step hooks", () => {
   it("exposes loading state and phase while an async onEnter is pending", async () => {
     const machine = createLinearJourney({
       steps: ["a", { id: "b", onEnter: () => wait(20) }],
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();
@@ -213,14 +213,14 @@ describe("step hooks", () => {
       pending: true,
       phase: "entering",
       from: "a",
-      to: "b"
+      to: "b",
     });
     expect(snapshot.transition.pending).toBe(true);
 
     // concurrent navigation during a pending hook chain is rejected, not queued
     expect(await machine.navigate.goToPreviousStep()).toMatchObject({
       ok: false,
-      reason: "transitioning"
+      reason: "transitioning",
     });
 
     await navigation;
@@ -229,7 +229,7 @@ describe("step hooks", () => {
       isLoading: false,
       isSuccess: true,
       isError: false,
-      error: null
+      error: null,
     });
     expect(snapshot.transition.pending).toBe(false);
   });
@@ -241,11 +241,11 @@ describe("step hooks", () => {
           id: "a",
           onLeave: ({ updateContext }) => {
             updateContext(() => ({ message: "left a" }));
-          }
+          },
         },
-        "b"
+        "b",
       ],
-      context: { message: "" }
+      context: { message: "" },
     });
     machine.controls.start();
     await flush();
@@ -262,11 +262,11 @@ describe("step hooks", () => {
           id: "a",
           onLeave: ({ from, to, event, snapshot }) => {
             seen.push({ from, to, event, phase: snapshot.transition.phase });
-          }
+          },
         },
-        "b"
+        "b",
       ],
-      context: {}
+      context: {},
     });
     machine.controls.start();
     await flush();
@@ -278,7 +278,7 @@ describe("step hooks", () => {
   it("defaultTimeoutMs surfaces a slow onLeave without rolling navigation back", async () => {
     const machine = createLinearJourney(
       { steps: [{ id: "a", onLeave: () => wait(200) }, "b"], context: {} },
-      { defaultTimeoutMs: 20 }
+      { defaultTimeoutMs: 20 },
     );
     machine.controls.start();
     await flush();
@@ -286,7 +286,7 @@ describe("step hooks", () => {
     expect(await machine.navigate.goToNextStep()).toEqual({ ok: true, from: "a", to: "b" });
     expect(machine.getSnapshot().currentStep?.id).toBe("b");
     expect(String((machine.getSnapshot().currentStep?.async.error as Error).message)).toContain(
-      "timed out"
+      "timed out",
     );
   });
 
@@ -294,7 +294,7 @@ describe("step hooks", () => {
     const boom = new Error("leave rejected");
     const machine = createLinearJourney(
       { steps: [{ id: "a", onLeave: () => Promise.reject(boom) }, "b"], context: {} },
-      { defaultTimeoutMs: 100 }
+      { defaultTimeoutMs: 100 },
     );
     machine.controls.start();
     await flush();
@@ -306,7 +306,7 @@ describe("step hooks", () => {
   it("defaultTimeoutMs surfaces a slow onEnter as a step error", async () => {
     const machine = createLinearJourney(
       { steps: ["a", { id: "b", onEnter: () => wait(200) }], context: {} },
-      { defaultTimeoutMs: 20 }
+      { defaultTimeoutMs: 20 },
     );
     machine.controls.start();
     await flush();
