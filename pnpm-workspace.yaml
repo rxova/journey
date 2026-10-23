@@ -40,6 +40,38 @@ overrides:
   # file. Reached only through the docs site
   # (@astrojs/starlight > astro-expressive-code > ... > postcss), 24 paths.
   "postcss@<=8.5.17": ">=8.5.18 <9.0.0"
+  # GHSA-q8gj-x3r6-9xjr (critical): `quote()` lets a line terminator in a token
+  # after a `{ comment }` token inject a second command. The only path is
+  # @changesets/cli > launch-editor > shell-quote, which runs when changesets
+  # opens an editor on this repository's own input. @changesets/cli declares
+  # `^1.8.4`, so no bump reaches it.
+  "shell-quote@<1.11.0": ">=1.11.0 <2.0.0"
+  # GHSA-8mjh-66w6-rj3q and companions: the `fs.existsSync()` guard before the
+  # editor spawn is bypassable on Windows. Same @changesets/cli path, and
+  # @changesets/cli has no release that raises its `^2.6.1`.
+  "launch-editor@<2.14.2": ">=2.14.2 <3.0.0"
+  # GHSA-gfr2-rv44-r23c: a single multi-line link reference definition renders
+  # in quadratic time. Reached through typedoc, rendering the TSDoc in this
+  # repository. Scoped to the 14.x line typedoc asks for.
+  "markdown-it@<14.3.3": ">=14.3.3 <15.0.0"
+  # GHSA-w02v-q2wq-9vqm: quadratic backtracking on an attacker-controlled
+  # selector. Reached only through the docs site's expressive-code chain >
+  # postcss-nested, parsing expressive-code's own selectors at build time.
+  "postcss-selector-parser@<7.1.6": ">=7.1.6 <8.0.0"
+  # The `vite@>=7.0.0 <=7.3.4` range above went stale the way the postcss and
+  # fast-uri entries did: the advisory's patched floor has moved to 7.3.7. This
+  # covers the 7.x copy that vitest still resolves (vitest > @vitest/mocker >
+  # vite); the examples are on vite 8 and are not matched by this key.
+  "vite@<7.3.7": ">=7.3.7 <8.0.0"
+  # Not an advisory. @rxova/ts-utils 0.3.0 split its exports and the new
+  # `./react` subpath gave the package a `react` peer. The root workspace
+  # declares ts-utils but no react of its own, so pnpm satisfied that peer with
+  # a 19.3.0 copy nothing else asks for while every package resolves 19.3.1.
+  # Two copies of React in one tree, and the whole @rxova/journey-react suite
+  # failed on it. Scoped to the 19 line so a React 18 consumer tree — the
+  # published peer is `>=18.2.0` — is not forced forward.
+  "react@>=19.0.0 <19.3.1": ">=19.3.1 <20.0.0"
+  "react-dom@>=19.0.0 <19.3.1": ">=19.3.1 <20.0.0"
   # GHSA-5p4m-2wfm-xmqj: `!!omap` resolution is quadratic in the number of keys, so
   # a hostile YAML document costs CPU out of proportion to its size. It lands on
   # both live majors — the 3.x line through @manypkg's read-yaml-file under

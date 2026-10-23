@@ -75,7 +75,7 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@rxova/journey-core": "workspace:^",
-    "publint": "^0.3.24"
+    "publint": "^0.3.25"
   },
   "size-limit": [
     {
