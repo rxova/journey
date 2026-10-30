@@ -123,10 +123,10 @@ export function analyzeStructure(definition: {
   readonly steps: object;
   readonly initial: string;
 }): DiagnosticsResult {
-  const { stepIds, transitions } = normalizeGraphDefinition(
+  const { stepIds, steps, transitions } = normalizeGraphDefinition(
     definition as Parameters<typeof normalizeGraphDefinition>[0],
   );
   return analyzeJourneyStructure(
-    toStructure({ kind: "graph", stepIds, initial: definition.initial, transitions }),
+    toStructure({ kind: "graph", stepIds, steps, initial: definition.initial, transitions }),
   );
 }

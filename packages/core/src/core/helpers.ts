@@ -1,4 +1,4 @@
-import type { RuntimeTransition } from "./runtime.types";
+import type { RuntimeStep, RuntimeTransition } from "./runtime.types";
 import type { JourneyStructure, StepAsyncState, TransitionInfo } from "./types";
 
 /** Hard cap on events processed from one raise cascade before it is dropped. */
@@ -100,12 +100,20 @@ const structureTransition = (
 export const toStructure = (input: {
   readonly kind: "linear" | "graph";
   readonly stepIds: readonly string[];
+  readonly steps: Readonly<Record<string, RuntimeStep>>;
   readonly initial: string;
   readonly transitions: readonly RuntimeTransition[];
 }): JourneyStructure =>
   Object.freeze({
     kind: input.kind,
     stepIds: Object.freeze([...input.stepIds]),
+    // Only `stepMeta` crosses over: a runtime step also carries `onEnter` and
+    // `onLeave`, and the structure view is inert by contract.
+    steps: Object.freeze(
+      Object.fromEntries(
+        Object.entries(input.steps).map(([id, step]) => [id, { stepMeta: step.stepMeta }]),
+      ),
+    ),
     initial: input.initial,
     transitions: Object.freeze(
       input.transitions.map((transition) => Object.freeze(structureTransition(transition))),

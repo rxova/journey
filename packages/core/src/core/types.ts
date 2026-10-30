@@ -471,6 +471,12 @@ export type JourneyMachineBase<
 export type JourneyStructure = {
   readonly kind: "linear" | "graph";
   readonly stepIds: readonly string[];
+  /**
+   * Per-step data, keyed by step id. `stepIds` alone says a node exists;
+   * this says what the definition declared about it, so a query can ask
+   * "who owns this step" without reaching back into the definition.
+   */
+  readonly steps: Readonly<Record<string, { readonly stepMeta: unknown }>>;
   readonly initial: string;
   /** Flattened transitions in declaration order (empty for linear). */
   readonly transitions: readonly {

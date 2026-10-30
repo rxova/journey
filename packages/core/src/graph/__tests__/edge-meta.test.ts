@@ -125,3 +125,23 @@ describe("stepMeta", () => {
     expect(machine.getSnapshot().currentStep?.stepMeta).toEqual({});
   });
 });
+
+describe("structure.steps", () => {
+  it("carries declared stepMeta, and an empty object where none was declared", () => {
+    const { probe, get } = readStructure();
+    createGraphJourney(
+      {
+        initial: "a",
+        context: {},
+        steps: { a: { stepMeta: { owner: "auth" }, on: { go: "b" } }, b: {} },
+      },
+      { autoStart: false, plugins: [probe] as const },
+    );
+
+    const { steps } = get();
+    expect(Object.keys(steps)).toEqual(["a", "b"]);
+    expect(steps["a"]?.stepMeta).toEqual({ owner: "auth" });
+    expect(steps["b"]?.stepMeta).toEqual({});
+    expect(Object.isFrozen(steps)).toBe(true);
+  });
+});
