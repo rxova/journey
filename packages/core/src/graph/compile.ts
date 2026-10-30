@@ -95,6 +95,9 @@ export type CompiledGraph<
   };
 };
 
+/** The definition fields a compiled payload already fixes; see {@link ensureCompiled}. */
+const DEFINITION_KEYS = ["steps", "initial", "context", "handlers"] as const;
+
 /** Narrows a definition to one already through {@link compileGraph}. */
 const isCompiled = (value: object): value is AnyCompiledGraph => RUNTIME in value;
 
@@ -307,5 +310,21 @@ export const runtimeOf = (compiled: AnyCompiledGraph): CompiledRuntime => {
 };
 
 /** @internal Accepts either side of the union a factory takes and yields the compiled form. */
-export const ensureCompiled = (definition: object): AnyCompiledGraph =>
-  isCompiled(definition) ? definition : compileGraph(definition as unknown as LooseGraphDefinition);
+export const ensureCompiled = (definition: object): AnyCompiledGraph => {
+  if (!isCompiled(definition)) {
+    return compileGraph(definition as unknown as LooseGraphDefinition);
+  }
+  // The marker survives object spread, so `{ ...compiled, context }` arrives
+  // here looking compiled while carrying overrides that the payload would
+  // silently win over. Refuse it: "compile once, start several machines with
+  // different context" is the obvious thing to reach for, and quietly ignoring
+  // the override is the worst possible answer.
+  const overridden = DEFINITION_KEYS.filter((key) => hasOwn(definition, key));
+  if (overridden.length > 0) {
+    throw new JourneyError(
+      "invalid-compiled-graph",
+      `a compiled graph cannot be overridden by spreading it: ${overridden.join(", ")} would be ignored. Compile a new graph instead.`,
+    );
+  }
+  return definition;
+};

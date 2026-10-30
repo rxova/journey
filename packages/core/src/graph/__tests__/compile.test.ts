@@ -200,3 +200,29 @@ describe("a compiled graph resists tampering", () => {
     expect(Object.prototype).not.toHaveProperty("on");
   });
 });
+
+describe("spreading a compiled graph", () => {
+  const compiled = compileGraph({
+    initial: "a",
+    context: { n: 0 } as { n: number },
+    steps: { a: { on: { go: "b" } }, b: {} },
+  });
+
+  it("still works when nothing is overridden", async () => {
+    const machine = createGraphJourney({ ...compiled });
+
+    await flush();
+    expect(machine.getSnapshot().currentStep?.id).toBe("a");
+  });
+
+  it("refuses an override instead of silently ignoring it", () => {
+    // The payload would win over `context` and `initial`, so the machine would
+    // quietly start at "a" with n: 0. Throw rather than lie.
+    expect(() => createGraphJourney({ ...compiled, context: { n: 99 }, initial: "b" })).toThrow(
+      /cannot be overridden by spreading/,
+    );
+    expect(() => createGraphJourney({ ...compiled, context: { n: 99 } })).toThrow(
+      /context would be ignored/,
+    );
+  });
+});
