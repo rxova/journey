@@ -1,0 +1,11 @@
+{
+  "$schema": "../jev_demo/packages/jev-planner/config.schema.json",
+  "agents": {
+    "deep": { "provider": "claude", "model": "claude-opus-5", "effort": "xhigh" },
+    "quick": { "provider": "claude", "model": "claude-opus-5", "effort": "medium" }
+  },
+  "mode": "ultra",
+  "reviewMode": "debate",
+  "claimChecks": true,
+  "verbose": true
+}
