@@ -303,7 +303,7 @@ export const runtimeOf = (compiled: AnyCompiledGraph): CompiledRuntime => {
   if (!usable) {
     throw new JourneyError(
       "invalid-compiled-graph",
-      "compiled graph payload is unusable: build it with compileGraph, and check for two copies of @rxova/journey-core in one app",
+      "compiled graph payload is unusable; build it with compileGraph",
     );
   }
   return payload as CompiledRuntime;
@@ -323,7 +323,7 @@ export const ensureCompiled = (definition: object): AnyCompiledGraph => {
   if (overridden.length > 0) {
     throw new JourneyError(
       "invalid-compiled-graph",
-      `a compiled graph cannot be overridden by spreading it: ${overridden.join(", ")} would be ignored. Compile a new graph instead.`,
+      `spreading a compiled graph cannot override ${overridden.join(", ")}; compile a new graph`,
     );
   }
   return definition;

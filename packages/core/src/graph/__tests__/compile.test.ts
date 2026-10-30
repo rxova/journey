@@ -219,10 +219,10 @@ describe("spreading a compiled graph", () => {
     // The payload would win over `context` and `initial`, so the machine would
     // quietly start at "a" with n: 0. Throw rather than lie.
     expect(() => createGraphJourney({ ...compiled, context: { n: 99 }, initial: "b" })).toThrow(
-      /cannot be overridden by spreading/,
+      /cannot override/,
     );
     expect(() => createGraphJourney({ ...compiled, context: { n: 99 } })).toThrow(
-      /context would be ignored/,
+      /cannot override context/,
     );
   });
 });
