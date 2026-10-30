@@ -102,16 +102,16 @@ describe("edgeMeta", () => {
   });
 });
 
-describe("nodeMeta", () => {
+describe("stepMeta", () => {
   it("reaches currentStep under its new name", async () => {
     const machine = createGraphJourney({
       initial: "a",
       context: {},
-      steps: { a: { nodeMeta: { title: "Start" }, on: { go: "b" } }, b: {} },
+      steps: { a: { stepMeta: { title: "Start" }, on: { go: "b" } }, b: {} },
     });
 
     await flush();
-    expect(machine.getSnapshot().currentStep?.nodeMeta).toEqual({ title: "Start" });
+    expect(machine.getSnapshot().currentStep?.stepMeta).toEqual({ title: "Start" });
   });
 
   it("defaults to an empty object when a step declares none", async () => {
@@ -122,6 +122,6 @@ describe("nodeMeta", () => {
     });
 
     await flush();
-    expect(machine.getSnapshot().currentStep?.nodeMeta).toEqual({});
+    expect(machine.getSnapshot().currentStep?.stepMeta).toEqual({});
   });
 });

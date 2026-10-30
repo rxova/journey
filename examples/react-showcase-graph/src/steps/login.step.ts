@@ -2,7 +2,7 @@ import type { ReactGraphStep } from "@rxova/journey-react/graph";
 import type { AuthBag } from "../types";
 
 export const loginStep: ReactGraphStep<AuthBag> = {
-  nodeMeta: { label: "Login", icon: "\ud83d\udd11" },
+  stepMeta: { label: "Login", icon: "\ud83d\udd11" },
   on: {
     submitLogin: [
       { to: "setup2fa", when: ({ context }) => context.twoFactorMethod === "no_2fa" },

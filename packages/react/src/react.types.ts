@@ -130,7 +130,7 @@ export type JourneyBundleBase<
     selector: (snapshot: TSnapshot) => TSelected,
     equalityFn?: (a: TSelected, b: TSelected) => boolean,
   ) => TSelected;
-  /** The current step — id, nodeMeta, async state — or null while idle (reactive). */
+  /** The current step — id, stepMeta, async state — or null while idle (reactive). */
   useStep: () => TSnapshot["currentStep"];
   /**
    * A derived slice of the machine's context; re-renders only when it changes
@@ -228,8 +228,8 @@ export type ReactGraphDefinition<TBag extends Bag> = Omit<GraphDefinition<TBag>,
 // ---------------------------------------------------------------------------
 
 /**
- * A linear journey's underlying core machine, verbatim. Step `nodeMeta` is
- * `unknown` in this tier (the definition accepts any nodeMeta value; narrow it
+ * A linear journey's underlying core machine, verbatim. Step `stepMeta` is
+ * `unknown` in this tier (the definition accepts any stepMeta value; narrow it
  * where you read it).
  */
 export type LinearJourneyMachine<
@@ -265,7 +265,7 @@ export type LinearJourneyStepHandler<
 /**
  * The pure-data definition `createLinearJourney()` captures: core's own
  * `LinearJourneyDefinition` shape, minus the step lifecycle hooks. Step
- * `nodeMeta` lives here — never in JSX; enter and leave are a `useEffect` with
+ * `stepMeta` lives here — never in JSX; enter and leave are a `useEffect` with
  * a cleanup in the step's own view.
  */
 export type LinearJourneyBundleDefinition<

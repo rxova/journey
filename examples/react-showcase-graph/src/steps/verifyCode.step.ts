@@ -2,7 +2,7 @@ import type { ReactGraphStep } from "@rxova/journey-react/graph";
 import type { AuthBag } from "../types";
 
 export const verifyCodeStep: ReactGraphStep<AuthBag> = {
-  nodeMeta: { label: "Verify Setup", icon: "\u2705" },
+  stepMeta: { label: "Verify Setup", icon: "\u2705" },
   on: {
     verifyCodeSuccess: "loggedIn",
     verifyCodeFailure: [

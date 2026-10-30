@@ -57,7 +57,7 @@ const freezeContextInDevelopment = <T>(context: T): T =>
     ? Object.freeze(context)
     : context;
 
-const EMPTY_NODE_META: Readonly<Record<string, unknown>> = Object.freeze({});
+const EMPTY_STEP_META: Readonly<Record<string, unknown>> = Object.freeze({});
 const EMPTY_PLUGINS: Readonly<Record<string, unknown>> = Object.freeze({});
 
 /** Freezes and returns the rebuilt sub-object, or the previous one when content-equal. */
@@ -951,7 +951,7 @@ export class JourneyRuntime {
         ? null
         : {
             id: currentId,
-            nodeMeta: this.config.steps[currentId]?.nodeMeta ?? EMPTY_NODE_META,
+            stepMeta: this.config.steps[currentId]?.stepMeta ?? EMPTY_STEP_META,
             isFirstTimeVisit: (this.visitCounts.get(currentId) ?? 0) === 1,
             async: this.entryAsync,
           };

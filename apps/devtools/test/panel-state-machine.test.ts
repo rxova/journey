@@ -499,7 +499,7 @@ describe("panel timeline helpers", () => {
     });
   });
 
-  it("covers timeline helper default sequence and optional result nodeMeta branches", () => {
+  it("covers timeline helper default sequence and optional result stepMeta branches", () => {
     const machine = {
       ...createMachine(),
       timelineSequence: undefined,
@@ -588,7 +588,7 @@ describe("panel timeline helpers", () => {
     expect(observed).toBe(dataResult);
   });
 
-  it("builds queued, observation, and operation timeline entries with the expected nodeMeta", () => {
+  it("builds queued, observation, and operation timeline entries with the expected stepMeta", () => {
     const machine = createMachine();
     const queued = buildQueuedTimelineEntry(
       machine,

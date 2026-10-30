@@ -41,7 +41,7 @@ export type AnySendWork = {
 };
 
 export type RuntimeStep = {
-  readonly nodeMeta: unknown;
+  readonly stepMeta: unknown;
   readonly onEnter?: AnyOnEffect;
   readonly onLeave?: AnyOnEffect;
 };

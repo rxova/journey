@@ -4,7 +4,7 @@ import { flush } from "@rxova/journey-core/testing";
 
 /**
  * The linear counterpart to `withGraphTypes`: one declaration point for the
- * types a linear definition cannot infer on its own, `nodeMeta` above all.
+ * types a linear definition cannot infer on its own, `stepMeta` above all.
  * Asserted at runtime and through `@ts-expect-error`, so a regression fails
  * either the suite or the package typecheck.
  */
@@ -18,22 +18,22 @@ type CheckoutBag = {
 
 const definition = {
   steps: [
-    { id: "account" as const, nodeMeta: { label: "Account" } },
-    { id: "shipping" as const, nodeMeta: { label: "Shipping" } },
-    { id: "review" as const, nodeMeta: { label: "Review" } },
+    { id: "account" as const, stepMeta: { label: "Account" } },
+    { id: "shipping" as const, stepMeta: { label: "Shipping" } },
+    { id: "review" as const, stepMeta: { label: "Review" } },
   ],
   context: { total: 0 },
 };
 
 describe("withLinearTypes", () => {
-  it("builds a running machine with the bag's context and nodeMeta", async () => {
+  it("builds a running machine with the bag's context and stepMeta", async () => {
     const machine = withLinearTypes<CheckoutBag>()(definition);
     machine.controls.start();
     await flush();
 
     const snapshot = machine.getSnapshot();
     // Would be `Record<string, unknown>` before MetaOf threaded the bag's meta.
-    const label: string | undefined = snapshot.currentStep?.nodeMeta.label;
+    const label: string | undefined = snapshot.currentStep?.stepMeta.label;
     expect(label).toBe("Account");
     expect(snapshot.context.total).toBe(0);
     expect(snapshot.steps.stepOrder).toEqual(["account", "shipping", "review"]);
@@ -45,10 +45,10 @@ describe("withLinearTypes", () => {
     });
   });
 
-  it("rejects nodeMeta that the bag does not declare", () => {
+  it("rejects stepMeta that the bag does not declare", () => {
     const machine = withLinearTypes<CheckoutBag>()({
-      // @ts-expect-error `title` is not part of the bag's nodeMeta
-      steps: [{ id: "account" as const, nodeMeta: { title: "Account" } }],
+      // @ts-expect-error `title` is not part of the bag's stepMeta
+      steps: [{ id: "account" as const, stepMeta: { title: "Account" } }],
       context: { total: 0 },
     });
 

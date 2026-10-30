@@ -28,7 +28,7 @@ const reactDefinition = {
   context: initialReactContext,
   steps: {
     start: {
-      nodeMeta: { label: "Start" },
+      stepMeta: { label: "Start" },
       on: {
         next: [
           { to: "details", when: ({ context }) => context.includeDetails },
@@ -38,14 +38,14 @@ const reactDefinition = {
       },
     },
     details: {
-      nodeMeta: { label: "Details" },
+      stepMeta: { label: "Details" },
       on: { next: "review", requestClose: "confirmExit" },
     },
     review: {
-      nodeMeta: { label: "Review" },
+      stepMeta: { label: "Review" },
       on: { requestClose: "confirmExit" },
     },
-    confirmExit: { nodeMeta: { label: "Confirm Exit" } },
+    confirmExit: { stepMeta: { label: "Confirm Exit" } },
   },
 } satisfies GraphDefinition<ReactBag>;
 
@@ -220,9 +220,9 @@ type CoreContext = { owner: string; dirty: boolean };
 const coreDefinition: LinearJourneyDefinition<CoreStepId, CoreContext> = {
   context: { owner: "Core Tester", dirty: false },
   steps: [
-    { id: "one", nodeMeta: { label: "One" } },
-    { id: "two", nodeMeta: { label: "Two" } },
-    { id: "three", nodeMeta: { label: "Three" } },
+    { id: "one", stepMeta: { label: "One" } },
+    { id: "two", stepMeta: { label: "Two" } },
+    { id: "three", stepMeta: { label: "Three" } },
   ],
 };
 

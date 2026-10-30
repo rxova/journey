@@ -42,7 +42,7 @@ export const createGraphSnapshot = (
         ? null
         : {
             id: currentStepId,
-            nodeMeta: null,
+            stepMeta: null,
             isFirstTimeVisit: true,
             async: { isLoading: false, isSuccess: true, isError: false, error: null },
             isTerminal: false,

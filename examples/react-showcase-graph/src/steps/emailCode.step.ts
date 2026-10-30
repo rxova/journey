@@ -2,7 +2,7 @@ import type { ReactGraphStep } from "@rxova/journey-react/graph";
 import type { AuthBag } from "../types";
 
 export const emailCodeStep: ReactGraphStep<AuthBag> = {
-  nodeMeta: { label: "Email Code", icon: "\ud83d\udce7" },
+  stepMeta: { label: "Email Code", icon: "\ud83d\udce7" },
   on: {
     verifyCodeSuccess: "loggedIn",
     verifyCodeFailure: [

@@ -18,7 +18,7 @@ export type {
   TerminatePayloadOf,
 } from "../core/types";
 
-/** Full linear step config; a bare string is shorthand for `{ id, nodeMeta: {} }`. */
+/** Full linear step config; a bare string is shorthand for `{ id, stepMeta: {} }`. */
 export type LinearStepConfig<
   TContext = unknown,
   TStepId extends string = string,
@@ -27,7 +27,7 @@ export type LinearStepConfig<
   TTerminatePayload = unknown,
 > = {
   readonly id: TStepId;
-  readonly nodeMeta?: TMeta;
+  readonly stepMeta?: TMeta;
   readonly onEnter?: OnEnterHook<
     TContext,
     TStepId,

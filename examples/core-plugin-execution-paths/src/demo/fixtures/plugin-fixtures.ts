@@ -25,9 +25,9 @@ export const pluginDefinition = {
     notes: "",
   },
   steps: [
-    { id: "profile", nodeMeta: { label: "Profile" } },
-    { id: "review", nodeMeta: { label: "Review" } },
-    { id: "done", nodeMeta: { label: "Done" } },
+    { id: "profile", stepMeta: { label: "Profile" } },
+    { id: "review", stepMeta: { label: "Review" } },
+    { id: "done", stepMeta: { label: "Done" } },
   ],
 } satisfies LinearJourneyDefinition<PluginStepId, PluginContext>;
 
@@ -46,20 +46,20 @@ export const structureDefinition = {
   context: {},
   steps: {
     start: {
-      nodeMeta: { label: "Start" },
+      stepMeta: { label: "Start" },
       on: { next: [{ to: "address" }, { to: "review" }] },
     },
     address: {
-      nodeMeta: { label: "Address" },
+      stepMeta: { label: "Address" },
       on: { next: [{ to: "review" }, { to: "done" }], reject: "blocked" },
     },
     review: {
-      nodeMeta: { label: "Review" },
+      stepMeta: { label: "Review" },
       on: { next: "done", reject: "address" },
     },
-    blocked: { nodeMeta: { label: "Blocked" } },
-    done: { nodeMeta: { label: "Done" } },
-    orphan: { nodeMeta: { label: "Orphan" } },
+    blocked: { stepMeta: { label: "Blocked" } },
+    done: { stepMeta: { label: "Done" } },
+    orphan: { stepMeta: { label: "Orphan" } },
   },
 } satisfies GraphDefinition<StructureBag>;
 

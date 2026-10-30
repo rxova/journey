@@ -3,17 +3,17 @@ import { createLinearJourney } from "@rxova/journey-core";
 import { flush, startedLinear } from "@rxova/journey-core/testing";
 
 describe("createLinearJourney", () => {
-  it("accepts string shorthand steps implying empty nodeMeta", async () => {
+  it("accepts string shorthand steps implying empty stepMeta", async () => {
     const machine = createLinearJourney({
-      steps: ["intro", { id: "details", nodeMeta: { label: "Details" } }],
+      steps: ["intro", { id: "details", stepMeta: { label: "Details" } }],
       context: {},
     });
     machine.controls.start();
     await flush();
 
-    expect(machine.getSnapshot().currentStep?.nodeMeta).toEqual({});
+    expect(machine.getSnapshot().currentStep?.stepMeta).toEqual({});
     await machine.navigate.goToNextStep();
-    expect(machine.getSnapshot().currentStep?.nodeMeta).toEqual({ label: "Details" });
+    expect(machine.getSnapshot().currentStep?.stepMeta).toEqual({ label: "Details" });
   });
 
   it("derives order-based snapshot fields", async () => {

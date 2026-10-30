@@ -74,7 +74,7 @@ export type ResultOf<TBag extends Bag, TType extends string> = [ResultsOf<TBag>]
  *
  * ```ts
  * export const loginStep: GraphStep<AuthBag> = {
- *   nodeMeta: { label: "Login" },
+ *   stepMeta: { label: "Login" },
  *   on: { submit: "twofa" }
  * };
  * ```

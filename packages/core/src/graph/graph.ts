@@ -87,7 +87,7 @@ export function normalizeGraphDefinition(definition: LooseGraphDefinition): {
   const steps: Record<string, RuntimeStep> = {};
   for (const id of stepIds) {
     const config = definition.steps[id] as GraphStepConfig;
-    const runtimeStep: MutableRuntimeStep = { nodeMeta: config.nodeMeta ?? {} };
+    const runtimeStep: MutableRuntimeStep = { stepMeta: config.stepMeta ?? {} };
     if (config.onEnter) {
       runtimeStep.onEnter = config.onEnter as unknown as NonNullable<RuntimeStep["onEnter"]>;
     }

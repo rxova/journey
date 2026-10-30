@@ -85,7 +85,7 @@ export type StepAsyncState = {
 /** Fields present on `currentStep` for every journey kind. */
 export type CurrentStepBase<TStepId extends string, TMeta> = {
   readonly id: TStepId;
-  readonly nodeMeta: TMeta;
+  readonly stepMeta: TMeta;
   /** True while this is the first ever entry of the step in this run. */
   readonly isFirstTimeVisit: boolean;
   readonly async: StepAsyncState;

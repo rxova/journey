@@ -148,7 +148,7 @@ export type GraphStepConfig<
   TMeta = Record<string, unknown>,
   THandlers = unknown,
 > = {
-  readonly nodeMeta?: TMeta;
+  readonly stepMeta?: TMeta;
   /** Outgoing transitions, keyed by event. */
   readonly on?: {
     readonly [TType in TEvents["type"]]?: GraphOnEntry<
@@ -355,7 +355,7 @@ export type LooseGraphDefinition = {
 };
 
 export type MutableRuntimeStep = {
-  nodeMeta: unknown;
+  stepMeta: unknown;
   onEnter?: NonNullable<RuntimeStep["onEnter"]>;
   onLeave?: NonNullable<RuntimeStep["onLeave"]>;
 };
