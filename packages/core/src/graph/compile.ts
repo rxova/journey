@@ -151,7 +151,10 @@ export function compileGraph<
   if (stepIds.length === 0) {
     throw new JourneyError("empty-definition", "a graph journey needs at least one step");
   }
-  if (!stepIds.includes(definition.initial)) {
+  // A Set, not `stepIds.includes`: every transition target is checked against
+  // it, so a linear scan per edge makes validation quadratic in a wide graph.
+  const declared = new Set(stepIds);
+  if (!declared.has(definition.initial)) {
     throw new JourneyError(
       "unknown-initial-step",
       `initial step "${definition.initial}" is not a declared step`,
@@ -181,7 +184,7 @@ export function compileGraph<
     candidate: LooseTransition,
     index: number,
   ): void => {
-    if (!stepIds.includes(candidate.to)) {
+    if (!declared.has(candidate.to)) {
       throw new JourneyError(
         "dangling-transition",
         `transition "${event}" references unknown step "${candidate.to}"`,
