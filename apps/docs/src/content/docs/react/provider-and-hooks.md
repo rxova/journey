@@ -15,7 +15,7 @@ around that machine: `machine`, `Provider`, `StepRenderer`, the reactive hooks `
 `useSelector`, `useStep`, `useContextSelector`, and `useEventEffect`, the forward gate
 `useStepHandler`, and the verbatim delegates `controls`, `navigate` and `updateContext` — each
 pre-bound to the definition's context and step-id types. A bare string in `steps` is shorthand for
-`{ id }`; a config object also carries `metadata`. Core's per-step `onEnter`/`onLeave` hooks are
+`{ id }`; a config object also carries `stepMeta`. Core's per-step `onEnter`/`onLeave` hooks are
 **not** accepted in this tier — see [Enter and leave are effects](#enter-and-leave-are-effects).
 
 ```tsx
@@ -31,7 +31,7 @@ const initialContext: CheckoutContext = { shipping: null, shippingId: null };
 const checkout = createLinearJourney({
   name: "checkout",
   context: initialContext,
-  steps: ["account", { id: "shipping", metadata: { title: "Shipping" } }, "review"],
+  steps: ["account", { id: "shipping", stepMeta: { title: "Shipping" } }, "review"],
 });
 ```
 
@@ -39,7 +39,7 @@ const checkout = createLinearJourney({
 casting — and the step-id union is inferred from the `steps` tuple; call sites never pass
 generics. See [TypeScript Types](./typescript.md) for the inference story.
 
-Declared `metadata` surfaces at `snapshot.currentStep.metadata` while the step is current; there is
+Declared `stepMeta` surfaces at `snapshot.currentStep.stepMeta` while the step is current; there is
 no separate per-step metadata lookup. Component-scoped async work belongs in
 [`useStepHandler()`](#usestephandler).
 
@@ -154,7 +154,7 @@ function Controls() {
 ```
 
 Every read is a snapshot field: `snapshot.currentStep.id/.index/.isFirstStep/.isLastStep/`
-`.isFirstTimeVisit/.metadata/.async`, `snapshot.steps.totalSteps/.stepOrder`,
+`.isFirstTimeVisit/.stepMeta/.async`, `snapshot.steps.totalSteps/.stepOrder`,
 `snapshot.history.visited`, `snapshot.status`, `snapshot.transition.pending/.phase`, and
 `snapshot.context`. `snapshot.currentStep` is `null` while the machine is idle — exactly as in
 the graph tier. See [Snapshot](../core/snapshot.md) for the complete contract.

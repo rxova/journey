@@ -24,9 +24,9 @@ type CheckoutTerminationPayloads = {
 
 const checkout = createLinearJourney<CheckoutStepId, CheckoutContext, CheckoutTerminationPayloads>({
   steps: [
-    { id: "account", metadata: { title: "Account" } },
-    { id: "shipping", metadata: { title: "Shipping" } },
-    { id: "review", metadata: { title: "Review" } },
+    { id: "account", stepMeta: { title: "Account" } },
+    { id: "shipping", stepMeta: { title: "Shipping" } },
+    { id: "review", stepMeta: { title: "Review" } },
   ] as const,
   context: {
     email: "",
@@ -101,7 +101,7 @@ const snapshot = checkout.getSnapshot();
 snapshot.type; // "linear"
 snapshot.status; // "running"
 snapshot.currentStep?.id; // "shipping"
-snapshot.currentStep?.metadata.title; // "Shipping"
+snapshot.currentStep?.stepMeta.title; // "Shipping"
 snapshot.currentStep?.index; // 1
 snapshot.history.timeline; // ["account", "shipping"]
 snapshot.transition.pending; // false

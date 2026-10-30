@@ -143,7 +143,7 @@ const signup = createLinearJourney(definition, { startAt: "review", autoStart: f
 ```
 
 With `autoStart: false` the journey is idle (`snapshot.currentStep` is `null`, `StepRenderer`
-shows its `fallback`) until `signup.machine.controls.start()`. Step `metadata` lives in the
+shows its `fallback`) until `signup.machine.controls.start()`. Step `stepMeta` lives in the
 definition's step objects, never in JSX—the `views` values only supply what each step renders.
 Core's per-step `onEnter`/`onLeave` hooks are not accepted in this tier: a step's view mounts on
 enter and unmounts on leave, so a `useEffect` with a cleanup is the equivalent.

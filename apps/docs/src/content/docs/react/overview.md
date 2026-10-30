@@ -80,7 +80,7 @@ export function Signup() {
 The definition is the single source of truth. `context` is both the initial value and the type
 anchor—annotate the value (`const initialContext: SignupContext = { ... }`) rather than casting—so
 `TContext` and the step-ID union are inferred and no call site passes generics. A bare string in
-`steps` is shorthand for `{ id }`; step `metadata` lives in those step objects, never in JSX.
+`steps` is shorthand for `{ id }`; step `stepMeta` lives in those step objects, never in JSX.
 Core's per-step `onEnter`/`onLeave` hooks are not accepted here — `<StepRenderer>` keys the active
 view by step ID, so a step's own component mounts on enter and unmounts on leave, and a
 `useEffect` with a cleanup says both while still reaching component state. The optional `name` becomes the Provider's React DevTools
@@ -275,7 +275,7 @@ React reads the current Core snapshot:
 snapshot.status;
 snapshot.context;
 snapshot.currentStep?.id; // null while idle (before start); both bundles autostart by default
-snapshot.currentStep?.metadata;
+snapshot.currentStep?.stepMeta;
 snapshot.currentStep?.async;
 snapshot.history.timeline;
 snapshot.history.currentIndex;

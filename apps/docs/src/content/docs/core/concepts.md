@@ -24,17 +24,17 @@ position), `defaultTimeoutMs`, `onListenerError` (routes isolated subscriber fai
 
 ## Steps and metadata
 
-Every step has an id. A full step config can add static `metadata`, `onLeave`, and `onEnter`.
+Every step has an id. A full step config can add static `stepMeta`, `onLeave`, and `onEnter`.
 
 ```ts
 {
   id: "profile",
-  metadata: { title: "Your profile" },
+  stepMeta: { title: "Your profile" },
   onLeave: ({ snapshot }) => analytics.track("profile_left", snapshot.context)
 }
 ```
 
-Metadata is definition data. The current step exposes it at `snapshot.currentStep.metadata`.
+Metadata is definition data. The current step exposes it at `snapshot.currentStep.stepMeta`.
 
 ## Context
 

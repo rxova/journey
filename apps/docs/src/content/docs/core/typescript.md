@@ -10,8 +10,8 @@ payloads.
 ```ts
 const machine = createLinearJourney({
   steps: [
-    { id: "account", metadata: { title: "Account" } },
-    { id: "review", metadata: { title: "Review" } },
+    { id: "account", stepMeta: { title: "Account" } },
+    { id: "review", stepMeta: { title: "Review" } },
   ] as const,
   context: { email: "" },
 });

@@ -13,7 +13,7 @@ const definition = {
     "intro",
     {
       id: "form",
-      metadata: { title: "Form" },
+      stepMeta: { title: "Form" },
       onLeave: ({ snapshot }) => analytics.track("form_left", snapshot.context),
     },
     {
@@ -25,7 +25,7 @@ const definition = {
 ```
 
 The array order controls initial selection, next-step fallback, and linear snapshot indices. A bare
-string is shorthand for `{ id, metadata: {} }`.
+string is shorthand for `{ id, stepMeta: {} }`.
 
 ## Graph transitions
 

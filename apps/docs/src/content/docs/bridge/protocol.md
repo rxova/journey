@@ -109,7 +109,7 @@ Protocol v7 transports the current Core snapshot. Shared fields are:
 }
 ```
 
-`currentStep` is `null` while idle and otherwise includes `id`, `metadata`,
+`currentStep` is `null` while idle and otherwise includes `id`, `stepMeta`,
 `isFirstTimeVisit`, and per-entry `async` state. `history` contains `timeline`,
 `currentIndex`, `visited`, `canGoBack`, and `canGoForward`. `machine` contains lifecycle
 booleans, the broad loading flag, and terminal outcome.

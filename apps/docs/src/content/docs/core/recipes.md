@@ -158,7 +158,7 @@ const stop = machine.subscriptions.subscribeEvent(
 ## Read current-step metadata
 
 ```ts
-const title = machine.getSnapshot().currentStep?.metadata.title;
+const title = machine.getSnapshot().currentStep?.stepMeta.title;
 ```
 
 Metadata for non-current steps remains in your reusable definition.

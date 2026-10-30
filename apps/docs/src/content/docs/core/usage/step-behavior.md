@@ -9,7 +9,7 @@ Step configs keep static UI metadata and lifecycle behavior beside the step they
 ```ts
 const step = {
   id: "review",
-  metadata: { title: "Review order" },
+  stepMeta: { title: "Review order" },
   onLeave: async ({ snapshot, to }) => {
     await analytics.track("review_left", { order: snapshot.context.orderId, to });
   },

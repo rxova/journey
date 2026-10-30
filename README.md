@@ -71,9 +71,9 @@ const definition: LinearJourneyDefinition<StepId, Context> = {
     shippingId: null,
   },
   steps: [
-    { id: "account", metadata: { title: "Account" } },
-    { id: "shipping", metadata: { title: "Shipping" } },
-    { id: "review", metadata: { title: "Review" } },
+    { id: "account", stepMeta: { title: "Account" } },
+    { id: "shipping", stepMeta: { title: "Shipping" } },
+    { id: "review", stepMeta: { title: "Review" } },
   ],
 };
 
@@ -157,14 +157,14 @@ const machine = withGraphTypes<{
   context: { ready: false },
   steps: {
     start: {
-      metadata: { title: "Start" },
+      stepMeta: { title: "Start" },
       on: {
         continue: [{ to: "details", when: ({ context }) => context.ready }],
         skip: "done",
       },
     },
-    details: { metadata: { title: "Details" }, on: { continue: "done" } },
-    done: { metadata: { title: "Done" } },
+    details: { stepMeta: { title: "Details" }, on: { continue: "done" } },
+    done: { stepMeta: { title: "Done" } },
   },
 });
 
@@ -198,7 +198,7 @@ snapshot.type; // "linear" | "graph"
 snapshot.status; // idle | running | paused | completed | terminated
 snapshot.context;
 snapshot.currentStep?.id;
-snapshot.currentStep?.metadata;
+snapshot.currentStep?.stepMeta;
 snapshot.currentStep?.async;
 snapshot.history.timeline;
 snapshot.history.currentIndex;

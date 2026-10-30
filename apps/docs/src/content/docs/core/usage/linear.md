@@ -21,7 +21,7 @@ const machine = createLinearJourney<StepId, Context, TerminationPayloads>({
     "account",
     {
       id: "shipping",
-      metadata: { title: "Shipping" },
+      stepMeta: { title: "Shipping" },
       onLeave: async ({ snapshot }) => analytics.track("shipping_left", snapshot.context),
     },
     {
@@ -96,7 +96,7 @@ snapshot.currentStep?.isFirstStep;
 snapshot.currentStep?.isLastStep;
 ```
 
-Metadata is available on the current step as `snapshot.currentStep.metadata`.
+Metadata is available on the current step as `snapshot.currentStep.stepMeta`.
 
 ## Transactional navigation work
 

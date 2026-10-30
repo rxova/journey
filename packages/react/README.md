@@ -80,7 +80,7 @@ groups are plain properties — `machine`, `controls`, `navigate`, `updateContex
 they are frozen objects with stable references, so reading one can neither subscribe nor
 re-render.
 
-Step configs here carry `metadata` only. Core's `onEnter`/`onLeave` are rejected in this tier —
+Step configs here carry `stepMeta` only. Core's `onEnter`/`onLeave` are rejected in this tier —
 `StepRenderer` keys the active view by step id, so a step's own component mounts on enter and
 unmounts on leave, and a `useEffect` with a cleanup says both while still reaching component
 state.

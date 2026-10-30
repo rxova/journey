@@ -36,9 +36,9 @@ type CheckoutTerminationPayloads = {
 
 const checkout = createLinearJourney<CheckoutStepId, CheckoutContext, CheckoutTerminationPayloads>({
   steps: [
-    { id: "account", metadata: { title: "Account" } },
-    { id: "shipping", metadata: { title: "Shipping" } },
-    { id: "review", metadata: { title: "Review" } },
+    { id: "account", stepMeta: { title: "Account" } },
+    { id: "shipping", stepMeta: { title: "Shipping" } },
+    { id: "review", stepMeta: { title: "Review" } },
   ],
   context: {
     email: "",

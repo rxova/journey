@@ -26,7 +26,7 @@ snapshot.plugins;
 | Field              | Meaning                                                   |
 | ------------------ | --------------------------------------------------------- |
 | `id`               | Current step id.                                          |
-| `metadata`         | Static definition metadata.                               |
+| `stepMeta`         | Static definition metadata.                               |
 | `isFirstTimeVisit` | `true` only on the first entry of this step in the run.   |
 | `async`            | Loading, success, and error state for current entry work. |
 

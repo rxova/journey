@@ -119,7 +119,7 @@ import type { GraphStep } from "@rxova/journey-core";
 import type { AuthBag } from "../types";
 
 export const loginStep: GraphStep<AuthBag> = {
-  metadata: { title: "Sign in" },
+  stepMeta: { title: "Sign in" },
   onLeave: ({ snapshot }) => analytics.track("login_left", snapshot.context),
   on: {
     submit: [
