@@ -74,15 +74,15 @@ export function reportListenerError(error: unknown): void {
 /**
  * The single projection from a runtime edge to its public, inert view.
  *
- * Three callers need the same shape — the plugin host's `structure`, the
- * standalone `analyzeStructure`, and `compile`. Keeping one projection is what
- * stops the public `JourneyStructure` from drifting away from the runtime
- * edges it describes.
+ * Every reader of the structure view — the plugin host's `structure` and the
+ * standalone `analyzeStructure` — goes through `toStructure`, so this stays
+ * private to it. One projection is what stops the public `JourneyStructure`
+ * from drifting away from the runtime edges it describes.
  *
  * `edgeMeta` is present only when the edge declared one, so a definition that
  * declares none produces exactly the shape it always did.
  */
-export const structureTransition = (
+const structureTransition = (
   transition: RuntimeTransition,
 ): JourneyStructure["transitions"][number] => {
   const view = {
