@@ -22,14 +22,19 @@ import type {
  * carry (`isLoading`, plus one per status) were each another spelling of
  * `status` or of `transition.pending`, and no panel read them.
  */
-export const JOURNEY_DEVTOOLS_PROTOCOL_VERSION = 8 as const;
+export const JOURNEY_DEVTOOLS_PROTOCOL_VERSION = 9 as const;
 /**
  * Prior protocol version still accepted on the wire; its `invoke` envelope
- * shape is identical, so a v7 extension can drive a v8 bridge.
+ * shape is identical, so a v8 extension can drive a v9 bridge.
+ *
+ * v9 renamed `snapshot.currentStep.metadata` to `stepMeta`. A v8 extension
+ * reading the old name gets `undefined` rather than an error, so the version
+ * is the only signal it has — which is why this moved even though the envelope
+ * did not.
  */
-export const JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION = 7 as const;
+export const JOURNEY_DEVTOOLS_PRIOR_PROTOCOL_VERSION = 8 as const;
 /** Oldest protocol version still tolerated for register envelopes. */
-export const JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION = 6 as const;
+export const JOURNEY_DEVTOOLS_LEGACY_PROTOCOL_VERSION = 7 as const;
 /** `window.postMessage` channel discriminator for all devtools traffic. */
 export const JOURNEY_DEVTOOLS_CHANNEL = "__RXOVA_JOURNEY_DEVTOOLS__" as const;
 /** Message kind the extension sends to ask the bridge to re-emit register + snapshot. */
