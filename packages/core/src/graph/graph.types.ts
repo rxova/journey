@@ -216,6 +216,43 @@ export type GraphJourneyDefinition<
   readonly $payloads?: TTerminationPayloads;
 };
 
+/**
+ * The literal shape `createGraphJourney` and `compileGraph` accept.
+ *
+ * Deliberately not `GraphJourneyDefinition`: `TStepId` has to infer from the
+ * `steps` record keys alone, so every other occurrence is `NoInfer`-wrapped.
+ * Without that, `initial` wins inference and collapses the id union to the
+ * single initial id.
+ */
+export type GraphDefinitionInput<
+  TContext,
+  TStepId extends string,
+  TEvents extends JourneyEventObject = JourneyEventObject,
+  THandlers = unknown,
+  TMeta = Record<string, unknown>,
+  TTerminationPayloads extends JourneyTerminationPayloads = JourneyTerminationPayloads,
+> = {
+  readonly steps: Readonly<
+    Record<
+      TStepId,
+      GraphStepConfig<
+        NoInfer<TContext>,
+        NoInfer<TStepId>,
+        NoInfer<TEvents>,
+        TMeta,
+        NoInfer<THandlers>
+      >
+    >
+  >;
+  readonly initial: NoInfer<TStepId>;
+  readonly context: TContext;
+  readonly handlers?: THandlers;
+  /** @internal Builder-produced; opaque by design (see GraphJourneyDefinition). */
+  readonly eventWork?: Readonly<Record<string, unknown>>;
+  readonly $events?: TEvents;
+  readonly $payloads?: TTerminationPayloads;
+};
+
 export type GraphJourneyOptions<
   THandlers = unknown,
   TPlugins extends readonly AnyJourneyPlugin[] = readonly [],

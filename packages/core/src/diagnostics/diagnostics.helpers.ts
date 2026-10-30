@@ -1,5 +1,5 @@
-import { toStructure } from "../core/helpers";
-import { normalizeGraphDefinition } from "../graph/graph";
+import { ensureCompiled } from "../graph/compile";
+import type { AnyCompiledGraph } from "../graph/compile";
 import type { DiagnosticsIssue, DiagnosticsResult } from "./diagnostics.types";
 import type { JourneyStructure } from "../core/types";
 
@@ -118,15 +118,12 @@ function analyzeJourneyStructure(structure: JourneyStructure): DiagnosticsResult
  * Nothing here needs a runtime — it is the definition that is being checked —
  * so this runs in a test or a build step, before any machine exists. Linear
  * journeys have no transition graph and so nothing to analyze.
+ *
+ * Takes a plain definition or one already through `compileGraph`; a compiled
+ * graph is analyzed without being validated and flattened a second time.
  */
-export function analyzeStructure(definition: {
-  readonly steps: object;
-  readonly initial: string;
-}): DiagnosticsResult {
-  const { stepIds, steps, transitions } = normalizeGraphDefinition(
-    definition as Parameters<typeof normalizeGraphDefinition>[0],
-  );
-  return analyzeJourneyStructure(
-    toStructure({ kind: "graph", stepIds, steps, initial: definition.initial, transitions }),
-  );
+export function analyzeStructure(
+  definition: { readonly steps: object; readonly initial: string } | AnyCompiledGraph,
+): DiagnosticsResult {
+  return analyzeJourneyStructure(ensureCompiled(definition).structure);
 }

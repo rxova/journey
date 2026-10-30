@@ -10,11 +10,16 @@ export type {
   TerminatePayloadOf,
 } from "./linear/linear.types";
 
-// normalizeGraphDefinition is deliberately not exported: its return type names
-// RuntimeStep/RuntimeTransition, which are internal and have no export path, so
-// publishing it would freeze those shapes into the 1.0 contract.
+// compileGraph is the public door to normalization. What it returns carries its
+// runtime payload behind a module-private symbol, typed `unknown`, so
+// RuntimeStep/RuntimeTransition stay out of the 1.0 contract: a compiled graph
+// is a frozen `structure` view and nothing else that can be named.
+export { compileGraph } from "./graph/compile";
+export type { AnyCompiledGraph, CompiledGraph } from "./graph/compile";
+
 export { createGraphJourney, withGraphTypes } from "./graph/graph";
 export type {
+  GraphDefinitionInput,
   GraphHookArgs,
   GraphJourneyDefinition,
   GraphJourneyMachine,

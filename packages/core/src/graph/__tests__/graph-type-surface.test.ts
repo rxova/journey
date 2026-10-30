@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { withGraphTypes } from "@rxova/journey-core";
+import { compileGraph, createGraphJourney, withGraphTypes } from "@rxova/journey-core";
 import type { GraphStep } from "@rxova/journey-core";
 import { flush } from "@rxova/journey-core/testing";
 
@@ -73,5 +73,52 @@ describe("declared work receives typed handlers", () => {
       },
     };
     expect(step.on?.GO).toBeTypeOf("object");
+  });
+});
+
+/**
+ * `createGraphJourney` takes a union of the definition literal and a compiled
+ * graph. A union parameter is inference-fragile: if the compiled arm were
+ * reachable for a plain literal, `TStepId` would widen to `string` and every
+ * id check below would silently start passing. Each `@ts-expect-error` here
+ * fails the typecheck the moment that happens.
+ */
+describe("the compiled-graph union leaves step id inference intact", () => {
+  const literal = {
+    initial: "a",
+    context: { n: 0 },
+    steps: { a: { on: { GO: "b" } }, b: {} },
+  } as const;
+
+  it("narrows goToStepById from a plain literal", () => {
+    const machine = createGraphJourney(literal, { autoStart: false });
+    // @ts-expect-error "zzz" is not a declared step id
+    void machine.navigate.goToStepById("zzz");
+    expect(machine.getSnapshot().currentStep).toBeNull();
+  });
+
+  it("narrows goToStepById from a compiled graph", () => {
+    const machine = createGraphJourney(compileGraph(literal), { autoStart: false });
+    // @ts-expect-error "zzz" is not a declared step id
+    void machine.navigate.goToStepById("zzz");
+    expect(machine.getSnapshot().currentStep).toBeNull();
+  });
+
+  it("narrows goToStepById from a spread compiled graph", () => {
+    const machine = createGraphJourney({ ...compileGraph(literal) }, { autoStart: false });
+    // @ts-expect-error "zzz" is not a declared step id
+    void machine.navigate.goToStepById("zzz");
+    expect(machine.getSnapshot().currentStep).toBeNull();
+  });
+
+  it("still rejects an initial that is not a declared step", () => {
+    expect(() =>
+      createGraphJourney({
+        // @ts-expect-error "zzz" is not a declared step id
+        initial: "zzz",
+        context: { n: 0 },
+        steps: { a: {}, b: {} },
+      }),
+    ).toThrow();
   });
 });
