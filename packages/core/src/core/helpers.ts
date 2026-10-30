@@ -1,5 +1,5 @@
 import type { RuntimeTransition } from "./runtime.types";
-import type { StepAsyncState, TransitionInfo } from "./types";
+import type { JourneyStructure, StepAsyncState, TransitionInfo } from "./types";
 
 /** Hard cap on events processed from one raise cascade before it is dropped. */
 export const MAX_RAISED_EVENTS = 25;
@@ -70,3 +70,44 @@ export const hasOwn = (target: object, key: string): boolean => Object.hasOwn(ta
 export function reportListenerError(error: unknown): void {
   console.error("[journey] subscriber threw:", error);
 }
+
+/**
+ * The single projection from a runtime edge to its public, inert view.
+ *
+ * Three callers need the same shape — the plugin host's `structure`, the
+ * standalone `analyzeStructure`, and `compile`. Keeping one projection is what
+ * stops the public `JourneyStructure` from drifting away from the runtime
+ * edges it describes.
+ *
+ * `edgeMeta` is present only when the edge declared one, so a definition that
+ * declares none produces exactly the shape it always did.
+ */
+export const structureTransition = (
+  transition: RuntimeTransition,
+): JourneyStructure["transitions"][number] => {
+  const view = {
+    event: transition.event,
+    from: transition.from,
+    to: transition.to,
+    guarded: transition.when !== undefined,
+    label: transition.label ?? null,
+    index: transition.index,
+  };
+  return transition.edgeMeta === undefined ? view : { ...view, edgeMeta: transition.edgeMeta };
+};
+
+/** Builds the public structure view of a normalized graph. Frozen all the way down. */
+export const toStructure = (input: {
+  readonly kind: "linear" | "graph";
+  readonly stepIds: readonly string[];
+  readonly initial: string;
+  readonly transitions: readonly RuntimeTransition[];
+}): JourneyStructure =>
+  Object.freeze({
+    kind: input.kind,
+    stepIds: Object.freeze([...input.stepIds]),
+    initial: input.initial,
+    transitions: Object.freeze(
+      input.transitions.map((transition) => Object.freeze(structureTransition(transition))),
+    ),
+  });

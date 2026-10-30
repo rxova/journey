@@ -87,7 +87,7 @@ export function normalizeGraphDefinition(definition: LooseGraphDefinition): {
   const steps: Record<string, RuntimeStep> = {};
   for (const id of stepIds) {
     const config = definition.steps[id] as GraphStepConfig;
-    const runtimeStep: MutableRuntimeStep = { metadata: config.metadata ?? {} };
+    const runtimeStep: MutableRuntimeStep = { nodeMeta: config.nodeMeta ?? {} };
     if (config.onEnter) {
       runtimeStep.onEnter = config.onEnter as unknown as NonNullable<RuntimeStep["onEnter"]>;
     }
@@ -126,6 +126,9 @@ export function normalizeGraphDefinition(definition: LooseGraphDefinition): {
         stepId: from,
       });
     }
+    // Conditional, like `label` and `timeoutMs`: a definition that declares no
+    // edge meta produces transitions with no `edgeMeta` key at all.
+    if (candidate.edgeMeta !== undefined) runtimeTransition.edgeMeta = candidate.edgeMeta;
     transitions.push(runtimeTransition);
   };
 

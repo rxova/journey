@@ -41,7 +41,7 @@ export type AnySendWork = {
 };
 
 export type RuntimeStep = {
-  readonly metadata: unknown;
+  readonly nodeMeta: unknown;
   readonly onEnter?: AnyOnEffect;
   readonly onLeave?: AnyOnEffect;
 };
@@ -66,6 +66,12 @@ export type RuntimeTransition = {
    */
   readonly when?: (args: { context: unknown; handlers: unknown; result?: unknown }) => boolean;
   readonly onTransition?: AnyOnEffect;
+  /**
+   * Inert, user-owned data describing the edge. Never read by routing — it
+   * exists so a compiled graph can carry what the definition knew about each
+   * edge into analysis.
+   */
+  readonly edgeMeta?: Readonly<Record<string, unknown>>;
 };
 
 export type RuntimeConfig = {

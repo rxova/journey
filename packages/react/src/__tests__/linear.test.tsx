@@ -167,21 +167,21 @@ describe("linear bundle rendering and navigation", () => {
 });
 
 describe("definition step config and start position", () => {
-  it("exposes definition metadata through the snapshot", async () => {
+  it("exposes definition nodeMeta through the snapshot", async () => {
     const journey = createLinearJourney({
       context: {},
       steps: [
-        { id: "a", metadata: "Alpha" },
-        { id: "b", metadata: "Beta" },
+        { id: "a", nodeMeta: "Alpha" },
+        { id: "b", nodeMeta: "Beta" },
       ],
     });
     const Meta = () => {
       const step = journey.useStep();
-      return <span data-testid="metadata">{String(step?.metadata)}</span>;
+      return <span data-testid="nodeMeta">{String(step?.nodeMeta)}</span>;
     };
     render(<Meta />);
     await flush();
-    expect(screen.getByTestId("metadata").textContent).toBe("Alpha");
+    expect(screen.getByTestId("nodeMeta").textContent).toBe("Alpha");
   });
 
   // That the skipped steps never *enter* is Core's assertion, made against

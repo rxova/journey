@@ -1,3 +1,4 @@
+import { toStructure } from "../core/helpers";
 import { normalizeGraphDefinition } from "../graph/graph";
 import type { DiagnosticsIssue, DiagnosticsResult } from "./diagnostics.types";
 import type { JourneyStructure } from "../core/types";
@@ -125,18 +126,7 @@ export function analyzeStructure(definition: {
   const { stepIds, transitions } = normalizeGraphDefinition(
     definition as Parameters<typeof normalizeGraphDefinition>[0],
   );
-  const structure: JourneyStructure = {
-    kind: "graph",
-    stepIds,
-    initial: definition.initial,
-    transitions: transitions.map((transition) => ({
-      event: transition.event,
-      from: transition.from,
-      to: transition.to,
-      guarded: transition.when !== undefined,
-      label: transition.label ?? null,
-      index: transition.index,
-    })),
-  };
-  return analyzeJourneyStructure(structure);
+  return analyzeJourneyStructure(
+    toStructure({ kind: "graph", stepIds, initial: definition.initial, transitions }),
+  );
 }

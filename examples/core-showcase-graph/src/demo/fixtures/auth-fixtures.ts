@@ -116,7 +116,7 @@ export type AuthBag = {
  * commits instead of being rolled back with the unmatched send.
  */
 const loginStep: GraphStep<AuthBag> = {
-  metadata: { label: "Login", icon: "\ud83d\udd10" },
+  nodeMeta: { label: "Login", icon: "\ud83d\udd10" },
   on: {
     submitLogin: {
       run: ({ snapshot, handlers }) =>
@@ -148,7 +148,7 @@ const loginStep: GraphStep<AuthBag> = {
 };
 
 const setup2faStep: GraphStep<AuthBag> = {
-  metadata: { label: "Setup 2FA", icon: "\ud83d\udcf1" },
+  nodeMeta: { label: "Setup 2FA", icon: "\ud83d\udcf1" },
   // Enrollment is a side effect of *arriving*, not of choosing a route, so it
   // belongs on the step rather than on an event's work. Note the asymmetry:
   // step hooks receive no `handlers`, so this closes over authApi directly
@@ -172,12 +172,12 @@ const setup2faStep: GraphStep<AuthBag> = {
  * its attempt count instead of rolling back.
  */
 const verificationStep = (
-  metadata: StepMeta,
+  nodeMeta: StepMeta,
   self: "verifyCode" | "emailCode" | "authenticatorCode",
   blockedError: string,
   retryError: string,
 ): GraphStep<AuthBag> => ({
-  metadata,
+  nodeMeta,
   on: {
     verify: {
       run: ({ snapshot, handlers }) => handlers.api.verifyCode(snapshot.context.verificationCode),
@@ -224,9 +224,9 @@ const authenticatorCodeStep = verificationStep(
   "Use 123456 from the authenticator app.",
 );
 
-const loggedInStep: GraphStep<AuthBag> = { metadata: { label: "Logged In", icon: "\ud83c\udf89" } };
+const loggedInStep: GraphStep<AuthBag> = { nodeMeta: { label: "Logged In", icon: "\ud83c\udf89" } };
 
-const blockedStep: GraphStep<AuthBag> = { metadata: { label: "Blocked", icon: "\u26d4" } };
+const blockedStep: GraphStep<AuthBag> = { nodeMeta: { label: "Blocked", icon: "\u26d4" } };
 
 export const graphDefinition = {
   initial: "login",

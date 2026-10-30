@@ -58,7 +58,7 @@ const snapshot: JourneyDevtoolsSerializableSnapshot = {
   type: "graph",
   currentStep: {
     id: "start",
-    metadata: null,
+    nodeMeta: null,
     isFirstTimeVisit: true,
     async: { isLoading: false, isSuccess: true, isError: false, error: null },
     isTerminal: false,

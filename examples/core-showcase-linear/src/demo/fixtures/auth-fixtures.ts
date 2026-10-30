@@ -63,17 +63,17 @@ export const initialLoginContext = (): LoginContext => ({
 export const linearDefinition = {
   context: initialLoginContext(),
   steps: [
-    { id: "login", metadata: { label: "Login" } },
+    { id: "login", nodeMeta: { label: "Login" } },
     {
       id: "setup2fa",
-      metadata: { label: "Setup 2FA" },
+      nodeMeta: { label: "Setup 2FA" },
       onEnter: async ({ updateContext }) => {
         const enrollment = await authApi.generateQrCode();
         updateContext((context) => ({ ...context, qrCode: enrollment.qrCode }));
       },
     },
-    { id: "verifyCode", metadata: { label: "Verify Code" } },
-    { id: "loggedIn", metadata: { label: "Status" } },
+    { id: "verifyCode", nodeMeta: { label: "Verify Code" } },
+    { id: "loggedIn", nodeMeta: { label: "Status" } },
   ],
 } satisfies LinearJourneyDefinition<
   LoginStepId,

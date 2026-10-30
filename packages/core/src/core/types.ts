@@ -85,7 +85,7 @@ export type StepAsyncState = {
 /** Fields present on `currentStep` for every journey kind. */
 export type CurrentStepBase<TStepId extends string, TMeta> = {
   readonly id: TStepId;
-  readonly metadata: TMeta;
+  readonly nodeMeta: TMeta;
   /** True while this is the first ever entry of the step in this run. */
   readonly isFirstTimeVisit: boolean;
   readonly async: StepAsyncState;
@@ -482,6 +482,8 @@ export type JourneyStructure = {
     readonly label: string | null;
     /** Position among the candidates this step declares for this event. */
     readonly index: number;
+    /** The edge's declared `edgeMeta`; present only when the edge declared one. */
+    readonly edgeMeta?: Readonly<Record<string, unknown>>;
   }[];
 };
 

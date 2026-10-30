@@ -341,7 +341,7 @@ export const mountCoreShowcase = (root: HTMLElement) => {
   // walk, so it doubles as the stepper's progression map.
   const stepOrder = linearDefinition.steps.map((step) => ({
     id: step.id,
-    label: (step.metadata as { label?: string } | undefined)?.label ?? step.id,
+    label: (step.nodeMeta as { label?: string } | undefined)?.label ?? step.id,
   }));
 
   const renderStepper = (currentIndex: number) =>

@@ -59,6 +59,12 @@ export type GraphTransition<
    * every other edge in the graph.
    */
   readonly timeoutMs?: number;
+  /**
+   * Inert, user-owned data describing this edge. Never read by routing; it
+   * travels into the compiled graph's structure view so analysis can see what
+   * the definition knew about the edge.
+   */
+  readonly edgeMeta?: Readonly<Record<string, unknown>>;
   /** Async effect, post-commit, cannot cancel; a throw is handled like an `onEnter` throw. */
   readonly onTransition?: (
     args: Omit<GraphHookArgs<TContext, TStepId, TEvents, TMeta>, "event"> & {
@@ -142,7 +148,7 @@ export type GraphStepConfig<
   TMeta = Record<string, unknown>,
   THandlers = unknown,
 > = {
-  readonly metadata?: TMeta;
+  readonly nodeMeta?: TMeta;
   /** Outgoing transitions, keyed by event. */
   readonly on?: {
     readonly [TType in TEvents["type"]]?: GraphOnEntry<
@@ -335,6 +341,7 @@ export type LooseTransition = {
   readonly onTransition?: NonNullable<RuntimeTransition["onTransition"]>;
   readonly label?: string;
   readonly timeoutMs?: number;
+  readonly edgeMeta?: Readonly<Record<string, unknown>>;
 };
 
 /** Internal, generics-erased view of a definition used by normalization. */
@@ -348,7 +355,7 @@ export type LooseGraphDefinition = {
 };
 
 export type MutableRuntimeStep = {
-  metadata: unknown;
+  nodeMeta: unknown;
   onEnter?: NonNullable<RuntimeStep["onEnter"]>;
   onLeave?: NonNullable<RuntimeStep["onLeave"]>;
 };
@@ -369,4 +376,5 @@ export type MutableRuntimeTransition = {
   timeoutMs?: number;
   when?: NonNullable<RuntimeTransition["when"]>;
   onTransition?: NonNullable<RuntimeTransition["onTransition"]>;
+  edgeMeta?: Readonly<Record<string, unknown>>;
 };

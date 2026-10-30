@@ -8,6 +8,7 @@ import {
   LOADING_ASYNC,
   MAX_RAISED_EVENTS,
   SUCCESS_ASYNC,
+  toStructure,
   transitionInfo,
 } from "./helpers";
 import { JourneyStore } from "./store";
@@ -56,7 +57,7 @@ const freezeContextInDevelopment = <T>(context: T): T =>
     ? Object.freeze(context)
     : context;
 
-const EMPTY_METADATA: Readonly<Record<string, unknown>> = Object.freeze({});
+const EMPTY_NODE_META: Readonly<Record<string, unknown>> = Object.freeze({});
 const EMPTY_PLUGINS: Readonly<Record<string, unknown>> = Object.freeze({});
 
 /** Freezes and returns the rebuilt sub-object, or the previous one when content-equal. */
@@ -418,23 +419,7 @@ export class JourneyRuntime {
   private setupPlugins(): void {
     const host: PluginHost = {
       getSnapshot: () => this.store.getSnapshot(),
-      structure: Object.freeze({
-        kind: this.config.kind,
-        stepIds: Object.freeze<readonly string[]>([...this.config.stepIds]),
-        initial: this.config.initial,
-        transitions: Object.freeze(
-          this.config.transitions.map((transition) =>
-            Object.freeze({
-              event: transition.event,
-              from: transition.from,
-              to: transition.to,
-              guarded: transition.when !== undefined,
-              label: transition.label ?? null,
-              index: transition.index,
-            }),
-          ),
-        ),
-      }),
+      structure: toStructure(this.config),
       onTransition: (callback) => {
         this.transitionListeners.add(callback);
         return () => this.transitionListeners.delete(callback);
@@ -966,7 +951,7 @@ export class JourneyRuntime {
         ? null
         : {
             id: currentId,
-            metadata: this.config.steps[currentId]?.metadata ?? EMPTY_METADATA,
+            nodeMeta: this.config.steps[currentId]?.nodeMeta ?? EMPTY_NODE_META,
             isFirstTimeVisit: (this.visitCounts.get(currentId) ?? 0) === 1,
             async: this.entryAsync,
           };

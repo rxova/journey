@@ -32,14 +32,14 @@ const EventLog = () => {
 };
 
 const StepMetaDisplay = () => {
-  const metadata = journey.useSnapshot().currentStep?.metadata;
+  const nodeMeta = journey.useSnapshot().currentStep?.nodeMeta;
 
-  if (!metadata) return null;
+  if (!nodeMeta) return null;
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-      <span style={{ fontSize: "1.5rem" }}>{metadata.icon}</span>
-      <span style={{ fontSize: "0.85rem", color: "#888" }}>{metadata.label}</span>
+      <span style={{ fontSize: "1.5rem" }}>{nodeMeta.icon}</span>
+      <span style={{ fontSize: "0.85rem", color: "#888" }}>{nodeMeta.label}</span>
     </div>
   );
 };

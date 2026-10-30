@@ -66,10 +66,10 @@ export function createLinearJourney<
     }
     stepIds.push(config.id);
     const runtimeStep: {
-      metadata: unknown;
+      nodeMeta: unknown;
       onEnter?: NonNullable<RuntimeStep["onEnter"]>;
       onLeave?: NonNullable<RuntimeStep["onLeave"]>;
-    } = { metadata: config.metadata ?? {} };
+    } = { nodeMeta: config.nodeMeta ?? {} };
     if (config.onEnter) {
       runtimeStep.onEnter = config.onEnter as unknown as NonNullable<RuntimeStep["onEnter"]>;
     }

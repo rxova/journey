@@ -70,9 +70,9 @@ const demoDefinition = {
   initial: "profile",
   context: { name: "", email: "", notes: "" },
   steps: {
-    profile: { metadata: { label: "Profile" }, on: { next: "review" } },
-    review: { metadata: { label: "Review" }, on: { next: "done" } },
-    done: { metadata: { label: "Done" } },
+    profile: { nodeMeta: { label: "Profile" }, on: { next: "review" } },
+    review: { nodeMeta: { label: "Review" }, on: { next: "done" } },
+    done: { nodeMeta: { label: "Done" } },
   },
 } satisfies GraphDefinition<PluginBag>;
 

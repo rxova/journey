@@ -25,9 +25,9 @@ export const pluginDefinition = {
     notes: "",
   },
   steps: [
-    { id: "profile", metadata: { label: "Profile" } },
-    { id: "review", metadata: { label: "Review" } },
-    { id: "done", metadata: { label: "Done" } },
+    { id: "profile", nodeMeta: { label: "Profile" } },
+    { id: "review", nodeMeta: { label: "Review" } },
+    { id: "done", nodeMeta: { label: "Done" } },
   ],
 } satisfies LinearJourneyDefinition<PluginStepId, PluginContext>;
 
@@ -46,20 +46,20 @@ export const structureDefinition = {
   context: {},
   steps: {
     start: {
-      metadata: { label: "Start" },
+      nodeMeta: { label: "Start" },
       on: { next: [{ to: "address" }, { to: "review" }] },
     },
     address: {
-      metadata: { label: "Address" },
+      nodeMeta: { label: "Address" },
       on: { next: [{ to: "review" }, { to: "done" }], reject: "blocked" },
     },
     review: {
-      metadata: { label: "Review" },
+      nodeMeta: { label: "Review" },
       on: { next: "done", reject: "address" },
     },
-    blocked: { metadata: { label: "Blocked" } },
-    done: { metadata: { label: "Done" } },
-    orphan: { metadata: { label: "Orphan" } },
+    blocked: { nodeMeta: { label: "Blocked" } },
+    done: { nodeMeta: { label: "Done" } },
+    orphan: { nodeMeta: { label: "Orphan" } },
   },
 } satisfies GraphDefinition<StructureBag>;
 
