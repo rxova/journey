@@ -139,3 +139,64 @@ describe("compileGraph", () => {
     ).toBe("invalid-timeout");
   });
 });
+
+describe("a compiled graph resists tampering", () => {
+  const definition = {
+    initial: "a",
+    context: {},
+    steps: { a: { stepMeta: { team: "x" }, on: { go: "b" } }, b: {} },
+  } as const;
+
+  it("freezes the step views a plugin reads, not just the map holding them", () => {
+    const { structure } = compileGraph(definition);
+
+    expect(Object.isFrozen(structure.steps)).toBe(true);
+    expect(Object.isFrozen(structure.steps.a)).toBe(true);
+    // A plugin that tries to hijack the view for every later plugin fails.
+    expect(() => {
+      (structure.steps.a as { stepMeta: unknown }).stepMeta = { team: "hijacked" };
+    }).toThrow();
+    expect(structure.steps.a?.stepMeta).toEqual({ team: "x" });
+  });
+
+  it("freezes the runtime payload, so one machine cannot inject a hook into the next", () => {
+    const compiled = compileGraph(definition);
+    const payload = Object.getOwnPropertySymbols(compiled)
+      .map((symbol) => (compiled as unknown as Record<symbol, unknown>)[symbol])
+      .find((value): value is { steps: Record<string, object> } => typeof value === "object");
+
+    expect(Object.isFrozen(payload)).toBe(true);
+    expect(Object.isFrozen(payload?.steps)).toBe(true);
+    expect(Object.isFrozen(payload?.steps.a)).toBe(true);
+  });
+
+  it("rejects a forged payload instead of routing onto an undeclared step", () => {
+    const compiled = compileGraph(definition);
+    const [marker] = Object.getOwnPropertySymbols(compiled);
+    const forged = {
+      structure: compiled.structure,
+      [marker as symbol]: {
+        stepIds: ["a"],
+        steps: { a: {} },
+        transitions: [{ event: "go", from: "a", to: "nowhere", index: 0 }],
+        eventWork: {},
+        initial: "a",
+        context: {},
+      },
+    };
+
+    expect(() => createGraphJourney(forged as never)).toThrow(/compiled graph payload is unusable/);
+  });
+
+  it("does not let a __proto__ step id become a prototype write", () => {
+    const compiled = compileGraph({
+      initial: "a",
+      context: {},
+      steps: { a: { on: { go: "b" } }, b: {}, ["__proto__" as string]: {} },
+    } as never);
+
+    expect(compiled.structure.stepIds).toContain("__proto__");
+    expect(({} as Record<string, unknown>).go).toBeUndefined();
+    expect(Object.prototype).not.toHaveProperty("on");
+  });
+});

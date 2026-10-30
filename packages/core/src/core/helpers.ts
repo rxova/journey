@@ -111,7 +111,10 @@ export const toStructure = (input: {
     // `onLeave`, and the structure view is inert by contract.
     steps: Object.freeze(
       Object.fromEntries(
-        Object.entries(input.steps).map(([id, step]) => [id, { stepMeta: step.stepMeta }]),
+        Object.entries(input.steps).map(([id, step]) => [
+          id,
+          Object.freeze({ stepMeta: step.stepMeta }),
+        ]),
       ),
     ),
     initial: input.initial,

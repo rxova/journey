@@ -1,5 +1,5 @@
 import { JourneyError } from "../core/errors";
-import { eventWorkKey, toStructure } from "../core/helpers";
+import { eventWorkKey, hasOwn, toStructure } from "../core/helpers";
 import type { AnySendWork, RuntimeStep, RuntimeTransition } from "../core/runtime.types";
 import type {
   GraphDefinitionInput,
@@ -51,8 +51,13 @@ const assertTimeout = (ms: unknown, where: string, meta: { event: string; stepId
  * `Symbol()`, not `Symbol.for()`: a registry key is global, so two copies of
  * this package in one app would read each other's payloads. A module-scoped
  * symbol also keeps the payload off `Object.keys`, out of `JSON.stringify`,
- * and unnameable from outside this file — the only way to the runtime data is
+ * and off the normal read paths — the intended door to the runtime data is
  * {@link runtimeOf}, which is not exported from the package.
+ *
+ * This is privacy, not tamper-proofing: `Object.getOwnPropertySymbols` still
+ * reaches the key. {@link runtimeOf} therefore checks the payload's shape
+ * rather than trusting it, so a hand-made object cannot route a machine onto a
+ * step the definition never declared.
  */
 const RUNTIME: unique symbol = Symbol("compiled");
 
@@ -162,7 +167,10 @@ export function compileGraph<
     );
   }
 
-  const steps: Record<string, RuntimeStep> = {};
+  // Null-prototype: a step id of `__proto__` would otherwise be a prototype
+  // assignment rather than an entry, leaving an id in `stepIds` with no step
+  // behind it. Same reasoning as `hasOwn` in core/helpers.
+  const steps: Record<string, RuntimeStep> = Object.create(null) as Record<string, RuntimeStep>;
   for (const id of stepIds) {
     const config = definition.steps[id] as GraphStepConfig;
     const runtimeStep: MutableRuntimeStep = { stepMeta: config.stepMeta ?? {} };
@@ -176,7 +184,7 @@ export function compileGraph<
   }
 
   const transitions: RuntimeTransition[] = [];
-  const eventWork: Record<string, AnySendWork> = {};
+  const eventWork: Record<string, AnySendWork> = Object.create(null) as Record<string, AnySendWork>;
 
   const pushCandidate = (
     event: string,
@@ -243,15 +251,60 @@ export function compileGraph<
   }
 
   const { initial, context, handlers } = definition;
+  // A compiled graph is shared across every machine built from it, so the
+  // payload is frozen too: without this, one machine's plugin could add an
+  // `onEnter` that every later machine would run.
+  for (const step of Object.values(steps)) Object.freeze(step);
+  for (const transition of transitions) Object.freeze(transition);
+  Object.freeze(steps);
+  Object.freeze(transitions);
+  Object.freeze(eventWork);
   return Object.freeze({
     structure: toStructure({ kind: "graph", stepIds, steps, initial, transitions }),
-    [RUNTIME]: { stepIds, steps, transitions, eventWork, initial, context, handlers },
+    [RUNTIME]: Object.freeze({
+      stepIds,
+      steps,
+      transitions,
+      eventWork,
+      initial,
+      context,
+      handlers,
+    }),
   });
 }
 
-/** @internal Reads the runtime payload back out. The only door to it, and package-private. */
-export const runtimeOf = (compiled: AnyCompiledGraph): CompiledRuntime =>
-  compiled[RUNTIME] as CompiledRuntime;
+/**
+ * @internal Reads the runtime payload back out, checking its shape first.
+ *
+ * The marker symbol is reachable through `Object.getOwnPropertySymbols`, so the
+ * payload is untrusted input: without this check a hand-made object routes a
+ * machine onto a step the definition never declared. Two copies of this package
+ * in one app also land here, because each has its own marker.
+ */
+export const runtimeOf = (compiled: AnyCompiledGraph): CompiledRuntime => {
+  const payload = compiled[RUNTIME] as Partial<CompiledRuntime> | undefined;
+  const usable =
+    payload !== null &&
+    typeof payload === "object" &&
+    Array.isArray(payload.stepIds) &&
+    Array.isArray(payload.transitions) &&
+    typeof payload.steps === "object" &&
+    payload.steps !== null &&
+    typeof payload.initial === "string" &&
+    hasOwn(payload.steps, payload.initial) &&
+    payload.transitions.every(
+      (transition) =>
+        hasOwn(payload.steps as object, transition.from) &&
+        hasOwn(payload.steps as object, transition.to),
+    );
+  if (!usable) {
+    throw new JourneyError(
+      "invalid-compiled-graph",
+      "compiled graph payload is unusable: build it with compileGraph, and check for two copies of @rxova/journey-core in one app",
+    );
+  }
+  return payload as CompiledRuntime;
+};
 
 /** @internal Accepts either side of the union a factory takes and yields the compiled form. */
 export const ensureCompiled = (definition: object): AnyCompiledGraph =>
