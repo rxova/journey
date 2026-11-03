@@ -53,7 +53,7 @@ overrides:
   # GHSA-gfr2-rv44-r23c: a single multi-line link reference definition renders
   # in quadratic time. Reached through typedoc, rendering the TSDoc in this
   # repository. Scoped to the 14.x line typedoc asks for.
-  "markdown-it@<14.3.3": ">=14.3.3 <15.0.0"
+  "markdown-it@<14.3.3": ">=14.3.3 <16.0.0"
   # GHSA-w02v-q2wq-9vqm: quadratic backtracking on an attacker-controlled
   # selector. Reached only through the docs site's expressive-code chain >
   # postcss-nested, parsing expressive-code's own selectors at build time.
