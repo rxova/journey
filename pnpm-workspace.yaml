@@ -11,7 +11,7 @@ overrides:
   # scripts intact). Latent under Docusaurus; live once Astro started pulling
   # svgo, and only visible because `pnpm audit` works again on pnpm 11.
   jsdom>undici: ">=7.29.0 <8.0.0"
-  cheerio>undici: ">=7.29.0 <8.0.0"
+  cheerio>undici: ">=7.29.0 <9.0.0"
   "@crxjs/vite-plugin>rollup": 2.80.0
   "picomatch@<2.3.2": ">=2.3.2 <3.0.0"
   "picomatch@>=4.0.0 <4.0.4": ">=4.0.4 <5.0.0"
