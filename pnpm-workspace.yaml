@@ -149,7 +149,7 @@ overrides:
   # `audit:check` does not gate on it, but it is an open Dependabot alert.
   # Closed below 6 so it stays on the line Astro declares. Drop this once Astro
   # depends on >=5.9.2 itself.
-  "devalue@<5.9.2": ">=5.9.2 <6.0.0"
+  "devalue@<5.9.2": ">=5.9.2 <7.0.0"
 
 # No auditConfig.ignoreGhsas. The one entry that lived here, GHSA-mh99-v99m-4gvg
 # (brace-expansion DoS), was reachable only through
