@@ -10,7 +10,7 @@ overrides:
   # vulnerable 3.3.3 (GHSA-2p49-hgcm-8545, removeScripts leaves some executable
   # scripts intact). Latent under Docusaurus; live once Astro started pulling
   # svgo, and only visible because `pnpm audit` works again on pnpm 11.
-  jsdom>undici: ">=7.29.0 <8.0.0"
+  jsdom>undici: ">=7.29.0 <9.0.0"
   cheerio>undici: ">=7.29.0 <8.0.0"
   "@crxjs/vite-plugin>rollup": 2.80.0
   "picomatch@<2.3.2": ">=2.3.2 <3.0.0"
