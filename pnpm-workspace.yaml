@@ -62,7 +62,7 @@ overrides:
   # fast-uri entries did: the advisory's patched floor has moved to 7.3.7. This
   # covers the 7.x copy that vitest still resolves (vitest > @vitest/mocker >
   # vite); the examples are on vite 8 and are not matched by this key.
-  "vite@<7.3.7": ">=7.3.7 <8.0.0"
+  "vite@<7.3.7": ">=7.3.7 <9.0.0"
   # Not an advisory. @rxova/ts-utils 0.3.0 split its exports and the new
   # `./react` subpath gave the package a `react` peer. The root workspace
   # declares ts-utils but no react of its own, so pnpm satisfied that peer with
