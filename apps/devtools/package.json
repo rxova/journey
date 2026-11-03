@@ -13,14 +13,14 @@
   },
   "dependencies": {
     "@rxova/journey-devtools-bridge": "workspace:^",
-    "@tanstack/react-virtual": "^3.14.21",
-    "lucide-react": "^1.61.0",
+    "@tanstack/react-virtual": "^3.14.24",
+    "lucide-react": "^1.66.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^3.0.0",
-    "@types/chrome": "^0.3.6",
+    "@types/chrome": "^0.3.7",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
@@ -28,6 +28,6 @@
     "vite": "^8.3.5"
   },
   "engines": {
-    "node": ">=20.11.0"
+    "node": ">=20.20.2"
   }
 }
