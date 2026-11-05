@@ -163,8 +163,8 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  jsdom>undici: '>=7.29.0 <8.0.0'
-  cheerio>undici: '>=7.29.0 <8.0.0'
+  jsdom>undici: '>=7.30.1 <8.0.0'
+  cheerio>undici: '>=7.30.1 <8.0.0'
   '@crxjs/vite-plugin>rollup': 2.80.0
   picomatch@<2.3.2: '>=2.3.2 <3.0.0'
   picomatch@>=4.0.0 <4.0.4: '>=4.0.4 <5.0.0'
@@ -210,6 +210,8 @@ overrides:
   next@>=16.0.0 <16.3.3: '>=16.3.3 <17.0.0'
   browserslist@<=4.28.6: '>=4.28.7 <5.0.0'
   devalue@<5.9.2: '>=5.9.2 <6.0.0'
+  undici@>=7.0.0 <7.30.1: '>=7.30.1 <8.0.0'
+  undici@>=8.0.0 <8.12.2: '>=8.12.2 <9.0.0'
 
 importers:
 
@@ -5390,12 +5392,12 @@ packages:
   undici-types@8.9.0:
     resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
-  undici@7.29.1:
-    resolution: {integrity: sha512-RYONW2MeafgYlkVOKYKkA/Ag7BmXqgIWCa8t1m0JcxrQg9pI9lEqRhAOruOBCbAohOa/gkCF+iPi9hrgvTzu6Q==}
+  undici@7.30.1:
+    resolution: {integrity: sha512-03KrMbjIFDWQR5RNPrSw3bd1r12JpyFQl9/yxjUbJtqkjmllqC5lFjZh6ujeuJCKr8EOQvRW872Oy/az+nLYxg==}
     engines: {node: '>=20.18.1'}
 
-  undici@8.10.2:
-    resolution: {integrity: sha512-/y4/bH9YNU5hi9NIrpOuvGXFcxrj3CMrV+/AYpowAYTpHn8gX/XPFjNy766FPoYY0miQhdW977JFWKGNhBdwyQ==}
+  undici@8.12.3:
+    resolution: {integrity: sha512-+fdndUTwBP86cVjihTp21hZHo7d6oj1c/47XPA3lL8mM0XHs+C4EkcjmgRsFnFk2f/UONGDy9ItBItmXsLOQHw==}
     engines: {node: '>=22.19.0'}
 
   unicode-emoji-modifier-base@1.0.0:
@@ -9374,7 +9376,7 @@ snapshots:
       parse5: 8.0.1
       saxes: 6.0.0
       tough-cookie: 6.0.2
-      undici: 7.29.1
+      undici: 7.30.1
       w3c-xmlserializer: 6.0.0
       webidl-conversions: 8.0.1
       whatwg-mimetype: 5.0.0
@@ -11205,9 +11207,9 @@ snapshots:
 
   undici-types@8.9.0: {}
 
-  undici@7.29.1: {}
+  undici@7.30.1: {}
 
-  undici@8.10.2: {}
+  undici@8.12.3: {}
 
   unicode-emoji-modifier-base@1.0.0: {}
 
@@ -11226,7 +11228,7 @@ snapshots:
       css-tree: 3.2.1
       fnv1a-64: 0.1.2
       std-env: 4.3.0
-      undici: 8.10.2
+      undici: 8.12.3
 
   unist-util-find-after@5.0.0:
     dependencies:

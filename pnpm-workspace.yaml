@@ -10,8 +10,8 @@ overrides:
   # vulnerable 3.3.3 (GHSA-2p49-hgcm-8545, removeScripts leaves some executable
   # scripts intact). Latent under Docusaurus; live once Astro started pulling
   # svgo, and only visible because `pnpm audit` works again on pnpm 11.
-  jsdom>undici: ">=7.29.0 <8.0.0"
-  cheerio>undici: ">=7.29.0 <8.0.0"
+  jsdom>undici: ">=7.30.1 <8.0.0"
+  cheerio>undici: ">=7.30.1 <8.0.0"
   "@crxjs/vite-plugin>rollup": 2.80.0
   "picomatch@<2.3.2": ">=2.3.2 <3.0.0"
   "picomatch@>=4.0.0 <4.0.4": ">=4.0.4 <5.0.0"
@@ -150,6 +150,31 @@ overrides:
   # Closed below 6 so it stays on the line Astro declares. Drop this once Astro
   # depends on >=5.9.2 itself.
   "devalue@<5.9.2": ">=5.9.2 <6.0.0"
+
+  # GHSA-4w7w-5xrc-9h26, GHSA-2m5v-pch6-74hx, GHSA-qrxm-fqhp-jwvm and
+  # GHSA-xjj6-f33q-929c: four undici advisories — cross-origin redirect cache
+  # poisoning, `tls` options dropped by `Agent`, and two denial-of-service
+  # paths. They land on both live majors and the widening described above the
+  # js-yaml pins happened twice over here.
+  #
+  # The 7.x line is the stale pin: `undici@>=7.0.0 <7.29.0` and the two
+  # `jsdom>undici` / `cheerio>undici` path pins all had 7.29.0 as their floor,
+  # which is where these advisories' patched range started when they were
+  # written. It has since moved to 7.30.1, so the tree resolved 7.29.1 and the
+  # gate went red on a commit that only bumped unrelated dependencies. The
+  # path pins above are raised with this entry; a range pin alone would not
+  # beat a path-scoped selector.
+  #
+  # The 8.x line is new. `apps/docs > astro > unifont > undici` arrived with
+  # astro 7.4.4, which is the first version here to reach undici 8 at all, so
+  # there was no entry to go stale.
+  #
+  # Both are build-time only — jsdom is the vitest DOM environment, unifont
+  # fetches webfonts while the docs site builds — and neither is shipped in a
+  # published package. Closed per major, matching every other entry in this
+  # file.
+  "undici@>=7.0.0 <7.30.1": ">=7.30.1 <8.0.0"
+  "undici@>=8.0.0 <8.12.2": ">=8.12.2 <9.0.0"
 
 # No auditConfig.ignoreGhsas. The one entry that lived here, GHSA-mh99-v99m-4gvg
 # (brace-expansion DoS), was reachable only through
