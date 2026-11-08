@@ -15,25 +15,10 @@ overrides:
   "@crxjs/vite-plugin>rollup": 2.80.0
   "picomatch@<2.3.2": ">=2.3.2 <3.0.0"
   "picomatch@>=4.0.0 <4.0.4": ">=4.0.4 <5.0.0"
-  "postcss@<8.5.10": ">=8.5.10 <9.0.0"
-  "fast-uri@<=3.1.0": ">=3.1.1 <4.0.0"
-  "fast-uri@<=3.1.1": ">=3.1.2 <4.0.0"
-  "next@>=16.0.0 <16.2.5": ">=16.2.5 <17.0.0"
-  "next@>=16.0.0 <16.2.6": ">=16.2.6 <17.0.0"
-  "brace-expansion@>=5.0.0 <5.0.6": ">=5.0.6 <6.0.0"
   "esbuild@>=0.27.3 <0.28.1": ">=0.28.1 <0.29.0"
-  "vite@>=7.0.0 <=7.3.4": ">=7.3.5 <8.0.0"
-  "undici@>=7.23.0 <7.28.0": ">=7.28.0 <8.0.0"
-  "undici@>=7.0.0 <7.28.0": ">=7.28.0 <8.0.0"
   "@babel/core@<=7.29.0": ">=7.29.6 <8.0.0"
   "brace-expansion@<1.1.16": ">=1.1.16 <2.0.0"
-  "brace-expansion@>=3.0.0 <5.0.8": ">=5.0.8 <6.0.0"
   "svgo@>=3.0.0 <3.3.4": ">=3.3.4 <4.0.0"
-  "fast-uri@>=3.0.0 <=3.1.3": ">=3.1.4 <4.0.0"
-  "sharp@<0.35.0": ">=0.35.0 <0.36.0"
-  "next@>=16.0.0 <16.2.11": ">=16.2.11 <17.0.0"
-  "fast-uri@>=3.0.0 <3.1.3": ">=3.1.3 <4.0.0"
-  "postcss@<=8.5.11": ">=8.5.12 <9.0.0"
   # GHSA-r28c-9q8g-f849, disclosed after the range above was written and
   # not covered by it: postcss <=8.5.17 auto-loads a previous source map
   # from sourceMappingURL, so a crafted CSS comment can disclose any .map
@@ -58,8 +43,8 @@ overrides:
   # selector. Reached only through the docs site's expressive-code chain >
   # postcss-nested, parsing expressive-code's own selectors at build time.
   "postcss-selector-parser@<7.1.6": ">=7.1.6 <8.0.0"
-  # The `vite@>=7.0.0 <=7.3.4` range above went stale the way the postcss and
-  # fast-uri entries did: the advisory's patched floor has moved to 7.3.7. This
+  # This replaced a `>=7.0.0 <=7.3.4` pin that went stale the way the postcss
+  # and fast-uri entries did: the advisory's patched floor moved to 7.3.7. It
   # covers the 7.x copy that vitest still resolves (vitest > @vitest/mocker >
   # vite); the examples are on vite 8 and are not matched by this key.
   "vite@<7.3.7": ">=7.3.7 <8.0.0"
@@ -103,21 +88,26 @@ overrides:
   # Drop the first once postcss depends on >=3.3.18 itself.
   "nanoid@<3.3.18": ">=3.3.18 <4.0.0"
   "nanoid@>=4.0.0 <5.1.16": ">=5.1.16 <6.0.0"
-  "undici@>=7.0.0 <7.29.0": ">=7.29.0 <8.0.0"
-  "fast-uri@>=3.0.0 <3.1.5": ">=3.1.5 <4.0.0"
-  "brace-expansion@>=4.0.0 <5.0.9": ">=5.0.9 <6.0.0"
+  "brace-expansion@>=3.0.0 <5.0.9": ">=5.0.9 <6.0.0"
 
-  # Another round of the widening described above the js-yaml pins. The
-  # `fast-uri@>=3.0.0 <3.1.5` entry resolved the tree to 3.1.5, which was the
-  # floor when it was written; four advisories have since moved the patched
-  # range to >=3.1.6, so the pin that fixed this went stale and the gate went
-  # red without any file here changing. GHSA-f65p-4m7j-42xc and
-  # GHSA-jqff-g426-hqxp (host confusion via percent-encoded scheme
-  # normalization) cover the whole 3.x line; GHSA-fph4-wmhf-6fwf and
-  # GHSA-5jgf-p345-68v8 start at 3.1.2 and 3.1.3. All of it arrives under `ajv`
-  # — commitlint's config validator and, in the docs site, the YAML language
+  # The widening described above the js-yaml pins, for the seventh time on this
+  # package: the tree resolved 3.1.8 and four more advisories move the patched
+  # range to >=3.1.9. GHSA-w74x-v6f9-j3xg (URI scheme spoofing via
+  # percent-encoded scheme decoding), GHSA-xhq7-xmqj-769h (improper path
+  # equivalence in relative reference normalization) and GHSA-333x-w4r6-6crp
+  # (scheme injection via an unescaped first-segment colon) cover the whole 3.x
+  # line; GHSA-wjr9-j795-jxcr (host confusion via unchecked WHATWG host
+  # canonicalization) starts at 3.1.3. All of it still arrives under `ajv` —
+  # commitlint's config validator and, in the docs site, the YAML language
   # server — so nothing here parses a URI an outsider controls.
-  "fast-uri@>=3.0.0 <3.1.6": ">=3.1.6 <4.0.0"
+  #
+  # This one key replaces the six fast-uri entries that preceded it. Each was
+  # written at the floor of its day and every one of them is a subset of this
+  # range, so they only obscured which bound was actually in force. Two of them
+  # (`<=3.1.0`, `<=3.1.1`) also reached below 3.0.0; nothing in the tree
+  # resolves a 2.x fast-uri, and the closed lower bound matches the rest of
+  # this file.
+  "fast-uri@>=3.0.0 <3.1.9": ">=3.1.9 <4.0.0"
 
   # The same widening again, plus two packages that had no entry yet. `next` and
   # `sharp` already had pins here; both advisories moved their patched range up,
@@ -157,7 +147,7 @@ overrides:
   # paths. They land on both live majors and the widening described above the
   # js-yaml pins happened twice over here.
   #
-  # The 7.x line is the stale pin: `undici@>=7.0.0 <7.29.0` and the two
+  # The 7.x line was the stale pin: the range entry it replaces and the two
   # `jsdom>undici` / `cheerio>undici` path pins all had 7.29.0 as their floor,
   # which is where these advisories' patched range started when they were
   # written. It has since moved to 7.30.1, so the tree resolved 7.29.1 and the
@@ -175,6 +165,51 @@ overrides:
   # file.
   "undici@>=7.0.0 <7.30.1": ">=7.30.1 <8.0.0"
   "undici@>=8.0.0 <8.12.2": ">=8.12.2 <9.0.0"
+
+  # GHSA-g3hv-75wg-m249: minimatch amplifies a pattern's `globstar` parts into
+  # exponentially many match attempts, so a short hostile glob costs CPU out of
+  # all proportion to its size. The advisory covers >=7.0.0 <11.0.1 and the
+  # tree resolved 10.2.6 under eslint, @eslint/config-array,
+  # @typescript-eslint/typescript-estree and typedoc — every one of them
+  # build-time only, matching globs this repository wrote, and none shipped in
+  # a published package. `audit:check` gates on high and this is moderate, so
+  # it is here for the Dependabot alert rather than for the gate.
+  #
+  # 11.0.1 is a major bump for those consumers, which declare ^10, and typedoc
+  # does not survive it: 11 dropped `matchOne` (and `makeRe`) from the exported
+  # surface, and `typedoc/dist/node-utils.js` calls `mini.matchOne`, so the
+  # docs build dies with `TypeError: mini.matchOne is not a function`. The path
+  # pin below holds typedoc on the 10.x line and beats the range pin, the same
+  # way the `jsdom>undici` pins do. eslint, @eslint/config-array and
+  # @typescript-eslint/typescript-estree are fine on 11 — `pnpm run lint` is
+  # green with it.
+  #
+  # So typedoc's copy stays on 10.2.6 and GHSA-g3hv-75wg-m249 stays open
+  # against it. That is the honest trade: the alternative is pinning typedoc
+  # back or dropping it, and the exposure is a glob pattern this repository
+  # wrote being matched against its own source tree while generating API docs.
+  # Revisit when typedoc supports minimatch 11.
+  #
+  # The 3.1.5 copy under eslint-plugin-react and eslint-plugin-jsx-a11y sits
+  # below the advisory's range and is left alone: minimatch 3 calls
+  # `brace-expansion` directly and does not survive the jump either.
+  typedoc>minimatch: ">=10.2.6 <11.0.0"
+  "minimatch@>=7.0.0 <11.0.1": ">=11.0.1 <12.0.0"
+
+  # Housekeeping, no advisory of its own. Seventeen keys above this point were
+  # subsets of a later entry in this same file — the residue of the widening
+  # described above the js-yaml pins, where each round appended a new floor and
+  # left the old one in place. They were harmless to resolution and awful to
+  # read: six overlapping fast-uri ranges and four `next` ranges made it
+  # impossible to tell which bound was in force without resolving the lot by
+  # hand. Removed, with the resolved version of every package named in this
+  # file compared before and after to prove the tree did not move.
+  #
+  # One of them was not a plain subset: `brace-expansion@>=3.0.0 <5.0.8` and
+  # `brace-expansion@>=4.0.0 <5.0.9` each covered a range the other did not, so
+  # they collapse into `>=3.0.0 <5.0.9` rather than one dropping out. Same
+  # effect on the tree — a 3.x or 4.x copy is still forced onto the patched 5.x
+  # line, which is what the older of the two already did.
 
 # No auditConfig.ignoreGhsas. The one entry that lived here, GHSA-mh99-v99m-4gvg
 # (brace-expansion DoS), was reachable only through
