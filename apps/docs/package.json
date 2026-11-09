@@ -34,13 +34,13 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@astrojs/markdown-remark": "^7.3.5",
+    "@astrojs/markdown-remark": "^7.3.6",
     "@astrojs/sitemap": "^3.7.4",
-    "@astrojs/starlight": "^0.42.8",
+    "@astrojs/starlight": "^0.42.9",
     "@rxova/astro-ui": "^0.7.0",
     "@rxova/brand": "^1.4.0",
     "@rxova/journey-core": "workspace:^",
-    "astro": "^7.4.4",
+    "astro": "^7.4.7",
     "sharp": "^0.35.5",
     "starlight-links-validator": "^0.27.0",
     "unist-util-visit": "^5.2.0"
