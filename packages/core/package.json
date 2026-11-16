@@ -92,7 +92,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
-    "immer": "^11.2.9",
+    "immer": "^11.2.10",
     "publint": "^0.3.25"
   },
   "peerDependencies": {
