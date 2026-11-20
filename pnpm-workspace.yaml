@@ -154,7 +154,14 @@ overrides:
   # `audit:check` gates on high and these are high or critical.
   #
   # Closed upper bounds per major, matching every other entry in this file.
-  "astro@<7.2.8": ">=7.2.8 <8.0.0"
+  #
+  # The astro floor went stale the same way: GHSA-r3h5-4585-7x3w patches at
+  # 7.4.7, so `<7.2.8` no longer selected anything and the tree sat on 7.4.5.
+  # Widened in place rather than added below, because a later key on the same
+  # package wins and would shadow a new one. The real fix is the direct
+  # `^7.4.7` in apps/docs; this keeps the floor from drifting back under a
+  # transitive. Build-time only, and apps/docs is private.
+  "astro@<7.4.7": ">=7.4.7 <8.0.0"
   "smol-toml@<=1.7.0": ">=1.7.1 <2.0.0"
   "svgo@>=4.0.0 <4.1.0": ">=4.1.0 <5.0.0"
   "sharp@<0.35.4": ">=0.35.4 <0.36.0"
@@ -199,6 +206,18 @@ overrides:
   # file.
   "undici@>=7.0.0 <7.30.1": ">=7.30.1 <8.0.0"
   "undici@>=8.0.0 <8.12.2": ">=8.12.2 <9.0.0"
+
+  # Not an advisory: a prerelease that auto-install-peers walks into.
+  # `@napi-rs/wasm-runtime` declares its emnapi peers as
+  # `^1.7.1 || ^2.0.0-alpha.4`, and now that 2.0.0-beta.* is on the registry
+  # that union's highest match is a beta, so every install resolves one. The
+  # beta drops `NodeEnv#setLastError`, which `@emnapi/core` still calls, and
+  # `astro check` dies on `this.bridge.setLastError is not a function` while
+  # loading @astrojs/astro2tsx's wasm module. Pinned to the 1.x line the
+  # packages actually support until a stable 2.0.0 ships. Closed below 2 like
+  # every other entry here.
+  "@emnapi/core@>=2.0.0-0": ">=1.11.3 <2.0.0"
+  "@emnapi/runtime@>=2.0.0-0": ">=1.11.3 <2.0.0"
 
 # No auditConfig.ignoreGhsas. The one entry that lived here, GHSA-mh99-v99m-4gvg
 # (brace-expansion DoS), was reachable only through
